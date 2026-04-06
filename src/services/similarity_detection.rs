@@ -471,6 +471,7 @@ impl SimilarityDetector {
         high_entropy: &[EntropyBlock],
         low_entropy: &[EntropyBlock],
     ) -> Vec<String> {
+        debug_assert!(!high_entropy.is_empty(), "high_entropy must not be empty");
         let mut recommendations = Vec::new();
 
         if !high_entropy.is_empty() {

@@ -35,6 +35,7 @@ impl StdioTransport {
     /// Zero-copy message transmission with atomicity guarantee
     /// Kernel guarantees writes ≤PIPE_BUF are atomic
     pub async fn send_atomic(&mut self, payload: &[u8]) -> io::Result<()> {
+        debug_assert!(!payload.is_empty(), "payload must not be empty");
         let seq = self.sequence_num.fetch_add(1, Ordering::AcqRel);
 
         let max_payload = Self::PIPE_BUF - Self::FRAME_HEADER_SIZE;
@@ -103,6 +104,7 @@ impl StdioTransport {
 
     /// Vectored I/O write avoiding concatenation
     pub async fn write_frame(&mut self, msg: &[u8]) -> io::Result<()> {
+        debug_assert!(!msg.is_empty(), "msg must not be empty");
         self.send_atomic(msg).await
     }
 }

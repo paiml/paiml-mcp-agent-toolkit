@@ -39,6 +39,7 @@ impl AgentRouter {
     /// Load balance requests
     #[must_use]
     pub fn balance_load(&self, requests: Vec<AgentRequest>) -> Vec<RouteDecision> {
+        debug_assert!(!requests.is_empty(), "requests must not be empty");
         requests
             .into_iter()
             .enumerate()

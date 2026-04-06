@@ -181,6 +181,7 @@ fn find_duplicate_blocks(
     all_blocks: Vec<(String, String, usize, usize, String)>,
     _threshold: f32,
 ) -> Vec<DuplicateBlock> {
+    debug_assert!(!all_blocks.is_empty(), "all_blocks must not be empty");
     let mut hash_groups: HashMap<String, Vec<(String, usize, usize, String)>> = HashMap::new();
 
     // Group by hash

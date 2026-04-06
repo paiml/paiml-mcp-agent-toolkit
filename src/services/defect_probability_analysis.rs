@@ -34,6 +34,7 @@ pub struct ProjectDefectAnalysis {
 impl ProjectDefectAnalysis {
     #[must_use]
     pub fn from_scores(scores: Vec<(String, DefectScore)>) -> Self {
+        debug_assert!(!scores.is_empty(), "scores must not be empty");
         let mut file_scores = HashMap::new();
         let mut high_risk_files = Vec::new();
         let mut medium_risk_files = Vec::new();

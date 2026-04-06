@@ -148,6 +148,7 @@ impl ClippyFixEngine {
         &self,
         diagnostics: &[ClippyDiagnostic],
     ) -> Result<Vec<FixResult>> {
+        debug_assert!(!diagnostics.is_empty(), "diagnostics must not be empty");
         let mut results = Vec::new();
 
         for diagnostic in diagnostics {
@@ -163,6 +164,7 @@ impl ClippyFixEngine {
         &self,
         diagnostics: &[ClippyDiagnostic],
     ) -> Result<Vec<FixResult>> {
+        debug_assert!(!diagnostics.is_empty(), "diagnostics must not be empty");
         use futures::future::join_all;
 
         let futures = diagnostics.iter().map(|d| self.apply_fix("", d));
@@ -178,6 +180,7 @@ impl ClippyFixEngine {
         diagnostics: Vec<(ClippyDiagnostic, ConfidenceLevel)>,
         min_confidence: ConfidenceLevel,
     ) -> Vec<(ClippyDiagnostic, ConfidenceLevel)> {
+        debug_assert!(!diagnostics.is_empty(), "diagnostics must not be empty");
         diagnostics
             .into_iter()
             .filter(|(_, conf)| *conf == min_confidence)
@@ -187,6 +190,7 @@ impl ClippyFixEngine {
     /// Generate comprehensive report (complexity: 5)
     #[must_use]
     pub fn generate_report(&self, results: Vec<FixResult>) -> FixReport {
+        debug_assert!(!results.is_empty(), "results must not be empty");
         let total = results.len();
         let successful = results.iter().filter(|r| r.success).count();
         let duration = results.iter().map(|r| r.duration).sum();

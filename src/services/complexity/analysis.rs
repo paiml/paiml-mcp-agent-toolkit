@@ -190,6 +190,10 @@ pub(super) fn calculate_summary_statistics(data: &mut AnalysisData) -> SummarySt
 
 /// Calculate 90th percentile values
 fn calculate_percentiles(all_cyclomatic: &[u16], all_cognitive: &[u16]) -> (u16, u16) {
+    debug_assert!(
+        !all_cyclomatic.is_empty(),
+        "all_cyclomatic must not be empty"
+    );
     let p90_index = (all_cyclomatic.len() as f32 * 0.9) as usize;
     let p90_cyclomatic = all_cyclomatic.get(p90_index).copied().unwrap_or(0);
     let p90_cognitive = all_cognitive.get(p90_index).copied().unwrap_or(0);
@@ -220,6 +224,10 @@ fn calculate_median(values: &[u16]) -> f32 {
 
 /// Calculate maximum values
 fn calculate_max_values(all_cyclomatic: &[u16], all_cognitive: &[u16]) -> (u16, u16) {
+    debug_assert!(
+        !all_cyclomatic.is_empty(),
+        "all_cyclomatic must not be empty"
+    );
     let max_cyclomatic = all_cyclomatic.iter().max().copied().unwrap_or(0);
     let max_cognitive = all_cognitive.iter().max().copied().unwrap_or(0);
     (max_cyclomatic, max_cognitive)

@@ -217,6 +217,7 @@ fn extract_config_error_handler(error_msg: &str) -> Option<ConfigFixInfo> {
 /// Apply configuration fixes (complexity ≤10)
 /// Returns list of successful fix descriptions
 async fn apply_config_fixes(errors: &[String], config: &mut PmatConfig) -> Result<Vec<String>> {
+    debug_assert!(!errors.is_empty(), "errors must not be empty");
     let mut fixed_issues = Vec::new();
 
     for error in errors {

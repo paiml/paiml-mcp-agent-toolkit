@@ -49,6 +49,7 @@ impl IntentClassifier {
     }
 
     fn aggregate_signals(&self, signals: Vec<SignalResult>) -> IntentClassification {
+        debug_assert!(!signals.is_empty(), "signals must not be empty");
         let mut hallucination_score = 0.0;
         let mut iteration_score = 0.0;
         let mut uncertain_score = 0.0;

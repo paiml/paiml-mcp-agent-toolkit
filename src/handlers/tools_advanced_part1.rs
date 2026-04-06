@@ -246,6 +246,7 @@ fn create_defect_probability_response(
     args: AnalyzeDefectProbabilityArgs,
     file_metrics: Vec<crate::services::defect_probability::FileMetrics>,
 ) -> McpResponse {
+    debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     use crate::services::defect_probability::{DefectProbabilityCalculator, ProjectDefectAnalysis};
 
     let calculator = DefectProbabilityCalculator::new();

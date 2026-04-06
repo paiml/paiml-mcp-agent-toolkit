@@ -8,6 +8,7 @@ pub(crate) fn format_defect_summary(
     predictions: &[(String, DefectScore)],
     elapsed: std::time::Duration,
 ) -> Result<String> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut output = String::new();
 
     write_summary_header(&mut output)?;
@@ -32,6 +33,7 @@ pub(crate) fn write_risk_distribution(
     output: &mut String,
     predictions: &[(String, DefectScore)],
 ) -> Result<()> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     use std::fmt::Write;
 
     let risk_stats = calculate_risk_statistics(predictions);
@@ -53,6 +55,7 @@ pub(crate) struct RiskStatistics {
 }
 
 pub(crate) fn calculate_risk_statistics(predictions: &[(String, DefectScore)]) -> RiskStatistics {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let high_risk = predictions
         .iter()
         .filter(|(_, s)| s.probability > 0.7)
@@ -78,6 +81,7 @@ pub(crate) fn write_top_risk_files(
     output: &mut String,
     predictions: &[(String, DefectScore)],
 ) -> Result<()> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     use std::fmt::Write;
 
     if !predictions.is_empty() {

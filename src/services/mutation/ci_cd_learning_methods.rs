@@ -53,6 +53,7 @@ impl CiCdLearningManager {
         &mut self,
         training_data: &[TrainingData],
     ) -> Result<ModelVersion> {
+        debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         // Limit to max_training_samples (keep most recent)
         let samples = if training_data.len() > self.config.max_training_samples {
             &training_data[training_data.len() - self.config.max_training_samples..]

@@ -68,6 +68,7 @@ impl EventPersistence for InMemoryPersistence {
     }
 
     async fn append_batch(&self, events: &[StateEvent]) -> Result<(), EventStoreError> {
+        debug_assert!(!events.is_empty(), "events must not be empty");
         self.events.write().extend(events.iter().cloned());
         Ok(())
     }

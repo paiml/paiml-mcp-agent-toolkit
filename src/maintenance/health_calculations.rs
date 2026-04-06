@@ -45,6 +45,7 @@ fn velocity_to_score(velocity: &VelocityMetrics) -> f64 {
 /// - Time: O(n) where n is number of tickets
 /// - Cyclomatic: 3
 pub fn analyze_aging(tickets: &[TicketFile]) -> AgingMetrics {
+    debug_assert!(!tickets.is_empty(), "tickets must not be empty");
     use super::ticket::TicketStatus;
 
     let red_tickets: Vec<String> = tickets
@@ -86,6 +87,7 @@ pub fn analyze_dependencies(
     tickets: &[TicketFile],
     ticket_map: &HashMap<String, &TicketFile>,
 ) -> DependencyMetrics {
+    debug_assert!(!tickets.is_empty(), "tickets must not be empty");
     let mut total_dependencies = 0;
     let mut broken_dependencies = 0;
 

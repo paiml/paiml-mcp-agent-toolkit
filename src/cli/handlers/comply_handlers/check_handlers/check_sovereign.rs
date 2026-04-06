@@ -215,6 +215,7 @@ pub(crate) fn build_sovereign_result(
     issues: &[String],
     good_patterns: &[String],
 ) -> ComplianceCheck {
+    debug_assert!(!issues.is_empty(), "issues must not be empty");
     if issues.is_empty() && !good_patterns.is_empty() {
         ComplianceCheck {
             name: "Sovereign Stack Patterns".into(),

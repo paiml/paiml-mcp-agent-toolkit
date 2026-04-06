@@ -181,6 +181,7 @@ impl AgentsMdDiscovery {
     /// Build hierarchy for monorepo
     #[must_use]
     pub fn build_hierarchy(&self, files: Vec<AgentsMdFile>) -> AgentsMdHierarchy {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         if files.is_empty() {
             return AgentsMdHierarchy {
                 root: PathBuf::new(),

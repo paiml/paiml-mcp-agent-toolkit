@@ -51,6 +51,7 @@ impl ConservativeAutomator {
 
     /// Batch fix multiple violations
     pub async fn batch_fix(&self, violations: Vec<Violation>) -> Result<AutomationResult> {
+        debug_assert!(!violations.is_empty(), "violations must not be empty");
         let mut result = AutomationResult {
             successful: Vec::new(),
             failed: Vec::new(),

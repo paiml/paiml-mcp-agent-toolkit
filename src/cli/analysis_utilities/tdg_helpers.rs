@@ -68,6 +68,7 @@ fn apply_results_filtering(
     mut results: Vec<(crate::models::tdg::TDGScore, PathBuf)>,
     top_files: usize,
 ) -> Vec<(crate::models::tdg::TDGScore, PathBuf)> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     // Sort by TDG score descending
     results.sort_unstable_by(|a, b| {
         b.0.value

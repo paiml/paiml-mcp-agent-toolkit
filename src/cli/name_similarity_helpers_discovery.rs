@@ -38,6 +38,7 @@ pub fn extract_all_identifiers(
     analyzed_files: &[(PathBuf, String)],
     _scope: &SearchScope,
 ) -> Vec<NameInfo> {
+    debug_assert!(!analyzed_files.is_empty(), "analyzed_files must not be empty");
     let mut all_names = Vec::new();
     for (_file_path, content) in analyzed_files {
         let names = super::analysis_utilities::extract_identifiers(content);

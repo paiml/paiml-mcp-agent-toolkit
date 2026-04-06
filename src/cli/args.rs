@@ -7,6 +7,7 @@ pub fn validate_params(
     specs: &[ParameterSpec],
     provided: &serde_json::Map<String, Value>,
 ) -> Result<(), Vec<String>> {
+    debug_assert!(!specs.is_empty(), "specs must not be empty");
     let mut errors = Vec::new();
 
     // Check required parameters

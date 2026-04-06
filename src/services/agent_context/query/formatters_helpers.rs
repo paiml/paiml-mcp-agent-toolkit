@@ -263,6 +263,7 @@ fn format_call_graph(r: &QueryResult) -> Option<String> {
 // --- Fault line formatting ---
 
 fn format_fault_lines(faults: &[String], output: &mut String) {
+    debug_assert!(!faults.is_empty(), "faults must not be empty");
     for fault in faults {
         if fault.contains("Boundary") || fault.contains("condition") {
             output.push_str(&format!("\x1b[1;33m⚠️  {}\x1b[0m\n", fault));

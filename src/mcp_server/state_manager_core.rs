@@ -114,6 +114,7 @@ impl StateManager {
         targets: Vec<PathBuf>,
         config: RefactorConfig,
     ) -> Result<(), String> {
+        debug_assert!(!targets.is_empty(), "targets must not be empty");
         if self.state.is_some() {
             return Err(
                 "Session already active. Stop current session before starting a new one."

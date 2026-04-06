@@ -175,6 +175,7 @@ impl DwarfParser {
     /// This implementation handles synthetic test data and provides graceful degradation.
     #[cfg(feature = "deep-wasm")]
     pub fn parse_line_program(&self, debug_line: &[u8]) -> DeepWasmResult<Vec<(u64, Location)>> {
+        debug_assert!(!debug_line.is_empty(), "debug_line must not be empty");
         // Early return for empty input
         if debug_line.is_empty() {
             return Ok(Vec::new());
@@ -227,6 +228,7 @@ impl DwarfParser {
     /// Stub implementation when feature is disabled
     #[cfg(not(feature = "deep-wasm"))]
     pub fn parse_line_program(&self, _debug_line: &[u8]) -> DeepWasmResult<Vec<(u64, Location)>> {
+        debug_assert!(!_debug_line.is_empty(), "_debug_line must not be empty");
         Err(DeepWasmError::MissingDebugInfo)
     }
 }

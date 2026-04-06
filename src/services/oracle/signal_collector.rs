@@ -81,6 +81,7 @@ impl AggregatedCollector {
 
     /// Convert signals to defect reports
     pub fn signals_to_defects(&self, signals: Vec<SignalEvidence>) -> Vec<DefectReport> {
+        debug_assert!(!signals.is_empty(), "signals must not be empty");
         let mut defects: Vec<DefectReport> = Vec::new();
 
         for signal in signals {

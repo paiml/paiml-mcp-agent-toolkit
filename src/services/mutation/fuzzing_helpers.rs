@@ -17,6 +17,7 @@ fn execute_mutant_with_input(_mutant_source: &str, input: &[u8]) -> Result<()> {
 
 /// Mutate an input to create new test cases
 fn mutate_input(seed: &[u8]) -> Vec<u8> {
+    debug_assert!(!seed.is_empty(), "seed must not be empty");
     use rand::Rng;
     let mut rng = rand::rng();
     let mut mutated = seed.to_vec();

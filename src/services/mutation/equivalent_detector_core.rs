@@ -27,6 +27,7 @@ impl EquivalentMutantDetector {
 
     /// Train the detector on labeled data
     pub fn train(&mut self, training_data: &[EquivalenceTrainingData]) -> Result<()> {
+        debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         if training_data.is_empty() {
             anyhow::bail!("Training data cannot be empty");
         }
@@ -66,6 +67,7 @@ impl EquivalentMutantDetector {
 
     /// Update detector with new patterns
     pub fn update(&mut self, new_data: &[EquivalenceTrainingData]) -> Result<()> {
+        debug_assert!(!new_data.is_empty(), "new_data must not be empty");
         if !self.trained {
             return self.train(new_data);
         }
@@ -198,6 +200,7 @@ impl EquivalentMutantDetector {
         mutants: &[Mutant],
         original_sources: &[(&str, &str)],
     ) -> Result<Vec<(Mutant, EquivalenceResult)>> {
+        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         let mut non_equivalents = Vec::new();
 
         for (i, mutant) in mutants.iter().enumerate() {

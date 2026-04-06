@@ -227,6 +227,7 @@ impl PolyglotDetector {
         languages: &[LanguageStats],
         dependencies: &[CrossLanguageDependency],
     ) -> Option<ArchitecturePattern> {
+        debug_assert!(!languages.is_empty(), "languages must not be empty");
         // Simplified pattern detection logic
         if languages.len() == 1 {
             Some(ArchitecturePattern::Monolithic)

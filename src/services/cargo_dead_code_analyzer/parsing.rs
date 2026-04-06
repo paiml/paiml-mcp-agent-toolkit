@@ -106,6 +106,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Group dead items by file
     fn group_by_file(&self, items: Vec<(PathBuf, DeadItem)>) -> Vec<FileDeadCode> {
+        debug_assert!(!items.is_empty(), "items must not be empty");
         let mut file_map: HashMap<PathBuf, Vec<DeadItem>> = HashMap::new();
 
         for (path, item) in items {
@@ -159,6 +160,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Calculate overall metrics
     async fn calculate_metrics(&self, files: Vec<FileDeadCode>) -> Result<AccurateDeadCodeReport> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut total_lines = 0;
         let mut dead_lines = 0;
         let mut dead_by_type = HashMap::new();

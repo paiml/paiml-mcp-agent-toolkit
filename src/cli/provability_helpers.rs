@@ -53,6 +53,7 @@ pub fn filter_summaries(
     summaries: &[ProofSummary],
     high_confidence_only: bool,
 ) -> Vec<&ProofSummary> {
+    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     summaries
         .iter()
         .filter(|s| !high_confidence_only || s.provability_score >= 0.8)
@@ -60,6 +61,7 @@ pub fn filter_summaries(
 }
 
 fn categorize_scores(summaries: &[ProofSummary]) -> (usize, usize, usize) {
+    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     let high_provability = summaries
         .iter()
         .filter(|s| s.provability_score >= 0.8)

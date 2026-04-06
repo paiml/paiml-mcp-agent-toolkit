@@ -68,6 +68,7 @@ async fn get_function_ids(
 
 /// Prepare summaries by filtering and converting
 fn prepare_summaries(summaries: &[ProofSummary], high_confidence_only: bool) -> Vec<ProofSummary> {
+    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     use crate::cli::provability_helpers::filter_summaries;
 
     let filtered_summaries = filter_summaries(summaries, high_confidence_only);
@@ -269,6 +270,7 @@ fn filter_and_sort_predictions(
     mut predictions: Vec<(String, crate::services::defect_probability::DefectScore)>,
     top_files: usize,
 ) -> Vec<(String, crate::services::defect_probability::DefectScore)> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     predictions.sort_unstable_by(|a, b| {
         b.1.probability
             .partial_cmp(&a.1.probability)

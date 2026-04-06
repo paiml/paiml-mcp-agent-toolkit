@@ -66,6 +66,7 @@ impl CommandSuggester {
     /// Get command suggestions for a failed command
     #[must_use]
     pub fn suggest_command(&self, failed_args: &[String]) -> Option<String> {
+        debug_assert!(!failed_args.is_empty(), "failed_args must not be empty");
         if failed_args.is_empty() {
             return None;
         }

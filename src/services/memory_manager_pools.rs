@@ -5,6 +5,7 @@
 
 impl PooledBuffer {
     fn new(data: Vec<u8>, pool_type: PoolType, manager: Arc<MemoryManager>) -> Self {
+        debug_assert!(!data.is_empty(), "data must not be empty");
         Self {
             data,
             pool_type,
@@ -141,6 +142,7 @@ impl MemoryPool {
 
     /// Return a buffer to the pool
     fn return_buffer(&self, mut buffer: Vec<u8>) {
+        debug_assert!(!buffer.is_empty(), "buffer must not be empty");
         let mut buffers = self.buffers.lock();
         let total_size = self.total_size.lock();
 

@@ -45,6 +45,7 @@ fn write_report_header(
 fn group_proofs_by_file(
     annotations: &[(Location, ProofAnnotation)],
 ) -> std::collections::HashMap<std::path::PathBuf, Vec<(Location, ProofAnnotation)>> {
+    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     let mut proofs_by_file: std::collections::HashMap<
         std::path::PathBuf,
         Vec<(Location, ProofAnnotation)>,
@@ -204,6 +205,7 @@ fn write_summary_statistics(
     output: &mut String,
     annotations: &[(Location, ProofAnnotation)],
 ) -> Result<()> {
+    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     use std::fmt::Write;
 
     writeln!(output, "## Summary Statistics\n")?;
@@ -223,6 +225,7 @@ fn write_summary_statistics(
 fn count_by_confidence(
     annotations: &[(Location, ProofAnnotation)],
 ) -> std::collections::HashMap<String, usize> {
+    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     let mut confidence_counts = std::collections::HashMap::new();
 
     for (_, ann) in annotations {
@@ -239,6 +242,7 @@ fn write_detailed_proofs(
     annotations: &[(Location, ProofAnnotation)],
     include_evidence: bool,
 ) -> Result<()> {
+    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     use std::fmt::Write;
 
     writeln!(output, "\n## Detailed Proofs\n")?;

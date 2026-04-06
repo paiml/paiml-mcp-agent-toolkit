@@ -1522,6 +1522,7 @@ fn measure_workspace_crates(project_path: &Path, members: &[String]) -> Vec<Crat
 
 /// Build per-crate detail string for CB-1340 message.
 fn format_per_crate_detail(crates: &[CratePenetration]) -> String {
+    debug_assert!(!crates.is_empty(), "crates must not be empty");
     if crates.len() <= 1 { return String::new(); }
     let parts: Vec<String> = crates.iter()
         .filter(|cr| cr.total_fns > 0)
@@ -1538,6 +1539,7 @@ fn format_per_crate_detail(crates: &[CratePenetration]) -> String {
 /// CLI crates (*-cli): ≥95%. Significant crates (≥50 fns): ≥10%.
 /// Small/bench crates: skip.
 fn find_failing_crates(crates: &[CratePenetration]) -> (Vec<String>, Vec<String>) {
+    debug_assert!(!crates.is_empty(), "crates must not be empty");
     let mut cli_fails = Vec::new();
     let mut non_cli_fails = Vec::new();
     for cr in crates {

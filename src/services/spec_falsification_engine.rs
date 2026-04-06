@@ -37,6 +37,7 @@ impl FalsificationEngine {
 
     /// Falsify a single claim using the appropriate strategy
     fn falsify_claim(&self, claim: SpecClaim) -> SpecVerdict {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         let evidence = match &claim.category {
             SpecClaimCategory::PathReference => self.check_path_references(&claim),
             SpecClaimCategory::CodeEntity => self.check_code_entities(&claim),
@@ -110,6 +111,7 @@ impl FalsificationEngine {
 
     /// Check if referenced code entities exist using pmat query
     fn check_code_entities(&self, claim: &SpecClaim) -> Vec<SpecEvidence> {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         claim
             .entity_refs
             .iter()
@@ -182,6 +184,7 @@ impl FalsificationEngine {
 
     /// Check absence claims by searching for counterexamples
     fn check_absence_claim(&self, claim: &SpecClaim) -> Vec<SpecEvidence> {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         // Extract what should be absent from the claim text
         let text_lower = claim.original_text.to_lowercase();
         let search_terms: Vec<&str> = if text_lower.contains("unsafe") {
@@ -256,6 +259,7 @@ impl FalsificationEngine {
 
     /// Check if referenced commands exist
     fn check_command_claim(&self, claim: &SpecClaim) -> Vec<SpecEvidence> {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         let cmd_pattern = Regex::new(r"`(pmat\s+[\w-]+)`").expect("internal regex");
         let commands: Vec<String> = cmd_pattern
             .captures_iter(&claim.original_text)
@@ -299,6 +303,7 @@ impl FalsificationEngine {
 
     /// Check numeric/metric claims
     fn check_metric_claim(&self, _claim: &SpecClaim) -> Vec<SpecEvidence> {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         // Metric claims require running actual measurements (coverage, complexity, etc.)
         // For MVP, mark these as inconclusive since we can't cheaply verify them
         vec![SpecEvidence {
@@ -311,6 +316,7 @@ impl FalsificationEngine {
 
     /// Determine the verdict status from evidence
     fn determine_verdict(&self, claim: &SpecClaim, evidence: &[SpecEvidence]) -> VerdictStatus {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         if matches!(
             claim.category,
             SpecClaimCategory::Unfalsifiable | SpecClaimCategory::ArchitecturalClaim
@@ -337,6 +343,7 @@ impl FalsificationEngine {
     }
 
     fn compute_summary(verdicts: &[SpecVerdict]) -> SpecFalsificationSummary {
+        debug_assert!(!verdicts.is_empty(), "verdicts must not be empty");
         let total_claims = verdicts.len();
         let survived = verdicts
             .iter()

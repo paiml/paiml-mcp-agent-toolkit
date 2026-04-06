@@ -234,6 +234,7 @@ impl DefectReportService {
     /// Compute summary statistics
     #[must_use]
     pub fn compute_summary(&self, defects: &[Defect]) -> DefectSummary {
+        debug_assert!(!defects.is_empty(), "defects must not be empty");
         let mut by_severity = BTreeMap::new();
         let mut by_category = BTreeMap::new();
         let mut file_defect_counts: HashMap<PathBuf, (usize, f64)> = HashMap::new();

@@ -151,6 +151,7 @@ fn build_overrides(
     override_claims: Option<&Vec<String>>,
     ticket: Option<&String>,
 ) -> Vec<ClaimOverride> {
+    debug_assert!(!claim_results.is_empty(), "claim_results must not be empty");
     let Some(overrides) = override_claims else {
         return Vec::new();
     };

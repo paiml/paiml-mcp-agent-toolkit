@@ -24,6 +24,7 @@ impl MinHashGenerator {
     /// Compute `MinHash` signature from shingles
     #[must_use]
     pub fn compute_signature(&self, shingles: &[u64]) -> MinHashSignature {
+        debug_assert!(!shingles.is_empty(), "shingles must not be empty");
         let mut signature = vec![u64::MAX; self.num_hashes];
 
         for &shingle in shingles {

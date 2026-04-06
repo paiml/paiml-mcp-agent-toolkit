@@ -368,6 +368,7 @@ fn print_coverage_analysis_header(
 fn create_file_ids_from_changes(
     changed_files: &[(PathBuf, String)],
 ) -> Result<Vec<crate::services::incremental_coverage_analyzer::FileId>> {
+    debug_assert!(!changed_files.is_empty(), "changed_files must not be empty");
     use crate::services::incremental_coverage_analyzer::FileId;
     use sha2::{Digest, Sha256};
 

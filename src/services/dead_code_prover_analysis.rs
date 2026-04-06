@@ -126,6 +126,7 @@ impl DeadCodeProver {
     /// Generate comprehensive dead code report
     #[must_use]
     pub fn generate_report(&self, proofs: &[DeadCodeProof]) -> DeadCodeReport {
+        debug_assert!(!proofs.is_empty(), "proofs must not be empty");
         let mut dead_functions = Vec::new();
 
         for proof in proofs {

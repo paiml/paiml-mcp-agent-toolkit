@@ -20,20 +20,24 @@ impl Default for InMemoryBackend {
 
 impl StorageBackend for InMemoryBackend {
     fn put(&self, key: &[u8], value: &[u8]) -> Result<()> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         self.data.insert(key.to_vec(), value.to_vec());
         Ok(())
     }
 
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         Ok(self.data.get(key).map(|v| v.clone()))
     }
 
     fn delete(&self, key: &[u8]) -> Result<()> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         self.data.remove(key);
         Ok(())
     }
 
     fn contains(&self, key: &[u8]) -> Result<bool> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         Ok(self.data.contains_key(key))
     }
 

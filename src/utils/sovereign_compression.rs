@@ -109,6 +109,7 @@ impl CompressionHeader {
 /// Compressed data with header for decompression
 #[cfg(feature = "sovereign-compression")]
 pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
+    debug_assert!(!input.is_empty(), "input must not be empty");
     use trueno_zram_core::lz4;
 
     if input.is_empty() {
@@ -159,6 +160,7 @@ pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
 /// Original uncompressed data
 #[cfg(feature = "sovereign-compression")]
 pub fn decompress(input: &[u8]) -> io::Result<Vec<u8>> {
+    debug_assert!(!input.is_empty(), "input must not be empty");
     use trueno_zram_core::lz4;
 
     let (header, header_size) = CompressionHeader::decode(input)?;
@@ -203,12 +205,14 @@ pub fn decompress(input: &[u8]) -> io::Result<Vec<u8>> {
 /// Fallback implementation using lz4_flex when sovereign-compression is disabled
 #[cfg(not(feature = "sovereign-compression"))]
 pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
+    debug_assert!(!input.is_empty(), "input must not be empty");
     Ok(lz4_flex::compress_prepend_size(input))
 }
 
 /// Fallback implementation using lz4_flex when sovereign-compression is disabled
 #[cfg(not(feature = "sovereign-compression"))]
 pub fn decompress(input: &[u8]) -> io::Result<Vec<u8>> {
+    debug_assert!(!input.is_empty(), "input must not be empty");
     lz4_flex::decompress_size_prepended(input)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))
 }

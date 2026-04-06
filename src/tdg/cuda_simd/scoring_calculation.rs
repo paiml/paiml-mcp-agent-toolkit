@@ -5,6 +5,7 @@ impl CudaSimdAnalyzer {
         barrier_safety: &BarrierSafetyResult,
         patterns: &RustProjectPatterns,
     ) -> FalsifiabilityScore {
+        debug_assert!(!defects.is_empty(), "defects must not be empty");
         let p0_defects = defects
             .iter()
             .filter(|d| d.defect_class.severity == DefectSeverity::P0Critical)
@@ -65,6 +66,7 @@ impl CudaSimdAnalyzer {
         defects: &[DetectedDefect],
         patterns: &RustProjectPatterns,
     ) -> HistoricalIntegrityScore {
+        debug_assert!(!defects.is_empty(), "defects must not be empty");
         HistoricalIntegrityScore {
             fault_lineage: if patterns.has_changelog {
                 4.0
@@ -115,6 +117,7 @@ impl CudaSimdAnalyzer {
     }
 
     fn build_kaizen_metrics(&self, defects: &[DetectedDefect]) -> KaizenMetrics {
+        debug_assert!(!defects.is_empty(), "defects must not be empty");
         let ticket_references: Vec<String> = defects
             .iter()
             .map(|d| d.defect_class.ticket_id.clone())

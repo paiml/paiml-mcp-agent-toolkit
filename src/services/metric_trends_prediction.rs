@@ -57,6 +57,7 @@ impl MetricTrendStore {
     /// Falls back to scalar if SIMD not available.
     #[allow(dead_code)] // Will be used when SIMD is fully integrated
     fn simd_linear_regression(&self, observations: &[MetricObservation]) -> (f64, f64) {
+        debug_assert!(!observations.is_empty(), "observations must not be empty");
         // Delegates to scalar version; SIMD variant deferred
         self.compute_trend(observations)
     }
@@ -150,6 +151,7 @@ impl MetricTrendStore {
 
     /// Train linear regression model on historical data (Phase 4)
     fn train_linear_model(&self, observations: &[MetricObservation]) -> Result<LinearModel> {
+        debug_assert!(!observations.is_empty(), "observations must not be empty");
         // Normalize timestamps to days since first observation
         let first_ts = observations[0].timestamp;
 

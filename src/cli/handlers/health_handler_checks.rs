@@ -222,6 +222,7 @@ async fn run_complexity_check(project_dir: &PathBuf) -> Result<HealthCheck> {
 fn count_complexity_violations(
     file_metrics: &[crate::services::complexity::FileComplexityMetrics],
 ) -> (usize, usize, u16) {
+    debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     let mut total_functions = 0;
     let mut violations = 0;
     let mut max_complexity: u16 = 0;

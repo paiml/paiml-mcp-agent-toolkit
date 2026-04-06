@@ -4,6 +4,7 @@ pub fn apply_file_ranking<T>(
     config: &RankingConfig,
     extractor: impl Fn(&T) -> AnalysisResult,
 ) -> Vec<(T, usize)> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     if config.top_files == 0 && config.min_score.is_none() {
         // No ranking needed, return all with rank 1
         return results

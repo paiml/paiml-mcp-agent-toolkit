@@ -7,6 +7,7 @@ impl ProtocolAdapter for McpAdapter {
     type Response = JsonRpcResponse;
 
     fn decode(&self, raw: &[u8]) -> Result<UnifiedRequest, ProtocolError> {
+        debug_assert!(!raw.is_empty(), "raw must not be empty");
         let json_rpc: JsonRpcRequest = serde_json::from_slice(raw)?;
 
         // Map JSON-RPC method to Operation

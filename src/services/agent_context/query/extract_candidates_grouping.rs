@@ -112,6 +112,7 @@ fn collect_neighbors(
 /// Find the longest common prefix among a set of strings, trimmed to underscore boundary.
 #[allow(dead_code)]
 pub(crate) fn longest_common_prefix(names: &[&str]) -> String {
+    debug_assert!(!names.is_empty(), "names must not be empty");
     if names.is_empty() {
         return String::new();
     }

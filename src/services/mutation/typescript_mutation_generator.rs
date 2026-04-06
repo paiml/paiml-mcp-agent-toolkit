@@ -16,6 +16,7 @@ pub struct TypeScriptMutationGenerator {
 impl TypeScriptMutationGenerator {
     /// Create new mutation generator with given operators
     pub fn new(operators: Vec<Box<dyn TreeSitterMutationOperator>>) -> Self {
+        debug_assert!(!operators.is_empty(), "operators must not be empty");
         Self { operators }
     }
 

@@ -125,6 +125,7 @@ pub(crate) fn find_context_word(entries: &[&FunctionEntry]) -> Option<String> {
 
 /// Compute the longest common prefix of a slice of strings.
 fn longest_common_prefix(strings: &[&str]) -> String {
+    debug_assert!(!strings.is_empty(), "strings must not be empty");
     if strings.is_empty() {
         return String::new();
     }

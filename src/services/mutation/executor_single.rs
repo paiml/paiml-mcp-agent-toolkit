@@ -62,6 +62,7 @@ impl MutantExecutor {
 
     /// Execute tests on multiple mutants sequentially
     pub async fn execute_mutants(&self, mutants: &[Mutant]) -> Result<Vec<MutationResult>> {
+        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         let mut results = Vec::new();
 
         for (i, mutant) in mutants.iter().enumerate() {

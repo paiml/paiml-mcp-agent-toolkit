@@ -206,6 +206,7 @@ fn check_markdown_format(content: &str, issues: &mut Vec<String>) {
 
 /// Report validation results to the user.
 fn report_validation_results(issues: &[String], warnings: &[String]) -> Result<()> {
+    debug_assert!(!issues.is_empty(), "issues must not be empty");
     if issues.is_empty() && warnings.is_empty() {
         println!("{}", c::pass("Validation passed!"));
         println!("  All required sections present");
@@ -314,6 +315,11 @@ pub fn show_tool_mapping(agent_name: Option<String>) -> Result<()> {
 
 /// Export MCP tool mapping as JSON.
 pub fn export_tool_mapping_json(output_path: &Path) -> Result<()> {
+    debug_assert!(
+        output_path.exists(),
+        "output_path must exist: {}",
+        output_path.display()
+    );
     use std::collections::HashMap;
 
     let mapping = SubAgentGenerator::get_tool_mapping();

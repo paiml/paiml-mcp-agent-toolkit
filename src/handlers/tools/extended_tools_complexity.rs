@@ -69,6 +69,7 @@ fn generate_ranked_content(
     top_files_count: usize,
     args: &AnalyzeComplexityArgs,
 ) -> String {
+    debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     use crate::services::ranking::{rank_files_by_complexity, ComplexityRanker};
 
     let ranker = ComplexityRanker::default();
@@ -325,6 +326,7 @@ fn format_complexity_rankings(
     rankings: &[(String, crate::services::ranking::CompositeComplexityScore)],
     args: &AnalyzeComplexityArgs,
 ) -> String {
+    debug_assert!(!rankings.is_empty(), "rankings must not be empty");
     use crate::services::ranking::{ComplexityRanker, FileRanker};
 
     let format = args.format.as_deref().unwrap_or("summary");

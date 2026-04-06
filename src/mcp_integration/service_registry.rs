@@ -124,6 +124,7 @@ mod tests {
         }
 
         async fn invoke(&self, _operation: &str, _params: Value) -> Result<Value, McpError> {
+            debug_assert!(!_operation.is_empty(), "_operation must not be empty");
             Ok(serde_json::json!({"result": "success"}))
         }
     }
@@ -150,6 +151,7 @@ mod tests {
         }
 
         async fn invoke(&self, _operation: &str, _params: Value) -> Result<Value, McpError> {
+            debug_assert!(!_operation.is_empty(), "_operation must not be empty");
             Ok(serde_json::json!({}))
         }
     }

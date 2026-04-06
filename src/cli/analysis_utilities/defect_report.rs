@@ -2,6 +2,7 @@
 fn create_defect_report_from_predictions(
     predictions: Vec<(String, crate::services::defect_probability::DefectScore)>,
 ) -> Result<DefectPredictionReport> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     use crate::services::defect_probability::RiskLevel;
     let mut high_risk_files = 0;
     let mut medium_risk_files = 0;

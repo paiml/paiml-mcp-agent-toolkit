@@ -294,6 +294,7 @@ impl DemoProtocol for TuiDemoAdapter {
     type Error = TuiDemoError;
 
     async fn decode_request(&self, raw: &[u8]) -> Result<Self::Request, Self::Error> {
+        debug_assert!(!raw.is_empty(), "raw must not be empty");
         serde_json::from_slice(raw).map_err(|e| TuiDemoError::Init(e.to_string()))
     }
 

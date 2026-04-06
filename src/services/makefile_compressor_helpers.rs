@@ -18,6 +18,7 @@ fn find_install_position(parts: &[&str], after: &str) -> Option<usize> {
 }
 
 fn find_cargo_install_position(parts: &[&str]) -> Option<usize> {
+    debug_assert!(!parts.is_empty(), "parts must not be empty");
     parts.iter().position(|&p| p == "cargo")?;
     parts
         .iter()
@@ -26,6 +27,7 @@ fn find_cargo_install_position(parts: &[&str]) -> Option<usize> {
 }
 
 fn find_npm_install_position(parts: &[&str]) -> Option<usize> {
+    debug_assert!(!parts.is_empty(), "parts must not be empty");
     parts.iter().position(|&p| p == "npm")?;
     parts
         .iter()
@@ -34,6 +36,7 @@ fn find_npm_install_position(parts: &[&str]) -> Option<usize> {
 }
 
 fn find_simple_install_position(parts: &[&str]) -> Option<usize> {
+    debug_assert!(!parts.is_empty(), "parts must not be empty");
     parts
         .iter()
         .position(|&p| p == "install")
@@ -41,6 +44,7 @@ fn find_simple_install_position(parts: &[&str]) -> Option<usize> {
 }
 
 fn find_package_at_position(parts: &[&str], position: usize) -> Option<String> {
+    debug_assert!(!parts.is_empty(), "parts must not be empty");
     // Check primary position
     if let Some(pkg) = get_valid_package(parts, position) {
         return Some(pkg);
@@ -51,6 +55,7 @@ fn find_package_at_position(parts: &[&str], position: usize) -> Option<String> {
 }
 
 fn get_valid_package(parts: &[&str], position: usize) -> Option<String> {
+    debug_assert!(!parts.is_empty(), "parts must not be empty");
     parts
         .get(position)
         .filter(|pkg| !pkg.starts_with('-') && !pkg.is_empty())

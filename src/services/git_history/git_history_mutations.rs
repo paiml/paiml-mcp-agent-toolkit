@@ -47,6 +47,7 @@ impl GitHistoryIndex {
 
     /// Insert multiple commits in a transaction
     pub fn insert_commits(&mut self, commits: &[CommitInfo]) -> Result<usize, GitHistoryError> {
+        debug_assert!(!commits.is_empty(), "commits must not be empty");
         let tx = self.conn.transaction()?;
         let mut count = 0;
 
@@ -125,6 +126,7 @@ impl GitHistoryIndex {
         &mut self,
         new_commits: &[CommitInfo],
     ) -> Result<SyncResult, GitHistoryError> {
+        debug_assert!(!new_commits.is_empty(), "new_commits must not be empty");
         let last_indexed = self.get_last_indexed_commit()?;
         let start_count = self.commit_count()?;
 

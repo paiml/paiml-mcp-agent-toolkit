@@ -181,6 +181,7 @@ impl AgentsMdParser {
 
     /// Extract quality rules from sections
     fn extract_quality_rules(&self, sections: &[Section]) -> Option<QualityRules> {
+        debug_assert!(!sections.is_empty(), "sections must not be empty");
         let mut rules = QualityRules {
             max_complexity: None,
             min_coverage: None,
@@ -237,6 +238,7 @@ impl AgentsMdParser {
 
     /// Extract metadata from document
     fn extract_metadata(&self, sections: &[Section], metadata: &mut DocumentMetadata) {
+        debug_assert!(!sections.is_empty(), "sections must not be empty");
         // Look for project name in overview
         for section in sections {
             if matches!(section.section_type, SectionType::Overview) {

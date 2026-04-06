@@ -5,6 +5,7 @@ impl DemoProtocol for HttpDemoAdapter {
     type Error = HttpDemoError;
 
     async fn decode_request(&self, raw: &[u8]) -> Result<Self::Request, Self::Error> {
+        debug_assert!(!raw.is_empty(), "raw must not be empty");
         let value: Value = serde_json::from_slice(raw)?;
 
         let method = value

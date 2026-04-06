@@ -140,6 +140,7 @@ pub async fn enrich_results_with_coverage(
 pub fn load_workspace_coverage(
     siblings: &[(std::path::PathBuf, String)],
 ) -> HashMap<String, HashMap<usize, u64>> {
+    debug_assert!(!siblings.is_empty(), "siblings must not be empty");
     let mut merged: HashMap<String, HashMap<usize, u64>> = HashMap::new();
 
     for (idx_path, project_name) in siblings {

@@ -98,6 +98,7 @@ impl PatternDetector {
 impl VulnerabilityPattern {
     /// Check if pattern matches operators
     fn matches(&self, operators: &[Operator]) -> Option<usize> {
+        debug_assert!(!operators.is_empty(), "operators must not be empty");
         for pattern in &self.opcodes {
             if let Some(idx) = pattern.find_in(operators) {
                 return Some(idx);
@@ -108,6 +109,7 @@ impl VulnerabilityPattern {
 }
 
 fn find_sequence(seq: &[OperatorMatcher], operators: &[Operator]) -> Option<usize> {
+    debug_assert!(!seq.is_empty(), "seq must not be empty");
     'outer: for i in 0..operators.len().saturating_sub(seq.len() - 1) {
         for (j, matcher) in seq.iter().enumerate() {
             if !matcher.matches(&operators[i + j]) {
@@ -149,6 +151,7 @@ fn find_not_preceded_by(target: &OperatorMatcher, guards: &[OperatorMatcher], op
 impl OpcodePattern {
     /// Find pattern in operator sequence
     fn find_in(&self, operators: &[Operator]) -> Option<usize> {
+        debug_assert!(!operators.is_empty(), "operators must not be empty");
         match self {
             OpcodePattern::Sequence(seq) => find_sequence(seq, operators),
             OpcodePattern::Within { distance, operators: op_list } => {

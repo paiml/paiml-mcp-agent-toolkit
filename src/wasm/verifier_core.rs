@@ -10,6 +10,7 @@ impl IncrementalVerifier {
 
     /// Verify complete WASM module
     pub fn verify_module(&self, binary: &[u8]) -> Result<VerificationResult> {
+        debug_assert!(!binary.is_empty(), "binary must not be empty");
         // Parse module and verify each function
         let parser = wasmparser::Parser::new(0);
         let mut result = VerificationResult::Safe;

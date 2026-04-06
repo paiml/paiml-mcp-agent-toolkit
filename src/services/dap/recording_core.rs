@@ -75,6 +75,7 @@ impl Recording {
     ///
     /// Validates magic header, version, and snapshot count before parsing.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         let mut cursor = Cursor::new(bytes);
 
         // Validate magic header
@@ -178,5 +179,6 @@ impl Recording {
 
 /// Validate magic header
 pub fn validate_magic_header(bytes: &[u8]) -> bool {
+    debug_assert!(!bytes.is_empty(), "bytes must not be empty");
     bytes == MAGIC_HEADER
 }

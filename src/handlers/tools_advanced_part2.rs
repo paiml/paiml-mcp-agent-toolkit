@@ -4,6 +4,7 @@ fn format_top_dead_code_files(
     output: &mut String,
     ranked_files: &[crate::models::dead_code::FileDeadCodeMetrics],
 ) {
+    debug_assert!(!ranked_files.is_empty(), "ranked_files must not be empty");
     if !ranked_files.is_empty() {
         let top_count = ranked_files.len().min(5);
         output.push_str(&format!("## Top {top_count} Files with Most Dead Code\n\n"));
@@ -182,6 +183,7 @@ fn write_dead_code_top_files_section(
     output: &mut String,
     ranked_files: &[crate::models::dead_code::FileDeadCodeMetrics],
 ) {
+    debug_assert!(!ranked_files.is_empty(), "ranked_files must not be empty");
     if !ranked_files.is_empty() {
         write_dead_code_table_header(output);
         write_dead_code_table_rows(output, ranked_files);
@@ -205,6 +207,7 @@ fn write_dead_code_table_rows(
     output: &mut String,
     ranked_files: &[crate::models::dead_code::FileDeadCodeMetrics],
 ) {
+    debug_assert!(!ranked_files.is_empty(), "ranked_files must not be empty");
     for (i, file_metrics) in ranked_files.iter().enumerate() {
         write_single_dead_code_row(output, i + 1, file_metrics);
     }

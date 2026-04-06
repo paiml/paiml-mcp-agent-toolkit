@@ -13,6 +13,7 @@ impl WasmValidator {
 
     /// Validates WASM module for correctness (complexity ≤10)
     pub fn validate_wasm_module(&mut self, wasm_bytes: &[u8]) -> Result<bool, String> {
+        debug_assert!(!wasm_bytes.is_empty(), "wasm_bytes must not be empty");
         if wasm_bytes.len() < 8 {
             self.validation_errors.push("Module too short".to_string());
             return Ok(false);
@@ -38,6 +39,7 @@ impl WasmValidator {
 
     /// Performs security analysis on WASM module (complexity ≤10)
     pub fn analyze_security(&mut self, wasm_bytes: &[u8]) -> Result<Vec<String>, String> {
+        debug_assert!(!wasm_bytes.is_empty(), "wasm_bytes must not be empty");
         let mut warnings = Vec::new();
 
         if wasm_bytes.len() > 1024 * 1024 {

@@ -10,6 +10,7 @@ async fn execute_refactoring_iteration(
     context: &RefactorContext,
     iteration_number: u32,
 ) -> Result<IterationResult> {
+    debug_assert!(!requests.is_empty(), "requests must not be empty");
     eprintln!("🔄 Executing refactoring iteration #{iteration_number}");
 
     let mut successful_requests = Vec::new();
@@ -233,6 +234,7 @@ async fn validate_test_suite(project_path: &Path) -> Result<TestResult> {
 async fn calculate_quality_improvement(
     successful_requests: &[RefactoringSuccess],
 ) -> Result<QualityImprovement> {
+    debug_assert!(!successful_requests.is_empty(), "successful_requests must not be empty");
     let mut complexity_reduced = 0;
     let mut violations_fixed = 0;
     let mut satd_resolved = 0;

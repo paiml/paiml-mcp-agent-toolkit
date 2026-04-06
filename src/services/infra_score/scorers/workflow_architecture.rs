@@ -174,6 +174,7 @@ impl InfraScorer for WorkflowArchitectureScorer {
 
 /// WA-01: Check for reusable workflow call (uses: *.yml@*)
 fn check_reusable_workflow(workflows: &[(String, String)]) -> InfraCheck {
+    debug_assert!(!workflows.is_empty(), "workflows must not be empty");
     for (name, content) in workflows {
         // Pattern: uses: <anything>.yml@<ref>  or  uses: <anything>.yaml@<ref>
         for line in content.lines() {

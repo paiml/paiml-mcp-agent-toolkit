@@ -311,6 +311,7 @@ fn complex() {
         let file1 = temp_dir.path().join("pattern1.rs");
         fs::write(&file1, r#"
 fn validate_email(email: &str) -> bool {
+    debug_assert!(!email.is_empty(), "email must not be empty");
     if email.is_empty() { return false; }
     if !email.contains('@') { return false; }
     true
@@ -320,6 +321,7 @@ fn validate_email(email: &str) -> bool {
         let file2 = temp_dir.path().join("pattern2.rs");
         fs::write(&file2, r#"
 fn validate_phone(phone: &str) -> bool {
+    debug_assert!(!phone.is_empty(), "phone must not be empty");
     if phone.is_empty() { return false; }
     if phone.len() < 10 { return false; }
     true

@@ -191,6 +191,7 @@ impl MemoryManager {
 
     /// Return buffer to pool (internal use)
     fn return_buffer(&self, pool_type: PoolType, buffer: Vec<u8>) {
+        debug_assert!(!buffer.is_empty(), "buffer must not be empty");
         if let Some(pool) = self.pools.get(&pool_type) {
             let capacity = buffer.capacity();
             pool.return_buffer(buffer);

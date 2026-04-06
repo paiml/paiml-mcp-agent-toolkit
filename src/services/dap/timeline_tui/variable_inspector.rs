@@ -27,6 +27,7 @@ impl VariableInspectorView {
 
     /// Create inspector from variable list
     pub fn from_variables(variables: Vec<(String, String)>) -> Self {
+        debug_assert!(!variables.is_empty(), "variables must not be empty");
         Self {
             variables,
             scroll_offset: 0,

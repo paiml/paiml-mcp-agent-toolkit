@@ -229,6 +229,7 @@ impl TestBlockTracker {
     }
 
     pub(crate) fn update_from_line(&mut self, trimmed_line: &str) {
+        debug_assert!(!trimmed_line.is_empty(), "trimmed_line must not be empty");
         if !self.is_rust_file {
             return;
         }

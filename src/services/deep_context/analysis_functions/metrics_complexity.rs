@@ -91,6 +91,7 @@ fn discover_source_files_for_complexity(
 async fn analyze_files_complexity(
     source_files: Vec<std::path::PathBuf>,
 ) -> Vec<crate::services::complexity::FileComplexityMetrics> {
+    debug_assert!(!source_files.is_empty(), "source_files must not be empty");
     // Parallelize complexity analysis using futures for better performance
     use futures::stream::{self, StreamExt};
 

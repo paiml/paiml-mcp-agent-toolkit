@@ -36,6 +36,7 @@ impl Winnowing {
 
     #[must_use]
     pub fn find_matches(&self, text_fp: &[u64], sub_fp: &[u64]) -> Vec<usize> {
+        debug_assert!(!text_fp.is_empty(), "text_fp must not be empty");
         let mut matches = Vec::new();
         let sub_set: HashSet<_> = sub_fp.iter().collect();
 
@@ -62,6 +63,7 @@ impl Winnowing {
     }
 
     fn select_fingerprints(&self, k_grams: &[u64]) -> Vec<u64> {
+        debug_assert!(!k_grams.is_empty(), "k_grams must not be empty");
         let mut fingerprints = Vec::new();
 
         for window in k_grams.windows(self.window_size) {

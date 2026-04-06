@@ -291,6 +291,7 @@ impl ViolationDetector {
         &self,
         violations: Vec<ActionableViolation>,
     ) -> Vec<ActionableViolation> {
+        debug_assert!(!violations.is_empty(), "violations must not be empty");
         use std::collections::HashMap;
 
         let mut unique_violations: HashMap<String, ActionableViolation> = HashMap::new();

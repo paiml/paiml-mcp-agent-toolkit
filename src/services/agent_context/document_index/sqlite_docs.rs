@@ -221,6 +221,7 @@ pub(crate) fn document_count(conn: &Connection) -> usize {
 /// FTS5 has special characters (*, ", ^, NEAR, OR, AND, NOT) that need handling.
 /// We tokenize on whitespace and join with implicit AND.
 fn sanitize_fts_query(query: &str) -> String {
+    debug_assert!(!query.is_empty(), "query must not be empty");
     query
         .split_whitespace()
         .filter(|w| !w.is_empty())

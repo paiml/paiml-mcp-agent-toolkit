@@ -5,6 +5,7 @@ impl RoadmapTodoGenerator {
     /// Format todos as markdown
     #[must_use]
     pub fn format_todos_as_markdown(&self, todos: &[QualityEnforcedTodo]) -> String {
+        debug_assert!(!todos.is_empty(), "todos must not be empty");
         let mut output = String::new();
         output.push_str("# Quality-Enforced Todo List\n\n");
 
@@ -149,6 +150,7 @@ impl RoadmapTodoGenerator {
     /// Export todos to markdown format
     #[must_use]
     pub fn export_todos_markdown(&self, todos: &[QualityEnforcedTodo]) -> String {
+        debug_assert!(!todos.is_empty(), "todos must not be empty");
         let mut output = String::new();
 
         output.push_str("# Sprint Todos (PDMT Generated)\n\n");

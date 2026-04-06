@@ -129,6 +129,7 @@ impl<P: EventPersistence> EventStore<P> {
         &self,
         events: Vec<StateEvent>,
     ) -> Result<Vec<EventId>, EventStoreError> {
+        debug_assert!(!events.is_empty(), "events must not be empty");
         let mut ids = Vec::with_capacity(events.len());
         let mut persisted_events = Vec::with_capacity(events.len());
 

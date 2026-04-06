@@ -44,6 +44,7 @@ async fn detect_manifest_libs(repo_path: &Path) -> Vec<&'static str> {
 }
 
 async fn check_structured_output(demo_files: &[PathBuf]) -> bool {
+    debug_assert!(!demo_files.is_empty(), "demo_files must not be empty");
     let structured_patterns = [
         r#"println!\s*\(\s*"\s*\{"#,
         r#"eprintln!\s*\("#,

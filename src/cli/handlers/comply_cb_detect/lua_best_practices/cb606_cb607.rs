@@ -96,6 +96,7 @@ pub fn detect_cb607_colon_dot_confusion(project_path: &Path) -> Vec<CbPatternVio
 fn build_table_call_map(
     prod_lines: &[(usize, String)],
 ) -> std::collections::HashMap<String, (Vec<usize>, Vec<usize>)> {
+    debug_assert!(!prod_lines.is_empty(), "prod_lines must not be empty");
     use std::collections::HashMap;
     let mut table_usage: HashMap<String, (Vec<usize>, Vec<usize>)> = HashMap::new();
 

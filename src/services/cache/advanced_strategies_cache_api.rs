@@ -147,6 +147,7 @@ where
 
     /// Warm cache based on configuration
     pub async fn warm_cache(&self, warm_keys: Vec<K>) -> Result<usize> {
+        debug_assert!(!warm_keys.is_empty(), "warm_keys must not be empty");
         let start = Instant::now();
         let mut warmed_count = 0;
 

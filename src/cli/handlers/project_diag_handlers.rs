@@ -227,6 +227,7 @@ fn should_include_category(category: &str, filter: &Option<String>) -> bool {
 }
 
 fn build_category_summaries(checks: &[DiagnosticCheck]) -> Vec<CategorySummary> {
+    debug_assert!(!checks.is_empty(), "checks must not be empty");
     let categories = [
         "Cargo Config",
         "Dependencies",

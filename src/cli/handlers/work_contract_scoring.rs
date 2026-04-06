@@ -417,6 +417,7 @@ pub fn load_quality_trend(project_path: &Path, work_item_id: &str) -> QualityTre
 
 /// Analyze a list of snapshots into a QualityTrend.
 fn analyze_trend(snapshots: Vec<QualityTrendSnapshot>) -> QualityTrend {
+    debug_assert!(!snapshots.is_empty(), "snapshots must not be empty");
     if snapshots.is_empty() {
         return QualityTrend {
             snapshots,

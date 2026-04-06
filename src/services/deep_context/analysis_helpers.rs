@@ -46,6 +46,7 @@ fn create_ast_discovery_config() -> crate::services::file_discovery::FileDiscove
 fn categorize_files_in_parallel(
     all_files: Vec<PathBuf>,
 ) -> Vec<(PathBuf, crate::services::file_discovery::FileCategory)> {
+    debug_assert!(!all_files.is_empty(), "all_files must not be empty");
     use crate::services::file_discovery::ProjectFileDiscovery;
 
     all_files
@@ -63,6 +64,7 @@ fn categorize_files_in_parallel(
 fn filter_and_categorize_files(
     categorized_files: Vec<(PathBuf, crate::services::file_discovery::FileCategory)>,
 ) -> Vec<PathBuf> {
+    debug_assert!(!categorized_files.is_empty(), "categorized_files must not be empty");
     use crate::services::file_discovery::FileCategory;
 
     let mut source_files = Vec::new();
@@ -134,6 +136,7 @@ pub(crate) fn is_test_file(path: &std::path::Path) -> bool {
 async fn analyze_source_files_for_contexts(
     source_files: Vec<PathBuf>,
 ) -> anyhow::Result<Vec<EnhancedFileContext>> {
+    debug_assert!(!source_files.is_empty(), "source_files must not be empty");
     let mut enhanced_contexts = Vec::new();
     let mut file_count = 0;
     let analysis_start = std::time::Instant::now();

@@ -114,6 +114,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         ast_contexts: &[EnhancedFileContext],
     ) -> anyhow::Result<()> {
+        debug_assert!(!ast_contexts.is_empty(), "ast_contexts must not be empty");
         if !ast_contexts.is_empty() {
             self.format_enhanced_ast_section(output, ast_contexts)?;
         }

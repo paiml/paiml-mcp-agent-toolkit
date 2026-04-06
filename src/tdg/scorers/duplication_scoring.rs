@@ -50,6 +50,7 @@ impl CloneSet {
     }
 
     fn add_clone(&mut self, clone_type: CloneType, sequences: Vec<TokenSequence>) {
+        debug_assert!(!sequences.is_empty(), "sequences must not be empty");
         self.clones.push((clone_type, sequences));
     }
 

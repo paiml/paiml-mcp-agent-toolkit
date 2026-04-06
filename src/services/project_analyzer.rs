@@ -95,12 +95,14 @@ impl Project {
     /// ```
     #[must_use]
     pub fn root(&self) -> &Path {
+        debug_assert!(self.root.exists(), "self.root must exist");
         &self.root
     }
 
     /// Get all source files in the project
     #[must_use]
     pub fn source_files(&self) -> Vec<PathBuf> {
+        debug_assert!(self.root.exists(), "self.root must exist");
         self.file_discovery
             .discover_files()
             .unwrap_or_default()
@@ -111,6 +113,7 @@ impl Project {
 
     /// Build a dependency graph for the project
     pub async fn build_dependency_graph(&self) -> Result<DependencyGraph> {
+        debug_assert!(self.root.exists(), "self.root must exist");
         use crate::services::context::{ProjectContext, ProjectSummary};
 
         // Create a project context for the DAG builder

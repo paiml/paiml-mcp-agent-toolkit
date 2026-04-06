@@ -168,6 +168,7 @@ pub struct StackHealthReport {
 impl StackHealthReport {
     /// Build a stack health report from individual project reports.
     pub fn from_projects(projects: Vec<(String, FileHealthReport)>) -> Self {
+        debug_assert!(!projects.is_empty(), "projects must not be empty");
         let total_health: u64 = projects.iter().map(|(_, r)| r.average_health as u64).sum();
         let count = projects.len().max(1) as u64;
         let stack_average_health = (total_health / count) as u8;

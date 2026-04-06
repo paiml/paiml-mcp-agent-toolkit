@@ -127,6 +127,7 @@ pub fn extract_file_details(
 /// Nest items that fall within a module's line range into that module's `children`.
 /// Items not inside any module remain at the top level.
 fn nest_children_into_modules(flat_items: Vec<ExtractedItem>) -> Vec<ExtractedItem> {
+    debug_assert!(!flat_items.is_empty(), "flat_items must not be empty");
     // Identify module indices and their line ranges
     let module_ranges: Vec<(usize, usize, usize)> = flat_items
         .iter()
@@ -241,6 +242,7 @@ fn find_cfg_test_line(root: Node, source: &str) -> Option<usize> {
 
 /// Collect visibility per item start_line.
 fn collect_visibility(root: Node, source: &str, language: Language) -> HashMap<usize, String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut map = HashMap::new();
     match language {
         Language::Rust => collect_rust_visibility(root, source, &mut map),
@@ -262,6 +264,7 @@ fn find_visibility_modifier<'a>(node: Node<'a>) -> Option<Node<'a>> {
 
 /// Walk Rust AST mirroring extract_rust_items to collect visibility per start_line.
 fn collect_rust_visibility(node: Node, source: &str, map: &mut HashMap<usize, String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let is_container = matches!(node.kind(), "impl_item" | "mod_item" | "trait_item");
 
     if rust_node_to_chunk(node.kind()).is_some() {
@@ -286,6 +289,7 @@ fn collect_rust_visibility(node: Node, source: &str, map: &mut HashMap<usize, St
 
 /// Walk Go AST to determine exported (uppercase) vs unexported visibility.
 fn collect_go_visibility(node: Node, source: &str, map: &mut HashMap<usize, String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     match node.kind() {
         "function_declaration" | "method_declaration" => {
             if let Some(name_node) = node.child_by_field_name("name") {

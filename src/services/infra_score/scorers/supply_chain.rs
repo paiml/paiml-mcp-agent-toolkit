@@ -563,11 +563,13 @@ const DANGEROUS_PATTERNS: &[&str] = &[
 
 /// Returns true if this line starts a `run:` block.
 fn is_run_block_start(trimmed: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.starts_with("run:") || trimmed.starts_with("- run:")
 }
 
 /// Returns true if this line exits a `run:` block (a non-continuation, non-indented line).
 fn is_run_block_end(trimmed: &str, raw: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     !trimmed.starts_with('-')
         && !trimmed.starts_with('#')
         && !raw.starts_with(' ')
@@ -576,6 +578,7 @@ fn is_run_block_end(trimmed: &str, raw: &str) -> bool {
 
 /// Collect dangerous pattern violations from a single workflow file.
 fn collect_dangerous_violations(name: &str, content: &str, violations: &mut Vec<String>) {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     let mut in_run_block = false;
     for (line_no, line) in content.lines().enumerate() {
         let trimmed = line.trim();
@@ -597,6 +600,7 @@ fn collect_dangerous_violations(name: &str, content: &str, violations: &mut Vec<
 
 /// HD-01: Check for untrusted context interpolation in run: blocks
 fn check_dangerous_workflow(workflows: &[(String, String)]) -> InfraCheck {
+    debug_assert!(!workflows.is_empty(), "workflows must not be empty");
     let mut violations = Vec::new();
 
     for (name, content) in workflows {

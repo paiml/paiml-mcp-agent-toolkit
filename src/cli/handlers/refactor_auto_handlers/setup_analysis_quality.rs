@@ -53,6 +53,7 @@ async fn analyze_project_quality(context: &RefactorContext) -> Result<ProjectQua
 async fn analyze_project_lint_violations(
     source_files: &[PathBuf],
 ) -> Result<Vec<ViolationDetailJson>> {
+    debug_assert!(!source_files.is_empty(), "source_files must not be empty");
     let mut all_violations = Vec::new();
 
     for file in source_files {
@@ -67,6 +68,7 @@ async fn analyze_project_lint_violations(
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn analyze_project_complexity(source_files: &[PathBuf]) -> Result<ComplexityAnalysis> {
+    debug_assert!(!source_files.is_empty(), "source_files must not be empty");
     let mut high_complexity_violations = Vec::new();
     let mut total_functions = 0;
     let mut total_complexity_sum = 0.0;
@@ -109,6 +111,7 @@ async fn analyze_project_complexity(source_files: &[PathBuf]) -> Result<Complexi
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn analyze_project_satd(source_files: &[PathBuf]) -> Result<SatdAnalysis> {
+    debug_assert!(!source_files.is_empty(), "source_files must not be empty");
     let mut total_satd_count = 0;
     let mut files_with_satd = std::collections::HashSet::new();
 

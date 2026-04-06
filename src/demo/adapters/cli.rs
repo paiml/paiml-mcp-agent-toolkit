@@ -190,6 +190,7 @@ impl DemoProtocol for CliDemoAdapter {
     type Error = CliDemoError;
 
     async fn decode_request(&self, raw: &[u8]) -> Result<Self::Request, Self::Error> {
+        debug_assert!(!raw.is_empty(), "raw must not be empty");
         let value: Value = serde_json::from_slice(raw)?;
 
         // Extract CLI request from JSON

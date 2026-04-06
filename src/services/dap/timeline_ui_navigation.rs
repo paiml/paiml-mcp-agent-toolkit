@@ -26,6 +26,7 @@ impl TimelineUI {
     ///
     /// This method is kept for backward compatibility with Sprint 73 tests.
     pub fn new(snapshots: Vec<ExecutionSnapshot>) -> Self {
+        debug_assert!(!snapshots.is_empty(), "snapshots must not be empty");
         // Create recording and populate with converted snapshots
         let mut recording = super::recording::Recording::new("legacy".to_string(), vec![]);
 

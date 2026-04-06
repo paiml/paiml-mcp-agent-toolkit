@@ -123,6 +123,7 @@ impl CrossLangReferenceGraph {
 
     #[must_use]
     pub fn edges_for_chunk(&self, _chunk: &[u8]) -> Vec<ReferenceEdge> {
+        debug_assert!(!_chunk.is_empty(), "_chunk must not be empty");
         // TRACKED: Implement efficient edge lookup for chunks
         Vec::new()
     }

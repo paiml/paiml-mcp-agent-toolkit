@@ -7,6 +7,7 @@ impl ProtocolAdapter for CliAdapter {
     type Response = CliResponse;
 
     fn decode(&self, raw: &[u8]) -> Result<UnifiedRequest, ProtocolError> {
+        debug_assert!(!raw.is_empty(), "raw must not be empty");
         let cli_request: CliRequest = serde_json::from_slice(raw)?;
 
         let command = cli_request.command.clone();

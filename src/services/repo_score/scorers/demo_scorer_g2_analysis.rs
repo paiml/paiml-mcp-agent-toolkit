@@ -6,6 +6,7 @@ impl DemoScorer {
         demo_files: &[PathBuf],
         max_score: f64,
     ) -> Result<SubcategoryScore> {
+        debug_assert!(!demo_files.is_empty(), "demo_files must not be empty");
         let mut score: f64 = max_score;
         let mut findings = vec![];
 
@@ -101,6 +102,7 @@ struct ErrorPatternCounts {
 }
 
 async fn count_error_patterns(demo_files: &[PathBuf]) -> ErrorPatternCounts {
+    debug_assert!(!demo_files.is_empty(), "demo_files must not be empty");
     let contextual_fn_pattern = regex::Regex::new(
         r"(?s)fn\s+(test_|setup|init|proof_of_concept|example_)[^{]*\{[^}]*\.unwrap\(\)",
     )

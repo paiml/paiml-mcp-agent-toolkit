@@ -132,6 +132,7 @@ struct MinimalRequest {
 
 #[cfg(feature = "demo")]
 fn parse_minimal_request(buffer: &[u8]) -> Result<MinimalRequest> {
+    debug_assert!(!buffer.is_empty(), "buffer must not be empty");
     let request_str = std::str::from_utf8(buffer)?;
     let first_line = request_str
         .lines()

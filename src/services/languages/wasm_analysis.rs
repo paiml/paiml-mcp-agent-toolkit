@@ -22,6 +22,7 @@ impl WasmModuleAnalyzer {
 
     /// Analyzes WASM binary and extracts AST items (complexity ≤10)
     pub fn analyze_wasm_binary(mut self, wasm_bytes: &[u8]) -> Result<Vec<AstItem>, String> {
+        debug_assert!(!wasm_bytes.is_empty(), "wasm_bytes must not be empty");
         if wasm_bytes.len() < 8 {
             return Err("Invalid WASM binary: too short".to_string());
         }
@@ -133,6 +134,7 @@ impl WasmStackAnalyzer {
 
     /// Analyzes stack depth complexity (complexity ≤10)
     pub fn analyze_stack_complexity(&mut self, function_body: &[u8]) -> Result<u32, String> {
+        debug_assert!(!function_body.is_empty(), "function_body must not be empty");
         self.current_depth = 0;
         self.max_stack_depth = 0;
 
@@ -163,6 +165,7 @@ impl WasmStackAnalyzer {
 
     /// Analyzes control flow complexity (complexity ≤10)
     pub fn analyze_control_flow_complexity(&mut self, function_body: &[u8]) -> Result<u32, String> {
+        debug_assert!(!function_body.is_empty(), "function_body must not be empty");
         self.branch_count = 1; // Base complexity
 
         for &byte in function_body {

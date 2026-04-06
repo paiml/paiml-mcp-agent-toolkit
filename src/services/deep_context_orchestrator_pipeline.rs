@@ -141,6 +141,7 @@ impl DeepContextOrchestrator {
         file_paths: &[PathBuf],
         config: &DeepContextConfig,
     ) -> Result<Arc<AstDag>> {
+        debug_assert!(!file_paths.is_empty(), "file_paths must not be empty");
         let semaphore = Arc::new(Semaphore::new(self.max_concurrency));
         let dag = Arc::new(AstDag::new());
         let parse_results = Arc::new(DashMap::new());

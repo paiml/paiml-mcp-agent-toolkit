@@ -158,6 +158,7 @@ fn build_boundaries_json(
     filtered_deps: &[&crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency],
     all_nodes: &[UnifiedNode],
 ) -> Value {
+    debug_assert!(!filtered_deps.is_empty(), "filtered_deps must not be empty");
     let boundaries: Vec<Value> = filtered_deps.iter().map(|dep| {
         json!({
             "boundary_type": format!("{:?}", dep.kind),
@@ -172,6 +173,7 @@ fn build_boundaries_json(
 fn build_boundary_stats(
     filtered_deps: &[&crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency],
 ) -> Value {
+    debug_assert!(!filtered_deps.is_empty(), "filtered_deps must not be empty");
     let mut grouped: HashMap<String, Vec<_>> = HashMap::new();
     for dep in filtered_deps {
         grouped.entry(format!("{:?}", dep.kind)).or_default().push(*dep);
@@ -227,6 +229,7 @@ fn analyze_boundary_patterns(
     deps: Vec<&crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency>,
     _nodes: &[UnifiedNode],
 ) -> Value {
+    debug_assert!(!deps.is_empty(), "deps must not be empty");
     let mut language_pairs: HashMap<String, Vec<_>> = HashMap::new();
     for dep in &deps {
         let key = format!("{}-{}", dep.source_language.name(), dep.target_language.name());

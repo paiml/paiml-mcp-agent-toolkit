@@ -182,6 +182,7 @@ fn convert_cargo_files_to_metrics(
     cargo_files: Vec<crate::services::cargo_dead_code_analyzer::FileDeadCode>,
     min_dead_lines: usize,
 ) -> Vec<crate::models::dead_code::FileDeadCodeMetrics> {
+    debug_assert!(!cargo_files.is_empty(), "cargo_files must not be empty");
     use crate::models::dead_code::{ConfidenceLevel, FileDeadCodeMetrics};
 
     cargo_files

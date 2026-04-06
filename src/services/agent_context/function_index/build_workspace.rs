@@ -5,6 +5,7 @@ impl AgentContextIndex {
     /// searchable index. File paths are prefixed with the project directory name
     /// to disambiguate across projects.
     pub fn build_workspace(project_paths: &[&Path]) -> Result<Self, String> {
+        debug_assert!(!project_paths.is_empty(), "project_paths must not be empty");
         if project_paths.is_empty() {
             return Err("No project paths provided".to_string());
         }
@@ -32,6 +33,7 @@ impl AgentContextIndex {
     /// Only rebuilds file_index (paths changed). Corpus, name_index, and
     /// call graph are reused from the persisted payload.
     pub fn load_with_prefix(index_path: &Path, prefix: &str) -> Result<Self, String> {
+        debug_assert!(index_path.exists(), "index_path must exist: {}", index_path.display());
         let mut index = Self::load(index_path)?;
 
         // Backfill source and call graph for workspace construction.
@@ -120,6 +122,7 @@ impl AgentContextIndex {
     ///
     /// Each sibling's `.pmat/context.idx` is never modified.
     pub fn merge_siblings(&mut self, siblings: &[(PathBuf, String)]) {
+        debug_assert!(!siblings.is_empty(), "siblings must not be empty");
         for (idx_path, project_name) in siblings {
             match Self::load_with_prefix(idx_path, project_name) {
                 Ok(sibling) => {

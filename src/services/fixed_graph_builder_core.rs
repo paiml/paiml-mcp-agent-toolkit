@@ -204,6 +204,7 @@ impl FixedGraphBuilder {
         selected_nodes: Vec<String>,
         original_graph: &DependencyGraph,
     ) -> Result<FixedGraph> {
+        debug_assert!(!selected_nodes.is_empty(), "selected_nodes must not be empty");
         let selected_set: HashSet<_> = selected_nodes.iter().cloned().collect();
         let mut nodes = BTreeMap::new();
         let mut edges = Vec::new();

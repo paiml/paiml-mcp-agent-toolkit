@@ -70,6 +70,7 @@ impl SurvivabilityPredictor {
     /// Phase 4.3 GREEN - Aprender migration (0 dependencies vs linfa's 50+)
     #[allow(clippy::cast_possible_truncation)]
     pub fn train(&mut self, training_data: &[TrainingData]) -> Result<()> {
+        debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         if training_data.is_empty() {
             anyhow::bail!("Training data cannot be empty");
         }
@@ -152,6 +153,7 @@ impl SurvivabilityPredictor {
     /// Perform k-fold cross-validation to measure model accuracy
     /// Returns average accuracy across folds
     pub fn cross_validate(&self, training_data: &[TrainingData], k_folds: usize) -> Result<f64> {
+        debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         if training_data.is_empty() {
             anyhow::bail!("Training data cannot be empty");
         }
@@ -258,6 +260,7 @@ impl SurvivabilityPredictor {
 
     /// Update model with new data (incremental learning)
     pub fn update(&mut self, new_data: &[TrainingData]) -> Result<()> {
+        debug_assert!(!new_data.is_empty(), "new_data must not be empty");
         if !self.trained {
             return self.train(new_data);
         }
@@ -379,6 +382,7 @@ impl SurvivabilityPredictor {
         &self,
         mutants: &[Mutant],
     ) -> Result<Vec<(Mutant, PredictionResult)>> {
+        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         let mut results = Vec::new();
 
         for mutant in mutants {

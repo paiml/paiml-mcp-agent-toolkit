@@ -70,6 +70,7 @@ impl CrossLanguageDependencies {
 
     /// Add nodes to the dependency detector
     pub fn add_nodes(&mut self, nodes: Vec<UnifiedNode>) {
+        debug_assert!(!nodes.is_empty(), "nodes must not be empty");
         for node in nodes {
             self.fqn_map
                 .entry(node.fqn.clone())
@@ -81,6 +82,7 @@ impl CrossLanguageDependencies {
 
     /// Detect dependencies between two sets of nodes
     pub fn detect(nodes1: &[UnifiedNode], nodes2: &[UnifiedNode]) -> Vec<CrossLanguageDependency> {
+        debug_assert!(!nodes1.is_empty(), "nodes1 must not be empty");
         let mut detector = Self::new();
         detector.add_nodes(nodes1.to_vec());
         detector.add_nodes(nodes2.to_vec());

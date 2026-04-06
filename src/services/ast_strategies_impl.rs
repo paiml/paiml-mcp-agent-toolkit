@@ -30,12 +30,14 @@ pub struct RustAstStrategy;
 #[async_trait]
 impl AstStrategy for RustAstStrategy {
     async fn analyze(&self, path: &Path, classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         crate::services::ast_rust::analyze_rust_file_with_classifier(path, Some(classifier))
             .await
             .map_err(|e| anyhow::anyhow!("Rust AST analysis error: {e}"))
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
+        debug_assert!(!ext.is_empty(), "ext must not be empty");
         ext == "rs"
     }
 }
@@ -48,6 +50,7 @@ pub struct TypeScriptAstStrategy;
 #[async_trait]
 impl AstStrategy for TypeScriptAstStrategy {
     async fn analyze(&self, path: &Path, classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         crate::services::ast_typescript::analyze_typescript_file_with_classifier(
             path,
             Some(classifier),
@@ -57,6 +60,7 @@ impl AstStrategy for TypeScriptAstStrategy {
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
+        debug_assert!(!ext.is_empty(), "ext must not be empty");
         matches!(ext, "ts" | "tsx")
     }
 }
@@ -69,6 +73,7 @@ pub struct JavaScriptAstStrategy;
 #[async_trait]
 impl AstStrategy for JavaScriptAstStrategy {
     async fn analyze(&self, path: &Path, classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         crate::services::ast_typescript::analyze_javascript_file_with_classifier(
             path,
             Some(classifier),
@@ -78,6 +83,7 @@ impl AstStrategy for JavaScriptAstStrategy {
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
+        debug_assert!(!ext.is_empty(), "ext must not be empty");
         matches!(ext, "js" | "jsx")
     }
 }
@@ -90,12 +96,14 @@ pub struct PythonAstStrategy;
 #[async_trait]
 impl AstStrategy for PythonAstStrategy {
     async fn analyze(&self, path: &Path, classifier: &FileClassifier) -> Result<FileContext> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         crate::services::ast_python::analyze_python_file_with_classifier(path, Some(classifier))
             .await
             .map_err(|e| anyhow::anyhow!("Python AST analysis error: {e}"))
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
+        debug_assert!(!ext.is_empty(), "ext must not be empty");
         ext == "py"
     }
 }

@@ -295,6 +295,7 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_grade_distribution(
 
 /// Display F-grade warning if any files have F grades
 fn display_f_grade_warning(f_grade_files: &[String]) {
+    debug_assert!(!f_grade_files.is_empty(), "f_grade_files must not be empty");
     if f_grade_files.is_empty() {
         return;
     }

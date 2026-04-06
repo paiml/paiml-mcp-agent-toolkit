@@ -81,6 +81,7 @@ pub(super) fn find_line_within(
 }
 
 pub fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut test_lines = std::collections::HashSet::new();
 
     for i in 0..lines.len() {

@@ -124,6 +124,7 @@ impl MutationEngine {
     }
     /// Execute mutants and return results (sequential)
     pub async fn execute_mutants(&self, mutants: Vec<Mutant>) -> Result<Vec<MutationResult>> {
+        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         let mut results = Vec::new();
         for mutant in mutants {
             let result = self.execute_mutant(&mutant).await?;
@@ -136,6 +137,7 @@ impl MutationEngine {
         &self,
         mutants: Vec<Mutant>,
     ) -> Result<Vec<MutationResult>> {
+        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         let config = super::distributed::DistributedConfig {
             worker_count: self.config.parallel_threads,
             max_concurrent: self.config.parallel_threads * 2,

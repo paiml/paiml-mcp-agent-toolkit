@@ -28,6 +28,7 @@ impl SecurityAuditor {
     }
 
     pub fn audit(&self, binary: &[u8]) -> Result<SecurityReport> {
+        debug_assert!(!binary.is_empty(), "binary must not be empty");
         let mut report = SecurityReport::new();
 
         // Run each security check
@@ -99,6 +100,7 @@ impl SecurityCheck {
     }
 
     fn verify(&self, _binary: &[u8]) -> bool {
+        debug_assert!(!_binary.is_empty(), "_binary must not be empty");
         // Simplified verification - real implementation would check imports/exports
         match self {
             Self::NoFilesystemAccess => true,         // Check for fs imports

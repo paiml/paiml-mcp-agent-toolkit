@@ -83,6 +83,7 @@ impl ComplexityVisitor {
     }
 
     fn visit_loop_body_stmts(&mut self, stmts: &[Stmt]) {
+        debug_assert!(!stmts.is_empty(), "stmts must not be empty");
         self.add_cyclomatic(1);
         self.add_cognitive(1);
         self.nesting_level += 1;

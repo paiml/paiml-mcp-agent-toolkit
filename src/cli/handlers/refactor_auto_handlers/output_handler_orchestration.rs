@@ -193,6 +193,7 @@ async fn execute_refactoring_cycles(
     context: &RefactorContext,
     max_iterations: u32,
 ) -> Result<Vec<IterationResult>> {
+    debug_assert!(!refactoring_requests.is_empty(), "refactoring_requests must not be empty");
     let mut iteration_results = Vec::new();
     let mut remaining_requests = refactoring_requests;
 
@@ -255,6 +256,7 @@ fn filter_successful_requests(
     requests: &[RefactoringRequest],
     iteration_result: &IterationResult,
 ) -> Vec<RefactoringRequest> {
+    debug_assert!(!requests.is_empty(), "requests must not be empty");
     requests
         .iter()
         .filter(|req| {
@@ -272,6 +274,7 @@ async fn finalize_refactoring(
     iteration_results: &[IterationResult],
     context: &RefactorContext,
 ) -> Result<()> {
+    debug_assert!(!iteration_results.is_empty(), "iteration_results must not be empty");
     let final_validation = get_final_validation(iteration_results, context).await?;
     format_and_output_results(iteration_results, &final_validation, context).await
 }
@@ -281,6 +284,7 @@ async fn get_final_validation(
     iteration_results: &[IterationResult],
     context: &RefactorContext,
 ) -> Result<ValidationResult> {
+    debug_assert!(!iteration_results.is_empty(), "iteration_results must not be empty");
     if let Some(last_result) = iteration_results.last() {
         validate_refactoring_results(last_result, context).await
     } else {

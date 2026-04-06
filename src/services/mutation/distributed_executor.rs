@@ -138,6 +138,7 @@ impl DistributedExecutor {
 
     /// Execute mutants in parallel across worker pool
     pub async fn execute_parallel(&self, mutants: Vec<Mutant>) -> Result<Vec<MutationResult>> {
+        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         // Initialize progress
         {
             let mut progress = self.progress.write();
@@ -235,6 +236,7 @@ impl DistributedExecutor {
 
     /// Wait for all worker tasks to terminate
     async fn await_workers(workers: Vec<tokio::task::JoinHandle<()>>) {
+        debug_assert!(!workers.is_empty(), "workers must not be empty");
         for worker in workers {
             let _ = worker.await;
         }

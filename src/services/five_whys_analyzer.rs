@@ -514,6 +514,7 @@ struct EvidenceSignals {
 
 impl EvidenceSignals {
     fn from_evidence(evidence: &[Evidence]) -> Self {
+        debug_assert!(!evidence.is_empty(), "evidence must not be empty");
         Self {
             high_complexity: evidence.iter().any(|e| {
                 e.source == EvidenceSource::Complexity
@@ -598,6 +599,7 @@ impl FiveWhysAnalyzer {
     /// EvoScoreTrajectory 15%, CoverageDelta 15%, DeadCode 10%.
     /// TDG weight removed (0%) — redundant with complexity+churn.
     pub fn calculate_confidence(&self, evidence: &[Evidence]) -> Result<f64> {
+        debug_assert!(!evidence.is_empty(), "evidence must not be empty");
         if evidence.is_empty() {
             return Ok(0.3); // Low confidence with no evidence
         }
@@ -692,6 +694,7 @@ impl FiveWhysAnalyzer {
 
     /// Extract root cause from Why iterations
     fn extract_root_cause(&self, whys: &[WhyIteration]) -> Result<Option<String>> {
+        debug_assert!(!whys.is_empty(), "whys must not be empty");
         if whys.is_empty() {
             return Ok(None);
         }

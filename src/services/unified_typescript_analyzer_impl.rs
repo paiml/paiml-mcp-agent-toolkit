@@ -103,6 +103,7 @@ impl UnifiedTypeScriptAnalyzer {
     /// GREEN PHASE: Minimal implementation using simple pattern counting.
     /// This will be enhanced in REFACTOR phase with proper complexity calculation.
     fn extract_complexity_metrics(&self, content: &str) -> FileComplexityMetrics {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Simple visitor to count functions and estimate complexity
         let mut functions = Vec::new();
 

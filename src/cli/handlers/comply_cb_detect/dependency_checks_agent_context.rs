@@ -19,6 +19,7 @@ const FORBIDDEN_PATTERNS: &[&str] = &[
 /// when files inside are rewritten by --rebuild-index).
 /// Returns (age_hours, is_stale). `is_stale` is true when age exceeds 24 hours.
 fn check_index_age(index_path: &Path) -> (Option<f64>, bool) {
+    debug_assert!(index_path.exists(), "index_path must exist: {}", index_path.display());
     let manifest_path = index_path.join("manifest.json");
     let check_path = if manifest_path.exists() {
         &manifest_path

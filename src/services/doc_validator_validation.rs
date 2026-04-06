@@ -347,6 +347,7 @@ impl DocValidator {
 
     /// Validates multiple links concurrently
     async fn validate_links_concurrent(&self, links: &[Link]) -> Result<Vec<ValidationResult>> {
+        debug_assert!(!links.is_empty(), "links must not be empty");
         use futures::stream::{self, StreamExt};
 
         let results = stream::iter(links)

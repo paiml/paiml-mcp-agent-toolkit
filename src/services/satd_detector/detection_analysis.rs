@@ -141,6 +141,7 @@ impl SATDDetector {
         &self,
         debts: &[TechnicalDebt],
     ) -> std::collections::HashMap<String, usize> {
+        debug_assert!(!debts.is_empty(), "debts must not be empty");
         let mut map = std::collections::HashMap::with_capacity(3);
         for debt in debts {
             *map.entry(format!("{:?}", debt.severity)).or_insert(0) += 1;
@@ -153,6 +154,7 @@ impl SATDDetector {
         &self,
         debts: &[TechnicalDebt],
     ) -> std::collections::HashMap<String, usize> {
+        debug_assert!(!debts.is_empty(), "debts must not be empty");
         let mut map = std::collections::HashMap::with_capacity(5);
         for debt in debts {
             *map.entry(format!("{:?}", debt.category)).or_insert(0) += 1;

@@ -89,6 +89,7 @@ impl PolyglotAnalyzer {
     }
 
     fn check_layered_architecture(&self, directories: &[String]) -> bool {
+        debug_assert!(!directories.is_empty(), "directories must not be empty");
         let has_controller = Self::has_directory_pattern(directories, &["controller"]);
         let has_service = Self::has_directory_pattern(directories, &["service"]);
         let has_repository = Self::has_directory_pattern(directories, &["repository", "dao"]);

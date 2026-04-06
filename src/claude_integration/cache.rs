@@ -91,6 +91,7 @@ impl Hasher for FnvHasher {
     }
 
     fn write(&mut self, bytes: &[u8]) {
+        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         const FNV_PRIME: u64 = 0x100000001b3;
         const FNV_OFFSET: u64 = 0xcbf29ce484222325;
 

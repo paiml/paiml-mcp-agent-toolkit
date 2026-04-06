@@ -211,6 +211,7 @@ impl QualifiedName {
     /// ```
     #[must_use]
     pub fn new(module_path: Vec<String>, name: String) -> Self {
+        debug_assert!(!module_path.is_empty(), "module_path must not be empty");
         Self {
             module_path,
             name,

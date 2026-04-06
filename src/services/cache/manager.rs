@@ -308,6 +308,7 @@ impl SessionCacheManager {
         &self,
         cache_stats: &[(String, CacheStatsSnapshot)],
     ) -> CacheEffectiveness {
+        debug_assert!(!cache_stats.is_empty(), "cache_stats must not be empty");
         let total_hits: u64 = cache_stats.iter().map(|(_, s)| s.hits).sum();
         let total_misses: u64 = cache_stats.iter().map(|(_, s)| s.misses).sum();
         let total_requests = total_hits + total_misses;

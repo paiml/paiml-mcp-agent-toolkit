@@ -117,6 +117,7 @@ impl UnifiedBashAnalyzer {
     /// GREEN PHASE: Minimal implementation using pattern matching.
     /// This will be enhanced in REFACTOR phase with proper AST-based complexity.
     fn extract_complexity_metrics(&self, content: &str) -> FileComplexityMetrics {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let lines = content.lines().count();
 
@@ -265,6 +266,7 @@ impl UnifiedBashAnalyzer {
 
     /// Extract function name from shell line
     fn extract_function_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Pattern 1: "function name()" or "function name() {"
         if line.contains("function ") {
             let parts: Vec<&str> = line.split_whitespace().collect();

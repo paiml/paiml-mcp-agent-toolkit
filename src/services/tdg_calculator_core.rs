@@ -122,6 +122,7 @@ impl TDGCalculator {
 
     /// Calculate TDG scores for multiple files with parallelization
     pub async fn calculate_batch(&self, files: Vec<PathBuf>) -> Result<Vec<TDGScore>> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let tasks: Vec<_> = files
             .into_iter()
             .map(|file| {

@@ -271,6 +271,7 @@ fn detect_visibility(line: &str) -> Visibility {
 
 // Find unreferenced symbols
 fn find_unreferenced_symbols(symbols: &[Symbol]) -> Vec<String> {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     symbols
         .iter()
         .filter(|s| s.references.len() <= 1)
@@ -280,6 +281,7 @@ fn find_unreferenced_symbols(symbols: &[Symbol]) -> Vec<String> {
 
 // Find most referenced symbols
 fn find_most_referenced(symbols: &[Symbol]) -> Vec<(String, usize)> {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut refs: Vec<_> = symbols
         .iter()
         .map(|s| (s.name.clone(), s.references.len()))

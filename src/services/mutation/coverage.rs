@@ -115,6 +115,7 @@ impl CoverageCorpus {
 
     /// Add input if it discovers new coverage
     pub fn add_if_interesting(&mut self, input: Vec<u8>, coverage: CoverageInfo) -> bool {
+        debug_assert!(!input.is_empty(), "input must not be empty");
         if coverage.is_interesting(
             &self
                 .interesting_inputs
@@ -187,6 +188,7 @@ impl CoverageTracker {
 
     /// Simulate coverage for given input (Phase 1)
     pub fn simulate_coverage(input: &[u8]) -> CoverageInfo {
+        debug_assert!(!input.is_empty(), "input must not be empty");
         let mut coverage = CoverageInfo::new();
 
         // Simulate coverage based on input characteristics

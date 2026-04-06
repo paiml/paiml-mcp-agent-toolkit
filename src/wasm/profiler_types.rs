@@ -9,6 +9,7 @@ impl ShadowStack {
     /// Create from raw bytes (from shared memory)
     #[must_use]
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         let mut frames = Vec::new();
 
         // Parse stack frames from bytes (simplified)

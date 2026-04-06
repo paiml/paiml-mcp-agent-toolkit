@@ -108,6 +108,7 @@ fn convert_quality_profile(profile: QddQualityProfile) -> QualityProfile {
 
 /// Convert input parameters to QDD parameters
 fn convert_parameters(inputs: Vec<(String, String)>) -> Vec<Parameter> {
+    debug_assert!(!inputs.is_empty(), "inputs must not be empty");
     inputs
         .into_iter()
         .map(|(param_type, param_name)| Parameter {

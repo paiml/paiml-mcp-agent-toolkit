@@ -139,6 +139,7 @@ fn write_header(output: &mut String, total_symbols: usize) -> Result<()> {
 
 /// Write symbols grouped by type (cognitive complexity ≤8)
 fn write_symbols_by_type(output: &mut String, symbols: &[Symbol]) -> Result<()> {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let by_type = group_symbols_by_type(symbols);
 
     for (kind, syms) in by_type {
@@ -150,6 +151,7 @@ fn write_symbols_by_type(output: &mut String, symbols: &[Symbol]) -> Result<()> 
 
 /// Group symbols by their kind (cognitive complexity ≤4)
 fn group_symbols_by_type(symbols: &[Symbol]) -> HashMap<SymbolKind, Vec<&Symbol>> {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut by_type: HashMap<SymbolKind, Vec<&Symbol>> = HashMap::new();
     for symbol in symbols {
         by_type.entry(symbol.kind.clone()).or_default().push(symbol);
@@ -190,6 +192,7 @@ fn write_symbol_group(output: &mut String, kind: &SymbolKind, syms: &[&Symbol]) 
 
 /// Write unreferenced symbols section (cognitive complexity ≤5)
 fn write_unreferenced_symbols(output: &mut String, unreferenced: &[String]) -> Result<()> {
+    debug_assert!(!unreferenced.is_empty(), "unreferenced must not be empty");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -207,6 +210,7 @@ fn write_unreferenced_symbols(output: &mut String, unreferenced: &[String]) -> R
 
 /// Write most referenced symbols section (cognitive complexity ≤5)
 fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)]) -> Result<()> {
+    debug_assert!(!most_referenced.is_empty(), "most_referenced must not be empty");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -228,6 +232,7 @@ fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)
 
 /// Write top files by symbol count (cognitive complexity ≤8)
 fn write_top_files_by_count(output: &mut String, symbols: &[Symbol]) -> Result<()> {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -254,6 +259,7 @@ fn write_top_files_by_count(output: &mut String, symbols: &[Symbol]) -> Result<(
 
 /// Get file counts sorted by symbol count (cognitive complexity ≤5)
 fn get_sorted_file_counts(symbols: &[Symbol]) -> Vec<(&str, usize)> {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut file_counts: HashMap<&str, usize> = HashMap::new();
 
     for symbol in symbols {

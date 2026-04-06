@@ -54,6 +54,7 @@ impl<S: AgentState> ParallelRecovery<S> {
         &self,
         states: Vec<RestoredState<S>>,
     ) -> Result<S, RecoveryError> {
+        debug_assert!(!states.is_empty(), "states must not be empty");
         if states.is_empty() {
             return Err(RecoveryError::RecoveryFailed(
                 "No partitions to merge".to_string(),

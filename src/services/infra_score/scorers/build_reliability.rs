@@ -398,6 +398,7 @@ fn collect_pin_stats(
 
 /// BR-05: Pinned action versions (SHA or tag, not @master/@main branch)
 fn check_pinned_actions(workflows: &[(String, String)]) -> InfraCheck {
+    debug_assert!(!workflows.is_empty(), "workflows must not be empty");
     let mut total_uses = 0u32;
     let mut unpinned = 0u32;
     let mut unpinned_examples = Vec::new();

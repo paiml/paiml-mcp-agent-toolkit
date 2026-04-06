@@ -28,6 +28,7 @@ impl<R: FileRanker> RankingEngine<R> {
 
     /// Rank files and return the top N results
     pub async fn rank_files(&self, files: &[PathBuf], limit: usize) -> Vec<(String, R::Metric)> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         if files.is_empty() || limit == 0 {
             return Vec::new();
         }
@@ -71,6 +72,7 @@ impl<R: FileRanker> RankingEngine<R> {
 
     /// Format rankings as a table
     pub fn format_rankings_table(&self, rankings: &[(String, R::Metric)]) -> String {
+        debug_assert!(!rankings.is_empty(), "rankings must not be empty");
         if rankings.is_empty() {
             return format!(
                 "## Top {} Files\n\nNo files found.\n",
@@ -95,6 +97,7 @@ impl<R: FileRanker> RankingEngine<R> {
 
     /// Format rankings as JSON
     pub fn format_rankings_json(&self, rankings: &[(String, R::Metric)]) -> serde_json::Value {
+        debug_assert!(!rankings.is_empty(), "rankings must not be empty");
         serde_json::json!({
             "analysis_type": self.ranker.ranking_type(),
             "timestamp": chrono::Utc::now().to_rfc3339(),

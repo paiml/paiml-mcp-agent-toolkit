@@ -10,6 +10,7 @@ use super::types::SymbolInfo;
 /// Format symbol table summary
 #[must_use]
 pub fn format_symbol_table_summary(symbols: &[SymbolInfo], deep_context: &DeepContext) -> String {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut output = String::with_capacity(1024);
 
     output.push_str("Symbol Table Summary\n");
@@ -56,6 +57,7 @@ pub fn format_symbol_table_summary(symbols: &[SymbolInfo], deep_context: &DeepCo
 /// Format symbol table detailed output
 #[must_use]
 pub fn format_symbol_table_detailed(symbols: &[SymbolInfo]) -> String {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut output = String::with_capacity(1024);
 
     output.push_str("Symbol Table\n");
@@ -94,6 +96,7 @@ pub fn format_symbol_table_detailed(symbols: &[SymbolInfo]) -> String {
 /// Format symbol table as CSV
 #[must_use]
 pub fn format_symbol_table_csv(symbols: &[SymbolInfo]) -> String {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut output = String::with_capacity(1024);
 
     output.push_str("name,kind,file,line,visibility,is_async\n");

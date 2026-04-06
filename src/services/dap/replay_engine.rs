@@ -17,6 +17,7 @@ pub struct ReplayEngine {
 impl ReplayEngine {
     /// Create a new replay engine from a recording
     pub fn from_recording(snapshots: Vec<ExecutionSnapshot>) -> Self {
+        debug_assert!(!snapshots.is_empty(), "snapshots must not be empty");
         Self {
             snapshots,
             current_position: 0,

@@ -154,6 +154,10 @@ impl SATDDetector {
         debt_items_collections: Vec<Vec<crate::services::satd_detector::TechnicalDebt>>,
         files_analyzed: usize,
     ) -> Result<SATDAnalysisResult> {
+        debug_assert!(
+            !debt_items_collections.is_empty(),
+            "debt_items_collections must not be empty"
+        );
         // Flatten all debt items
         let mut all_items = Vec::new();
         for collection in debt_items_collections {

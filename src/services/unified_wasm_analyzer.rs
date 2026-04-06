@@ -118,6 +118,7 @@ impl UnifiedWasmAnalyzer {
     /// This will be enhanced in REFACTOR phase with proper WASM instruction analysis.
     #[allow(clippy::cast_possible_truncation)]
     fn extract_complexity_metrics(&self, content: &str) -> FileComplexityMetrics {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let lines = content.lines().count();
 
@@ -199,6 +200,7 @@ impl UnifiedWasmAnalyzer {
 
     /// Extract function name from WAT line
     fn extract_function_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Pattern: (func $name ...
         if let Some(start) = line.find("$") {
             let rest = line.get(start + 1..).unwrap_or_default();

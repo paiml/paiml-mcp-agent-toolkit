@@ -119,6 +119,7 @@ impl TopicEngine {
     /// # Returns
     /// Array of keywords sorted by frequency
     pub fn extract_keywords(&self, chunk_names: &[String], top_k: usize) -> Vec<String> {
+        debug_assert!(!chunk_names.is_empty(), "chunk_names must not be empty");
         if chunk_names.is_empty() {
             return Vec::new();
         }

@@ -225,6 +225,7 @@ impl EvidenceSummary {
     }
 
     pub fn from_whys(whys: &[WhyIteration]) -> Self {
+        debug_assert!(!whys.is_empty(), "whys must not be empty");
         let mut summary = Self::default();
         for why in whys {
             for evidence in &why.evidence {

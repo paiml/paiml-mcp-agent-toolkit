@@ -19,6 +19,7 @@ impl UnifiedDetectionProcessor {
         &self,
         files: Vec<std::path::PathBuf>,
     ) -> Result<duplicates::DuplicateDetectionResult> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let input = DetectionInput::MultipleFiles(files);
         let config = DetectionConfig {
             detector_specific: DetectorSpecificConfig::Duplicates(

@@ -362,6 +362,7 @@ pub fn claims_for_profile(
 pub fn classify_claims(
     clauses: &[ContractClause],
 ) -> (Vec<ContractClause>, Vec<ContractClause>, Vec<ContractClause>) {
+    debug_assert!(!clauses.is_empty(), "clauses must not be empty");
     let mut require = Vec::new();
     let mut ensure = Vec::new();
     let mut invariant = Vec::new();
@@ -382,6 +383,7 @@ pub fn apply_exclusions(
     clauses: Vec<ContractClause>,
     without: &[String],
 ) -> (Vec<ContractClause>, Vec<ExcludedClaim>) {
+    debug_assert!(!clauses.is_empty(), "clauses must not be empty");
     let (excluded_clauses, active): (Vec<_>, Vec<_>) =
         clauses.into_iter().partition(|c| without.contains(&c.id));
 

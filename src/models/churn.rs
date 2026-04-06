@@ -67,6 +67,7 @@ impl FileChurnMetrics {
     /// assert!(metrics.churn_score > 0.0 && metrics.churn_score <= 1.0);
     /// ```
     pub fn calculate_churn_score(&mut self, max_commits: usize, max_changes: usize) {
+        debug_assert!(self.path.exists(), "self.path must exist");
         let commit_factor = if max_commits > 0 {
             self.commit_count as f32 / max_commits as f32
         } else {

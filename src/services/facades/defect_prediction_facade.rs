@@ -240,6 +240,7 @@ impl DefectPredictionFacade {
         predictions: Vec<FilePrediction>,
         request: &DefectPredictionRequest,
     ) -> DefectPredictionResult {
+        debug_assert!(!predictions.is_empty(), "predictions must not be empty");
         let total_files_analyzed = predictions.len();
         let high_risk_files = predictions
             .iter()

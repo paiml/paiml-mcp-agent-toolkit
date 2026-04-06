@@ -88,6 +88,7 @@ impl AccurateComplexityAnalyzer {
 
     /// Check if function has suppression annotation
     fn has_suppress_annotation(&self, attrs: &[Attribute]) -> bool {
+        debug_assert!(!attrs.is_empty(), "attrs must not be empty");
         attrs.iter().any(|attr| {
             // Check if it's an allow attribute
             if attr.path().is_ident("allow") {

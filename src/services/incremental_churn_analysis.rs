@@ -42,6 +42,7 @@ impl IncrementalChurnAnalyzer {
         files: Vec<PathBuf>,
         period_days: u32,
     ) -> Result<CodeChurnAnalysis, TemplateError> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut file_metrics = Vec::new();
         let mut uncached_files = Vec::new();
 

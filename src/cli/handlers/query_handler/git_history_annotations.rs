@@ -10,6 +10,7 @@ fn count_pairwise_cochanges(
     file_paths: &[&str],
     cochange_counts: &mut HashMap<(String, String), usize>,
 ) {
+    debug_assert!(!file_paths.is_empty(), "file_paths must not be empty");
     let n = file_paths.len();
     for i in 0..n {
         for j in (i + 1)..n {
@@ -27,6 +28,7 @@ fn count_pairwise_cochanges(
 fn aggregate_hotspots(
     commits: &[CommitInfo],
 ) -> (HashMap<String, FileHotspot>, HashMap<(String, String), usize>) {
+    debug_assert!(!commits.is_empty(), "commits must not be empty");
     let mut hotspots: HashMap<String, FileHotspot> = HashMap::new();
     let mut cochange_counts: HashMap<(String, String), usize> = HashMap::new();
     for commit in commits {

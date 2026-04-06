@@ -1,5 +1,6 @@
 impl DemoRunner {
     fn generate_system_diagram(&self, _steps: &[DemoStep]) -> Result<String> {
+        debug_assert!(!_steps.is_empty(), "_steps must not be empty");
         // Extract component relationships from analysis results
         let mut components = HashMap::new();
 

@@ -18,6 +18,7 @@ fn parse_coverage_percentage(output: &str) -> f64 {
 
 /// Calculate summary from checks
 fn calculate_summary(checks: &[HealthCheck]) -> HealthSummary {
+    debug_assert!(!checks.is_empty(), "checks must not be empty");
     let mut summary = HealthSummary {
         total_checks: checks.len(),
         passed: 0,

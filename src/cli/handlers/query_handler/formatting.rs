@@ -71,6 +71,7 @@ pub(super) fn emit_query_output(
 
 /// Print raw file matches (non-indexed).
 fn print_raw_results(raw_results: &[RawSearchResult], format: &QueryOutputFormat) {
+    debug_assert!(!raw_results.is_empty(), "raw_results must not be empty");
     if raw_results.is_empty() {
         return;
     }

@@ -18,6 +18,10 @@ pub struct FileFilter {
 impl FileFilter {
     /// Create a new file filter from include/exclude patterns
     pub fn new(include_patterns: Vec<String>, exclude_patterns: Vec<String>) -> Result<Self> {
+        debug_assert!(
+            !include_patterns.is_empty(),
+            "include_patterns must not be empty"
+        );
         // Expand and validate patterns
         let expanded_include = expand_patterns(&include_patterns);
         let expanded_exclude = expand_patterns(&exclude_patterns);
@@ -81,6 +85,7 @@ impl FileFilter {
     /// Filter a list of paths based on include/exclude patterns
     #[must_use]
     pub fn filter_paths(&self, paths: Vec<PathBuf>) -> Vec<PathBuf> {
+        debug_assert!(!paths.is_empty(), "paths must not be empty");
         paths
             .into_iter()
             .filter(|path| self.should_include(path))

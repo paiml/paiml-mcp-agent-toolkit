@@ -28,6 +28,7 @@ pub fn normalize_patterns(
 /// Convert vector patterns to handle comma-separated values
 #[must_use]
 pub fn expand_patterns(patterns: &[String]) -> Vec<String> {
+    debug_assert!(!patterns.is_empty(), "patterns must not be empty");
     patterns
         .iter()
         .flat_map(|pattern| {
@@ -43,6 +44,7 @@ pub fn expand_patterns(patterns: &[String]) -> Vec<String> {
 
 /// Validate that glob patterns are syntactically correct
 pub fn validate_patterns(patterns: &[String]) -> Result<()> {
+    debug_assert!(!patterns.is_empty(), "patterns must not be empty");
     use globset::Glob;
 
     for pattern in patterns {

@@ -269,6 +269,7 @@ pub async fn handle_hooks_status_stack(format: &OutputFormat) -> Result<()> {
 
 /// Print stack hook status as a table.
 fn print_status_table(repos: &[StackRepo]) {
+    debug_assert!(!repos.is_empty(), "repos must not be empty");
     println!("{}", c::header("Stack Hook Status"));
     println!();
     println!(
@@ -326,6 +327,7 @@ fn print_status_table(repos: &[StackRepo]) {
 
 /// Print stack hook status as JSON.
 fn print_status_json(repos: &[StackRepo]) {
+    debug_assert!(!repos.is_empty(), "repos must not be empty");
     let mut entries = Vec::new();
     for repo in repos {
         let (status, path_str) = if !repo.exists {

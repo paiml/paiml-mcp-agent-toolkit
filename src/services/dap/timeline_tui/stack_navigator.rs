@@ -24,6 +24,7 @@ impl StackFrameNavigator {
 
     /// Create navigator from frame list
     pub fn from_frames(frames: Vec<(String, String, usize)>) -> Self {
+        debug_assert!(!frames.is_empty(), "frames must not be empty");
         Self {
             frames,
             selected_index: 0,

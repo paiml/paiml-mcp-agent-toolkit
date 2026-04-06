@@ -164,6 +164,7 @@ fn print_quality_gate_start_message(file: &Option<PathBuf>) {
 /// Prints which checks will be run
 /// Toyota Way: Extract Method - Print checks to run (complexity ≤8)
 fn print_checks_to_run(checks: &[QualityCheckType]) {
+    debug_assert!(!checks.is_empty(), "checks must not be empty");
     eprintln!("\n📋 Checks to run:");
 
     if checks.contains(&QualityCheckType::All) {
@@ -187,6 +188,7 @@ fn print_all_checks() {
 
 /// Toyota Way: Extract Method - Print selected checks (complexity ≤8)
 fn print_selected_checks(checks: &[QualityCheckType]) {
+    debug_assert!(!checks.is_empty(), "checks must not be empty");
     for check in checks {
         print_single_check(check);
     }

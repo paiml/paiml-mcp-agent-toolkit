@@ -13,6 +13,11 @@ pub(crate) const SCHEMA_VERSION: &str = "2.0.0";
 
 /// Open or create a SQLite index database at the given path.
 pub(crate) fn open_db(db_path: &Path) -> Result<Connection, String> {
+    debug_assert!(
+        db_path.exists(),
+        "db_path must exist: {}",
+        db_path.display()
+    );
     let conn = Connection::open_with_flags(
         db_path,
         OpenFlags::SQLITE_OPEN_READ_WRITE

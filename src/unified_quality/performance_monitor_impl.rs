@@ -198,6 +198,7 @@ impl PerformanceMonitor {
     }
 
     fn calculate_summary_stats(&self, _results: &[(String, BenchmarkResult)]) -> BenchmarkSummary {
+        debug_assert!(!_results.is_empty(), "_results must not be empty");
         BenchmarkSummary {
             total_benchmarks: 10,
             passed_benchmarks: 10,
@@ -212,6 +213,7 @@ impl PerformanceMonitor {
         &self,
         _results: &[(String, BenchmarkResult)],
     ) -> Result<Vec<PerformanceRegression>> {
+        debug_assert!(!_results.is_empty(), "_results must not be empty");
         Ok(Vec::new())
     }
 

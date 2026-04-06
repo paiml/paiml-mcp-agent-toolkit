@@ -176,6 +176,7 @@ fn format_ast_summary(
     output: &mut String,
     ast_contexts: &[crate::services::deep_context::EnhancedFileContext],
 ) {
+    debug_assert!(!ast_contexts.is_empty(), "ast_contexts must not be empty");
     if ast_contexts.is_empty() {
         return;
     }
@@ -195,6 +196,7 @@ fn format_ast_summary(
 fn count_ast_items(
     ast_contexts: &[crate::services::deep_context::EnhancedFileContext],
 ) -> (usize, usize, usize, usize, usize) {
+    debug_assert!(!ast_contexts.is_empty(), "ast_contexts must not be empty");
     let mut functions = 0;
     let mut structs = 0;
     let mut enums = 0;

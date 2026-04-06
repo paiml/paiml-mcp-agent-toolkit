@@ -156,6 +156,7 @@ fn write_file_stats_list(
     output: &mut String,
     sorted_files: &[(&String, &FileStats)],
 ) -> Result<()> {
+    debug_assert!(!sorted_files.is_empty(), "sorted_files must not be empty");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -202,6 +203,7 @@ fn write_duplicate_blocks_section(output: &mut String, report: &DuplicateReport)
 
 /// Write detailed information about duplicate blocks
 fn write_block_details(output: &mut String, duplicate_blocks: &[DuplicateBlock]) -> Result<()> {
+    debug_assert!(!duplicate_blocks.is_empty(), "duplicate_blocks must not be empty");
     for (i, block) in duplicate_blocks.iter().enumerate().take(20) {
         write_block_header(output, i + 1, block)?;
         write_block_locations(output, block)?;

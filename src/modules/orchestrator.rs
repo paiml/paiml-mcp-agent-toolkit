@@ -53,11 +53,13 @@ impl OrchestratorImpl {
 #[async_trait]
 impl OrchestratorModule for OrchestratorImpl {
     async fn analyze_and_validate(&self, code: &str) -> Result<ValidationResult, ModuleError> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let metrics = self.analyzer.analyze(code).await?;
         Ok(self.validator.validate(&metrics, &self.thresholds).await)
     }
 
     async fn analyze_transform_validate(&self, code: &str) -> Result<ProcessResult, ModuleError> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         // Step 1: Analyze original code
         let original_metrics = self.analyzer.analyze(code).await?;
 

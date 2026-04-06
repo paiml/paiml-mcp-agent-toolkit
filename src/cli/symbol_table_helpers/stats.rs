@@ -37,6 +37,7 @@ use super::types::SymbolInfo;
 /// ```
 #[must_use]
 pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut counts = std::collections::HashMap::with_capacity(64);
     for symbol in symbols {
         *counts.entry(symbol.kind.clone()).or_insert(0) += 1;
@@ -47,6 +48,7 @@ pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String
 /// Count symbols by visibility
 #[must_use]
 pub fn count_by_visibility(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
+    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut counts = std::collections::HashMap::with_capacity(64);
     for symbol in symbols {
         *counts.entry(symbol.visibility.clone()).or_insert(0) += 1;

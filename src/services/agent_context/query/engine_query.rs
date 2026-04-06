@@ -119,6 +119,7 @@ impl AgentContextIndex {
         scores: Vec<(usize, f32)>,
         options: &QueryOptions,
     ) -> Vec<(usize, f32)> {
+        debug_assert!(!scores.is_empty(), "scores must not be empty");
         let use_quality = options.search_mode == SearchMode::Semantic;
         let mut ranked: Vec<(usize, f32)> = scores
             .into_iter()

@@ -210,6 +210,7 @@ fn create_sarif_result(hotspot: &crate::models::tdg::TDGHotspot) -> serde_json::
 }
 
 fn build_sarif_document(results: Vec<serde_json::Value>) -> serde_json::Value {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",

@@ -118,6 +118,7 @@ fn mutate_is_not_to_alternatives(
     is_n: &Node,
     not_n: &Node,
 ) -> Vec<MutatedSource> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut mutations = Vec::new();
     let start = is_n.start_byte();
     let end = not_n.end_byte();
@@ -159,6 +160,7 @@ fn mutate_is_not_to_alternatives(
 
 /// Mutate "is" to "is not" and "=="
 fn mutate_is_to_alternatives(source: &[u8], is_n: &Node) -> Vec<MutatedSource> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     vec![
         MutatedSource {
             source: {
@@ -252,6 +254,7 @@ fn mutate_not_in_to_in(
     in_n: &Node,
     not_n: &Node,
 ) -> Vec<MutatedSource> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let start = not_n.start_byte();
     let end = in_n.end_byte();
     let mut mutated = source.to_vec();
@@ -272,6 +275,7 @@ fn mutate_not_in_to_in(
 
 /// Mutate "in" to "not in"
 fn mutate_in_to_not_in(source: &[u8], in_n: &Node) -> Vec<MutatedSource> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut mutated = source.to_vec();
     mutated.splice(in_n.byte_range(), b"not in".iter().copied());
     vec![MutatedSource {

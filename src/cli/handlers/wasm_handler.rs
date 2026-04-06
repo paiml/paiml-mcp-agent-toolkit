@@ -88,6 +88,7 @@ fn load_wasm_file(wasm_file: &PathBuf) -> Result<Vec<u8>> {
 
 /// Run basic WASM analysis (Complexity: 2)
 fn run_basic_analysis(binary: &[u8]) -> Result<AnalysisResult> {
+    debug_assert!(!binary.is_empty(), "binary must not be empty");
     let analyzer = WasmAnalyzer::new()?;
     analyzer.analyze(binary)
 }

@@ -124,6 +124,7 @@ impl InfraScorer for DeploymentReleaseScorer {
 
 /// DR-01: Check for nightly/release workflow
 fn check_release_workflow(workflows: &[(String, String)]) -> InfraCheck {
+    debug_assert!(!workflows.is_empty(), "workflows must not be empty");
     let release_names = ["nightly", "release", "deploy", "publish"];
 
     for (name, content) in workflows {

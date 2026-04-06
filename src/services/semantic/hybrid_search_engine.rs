@@ -293,6 +293,7 @@ impl HybridSearchEngine {
         results: Vec<HybridSearchResult>,
         query: &HybridSearchQuery,
     ) -> Vec<HybridSearchResult> {
+        debug_assert!(!results.is_empty(), "results must not be empty");
         results
             .into_iter()
             .filter(|r| {

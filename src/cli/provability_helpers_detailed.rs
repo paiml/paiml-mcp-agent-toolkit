@@ -4,6 +4,7 @@ pub fn format_provability_detailed(
     summaries: &[ProofSummary],
     include_evidence: bool,
 ) -> Result<String> {
+    debug_assert!(!function_ids.is_empty(), "function_ids must not be empty");
     let mut output = String::new();
 
     use crate::cli::colors as c;
@@ -119,6 +120,7 @@ fn write_verified_properties(
     output: &mut String,
     properties: &[crate::services::lightweight_provability_analyzer::VerifiedProperty],
 ) -> Result<()> {
+    debug_assert!(!properties.is_empty(), "properties must not be empty");
     use crate::cli::colors as c;
     writeln!(output, "\n    {}Verified Properties:{}", c::BOLD, c::RESET)?;
 

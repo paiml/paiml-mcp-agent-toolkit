@@ -86,6 +86,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         ast_contexts: &[EnhancedFileContext],
     ) -> anyhow::Result<()> {
+        debug_assert!(!ast_contexts.is_empty(), "ast_contexts must not be empty");
         use std::fmt::Write;
         writeln!(output, "## Enhanced AST Analysis\n")?;
 
@@ -311,6 +312,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         structs: &[AstStruct],
     ) -> anyhow::Result<()> {
+        debug_assert!(!structs.is_empty(), "structs must not be empty");
         if structs.is_empty() {
             return Ok(());
         }
@@ -349,6 +351,7 @@ impl DeepContextAnalyzer {
     }
 
     fn write_enums_section(&self, output: &mut String, enums: &[AstEnum]) -> anyhow::Result<()> {
+        debug_assert!(!enums.is_empty(), "enums must not be empty");
         if enums.is_empty() {
             return Ok(());
         }
@@ -381,6 +384,7 @@ impl DeepContextAnalyzer {
     }
 
     fn write_traits_section(&self, output: &mut String, traits: &[AstTrait]) -> anyhow::Result<()> {
+        debug_assert!(!traits.is_empty(), "traits must not be empty");
         if traits.is_empty() {
             return Ok(());
         }
@@ -404,6 +408,7 @@ impl DeepContextAnalyzer {
     }
 
     fn write_impls_section(&self, output: &mut String, impls: &[AstImpl]) -> anyhow::Result<()> {
+        debug_assert!(!impls.is_empty(), "impls must not be empty");
         if impls.is_empty() {
             return Ok(());
         }
@@ -443,6 +448,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         modules: &[AstModule],
     ) -> anyhow::Result<()> {
+        debug_assert!(!modules.is_empty(), "modules must not be empty");
         if modules.is_empty() {
             return Ok(());
         }
@@ -466,6 +472,7 @@ impl DeepContextAnalyzer {
     }
 
     fn write_imports_section(&self, output: &mut String, uses: &[AstUse]) -> anyhow::Result<()> {
+        debug_assert!(!uses.is_empty(), "uses must not be empty");
         if uses.is_empty() {
             return Ok(());
         }

@@ -172,6 +172,7 @@ fn print_exclusion_summary(summary: &crate::services::agent_context::ExclusionSu
 
 /// Print excluded results grouped by category
 fn print_excluded_results(excluded: &[&QueryResult]) {
+    debug_assert!(!excluded.is_empty(), "excluded must not be empty");
     use crate::services::agent_context::CoverageExclusion;
 
     let groups: &[(CoverageExclusion, &str)] = &[

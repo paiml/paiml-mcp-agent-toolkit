@@ -1,6 +1,7 @@
 /// Toyota Way: Extract Method - Print checks to run (complexity ≤8)
 /// Console output utility for displaying which quality checks will be executed
 pub fn print_checks_to_run(checks: &[QualityCheckType]) {
+    debug_assert!(!checks.is_empty(), "checks must not be empty");
     eprintln!("\n📋 Checks to run:");
 
     if checks.contains(&QualityCheckType::All) {
@@ -24,6 +25,7 @@ fn print_all_checks() {
 
 /// Toyota Way: Extract Method - Print specific check types (complexity ≤8)
 fn print_specific_checks(checks: &[QualityCheckType]) {
+    debug_assert!(!checks.is_empty(), "checks must not be empty");
     for check in checks {
         let check_name = match check {
             QualityCheckType::Complexity => "✓ Complexity analysis",

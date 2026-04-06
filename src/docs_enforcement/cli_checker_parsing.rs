@@ -109,6 +109,7 @@ pub fn find_undocumented_flags(
     expected_flags: &[&str],
     documented_flags: &[String],
 ) -> Vec<String> {
+    debug_assert!(!expected_flags.is_empty(), "expected_flags must not be empty");
     let documented_set: HashSet<String> = documented_flags.iter().map(|f| f.to_string()).collect();
 
     expected_flags

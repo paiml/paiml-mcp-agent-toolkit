@@ -252,6 +252,7 @@ pub(crate) fn has_complexity_violations(
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
 ) -> bool {
+    debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     file_metrics.iter().any(|file| {
         file.functions.iter().any(|func| {
             let cyclomatic_exceeded = func.metrics.cyclomatic > max_cyclomatic.unwrap_or(20);

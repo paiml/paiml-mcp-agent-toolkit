@@ -44,6 +44,7 @@ impl RustVisitor {
     }
 
     fn get_derives(_attrs: &[syn::Attribute]) -> Vec<String> {
+        debug_assert!(!_attrs.is_empty(), "_attrs must not be empty");
         // Simplified version - in production, parse derive attributes properly
         Vec::new()
     }

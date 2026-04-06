@@ -332,6 +332,7 @@ pub fn detect_mismatches(
 // ── Dependency Graph ─────────────────────────────────────────────────────
 
 fn build_stack_graph(repos: &[RepoInfo], all_deps: &BTreeMap<String, Vec<DepInfo>>) -> StackGraph {
+    debug_assert!(!repos.is_empty(), "repos must not be empty");
     let mut edges = Vec::new();
 
     // Build name -> repo index map

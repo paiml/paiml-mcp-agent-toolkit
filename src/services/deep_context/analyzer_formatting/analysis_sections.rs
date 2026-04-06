@@ -244,6 +244,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         cross_refs: &[CrossLangReference],
     ) -> anyhow::Result<()> {
+        debug_assert!(!cross_refs.is_empty(), "cross_refs must not be empty");
         use std::fmt::Write;
         if !cross_refs.is_empty() {
             writeln!(output, "## Cross-Language References\n")?;
@@ -309,6 +310,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         hotspots: &[DefectHotspot],
     ) -> anyhow::Result<()> {
+        debug_assert!(!hotspots.is_empty(), "hotspots must not be empty");
         use std::fmt::Write;
         if !hotspots.is_empty() {
             writeln!(output, "\n**High-Risk Hotspots:**")?;
@@ -410,6 +412,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         prerequisites: &[String],
     ) -> anyhow::Result<()> {
+        debug_assert!(!prerequisites.is_empty(), "prerequisites must not be empty");
         use std::fmt::Write;
         if !prerequisites.is_empty() {
             writeln!(output, "**Prerequisites:**")?;

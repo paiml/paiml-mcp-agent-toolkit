@@ -72,6 +72,7 @@ impl DuplicationDetector {
     }
 
     fn find_exact_clones(&self, sequences: &[TokenSequence]) -> CloneSet {
+        debug_assert!(!sequences.is_empty(), "sequences must not be empty");
         let mut clones = CloneSet::new();
         let mut seen = HashMap::new();
 
@@ -92,6 +93,7 @@ impl DuplicationDetector {
     }
 
     fn find_renamed_clones(&self, sequences: &[TokenSequence]) -> CloneSet {
+        debug_assert!(!sequences.is_empty(), "sequences must not be empty");
         let mut clones = CloneSet::new();
         let mut normalized_map = HashMap::new();
 
@@ -115,6 +117,7 @@ impl DuplicationDetector {
     }
 
     fn find_modified_clones(&self, sequences: &[TokenSequence]) -> CloneSet {
+        debug_assert!(!sequences.is_empty(), "sequences must not be empty");
         let mut clones = CloneSet::new();
 
         for i in 0..sequences.len() {

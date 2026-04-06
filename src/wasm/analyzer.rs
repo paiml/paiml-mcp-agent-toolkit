@@ -33,12 +33,14 @@ impl WasmAnalyzer {
 
     /// Analyze WASM binary and return simplified result
     pub fn analyze(&self, binary: &[u8]) -> Result<AnalysisResult> {
+        debug_assert!(!binary.is_empty(), "binary must not be empty");
         let analysis = self.analyze_streaming(binary)?;
         Ok(AnalysisResult::from(analysis))
     }
 
     /// Analyze WASM binary using streaming pipeline
     pub fn analyze_streaming(&self, binary: &[u8]) -> Result<Analysis> {
+        debug_assert!(!binary.is_empty(), "binary must not be empty");
         let mut validator = Validator::new();
         let mut profiler = self.instruction_profiler.clone();
         let mut patterns = self.pattern_detector.clone();

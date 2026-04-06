@@ -7,6 +7,7 @@ pub fn apply_satd_filters(
     severity: Option<SatdSeverity>,
     critical_only: bool,
 ) -> Vec<crate::models::tdg::SatdItem> {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     items
         .into_iter()
         .filter(|item| {
@@ -126,6 +127,7 @@ pub fn parse_analysis_filters(
     include: Vec<String>,
     exclude: Vec<String>,
 ) -> anyhow::Result<(Vec<AnalysisType>, Vec<AnalysisType>)> {
+    debug_assert!(!include.is_empty(), "include must not be empty");
     let include_analysis = include
         .into_iter()
         .map(|s| parse_analysis_type(&s))

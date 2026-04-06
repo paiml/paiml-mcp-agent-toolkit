@@ -53,6 +53,7 @@ pub fn apply_satd_filters(
     severity: Option<SatdSeverity>,
     critical_only: bool,
 ) -> Vec<crate::services::satd_detector::TechnicalDebt> {
+    debug_assert!(!satd_items.is_empty(), "satd_items must not be empty");
     // Filter by severity if specified
     if let Some(min_severity) = severity {
         let min_sev = match min_severity {

@@ -65,6 +65,7 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn check_char_at_position(&self, bytes: &[u8], pos: usize) -> Option<LineType> {
+        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         match bytes[pos] {
             b':' => self.check_colon_operator(bytes, pos),
             b'=' => Some(LineType::Assignment(pos, AssignmentOp::Deferred)),
@@ -76,6 +77,7 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn check_colon_operator(&self, bytes: &[u8], pos: usize) -> Option<LineType> {
+        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         if pos + 1 < bytes.len() {
             match bytes[pos + 1] {
                 b'=' => Some(LineType::Assignment(pos, AssignmentOp::Immediate)),

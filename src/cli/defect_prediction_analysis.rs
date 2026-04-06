@@ -141,6 +141,7 @@ pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 
 /// Collect metrics for all files
 #[must_use]
 pub fn collect_file_metrics(analyzed_files: &[(PathBuf, String, usize)]) -> Vec<FileMetrics> {
+    debug_assert!(!analyzed_files.is_empty(), "analyzed_files must not be empty");
     let mut file_metrics = Vec::new();
 
     for (file_path, content, lines_of_code) in analyzed_files {
@@ -181,6 +182,7 @@ pub fn filter_predictions(
     predictions: Vec<(String, DefectScore)>,
     config: &DefectPredictionConfig,
 ) -> Vec<(String, DefectScore)> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut filtered_predictions = predictions;
 
     if !config.include_low_confidence {
@@ -210,6 +212,7 @@ pub struct RiskDistribution {
 
 #[must_use]
 pub fn calculate_risk_distribution(predictions: &[(String, DefectScore)]) -> RiskDistribution {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     RiskDistribution {
         high_risk_count: predictions
             .iter()

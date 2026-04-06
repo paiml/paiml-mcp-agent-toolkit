@@ -44,6 +44,7 @@ fn create_and_report_file_filter(
     include: Vec<String>,
     exclude: Vec<String>,
 ) -> Result<crate::utils::file_filter::FileFilter> {
+    debug_assert!(!include.is_empty(), "include must not be empty");
     if !include.is_empty() || !exclude.is_empty() {
         eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {

@@ -41,6 +41,7 @@ impl McpAgentsMdBridge {
     /// Convert MCP capabilities to AGENTS.md
     #[must_use]
     pub fn mcp_to_agents(&self, tools: &[McpTool]) -> String {
+        debug_assert!(!tools.is_empty(), "tools must not be empty");
         let mut output = String::new();
         output.push_str("# AGENTS.md\n\n");
         output.push_str("## Available Tools\n\n");

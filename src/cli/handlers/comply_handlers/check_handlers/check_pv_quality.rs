@@ -219,6 +219,7 @@ fn check_equation_preconditions(
     equations_with_pre: &mut usize,
     placeholder_only_equations: &mut usize,
 ) {
+    debug_assert!(!pres.is_empty(), "pres must not be empty");
     if pres.is_empty() {
         return;
     }

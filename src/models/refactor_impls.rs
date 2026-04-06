@@ -41,6 +41,7 @@ impl Default for RefactorStrategies {
 impl RefactorStateMachine {
     #[must_use]
     pub fn new(targets: Vec<PathBuf>, config: RefactorConfig) -> Self {
+        debug_assert!(!targets.is_empty(), "targets must not be empty");
         let initial_state = if targets.is_empty() {
             State::Complete {
                 summary: Summary::default(),

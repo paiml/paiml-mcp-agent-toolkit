@@ -68,6 +68,7 @@ impl EnhancedReportingService {
 
     /// Create issue distribution chart
     fn create_issue_distribution_chart(&self, sections: &[ReportSection]) -> Result<Visualization> {
+        debug_assert!(!sections.is_empty(), "sections must not be empty");
         let mut issue_counts = HashMap::new();
 
         for section in sections {

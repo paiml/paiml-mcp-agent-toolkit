@@ -45,6 +45,7 @@ use super::types::{ComplexityReport, ComplexityThresholds, FileComplexityMetrics
 /// ```
 #[must_use]
 pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> ComplexityReport {
+    debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     aggregate_results_with_thresholds(file_metrics, None, None)
 }
 
@@ -101,6 +102,7 @@ pub fn aggregate_results_with_thresholds(
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
 ) -> ComplexityReport {
+    debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     let thresholds = build_custom_thresholds(max_cyclomatic, max_cognitive);
     let rules = create_complexity_rules(&thresholds);
     let mut analysis_data = analyze_file_metrics(&file_metrics, &rules, &thresholds);

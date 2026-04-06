@@ -219,6 +219,7 @@ mod tests {
 
     // Test helpers
     fn create_multi_param_spec(name: &str) -> CreateSpec {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         CreateSpec {
             code_type: CodeType::Function,
             name: name.to_string(),

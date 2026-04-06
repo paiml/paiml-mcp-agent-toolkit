@@ -102,6 +102,7 @@ pub struct PerfectionScoreResult {
 
 impl PerfectionScoreResult {
     pub fn new(categories: Vec<CategoryScore>) -> Self {
+        debug_assert!(!categories.is_empty(), "categories must not be empty");
         let total_score: f64 = categories
             .iter()
             .map(|c| c.earned_points)

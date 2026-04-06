@@ -106,6 +106,7 @@ fn report_validation_success() {
 }
 
 fn report_validation_failure(issues: &[&str]) -> Result<()> {
+    debug_assert!(!issues.is_empty(), "issues must not be empty");
     println!("Configuration validation failed");
     println!("   Found {} issues:", issues.len());
     for issue in issues {

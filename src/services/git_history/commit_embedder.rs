@@ -136,6 +136,7 @@ impl CommitEmbedder {
 
     /// Embed multiple commit messages (batched for efficiency)
     pub fn embed_batch(&mut self, messages: &[String]) -> Vec<Vec<f32>> {
+        debug_assert!(!messages.is_empty(), "messages must not be empty");
         if messages.is_empty() {
             return vec![];
         }

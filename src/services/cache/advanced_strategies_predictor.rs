@@ -46,6 +46,7 @@ where
     }
 
     pub fn predict_next(&self, current_sequence: &[K]) -> Vec<K> {
+        debug_assert!(!current_sequence.is_empty(), "current_sequence must not be empty");
         let patterns = self.patterns.read();
         let mut predictions = Vec::new();
 

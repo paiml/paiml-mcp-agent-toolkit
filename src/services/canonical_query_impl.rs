@@ -76,6 +76,7 @@ fn infer_component_relationships(
     components: &[Component],
     call_graph: &CallGraph,
 ) -> Result<Vec<ComponentEdge>> {
+    debug_assert!(!components.is_empty(), "components must not be empty");
     let mut edges = Vec::new();
     let mut component_map = FxHashMap::default();
 
@@ -135,6 +136,7 @@ fn aggregate_component_metrics(
     components: &[Component],
     complexity_map: &FxHashMap<String, crate::services::complexity::ComplexityMetrics>,
 ) -> Result<FxHashMap<String, ComponentMetrics>> {
+    debug_assert!(!components.is_empty(), "components must not be empty");
     let mut metrics = FxHashMap::default();
 
     for component in components {

@@ -77,6 +77,7 @@ pub struct ComplexityResults {
 
 impl ComplexityResults {
     fn combine(_results: Vec<ComplexityResult>) -> Self {
+        debug_assert!(!_results.is_empty(), "_results must not be empty");
         Self::default()
     }
 }

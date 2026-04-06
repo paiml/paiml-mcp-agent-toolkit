@@ -116,6 +116,7 @@ fn format_summary_output(
 }
 
 fn format_detailed_output(similarities: &[NameSimilarityResult]) -> String {
+    debug_assert!(!similarities.is_empty(), "similarities must not be empty");
     let mut output = String::new();
     output.push_str("Name Similarity Analysis Report\n");
     output.push_str("==============================\n");
@@ -134,6 +135,7 @@ fn format_detailed_output(similarities: &[NameSimilarityResult]) -> String {
 }
 
 fn format_csv_output(similarities: &[NameSimilarityResult]) -> String {
+    debug_assert!(!similarities.is_empty(), "similarities must not be empty");
     let mut output = String::new();
     output.push_str("name,similarity,type,file,line,context\n");
     for sim in similarities {

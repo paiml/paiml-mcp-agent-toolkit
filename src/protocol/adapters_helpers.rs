@@ -1,6 +1,7 @@
 // Helper functions for HTTP request parsing and routing
 
 fn parse_http_request(raw: &[u8]) -> Result<HttpRequest, ProtocolError> {
+    debug_assert!(!raw.is_empty(), "raw must not be empty");
     let request_str = String::from_utf8_lossy(raw);
     let lines: Vec<&str> = request_str.lines().collect();
 

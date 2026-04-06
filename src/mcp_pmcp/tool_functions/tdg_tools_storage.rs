@@ -4,6 +4,7 @@ pub async fn tdg_analyze_with_storage(
     storage_backend: Option<String>, // "sled", "rocksdb", "inmemory"
     _priority: Option<String>,       // "critical", "high", "medium", "low"
 ) -> Result<Value> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     let storage = create_storage_backend(storage_backend.as_deref())?;
     let analyzer = TdgAnalyzer::new()?;
 
@@ -48,6 +49,7 @@ async fn analyze_paths_with_storage(
     analyzer: &TdgAnalyzer,
     storage: &dyn crate::tdg::storage_backend::StorageBackend,
 ) -> Result<AnalysisResults> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     let mut results = Vec::new();
     let mut total_files = 0;
     let mut avg_score = 0.0;

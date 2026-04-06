@@ -35,6 +35,7 @@ async fn show_health_report(
 
 /// Print health report in console format
 fn print_health_console(sprints: &[SprintInfo]) {
+    debug_assert!(!sprints.is_empty(), "sprints must not be empty");
     use crate::cli::colors as c;
     eprintln!("{}", c::header("Roadmap Health Report"));
     eprintln!();
@@ -68,6 +69,7 @@ fn print_health_console(sprints: &[SprintInfo]) {
 
 /// Print health report in YAML format
 fn print_health_yaml(sprints: &[SprintInfo]) {
+    debug_assert!(!sprints.is_empty(), "sprints must not be empty");
     println!("roadmap_health:");
     for sprint in sprints {
         let progress = if sprint.total_tickets > 0 {

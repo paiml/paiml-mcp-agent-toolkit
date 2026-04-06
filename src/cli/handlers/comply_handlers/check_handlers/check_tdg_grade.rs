@@ -190,6 +190,11 @@ fn query_tdg_violations(
     db_path: &Path,
     failing_grades: &[&str],
 ) -> Result<Vec<TdgViolation>, ComplianceCheck> {
+    debug_assert!(
+        db_path.exists(),
+        "db_path must exist: {}",
+        db_path.display()
+    );
     let conn = rusqlite::Connection::open_with_flags(
         db_path,
         rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,

@@ -2,6 +2,7 @@
 
 impl LanguageAnalyzer for SqlAnalyzer {
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let upper = content.to_uppercase();
         let upper_lines: Vec<&str> = upper.lines().collect();
@@ -36,6 +37,7 @@ impl LanguageAnalyzer for SqlAnalyzer {
     }
 
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let end = function.line_end.min(lines.len().saturating_sub(1));
         let func_lines = &lines[function.line_start..=end];
@@ -85,6 +87,7 @@ impl LanguageAnalyzer for SqlAnalyzer {
 impl SqlAnalyzer {
     /// Extract name from CREATE FUNCTION/VIEW/TRIGGER/PROCEDURE statements
     fn extract_sql_object_name(trimmed_upper: &str) -> Option<String> {
+        debug_assert!(!trimmed_upper.is_empty(), "trimmed_upper must not be empty");
         // Pattern: CREATE [OR REPLACE] (FUNCTION|PROCEDURE|VIEW|TRIGGER) name
         let rest = if let Some(r) = trimmed_upper.strip_prefix("CREATE OR REPLACE ") {
             r
@@ -143,6 +146,7 @@ impl SqlAnalyzer {
 
     /// Extract CTE names from a WITH clause
     fn extract_cte_names(first_rest: &str, _lines: &[&str], _start: usize) -> Vec<String> {
+        debug_assert!(!first_rest.is_empty(), "first_rest must not be empty");
         let mut names = Vec::new();
         // First CTE: WITH name AS
         let name = first_rest

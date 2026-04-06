@@ -156,6 +156,7 @@ impl ArtifactWriter {
 
     /// Write template artifacts
     fn write_template_artifacts(&mut self, templates: &[Template]) -> Result<(), TemplateError> {
+        debug_assert!(!templates.is_empty(), "templates must not be empty");
         for template in templates {
             let filename = format!("{}.hbs", template.name);
             let path = self.root.join("templates").join(&filename);

@@ -71,21 +71,25 @@ impl MutationState {
 
     /// Check if all mutants have been completed
     pub fn is_complete(&self) -> bool {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         self.pending_mutants.is_empty()
     }
 
     /// Get the total number of mutants
     pub fn total_mutants(&self) -> usize {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         self.completed_mutants.len() + self.pending_mutants.len()
     }
 
     /// Get the number of completed mutants
     pub fn completed_count(&self) -> usize {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         self.completed_mutants.len()
     }
 
     /// Get completion percentage
     pub fn completion_percentage(&self) -> f64 {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         if self.total_mutants() == 0 {
             return 100.0;
         }
@@ -95,6 +99,7 @@ impl MutationState {
 
     /// Add a completed mutant result
     pub fn add_result(&mut self, result: MutationResult) {
+        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         // Remove the mutant from pending
         self.pending_mutants.retain(|m| m.id != result.mutant.id);
 

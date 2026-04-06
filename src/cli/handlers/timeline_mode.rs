@@ -18,6 +18,7 @@ pub enum TimelineMode {
 impl TimelineMode {
     /// Parse mode from command-line arguments
     pub fn from_args(args: &[&str]) -> Self {
+        debug_assert!(!args.is_empty(), "args must not be empty");
         if args.contains(&"--interactive") || args.contains(&"-i") {
             TimelineMode::Interactive
         } else {
@@ -58,6 +59,7 @@ impl TimelineMode {
 
     /// Validate arguments for conflicting flags
     pub fn validate_args(args: &[&str]) -> Result<()> {
+        debug_assert!(!args.is_empty(), "args must not be empty");
         let has_interactive = args.contains(&"--interactive") || args.contains(&"-i");
         let has_json = args.contains(&"--json");
 
@@ -89,6 +91,7 @@ impl TimelineMode {
 /// Placeholder for handle_timeline function
 /// This will be properly implemented when integrating with existing timeline command
 pub fn handle_timeline(_args: &[&str]) -> Result<()> {
+    debug_assert!(!_args.is_empty(), "_args must not be empty");
     Ok(())
 }
 

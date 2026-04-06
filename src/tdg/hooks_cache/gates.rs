@@ -76,6 +76,7 @@ impl HooksCacheManager {
 
     /// Check which gates need to run (partial cache check)
     pub fn check_gates(&self, gates: &[GateDefinition]) -> Result<GateCheckResult> {
+        debug_assert!(!gates.is_empty(), "gates must not be empty");
         let mut cached = Vec::new();
         let mut uncached = Vec::new();
 

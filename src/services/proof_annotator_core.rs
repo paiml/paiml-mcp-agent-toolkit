@@ -85,6 +85,7 @@ impl ProofAnnotator {
 
     /// Merge results from multiple sources with conflict resolution
     fn merge_with_conflict_resolution(&self, results: Vec<ProofCollectionResult>) -> ProofMap {
+        debug_assert!(!results.is_empty(), "results must not be empty");
         let mut proof_map: ProofMap = std::collections::HashMap::new();
         let mut total_errors = 0;
 

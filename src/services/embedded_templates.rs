@@ -163,6 +163,10 @@ fn parse_toolchain(toolchain_str: &str) -> Result<Toolchain, TemplateError> {
 }
 
 fn convert_embedded_parameters(embedded_params: Vec<EmbeddedParameter>) -> Vec<ParameterSpec> {
+    debug_assert!(
+        !embedded_params.is_empty(),
+        "embedded_params must not be empty"
+    );
     embedded_params
         .into_iter()
         .map(convert_embedded_parameter)

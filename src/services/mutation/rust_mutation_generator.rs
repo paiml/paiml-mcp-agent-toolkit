@@ -223,6 +223,7 @@ fn unwrap(value: Option<i32>) -> i32 {
     fn test_rust_generator_method_chains() {
         let source = r#"
 fn process(values: Vec<i32>) -> Vec<i32> {
+    debug_assert!(!values.is_empty(), "values must not be empty");
     values.iter().map(|x| x * 2).collect()
 }
 "#;

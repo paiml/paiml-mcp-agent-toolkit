@@ -11,6 +11,7 @@ impl SATDDetector {
     /// Generate project-wide SATD metrics
     #[must_use]
     pub fn generate_metrics(&self, debts: &[TechnicalDebt], total_loc: u64) -> SATDMetrics {
+        debug_assert!(!debts.is_empty(), "debts must not be empty");
         let debt_density = if total_loc > 0 {
             (debts.len() as f64 / total_loc as f64) * 1000.0
         } else {

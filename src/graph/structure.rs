@@ -256,6 +256,7 @@ mod tests {
     use std::path::PathBuf;
 
     fn make_test_node(name: &str) -> NodeData {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         NodeData {
             path: PathBuf::from(format!("{}.rs", name)),
             module: name.to_string(),

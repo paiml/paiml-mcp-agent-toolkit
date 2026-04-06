@@ -4,6 +4,7 @@ impl ClaimExtractor {
         patterns: &[Regex],
         text: &'a str,
     ) -> Option<(usize, String, regex::Captures<'a>)> {
+        debug_assert!(!patterns.is_empty(), "patterns must not be empty");
         for pattern in patterns {
             if let Some(captures) = pattern.captures(text) {
                 let full_match = captures

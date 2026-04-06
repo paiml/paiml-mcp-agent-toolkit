@@ -391,6 +391,7 @@ pub fn validate_subcontracting(
     parent_ensure: &[ContractClause],
     child_ensure: &[ContractClause],
 ) -> Result<(), SubcontractingViolation> {
+    debug_assert!(!parent_ensure.is_empty(), "parent_ensure must not be empty");
     for parent_clause in parent_ensure {
         let child_clause = child_ensure.iter().find(|c| c.id == parent_clause.id);
         match child_clause {

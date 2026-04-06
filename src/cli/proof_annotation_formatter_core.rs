@@ -13,6 +13,7 @@ pub fn format_confidence_stats(
     annotations: &[(Location, ProofAnnotation)],
     output: &mut String,
 ) -> Result<()> {
+    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     let mut confidence_counts = HashMap::new();
     for (_, ann) in annotations {
         let key = format!("{:?}", ann.confidence_level);
@@ -33,6 +34,7 @@ pub fn format_method_stats(
     annotations: &[(Location, ProofAnnotation)],
     output: &mut String,
 ) -> Result<()> {
+    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     use crate::models::unified_ast::VerificationMethod;
 
     let mut method_counts = HashMap::new();
@@ -61,6 +63,7 @@ pub fn format_property_stats(
     annotations: &[(Location, ProofAnnotation)],
     output: &mut String,
 ) -> Result<()> {
+    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     let mut property_counts = HashMap::new();
     for (_, ann) in annotations {
         let key = format!("{:?}", ann.property_proven);
@@ -80,6 +83,7 @@ pub fn format_property_stats(
 pub fn group_by_file(
     annotations: &[(Location, ProofAnnotation)],
 ) -> HashMap<std::path::PathBuf, Vec<(Location, ProofAnnotation)>> {
+    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     let mut proofs_by_file = HashMap::new();
     for (loc, ann) in annotations {
         proofs_by_file
@@ -142,6 +146,7 @@ pub(crate) fn format_proof_metadata(annotation: &ProofAnnotation, output: &mut S
 }
 
 pub(crate) fn format_proof_assumptions(assumptions: &[String], output: &mut String) -> Result<()> {
+    debug_assert!(!assumptions.is_empty(), "assumptions must not be empty");
     if !assumptions.is_empty() {
         writeln!(output, "\n**Assumptions**:")?;
         for assumption in assumptions {
@@ -165,6 +170,7 @@ pub fn format_provability_summary(
     output: &mut String,
     _include_evidence: bool,
 ) -> Result<()> {
+    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     let total_functions = summaries.len();
     let high_provability = summaries
         .iter()

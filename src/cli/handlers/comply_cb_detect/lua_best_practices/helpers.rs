@@ -171,6 +171,7 @@ pub fn count_consecutive_field_access(line: &str) -> usize {
 
 /// Measure one access chain starting at an identifier. Returns (depth, new_position).
 fn measure_access_chain(bytes: &[u8], start: usize) -> (usize, usize) {
+    debug_assert!(!bytes.is_empty(), "bytes must not be empty");
     let mut depth = 1;
     let mut i = skip_identifier(bytes, start);
     while i < bytes.len() {

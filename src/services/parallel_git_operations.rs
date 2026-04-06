@@ -24,6 +24,7 @@ impl ParallelGitExecutor {
 
     /// Execute a single git command with caching
     pub async fn execute_command(&self, args: Vec<&str>) -> Result<String> {
+        debug_assert!(!args.is_empty(), "args must not be empty");
         // Generate cache key
         let cache_key = format!("git_{}", args.join("_"));
 
@@ -73,6 +74,7 @@ impl ParallelGitExecutor {
 
     /// Execute multiple git commands in parallel
     pub async fn execute_batch(&self, commands: Vec<Vec<&str>>) -> Result<Vec<String>> {
+        debug_assert!(!commands.is_empty(), "commands must not be empty");
         let futures: Vec<_> = commands
             .into_iter()
             .map(|args| {
@@ -126,6 +128,7 @@ impl ParallelGitExecutor {
 
     /// Execute batch with owned strings (helper for complex commands)
     async fn execute_batch_owned(&self, commands: Vec<Vec<String>>) -> Result<Vec<String>> {
+        debug_assert!(!commands.is_empty(), "commands must not be empty");
         let futures: Vec<_> = commands
             .into_iter()
             .map(|args| {

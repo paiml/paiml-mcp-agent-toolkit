@@ -47,6 +47,7 @@ impl DemoProtocol for McpDemoAdapter {
     type Error = McpDemoError;
 
     async fn decode_request(&self, raw: &[u8]) -> Result<Self::Request, Self::Error> {
+        debug_assert!(!raw.is_empty(), "raw must not be empty");
         let request: McpRequest = serde_json::from_slice(raw)?;
 
         // Validate JSON-RPC format

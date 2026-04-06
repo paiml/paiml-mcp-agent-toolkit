@@ -285,6 +285,7 @@ mod tests {
         let code = quote! {
             #[wasm_bindgen]
             pub fn process_data(input: Vec<u8>) -> Box<String> {
+                debug_assert!(!input.is_empty(), "input must not be empty");
                 Box::new(String::from_utf8_lossy(&input).to_string())
             }
         };

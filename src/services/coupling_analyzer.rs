@@ -233,6 +233,7 @@ mod coverage_tests {
     }
 
     fn create_edge(from: &str, to: &str) -> Edge {
+        debug_assert!(!from.is_empty(), "from must not be empty");
         Edge {
             from: from.to_string(),
             to: to.to_string(),

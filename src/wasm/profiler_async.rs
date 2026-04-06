@@ -22,6 +22,7 @@ impl AsyncProfiler {
 
     /// Profile a WASM module
     pub async fn profile_module(&self, binary: &[u8]) -> Result<ProfilingReport> {
+        debug_assert!(!binary.is_empty(), "binary must not be empty");
         // Parse and analyze the module
         let instruction_mix = self.analyze_instruction_mix(binary)?;
         let hot_functions = self.identify_hot_functions(binary)?;
@@ -36,6 +37,7 @@ impl AsyncProfiler {
 
     /// Analyze instruction mix in the module
     fn analyze_instruction_mix(&self, binary: &[u8]) -> Result<InstructionMix> {
+        debug_assert!(!binary.is_empty(), "binary must not be empty");
         let mut total = 0;
         let mut control_flow = 0;
         let mut memory_ops = 0;
@@ -74,6 +76,7 @@ impl AsyncProfiler {
 
     /// Identify hot functions through static analysis
     fn identify_hot_functions(&self, binary: &[u8]) -> Result<Vec<HotFunction>> {
+        debug_assert!(!binary.is_empty(), "binary must not be empty");
         let mut functions = Vec::new();
         let mut function_sizes = Vec::new();
         let mut total_size = 0;
@@ -116,6 +119,7 @@ impl AsyncProfiler {
 
     /// Analyze memory usage patterns
     fn analyze_memory_usage(&self, binary: &[u8]) -> Result<MemoryProfile> {
+        debug_assert!(!binary.is_empty(), "binary must not be empty");
         let mut initial_pages = 1;
         let mut max_pages = None;
         let mut has_memory = false;

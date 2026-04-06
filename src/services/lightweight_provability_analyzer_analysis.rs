@@ -159,6 +159,7 @@ impl LightweightProvabilityAnalyzer {
         &self,
         changed_functions: &[FunctionId],
     ) -> Vec<ProofSummary> {
+        debug_assert!(!changed_functions.is_empty(), "changed_functions must not be empty");
         let impact_set = self.compute_impact_set(changed_functions);
 
         impact_set
@@ -319,6 +320,7 @@ impl LightweightProvabilityAnalyzer {
     }
 
     fn compute_impact_set(&self, changed_functions: &[FunctionId]) -> Vec<FunctionId> {
+        debug_assert!(!changed_functions.is_empty(), "changed_functions must not be empty");
         // In a real implementation, this would use call graph analysis
         // For now, just return the changed functions
         changed_functions.to_vec()

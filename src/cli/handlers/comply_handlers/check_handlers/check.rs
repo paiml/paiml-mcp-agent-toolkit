@@ -1070,6 +1070,7 @@ pub(crate) fn build_cb_result(
     critical_count: usize,
     warning_count: usize,
 ) -> ComplianceCheck {
+    debug_assert!(!all_issues.is_empty(), "all_issues must not be empty");
     if critical_count > 0 {
         ComplianceCheck {
             name: "ComputeBrick Compliance".into(),
@@ -1181,6 +1182,10 @@ pub(crate) fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceChe
 fn collect_triaged_violations(
     violation_sets: &[Vec<crate::cli::handlers::comply_cb_detect::CbPatternViolation>],
 ) -> (Vec<String>, usize, usize, usize) {
+    debug_assert!(
+        !violation_sets.is_empty(),
+        "violation_sets must not be empty"
+    );
     use crate::cli::handlers::comply_cb_detect::Severity as CbSev;
     let mut all_issues = Vec::new();
     let (mut critical, mut error, mut warning) = (0, 0, 0);

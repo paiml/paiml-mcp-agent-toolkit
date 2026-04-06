@@ -146,6 +146,7 @@ fn entropy_violation_to_tuple(
 
 /// Parse score_factors strings to extract pattern_type, repetitions, variation_score.
 fn parse_entropy_score_factors(factors: &[String]) -> (String, usize, f64) {
+    debug_assert!(!factors.is_empty(), "factors must not be empty");
     let mut pattern_type = String::new();
     let mut repetitions: usize = 0;
     let mut variation_score: f64 = 0.0;

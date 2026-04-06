@@ -61,6 +61,7 @@ impl DefaultWorkflowExecutor {
         steps: &[WorkflowStep],
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
+        debug_assert!(!steps.is_empty(), "steps must not be empty");
         let futures = steps.iter().map(|step| self.execute_step(step, context));
 
         let results = join_all(futures).await;
@@ -88,6 +89,7 @@ impl DefaultWorkflowExecutor {
         steps: &[WorkflowStep],
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
+        debug_assert!(!steps.is_empty(), "steps must not be empty");
         let mut last_output = serde_json::json!({});
 
         for step in steps {

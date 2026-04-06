@@ -25,6 +25,7 @@ fn suppression_suffix(count: u32, prefix: &str) -> String {
 }
 
 fn truncate_issues(issues: Vec<String>) -> Vec<String> {
+    debug_assert!(!issues.is_empty(), "issues must not be empty");
     if issues.len() <= 20 {
         return issues;
     }

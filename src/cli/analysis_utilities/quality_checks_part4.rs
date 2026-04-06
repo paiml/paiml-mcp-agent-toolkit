@@ -493,6 +493,7 @@ pub fn add_top_files_ranking(
     files: Vec<crate::services::complexity::FileComplexityMetrics>,
     top_files: usize,
 ) -> Vec<crate::services::complexity::FileComplexityMetrics> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     if top_files == 0 {
         files
     } else {

@@ -43,6 +43,7 @@ pub struct SingleResponsibilityPattern;
 
 impl DesignPattern for SingleResponsibilityPattern {
     fn apply(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         // Look for functions that do too many things
         let mut result = code.to_string();
 
@@ -57,6 +58,7 @@ impl DesignPattern for SingleResponsibilityPattern {
     }
 
     fn detect_violations(&self, code: &str) -> Vec<PatternViolation> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut violations = Vec::new();
 
         // Check for functions with multiple responsibilities
@@ -87,6 +89,7 @@ pub struct DryPattern;
 
 impl DesignPattern for DryPattern {
     fn apply(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut result = code.to_string();
 
         // Look for duplicate code patterns
@@ -99,6 +102,7 @@ impl DesignPattern for DryPattern {
     }
 
     fn detect_violations(&self, code: &str) -> Vec<PatternViolation> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut violations = Vec::new();
 
         if self.has_duplicates(code) {
@@ -125,6 +129,7 @@ impl DesignPattern for DryPattern {
 
 impl DryPattern {
     fn has_duplicates(&self, code: &str) -> bool {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let lines: Vec<&str> = code.lines().collect();
         let mut line_counts = HashMap::new();
 
@@ -144,6 +149,7 @@ pub struct KissPattern;
 
 impl DesignPattern for KissPattern {
     fn apply(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut result = code.to_string();
 
         // Look for overly complex expressions
@@ -156,6 +162,7 @@ impl DesignPattern for KissPattern {
     }
 
     fn detect_violations(&self, code: &str) -> Vec<PatternViolation> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut violations = Vec::new();
 
         if self.has_complex_expressions(code) {
@@ -182,6 +189,7 @@ impl DesignPattern for KissPattern {
 
 impl KissPattern {
     fn has_complex_expressions(&self, code: &str) -> bool {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         // Look for deeply nested expressions or long lines
         code.lines().any(|line| {
             line.len() > 100
@@ -196,6 +204,7 @@ pub struct YagniPattern;
 
 impl DesignPattern for YagniPattern {
     fn apply(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut result = code.to_string();
 
         // Look for unused or speculative code
@@ -207,6 +216,7 @@ impl DesignPattern for YagniPattern {
     }
 
     fn detect_violations(&self, code: &str) -> Vec<PatternViolation> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut violations = Vec::new();
 
         if self.has_unused_code(code) {
@@ -233,6 +243,7 @@ impl DesignPattern for YagniPattern {
 
 impl YagniPattern {
     fn has_unused_code(&self, code: &str) -> bool {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         // Simple heuristic: look for commented out code or functions with "future" in name
         code.contains("// TODO: future")
             || code.contains("fn future_")
@@ -245,6 +256,7 @@ pub struct DependencyInjectionPattern;
 
 impl DesignPattern for DependencyInjectionPattern {
     fn apply(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut result = code.to_string();
 
         // Look for hard-coded dependencies
@@ -257,6 +269,7 @@ impl DesignPattern for DependencyInjectionPattern {
     }
 
     fn detect_violations(&self, code: &str) -> Vec<PatternViolation> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut violations = Vec::new();
 
         if self.has_hard_dependencies(code) {
@@ -283,6 +296,7 @@ impl DesignPattern for DependencyInjectionPattern {
 
 impl DependencyInjectionPattern {
     fn has_hard_dependencies(&self, code: &str) -> bool {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         // Look for direct instantiation of concrete types
         code.contains("::new()") && !code.contains("impl")
             || code.contains("std::fs::File::open")

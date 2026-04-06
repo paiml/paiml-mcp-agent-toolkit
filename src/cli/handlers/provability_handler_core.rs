@@ -87,6 +87,7 @@ fn prepare_filtered_summaries(
     summaries: &[ProofSummary],
     high_confidence_only: bool,
 ) -> Vec<ProofSummary> {
+    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     use crate::cli::provability_helpers::filter_summaries;
     let filtered = filter_summaries(summaries, high_confidence_only);
     filtered.into_iter().cloned().collect()
@@ -98,6 +99,7 @@ fn format_provability_output(
     summaries: &[ProofSummary],
     config: &ProvabilityConfig,
 ) -> Result<String> {
+    debug_assert!(!function_ids.is_empty(), "function_ids must not be empty");
     use crate::cli::provability_helpers::{
         format_provability_detailed, format_provability_json, format_provability_sarif,
         format_provability_summary,

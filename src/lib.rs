@@ -440,6 +440,7 @@ impl TemplateServerTrait for TemplateServer {
     }
 
     async fn list_templates(&self, _prefix: &str) -> Result<Vec<Arc<TemplateResource>>> {
+        debug_assert!(!_prefix.is_empty(), "_prefix must not be empty");
         // Dummy implementation - use StatelessTemplateServer instead
         Err(anyhow::anyhow!(
             "TemplateServer with S3 is deprecated. Use StatelessTemplateServer instead."
@@ -501,6 +502,7 @@ pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) ->
 /// Check if line should be skipped (cognitive complexity ≤2)
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn should_skip_line(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     line.trim().is_empty()
 }
 
@@ -510,6 +512,7 @@ async fn process_mcp_line<T: TemplateServerTrait + 'static, W: std::io::Write>(
     server: Arc<T>,
     stdout: &mut W,
 ) -> Result<()> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     match parse_mcp_request(line) {
         Ok(request) => handle_valid_request(request, server, stdout).await,
         Err(e) => handle_parse_error(&e, stdout),
@@ -519,6 +522,7 @@ async fn process_mcp_line<T: TemplateServerTrait + 'static, W: std::io::Write>(
 /// Parse MCP request from line (cognitive complexity ≤2)
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_mcp_request(line: &str) -> Result<crate::models::mcp::McpRequest> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     serde_json::from_str(line).map_err(anyhow::Error::from)
 }
 

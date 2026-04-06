@@ -11,6 +11,7 @@ impl MutantExecutor {
         mutants: &[Mutant],
         workers: usize,
     ) -> Result<Vec<MutationResult>> {
+        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         use std::sync::Arc;
         use tokio::sync::Semaphore;
 

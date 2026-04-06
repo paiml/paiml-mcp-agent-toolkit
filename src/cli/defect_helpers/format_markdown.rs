@@ -29,6 +29,7 @@ use std::fmt::Write;
 /// assert!(summary.contains("**Total files analyzed**: 1"));
 /// ```
 pub fn format_defect_summary(predictions: &[(String, DefectScore)]) -> Result<String> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut output = String::new();
 
     writeln!(&mut output, "# Defect Prediction Summary\n")?;
@@ -80,6 +81,7 @@ pub fn format_defect_markdown(
     predictions: &[(String, DefectScore)],
     include_recommendations: bool,
 ) -> Result<String> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut output = String::new();
 
     writeln!(&mut output, "# Defect Prediction Report\n")?;
@@ -96,6 +98,7 @@ pub(crate) fn write_summary_section(
     output: &mut String,
     predictions: &[(String, DefectScore)],
 ) -> Result<()> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     writeln!(output, "## Summary\n")?;
     writeln!(output, "**Total files analyzed**: {}", predictions.len())?;
     Ok(())
@@ -106,6 +109,7 @@ pub(crate) fn write_risk_distribution_table(
     output: &mut String,
     predictions: &[(String, DefectScore)],
 ) -> Result<()> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let (high_risk, medium_risk, low_risk) = calculate_risk_counts(predictions);
     let total = predictions.len() as f64;
 
@@ -124,6 +128,7 @@ pub(crate) fn write_risk_distribution_table(
 pub(crate) fn calculate_risk_counts(
     predictions: &[(String, DefectScore)],
 ) -> (usize, usize, usize) {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let high_risk = predictions
         .iter()
         .filter(|(_, s)| s.probability > 0.7)
@@ -166,6 +171,7 @@ pub(crate) fn write_detailed_predictions(
     predictions: &[(String, DefectScore)],
     include_recommendations: bool,
 ) -> Result<()> {
+    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     writeln!(output, "\n## Detailed Predictions\n")?;
 
     for (file, score) in predictions.iter().take(20) {

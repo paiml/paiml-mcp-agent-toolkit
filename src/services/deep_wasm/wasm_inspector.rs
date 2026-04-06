@@ -44,6 +44,7 @@ impl WasmInspector {
 
     /// Inspects WASM binary from bytes
     pub fn inspect_bytes(&self, bytes: &[u8]) -> DeepWasmResult<WasmModuleAnalysis> {
+        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         // Check size limit
         if bytes.len() as u64 > self.max_module_size {
             return Err(DeepWasmError::QualityGate(format!(

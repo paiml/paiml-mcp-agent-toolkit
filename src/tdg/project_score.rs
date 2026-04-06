@@ -29,6 +29,7 @@ pub struct ProjectScore {
 impl ProjectScore {
     #[must_use]
     pub fn aggregate(scores: Vec<TdgScore>) -> Self {
+        debug_assert!(!scores.is_empty(), "scores must not be empty");
         let total_files = scores.len();
         let average_score = if total_files > 0 {
             scores.iter().map(|s| s.total).sum::<f32>() / total_files as f32

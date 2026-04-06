@@ -5,6 +5,7 @@ impl LuaAnalyzer {
 
     #[cfg(feature = "lua-ast")]
     fn extract_functions_treesitter(&self, content: &str) -> Option<Vec<FunctionInfo>> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use tree_sitter::Parser as TsParser;
         let mut parser = TsParser::new();
         parser
@@ -58,6 +59,7 @@ impl LuaAnalyzer {
         content: &str,
         function: &FunctionInfo,
     ) -> Option<ComplexityMetrics> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use tree_sitter::Parser as TsParser;
         let mut parser = TsParser::new();
         parser
@@ -165,6 +167,7 @@ impl LuaAnalyzer {
     // ===== Heuristic fallback =====
 
     fn extract_functions_heuristic(&self, content: &str) -> Vec<FunctionInfo> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
 
@@ -189,6 +192,7 @@ impl LuaAnalyzer {
         content: &str,
         function: &FunctionInfo,
     ) -> ComplexityMetrics {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let end = function.line_end.min(lines.len() - 1);
         let function_lines = &lines[function.line_start..=end];
@@ -246,6 +250,7 @@ impl LuaAnalyzer {
     }
 
     fn extract_function_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let after = if let Some(rest) = line.strip_prefix("local function ") {
             rest
         } else if let Some(rest) = line.strip_prefix("function ") {

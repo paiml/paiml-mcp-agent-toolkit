@@ -60,6 +60,7 @@ impl LibsqlBackend {
 
 impl StorageBackend for LibsqlBackend {
     fn put(&self, key: &[u8], value: &[u8]) -> Result<()> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         let db = self.db.lock();
         db.execute(
             "INSERT OR REPLACE INTO tdg_storage (key, value) VALUES (?, ?)",
@@ -69,6 +70,7 @@ impl StorageBackend for LibsqlBackend {
     }
 
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         let db = self.db.lock();
         let mut stmt = db.prepare_cached("SELECT value FROM tdg_storage WHERE key = ?")?;
 
@@ -82,12 +84,14 @@ impl StorageBackend for LibsqlBackend {
     }
 
     fn delete(&self, key: &[u8]) -> Result<()> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         let db = self.db.lock();
         db.execute("DELETE FROM tdg_storage WHERE key = ?", [key])?;
         Ok(())
     }
 
     fn contains(&self, key: &[u8]) -> Result<bool> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         let db = self.db.lock();
         let mut stmt = db.prepare_cached("SELECT 1 FROM tdg_storage WHERE key = ? LIMIT 1")?;
         let result = stmt.query_row([key], |_row| Ok(()));
@@ -100,6 +104,7 @@ impl StorageBackend for LibsqlBackend {
     }
 
     fn iter(&self) -> Result<StorageIterator<'_>> {
+        debug_assert!(self.path.exists(), "self.path must exist");
         // For iteration, we need to collect all data first since we can't hold
         // the lock across iterator lifetime
         let db = self.db.lock();
@@ -116,6 +121,7 @@ impl StorageBackend for LibsqlBackend {
     }
 
     fn size_on_disk(&self) -> Result<u64> {
+        debug_assert!(self.path.exists(), "self.path must exist");
         if self.path.to_str() == Some(":memory:") {
             // In-memory database - estimate from row count
             let db = self.db.lock();
@@ -136,6 +142,7 @@ impl StorageBackend for LibsqlBackend {
     }
 
     fn flush(&self) -> Result<()> {
+        debug_assert!(self.path.exists(), "self.path must exist");
         // SQLite auto-commits by default, but we can execute a checkpoint for WAL mode
         let db = self.db.lock();
         // Try WAL checkpoint, ignore error if not in WAL mode
@@ -144,16 +151,19 @@ impl StorageBackend for LibsqlBackend {
     }
 
     fn clear(&self) -> Result<()> {
+        debug_assert!(self.path.exists(), "self.path must exist");
         let db = self.db.lock();
         db.execute("DELETE FROM tdg_storage", [])?;
         Ok(())
     }
 
     fn backend_name(&self) -> &'static str {
+        debug_assert!(self.path.exists(), "self.path must exist");
         "libsql"
     }
 
     fn get_stats(&self) -> HashMap<String, String> {
+        debug_assert!(self.path.exists(), "self.path must exist");
         let mut stats = HashMap::new();
 
         let db = self.db.lock();

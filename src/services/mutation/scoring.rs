@@ -13,6 +13,7 @@ pub struct MutationScorer {
 impl MutationScorer {
     /// Create new scorer from results
     pub fn new(results: Vec<MutationResult>) -> Self {
+        debug_assert!(!results.is_empty(), "results must not be empty");
         Self { results }
     }
 

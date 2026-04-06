@@ -14,6 +14,7 @@ impl CorrelationEngine {
         dwarf_entries: &[DwarfDebugEntry],
         source_map_entries: &[SourceMapEntry],
     ) -> DeepWasmResult<Vec<SourceToWasmMapping>> {
+        debug_assert!(!dwarf_entries.is_empty(), "dwarf_entries must not be empty");
         let mut mappings = Vec::new();
 
         // Build DWARF function map (name -> entry)

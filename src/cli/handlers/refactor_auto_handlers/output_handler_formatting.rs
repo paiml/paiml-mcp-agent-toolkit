@@ -10,6 +10,7 @@ async fn format_and_output_results(
     final_validation: &ValidationResult,
     context: &RefactorContext,
 ) -> Result<()> {
+    debug_assert!(!iteration_results.is_empty(), "iteration_results must not be empty");
     use crate::cli::colors as c;
     eprintln!("{}", c::dim("Formatting and outputting refactoring results..."));
 
@@ -37,6 +38,7 @@ async fn output_json_results(
     final_validation: &ValidationResult,
     context: &RefactorContext,
 ) -> Result<()> {
+    debug_assert!(!iteration_results.is_empty(), "iteration_results must not be empty");
     let summary = create_refactoring_summary(iteration_results, final_validation, context).await?;
 
     let json_output = serde_json::json!({
@@ -80,6 +82,7 @@ async fn output_markdown_results(
     final_validation: &ValidationResult,
     context: &RefactorContext,
 ) -> Result<()> {
+    debug_assert!(!iteration_results.is_empty(), "iteration_results must not be empty");
     let summary = create_refactoring_summary(iteration_results, final_validation, context).await?;
 
     println!("# Automated Refactoring Report\n");
@@ -181,6 +184,7 @@ async fn output_text_results(
     final_validation: &ValidationResult,
     context: &RefactorContext,
 ) -> Result<()> {
+    debug_assert!(!iteration_results.is_empty(), "iteration_results must not be empty");
     use crate::cli::colors as c;
     let summary = create_refactoring_summary(iteration_results, final_validation, context).await?;
 
@@ -267,6 +271,7 @@ async fn create_refactoring_summary(
     _final_validation: &ValidationResult,
     _context: &RefactorContext,
 ) -> Result<RefactoringSummary> {
+    debug_assert!(!iteration_results.is_empty(), "iteration_results must not be empty");
     let total_successful_requests = iteration_results
         .iter()
         .map(|r| r.successful_requests.len())

@@ -216,6 +216,7 @@ fn collect_drift_orphans(
 }
 
 fn print_drift_report(orphans: &[DriftInfo], format: SpecOutputFormat) -> anyhow::Result<()> {
+    debug_assert!(!orphans.is_empty(), "orphans must not be empty");
     match format {
         SpecOutputFormat::Text => print_drift_text(orphans),
         SpecOutputFormat::Json => print_drift_json(orphans)?,
@@ -225,6 +226,7 @@ fn print_drift_report(orphans: &[DriftInfo], format: SpecOutputFormat) -> anyhow
 }
 
 fn print_drift_json(orphans: &[DriftInfo]) -> anyhow::Result<()> {
+    debug_assert!(!orphans.is_empty(), "orphans must not be empty");
     let json: Vec<_> = orphans
         .iter()
         .map(|o| {
@@ -242,6 +244,7 @@ fn print_drift_json(orphans: &[DriftInfo]) -> anyhow::Result<()> {
 }
 
 fn print_drift_markdown(orphans: &[DriftInfo]) {
+    debug_assert!(!orphans.is_empty(), "orphans must not be empty");
     println!("# Spec Drift Report\n");
     if orphans.is_empty() {
         println!("✅ No drift detected.");
@@ -257,6 +260,7 @@ fn print_drift_markdown(orphans: &[DriftInfo]) {
 }
 
 fn print_drift_text(orphans: &[DriftInfo]) {
+    debug_assert!(!orphans.is_empty(), "orphans must not be empty");
     use crate::cli::colors as c;
     if orphans.is_empty() {
         println!("{}", c::pass("No drift detected. All specs are properly linked."));

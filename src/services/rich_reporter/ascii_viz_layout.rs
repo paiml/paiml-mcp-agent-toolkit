@@ -120,6 +120,7 @@ pub struct TableRenderer {
 impl TableRenderer {
     /// Create a new table renderer with column widths
     pub fn new(widths: Vec<usize>) -> Self {
+        debug_assert!(!widths.is_empty(), "widths must not be empty");
         let alignments = vec![false; widths.len()];
         TableRenderer {
             widths,
@@ -130,12 +131,14 @@ impl TableRenderer {
 
     /// Set column alignment (true = right, false = left)
     pub fn with_alignments(mut self, alignments: Vec<bool>) -> Self {
+        debug_assert!(!alignments.is_empty(), "alignments must not be empty");
         self.alignments = alignments;
         self
     }
 
     /// Render a header row
     pub fn render_header(&self, headers: &[&str]) -> String {
+        debug_assert!(!headers.is_empty(), "headers must not be empty");
         let box_drawer = BoxDrawer::default();
         let mut lines = Vec::new();
 
@@ -178,6 +181,7 @@ impl TableRenderer {
 
     /// Render a data row
     pub fn render_row(&self, cells: &[&str]) -> String {
+        debug_assert!(!cells.is_empty(), "cells must not be empty");
         let box_drawer = BoxDrawer::default();
 
         let cell_strings: String = cells

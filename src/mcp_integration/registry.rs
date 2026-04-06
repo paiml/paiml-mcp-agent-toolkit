@@ -126,10 +126,12 @@ impl ResourceRegistry {
     }
 
     pub fn get(&self, uri_template: &str) -> Option<Arc<dyn McpResource>> {
+        debug_assert!(!uri_template.is_empty(), "uri_template must not be empty");
         self.resources.get(uri_template).cloned()
     }
 
     pub fn find_matching(&self, uri: &str) -> Option<Arc<dyn McpResource>> {
+        debug_assert!(!uri.is_empty(), "uri must not be empty");
         // Simple pattern matching - could be enhanced
         for (template, resource) in &self.resources {
             if uri.starts_with(&template.replace("{}", "")) {

@@ -55,6 +55,7 @@ fn format_summary_refactoring_opportunities(
     output: &mut String,
     opportunities: &[RefactoringHint],
 ) -> Result<()> {
+    debug_assert!(!opportunities.is_empty(), "opportunities must not be empty");
     use std::fmt::Write;
 
     if !opportunities.is_empty() {
@@ -107,6 +108,7 @@ fn format_exact_duplicates_section(
     output: &mut String,
     exact_duplicates: &[SimilarBlock],
 ) -> Result<()> {
+    debug_assert!(!exact_duplicates.is_empty(), "exact_duplicates must not be empty");
     use std::fmt::Write;
 
     if exact_duplicates.is_empty() {
@@ -150,6 +152,7 @@ fn format_structural_similarities_section(
     output: &mut String,
     structural_similarities: &[SimilarBlock],
 ) -> Result<()> {
+    debug_assert!(!structural_similarities.is_empty(), "structural_similarities must not be empty");
     use std::fmt::Write;
 
     if structural_similarities.is_empty() {
@@ -262,6 +265,7 @@ fn format_refactoring_opportunities_section(
     output: &mut String,
     refactoring_opportunities: &[RefactoringHint],
 ) -> Result<()> {
+    debug_assert!(!refactoring_opportunities.is_empty(), "refactoring_opportunities must not be empty");
     use std::fmt::Write;
 
     if refactoring_opportunities.is_empty() {

@@ -146,6 +146,7 @@ impl MetricTrendStore {
 
     /// Compute linear regression trend
     fn compute_trend(&self, observations: &[MetricObservation]) -> (f64, f64) {
+        debug_assert!(!observations.is_empty(), "observations must not be empty");
         if observations.len() < 2 {
             return (0.0, 1.0); // Not enough data
         }

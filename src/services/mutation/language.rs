@@ -156,10 +156,12 @@ mod tests {
         }
 
         async fn parse(&self, source: &str) -> Result<String> {
+            debug_assert!(!source.is_empty(), "source must not be empty");
             Ok(source.to_string())
         }
 
         async fn unparse(&self, ast: &str) -> Result<String> {
+            debug_assert!(!ast.is_empty(), "ast must not be empty");
             Ok(ast.to_string())
         }
 
@@ -168,6 +170,11 @@ mod tests {
         }
 
         async fn run_tests(&self, _source_file: &Path) -> Result<TestRunResult> {
+            debug_assert!(
+                _source_file.exists(),
+                "_source_file must exist: {}",
+                _source_file.display()
+            );
             Ok(TestRunResult {
                 passed: true,
                 failures: vec![],
@@ -247,10 +254,12 @@ mod tests {
             }
 
             async fn parse(&self, source: &str) -> Result<String> {
+                debug_assert!(!source.is_empty(), "source must not be empty");
                 Ok(source.to_string())
             }
 
             async fn unparse(&self, ast: &str) -> Result<String> {
+                debug_assert!(!ast.is_empty(), "ast must not be empty");
                 Ok(ast.to_string())
             }
 
@@ -259,6 +268,11 @@ mod tests {
             }
 
             async fn run_tests(&self, _source_file: &Path) -> Result<TestRunResult> {
+                debug_assert!(
+                    _source_file.exists(),
+                    "_source_file must exist: {}",
+                    _source_file.display()
+                );
                 Ok(TestRunResult {
                     passed: true,
                     failures: vec![],

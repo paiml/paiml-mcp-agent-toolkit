@@ -84,6 +84,7 @@ impl AnalyzerImpl {
 #[async_trait]
 impl AnalyzerModule for AnalyzerImpl {
     async fn analyze(&self, input: &str) -> Result<Metrics, ModuleError> {
+        debug_assert!(!input.is_empty(), "input must not be empty");
         let ast =
             syn::parse_file(input).map_err(|e| ModuleError::ExecutionFailed(e.to_string()))?;
 

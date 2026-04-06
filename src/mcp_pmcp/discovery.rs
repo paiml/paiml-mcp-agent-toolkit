@@ -88,6 +88,7 @@ impl DiscoveryService {
     /// Disambiguate between multiple tool matches using static priority rules
     #[must_use]
     pub fn disambiguate<'a>(&self, candidates: Vec<&'a str>, context: Option<&Context>) -> &'a str {
+        debug_assert!(!candidates.is_empty(), "candidates must not be empty");
         if candidates.is_empty() {
             return "";
         }
@@ -108,6 +109,7 @@ impl DiscoveryService {
         candidates: &[&'a str],
         context: Option<&Context>,
     ) -> Option<&'a str> {
+        debug_assert!(!candidates.is_empty(), "candidates must not be empty");
         let ext = context.and_then(|ctx| ctx.file_extension.as_deref())?;
         match ext {
             "rs" if candidates.contains(&"analyze_complexity") => Some("analyze_complexity"),

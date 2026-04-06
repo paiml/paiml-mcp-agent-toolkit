@@ -50,6 +50,7 @@ pub struct VectorizedCacheKey {
 impl VectorizedCacheKey {
     #[must_use]
     pub fn from_bytes(bytes: &[u8]) -> Self {
+        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         let hash = blake3::hash(bytes);
         let hash_bytes = hash.as_bytes();
         let hash_low = u64::from_le_bytes([

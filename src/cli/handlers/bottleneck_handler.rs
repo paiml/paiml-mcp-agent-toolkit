@@ -294,6 +294,7 @@ fn get_recommendation(pattern: &str) -> String {
 
 /// Detect file co-change coupling
 fn detect_coupling(commit_files: &[Vec<String>], min_co_changes: usize) -> Vec<CouplingPair> {
+    debug_assert!(!commit_files.is_empty(), "commit_files must not be empty");
     let mut co_changes: HashMap<(String, String), usize> = HashMap::new();
 
     for files in commit_files {

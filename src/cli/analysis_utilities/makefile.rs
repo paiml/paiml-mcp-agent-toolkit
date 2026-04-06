@@ -183,6 +183,7 @@ fn write_makefile_violations_table(
     output: &mut String,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Result<()> {
+    debug_assert!(!filtered_violations.is_empty(), "filtered_violations must not be empty");
     use std::fmt::Write;
 
     if filtered_violations.is_empty() {
@@ -222,6 +223,7 @@ fn write_makefile_fix_suggestions(
     output: &mut String,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Result<()> {
+    debug_assert!(!filtered_violations.is_empty(), "filtered_violations must not be empty");
     use std::fmt::Write;
 
     let violations_with_fixes: Vec<_> = filtered_violations
@@ -274,6 +276,7 @@ fn format_makefile_as_sarif(
 
 // Helper: Build SARIF rules
 fn build_sarif_rules(filtered_violations: &[makefile_linter::Violation]) -> Vec<serde_json::Value> {
+    debug_assert!(!filtered_violations.is_empty(), "filtered_violations must not be empty");
     filtered_violations
         .iter()
         .map(|v| &v.rule)

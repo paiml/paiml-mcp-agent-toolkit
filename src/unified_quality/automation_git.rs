@@ -21,6 +21,7 @@ impl GitSafetyNet {
     }
 
     fn commit_fixes(&self, fixes: &[AppliedFix]) -> Result<()> {
+        debug_assert!(!fixes.is_empty(), "fixes must not be empty");
         let message = format!("Auto-fix: {} violations", fixes.len());
         Command::new("git")
             .current_dir(&self.work_dir)

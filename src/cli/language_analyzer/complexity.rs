@@ -31,6 +31,7 @@ impl BraceState {
 
     /// Process one line of source. Returns true when braces reach balance.
     pub(crate) fn process_line(&mut self, chars: &[char], handle_raw_strings: bool) -> bool {
+        debug_assert!(!chars.is_empty(), "chars must not be empty");
         let len = chars.len();
         let mut j = 0;
         while j < len {

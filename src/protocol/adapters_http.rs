@@ -7,6 +7,7 @@ impl ProtocolAdapter for HttpAdapter {
     type Response = HttpResponse;
 
     fn decode(&self, raw: &[u8]) -> Result<UnifiedRequest, ProtocolError> {
+        debug_assert!(!raw.is_empty(), "raw must not be empty");
         // Parse HTTP request and extract operation from path/method
         let request = parse_http_request(raw)?;
         let operation = route_to_operation(&request.path, &request.method)?;

@@ -101,6 +101,7 @@ pub fn mean_and_std(values: &[f64]) -> (f64, f64) {
 /// assert!((avg - 3.0).abs() < 0.01);
 /// ```
 pub fn compute_avg(dataset: &[f64], backend: Backend) -> Result<f64> {
+    debug_assert!(!dataset.is_empty(), "dataset must not be empty");
     if dataset.is_empty() {
         return Ok(0.0);
     }
@@ -118,6 +119,7 @@ pub fn compute_avg(dataset: &[f64], backend: Backend) -> Result<f64> {
 
 /// Scalar implementation of average (baseline)
 fn compute_avg_scalar(dataset: &[f64]) -> Result<f64> {
+    debug_assert!(!dataset.is_empty(), "dataset must not be empty");
     let sum: f64 = dataset.iter().sum();
     Ok(sum / dataset.len() as f64)
 }
@@ -125,6 +127,7 @@ fn compute_avg_scalar(dataset: &[f64]) -> Result<f64> {
 /// SIMD implementation using trueno
 #[cfg(feature = "analytics-simd")]
 fn compute_avg_simd(dataset: &[f64]) -> Result<f64> {
+    debug_assert!(!dataset.is_empty(), "dataset must not be empty");
     // Scalar placeholder until trueno::simd::sum() is available
     compute_avg_scalar(dataset)
 }
@@ -132,6 +135,7 @@ fn compute_avg_simd(dataset: &[f64]) -> Result<f64> {
 /// GPU implementation using wgpu compute shaders
 #[cfg(feature = "analytics-gpu")]
 fn compute_avg_gpu(dataset: &[f64]) -> Result<f64> {
+    debug_assert!(!dataset.is_empty(), "dataset must not be empty");
     use super::gpu::GpuDevice;
 
     // Initialize GPU device (cached globally)

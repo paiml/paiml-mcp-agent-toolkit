@@ -347,6 +347,7 @@ fn run_batuta_and_parse(project_root: &Path) -> Result<HashMap<String, Vec<Strin
 
 /// Filter fault annotations to those within a function's line range.
 fn faults_in_range(faults: &[String], start_line: usize, end_line: usize) -> Vec<String> {
+    debug_assert!(!faults.is_empty(), "faults must not be empty");
     faults
         .iter()
         .filter(|f| {

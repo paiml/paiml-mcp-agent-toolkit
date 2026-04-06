@@ -9,6 +9,7 @@ impl BigOAnalyzer {
         functions: Vec<FunctionComplexity>,
         pattern_counts: rustc_hash::FxHashMap<String, usize>,
     ) -> BigOAnalysisReport {
+        debug_assert!(!functions.is_empty(), "functions must not be empty");
         let mut distribution = ComplexityDistribution {
             constant: 0,
             logarithmic: 0,

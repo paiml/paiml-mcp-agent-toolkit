@@ -468,6 +468,7 @@ mod property_tests {
     }
 
     fn generate_nested_modules(depth: usize) -> String {
+        debug_assert!(depth > 0, "depth must be positive");
         let mut code = String::new();
         let mut indent = String::new();
 

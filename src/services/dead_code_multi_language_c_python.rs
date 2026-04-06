@@ -196,6 +196,7 @@ fn find_uncalled_functions(
     defined: &[FunctionInfo],
     called: &HashSet<String>,
 ) -> Vec<DeadFunction> {
+    debug_assert!(!defined.is_empty(), "defined must not be empty");
     defined
         .iter()
         .filter(|func| !called.contains(&func.name))
