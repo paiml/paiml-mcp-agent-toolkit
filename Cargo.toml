@@ -724,7 +724,6 @@ style = { level = "warn", priority = -1 }
 pedantic = { level = "allow", priority = -1 }
 complexity = { level = "warn", priority = -1 }
 checked_conversions = "warn"
-unwrap_used = "warn"
 expect_used = "allow"
 
 [profile.release]
