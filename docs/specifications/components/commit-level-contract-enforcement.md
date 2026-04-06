@@ -471,7 +471,7 @@ Priority: **P0** = blocks real enforcement, **P1** = completes spec claim, **P2*
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.0 | 2026-04-06 | apr-cli QA: **9/10 bugs fixed** (#662-669,671,672), 4 infra issues filed. 39 contracts. **76/6/0.** |
+| 3.0 | 2026-04-06 | apr-cli QA: **11 bugs fixed** (#660,662-669,671,672,677), 4 infra issues filed. 39 contracts. **76/6/0.** |
 | 2.8 | 2026-04-05 | Raw string brace counting, CB-1340 accurate fn count, pv binding parser, cross-repo dogfood. **75/7/0.** |
 | 2.7 | 2026-04-05 | YAML name quoting fix + pmat-core.yaml real pv schema. CB-1205/CB-1211/CB-1354 all pass. |
 | 2.6 | 2026-04-05 | R-10 asset_validator (5 tests), R-6 all 5 flags added, R-3 deferred. **9/10 done. Backlog closed.** |
