@@ -623,39 +623,41 @@ fn has_contract_yamls(dir: &Path) -> bool {
 /// Checks local `contracts/` first (if it has YAMLs), then sibling `../provable-contracts/contracts/<name>/`.
 /// Tries both the directory name and the Cargo.toml package name (e.g., paiml-mcp-agent-toolkit → pmat).
 fn resolve_contracts_dir(project_path: &Path) -> Option<std::path::PathBuf> {
-    let local = project_path.join("contracts");
-    if local.exists() && has_contract_yamls(&local) {
-        return Some(local);
-    }
-    // Sibling provable-contracts repo (the convention for batuta stack)
+    // Prefer sibling provable-contracts repo — contains only provable-contracts YAMLs.
+    // Local contracts/ may contain pmat work contracts (different schema) that pv lint
+    // cannot parse.
     let abs = std::fs::canonicalize(project_path).ok()?;
     let parent = abs.parent()?;
     let pv_contracts = parent.join("provable-contracts").join("contracts");
-    if !pv_contracts.exists() {
-        return None;
-    }
-    // Try 1: directory name
-    let dir_name = abs.file_name()?.to_str()?;
-    let sibling = pv_contracts.join(dir_name);
-    if sibling.exists() {
-        return Some(sibling);
-    }
-    // Try 2: Cargo.toml package name (handles paiml-mcp-agent-toolkit → pmat)
-    let cargo_toml = project_path.join("Cargo.toml");
-    if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("name") && trimmed.contains('=') {
-                if let Some(name) = trimmed.split('=').nth(1) {
-                    let pkg = name.trim().trim_matches('"');
-                    let by_pkg = pv_contracts.join(pkg);
-                    if by_pkg.exists() {
-                        return Some(by_pkg);
+    if pv_contracts.exists() {
+        // Try 1: directory name
+        let dir_name = abs.file_name()?.to_str()?;
+        let sibling = pv_contracts.join(dir_name);
+        if sibling.exists() {
+            return Some(sibling);
+        }
+        // Try 2: Cargo.toml package name (handles paiml-mcp-agent-toolkit → pmat)
+        let cargo_toml = project_path.join("Cargo.toml");
+        if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("name") && trimmed.contains('=') {
+                    if let Some(name) = trimmed.split('=').nth(1) {
+                        let pkg = name.trim().trim_matches('"');
+                        let by_pkg = pv_contracts.join(pkg);
+                        if by_pkg.exists() {
+                            return Some(by_pkg);
+                        }
                     }
+                    break;
                 }
-                break;
             }
         }
+    }
+    // Fallback: local contracts/ if it has provable-contracts YAMLs
+    let local = project_path.join("contracts");
+    if local.exists() && has_contract_yamls(&local) {
+        return Some(local);
     }
     None
 }
@@ -1450,19 +1452,21 @@ pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
 /// Checks: (1) pv lint passes, (2) referenced tests EXIST, (3) they PASS.
 /// Missing test = unfalsifiable claim = FAIL (like TDG grade F).
 pub(crate) fn check_pv_lint(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
-    let contracts_dir = project_path.join("contracts");
-    if !contracts_dir.exists() {
-        return ComplianceCheck {
-            name: "CB-1201: PV Lint".into(),
-            status: CheckStatus::Skip,
-            message: "No contracts/ directory found".into(),
-            severity: Severity::Info,
-        };
-    }
+    let contracts_dir = match resolve_contracts_dir(project_path) {
+        Some(dir) => dir,
+        None => {
+            return ComplianceCheck {
+                name: "CB-1201: PV Lint".into(),
+                status: CheckStatus::Skip,
+                message: "No contracts/ directory found".into(),
+                severity: Severity::Info,
+            };
+        }
+    };
 
-    // Step 1: Run pv lint — capture output for error detail
+    // Step 1: Run pv lint on resolved contracts dir — avoids scanning work/ YAMLs
     let (pv_passed, pv_error_detail) = std::process::Command::new("pv")
-        .args(["lint", "--format", "json"])
+        .args(["lint", &contracts_dir.display().to_string(), "--format", "json"])
         .current_dir(project_path)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

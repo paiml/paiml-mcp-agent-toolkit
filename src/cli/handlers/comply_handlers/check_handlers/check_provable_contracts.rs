@@ -21,41 +21,43 @@ fn has_contract_yamls(dir: &Path) -> bool {
         })
 }
 
-/// Resolve the contracts directory — local first (if has YAMLs), then sibling provable-contracts.
-/// Tries directory name, then Cargo.toml package name (e.g., paiml-mcp-agent-toolkit → pmat).
+/// Resolve the contracts directory — sibling provable-contracts preferred, local fallback.
+/// Prefers ../provable-contracts/contracts/<name> because it contains only provable-contracts
+/// YAMLs. Local contracts/ may contain pmat work contracts (different schema) that pv lint
+/// cannot parse.
 fn resolve_contracts_dir(project_path: &Path) -> Option<std::path::PathBuf> {
-    let local = project_path.join("contracts");
-    if local.exists() && has_contract_yamls(&local) {
-        return Some(local);
-    }
     let abs = std::fs::canonicalize(project_path).ok()?;
     let parent = abs.parent()?;
     let pv_contracts = parent.join("provable-contracts").join("contracts");
-    if !pv_contracts.exists() {
-        return None;
-    }
-    // Try directory name
-    let dir_name = abs.file_name()?.to_str()?;
-    let sibling = pv_contracts.join(dir_name);
-    if sibling.exists() {
-        return Some(sibling);
-    }
-    // Try Cargo.toml package name
-    let cargo_toml = project_path.join("Cargo.toml");
-    if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("name") && trimmed.contains('=') {
-                if let Some(name) = trimmed.split('=').nth(1) {
-                    let pkg = name.trim().trim_matches('"');
-                    let by_pkg = pv_contracts.join(pkg);
-                    if by_pkg.exists() {
-                        return Some(by_pkg);
+    if pv_contracts.exists() {
+        // Try directory name first
+        let dir_name = abs.file_name()?.to_str()?;
+        let sibling = pv_contracts.join(dir_name);
+        if sibling.exists() {
+            return Some(sibling);
+        }
+        // Try Cargo.toml package name (e.g., paiml-mcp-agent-toolkit → pmat)
+        let cargo_toml = project_path.join("Cargo.toml");
+        if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("name") && trimmed.contains('=') {
+                    if let Some(name) = trimmed.split('=').nth(1) {
+                        let pkg = name.trim().trim_matches('"');
+                        let by_pkg = pv_contracts.join(pkg);
+                        if by_pkg.exists() {
+                            return Some(by_pkg);
+                        }
                     }
+                    break;
                 }
-                break;
             }
         }
+    }
+    // Fallback: local contracts/ if it has provable-contracts YAMLs
+    let local = project_path.join("contracts");
+    if local.exists() && has_contract_yamls(&local) {
+        return Some(local);
     }
     None
 }
