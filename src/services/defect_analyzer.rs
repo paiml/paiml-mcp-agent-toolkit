@@ -101,6 +101,7 @@ impl FileRankingEngine {
 
     /// Rank files by their defect scores
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn rank_files(&self, defects: Vec<Defect>, limit: usize) -> Vec<RankedFile> {
         use rayon::prelude::*;
         use std::cmp::Ordering;

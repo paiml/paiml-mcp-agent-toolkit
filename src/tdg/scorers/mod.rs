@@ -37,11 +37,13 @@ impl ScorerSet {
         }
     }
     
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn iter(&self) -> impl Iterator<Item = &Box<dyn Scorer>> {
         self.scorers.iter()
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn walk_tree<F>(node: Node, mut callback: F)
 where
     F: FnMut(Node),

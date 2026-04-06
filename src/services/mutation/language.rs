@@ -55,11 +55,13 @@ impl LanguageRegistry {
     }
 
     /// Register a language adapter
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&mut self, adapter: Arc<dyn LanguageAdapter>) {
         self.adapters.insert(adapter.name().to_string(), adapter);
     }
 
     /// Register TypeScript/JavaScript adapter
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register_typescript(&mut self) {
         use crate::services::mutation::TypeScriptAdapter;
         self.register(Arc::new(TypeScriptAdapter::new()));

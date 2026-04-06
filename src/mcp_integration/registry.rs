@@ -44,16 +44,19 @@ impl ToolRegistry {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&mut self, tool: Arc<dyn McpTool>) {
         let metadata = tool.metadata();
         self.tools.insert(metadata.name.clone(), tool);
         self.metadata.insert(metadata.name.clone(), metadata);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn list(&self) -> Vec<ToolMetadata> {
         self.metadata.values().cloned().collect()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, name: &str) -> Option<Arc<dyn McpTool>> {
         self.tools.get(name).cloned()
     }
@@ -112,6 +115,7 @@ impl ResourceRegistry {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&mut self, resource: Arc<dyn McpResource>) {
         let template = resource.template();
         self.resources
@@ -128,6 +132,7 @@ impl ResourceRegistry {
         self.resources.get(uri_template).cloned()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_matching(&self, uri: &str) -> Option<Arc<dyn McpResource>> {
         // Simple pattern matching - could be enhanced
         for (template, resource) in &self.resources {

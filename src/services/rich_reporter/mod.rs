@@ -82,18 +82,21 @@ impl RichReporter {
     }
 
     /// Set report title
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_title(mut self, title: impl Into<String>) -> Self {
         self.report.title = title.into();
         self
     }
 
     /// Set project name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_project(mut self, project: impl Into<String>) -> Self {
         self.report.project = project.into();
         self
     }
 
     /// Add a finding to the report
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_finding(&mut self, finding: Finding) {
         self.report.findings.push(finding);
     }

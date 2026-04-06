@@ -227,6 +227,7 @@ pub struct DefectFormatterFactory;
 
 impl DefectFormatterFactory {
     /// Create a formatter for the given output format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn create(format: &str) -> Box<dyn DefectReportFormatter> {
         match format {
@@ -238,6 +239,7 @@ impl DefectFormatterFactory {
 }
 
 /// Format defect prediction report using the appropriate formatter
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_defect_report(
     report: &DefectPredictionReport,
     format: &str,

@@ -24,11 +24,13 @@ impl ContractVersion {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn current() -> Self {
         Self::new(1, 0, 0) // Current contract version
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn is_compatible(&self, other: &Self) -> bool {
         // Same major version = compatible
@@ -36,6 +38,7 @@ impl ContractVersion {
         self.major == other.major && self.minor >= other.minor
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn requires_migration(&self, other: &Self) -> bool {
         self.major != other.major
