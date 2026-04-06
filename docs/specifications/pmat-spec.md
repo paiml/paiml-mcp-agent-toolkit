@@ -465,23 +465,17 @@ Eight scoring systems evaluated for actionability, signal quality, and cost:
 | Coverage % | **Keep: core** | Per-function uncovered lines |
 | Five Whys | **Keep: debugging** | Evidence-weighted root cause chains |
 
-All six planned improvements completed:
-1. **RPS v3.0** — 11 categories, falsifiability gateway, 289-point scale
-2. **Popper absorbed** — Categories B-F → ReproducibilityScorer, A → gateway
-3. **Five Whys v2** — Diversified weights (Complexity 25%, SATD 20%, Churn 15%, Evo 15%, Coverage 15%, Dead 10%)
-4. **EvoScore pipeline** — `pmat test --record` writes commit test data
-5. **TDG churn priority** — `--rank-by priority` = `tdg_score * (1 + churn_score)`
-6. **Muda file mapping** — Waste categories → concrete file paths
+All six improvements completed: RPS v3.0, Popper absorbed, Five Whys v2, EvoScore, TDG churn, Muda mapping.
 
 ## Architectural Principles
 
-1. **Sovereign AI (80/20 Batuta Stack)**: Prefer batuta stack (aprender, trueno, renacer, certeza) over external deps
+1. **Sovereign AI (80/20 Batuta Stack)**: Prefer batuta stack over external deps
 2. **Toyota Way**: Jidoka (stop-the-line quality), Five Whys, Kaizen continuous improvement
 3. **Popperian Falsification**: Quality claims must be falsifiable and evidence-based
 4. **O(1) Operations**: Metric caching, hash-based validation, CSR graph lookups
 5. **Mono-Spec Enforcement**: This document is the single source of truth (CB-140 comply check)
-6. **Contract-First Agent Design**: No agent or sub-agent may write code before writing a provable contract. Enforced by CB-1400..1410. Verification ladder (L0-L5) applies to agent tasks, not just kernels. Assume-guarantee chains (Dardik & Kang, 2509.06250) compose multi-agent contracts. See [agent-integration.md](components/agent-integration.md)
-7. **Asset Layout Contracts**: Non-code assets (README, Dockerfile, SVG, configs, books) are containers with named slots — content never exists without a placement contract (rmedia Grid Protocol paradigm). Enforced by CB-1320..1326. See [commit-level-contract-enforcement.md](components/commit-level-contract-enforcement.md)
+6. **Contract-First Agent Design**: No agent writes code before writing a provable contract. CB-1400..1410. Verification ladder (L0-L5). A/G chains (Dardik & Kang, 2509.06250). See [agent-integration.md](components/agent-integration.md)
+7. **Asset Layout Contracts**: Non-code assets are containers with named slots (rmedia Grid Protocol). CB-1320..1326. See [commit-level-contract-enforcement.md](components/commit-level-contract-enforcement.md)
 
 ## Compliance Checks (pmat comply)
 
@@ -500,6 +494,7 @@ All six planned improvements completed:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.3 | 2026-04-06 | CB-1340: per-crate penetration for workspaces. CLI crates require ≥95%. Dogfood: pmat 75/8/1, aprender 74/14/1, realizar 0 FAIL |
 | 1.2 | 2026-04-05 | CB-140 compliance: condense pmat-spec.md (543→488), component 25 (1921→395). Fix repo-health.md stale denominators (274→289). Consolidate comply check table |
 | 1.1 | 2026-04-05 | Component 25: Commit-level contract enforcement (8 phases), asset layout contracts (CB-1320..1326), hook consolidation (CB-1333..1337), falsify leak remediation (CB-1338..1343), pmat query --contracts enrichment |
 | 1.0 | 2026-03-09 | Initial mono-spec consolidation from 124 individual specs |

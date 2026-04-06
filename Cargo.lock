@@ -5716,9 +5716,9 @@ dependencies = [
 
 [[package]]
 name = "provable-contracts"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
- "provable-contracts-macros 0.2.1",
+ "provable-contracts-macros 0.2.2",
  "regex",
  "serde",
  "serde_json",
@@ -5740,6 +5740,8 @@ dependencies = [
 [[package]]
 name = "provable-contracts-macros"
 version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a79b3496cd98fb9767f6ee845a4fda80f3b4a18de4a1477d8a59d527f2e98ac"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5748,9 +5750,7 @@ dependencies = [
 
 [[package]]
 name = "provable-contracts-macros"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a79b3496cd98fb9767f6ee845a4fda80f3b4a18de4a1477d8a59d527f2e98ac"
+version = "0.2.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8181,7 +8181,7 @@ dependencies = [
  "chrono",
  "hostname",
  "num_cpus",
- "provable-contracts-macros 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "provable-contracts-macros 0.2.1",
  "serde",
  "serde_json",
  "serde_yaml_ng",
@@ -8203,7 +8203,7 @@ dependencies = [
  "hostname",
  "num_cpus",
  "pollster 0.4.0",
- "provable-contracts-macros 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "provable-contracts-macros 0.2.1",
  "serde",
  "serde_json",
  "serde_yaml_ng",

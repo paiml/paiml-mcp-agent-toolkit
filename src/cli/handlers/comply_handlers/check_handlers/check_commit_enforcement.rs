@@ -1388,10 +1388,149 @@ pub(crate) fn check_no_placeholder_preconditions(project_path: &Path) -> Complia
     }
 }
 
+/// Per-crate enforcement measurement result.
+struct CratePenetration {
+    name: String,
+    call_sites: usize,
+    total_fns: usize,
+    is_cli: bool,
+}
+
+/// Count contract enforcement call sites (debug_assert!, contract macros) in a directory tree.
+fn count_enforcement(dir: &Path, calls: &mut usize, fns: &mut usize) {
+    let entries = match fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() && !path.to_str().unwrap_or("").contains("test") {
+            count_enforcement(&path, calls, fns);
+        } else if path.extension().is_some_and(|e| e == "rs") {
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            if name.contains("test") || name.contains("_tests") {
+                continue;
+            }
+            if let Ok(content) = fs::read_to_string(&path) {
+                count_enforcement_in_source(&content, calls, fns);
+            }
+        }
+    }
+}
+
+/// Count fn definitions and enforcement call sites in source text, skipping test modules.
+fn count_enforcement_in_source(content: &str, calls: &mut usize, fns: &mut usize) {
+    let mut pending_test = false;
+    let mut in_test_module = false;
+    let mut brace_depth_at_test = 0i32;
+    let mut brace_depth = 0i32;
+    for line in content.lines() {
+        let t = line.trim();
+        if t.contains("#[cfg(test)]") { pending_test = true; }
+        let old_depth = brace_depth;
+        let (opens, closes) = count_braces_outside_literals(line);
+        brace_depth += (opens - closes) as i32;
+        if pending_test && brace_depth > old_depth {
+            in_test_module = true;
+            pending_test = false;
+            brace_depth_at_test = old_depth;
+        }
+        if in_test_module && brace_depth <= brace_depth_at_test { in_test_module = false; }
+        if in_test_module { continue; }
+        if t.starts_with("//") || t.starts_with("///") || t.starts_with("/*") || t.starts_with("*") {
+            continue;
+        }
+        if is_fn_definition(t) { *fns += 1; }
+        if is_enforcement_call(line) { *calls += 1; }
+    }
+}
+
+/// Check if a trimmed line is a Rust function definition.
+fn is_fn_definition(t: &str) -> bool {
+    const PREFIXES: &[&str] = &[
+        "fn ", "pub fn ", "async fn ", "pub async fn ",
+        "const fn ", "pub const fn ", "unsafe fn ", "pub unsafe fn ",
+        "pub(crate) fn ", "pub(super) fn ",
+        "pub(crate) async fn ", "pub(crate) const fn ", "pub(crate) unsafe fn ",
+    ];
+    PREFIXES.iter().any(|p| t.starts_with(p)) && (t.contains('(') || t.contains('<'))
+}
+
+/// Check if a line contains contract enforcement patterns.
+fn is_enforcement_call(line: &str) -> bool {
+    line.contains("debug_assert!") || line.contains("contract_")
+        || line.contains("requires!") || line.contains("ensures!")
+}
+
+/// Measure per-crate penetration for workspace projects.
+fn measure_workspace_crates(project_path: &Path, members: &[String]) -> Vec<CratePenetration> {
+    let mut results = Vec::new();
+    // Root crate (the "." member)
+    let root_src = project_path.join("src");
+    if root_src.exists() {
+        let mut calls = 0usize;
+        let mut fns = 0usize;
+        count_enforcement(&root_src, &mut calls, &mut fns);
+        let pkg_name = project_path.file_name()
+            .and_then(|n| n.to_str()).unwrap_or("root").to_string();
+        let is_cli = pkg_name.ends_with("-cli") || pkg_name == "cli";
+        results.push(CratePenetration { name: pkg_name, call_sites: calls, total_fns: fns, is_cli });
+    }
+    for member in members {
+        if member == "." { continue; }
+        let member_src = project_path.join(member).join("src");
+        if !member_src.exists() { continue; }
+        let mut calls = 0usize;
+        let mut fns = 0usize;
+        count_enforcement(&member_src, &mut calls, &mut fns);
+        if fns == 0 { continue; }
+        let crate_name = Path::new(member).file_name()
+            .and_then(|n| n.to_str()).unwrap_or(member).to_string();
+        let is_cli = crate_name.ends_with("-cli") || crate_name == "cli";
+        results.push(CratePenetration { name: crate_name, call_sites: calls, total_fns: fns, is_cli });
+    }
+    results
+}
+
+/// Build per-crate detail string for CB-1340 message.
+fn format_per_crate_detail(crates: &[CratePenetration]) -> String {
+    if crates.len() <= 1 { return String::new(); }
+    let parts: Vec<String> = crates.iter()
+        .filter(|cr| cr.total_fns > 0)
+        .map(|cr| {
+            let pct = cr.call_sites as f64 / cr.total_fns as f64 * 100.0;
+            let marker = if cr.is_cli { " [CLI]" } else { "" };
+            format!("{}:{:.0}%{}", cr.name, pct, marker)
+        })
+        .collect();
+    format!(" | per-crate: {}", parts.join(", "))
+}
+
+/// Find crates failing penetration thresholds.
+/// CLI crates (*-cli): ≥95%. Significant crates (≥50 fns): ≥10%.
+/// Small/bench crates: skip.
+fn find_failing_crates(crates: &[CratePenetration]) -> (Vec<String>, Vec<String>) {
+    let mut cli_fails = Vec::new();
+    let mut non_cli_fails = Vec::new();
+    for cr in crates {
+        if cr.total_fns == 0 { continue; }
+        let is_bench = cr.name.contains("bench");
+        let is_small = cr.total_fns < 50;
+        if !cr.is_cli && (is_bench || is_small) { continue; }
+        let pct = cr.call_sites as f64 / cr.total_fns as f64 * 100.0;
+        let threshold = if cr.is_cli { 95.0 } else { 10.0 };
+        if pct < threshold {
+            let msg = format!("{}: {:.1}% (need ≥{:.0}%)", cr.name, pct, threshold);
+            if cr.is_cli { cli_fails.push(msg); } else { non_cli_fails.push(msg); }
+        }
+    }
+    (cli_fails, non_cli_fails)
+}
+
 /// CB-1340: Enforcement Penetration
 ///
 /// Checks that repos with binding.yaml have meaningful call-site penetration.
-/// Repos with contracts but <10% enforcement are just "paper contracts."
+/// Reports per-crate penetration for workspaces. CLI crates (*-cli) require ≥95%.
 pub(crate) fn check_enforcement_penetration(project_path: &Path) -> ComplianceCheck {
     let binding = project_path.join("binding.yaml");
     let contracts_binding = project_path.join("contracts/binding.yaml");
@@ -1405,101 +1544,64 @@ pub(crate) fn check_enforcement_penetration(project_path: &Path) -> ComplianceCh
         };
     }
 
-    // Check for contract macro invocations in source
-    let src_dir = project_path.join("src");
-    if !src_dir.exists() {
-        return ComplianceCheck {
-            name: "CB-1340: Enforcement Penetration".into(),
-            status: CheckStatus::Skip,
-            message: "No src/ directory".into(),
-            severity: Severity::Info,
-        };
-    }
-
-    let mut call_sites = 0usize;
-    let mut total_fns = 0usize;
-
-    // Count contract enforcement call sites (debug_assert!, contract macros)
-    fn count_enforcement(dir: &Path, calls: &mut usize, fns: &mut usize) {
-        let entries = match fs::read_dir(dir) {
-            Ok(e) => e,
-            Err(_) => return,
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() && !path.to_str().unwrap_or("").contains("test") {
-                count_enforcement(&path, calls, fns);
-            } else if path.extension().is_some_and(|e| e == "rs") {
-                // Skip test files by filename
-                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                if name.contains("test") || name.contains("_tests") {
-                    continue;
-                }
-                if let Ok(content) = fs::read_to_string(&path) {
-                    // Skip #[cfg(test)] modules using the same pending_test logic
-                    let mut pending_test = false;
-                    let mut in_test_module = false;
-                    let mut brace_depth_at_test = 0i32;
-                    let mut brace_depth = 0i32;
-                    for line in content.lines() {
-                        let t = line.trim();
-                        if t.contains("#[cfg(test)]") {
-                            pending_test = true;
-                        }
-                        let old_depth = brace_depth;
-                        let (opens, closes) = count_braces_outside_literals(line);
-                        brace_depth += (opens - closes) as i32;
-                        if pending_test && brace_depth > old_depth {
-                            in_test_module = true;
-                            pending_test = false;
-                            brace_depth_at_test = old_depth;
-                        }
-                        if in_test_module && brace_depth <= brace_depth_at_test {
-                            in_test_module = false;
-                        }
-                        if in_test_module { continue; }
-                        // Skip comments, doc comments, and string contents
-                        if t.starts_with("//") || t.starts_with("///") || t.starts_with("/*") || t.starts_with("*") {
-                            continue;
-                        }
-                        // Match actual function definitions: must have "fn <name>(" or "fn <name><"
-                        // and start with keywords that precede fn (pub, fn, async, const, unsafe, extern)
-                        let is_fn_def = (t.starts_with("fn ") || t.starts_with("pub fn ")
-                            || t.starts_with("async fn ") || t.starts_with("pub async fn ")
-                            || t.starts_with("const fn ") || t.starts_with("pub const fn ")
-                            || t.starts_with("unsafe fn ") || t.starts_with("pub unsafe fn ")
-                            || t.starts_with("pub(crate) fn ") || t.starts_with("pub(super) fn ")
-                            || t.starts_with("pub(crate) async fn ") || t.starts_with("pub(crate) const fn ")
-                            || t.starts_with("pub(crate) unsafe fn "))
-                            && (t.contains("(") || t.contains("<"));
-                        if is_fn_def {
-                            *fns += 1;
-                        }
-                        if line.contains("debug_assert!") || line.contains("contract_")
-                            || line.contains("requires!") || line.contains("ensures!") {
-                            *calls += 1;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    count_enforcement(&src_dir, &mut call_sites, &mut total_fns);
-
-    let penetration = if total_fns > 0 {
-        call_sites as f64 / total_fns as f64
+    let cargo_toml = project_path.join("Cargo.toml");
+    let workspace_members = parse_workspace_members(&cargo_toml);
+    let crate_results = if workspace_members.is_empty() {
+        Vec::new()
     } else {
-        0.0
+        measure_workspace_crates(project_path, &workspace_members)
     };
 
-    if penetration >= 0.10 {
+    let (total_calls, total_fns_all) = if crate_results.is_empty() {
+        let src_dir = project_path.join("src");
+        if !src_dir.exists() {
+            return ComplianceCheck {
+                name: "CB-1340: Enforcement Penetration".into(),
+                status: CheckStatus::Skip,
+                message: "No src/ directory".into(),
+                severity: Severity::Info,
+            };
+        }
+        let (mut calls, mut fns) = (0usize, 0usize);
+        count_enforcement(&src_dir, &mut calls, &mut fns);
+        (calls, fns)
+    } else {
+        crate_results.iter().fold((0, 0), |(c, f), cr| (c + cr.call_sites, f + cr.total_fns))
+    };
+
+    let penetration = if total_fns_all > 0 { total_calls as f64 / total_fns_all as f64 } else { 0.0 };
+    let per_crate_detail = format_per_crate_detail(&crate_results);
+    let (cli_failures, non_cli_failures) = find_failing_crates(&crate_results);
+
+    if !cli_failures.is_empty() {
+        ComplianceCheck {
+            name: "CB-1340: Enforcement Penetration".into(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "{} call sites / {} functions = {:.1}% aggregate. CLI crates below 95%: {}{}",
+                total_calls, total_fns_all, penetration * 100.0,
+                cli_failures.join("; "), per_crate_detail
+            ),
+            severity: Severity::Error,
+        }
+    } else if !non_cli_failures.is_empty() {
+        ComplianceCheck {
+            name: "CB-1340: Enforcement Penetration".into(),
+            status: CheckStatus::Warn,
+            message: format!(
+                "{} call sites / {} functions = {:.1}% aggregate. Low penetration: {}{}",
+                total_calls, total_fns_all, penetration * 100.0,
+                non_cli_failures.join("; "), per_crate_detail
+            ),
+            severity: Severity::Warning,
+        }
+    } else if penetration >= 0.10 {
         ComplianceCheck {
             name: "CB-1340: Enforcement Penetration".into(),
             status: CheckStatus::Pass,
             message: format!(
-                "{} call sites / {} functions = {:.1}% penetration",
-                call_sites, total_fns, penetration * 100.0
+                "{} call sites / {} functions = {:.1}% penetration{}",
+                total_calls, total_fns_all, penetration * 100.0, per_crate_detail
             ),
             severity: Severity::Info,
         }
@@ -1508,12 +1610,37 @@ pub(crate) fn check_enforcement_penetration(project_path: &Path) -> ComplianceCh
             name: "CB-1340: Enforcement Penetration".into(),
             status: CheckStatus::Warn,
             message: format!(
-                "{} call sites / {} functions = {:.1}% penetration (target: ≥10%)",
-                call_sites, total_fns, penetration * 100.0
+                "{} call sites / {} functions = {:.1}% penetration (target: ≥10%){}",
+                total_calls, total_fns_all, penetration * 100.0, per_crate_detail
             ),
             severity: Severity::Warning,
         }
     }
+}
+
+/// Parse workspace members from Cargo.toml [workspace] section.
+fn parse_workspace_members(cargo_toml: &Path) -> Vec<String> {
+    let content = match fs::read_to_string(cargo_toml) {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+    let mut in_workspace = false;
+    for line in content.lines() {
+        let t = line.trim();
+        if t == "[workspace]" { in_workspace = true; continue; }
+        if t.starts_with('[') && in_workspace { break; }
+        if in_workspace && t.starts_with("members") {
+            if let Some(start) = t.find('[') {
+                if let Some(end) = t.find(']') {
+                    return t[start + 1..end].split(',')
+                        .map(|s| s.trim().trim_matches('"').trim_matches('\'').to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                }
+            }
+        }
+    }
+    Vec::new()
 }
 
 /// CB-1343: Assertion Placement

@@ -294,19 +294,20 @@ fire-and-forget with no closed-loop regeneration.
 | Repos with enforcement | "26/26 Grade A" | 7/26 | ~18/26 |
 | Enforcement rate | implied 100% | ~1% | ~60% (kaizen Grade A) |
 
-### Dogfood Results (2026-04-06, pmat v3.11.1 + CB-1201 fix)
+### Dogfood Results (2026-04-06, pmat v3.11.1 + CB-1340 per-crate)
 
-| Repo | Pass | Warn | Fail | CB-1354 | Notes |
-|------|------|------|------|---------|-------|
-| pmat | **75** | 8 | 1 | **4/4** | 83 work contracts. FAIL: File Health only |
-| aprender | **75** | 13 | 1 | **4/4** | 109 bindings, 12 apr-cli YAMLs. FAIL: CB-1308 (4 L4→L5) |
-| trueno | **66** | 17 | 3 | 2/4 | Missing contracts/*.yaml, binding.yaml |
-| realizar | **67** | 18 | **0** | 3/4 | **Zero FAIL** after CB-1201 fix |
+| Repo | Pass | Warn | Fail | CB-1354 | CB-1340 | Notes |
+|------|------|------|------|---------|---------|-------|
+| pmat | **75** | 8 | 1 | **4/4** | 1.6% WARN | FAIL: File Health only |
+| aprender | **74** | 14 | 1 | **4/4** | 102.5% agg, apr-cli:**148%** [CLI] | FAIL: File Health. CB-1308 fixed (27/27 L5) |
+| trueno | **66** | 17 | 3 | 2/4 | Skip (no binding) | FAIL: File Health, CB-200, CB-1308 |
+| realizar | **67** | 18 | **0** | 3/4 | Skip | **Zero FAIL** maintained |
 
-**CB-1201 fix** (this session): `resolve_contracts_dir()` now prefers
-`../provable-contracts/contracts/<name>/` over local `contracts/` which may
-contain work YAMLs (different schema). All 4 repos gained +1 to +4 passes.
-aprender: 79.9% enforcement penetration crate-wide, apr-cli crate **0%** (#686).
+**CB-1340 per-crate** (this session, #691): Workspace crates now measured
+individually. CLI crates (`*-cli`) require ≥95% penetration — entrypoint for
+the entire stack. Non-CLI crates ≥50 functions require ≥10%. Bench/small
+crates skipped. apr-cli at 148% (well above 95%). aprender-shell and
+aprender-tsp at 0% (WARN, not FAIL — not CLI crates).
 
 ### apr-cli QA Summary (2026-04-06)
 
@@ -420,19 +421,12 @@ later" pattern that caused 63% of preventable defects.
 - paiml/aprender#698 — `apr run --gpu` must use CUDA Q4K not CPU dequant (#573)
 - paiml/aprender#699 — rosetta compare-inference exits 0 with 0 tokens (#641)
 
-### Recommendations
+### Recommendations (P0)
 
-1. **P0:** Annotate all 48 command handlers with `#[contract]` — coverage target 100% (currently 79.9% crate-wide, but apr-cli command entry points unchecked)
-2. **P0:** Upgrade all apr-cli bindings to L3 enforcement in `binding.yaml` (109 bindings implemented, 4 stuck at L4 need L5)
-3. **P0:** Add postcondition `exit != 0 on error` to all 48 commands (eliminates silent-failure class: 11 bugs)
-4. **P0:** Add behavioral preconditions for flag handling (eliminates flag-ignored class: 10 bugs)
-5. **P1:** Fix CI RED #681 (trueno softmax postcondition)
-6. **P1:** Fix #674 ghost bindings (run `pv infer` to regenerate from AST)
-7. **P1:** Add Kani L4 harnesses for sampling parameter validation (temperature, top-k, top-p bounds)
-
-### Falsification Summary
-
-14 claims tested: 7 fixed, 5 resolved, 1 deferred (HookRegistry), 1 inherent (latency).
+1. Annotate all 48 command handlers with `#[contract]` (apr-cli entry points: #686)
+2. Upgrade apr-cli bindings to L3 in `binding.yaml` (4 stuck at L4→L5: #687)
+3. Add `exit != 0 on error` postcondition to all 48 commands (11 silent failures)
+4. Behavioral preconditions for flag handling (10 flag-ignored bugs)
 
 ---
 
@@ -466,18 +460,9 @@ Phase 6: CB-1354 (contract query readiness).
 ## Implementation Status
 
 **Detection layer: complete.** 29 CB checks, 107 tests, dogfooded on 4 repos.
-**Infrastructure: 8/8 phases complete** (R-1..R-10 remediation closed, R-3 deferred).
-
-All phases (0-8) fully operational. Phase 3 `asset_validator.rs` exists (R-10).
-Phase 6 `contract_index.rs` exists (R-9), 5/5 query flags added (R-6).
-Phase 7 HookRegistry deferred — detection via CB-1333..1337 sufficient.
-
----
-
-## Remediation Backlog
-
-**9/10 DONE.** R-1 through R-10 complete (see git log for details). R-3
-(HookRegistry single-writer facade) deferred — detection via CB-1333 is sufficient.
+**Infrastructure: 8/8 phases complete** (R-1..R-10 remediation closed, R-3
+deferred). Phase 3 `asset_validator.rs` (R-10), Phase 6 `contract_index.rs`
+(R-9). HookRegistry deferred — detection via CB-1333..1337 sufficient.
 
 ---
 
@@ -501,6 +486,7 @@ Tools: mdschema, hadolint, rumdl, standard-readme.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.5 | 2026-04-06 | **CB-1340 per-crate**: Workspace crates measured individually. CLI ≥95%, others ≥10%. apr-cli:148%. aprender CB-1308 fixed (27/27 L5). |
 | 3.4 | 2026-04-06 | **Level A enforcement**: ALL 48 apr-cli commands require Grade A TDG + L3 provable-contracts. No Grade B/C ships. |
 | 3.3 | 2026-04-06 | **82 closed** (18 open). All hardware tested. Deep investigation on 3 issues. **76/6/0.** |
 | 1.0–2.8 | 2026-04-05 | Phases 1-8, remediation R-1..R-10, falsification audit, brace counting. |
