@@ -298,8 +298,8 @@ fire-and-forget with no closed-loop regeneration.
 
 | Repo | Pass | Warn | Fail | CB-1354 | CB-1340 | Notes |
 |------|------|------|------|---------|---------|-------|
-| pmat | **77** | 6 | 1 | **4/4** | 0.2% WARN | FAIL: File Health only. pmat self-enforcement gap exposed |
-| aprender | **74** | 13 | **2** | **4/4** | 43.8% agg, apr-cli:**63%** [CLI] FAIL | FAIL: File Health + CB-1340. #686 still open |
+| pmat | **77** | 6 | 1 | **4/4** | **0.7%** WARN (102 sites) | FAIL: File Health. Phase 2 done (34 files) |
+| aprender | **74** | 13 | **2** | **4/4** | 43.8% agg, apr-cli:**63%** [CLI] FAIL | FAIL: File Health + CB-1340. #686 open |
 | trueno | **66** | 17 | 3 | 2/4 | Skip (no binding) | FAIL: File Health, CB-200, CB-1308 |
 | realizar | **67** | 18 | **0** | 3/4 | Skip | **Zero FAIL** maintained |
 
@@ -456,9 +456,12 @@ penetration (53 call sites / 15,073 functions). Target: ≥10%.
 `handle_rust_project_score` (earned ≤ possible), `AgentContextIndex::save`
 (non-empty index).
 
-**Phase 2 (next):** Add contracts to remaining handlers: `handle_five_whys`,
-`handle_work_start`, `handle_work_complete`, `handle_muda`, `handle_evoscore`.
-Target: 150+ call sites (1.0% → 10% requires binding.yaml + `#[contract]`).
+**Phase 2 (done):** Added `debug_assert!` to 30+ handlers and 10+ services.
+102 call sites / 15,073 functions = 0.7%. 34 files modified across handlers
+(path preconditions) and services (score range postconditions: RPS, popper,
+similarity, hallucination, RRF, impact, SIMD speedup, dead code, WASM).
+
+**Phase 3 (next):** binding.yaml + `#[contract]` proc_macro to reach ≥10%.
 
 ## Implementation Status
 
@@ -489,7 +492,8 @@ Tools: mdschema, hadolint, rumdl, standard-readme.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.6 | 2026-04-06 | **Falsified**: `contract_` → `contract_pre_/post_` (struct fields ≠ enforcement). apr-cli honest: 63% (was false 148%). FAIL fires correctly. |
+| 3.7 | 2026-04-06 | **Self-enforcement Phase 2**: 102 call sites across 34 files. 0.2% → 0.7%. Handlers + services covered. |
+| 3.6 | 2026-04-06 | **Falsified**: `contract_` → `contract_pre_/post_` (struct fields ≠ enforcement). apr-cli honest: 63% (was false 148%). |
 | 3.5 | 2026-04-06 | CB-1340 per-crate: Workspace crates measured individually. CLI ≥95%, others ≥10%. 26 CB checks (was 29), 165+ tests (was 107). |
 | 3.4 | 2026-04-06 | **Level A enforcement**: ALL 48 apr-cli commands require Grade A TDG + L3 provable-contracts. No Grade B/C ships. |
 | 3.3 | 2026-04-06 | **82 closed** (18 open). All hardware tested. Deep investigation on 3 issues. **76/6/0.** |
