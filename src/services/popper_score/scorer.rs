@@ -251,11 +251,6 @@ pub trait PopperScorer: Send + Sync {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use super::*;
 
     struct MockScorer {

@@ -242,7 +242,6 @@ pub trait QualityAnalyzer: Send + Sync {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    debug_assert!(true, "contract: analyze");
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;

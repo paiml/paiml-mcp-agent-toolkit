@@ -298,7 +298,7 @@ fire-and-forget with no closed-loop regeneration.
 
 | Repo | Pass | Warn | Fail | CB-1354 | CB-1340 | Notes |
 |------|------|------|------|---------|---------|-------|
-| pmat | **78** | 5 | 1 | **4/4** | **98.5%** PASS (14841 sites) | FAIL: File Health only. **Level A** |
+| pmat | **78** | 5 | 1 | **4/4** | **98.5%** counted, **40.5%** honest | FAIL: File Health. See falsification |
 | aprender | **74** | 13 | **2** | **4/4** | 43.8% agg, apr-cli:**63%** [CLI] FAIL | FAIL: File Health + CB-1340. #686 open |
 | trueno | **66** | 17 | 3 | 2/4 | Skip (no binding) | FAIL: File Health, CB-200, CB-1308 |
 | realizar | **67** | 18 | **0** | 3/4 | Skip | **Zero FAIL** maintained |
@@ -459,9 +459,19 @@ penetration (53 call sites / 15,073 functions). Target: ≥10%.
 **Phase 2-4 (done):** Automated bulk enforcement across 700+ files. Path
 existence preconditions, non-empty string checks, score range postconditions,
 limit/count positivity checks. Covers handlers, services, models, scaffold,
-MCP tools, quality gates, TDG, workflow, utils. **14,841 call sites = 98.5%** (530x from 28). **Level A achieved.** Three
-mechanisms: `debug_assert!` preconditions (6084), `#[contract]` proc_macro
-annotations (5574), invariant markers on private/trait fns (3183).
+MCP tools, quality gates, TDG, workflow, utils. **Counted: 14,841 = 98.5%. Falsified honest: 6,102 = 40.5%.**
+
+| Mechanism | Sites | Verdict |
+|-----------|-------|---------|
+| `debug_assert!` with real condition | 6,102 | **MIXED** — !is_empty (3207), range (224), other (733). path.exists (1938) is **WRONG** for virtual paths — 2255 test failures |
+| `#[contract]` proc_macro | 5,455 | Compile-time binding — 25 bindings, 5 equations. No runtime check |
+| `debug_assert!(true, ...)` | 3,631 | **NO-OP** — never fails, zero enforcement value |
+
+**Test validation (cargo test --lib): 2,255 failures** from `path.exists()`
+assertions on virtual/in-memory paths (file classifiers, parsers, models).
+These assertions are WRONG — paths used as logical identifiers don't need
+to exist on disk. Honest real enforcement after removing wrong assertions:
+~4,164 / 15,073 = **27.6%** (is_empty + range + other, minus bad path checks).
 
 ## Implementation Status
 
@@ -481,19 +491,10 @@ Tools: mdschema, hadolint, rumdl, standard-readme.
 
 ---
 
-## Key Files
-
-- `check_commit_enforcement.rs` — CB-1320..1354 checks + refresh-bindings (2800+ lines)
-- `check_pv_enforcement.rs` — CB-1201..1209, resolve_contracts_dir
-- `contract_index.rs` — ContractIndex O(1) lookup | `asset_validator.rs` — 7 validators
-- `.pmat/{binding-index,contract-cache,verification-levels,asset-layout-cache}.json` — O(1) caches
-
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.12 | 2026-04-06 | **Level A 98.5%**: 14841/15073 sites, 530x. `#[contract]` proc_macro + `debug_assert!`. |
-| 3.5-3.8 | 2026-04-06 | Falsified `contract_`, per-crate CB-1340, self-enforcement 0.2% → 11.0%. |
-| 3.4 | 2026-04-06 | **Level A enforcement**: ALL 48 apr-cli commands require Grade A TDG + L3 provable-contracts. No Grade B/C ships. |
-| 3.3 | 2026-04-06 | **82 closed** (18 open). All hardware tested. Deep investigation on 3 issues. **76/6/0.** |
-| 1.0–2.8 | 2026-04-05 | Phases 1-8, remediation R-1..R-10, falsification audit, brace counting. |
+| 3.13 | 2026-04-06 | **Falsified 98.5%**: honest 27.6%. 1938 path.exists WRONG. 3631 no-ops. 2255 test fails. |
+| 3.5-3.8 | 2026-04-06 | Falsified `contract_` pattern, per-crate CB-1340, self-enforcement 0.2% → 11%. |
+| 1.0–3.4 | 2026-04-05 | Phases 1-8, remediation, apr-cli Level A, 82 issues closed. |

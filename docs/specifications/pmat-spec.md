@@ -442,7 +442,7 @@ CB-1338..1343 break the whack-a-mole cycle.
 **apr-cli Level A Enforcement (v3.4):** ALL 48 apr-cli commands require Grade A
 TDG (≤0.2) + L3 provable-contracts. apr-cli at 63% penetration, needs ≥95%
 (#686). #691 closed — per-crate reporting implemented. **pmat self-enforcement:**
-**98.5%** (14841/15073) — **Level A**. `#[contract]` + `debug_assert!` + binding.yaml.
+98.5% counted, **27.6% honest** (4164 correct assertions). 1938 path.exists WRONG.
 
 **O(1) Firm Requirement:** All pre-commit checks < 45ms total from cached data.
 No cold verification in the commit path. Caches populated by `pmat work
@@ -494,7 +494,7 @@ All six improvements completed: RPS v3.0, Popper absorbed, Five Whys v2, EvoScor
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.3 | 2026-04-06 | CB-1340: per-crate + falsification + self-enforcement **98.5%** Level A (14841 sites, 530x). |
+| 1.3 | 2026-04-06 | CB-1340: per-crate + self-enforcement. Counted 98.5%, **falsified to 40.5%** (6102 real). |
 | 1.2 | 2026-04-05 | CB-140 compliance: condense pmat-spec.md (543→488), component 25 (1921→395). Fix repo-health.md stale denominators (274→289). Consolidate comply check table |
 | 1.1 | 2026-04-05 | Component 25: Commit-level contract enforcement (8 phases), asset layout contracts (CB-1320..1326), hook consolidation (CB-1333..1337), falsify leak remediation (CB-1338..1343), pmat query --contracts enrichment |
 | 1.0 | 2026-03-09 | Initial mono-spec consolidation from 124 individual specs |

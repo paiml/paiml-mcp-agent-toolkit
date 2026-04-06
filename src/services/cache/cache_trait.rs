@@ -16,7 +16,6 @@ pub trait AstCacheManager: Send + Sync {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use proptest::prelude::*;
 
     proptest! {
