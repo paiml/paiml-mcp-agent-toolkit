@@ -491,5 +491,5 @@ Priority: **P0** = blocks real enforcement, **P1** = completes spec claim, **P2*
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.2 | 2026-04-06 | **69 apr-cli issues closed** (31 open). Five Whys + #[contract] proc_macro wired. **76/6/0.** |
+| 3.2 | 2026-04-06 | **72 issues closed** (28 open). Five Whys, #[contract] annotations, GPU CUDA fallback. **76/6/0.** |
 | 1.0–2.8 | 2026-04-05 | Phases 1-8, remediation R-1..R-10, falsification audit, brace counting. |
