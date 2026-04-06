@@ -155,6 +155,7 @@ async fn collect_files_recursive(
 /// Check if path should be excluded - EXTRACTED FUNCTION
 /// Complexity: 3 (A+ standard)
 fn should_exclude_path_sprint85(path_str: &str, exclude_pattern: &Option<String>) -> bool {
+    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     if let Some(excl) = exclude_pattern {
         path_str.contains(excl)
     } else {
@@ -165,6 +166,7 @@ fn should_exclude_path_sprint85(path_str: &str, exclude_pattern: &Option<String>
 /// Check if path should be included - EXTRACTED FUNCTION\
 /// Complexity: 3 (A+ standard)
 fn should_include_path_sprint85(path_str: &str, include_pattern: &Option<String>) -> bool {
+    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     if let Some(incl) = include_pattern {
         path_str.contains(incl)
     } else {
@@ -175,6 +177,7 @@ fn should_include_path_sprint85(path_str: &str, include_pattern: &Option<String>
 /// Check if directory should be traversed - EXTRACTED FUNCTION
 /// Complexity: 5 (A+ standard)
 fn should_traverse_directory_sprint85(dir_name: &str) -> bool {
+    debug_assert!(!dir_name.is_empty(), "dir_name must not be empty");
     !dir_name.starts_with('.') && dir_name != "node_modules" && dir_name != "target"
 }
 

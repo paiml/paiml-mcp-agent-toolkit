@@ -126,6 +126,7 @@ impl DiscoveryService {
     }
 
     fn category_priority(name: &str) -> u8 {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         if name.starts_with("generate") || name.starts_with("scaffold") {
             return 0;
         }

@@ -87,6 +87,7 @@ impl std::fmt::Display for CommandRestriction {
 /// Validate a shell command against security restrictions.
 /// Returns None if safe, or the restriction violated.
 pub fn validate_command(cmd: &str) -> Option<CommandRestriction> {
+    debug_assert!(!cmd.is_empty(), "cmd must not be empty");
     // Backtick substitution
     if cmd.contains('`') {
         return Some(CommandRestriction::BacktickSubstitution);
@@ -179,6 +180,7 @@ impl StackManifest {
     }
 
     fn parse_claims(table: &toml::Table, kind: &str) -> Result<Vec<StackClaim>> {
+        debug_assert!(!kind.is_empty(), "kind must not be empty");
         let arr = match table.get(kind) {
             Some(toml::Value::Array(a)) => a,
             _ => return Ok(vec![]),
@@ -310,6 +312,7 @@ impl StackManifest {
 }
 
 fn stack_claim_to_clause(claim: &StackClaim, kind: ClauseKind, stack_name: &str) -> ContractClause {
+    debug_assert!(!stack_name.is_empty(), "stack_name must not be empty");
     let threshold = claim.threshold.as_ref().map(|t| {
         let op = match t.op.as_str() {
             "Gte" | ">=" => ThresholdOp::Gte,
@@ -415,6 +418,7 @@ pub fn execute_stack_check(cmd: &str, project_path: &Path, timeout_secs: u64) ->
 
 /// Extract a metric value from command output using a regex pattern
 pub fn extract_metric(output: &str, pattern: &str) -> Result<Option<f64>> {
+    debug_assert!(!output.is_empty(), "output must not be empty");
     let re = regex::Regex::new(pattern).context("Invalid metric_pattern regex")?;
     if let Some(captures) = re.captures(output) {
         if let Some(m) = captures.get(1) {

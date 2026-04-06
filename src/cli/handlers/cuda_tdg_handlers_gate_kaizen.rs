@@ -41,6 +41,7 @@ async fn handle_gate(
 }
 
 fn format_gate_text(result: &CudaSimdTdgResult, passes: bool, min_score: f64) -> String {
+    debug_assert!(min_score >= 0.0, "min_score must be non-negative");
     let mut output = String::new();
     output.push_str("CUDA-TDG Quality Gate\n");
     output.push_str("=====================\n\n");

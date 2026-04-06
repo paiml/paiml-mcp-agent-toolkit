@@ -9,6 +9,7 @@ fn urgency_recommendation(days: usize) -> String {
 }
 
 fn metric_specific_recommendations(metric: &str) -> Vec<String> {
+    debug_assert!(!metric.is_empty(), "metric must not be empty");
     match metric {
         "lint" => vec![
             "Remove unused dependencies (saves ~2-3s)".into(),
@@ -50,6 +51,7 @@ impl MetricTrendStore {
         breach_in_days: Option<usize>,
         _threshold: f64,
     ) -> Vec<String> {
+        debug_assert!(!metric.is_empty(), "metric must not be empty");
         let days = match breach_in_days {
             Some(d) => d,
             None => return vec![
@@ -65,6 +67,7 @@ impl MetricTrendStore {
 
     /// Persist cache to disk (JSON for simplicity, trueno-graph in Phase 3.1)
     fn persist(&self, metric: &str) -> Result<()> {
+        debug_assert!(!metric.is_empty(), "metric must not be empty");
         if let Some(observations) = self.cache.get(metric) {
             let path = self.storage_path.join(format!("{}.json", metric));
             let json = serde_json::to_string_pretty(observations)?;
@@ -75,6 +78,7 @@ impl MetricTrendStore {
 
     /// Load from disk
     fn load(&mut self, metric: &str) -> Result<()> {
+        debug_assert!(!metric.is_empty(), "metric must not be empty");
         let path = self.storage_path.join(format!("{}.json", metric));
         if path.exists() {
             let json = std::fs::read_to_string(&path)?;

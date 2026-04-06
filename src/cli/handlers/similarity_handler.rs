@@ -68,6 +68,8 @@ fn build_config(
     min_lines: usize,
     max_tokens: usize,
 ) -> SimilarityConfig {
+    debug_assert!(min_lines > 0, "min_lines must be positive");
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let mut config = SimilarityConfig {
         similarity_threshold: f64::from(threshold),
         min_lines,

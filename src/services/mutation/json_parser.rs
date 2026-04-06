@@ -218,6 +218,7 @@ impl CargoMutantsReport {
         note = "Use from_output_dir() instead - matches actual cargo-mutants v25.3.1 format"
     )]
     pub fn from_json(json: &str) -> Result<Self> {
+        debug_assert!(!json.is_empty(), "json must not be empty");
         serde_json::from_str(json)
             .map_err(|e| format!("Failed to parse cargo-mutants JSON: {}", e).into())
     }

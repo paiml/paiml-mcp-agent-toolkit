@@ -101,11 +101,13 @@ pub(crate) fn extract_file_from_message(message: &serde_json::Value) -> Option<S
 }
 
 pub(crate) fn first_line(s: &str) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     s.lines().next().unwrap_or(s).to_string()
 }
 
 /// Extract a numeric score from command output (JSON {"score": N} or "SCORE: N")
 pub(crate) fn extract_score_from_command_output(output: &str) -> Option<f64> {
+    debug_assert!(!output.is_empty(), "output must not be empty");
     for line in output.lines() {
         let line = line.trim();
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {

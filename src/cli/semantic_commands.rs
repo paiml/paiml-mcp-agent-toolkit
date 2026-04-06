@@ -54,6 +54,11 @@ impl SemanticCli {
         directory: &PathBuf,
         language: Option<String>,
     ) -> Result<String, String> {
+        debug_assert!(
+            directory.exists(),
+            "directory must exist: {}",
+            directory.display()
+        );
         let stats = self.search_engine.index_directory(directory).await?;
 
         let msg = format!(
@@ -160,6 +165,7 @@ impl SemanticCli {
 
     /// Cluster code
     pub async fn analyze_cluster(&self, method: &str, k: Option<usize>) -> Result<String, String> {
+        debug_assert!(!method.is_empty(), "method must not be empty");
         let clustering_method = match method {
             "kmeans" => {
                 let k_val = k.ok_or("K-means requires --k parameter")?;

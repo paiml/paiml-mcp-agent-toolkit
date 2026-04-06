@@ -22,6 +22,7 @@ struct SourceFlags {
 
 impl SourceFlags {
     fn extract(source: &str, func_id: &FunctionId) -> Self {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let body = source.split('{').nth(1).unwrap_or("");
         // A function body "has statements" if it contains any non-trivial content.
         // This includes explicit statements (with ;) AND expression returns (no ;).
@@ -281,6 +282,7 @@ impl LightweightProvabilityAnalyzer {
 
     /// Analyze concrete source patterns to produce differentiated property domains.
     fn analyze_source_patterns(source: &str, func_id: &FunctionId) -> PropertyDomain {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let flags = SourceFlags::extract(source, func_id);
         if !flags.has_statements {
             return PropertyDomain {

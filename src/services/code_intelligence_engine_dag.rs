@@ -64,6 +64,7 @@ pub async fn analyze_dag_enhanced(
     include_duplicates: bool,
     include_dead_code: bool,
 ) -> anyhow::Result<String> {
+    debug_assert!(!project_path.is_empty(), "project_path must not be empty");
     let intelligence = CodeIntelligence::new();
 
     // Build analysis request

@@ -31,6 +31,8 @@ pub(crate) fn build_protocol_request(
     repo_path: &std::path::Path,
     show_api: bool,
 ) -> serde_json::Value {
+    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
+    debug_assert!(!protocol.is_empty(), "protocol must not be empty");
     let path_str = repo_path.to_str().expect("internal error");
     match protocol {
         "cli" => serde_json::json!({
@@ -77,6 +79,7 @@ pub(crate) fn format_and_print_output(
 
 /// Print API metadata for a protocol
 pub(crate) async fn print_api_metadata(protocol_name: &str) -> Result<()> {
+    debug_assert!(!protocol_name.is_empty(), "protocol_name must not be empty");
     println!("\n📊 API Introspection");
     // TRACKED: This would require access to the engine reference
     println!("Protocol: {protocol_name}");

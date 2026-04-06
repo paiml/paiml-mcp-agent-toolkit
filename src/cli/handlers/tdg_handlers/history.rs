@@ -53,6 +53,11 @@ async fn query_history_records(
     range: Option<String>,
     repo_path: &Path,
 ) -> Result<Vec<crate::tdg::FullTdgRecord>> {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
     if let Some(commit_ref) = commit {
         let found: Vec<crate::tdg::FullTdgRecord> = storage.get_by_commit(&commit_ref).await?;
         if found.is_empty() {
@@ -79,6 +84,12 @@ fn filter_by_git_since(
     mut records: Vec<crate::tdg::storage::FullTdgRecord>,
     repo_path: &Path,
 ) -> Result<Vec<crate::tdg::storage::FullTdgRecord>> {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
+    debug_assert!(!since_ref.is_empty(), "since_ref must not be empty");
     // Get timestamp of the "since" commit using shell git
     let output = Command::new("git")
         .args(["log", "-1", "--format=%ct", since_ref])
@@ -113,6 +124,12 @@ fn filter_by_git_range(
     mut records: Vec<crate::tdg::storage::FullTdgRecord>,
     repo_path: &Path,
 ) -> Result<Vec<crate::tdg::storage::FullTdgRecord>> {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
+    debug_assert!(!range_ref.is_empty(), "range_ref must not be empty");
     // Parse range (e.g., "HEAD~10..HEAD" or "v2.177.0..v2.178.0")
     let parts: Vec<&str> = range_ref.split("..").collect();
     if parts.len() != 2 {

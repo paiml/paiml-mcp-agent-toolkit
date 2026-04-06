@@ -17,6 +17,7 @@ impl SimilarityDetector {
     /// Detect exact duplicates
     #[must_use]
     pub fn detect_exact_duplicates(&self, files: &[(PathBuf, String)]) -> Vec<SimilarBlock> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut hash_map: HashMap<u64, Vec<(PathBuf, usize, usize, String)>> = HashMap::new();
 
         for (path, content) in files {
@@ -43,6 +44,8 @@ impl SimilarityDetector {
         files: &[(PathBuf, String)],
         threshold: f64,
     ) -> Vec<SimilarBlock> {
+        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut normalized_blocks = Vec::new();
 
         for (path, content) in files {
@@ -63,6 +66,8 @@ impl SimilarityDetector {
         files: &[(PathBuf, String)],
         threshold: f64,
     ) -> Vec<SimilarBlock> {
+        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut token_vectors = Vec::new();
 
         for (path, content) in files {
@@ -80,6 +85,7 @@ impl SimilarityDetector {
     /// Analyze entropy of code blocks
     #[must_use]
     pub fn analyze_entropy(&self, files: &[(PathBuf, String)]) -> EntropyReport {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut all_entropies = Vec::new();
         let mut high_entropy = Vec::new();
         let mut low_entropy = Vec::new();
@@ -138,6 +144,7 @@ impl SimilarityDetector {
         &self,
         files: &[(PathBuf, String)],
     ) -> Vec<RefactoringHint> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut hints = Vec::new();
 
         // Find similar patterns
@@ -170,6 +177,7 @@ impl SimilarityDetector {
     /// Perform comprehensive analysis
     #[must_use]
     pub fn comprehensive_analysis(&self, files: &[(PathBuf, String)]) -> ComprehensiveReport {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let exact = self.detect_exact_duplicates(files);
         let structural = self.detect_structural_similarity(files, self.config.similarity_threshold);
         let semantic = self.detect_semantic_similarity(files, self.config.similarity_threshold);
@@ -209,6 +217,8 @@ impl SimilarityDetector {
     // --- Private helper methods ---
 
     fn extract_code_blocks(&self, content: &str, min_lines: usize) -> Vec<CodeBlock> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
+        debug_assert!(min_lines > 0, "min_lines must be positive");
         let lines: Vec<&str> = content.lines().collect();
         let mut blocks = Vec::new();
 
@@ -229,10 +239,12 @@ impl SimilarityDetector {
     }
 
     fn normalize_whitespace(&self, text: &str) -> String {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         text.split_whitespace().collect::<Vec<_>>().join(" ")
     }
 
     fn normalize_identifiers(&self, text: &str) -> String {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         // Simple identifier normalization - replace with placeholders
         let mut result = text.to_string();
         let ident_pattern =
@@ -250,6 +262,7 @@ impl SimilarityDetector {
     }
 
     fn hash_content(&self, content: &str) -> u64 {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
@@ -259,10 +272,12 @@ impl SimilarityDetector {
     }
 
     fn count_tokens(&self, text: &str) -> usize {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         text.split_whitespace().count()
     }
 
     fn is_keyword(&self, word: &str) -> bool {
+        debug_assert!(!word.is_empty(), "word must not be empty");
         matches!(
             word,
             "fn" | "let"
@@ -327,6 +342,7 @@ impl SimilarityDetector {
         threshold: f64,
         clone_type: CloneType,
     ) -> Vec<SimilarBlock> {
+        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         let mut similar = Vec::new();
 
         for i in 0..normalized.len() {
@@ -376,6 +392,7 @@ impl SimilarityDetector {
         threshold: f64,
         clone_type: CloneType,
     ) -> Vec<SimilarBlock> {
+        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         let mut matches = Vec::new();
 
         for i in 0..vectors.len() {
@@ -422,6 +439,8 @@ impl SimilarityDetector {
     }
 
     fn calculate_similarity(&self, text1: &str, text2: &str) -> f64 {
+        debug_assert!(!text1.is_empty(), "text1 must not be empty");
+        debug_assert!(!text2.is_empty(), "text2 must not be empty");
         // Use aprender's edit_distance_similarity (replaces levenshtein crate)
         // Returns normalized similarity: 1.0 = identical, 0.0 = completely different
         aprender::text::similarity::edit_distance_similarity(text1, text2).unwrap_or(0.0)
@@ -432,6 +451,7 @@ impl SimilarityDetector {
         files: &[(PathBuf, String)],
         duplicates: &[SimilarBlock],
     ) -> f64 {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let total_lines: usize = files
             .iter()
             .map(|(_, content)| content.lines().count())

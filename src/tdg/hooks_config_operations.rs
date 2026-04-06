@@ -51,6 +51,7 @@ impl TdgHooksConfig {
 impl QualityGatesConfig {
     /// Get minimum grade for a language (with fallback to deprecated fields)
     pub fn get_min_grade(&self, language: &str) -> Option<&str> {
+        debug_assert!(!language.is_empty(), "language must not be empty");
         // Try new min_grades map first
         if let Some(grade) = self.min_grades.get(language) {
             return Some(grade.as_str());

@@ -15,6 +15,7 @@ impl FileClassifier {
         content: &[u8],
         include_large_files: bool,
     ) -> ParseDecision {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Fast path: empty files
         if content.is_empty() {
             return ParseDecision::Skip(SkipReason::EmptyFile);
@@ -144,6 +145,7 @@ impl FileClassifier {
 
 /// Calculate Shannon entropy of a byte sequence
 fn calculate_shannon_entropy(data: &[u8]) -> f64 {
+    debug_assert!(!data.is_empty(), "data must not be empty");
     let mut frequencies = [0u32; 256];
     for &byte in data {
         frequencies[byte as usize] += 1;

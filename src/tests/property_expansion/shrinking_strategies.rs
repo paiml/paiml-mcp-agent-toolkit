@@ -173,6 +173,7 @@ impl Arbitrary for AstStructure {
 
 /// Shrinker for file paths
 pub fn shrink_path(path: &str) -> Vec<String> {
+    debug_assert!(!path.is_empty(), "path must not be empty");
     let mut shrunken = Vec::new();
     
     // Try removing directories

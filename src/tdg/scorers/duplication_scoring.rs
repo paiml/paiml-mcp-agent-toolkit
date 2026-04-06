@@ -3,6 +3,7 @@
 
 impl Scorer for DuplicationDetector {
     fn score(&self, tree: &Tree, source: &str, _language: Language, config: &TdgConfig, tracker: &mut PenaltyTracker) -> Result<f32> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut points = config.weights.duplication;
         let root = tree.root_node();
 

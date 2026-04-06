@@ -59,6 +59,7 @@ fn format_md_details(r: &QueryResult, output: &mut String) {
 
 /// Format results as markdown
 pub fn format_markdown(results: &[QueryResult]) -> String {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut output = String::new();
     output.push_str(&format!(
         "# Search Results ({} functions)\n\n",

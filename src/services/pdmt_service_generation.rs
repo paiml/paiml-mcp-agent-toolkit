@@ -11,6 +11,8 @@ impl PdmtService {
         _requirement_idx: usize,
         dependency_map: &mut HashMap<String, Vec<String>>,
     ) -> Result<Vec<PdmtTodo>> {
+        debug_assert!(!requirement.is_empty(), "requirement must not be empty");
+        debug_assert!(!granularity.is_empty(), "granularity must not be empty");
         let mut todos = Vec::new();
 
         // Determine task breakdown based on granularity
@@ -151,6 +153,7 @@ impl PdmtService {
         is_fix: bool,
         is_refactor: bool,
     ) -> String {
+        debug_assert!(!requirement.is_empty(), "requirement must not be empty");
         let action_verb = if is_feature {
             "Implement"
         } else if is_fix {
@@ -166,6 +169,7 @@ impl PdmtService {
 
     /// Determine priority based on requirement keywords
     fn determine_priority(&self, requirement: &str) -> TodoPriority {
+        debug_assert!(!requirement.is_empty(), "requirement must not be empty");
         if requirement.contains("critical") || requirement.contains("urgent") {
             TodoPriority::Critical
         } else if requirement.contains("bug") || requirement.contains("fix") {
@@ -179,6 +183,7 @@ impl PdmtService {
 
     /// Estimate hours based on requirement complexity
     fn estimate_hours(&self, requirement: &str, base_multiplier: f32) -> f32 {
+        debug_assert!(!requirement.is_empty(), "requirement must not be empty");
         let complexity_score = if requirement.len() > 100 {
             3.0
         } else if requirement.len() > 50 {
@@ -192,6 +197,7 @@ impl PdmtService {
 
     /// Generate validation commands for a todo
     fn generate_validation_commands(&self, _requirement: &str) -> ValidationCommands {
+        debug_assert!(!_requirement.is_empty(), "_requirement must not be empty");
         ValidationCommands {
             unit_tests: "cargo test".to_string(),
             doctests: "cargo test --doc".to_string(),
@@ -229,6 +235,7 @@ impl PdmtService {
 
     /// Generate implementation specs for a requirement
     fn generate_implementation_specs(&self, requirement: &str) -> ImplementationSpecs {
+        debug_assert!(!requirement.is_empty(), "requirement must not be empty");
         let base_name = requirement
             .split_whitespace()
             .take(2)

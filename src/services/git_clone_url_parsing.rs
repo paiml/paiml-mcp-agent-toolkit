@@ -62,6 +62,7 @@ impl GitCloner {
     }
 
     fn validate_github_name(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         // Reject empty names
         if name.is_empty() || name.len() > 100 {
             return false;

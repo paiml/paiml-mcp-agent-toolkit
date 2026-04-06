@@ -334,6 +334,7 @@ fn write_markdown_file_details(
     output: &mut String,
     files: &[crate::models::churn::FileChurnMetrics],
 ) -> Result<()> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     use std::fmt::Write;
 
     if !files.is_empty() {

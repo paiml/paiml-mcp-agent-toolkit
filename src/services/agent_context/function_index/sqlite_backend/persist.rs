@@ -25,6 +25,7 @@ pub(crate) fn persist_quality_violations(
         Option<String>,
     )],
 ) -> Result<(), String> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     if !db_path.exists() {
         return Err(format!(
             "No index database at {}. Run `pmat query` first to build the index.",
@@ -113,6 +114,7 @@ pub(crate) fn persist_entropy_violations(
         Option<String>,
     )],
 ) -> Result<(), String> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     if !db_path.exists() || violations.is_empty() {
         return Ok(());
     }
@@ -190,6 +192,7 @@ pub(crate) fn persist_provability_scores(
     db_path: &Path,
     scores: &[(String, String, f64, usize)],
 ) -> Result<(), String> {
+    debug_assert!(!scores.is_empty(), "scores must not be empty");
     if !db_path.exists() || scores.is_empty() {
         return Ok(());
     }

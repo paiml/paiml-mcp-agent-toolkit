@@ -7,6 +7,7 @@ impl DocumentationScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -58,6 +59,7 @@ impl Scorer for DocumentationScorer {
         project_path: &Path,
         _mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // This scorer doesn't have expensive operations, so mode doesn't affect it
         self.score(project_path)
     }

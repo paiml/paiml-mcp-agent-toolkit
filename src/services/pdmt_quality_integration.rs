@@ -299,6 +299,7 @@ impl PdmtQualityEnforcer {
 
     /// Aggregate results from multiple todos
     fn aggregate_results(&self, results: &[QualityValidationResult]) -> QualityResults {
+        debug_assert!(!results.is_empty(), "results must not be empty");
         // For simplicity, take the first result's detailed results
         // In a real implementation, this would properly aggregate all results
         if let Some(first) = results.first() {

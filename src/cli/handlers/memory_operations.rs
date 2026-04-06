@@ -2,6 +2,7 @@
 // Included by memory.rs via include!() - shares parent module scope
 
 async fn handle_memory_stats(detailed: bool, format: &str) -> Result<()> {
+    debug_assert!(!format.is_empty(), "format must not be empty");
     let manager = global_memory_manager()?;
     let stats = manager.stats();
 
@@ -139,6 +140,7 @@ fn print_pool_statistics_header() {
 
 /// Check if pool should be skipped based on filter
 fn should_skip_pool(pool_name: &str, target_pool: &Option<String>) -> bool {
+    debug_assert!(!pool_name.is_empty(), "pool_name must not be empty");
     if let Some(target) = target_pool {
         !pool_name.to_lowercase().contains(&target.to_lowercase())
     } else {
@@ -151,6 +153,7 @@ fn print_pool_basic_stats(
     pool_name: &str,
     pool_stats: &crate::services::memory_manager::PoolStats,
 ) {
+    debug_assert!(!pool_name.is_empty(), "pool_name must not be empty");
     use crate::cli::colors as c;
 
     println!("{}:", c::label(pool_name));
@@ -188,6 +191,7 @@ fn calculate_average_buffer_size(pool_stats: &crate::services::memory_manager::P
 }
 
 async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<()> {
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     use crate::cli::colors as c;
 
     let manager = global_memory_manager()?;

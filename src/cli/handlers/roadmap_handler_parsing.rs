@@ -3,6 +3,7 @@
 
 /// Parse ticket IDs and checkbox status from roadmap
 fn parse_roadmap_tickets(content: &str) -> Result<HashMap<String, bool>> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut tickets = HashMap::new();
     let checkbox_re = regex::Regex::new(r"- \[([ x])\] (TICKET-PMAT-\d+)")?;
 
@@ -82,6 +83,8 @@ fn parse_sprint_info(content: &str, _tickets_dir: &Path) -> Result<Vec<SprintInf
 /// - Time: O(n) where n is lines in roadmap
 /// - Cyclomatic: 4
 fn extract_sprint_for_ticket(roadmap_content: &str, ticket_id: &str) -> String {
+    debug_assert!(!roadmap_content.is_empty(), "roadmap_content must not be empty");
+    debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
     let lines: Vec<&str> = roadmap_content.lines().collect();
     let mut current_sprint = "Unknown Sprint".to_string();
 
@@ -108,6 +111,9 @@ fn extract_sprint_for_ticket(roadmap_content: &str, ticket_id: &str) -> String {
 /// - Time: O(1)
 /// - Cyclomatic: 1
 fn generate_ticket_template(ticket_id: &str, sprint: &str, status: &str) -> String {
+    debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
+    debug_assert!(!sprint.is_empty(), "sprint must not be empty");
+    debug_assert!(!status.is_empty(), "status must not be empty");
     let today = chrono::Local::now().format("%Y-%m-%d");
 
     format!(
@@ -156,6 +162,7 @@ fn generate_ticket_template(ticket_id: &str, sprint: &str, status: &str) -> Stri
 
 /// Build checkbox markdown pattern for a ticket
 fn build_checkbox_pattern(ticket_id: &str, checked: bool) -> String {
+    debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
     if checked {
         format!("- [x] {ticket_id}")
     } else {

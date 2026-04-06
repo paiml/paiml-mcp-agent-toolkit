@@ -46,6 +46,7 @@ pub fn detect_cb803_return_statement(project_path: &Path) -> Vec<CbPatternViolat
 
 /// Check for `return` as a standalone keyword, not inside string literals or comments.
 fn contains_return_keyword(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let ret = b"return";
     let len = bytes.len();
@@ -112,6 +113,7 @@ pub fn detect_cb804_var_declaration(project_path: &Path) -> Vec<CbPatternViolati
 
 /// Check for `var` as a standalone keyword at declaration position.
 fn contains_var_keyword(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     // Match lines starting with var or containing var after whitespace/keywords
     let trimmed = line.trim();
     if trimmed.starts_with("var ") {
@@ -170,6 +172,8 @@ fn detect_blocking_in_future_content(
     rel: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!rel.is_empty(), "rel must not be empty");
     let mut in_future_block = false;
     let mut brace_depth: i32 = 0;
     let mut future_start_depth: i32 = 0;

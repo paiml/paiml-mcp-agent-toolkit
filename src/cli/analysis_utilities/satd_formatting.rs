@@ -5,6 +5,7 @@ fn format_satd_json(
     metrics: bool,
     evolution: bool,
 ) -> String {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut json_obj = serde_json::Map::new();
     json_obj.insert(
         "total_items".to_string(),
@@ -42,6 +43,7 @@ fn format_satd_json(
 
 /// Format SATD items as SARIF
 fn format_satd_sarif(items: &[crate::services::satd_detector::TechnicalDebt]) -> String {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut sarif = serde_json::json!({
         "version": "2.1.0",
         "runs": [{
@@ -93,6 +95,7 @@ fn format_satd_markdown(
     evolution: bool,
     days: u32,
 ) -> String {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut output = String::from("# SATD Analysis Report\n\n");
 
     if items.is_empty() {
@@ -141,6 +144,7 @@ fn format_satd_markdown(
 
 /// Format SATD items as summary
 fn format_satd_summary(items: &[crate::services::satd_detector::TechnicalDebt]) -> String {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     if items.is_empty() {
         return "✅ No SATD items found. Excellent technical debt management!\n".to_string();
     }
@@ -172,6 +176,7 @@ fn format_satd_summary(items: &[crate::services::satd_detector::TechnicalDebt]) 
 
 /// Print SATD metrics
 fn print_satd_metrics(items: &[crate::services::satd_detector::TechnicalDebt]) {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     eprintln!("\n📈 SATD Metrics:");
     eprintln!("  Total items: {}", items.len());
 

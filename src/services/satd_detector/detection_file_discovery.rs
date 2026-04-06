@@ -7,6 +7,7 @@ impl SATDDetector {
         &self,
         root: &Path,
     ) -> Result<Vec<PathBuf>, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         // Try git ls-files first to respect .gitignore
         if let Ok(output) = tokio::process::Command::new("git")
             .args(["ls-files", "--cached", "--others", "--exclude-standard"])
@@ -61,6 +62,7 @@ impl SATDDetector {
         path: &Path,
         files: &mut Vec<PathBuf>,
     ) -> Result<(), TemplateError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if path.is_dir() {
             self.process_subdirectory(path, files).await
         } else {
@@ -90,10 +92,12 @@ impl SATDDetector {
     }
 
     fn is_excluded_directory_name(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         name.starts_with('.') || self.is_common_build_directory(name)
     }
 
     fn is_common_build_directory(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         [
             "target",
             "node_modules",
@@ -194,6 +198,7 @@ impl SATDDetector {
     }
 
     fn is_satd_analysis_tool(&self, path_str: &str) -> bool {
+        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         path_str.contains("satd_detector")
             || path_str.contains("satd_property_tests")
             || path_str.contains("quality_proxy")
@@ -201,6 +206,7 @@ impl SATDDetector {
     }
 
     fn is_build_or_config_file(&self, path_str: &str) -> bool {
+        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         path_str.contains("/build.rs")
             || path_str.contains("/Cargo.toml")
             || path_str.contains(".gitignore")
@@ -208,10 +214,12 @@ impl SATDDetector {
     }
 
     fn is_example_or_demo(&self, path_str: &str) -> bool {
+        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         path_str.contains("/examples/") || path_str.contains("/demo/") || path_str.contains("_demo")
     }
 
     fn is_fuzz_target(&self, path_str: &str) -> bool {
+        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         path_str.contains("/fuzz/") || path_str.contains("fuzz_targets")
     }
 

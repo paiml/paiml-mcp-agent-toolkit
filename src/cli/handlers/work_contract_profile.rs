@@ -167,6 +167,7 @@ pub struct MissingTool {
 
 /// Check if a tool binary exists in PATH
 fn which_tool(name: &str) -> bool {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     // Handle special cases
     match name {
         "cargo-clippy" => {
@@ -262,6 +263,7 @@ impl DbcConfig {
 
     /// Parse TOML content into DbcConfig
     fn parse_toml(content: &str) -> Result<Self> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let table: toml::Table = content
             .parse()
             .context("Failed to parse config.toml")?;

@@ -34,6 +34,12 @@ pub fn run_with_timeout(
     current_dir: &Path,
     timeout_secs: Option<u64>,
 ) -> io::Result<Option<Output>> {
+    debug_assert!(
+        current_dir.exists(),
+        "current_dir must exist: {}",
+        current_dir.display()
+    );
+    debug_assert!(!program.is_empty(), "program must not be empty");
     let timeout = Duration::from_secs(timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECS));
 
     // Spawn the command

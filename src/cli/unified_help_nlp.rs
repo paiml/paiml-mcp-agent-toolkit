@@ -25,6 +25,7 @@ impl HelpNlpProcessor {
 
     /// Simple tokenization - split on whitespace and punctuation
     fn tokenize(&self, text: &str) -> Vec<String> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         text.to_lowercase()
             .split(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
             .filter(|s| !s.is_empty() && s.len() > 1)
@@ -34,6 +35,7 @@ impl HelpNlpProcessor {
 
     /// Simple Porter-like stemming (suffix removal)
     fn stem(&self, word: &str) -> String {
+        debug_assert!(!word.is_empty(), "word must not be empty");
         let word = word.to_lowercase();
         // Simple suffix removal rules
         if word.ends_with("ing") && word.len() > 5 {

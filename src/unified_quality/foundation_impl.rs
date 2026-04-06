@@ -234,6 +234,7 @@ impl QualityMonitor {
 
     /// Analyze a batch of files
     async fn analyze_batch(&self, paths: &[PathBuf]) -> Result<()> {
+        debug_assert!(!paths.is_empty(), "paths must not be empty");
         // use rayon::prelude::*; // Currently unused
 
         let results: Vec<_> = paths

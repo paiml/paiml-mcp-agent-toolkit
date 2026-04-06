@@ -110,6 +110,7 @@ impl ConfigCommand {
 
     /// Get specific configuration value by dot notation path
     fn get_config_value(&self, config: &PmatConfig, key: &str) -> Result<String> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         let parts: Vec<&str> = key.split('.').collect();
 
         match parts.as_slice() {
@@ -158,6 +159,7 @@ async fn handle_show(format: &ConfigFormat) -> Result<()> {
 
 /// Handle config get command
 async fn handle_get(key: &str) -> Result<()> {
+    debug_assert!(!key.is_empty(), "key must not be empty");
     let config_path = std::env::current_dir()?.join("pmat.toml");
     let config_cmd = ConfigCommand::new(config_path);
     let result = config_cmd.get(key).await?;
@@ -176,6 +178,7 @@ struct ConfigFixInfo {
 /// Extract configuration error handler (complexity ≤10)
 /// Returns fix information for known config errors, None for unknown errors
 fn extract_config_error_handler(error_msg: &str) -> Option<ConfigFixInfo> {
+    debug_assert!(!error_msg.is_empty(), "error_msg must not be empty");
     if error_msg.contains("max_complexity must be > 0") {
         return Some(ConfigFixInfo {
             field_name: "quality.max_complexity".to_string(),

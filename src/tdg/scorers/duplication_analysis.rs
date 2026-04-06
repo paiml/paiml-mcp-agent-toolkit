@@ -3,6 +3,7 @@
 
 impl DuplicationDetector {
     fn extract_token_sequences(&self, root: Node, source: &str) -> Vec<TokenSequence> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut sequences = Vec::new();
         let mut current_tokens = Vec::new();
         let mut start_byte = 0;
@@ -39,6 +40,7 @@ impl DuplicationDetector {
     }
 
     fn node_to_token(&self, node: Node, source: &str) -> Token {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         Token {
             kind: node.kind().to_string(),
             text: get_node_text(node, source).to_string(),
@@ -47,6 +49,7 @@ impl DuplicationDetector {
     }
 
     fn normalize_token(&self, node: Node, source: &str) -> String {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "identifier" if !self.is_type_name(node, source) => "$VAR".to_string(),
             "string_literal" | "string" | "raw_string_literal" => "$STR".to_string(),
@@ -56,6 +59,7 @@ impl DuplicationDetector {
     }
 
     fn is_type_name(&self, node: Node, source: &str) -> bool {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(parent) = node.parent() {
             matches!(
                 parent.kind(),
@@ -161,6 +165,7 @@ impl DuplicationDetector {
     }
 
     fn hash_sequence(&self, tokens: &[Token]) -> u64 {
+        debug_assert!(!tokens.is_empty(), "tokens must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 

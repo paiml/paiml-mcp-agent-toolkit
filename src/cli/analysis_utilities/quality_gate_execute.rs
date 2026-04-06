@@ -12,6 +12,7 @@ pub async fn run_single_project_check(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     match check {
         QualityCheckType::All => {
             run_all_project_checks(
@@ -52,6 +53,7 @@ async fn execute_specific_quality_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use QualityCheckType::{
         All, Complexity, Coverage, DeadCode, Duplicates, Entropy, Provability, Satd, Sections,
         Security,

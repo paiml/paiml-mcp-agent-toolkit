@@ -58,6 +58,7 @@ pub fn convert_cache_strategy(strategy: cli::DeepContextCacheStrategy) -> String
 /// Ensures threshold is within valid range (0.0 - 1.0 or 0 - 100 depending on format)
 #[must_use]
 pub fn normalize_threshold(threshold: f64, is_percentage: bool) -> f64 {
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let normalized = if is_percentage {
         threshold / 100.0
     } else {

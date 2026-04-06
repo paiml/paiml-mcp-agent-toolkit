@@ -33,6 +33,7 @@ impl ScalaComplexityAnalyzer {
 
     /// Helper to analyze complexity for a single line (complexity ≤10)
     fn analyze_complexity_for_line(&mut self, line: &str) {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Control flow increases cyclomatic complexity
         if line.contains("if ") || line.contains(" if ") {
             self.cyclomatic_complexity += 1;

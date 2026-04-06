@@ -32,6 +32,11 @@ pub async fn handle_special_modes(
     format: EnforceOutputFormat,
     ci_mode: bool,
 ) -> Result<Option<Result<()>>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if list_violations {
         return Ok(Some(
             list_all_violations(project_path, profile, format).await,

@@ -1,6 +1,7 @@
 impl MLQualityScorer {
     /// Train the complexity model on historical data
     pub fn train_complexity_model(&mut self, samples: &[QualityTrainingSample]) -> Result<()> {
+        debug_assert!(!samples.is_empty(), "samples must not be empty");
         if samples.is_empty() {
             anyhow::bail!("Training data cannot be empty");
         }
@@ -61,6 +62,7 @@ impl MLQualityScorer {
 
     /// Train the TDG model on historical data
     pub fn train_tdg_model(&mut self, samples: &[QualityTrainingSample]) -> Result<()> {
+        debug_assert!(!samples.is_empty(), "samples must not be empty");
         if samples.is_empty() {
             anyhow::bail!("Training data cannot be empty");
         }
@@ -116,6 +118,7 @@ impl MLQualityScorer {
 
     /// Calculate feature importance from training data
     fn calculate_feature_importance(&mut self, samples: &[QualityTrainingSample]) {
+        debug_assert!(!samples.is_empty(), "samples must not be empty");
         if samples.is_empty() {
             return;
         }

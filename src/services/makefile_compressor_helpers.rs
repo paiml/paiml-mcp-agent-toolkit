@@ -1,4 +1,6 @@
 fn extract_package_name(line: &str, after: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
+    debug_assert!(!after.is_empty(), "after must not be empty");
     let parts: Vec<&str> = line.split_whitespace().collect();
 
     let install_pos = find_install_position(&parts, after)?;
@@ -6,6 +8,7 @@ fn extract_package_name(line: &str, after: &str) -> Option<String> {
 }
 
 fn find_install_position(parts: &[&str], after: &str) -> Option<usize> {
+    debug_assert!(!after.is_empty(), "after must not be empty");
     match after {
         "cargo install" => find_cargo_install_position(parts),
         "npm install" => find_npm_install_position(parts),

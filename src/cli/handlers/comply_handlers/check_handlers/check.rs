@@ -585,6 +585,10 @@ fn build_compliance_report(
     project_version: &str,
     failures_only: bool,
 ) -> ComplianceReport {
+    debug_assert!(
+        !project_version.is_empty(),
+        "project_version must not be empty"
+    );
     let failures = checks
         .iter()
         .filter(|c| c.status == CheckStatus::Fail)
@@ -742,6 +746,10 @@ pub(crate) fn check_spec_work_traceability(project_path: &Path) -> ComplianceChe
 }
 
 pub(crate) fn check_version_currency(project_version: &str) -> ComplianceCheck {
+    debug_assert!(
+        !project_version.is_empty(),
+        "project_version must not be empty"
+    );
     let behind = calculate_versions_behind(project_version);
     if behind == 0 {
         ComplianceCheck {
@@ -1198,6 +1206,8 @@ fn build_triaged_check(
     warning: usize,
     pass_message: &str,
 ) -> ComplianceCheck {
+    debug_assert!(!name.is_empty(), "name must not be empty");
+    debug_assert!(!pass_message.is_empty(), "pass_message must not be empty");
     if critical > 0 {
         ComplianceCheck {
             name: name.into(),

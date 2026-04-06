@@ -5,6 +5,7 @@
 /// Returns `None` if the line isn't valid JSON, isn't a "compiler-message",
 /// or has no "message" field.
 fn extract_compiler_message(line: &str) -> Option<serde_json::Value> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let json: serde_json::Value = serde_json::from_str(line).ok()?;
     if json.get("reason").and_then(|r| r.as_str()) != Some("compiler-message") {
         return None;

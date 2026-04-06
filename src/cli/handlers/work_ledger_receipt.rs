@@ -131,6 +131,7 @@ impl FalsificationReceipt {
 
     /// Check if receipt is fresh (matches HEAD SHA and within max_age)
     pub fn is_fresh(&self, current_sha: &str, max_age_secs: u64) -> bool {
+        debug_assert!(!current_sha.is_empty(), "current_sha must not be empty");
         if self.git_sha != current_sha {
             return false;
         }
@@ -179,6 +180,7 @@ fn build_overrides(
 
 /// Convert hypothesis text to a stable claim ID (mirrors claim_to_override_name in core_handlers)
 fn hypothesis_to_claim_id(hypothesis: &str) -> String {
+    debug_assert!(!hypothesis.is_empty(), "hypothesis must not be empty");
     let h = hypothesis.to_lowercase();
     // "examples" + "compile" requires conjunctive match (both keywords)
     if h.contains("examples") && h.contains("compile") {

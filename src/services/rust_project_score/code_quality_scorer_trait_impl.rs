@@ -18,6 +18,7 @@ impl Scorer for CodeQualityScorer {
         project_path: &Path,
         mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Backward compatibility: call without cache
         self.score_internal(project_path, mode, None)
     }

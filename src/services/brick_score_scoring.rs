@@ -1,5 +1,6 @@
 /// Score a single brick's performance against its budget.
 fn score_performance(mean_us: f64, budget_us: f64, brick_name: &str) -> BrickCheck {
+    debug_assert!(!brick_name.is_empty(), "brick_name must not be empty");
     let budget_ratio = mean_us / budget_us;
     let perf_points = match () {
         _ if budget_ratio <= 1.0 => 4.0,
@@ -31,6 +32,7 @@ fn score_performance(mean_us: f64, budget_us: f64, brick_name: &str) -> BrickChe
 
 /// Score a single brick's throughput efficiency.
 fn score_efficiency(throughput: f64, brick_name: &str) -> BrickCheck {
+    debug_assert!(!brick_name.is_empty(), "brick_name must not be empty");
     let eff_points = if throughput > 1_000_000.0 {
         2.5 // >1M elem/s
     } else if throughput > 100_000.0 {
@@ -62,6 +64,7 @@ fn score_efficiency(throughput: f64, brick_name: &str) -> BrickCheck {
 
 /// Score a single brick's measurement stability via coefficient of variation.
 fn score_stability(cv: f64, brick_name: &str) -> BrickCheck {
+    debug_assert!(!brick_name.is_empty(), "brick_name must not be empty");
     let stability_points = if cv < 5.0 {
         1.5 // Excellent stability
     } else if cv < 10.0 {
@@ -101,6 +104,7 @@ pub fn score_brick_profiler(
     project_path: &Path,
     hardware: Option<&HardwareCapability>,
 ) -> BrickScore {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut performance_checks = Vec::new();
     let mut efficiency_checks = Vec::new();
     let mut stability_checks = Vec::new();

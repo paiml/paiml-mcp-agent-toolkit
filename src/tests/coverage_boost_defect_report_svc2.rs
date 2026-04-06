@@ -12,6 +12,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
 fn make_defect(id: &str, sev: Severity, cat: DefectCategory, file: &str, line: u32) -> Defect {
+    debug_assert!(!id.is_empty(), "id must not be empty");
+    debug_assert!(!file.is_empty(), "file must not be empty");
     Defect {
         id: id.to_string(),
         severity: sev,

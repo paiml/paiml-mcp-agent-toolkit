@@ -138,6 +138,7 @@ async fn write_wasm_analysis_output(
     elapsed: std::time::Duration,
     output: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let output_text = format_webassembly_results(results, format, perf, elapsed)?;
 
     if let Some(output_path) = output {

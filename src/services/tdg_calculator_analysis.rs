@@ -181,6 +181,7 @@ impl TDGCalculator {
         score: &TDGScore,
         _path: &Path,
     ) -> Result<Vec<TDGRecommendation>> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         let mut recommendations = Vec::new();
 
         // Complexity recommendations
@@ -248,6 +249,7 @@ impl TDGCalculator {
     /// Generate TDG distribution for visualization
     #[must_use]
     pub fn calculate_distribution(&self, scores: &[TDGScore]) -> TDGDistribution {
+        debug_assert!(!scores.is_empty(), "scores must not be empty");
         let bucket_size = 0.5;
         let max_value = 5.0;
         let num_buckets = (max_value / bucket_size) as usize;

@@ -98,6 +98,7 @@ impl BigOAnalyzer {
         file_path: &PathBuf,
         config: &BigOAnalysisConfig,
     ) -> Result<Vec<FunctionComplexity>> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let content = tokio::fs::read_to_string(file_path).await?;
         let mut functions = Vec::new();
 
@@ -176,6 +177,9 @@ impl BigOAnalyzer {
         function_body: &str,
         language: &str,
     ) -> ComplexityAnalysisResult {
+        debug_assert!(!function_name.is_empty(), "function_name must not be empty");
+        debug_assert!(!function_body.is_empty(), "function_body must not be empty");
+        debug_assert!(!language.is_empty(), "language must not be empty");
         let mut notes = Vec::new();
         let lines: Vec<&str> = function_body.lines().take(100).collect();
 

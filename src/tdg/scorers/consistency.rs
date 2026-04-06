@@ -13,6 +13,7 @@ impl ConsistencyAnalyzer {
     }
     
     fn check_naming_consistency(&self, root: Node, source: &str, rules: &LanguageRules) -> u32 {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut violations = 0;
         
         walk_tree(root, |node| {
@@ -41,6 +42,7 @@ impl ConsistencyAnalyzer {
     }
     
     fn check_import_organization(&self, root: Node, source: &str, language: Language) -> u32 {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut issues = 0;
         let mut imports = Vec::new();
         
@@ -124,6 +126,7 @@ impl ConsistencyAnalyzer {
     }
     
     fn is_python_stdlib_import(&self, import: &str) -> bool {
+        debug_assert!(!import.is_empty(), "import must not be empty");
         let stdlib_modules = [
             "os", "sys", "json", "re", "datetime", "collections",
             "itertools", "functools", "math", "random", "urllib",
@@ -163,6 +166,7 @@ impl ConsistencyAnalyzer {
     }
     
     fn analyze_pattern_consistency(&self, root: Node, source: &str) -> f32 {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let patterns = self.extract_patterns(root, source);
         
         let error_consistency = self.error_handling_consistency(&patterns);
@@ -175,6 +179,7 @@ impl ConsistencyAnalyzer {
     }
     
     fn extract_patterns(&self, root: Node, source: &str) -> CodePatterns {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut patterns = CodePatterns::new();
         
         walk_tree(root, |node| {
@@ -304,6 +309,7 @@ impl ConsistencyAnalyzer {
 
 impl Scorer for ConsistencyAnalyzer {
     fn score(&self, tree: &Tree, source: &str, language: Language, config: &TdgConfig, tracker: &mut PenaltyTracker) -> Result<f32> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut points = config.weights.consistency;
         let root = tree.root_node();
         let rules = LanguageRules::for_language(language);

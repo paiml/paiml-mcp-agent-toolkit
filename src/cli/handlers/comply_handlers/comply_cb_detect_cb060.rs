@@ -85,6 +85,7 @@ static WGSL_TILED_STORE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
 /// some threads may exit early, causing the remaining threads to deadlock on
 /// the barrier.
 pub fn detect_ptx_barrier_divergence_in_str(ptx: &str) -> Vec<(u32, &'static str, String)> {
+    debug_assert!(!ptx.is_empty(), "ptx must not be empty");
     let mut violations = Vec::new();
     let lines: Vec<&str> = ptx.lines().collect();
 
@@ -139,6 +140,7 @@ pub fn detect_ptx_barrier_divergence_in_str(ptx: &str) -> Vec<(u32, &'static str
 /// WGSL workgroupBarrier() inside control flow (if/else) is dangerous because
 /// not all threads in the workgroup may execute the barrier.
 pub fn detect_wgsl_barrier_divergence_in_str(wgsl: &str) -> Vec<(u32, &'static str, String)> {
+    debug_assert!(!wgsl.is_empty(), "wgsl must not be empty");
     let mut violations = Vec::new();
     let lines: Vec<&str> = wgsl.lines().collect();
 
@@ -218,6 +220,7 @@ pub fn detect_wgsl_barrier_divergence_in_str(wgsl: &str) -> Vec<(u32, &'static s
 /// Shared memory accesses without bounds checks can cause out-of-bounds errors.
 /// Safe patterns: predicated access (@%p), constant offset, or preceding setp.lt.
 pub fn detect_shared_memory_unbounded_in_str(ptx: &str) -> Vec<(u32, &'static str, String)> {
+    debug_assert!(!ptx.is_empty(), "ptx must not be empty");
     let mut violations = Vec::new();
     let lines: Vec<&str> = ptx.lines().collect();
 
@@ -355,6 +358,7 @@ fn check_tiled_stores(
     bounds_check_line: Option<usize>,
     violations: &mut Vec<(u32, &'static str, String)>,
 ) {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     for (line_idx, line) in lines.iter().enumerate() {
         let line_num = (line_idx + 1) as u32;
         let trimmed = line.trim();

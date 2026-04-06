@@ -100,6 +100,7 @@ impl PolyglotAnalyzer {
         &self,
         project_path: &Path,
     ) -> Result<PolyglotAnalysis, Box<dyn std::error::Error>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let language_info = self.detect_languages(project_path).await?;
         let language_stats = self.calculate_language_stats(&language_info).await?;
         let cross_deps = self
@@ -127,6 +128,7 @@ impl PolyglotAnalyzer {
         &self,
         project_path: &Path,
     ) -> Result<HashMap<String, LanguageInfo>, Box<dyn std::error::Error>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut languages = HashMap::new();
 
         for (lang_name, pattern) in &self.language_patterns {
@@ -169,6 +171,7 @@ impl PolyglotAnalyzer {
         file_count: &mut usize,
         total_lines: &mut usize,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        debug_assert!(dir_path.exists(), "dir_path must exist: {}", dir_path.display());
         if let Ok(entries) = std::fs::read_dir(dir_path) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -191,6 +194,7 @@ impl PolyglotAnalyzer {
         file_count: &mut usize,
         total_lines: &mut usize,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if should_skip_directory(path) {
             return Ok(());
         }
@@ -206,6 +210,7 @@ impl PolyglotAnalyzer {
         file_count: &mut usize,
         total_lines: &mut usize,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             let full_ext = format!(".{ext}");
             if extensions.contains(&full_ext) {
@@ -219,6 +224,7 @@ impl PolyglotAnalyzer {
 
     // Helper function to check frameworks in content
     fn check_frameworks(content: &str, framework_map: &[(&str, &str)]) -> Vec<String> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         framework_map
             .iter()
             .filter(|(search_term, _)| content.contains(search_term))
@@ -231,6 +237,8 @@ impl PolyglotAnalyzer {
         project_path: &Path,
         language: &str,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+        debug_assert!(!language.is_empty(), "language must not be empty");
         match language {
             "rust" => self.detect_rust_frameworks(project_path).await,
             "python" => self.detect_python_frameworks(project_path).await,
@@ -243,6 +251,7 @@ impl PolyglotAnalyzer {
         &self,
         project_path: &Path,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let frameworks_map = [
             ("tokio", "Tokio"),
             ("actix-web", "Actix Web"),
@@ -263,6 +272,7 @@ impl PolyglotAnalyzer {
         &self,
         project_path: &Path,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let frameworks_map = [
             ("django", "Django"),
             ("flask", "Flask"),
@@ -295,6 +305,7 @@ impl PolyglotAnalyzer {
         &self,
         project_path: &Path,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let frameworks_map = [
             ("react", "React"),
             ("vue", "Vue.js"),

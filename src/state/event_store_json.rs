@@ -24,6 +24,7 @@ pub struct JsonFilePersistence {
 
 impl JsonFilePersistence {
     pub async fn new(file_path: &str) -> Result<Self, EventStoreError> {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let file = OpenOptions::new()
             .create(true)
             .append(true)
@@ -53,6 +54,7 @@ impl JsonFilePersistence {
 
     /// Deserialize an event from a line (JSON\tCHECKSUM format).
     fn deserialize_line(line: &str) -> Result<StateEvent, EventStoreError> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.rsplitn(2, '\t').collect();
         if parts.len() != 2 {
             return Err(EventStoreError::CorruptedData(

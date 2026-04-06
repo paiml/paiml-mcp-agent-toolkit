@@ -23,6 +23,7 @@ impl SimpleVectorizer {
     }
 
     fn fit(&mut self, documents: &[String]) {
+        debug_assert!(!documents.is_empty(), "documents must not be empty");
         let n_docs = documents.len() as f32;
         let mut doc_freq: HashMap<String, usize> = HashMap::new();
 
@@ -55,6 +56,7 @@ impl SimpleVectorizer {
     }
 
     fn transform(&self, text: &str) -> Vec<f32> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let mut vec = vec![0.0f32; self.dimension];
         let terms = Self::tokenize(text);
         let n_terms = terms.len() as f32;
@@ -90,6 +92,7 @@ impl SimpleVectorizer {
     }
 
     fn tokenize(text: &str) -> Vec<String> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         text.to_lowercase()
             .split(|c: char| !c.is_alphanumeric())
             .filter(|s| s.len() > 2) // Skip very short tokens

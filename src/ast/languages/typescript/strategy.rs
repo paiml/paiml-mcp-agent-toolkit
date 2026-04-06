@@ -33,6 +33,8 @@ impl TypeScriptStrategy {
     }
 
     fn parse_module(&self, content: &str, filename: &str) -> Result<Module> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
+        debug_assert!(!filename.is_empty(), "filename must not be empty");
         let source_map = SourceMap::default();
         let source_file = source_map.new_source_file(
             FileName::Custom(filename.to_string()).into(),

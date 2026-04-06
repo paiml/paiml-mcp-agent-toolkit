@@ -62,6 +62,7 @@ fn compute_template_relevance(
     template: Arc<crate::models::template::TemplateResource>,
     query_lower: &str,
 ) -> Option<SearchResult> {
+    debug_assert!(!query_lower.is_empty(), "query_lower must not be empty");
     let mut matches = Vec::new();
     let mut relevance = 0.0_f32;
 
@@ -91,6 +92,8 @@ fn compute_template_relevance(
 }
 
 fn check_name_match(name: &str, query: &str, matches: &mut Vec<String>, relevance: &mut f32) {
+    debug_assert!(!name.is_empty(), "name must not be empty");
+    debug_assert!(!query.is_empty(), "query must not be empty");
     if name.to_lowercase().contains(query) {
         matches.push(format!("name: {}", name));
         *relevance += if name.to_lowercase() == query {
@@ -107,6 +110,8 @@ fn check_description_match(
     matches: &mut Vec<String>,
     relevance: &mut f32,
 ) {
+    debug_assert!(!desc.is_empty(), "desc must not be empty");
+    debug_assert!(!query.is_empty(), "query must not be empty");
     if desc.to_lowercase().contains(query) {
         matches.push("description".to_string());
         *relevance += 3.0;
@@ -119,6 +124,7 @@ fn check_parameter_matches(
     matches: &mut Vec<String>,
     relevance: &mut f32,
 ) {
+    debug_assert!(!query.is_empty(), "query must not be empty");
     for param in params {
         if param.name.to_lowercase().contains(query) {
             matches.push(format!("parameter: {}", param.name));

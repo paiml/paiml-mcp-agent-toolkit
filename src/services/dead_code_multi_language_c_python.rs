@@ -26,6 +26,7 @@ struct FunctionInfo {
 
 /// Analyze C files to find function definitions and calls
 fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     let mut defined_functions = Vec::new();
     let mut called_functions = HashSet::new();
 
@@ -49,6 +50,8 @@ fn analyze_c_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, H
 
 /// Extract C function definitions, handling multiline signatures
 fn extract_c_function_definitions(content: &str, file_str: &str, out: &mut Vec<FunctionInfo>) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!file_str.is_empty(), "file_str must not be empty");
     let lines: Vec<&str> = content.lines().collect();
     let mut skip_next_line = false;
 
@@ -80,6 +83,7 @@ fn extract_c_function_definitions(content: &str, file_str: &str, out: &mut Vec<F
 
 /// Try to extract a C function name from a line, filtering main and _ prefixed
 fn try_extract_c_func_name(line: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let cap = C_DEF_REGEX.captures(line)?;
     let func_name = cap.get(1)?.as_str();
     if func_name != "main" && !func_name.starts_with('_') {
@@ -96,6 +100,7 @@ const C_KEYWORDS: &[&str] = &[
 
 /// Extract C function calls from source content
 fn extract_c_function_calls(content: &str, calls: &mut HashSet<String>) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
         let code_to_scan = if let Some(brace_pos) = line.find('{') {
             &line[brace_pos + 1..]
@@ -118,6 +123,7 @@ fn extract_c_function_calls(content: &str, calls: &mut HashSet<String>) {
 
 /// Analyze C++ files (similar to C)
 fn analyze_cpp_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     // For now, use same logic as C (can be enhanced with C++-specific features)
     analyze_c_files(files)
 }
@@ -126,6 +132,7 @@ fn analyze_cpp_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>,
 fn analyze_python_files(
     files: &[std::path::PathBuf],
 ) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     let mut defined_functions = Vec::new();
     let mut called_functions = HashSet::new();
 

@@ -60,6 +60,8 @@ impl DemoContent {
         project_path: &std::path::Path,
         detected_language: &str,
     ) -> Self {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+        debug_assert!(!detected_language.is_empty(), "detected_language must not be empty");
         let recommendation_engine = RecommendationEngine::new();
 
         if let Ok(_detected_frameworks) =

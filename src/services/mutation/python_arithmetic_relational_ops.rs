@@ -48,6 +48,7 @@ impl TreeSitterMutationOperator for PythonBinaryOpMutation {
 
 /// Returns the set of replacement operators for a given Python binary operator.
 fn python_binary_op_replacements(op_text: &str) -> Vec<&'static str> {
+    debug_assert!(!op_text.is_empty(), "op_text must not be empty");
     match op_text {
         "+" => vec!["-", "*", "/", "//", "%", "**"],
         "-" => vec!["+", "*", "/", "//", "%", "**"],
@@ -113,6 +114,7 @@ impl TreeSitterMutationOperator for PythonRelationalOpMutation {
 
 /// Returns the set of replacement operators for a given Python relational operator.
 fn python_relational_op_replacements(op_text: &str) -> Vec<&'static str> {
+    debug_assert!(!op_text.is_empty(), "op_text must not be empty");
     match op_text {
         "<" => vec![">", "<=", ">=", "==", "!="],
         ">" => vec!["<", "<=", ">=", "==", "!="],
@@ -131,6 +133,7 @@ fn build_operator_mutations(
     op_text: &str,
     replacements: &[&str],
 ) -> Vec<MutatedSource> {
+    debug_assert!(!op_text.is_empty(), "op_text must not be empty");
     replacements
         .iter()
         .map(|new_op| {

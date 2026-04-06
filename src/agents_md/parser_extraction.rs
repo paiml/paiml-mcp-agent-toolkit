@@ -103,6 +103,7 @@ impl AgentsMdParser {
 
     /// Extract commands from text
     fn extract_commands(&self, text: &str, commands: &mut Vec<Command>) {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         for pattern in &self.command_patterns {
             if let Some(captures) = pattern.captures(text) {
                 if let Some(cmd) = captures.get(1) {
@@ -126,6 +127,7 @@ impl AgentsMdParser {
         section_type: &SectionType,
         guidelines: &mut Vec<Guideline>,
     ) {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         // Simple extraction: lines starting with - or *
         for line in text.lines() {
             let trimmed = line.trim();
@@ -144,6 +146,7 @@ impl AgentsMdParser {
 
     /// Detect priority from guideline text
     fn detect_priority(&self, text: &str) -> Priority {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let lower = text.to_lowercase();
 
         if lower.contains("must") || lower.contains("critical") || lower.contains("required") {
@@ -159,6 +162,7 @@ impl AgentsMdParser {
 
     /// Check if command is safe to execute
     fn is_command_safe(&self, command: &str) -> bool {
+        debug_assert!(!command.is_empty(), "command must not be empty");
         let dangerous_patterns = [
             "rm -rf",
             "sudo",

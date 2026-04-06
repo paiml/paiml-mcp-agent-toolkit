@@ -182,6 +182,7 @@ pub(crate) fn write_single_prediction(
     score: &DefectScore,
     include_recommendations: bool,
 ) -> Result<()> {
+    debug_assert!(!file.is_empty(), "file must not be empty");
     writeln!(output, "### {file}\n")?;
 
     write_prediction_metrics(output, score)?;
@@ -216,6 +217,7 @@ pub(crate) fn write_prediction_metrics(output: &mut String, score: &DefectScore)
 
 /// Write recommendations based on probability (cognitive complexity <=7)
 pub(crate) fn write_recommendations(output: &mut String, probability: f64) -> Result<()> {
+    debug_assert!(probability >= 0.0, "probability must be non-negative");
     writeln!(output, "\n#### Recommendations:")?;
 
     if probability > 0.7 {

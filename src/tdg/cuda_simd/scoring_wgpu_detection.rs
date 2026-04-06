@@ -3,6 +3,7 @@ impl CudaSimdAnalyzer {
     /// Extract destination register from PTX instruction
     /// Example: "ld.shared.u32 %r1, [%rd1]" -> Some("%r1")
     fn extract_ptx_dest_register(line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
             let dest = parts[1].trim_end_matches(',');

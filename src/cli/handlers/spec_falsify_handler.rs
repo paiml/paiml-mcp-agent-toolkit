@@ -249,6 +249,7 @@ fn print_failures_only(report: &crate::services::spec_falsification::SpecFalsifi
 }
 
 fn truncate(s: &str, max: usize) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     if s.len() <= max {
         s.to_string()
     } else {

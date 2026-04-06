@@ -244,6 +244,7 @@ fn validate_quality_gates(
 /// Prints quality gate violations to stderr
 #[cfg(feature = "deep-wasm")]
 fn print_quality_violations(violations: &[crate::services::deep_wasm::QualityViolation]) {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     eprintln!("\n❌ Quality gate violations detected:");
     for violation in violations {
         eprintln!("  - {}: {}", violation.rule, violation.message);

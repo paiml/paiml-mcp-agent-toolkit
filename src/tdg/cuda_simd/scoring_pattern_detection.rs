@@ -6,6 +6,8 @@ impl CudaSimdAnalyzer {
         path: &Path,
         analysis: &mut FileAnalysis,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let has_flash = content.contains("FlashAttention")
             || content.contains("flash_attention")
             || content.contains("tiled_attention");
@@ -40,6 +42,8 @@ impl CudaSimdAnalyzer {
         path: &Path,
         analysis: &mut FileAnalysis,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let has_matmul = content.contains("matmul") || content.contains("gemm");
         let has_tensor = content.contains("wmma")
             || content.contains("mma")
@@ -67,6 +71,8 @@ impl CudaSimdAnalyzer {
     }
 
     fn extract_value(&self, content: &str, name: &str) -> Option<usize> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
+        debug_assert!(!name.is_empty(), "name must not be empty");
         // Simple pattern matching for variable assignments
         let patterns = [
             format!("{} = ", name),

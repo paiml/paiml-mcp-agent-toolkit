@@ -51,6 +51,7 @@ impl EnhancedPythonVisitor {
 
     /// Gets the current qualified name for a symbol
     fn get_qualified_name(&self, name: &str) -> String {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let mut parts = Vec::new();
 
         // Add module path

@@ -182,6 +182,8 @@ impl ParsedFileCache {
         content: &str,
         cache_type: CacheType,
     ) -> Result<ParsedFileCacheKey> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Compute content hash
         let mut hasher = Hasher::new();
         hasher.update(content.as_bytes());

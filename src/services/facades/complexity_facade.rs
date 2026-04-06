@@ -108,6 +108,7 @@ impl ComplexityFacade {
     /// Get complexity thresholds for different languages
     #[must_use]
     pub fn get_language_thresholds(&self, language: &str) -> ComplexityThresholds {
+        debug_assert!(!language.is_empty(), "language must not be empty");
         match language {
             "rust" => ComplexityThresholds {
                 warning: 15,
@@ -139,6 +140,7 @@ impl ComplexityFacade {
         result: &ComplexityAnalysisResult,
         language: &str,
     ) -> ValidationResult {
+        debug_assert!(!language.is_empty(), "language must not be empty");
         let thresholds = self.get_language_thresholds(language);
 
         let warnings = result

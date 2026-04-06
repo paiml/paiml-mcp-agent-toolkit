@@ -125,6 +125,7 @@ fn is_analyzable_source(path: &Path) -> bool {
 }
 
 fn classify_satd_comment(text: &str, location: String) -> (SatdComment, &'static str) {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     let comment = SatdComment {
         location,
         comment: text.to_string(),

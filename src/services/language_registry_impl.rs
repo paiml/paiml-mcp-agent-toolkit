@@ -19,6 +19,7 @@ impl Language {
     /// Detect language from file extension
     #[must_use]
     pub fn from_extension(ext: &str) -> Self {
+        debug_assert!(!ext.is_empty(), "ext must not be empty");
         let ext = ext.to_lowercase();
 
         // Check all languages for matching extensions

@@ -125,6 +125,7 @@ impl FileRanker for ComplexityRanker {
     }
 
     fn format_ranking_entry(&self, file: &str, metric: &Self::Metric, rank: usize) -> String {
+        debug_assert!(!file.is_empty(), "file must not be empty");
         format!(
             "| {:>4} | {:<50} | {:>9} | {:>14} | {:>13.1} | {:>11.1} | {:>11.1} |",
             rank,

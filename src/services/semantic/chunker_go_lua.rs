@@ -1,5 +1,6 @@
 /// Extract chunks from Go code
 fn chunk_go_file(source: &str) -> Result<Vec<CodeChunk>, String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let tree = parse_go(source)?;
     let root = tree.root_node();
     let mut chunks = Vec::new();
@@ -12,6 +13,7 @@ fn chunk_go_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 /// Parse Go source code
 #[cfg(feature = "go-ast")]
 fn parse_go(source: &str) -> Result<Tree, String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut parser = Parser::new();
     parser
         .set_language(&tree_sitter_go::LANGUAGE.into())
@@ -23,11 +25,13 @@ fn parse_go(source: &str) -> Result<Tree, String> {
 
 #[cfg(not(feature = "go-ast"))]
 fn parse_go(_source: &str) -> Result<Tree, String> {
+    debug_assert!(!_source.is_empty(), "_source must not be empty");
     Err("go-ast feature is disabled".to_string())
 }
 
 /// Extract a Go type name from the first type_spec child of a type_declaration
 fn extract_go_type_name(node: Node, source: &str) -> Option<String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "type_spec" {
@@ -41,6 +45,7 @@ fn extract_go_type_name(node: Node, source: &str) -> Option<String> {
 
 /// Extract items from Go AST
 fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     match node.kind() {
         "function_declaration" => {
             if let Some(name_node) = node.child_by_field_name("name") {
@@ -85,6 +90,7 @@ fn extract_go_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
 
 /// Extract chunks from Lua code
 fn chunk_lua_file(source: &str) -> Result<Vec<CodeChunk>, String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let tree = parse_lua(source)?;
     let root = tree.root_node();
     let mut chunks = Vec::new();
@@ -97,6 +103,7 @@ fn chunk_lua_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 /// Parse Lua source code
 #[cfg(feature = "lua-ast")]
 fn parse_lua(source: &str) -> Result<Tree, String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut parser = Parser::new();
     parser
         .set_language(&tree_sitter_lua::LANGUAGE.into())
@@ -108,11 +115,13 @@ fn parse_lua(source: &str) -> Result<Tree, String> {
 
 #[cfg(not(feature = "lua-ast"))]
 fn parse_lua(_source: &str) -> Result<Tree, String> {
+    debug_assert!(!_source.is_empty(), "_source must not be empty");
     Err("lua-ast feature is disabled".to_string())
 }
 
 /// Extract items from Lua AST
 fn extract_lua_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     // function_declaration: `function foo()` or `function M.foo()` or `function M:foo()`
     if node.kind() == "function_declaration" {
         if let Some(name) = extract_lua_function_name(&node, source) {
@@ -177,6 +186,7 @@ fn extract_lua_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
 /// Extract function name from Lua function_declaration node
 /// Handles: `function foo()`, `function M.foo()`, `function M:foo()`
 fn extract_lua_function_name(node: &Node, source: &str) -> Option<String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     // Try named field "name" first
     if let Some(name_node) = node.child_by_field_name("name") {
         return Some(source[name_node.byte_range()].to_string());
@@ -196,6 +206,7 @@ fn extract_lua_function_name(node: &Node, source: &str) -> Option<String> {
 
 /// Find the first identifier child in a Lua variable_list or assignment node
 fn find_lua_var_name(node: Node, source: &str) -> Option<String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "identifier" {
@@ -219,6 +230,7 @@ fn has_function_definition(node: Node) -> bool {
 
 /// Extract function from variable assignment: `local f = function() ... end`
 fn extract_lua_variable_function(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut cursor = node.walk();
     let mut var_name = None;
     for child in node.children(&mut cursor) {

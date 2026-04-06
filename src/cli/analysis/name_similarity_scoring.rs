@@ -4,6 +4,8 @@ fn extract_names(
     file: &str,
     scope: crate::cli::SearchScope,
 ) -> Result<Vec<(String, String, usize, String)>> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!file.is_empty(), "file must not be empty");
     use regex::Regex;
 
     let mut names = Vec::new();
@@ -69,6 +71,8 @@ fn find_similar_names(
     fuzzy: bool,
     case_sensitive: bool,
 ) -> Result<Vec<NameMatch>> {
+    debug_assert!(!query.is_empty(), "query must not be empty");
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     use crate::cli::analysis_utilities::{calculate_edit_distance, calculate_soundex};
 
     let mut matches = Vec::new();

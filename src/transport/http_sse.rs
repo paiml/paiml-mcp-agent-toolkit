@@ -69,6 +69,7 @@ impl HttpSseTransportAdapter {
     /// # }
     /// ```
     pub async fn serve(addr: &str) -> Result<Self, TransportError> {
+        debug_assert!(!addr.is_empty(), "addr must not be empty");
         info!("Starting HTTP/SSE server on {}", addr);
         
         let (tx, rx) = mpsc::channel(100);
@@ -101,6 +102,7 @@ impl HttpSseTransportAdapter {
         tx: mpsc::Sender<TransportMessage>,
         state: Arc<RwLock<ConnectionState>>,
     ) -> Result<(), TransportError> {
+        debug_assert!(!addr.is_empty(), "addr must not be empty");
         use axum::{
             extract::State,
             response::sse::{Event, Sse},
@@ -170,6 +172,7 @@ impl HttpSseTransportAdapter {
     
     /// Creates an HTTP/SSE transport as a boxed TransportAdapter.
     pub async fn boxed(addr: &str) -> Result<Box<dyn TransportAdapter>, TransportError> {
+        debug_assert!(!addr.is_empty(), "addr must not be empty");
         Ok(Box::new(Self::serve(addr).await?))
     }
 }

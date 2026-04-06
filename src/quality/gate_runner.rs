@@ -33,6 +33,8 @@ impl QualityGateRunner {
     }
 
     pub async fn check(&self, _code: &str, _language: &str) -> QualityGateResult {
+        debug_assert!(!_code.is_empty(), "_code must not be empty");
+        debug_assert!(!_language.is_empty(), "_language must not be empty");
         // Simplified implementation for now
         let mut metrics = HashMap::new();
         metrics.insert("complexity".to_string(), "5".to_string());

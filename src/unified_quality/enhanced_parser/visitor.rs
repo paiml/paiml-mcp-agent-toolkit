@@ -40,6 +40,7 @@ impl ComplexityVisitor {
 
     /// Count SATD comments in content
     fn count_satd_in_content(content: &str) -> u32 {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let patterns = ["TODO", "FIXME", "HACK", "XXX", "BUG"];
         patterns
             .iter()

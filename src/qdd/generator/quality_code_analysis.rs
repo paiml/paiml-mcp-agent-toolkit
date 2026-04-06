@@ -56,6 +56,8 @@ impl QualityCodeGenerator {
 
     /// Enhance existing code with new features
     pub fn enhance_with_features(&self, base_code: &str, features: &[String]) -> Result<String> {
+        debug_assert!(!base_code.is_empty(), "base_code must not be empty");
+        debug_assert!(!features.is_empty(), "features must not be empty");
         let mut enhanced = base_code.to_string();
 
         for feature in features {
@@ -80,6 +82,7 @@ impl QualityCodeGenerator {
 
     /// Generate code for a specific feature
     fn generate_feature_code(&self, feature: &str) -> Result<String> {
+        debug_assert!(!feature.is_empty(), "feature must not be empty");
         Ok(format!(
             r"
 pub fn {}(&self) -> Result<()> {{

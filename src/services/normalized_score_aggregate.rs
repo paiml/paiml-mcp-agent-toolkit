@@ -42,6 +42,7 @@ impl AggregateScore {
 
     /// Add a component score with weight.
     pub fn add<S: NormalizedScoreClone + 'static>(&mut self, score: S, weight: f64) {
+        debug_assert!(weight >= 0.0, "weight must be non-negative");
         self.components.push((Box::new(score), weight.max(0.0)));
     }
 

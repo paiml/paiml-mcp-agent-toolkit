@@ -205,6 +205,7 @@ fn calculate_medians(all_cyclomatic: &[u16], all_cognitive: &[u16]) -> (f32, f32
 
 /// Calculate median for a sorted array
 fn calculate_median(values: &[u16]) -> f32 {
+    debug_assert!(!values.is_empty(), "values must not be empty");
     if values.is_empty() {
         return 0.0;
     }

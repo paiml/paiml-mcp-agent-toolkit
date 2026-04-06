@@ -122,6 +122,7 @@ impl LshIndex {
     /// Vector of (fragment_id, similarity) pairs above threshold
     #[must_use]
     pub fn find_similar(&self, query: &MinHashSignature, threshold: f64) -> Vec<(FragmentId, f64)> {
+        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         let candidates = self.query(query);
 
         candidates

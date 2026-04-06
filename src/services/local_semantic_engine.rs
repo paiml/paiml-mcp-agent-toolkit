@@ -32,6 +32,7 @@ impl LocalSemanticEngine {
         path: &Path,
         language_filter: Option<&str>,
     ) -> Result<usize, String> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.documents.clear();
 
         for entry in WalkDir::new(path)
@@ -246,6 +247,7 @@ impl LocalSemanticEngine {
     /// # Returns
     /// Clustering results
     pub fn cluster(&self, method: &str, k: Option<usize>) -> Result<LocalClusterResult, String> {
+        debug_assert!(!method.is_empty(), "method must not be empty");
         let dtm = self
             .dtm
             .as_ref()

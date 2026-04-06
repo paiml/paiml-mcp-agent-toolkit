@@ -61,6 +61,7 @@ impl RuchyMlAstExtractor {
 
     /// Process a single line of Ruchy code
     fn process_line(&mut self, line: &str, line_number: usize) -> Result<(), String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let trimmed = line.trim();
 
         // Skip empty lines and comments
@@ -110,12 +111,14 @@ impl RuchyMlAstExtractor {
 
     /// Check if source has valid Ruchy syntax
     fn is_valid_ruchy_syntax(&self, source: &str) -> bool {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Basic validation
         !source.contains("{{{ !!!") && !source.contains("INVALID")
     }
 
     /// Extract module declaration from a line
     fn extract_module_from_line(&mut self, line: &str, line_number: usize) -> Result<(), String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
             let name = parts[1].to_string();
@@ -134,6 +137,7 @@ impl RuchyMlAstExtractor {
 
     /// Extract ML-style function from a line
     fn extract_function_from_line(&mut self, line: &str, line_number: usize) -> Result<(), String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Pattern: let function_name(params) = expr
         if let Some(start) = line.find("let ") {
             if let Some(paren) = line.find('(') {
@@ -157,6 +161,7 @@ impl RuchyMlAstExtractor {
 
     /// Extract type definition from a line
     fn extract_type_from_line(&mut self, line: &str, line_number: usize) -> Result<(), String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
             // Handle: type Name = ... or type Name<T> = ...
@@ -182,6 +187,7 @@ impl RuchyMlAstExtractor {
 
     /// Extract actor definition from a line
     fn extract_actor_from_line(&mut self, line: &str, line_number: usize) -> Result<(), String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
             let name = parts[1].trim_end_matches('{').to_string();
@@ -204,6 +210,7 @@ impl RuchyMlAstExtractor {
 
     /// Extract theorem/proof construct from a line
     fn extract_theorem_from_line(&mut self, line: &str, line_number: usize) -> Result<(), String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Pattern: theorem name: ...
         if let Some(colon) = line.find(':') {
             let name_part = &line[7..colon]; // Skip "theorem "
@@ -226,6 +233,7 @@ impl RuchyMlAstExtractor {
 
     /// Qualify name with current module
     fn qualify_name(&self, name: &str) -> String {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(ref module) = self.current_module {
             if !name.contains("::") {
                 return format!("{module}::{name}");

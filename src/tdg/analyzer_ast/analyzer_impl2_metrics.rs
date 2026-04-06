@@ -7,12 +7,14 @@ impl TdgAnalyzerAst {
         _language: Language,
         tracker: &mut PenaltyTracker,
     ) -> f32 {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let raw_score = self.compute_entropy_score(source, tracker);
         raw_score.clamp(0.0, 10.0)
     }
 
     #[allow(clippy::cast_possible_truncation)]
     fn compute_entropy_score(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut pattern_score = 10.0f32;
         let mut line_counts = std::collections::HashMap::new();
         for line in source.lines() {
@@ -89,6 +91,7 @@ impl TdgAnalyzerAst {
     #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
     #[allow(dead_code)]
     fn calculate_cognitive_complexity(&self, _node: &str) -> u32 {
+        debug_assert!(!_node.is_empty(), "_node must not be empty");
         // Simplified implementation for rust-only builds
         // Estimate based on source patterns
         5 // Default approximation
@@ -100,6 +103,7 @@ impl TdgAnalyzerAst {
         let _current_depth = 0;
 
         fn traverse(node: tree_sitter::Node, depth: usize, max: &mut usize) {
+            debug_assert!(depth > 0, "depth must be positive");
             *max = (*max).max(depth);
 
             for child in node.children(&mut node.walk()) {
@@ -122,15 +126,18 @@ impl TdgAnalyzerAst {
     #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
     #[allow(dead_code)]
     fn calculate_max_nesting(&self, _node: &str) -> usize {
+        debug_assert!(!_node.is_empty(), "_node must not be empty");
         // Simplified implementation for rust-only builds
         5 // Default approximation
     }
 
     #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
     fn calculate_max_function_length(&self, node: &tree_sitter::Node, source: &str) -> usize {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut max_length = 0;
 
         fn find_functions(node: tree_sitter::Node, source: &str, max: &mut usize) {
+            debug_assert!(!source.is_empty(), "source must not be empty");
             if node.kind() == "function_definition" {
                 let start_line = node.start_position().row;
                 let end_line = node.end_position().row;

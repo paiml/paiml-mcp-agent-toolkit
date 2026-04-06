@@ -106,6 +106,7 @@ fn print_raw_lines(
     format: &QueryOutputFormat,
     quiet: bool,
 ) -> anyhow::Result<()> {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     if matches!(format, QueryOutputFormat::Json) {
         let json = serde_json::to_string_pretty(lines).map_err(|e| anyhow::anyhow!("{}", e))?;
         println!("{}", json);

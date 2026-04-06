@@ -8,6 +8,7 @@ fn c_node_to_ast_item(
     content: &str,
     content_lines: &[&str],
 ) -> Option<crate::services::context::AstItem> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let name = CAstStrategy::extract_name_from_node(node, content);
     let line_number = CAstStrategy::byte_pos_to_line(node.source_range.start as usize, content_lines);
     match &node.kind {
@@ -90,6 +91,7 @@ impl AstStrategy for CAstStrategy {
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
+        debug_assert!(!ext.is_empty(), "ext must not be empty");
         matches!(ext, "c" | "h")
     }
 }
@@ -101,6 +103,7 @@ impl CAstStrategy {
         node: &crate::models::unified_ast::UnifiedAstNode,
         content: &str,
     ) -> Option<String> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // For now, extract a reasonable segment from the source range
         let start = node.source_range.start as usize;
         let end = node.source_range.end as usize;
@@ -123,6 +126,7 @@ impl CAstStrategy {
 
     /// Extract function name from source text
     pub(crate) fn extract_function_name(source_text: &str) -> Option<String> {
+        debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for pattern: type name(...) or name(...)
         if let Some(paren_pos) = source_text.find('(') {
             let before_paren = &source_text[..paren_pos];
@@ -138,6 +142,7 @@ impl CAstStrategy {
 
     /// Extract type name from source text (struct, enum, etc.)
     pub(crate) fn extract_type_name(source_text: &str) -> Option<String> {
+        debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for patterns like "struct name" or "enum name"
         let words: Vec<&str> = source_text.split_whitespace().collect();
         if words.len() >= 2 {

@@ -51,6 +51,7 @@ impl SatdDetector {
     }
 
     fn extract_comments(&self, source: &str) -> String {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_block_comment = false;
         let mut comments = String::new();
         let lines = source.lines();

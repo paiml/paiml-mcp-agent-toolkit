@@ -4,6 +4,7 @@
 impl TaskQualityGate {
     #[must_use]
     pub fn new(task_id: &str, config: QualityGateConfig) -> Self {
+        debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         let checks = vec![
             QualityCheck::Complexity(config.complexity_max),
             QualityCheck::NoSatd,
@@ -192,6 +193,7 @@ impl TaskQualityGate {
 }
 
 fn parse_coverage_percentage(output: &str) -> Option<f64> {
+    debug_assert!(!output.is_empty(), "output must not be empty");
     // Look for pattern like "Coverage: 85.5%"
     for line in output.lines() {
         if line.contains("Coverage:") {

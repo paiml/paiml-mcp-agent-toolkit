@@ -38,6 +38,7 @@ pub fn enrich_with_churn(results: &mut [QueryResult], file_churn: &HashMap<Strin
 /// Converts a slice of file churn metrics into a HashMap keyed by relative path
 /// for O(1) lookup during result enrichment.
 pub fn build_churn_map(metrics: &[FileChurnMetrics]) -> HashMap<String, (u32, f32)> {
+    debug_assert!(!metrics.is_empty(), "metrics must not be empty");
     metrics
         .iter()
         .map(|m| {
@@ -64,6 +65,11 @@ pub async fn enrich_results_with_churn(
     project_root: &Path,
     period_days: u32,
 ) -> Result<(), String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     use crate::services::incremental_churn::IncrementalChurnAnalyzer;
 
     if results.is_empty() {
@@ -108,6 +114,7 @@ pub async fn enrich_results_with_churn(
 fn detect_language_for_duplication(
     path: &str,
 ) -> Option<crate::services::duplicate_detector::Language> {
+    debug_assert!(!path.is_empty(), "path must not be empty");
     use crate::services::duplicate_detector::Language;
     let ext_langs: &[(&[&str], Language)] = &[
         (&[".rs"], Language::Rust),
@@ -153,6 +160,11 @@ pub async fn enrich_results_with_duplicates(
     results: &mut [QueryResult],
     project_root: &Path,
 ) -> Result<(), String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     use crate::services::duplicate_detector::{DuplicateDetectionConfig, DuplicateDetectionEngine};
 
     if results.is_empty() {
@@ -219,6 +231,11 @@ pub async fn enrich_results_with_entropy(
     results: &mut [QueryResult],
     project_root: &Path,
 ) -> Result<(), String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     use crate::entropy::{EntropyAnalyzer, EntropyConfig};
 
     if results.is_empty() {
@@ -351,6 +368,11 @@ pub async fn enrich_results_with_faults(
     results: &mut [QueryResult],
     project_root: &Path,
 ) -> Result<(), String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     if results.is_empty() {
         return Ok(());
     }

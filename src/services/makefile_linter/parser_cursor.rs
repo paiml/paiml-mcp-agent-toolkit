@@ -68,6 +68,7 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn starts_with(&self, s: &str) -> bool {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         if self.cursor >= self.input.len() {
             return false;
         }

@@ -84,6 +84,7 @@ impl ClippyFixEngine {
 
     /// Internal fix application (complexity: 6)
     fn apply_fix_internal(&self, source: &str, diagnostic: &ClippyDiagnostic) -> Result<String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simple implementation for needless_return
         if diagnostic.code == "clippy::needless_return" {
             Ok(source.replace("return ", ""))
@@ -102,6 +103,7 @@ impl ClippyFixEngine {
 
     /// Generate cache key (complexity: 2)
     fn generate_cache_key(&self, source: &str, diagnostic: &ClippyDiagnostic) -> String {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         format!(
             "{}:{}:{}",
             diagnostic.code,
@@ -133,6 +135,7 @@ impl ClippyFixEngine {
 
     /// Validate that fix compiles (complexity: 3)
     async fn validate_fix(&self, source: &str) -> Result<bool> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Check for obvious syntax errors
         if source.contains("{{") || source.contains("}}") {
             return Ok(false);

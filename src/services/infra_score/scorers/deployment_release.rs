@@ -163,6 +163,7 @@ fn check_release_workflow(workflows: &[(String, String)]) -> InfraCheck {
 
 /// DR-02: Cross-platform builds (>=2 targets in matrix)
 fn check_cross_platform(content: &str) -> InfraCheck {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     // Count distinct platform indicators
     let mut targets = 0u32;
 
@@ -228,6 +229,7 @@ fn check_cross_platform(content: &str) -> InfraCheck {
 
 /// DR-03: Automated release notes (action-gh-release, etc.)
 fn check_release_automation(content: &str) -> InfraCheck {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let release_actions = [
         "action-gh-release",
         "softprops/action-gh-release",
@@ -296,6 +298,7 @@ enum VersionFound {
 
 /// Scan Cargo.toml content for a version declaration.
 fn find_version_declaration(content: &str) -> VersionFound {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     // First pass: look for a direct version assignment (not workspace-inherited).
     for line in content.lines() {
         let trimmed = line.trim();
@@ -359,6 +362,7 @@ fn semver_fail(reason: &str) -> InfraCheck {
 
 /// Extract version string from a TOML line like `version = "1.2.3"`
 fn extract_version_string(line: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let parts: Vec<&str> = line.splitn(2, '=').collect();
     if parts.len() == 2 {
         let val = parts[1].trim().trim_matches('"').trim_matches('\'');
@@ -371,6 +375,7 @@ fn extract_version_string(line: &str) -> Option<String> {
 
 /// Check if a version string follows semver (x.y.z with optional pre-release)
 fn is_semver(version: &str) -> bool {
+    debug_assert!(!version.is_empty(), "version must not be empty");
     let parts: Vec<&str> = version
         .split('-')
         .next()

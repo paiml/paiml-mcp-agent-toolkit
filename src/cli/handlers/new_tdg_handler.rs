@@ -122,6 +122,7 @@ async fn analyze_project_path(
     path: &Path,
     format: &TdgOutputFormat,
 ) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let project_score = analyzer.analyze_project(path).await?;
     format_project_result(&project_score, format)
 }
@@ -131,6 +132,7 @@ async fn analyze_single_file(
     path: &Path,
     format: &TdgOutputFormat,
 ) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let score = analyzer.analyze_file(path).await?;
     format_file_result(&score, format)
 }
@@ -165,6 +167,7 @@ fn format_file_result(score: &crate::tdg::TdgScore, format: &TdgOutputFormat) ->
 }
 
 async fn write_or_print_result(result: &str, output_path: Option<PathBuf>) -> Result<()> {
+    debug_assert!(!result.is_empty(), "result must not be empty");
     if let Some(output_path) = output_path {
         tokio::fs::write(&output_path, result).await?;
         eprintln!("📝 Results written to {}", output_path.display());

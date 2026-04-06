@@ -37,6 +37,7 @@ pub struct QualityReport {
 impl QualityReport {
     #[must_use]
     pub fn new(task_id: &str) -> Self {
+        debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         Self {
             task_id: task_id.to_string(),
             timestamp: Utc::now(),

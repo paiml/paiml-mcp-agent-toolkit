@@ -141,6 +141,7 @@ async fn analyze_baseline_files(
     path: &Path,
     baseline: &mut crate::tdg::TdgBaseline,
 ) -> Result<(usize, usize)> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::tdg::BaselineEntry;
     use std::fs;
     use walkdir::WalkDir;
@@ -373,6 +374,16 @@ async fn update_baseline(
     project_path: &Path,
     with_git_context: bool,
 ) -> Result<()> {
+    debug_assert!(
+        baseline_path.exists(),
+        "baseline_path must exist: {}",
+        baseline_path.display()
+    );
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     println!("{}", c::header("Updating baseline..."));
     println!(
         "   {} {}",

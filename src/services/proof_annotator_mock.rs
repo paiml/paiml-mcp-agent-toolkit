@@ -25,6 +25,7 @@ impl ProofSource for MockProofSource {
     ) -> Pin<
         Box<dyn Future<Output = Result<ProofCollectionResult, ProofCollectionError>> + Send + '_>,
     > {
+        debug_assert!(_project_root.exists(), "_project_root must exist: {}", _project_root.display());
         let delay_ms = self.delay_ms;
         let annotation_count = self.annotation_count;
         let tool_name = self.name.clone();

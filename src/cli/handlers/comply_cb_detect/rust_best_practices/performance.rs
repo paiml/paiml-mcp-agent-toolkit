@@ -284,6 +284,8 @@ fn scan_cb520_file(
     file: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
+    debug_assert!(!file.is_empty(), "file must not be empty");
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut in_loop = false;
     let mut loop_depth: u32 = 0;
     let mut loop_start: usize = 0;

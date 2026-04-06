@@ -165,6 +165,7 @@ fn collect_over_processing_files(project_path: &Path) -> Vec<String> {
 /// Estimate the maximum cyclomatic complexity of any function in the content.
 /// Uses a lightweight heuristic: counts branching keywords per function.
 fn estimate_max_complexity(content: &str) -> u32 {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut max_cc = 1u32;
     let mut current_cc = 1u32;
     let mut in_function = false;

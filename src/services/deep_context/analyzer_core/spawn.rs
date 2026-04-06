@@ -18,6 +18,11 @@ impl DeepContextAnalyzer {
         project_path: &std::path::Path,
         progress: &crate::services::progress::ProgressTracker,
     ) -> anyhow::Result<ParallelAnalysisResults> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let analysis_count = self.config.include_analyses.len() as u64;
         let analysis_progress = progress.create_sub_progress("Running analyses", analysis_count);
 
@@ -94,6 +99,11 @@ impl DeepContextAnalyzer {
         project_path: &std::path::Path,
         prebuilt_context: Option<Arc<crate::services::context::ProjectContext>>,
     ) -> anyhow::Result<tokio::task::JoinSet<AnalysisResult>> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut join_set = tokio::task::JoinSet::new();
 
         // Shared cache as fallback for Provability/DAG if no pre-built context
@@ -156,6 +166,11 @@ impl DeepContextAnalyzer {
         shared_cache: &Arc<SessionCacheManager>,
         prebuilt_context: &Option<Arc<crate::services::context::ProjectContext>>,
     ) -> anyhow::Result<()> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let path = project_path.to_path_buf();
 
         match analysis_type {
@@ -187,6 +202,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
     ) -> anyhow::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let file_classifier_config = self.config.file_classifier_config.clone();
         join_set.spawn(async move {
             AnalysisResult::Ast(
@@ -202,6 +218,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
     ) -> anyhow::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         join_set.spawn(async move {
             AnalysisResult::Complexity(
                 crate::services::deep_context::analysis_functions::analyze_complexity(&path).await,
@@ -215,6 +232,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
     ) -> anyhow::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let days = self.config.period_days;
         join_set.spawn(async move {
             AnalysisResult::Churn(
@@ -229,6 +247,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
     ) -> anyhow::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         join_set.spawn(async move {
             AnalysisResult::DeadCode(
                 crate::services::deep_context::analysis_functions::analyze_dead_code(&path).await,
@@ -242,6 +261,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
     ) -> anyhow::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         join_set.spawn(async move {
             AnalysisResult::DuplicateCode(
                 crate::services::deep_context::analysis_functions::analyze_duplicate_code(&path)
@@ -256,6 +276,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
     ) -> anyhow::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         join_set.spawn(async move {
             let result = tokio::task::spawn_blocking(move || {
                 tokio::runtime::Handle::current().block_on(async {
@@ -276,6 +297,7 @@ impl DeepContextAnalyzer {
         cache: Arc<SessionCacheManager>,
         prebuilt: Option<Arc<crate::services::context::ProjectContext>>,
     ) -> anyhow::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         join_set.spawn(async move {
             AnalysisResult::Provability(
                 crate::services::deep_context::analysis_functions::analyze_provability_with_context(
@@ -296,6 +318,7 @@ impl DeepContextAnalyzer {
         cache: Arc<SessionCacheManager>,
         prebuilt: Option<Arc<crate::services::context::ProjectContext>>,
     ) -> anyhow::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let dag_type = self.config.dag_type.clone();
         join_set.spawn(async move {
             AnalysisResult::Dag(
@@ -316,6 +339,7 @@ impl DeepContextAnalyzer {
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
         path: PathBuf,
     ) -> anyhow::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         join_set.spawn(async move {
             AnalysisResult::BigO(
                 crate::services::deep_context::analysis_functions::analyze_big_o(&path).await,

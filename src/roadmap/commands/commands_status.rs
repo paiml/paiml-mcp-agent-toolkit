@@ -20,6 +20,7 @@ async fn show_status(
 }
 
 fn show_task_status(roadmap: &Roadmap, task_id: &str, format: OutputFormat) -> Result<()> {
+    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
     let task = roadmap
         .get_task(task_id)
         .context(format!("Task {task_id} not found"))?;

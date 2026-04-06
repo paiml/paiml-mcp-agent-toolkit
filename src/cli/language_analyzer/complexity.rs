@@ -136,6 +136,7 @@ pub(crate) fn find_brace_balanced_end(
     start: usize,
     handle_raw_strings: bool,
 ) -> usize {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut state = BraceState::new();
     for (i, line) in lines.iter().enumerate().skip(start) {
         let chars: Vec<char> = line.chars().collect();
@@ -167,6 +168,7 @@ impl ComplexityVisitor {
     }
 
     pub(crate) fn analyze_lines(&mut self, lines: &[&str]) {
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         self.lines = lines.len() as u16;
 
         for line in lines {
@@ -195,6 +197,7 @@ impl ComplexityVisitor {
     }
 
     fn is_control_flow(&self, line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         line.contains("if ")
             || line.contains("while ")
             || line.contains("for ")

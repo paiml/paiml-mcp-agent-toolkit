@@ -137,6 +137,7 @@ impl CliAdapter {
         output: &Option<std::path::PathBuf>,
         create_dirs: &bool,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(!category.is_empty(), "category must not be empty");
         let params_map: HashMap<String, Value> = params.iter().cloned().collect();
         let body = json!({
             "template_uri": format!("template://{}/{}", category, template),
@@ -153,6 +154,7 @@ impl CliAdapter {
         params: &[(String, Value)],
         parallel: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
         let params_map: HashMap<String, Value> = params.iter().cloned().collect();
         let body = json!({
             "toolchain": toolchain,
@@ -198,6 +200,8 @@ impl CliAdapter {
         toolchain: &Option<String>,
         limit: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
+        debug_assert!(limit > 0, "limit must be positive");
         let body = json!({
             "query": query,
             "toolchain": toolchain,
@@ -210,6 +214,7 @@ impl CliAdapter {
         uri: &str,
         params: &[(String, Value)],
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(!uri.is_empty(), "uri must not be empty");
         let params_map: HashMap<String, Value> = params.iter().cloned().collect();
         let body = json!({
             "template_uri": uri,
@@ -224,6 +229,7 @@ impl CliAdapter {
         output: &Option<std::path::PathBuf>,
         format: &ContextFormat,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let body = json!({
             "toolchain": toolchain,
             "project_path": project_path.to_string_lossy(),

@@ -9,6 +9,7 @@ impl LanguageAnalyzer {
         language: Language,
         analysis_types: &[AnalysisType],
     ) -> Result<Vec<AnalysisResult>> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut results = Vec::new();
 
         for analysis_type in analysis_types {
@@ -31,6 +32,7 @@ impl LanguageAnalyzer {
         language: Language,
         analysis_type: &AnalysisType,
     ) -> AnalysisResult {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         match analysis_type {
             AnalysisType::Complexity => self.analyze_complexity(content, language).await,
             AnalysisType::Satd => self.analyze_satd(content, language).await,
@@ -60,6 +62,7 @@ impl LanguageAnalyzer {
 
     /// Analyze complexity for the given language
     async fn analyze_complexity(&self, content: &str, language: Language) -> AnalysisResult {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let complexity_keywords = self.get_complexity_keywords(language);
         let complexity = self.calculate_keyword_complexity(content, &complexity_keywords);
 
@@ -98,6 +101,7 @@ impl LanguageAnalyzer {
 
     /// Calculate complexity based on keyword counting
     fn calculate_keyword_complexity(&self, content: &str, keywords: &[&str]) -> usize {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut complexity = 1; // Base complexity
         for keyword in keywords {
             complexity += content.matches(keyword).count();
@@ -107,6 +111,7 @@ impl LanguageAnalyzer {
 
     /// Analyze SATD (Self-Admitted Technical Debt)
     async fn analyze_satd(&self, content: &str, _language: Language) -> AnalysisResult {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let satd_keywords = ["TODO", "FIXME", "HACK", "XXX", "BUG", "KLUDGE"];
         let mut satd_items = Vec::new();
 
@@ -135,6 +140,7 @@ impl LanguageAnalyzer {
 
     /// Analyze dead code (simplified)
     async fn analyze_dead_code(&self, _content: &str, language: Language) -> AnalysisResult {
+        debug_assert!(!_content.is_empty(), "_content must not be empty");
         AnalysisResult {
             analysis_type: AnalysisType::DeadCode,
             success: true,
@@ -148,6 +154,7 @@ impl LanguageAnalyzer {
 
     /// Analyze security issues (simplified)
     async fn analyze_security(&self, content: &str, language: Language) -> AnalysisResult {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let security_patterns = self.get_security_patterns(language);
         let issues = self.find_security_issues(content, &security_patterns);
 
@@ -176,6 +183,7 @@ impl LanguageAnalyzer {
 
     /// Find security issues in content
     fn find_security_issues(&self, content: &str, patterns: &[&str]) -> Vec<serde_json::Value> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut issues = Vec::new();
 
         for (line_num, line) in content.lines().enumerate() {
@@ -195,6 +203,7 @@ impl LanguageAnalyzer {
 
     /// Analyze code style
     async fn analyze_style(&self, content: &str, language: Language) -> AnalysisResult {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let line_lengths: Vec<usize> = content.lines().map(str::len).collect();
         let avg_line_length = if line_lengths.is_empty() {
             0.0
@@ -218,6 +227,7 @@ impl LanguageAnalyzer {
 
     /// Analyze documentation
     async fn analyze_documentation(&self, content: &str, language: Language) -> AnalysisResult {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let total_lines = content.lines().count();
         let comment_lines = content
             .lines()
@@ -244,6 +254,7 @@ impl LanguageAnalyzer {
 
     /// Analyze dependencies (simplified)
     async fn analyze_dependencies(&self, content: &str, language: Language) -> AnalysisResult {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let import_patterns = self.get_import_patterns(language);
         let imports = self.find_imports(content, &import_patterns);
 
@@ -272,6 +283,7 @@ impl LanguageAnalyzer {
 
     /// Find imports in content
     fn find_imports(&self, content: &str, patterns: &[&str]) -> Vec<serde_json::Value> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut imports = Vec::new();
 
         for (line_num, line) in content.lines().enumerate() {
@@ -290,6 +302,7 @@ impl LanguageAnalyzer {
 
     /// Analyze basic metrics
     async fn analyze_metrics(&self, content: &str, language: Language) -> AnalysisResult {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let functions = match language {
             Language::Rust => content.matches("fn ").count(),

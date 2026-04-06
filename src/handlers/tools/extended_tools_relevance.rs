@@ -1,6 +1,7 @@
 // Template relevance scoring (extracted from extended_tools.rs for CB-040)
 
 fn calculate_relevance(template: &crate::models::template::TemplateResource, query: &str) -> f32 {
+    debug_assert!(!query.is_empty(), "query must not be empty");
     let mut score = 0.0;
 
     // Exact match in name gets highest score

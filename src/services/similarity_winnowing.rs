@@ -49,6 +49,7 @@ impl Winnowing {
     }
 
     fn extract_k_grams(&self, text: &str) -> Vec<u64> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let chars: Vec<char> = text.chars().collect();
         let mut k_grams = Vec::new();
 
@@ -75,6 +76,7 @@ impl Winnowing {
     }
 
     fn hash_k_gram(&self, gram: &str) -> u64 {
+        debug_assert!(!gram.is_empty(), "gram must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 

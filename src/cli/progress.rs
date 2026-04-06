@@ -210,6 +210,7 @@ impl MultiStageProgress {
     }
 
     pub fn next_stage(&mut self, _message: &str) {
+        debug_assert!(!_message.is_empty(), "_message must not be empty");
         if self.current_stage_index < self.stages.len() - 1 {
             self.current_stage_index += 1;
         }
@@ -250,6 +251,7 @@ impl MultiStageProgress {
     }
 
     pub fn finish(&self, _message: &str) {
+        debug_assert!(!_message.is_empty(), "_message must not be empty");
         if let Some(ref pb) = self.progress_bar {
             pb.finish_and_clear();
         }
@@ -279,6 +281,7 @@ impl CategoryProgress {
     }
 
     pub fn next_category(&mut self, _name: &str) {
+        debug_assert!(!_name.is_empty(), "_name must not be empty");
         if self.current_category_index < self.categories.len() - 1 {
             self.current_category_index += 1;
         }

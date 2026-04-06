@@ -234,6 +234,7 @@ fn format_sarif(result: &CudaSimdTdgResult) -> Result<String> {
 }
 
 fn write_output(output: &str, config: &CudaTdgCommandConfig) -> Result<()> {
+    debug_assert!(!output.is_empty(), "output must not be empty");
     if let Some(ref path) = config.output {
         fs::write(path, output)?;
     } else {

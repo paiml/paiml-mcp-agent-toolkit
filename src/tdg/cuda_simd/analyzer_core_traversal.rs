@@ -35,6 +35,7 @@ impl CudaSimdAnalyzer {
         barrier_safety: &mut BarrierSafetyResult,
         coalescing: &mut CoalescingResult,
     ) -> anyhow::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         for entry in walkdir::WalkDir::new(path)
             .follow_links(true)
             .into_iter()

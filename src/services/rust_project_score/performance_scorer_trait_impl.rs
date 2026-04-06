@@ -22,6 +22,7 @@ impl Scorer for PerformanceScorer {
         project_path: &Path,
         _mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // This scorer doesn't have expensive operations, so mode doesn't affect it
         self.score(project_path)
     }

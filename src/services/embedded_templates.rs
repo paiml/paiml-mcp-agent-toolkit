@@ -133,6 +133,7 @@ fn convert_to_template_resource(
 }
 
 fn parse_template_category(category_str: &str) -> Result<TemplateCategory, TemplateError> {
+    debug_assert!(!category_str.is_empty(), "category_str must not be empty");
     match category_str {
         "makefile" => Ok(TemplateCategory::Makefile),
         "readme" => Ok(TemplateCategory::Readme),
@@ -144,6 +145,7 @@ fn parse_template_category(category_str: &str) -> Result<TemplateCategory, Templ
 }
 
 fn parse_toolchain(toolchain_str: &str) -> Result<Toolchain, TemplateError> {
+    debug_assert!(!toolchain_str.is_empty(), "toolchain_str must not be empty");
     match toolchain_str {
         "rust" => Ok(Toolchain::RustCli {
             cargo_features: vec![],
@@ -182,6 +184,10 @@ fn convert_embedded_parameter(p: EmbeddedParameter) -> ParameterSpec {
 }
 
 fn parse_parameter_type(param_type_str: &str) -> ParameterType {
+    debug_assert!(
+        !param_type_str.is_empty(),
+        "param_type_str must not be empty"
+    );
     match param_type_str {
         "project_name" => ParameterType::ProjectName,
         "boolean" => ParameterType::Boolean,
@@ -206,6 +212,7 @@ fn build_s3_object_key(
     toolchain: &Toolchain,
     variant: &str,
 ) -> String {
+    debug_assert!(!variant.is_empty(), "variant must not be empty");
     let category_path = get_category_path(category);
     format!(
         "templates/{}/{}/{}.hbs",
@@ -257,6 +264,7 @@ pub async fn list_templates(prefix: &str) -> Result<Vec<Arc<TemplateResource>>, 
 }
 
 pub async fn get_template_metadata(uri: &str) -> Result<Arc<TemplateResource>, TemplateError> {
+    debug_assert!(!uri.is_empty(), "uri must not be empty");
     debug!("Fetching embedded template metadata for: {}", uri);
 
     let metadata_str = match uri {
@@ -284,6 +292,7 @@ pub async fn get_template_metadata(uri: &str) -> Result<Arc<TemplateResource>, T
 }
 
 pub async fn get_template_content(uri: &str) -> Result<Arc<str>, TemplateError> {
+    debug_assert!(!uri.is_empty(), "uri must not be empty");
     debug!("Fetching embedded template content for: {}", uri);
 
     let content = match uri {

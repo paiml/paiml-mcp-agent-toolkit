@@ -12,6 +12,9 @@ async fn analyze_single_file(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(file.exists(), "file must exist: {}", file.display());
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     eprintln!("📄 Analyzing TDG for file: {}", file.display());
 
     // Resolve path
@@ -53,6 +56,8 @@ async fn analyze_multiple_files(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     eprintln!("📄 Analyzing TDG for {} files...", files.len());
 
     let results =
@@ -72,6 +77,8 @@ async fn process_files_for_tdg(
     threshold: f64,
     critical_only: bool,
 ) -> Vec<(crate::models::tdg::TDGScore, PathBuf)> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let mut results = Vec::new();
 
     for file_path in files {
@@ -99,6 +106,8 @@ async fn calculate_and_filter_file(
     threshold: f64,
     critical_only: bool,
 ) -> Option<crate::models::tdg::TDGScore> {
+    debug_assert!(full_path.exists(), "full_path must exist: {}", full_path.display());
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     match calculator.calculate_file(full_path).await {
         Ok(score) => {
             if should_include_score(&score, threshold, critical_only) {
@@ -127,6 +136,8 @@ async fn analyze_project(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     eprintln!("📁 Project path: {}", project_path.display());
 
     // Analyze directory

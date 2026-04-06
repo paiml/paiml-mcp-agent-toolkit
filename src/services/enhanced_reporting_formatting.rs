@@ -46,6 +46,7 @@ impl EnhancedReportingService {
 
     /// Create health score gauge
     fn create_health_score_gauge(&self, score: f64) -> Result<Visualization> {
+        debug_assert!(score >= 0.0, "score must be non-negative");
         let data = serde_json::json!({
             "value": score,
             "min": 0,

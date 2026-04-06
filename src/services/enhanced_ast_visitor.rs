@@ -70,6 +70,7 @@ impl EnhancedAstVisitor {
 
     /// Gets line number from a span debug representation
     fn get_line_from_span_debug(&self, span_debug: &str) -> usize {
+        debug_assert!(!span_debug.is_empty(), "span_debug must not be empty");
         // Extract line number from debug representation if available
         // Format is typically "Span { start: Loc { line: X, ... }, ... }"
         if let Some(line_start) = span_debug.find("line: ") {
@@ -98,6 +99,7 @@ impl EnhancedAstVisitor {
 
     /// Creates a qualified name for the current module context
     fn get_qualified_name(&self, name: &str) -> String {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         if self.module_path.is_empty() {
             name.to_string()
         } else {

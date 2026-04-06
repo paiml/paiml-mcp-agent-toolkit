@@ -81,6 +81,7 @@ impl FunctionAnalyzer {
     ///
     /// Vector of `FunctionComplexity` sorted by TDG impact (descending)
     pub fn analyze_source(&mut self, source_code: &str) -> Result<Vec<FunctionComplexity>> {
+        debug_assert!(!source_code.is_empty(), "source_code must not be empty");
         // Parse source code
         let tree = self
             .parser
@@ -125,6 +126,7 @@ impl FunctionAnalyzer {
 
     /// Analyze a single function node
     fn analyze_function(&self, node: Node, source_code: &str) -> Option<FunctionComplexity> {
+        debug_assert!(!source_code.is_empty(), "source_code must not be empty");
         // Extract function name
         let name = self.extract_function_name(node, source_code)?;
 
@@ -158,6 +160,7 @@ impl FunctionAnalyzer {
 
     /// Extract function name from function_item node
     fn extract_function_name(&self, node: Node, source_code: &str) -> Option<String> {
+        debug_assert!(!source_code.is_empty(), "source_code must not be empty");
         // function_item has a "name" field with identifier
         node.child_by_field_name("name").and_then(|name_node| {
             let start = name_node.start_byte();

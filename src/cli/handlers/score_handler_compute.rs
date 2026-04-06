@@ -365,6 +365,7 @@ fn compute_file_health(path: &Path) -> f64 {
 }
 
 fn geometric_mean(values: &[f64]) -> f64 {
+    debug_assert!(!values.is_empty(), "values must not be empty");
     if values.is_empty() {
         return 0.0;
     }

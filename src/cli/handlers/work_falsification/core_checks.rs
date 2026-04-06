@@ -341,6 +341,7 @@ pub(crate) fn test_file_size_regression(
 
 /// Parse spec score from pmat output (format: "Score: XX/100")
 fn parse_spec_score(stdout: &str) -> Option<u32> {
+    debug_assert!(!stdout.is_empty(), "stdout must not be empty");
     let score_line = stdout.lines().find(|l| l.contains("Score:"))?;
     let score_str = score_line.split('/').next()?;
     score_str

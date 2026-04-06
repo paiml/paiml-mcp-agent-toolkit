@@ -25,6 +25,7 @@ impl UndirectedGraph {
     }
 
     pub fn add_edge(&mut self, from: NodeId, to: NodeId, weight: f64) {
+        debug_assert!(weight >= 0.0, "weight must be non-negative");
         // Store both directions for undirected access
         self.edge_weights.insert((from, to), weight);
         self.edge_weights.insert((to, from), weight);

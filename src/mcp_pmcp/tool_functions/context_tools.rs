@@ -3,6 +3,7 @@ pub async fn generate_context(
     _max_depth: Option<usize>,
     _include_dependencies: bool,
 ) -> Result<Value> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::services::deep_context::analyze_single_file;
 
     if paths.is_empty() {
@@ -60,6 +61,7 @@ pub async fn generate_context(
 }
 
 pub async fn generate_deep_context(paths: &[PathBuf], _format: Option<&str>) -> Result<Value> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
 
     if paths.is_empty() {
@@ -102,6 +104,7 @@ pub async fn generate_deep_context(paths: &[PathBuf], _format: Option<&str>) -> 
 }
 
 pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Result<Value> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
 
     if paths.is_empty() {
@@ -180,6 +183,7 @@ pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Re
 }
 
 pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<Value> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use std::collections::HashSet;
     use std::fs;
 
@@ -195,6 +199,7 @@ pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<
     let mut languages = HashSet::new();
 
     fn detect_lang(ext: &str) -> Option<&'static str> {
+        debug_assert!(!ext.is_empty(), "ext must not be empty");
         match ext {
             "rs" => Some("Rust"),
             "py" => Some("Python"),

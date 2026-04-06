@@ -69,6 +69,7 @@ pub struct ContractMetadata {
 impl ContractMetadata {
     #[must_use]
     pub fn new(created_by: &str) -> Self {
+        debug_assert!(!created_by.is_empty(), "created_by must not be empty");
         Self {
             created_at: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -89,6 +90,10 @@ impl ContractMetadata {
 
     #[must_use]
     pub fn deprecated(mut self, migration_notes: &str) -> Self {
+        debug_assert!(
+            !migration_notes.is_empty(),
+            "migration_notes must not be empty"
+        );
         self.deprecated = true;
         self.migration_notes = Some(migration_notes.to_string());
         self
@@ -277,6 +282,8 @@ impl ParameterRenameMapping {
 
     #[must_use]
     pub fn add_mapping(mut self, old_name: &str, new_name: &str) -> Self {
+        debug_assert!(!old_name.is_empty(), "old_name must not be empty");
+        debug_assert!(!new_name.is_empty(), "new_name must not be empty");
         self.mappings
             .insert(old_name.to_string(), new_name.to_string());
         self
@@ -320,6 +327,7 @@ pub struct ContractBuilder<T> {
 
 impl<T> ContractBuilder<T> {
     pub fn new(contract: T, created_by: &str) -> Self {
+        debug_assert!(!created_by.is_empty(), "created_by must not be empty");
         Self {
             version: ContractVersion::current(),
             contract,
@@ -338,6 +346,10 @@ impl<T> ContractBuilder<T> {
     }
 
     pub fn deprecated(mut self, migration_notes: &str) -> Self {
+        debug_assert!(
+            !migration_notes.is_empty(),
+            "migration_notes must not be empty"
+        );
         self.metadata = self.metadata.deprecated(migration_notes);
         self
     }

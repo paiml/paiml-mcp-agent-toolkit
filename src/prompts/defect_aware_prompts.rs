@@ -85,6 +85,7 @@ impl DefectAwarePromptGenerator {
 
     /// Generate context-aware prompt for a specific task
     pub fn generate_prompt(&self, task: &str, context: &str) -> String {
+        debug_assert!(!task.is_empty(), "task must not be empty");
         let mut prompt = String::new();
 
         // Task section
@@ -172,6 +173,10 @@ impl DefectAwarePromptGenerator {
 
     /// Generate prompt for preventing a specific defect category
     pub fn generate_prevention_prompt(&self, defect_category: &str) -> Option<String> {
+        debug_assert!(
+            !defect_category.is_empty(),
+            "defect_category must not be empty"
+        );
         self.defect_patterns
             .iter()
             .find(|p| p.category == defect_category)

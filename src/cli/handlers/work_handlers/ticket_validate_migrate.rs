@@ -65,6 +65,8 @@ fn print_valid_roadmap(
 
 /// Print YAML parse error with context and suggestions (helper for handle_work_validate)
 fn print_yaml_error_context(error_msg: &str, content: &str) {
+    debug_assert!(!error_msg.is_empty(), "error_msg must not be empty");
+    debug_assert!(!content.is_empty(), "content must not be empty");
     use crate::cli::colors as c;
     println!("{}", c::fail("Validation failed"));
     println!();

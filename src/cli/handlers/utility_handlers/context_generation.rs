@@ -46,6 +46,8 @@ async fn generate_enhanced_ast_context(
     format: ContextFormat,
     include_large_files: bool,
 ) -> Result<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     // GH-46: --include-large-files not yet implemented
     if include_large_files {
         eprintln!("Warning: --include-large-files is not yet implemented. Flag ignored.");

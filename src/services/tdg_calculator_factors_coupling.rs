@@ -147,6 +147,7 @@ impl TDGCalculator {
     }
 
     fn count_imports(&self, content: &str) -> usize {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use std::sync::OnceLock;
 
         static IMPORT_PATTERNS: OnceLock<[regex::Regex; 4]> = OnceLock::new();

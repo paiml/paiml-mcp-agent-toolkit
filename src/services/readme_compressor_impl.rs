@@ -151,6 +151,7 @@ impl ReadmeCompressor {
     }
 
     fn truncate_intelligently(&self, text: &str, max_len: usize) -> String {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         if text.len() <= max_len {
             return text.to_string();
         }
@@ -175,6 +176,7 @@ impl ReadmeCompressor {
     }
 
     fn extract_project_description(&self, content: &str) -> Option<String> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
 
         // Skip initial badges and empty lines
@@ -245,6 +247,7 @@ impl ReadmeCompressor {
     }
 
     fn summarize_list_item(&self, item: &str) -> String {
+        debug_assert!(!item.is_empty(), "item must not be empty");
         // Remove common prefixes
         let cleaned = item
             .trim_start_matches("- ")

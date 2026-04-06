@@ -11,6 +11,8 @@ impl QualityMonitorEngine {
         metrics: &Arc<RwLock<HashMap<String, QualityMetrics>>>,
         event_sender: &Option<mpsc::Sender<QualityEvent>>,
     ) -> Result<()> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+        debug_assert!(!project_id.is_empty(), "project_id must not be empty");
         debug!("File system event: {:?}", event);
 
         // Filter relevant events
@@ -59,6 +61,9 @@ impl QualityMonitorEngine {
         metrics: &Arc<RwLock<HashMap<String, QualityMetrics>>>,
         event_sender: &Option<mpsc::Sender<QualityEvent>>,
     ) -> Result<()> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(relative_path.exists(), "relative_path must exist: {}", relative_path.display());
+        debug_assert!(!project_id.is_empty(), "project_id must not be empty");
         info!(
             "Analyzing changed file: {:?} (event: {:?})",
             relative_path, event_kind

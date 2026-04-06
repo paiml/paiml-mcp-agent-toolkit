@@ -86,6 +86,7 @@ async fn create_backup(files: &[CruftFile], backup_dir: &Path) -> Result<()> {
 
 /// Remove files
 async fn remove_files(files: &[CruftFile]) -> Result<()> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     let mut removed = 0;
     let mut errors = Vec::new();
 

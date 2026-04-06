@@ -30,6 +30,7 @@ impl WasmInspector {
 
     /// Creates a new WASM inspector with custom size limit
     pub fn with_size_limit(max_size: u64) -> Self {
+        debug_assert!(max_size > 0, "max_size must be positive");
         Self {
             max_module_size: max_size,
         }
@@ -97,6 +98,7 @@ impl WasmInspector {
         bytes: &'a [u8],
         section_name: &str,
     ) -> DeepWasmResult<Option<&'a [u8]>> {
+        debug_assert!(!section_name.is_empty(), "section_name must not be empty");
         let parser = Parser::new(0);
 
         for payload in parser.parse_all(bytes) {

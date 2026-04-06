@@ -8,6 +8,7 @@ impl SATDDetector {
         root: &Path,
         include_tests: bool,
     ) -> Result<SATDAnalysisResult, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let files = self.find_source_files(root).await?;
         let mut analysis_stats = ProjectAnalysisStats::new();
 
@@ -27,6 +28,7 @@ impl SATDDetector {
         include_tests: bool,
         stats: &mut ProjectAnalysisStats,
     ) {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         for file_path in files {
             if self.should_skip_file(file_path, include_tests).await {
                 continue;
@@ -163,6 +165,7 @@ impl SATDDetector {
         &self,
         root: &Path,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         self.analyze_directory_with_tests(root, false).await
     }
 
@@ -172,6 +175,7 @@ impl SATDDetector {
         root: &Path,
         include_tests: bool,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let mut all_debts = Vec::new();
         let files = self.find_source_files(root).await?;
 

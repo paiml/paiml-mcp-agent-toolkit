@@ -10,6 +10,7 @@ use super::types::*;
 
 /// Convert a TDG grade letter to a numeric ordinal for comparison.
 fn grade_ordinal(grade: &str) -> u8 {
+    debug_assert!(!grade.is_empty(), "grade must not be empty");
     match grade.trim() {
         "A" => 0,
         "B" => 1,
@@ -22,6 +23,7 @@ fn grade_ordinal(grade: &str) -> u8 {
 
 /// Return all grade letters that are strictly below (worse than) the given minimum.
 fn grades_below(min_grade: &str) -> Vec<&'static str> {
+    debug_assert!(!min_grade.is_empty(), "min_grade must not be empty");
     let threshold = grade_ordinal(min_grade);
     ["A", "B", "C", "D", "F"]
         .into_iter()
@@ -444,6 +446,7 @@ pub(crate) fn check_custom_scores(project_path: &Path) -> Vec<ComplianceCheck> {
 }
 
 fn extract_score_from_output(output: &str) -> Option<f64> {
+    debug_assert!(!output.is_empty(), "output must not be empty");
     for line in output.lines() {
         let line = line.trim();
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {

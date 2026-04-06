@@ -48,6 +48,7 @@ impl RustMutationGenerator {
 
     /// Parse Rust source using tree-sitter
     fn parse_rust(&self, source: &str) -> Result<Tree> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_rust::LANGUAGE.into())
@@ -60,6 +61,7 @@ impl RustMutationGenerator {
 
     /// Recursively visit AST nodes and apply mutation operators
     fn visit_node(&self, node: &Node, source: &[u8], mutants: &mut Vec<Mutant>, file_path: &str) {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         // Try to apply each operator to this node
         for operator in &self.operators {
             if operator.can_mutate(node, source) {
@@ -103,6 +105,7 @@ impl RustMutationGenerator {
 
 /// Helper to map operator name to MutationOperatorType enum
 fn map_operator_name_to_type(name: &str) -> MutationOperatorType {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     match name {
         "RustBinaryOp" => MutationOperatorType::ArithmeticReplacement,
         "RustRelationalOp" => MutationOperatorType::RelationalReplacement,

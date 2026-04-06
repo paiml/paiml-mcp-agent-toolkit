@@ -14,6 +14,9 @@ async fn perform_tdg_analysis(
     critical_only: bool,
     verbose: bool,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
+    debug_assert!(top > 0, "top must be positive");
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     // Reuse the main analysis logic
     let output_content = analyze_multiple_files(
         calculator,

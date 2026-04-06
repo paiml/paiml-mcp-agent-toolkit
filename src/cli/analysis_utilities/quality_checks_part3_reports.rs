@@ -4,6 +4,7 @@ fn format_qg_as_summary(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> Result<String> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::fmt::Write;
     let mut output = String::new();
     writeln!(
@@ -31,6 +32,7 @@ fn write_qg_violations_summary(
     output: &mut String,
     violations: &[QualityViolation],
 ) -> Result<()> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::collections::BTreeMap;
     use std::fmt::Write;
 
@@ -61,6 +63,7 @@ fn format_qg_as_detailed(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> Result<String> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut output = String::new();
 
     write_qg_detailed_header(&mut output, results)?;
@@ -117,6 +120,7 @@ fn write_qg_detailed_violations(
     output: &mut String,
     violations: &[QualityViolation],
 ) -> Result<()> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::fmt::Write;
     writeln!(output, "\n## All Violations\n")?;
     for (i, v) in violations.iter().enumerate() {
@@ -143,6 +147,7 @@ fn format_qg_as_markdown(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> Result<String> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut output = String::new();
 
     write_qg_markdown_header(&mut output, results)?;
@@ -161,6 +166,7 @@ fn write_qg_markdown_violations(
     output: &mut String,
     violations: &[QualityViolation],
 ) -> Result<()> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::collections::BTreeMap;
     use std::fmt::Write;
 

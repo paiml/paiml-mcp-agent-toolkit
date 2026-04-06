@@ -110,6 +110,7 @@ pub(super) fn is_in_lua_string(line: &str, pattern: &str) -> bool {
 
 /// Strip trailing `--` comment from a line (heuristic: not inside string).
 fn strip_trailing_comment(line: &str) -> String {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     if let Some(pos) = line.find("--") {
         let before = &line[..pos];
         let double_q = before.chars().filter(|c| *c == '"').count();
@@ -143,6 +144,7 @@ pub(super) fn skip_identifier(bytes: &[u8], mut i: usize) -> usize {
 /// Skips over string literals and bracket expressions to avoid false positives
 /// on patterns like `tbl["H.N.S.W."]` where dots are inside strings.
 pub fn count_consecutive_field_access(line: &str) -> usize {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let mut max_depth = 0;
     let bytes = line.as_bytes();
     let mut i = 0;

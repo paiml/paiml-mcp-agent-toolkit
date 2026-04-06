@@ -63,6 +63,7 @@ impl CudaSimdAnalyzer {
 
     /// Count PTX register declarations for pressure analysis
     fn count_ptx_registers(content: &str) -> (usize, usize) {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut total_registers: usize = 0;
         let mut predicate_count: usize = 0;
 
@@ -91,6 +92,8 @@ impl CudaSimdAnalyzer {
         total_registers: usize,
         predicate_count: usize,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         if content.contains(".local") {
             let local_count = content.matches(".local").count();
             analysis.defects.push(DetectedDefect {

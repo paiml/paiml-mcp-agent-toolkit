@@ -252,6 +252,7 @@ impl CudaTdgGrade {
     /// Convert score to grade
     #[must_use]
     pub fn from_score(score: f64, gateway_passed: bool) -> Self {
+        debug_assert!(score >= 0.0, "score must be non-negative");
         if !gateway_passed {
             return Self::GatewayFail;
         }

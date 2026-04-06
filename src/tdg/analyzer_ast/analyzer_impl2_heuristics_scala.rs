@@ -8,6 +8,7 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         score.confidence *= 0.85;
 
         let lines: Vec<&str> = source.lines().collect();
@@ -74,6 +75,7 @@ impl TdgAnalyzerAst {
 
     /// Extract structural metrics from Scala source: (cyclomatic, cognitive, max_nesting, longest_method)
     fn scala_structural_metrics(lines: &[&str]) -> (u32, u32, usize, usize) {
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         let mut max_nesting = 0usize;
         let mut current_nesting = 0usize;
         let mut match_arms = 0u32;
@@ -115,6 +117,7 @@ impl TdgAnalyzerAst {
     }
 
     fn is_scala_control_flow(trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         trimmed.starts_with("if ")
             || trimmed.starts_with("if(")
             || trimmed.contains(" if ")
@@ -127,6 +130,7 @@ impl TdgAnalyzerAst {
 
     /// Calculate Scala naming consistency ratio (0.0-1.0)
     fn scala_naming_consistency(lines: &[&str]) -> f32 {
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         let mut camel_defs = 0u32;
         let mut non_camel_defs = 0u32;
         for line in lines {

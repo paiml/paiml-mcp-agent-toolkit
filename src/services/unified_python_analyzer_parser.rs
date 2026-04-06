@@ -2,6 +2,7 @@ impl UnifiedPythonAnalyzer {
     /// Parse Python with tree-sitter-python
     #[cfg(feature = "python-ast")]
     fn parse_python(&self, content: &str) -> Result<Tree, AnalysisError> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut parser = TsParser::new();
         parser
             .set_language(&tree_sitter_python::LANGUAGE.into())

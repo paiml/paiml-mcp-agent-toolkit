@@ -248,6 +248,7 @@ impl ContractQuality {
     }
 
     fn rate(score: f64) -> String {
+        debug_assert!(score >= 0.0, "score must be non-negative");
         if score >= 1.0 { "Full" }
         else if score >= 0.8 { "Strong" }
         else if score >= 0.5 { "Partial" }

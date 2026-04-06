@@ -39,6 +39,7 @@ impl ScalaAstVisitor {
 
     /// Check basic Scala syntax validity (complexity ≤10)
     fn is_valid_scala_syntax(&self, source: &str) -> bool {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let open_braces = source.chars().filter(|&c| c == '{').count();
         let close_braces = source.chars().filter(|&c| c == '}').count();
 
@@ -48,6 +49,7 @@ impl ScalaAstVisitor {
 
     /// Extracts package declaration (complexity ≤10)
     fn extract_package_declaration(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -62,6 +64,7 @@ impl ScalaAstVisitor {
 
     /// Extracts class declarations (complexity ≤10)
     fn extract_class_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
@@ -88,6 +91,7 @@ impl ScalaAstVisitor {
 
     /// Extracts case class declarations (complexity ≤10)
     fn extract_case_class_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
@@ -114,6 +118,7 @@ impl ScalaAstVisitor {
 
     /// Helper to extract class name from line (complexity ≤10)
     fn extract_class_name_from_line(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("class ") && !line.contains("case class ") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -129,6 +134,7 @@ impl ScalaAstVisitor {
 
     /// Helper to extract case class name from line (complexity ≤10)
     fn extract_case_class_name_from_line(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("case class ") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -144,6 +150,7 @@ impl ScalaAstVisitor {
 
     /// Extracts trait declarations (complexity ≤10)
     fn extract_trait_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
@@ -168,6 +175,7 @@ impl ScalaAstVisitor {
 
     /// Helper to extract trait name from line (complexity ≤10)
     fn extract_trait_name_from_line(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("trait ") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -182,6 +190,7 @@ impl ScalaAstVisitor {
 
     /// Extracts object declarations (complexity ≤10)
     fn extract_object_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
@@ -206,6 +215,7 @@ impl ScalaAstVisitor {
 
     /// Helper to extract object name from line (complexity ≤10)
     fn extract_object_name_from_line(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("object ") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -220,6 +230,7 @@ impl ScalaAstVisitor {
 
     /// Extracts method declarations (complexity ≤10)
     fn extract_method_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
@@ -244,6 +255,7 @@ impl ScalaAstVisitor {
 
     /// Helper to extract method name from line (complexity ≤10)
     fn extract_method_name_from_line(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Match Scala method declarations: "def methodName(...)"
         if line.contains("def ") {
             let parts: Vec<&str> = line.split_whitespace().collect();
@@ -262,6 +274,7 @@ impl ScalaAstVisitor {
 
     /// Helper to determine visibility from modifiers (complexity ≤10)
     fn determine_visibility(&self, line: &str) -> String {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("private ") {
             "private".to_string()
         } else if line.contains("protected ") {
@@ -275,6 +288,7 @@ impl ScalaAstVisitor {
 
     /// Gets qualified name for a symbol (complexity ≤10)
     fn get_qualified_name(&self, name: &str) -> String {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         if self.package_name.is_empty() {
             name.to_string()
         } else {

@@ -144,6 +144,7 @@ impl fmt::Display for InfraScore {
 
 impl InfraGrade {
     pub fn from_score(score: f64) -> Self {
+        debug_assert!(score >= 0.0, "score must be non-negative");
         match score {
             s if s >= 95.0 => InfraGrade::APlus,
             s if s >= 90.0 => InfraGrade::A,

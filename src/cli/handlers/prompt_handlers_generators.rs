@@ -5,6 +5,8 @@ async fn handle_generate_prompt(
     summary_path: &PathBuf,
     output: &Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(summary_path.exists(), "summary_path must exist: {}", summary_path.display());
+    debug_assert!(!task.is_empty(), "task must not be empty");
     let generator = DefectAwarePromptGenerator::from_file(summary_path)
         .context("Failed to load organizational intelligence summary")?;
 
@@ -27,6 +29,7 @@ async fn handle_ticket_prompt(
     summary_path: Option<&PathBuf>,
     output: &Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(!ticket.is_empty(), "ticket must not be empty");
     let mut prompt = format!(
         "# EXTREME TDD: Fix Ticket\n\n\
          ## Ticket\n{}\n\n\
@@ -58,6 +61,7 @@ fn enrich_ticket_prompt_with_intelligence(
     prompt: &mut String,
     summary: &PathBuf,
 ) -> Result<()> {
+    debug_assert!(summary.exists(), "summary must exist: {}", summary.display());
     if summary.exists() {
         let generator = DefectAwarePromptGenerator::from_file(summary)?;
         prompt.push_str(&format!(
@@ -125,6 +129,7 @@ fn enrich_implement_prompt_with_intelligence(
     prompt: &mut String,
     summary: &PathBuf,
 ) -> Result<()> {
+    debug_assert!(summary.exists(), "summary must exist: {}", summary.display());
     if summary.exists() {
         let generator = DefectAwarePromptGenerator::from_file(summary)?;
         prompt.push_str(&format!(
@@ -240,6 +245,7 @@ fn write_prompt_output(
     output: &Option<PathBuf>,
     label: &str,
 ) -> Result<()> {
+    debug_assert!(!prompt.is_empty(), "prompt must not be empty");
     if let Some(output_path) = output {
         std::fs::write(output_path, prompt)?;
         println!("✅ {} prompt written to {:?}", label, output_path);

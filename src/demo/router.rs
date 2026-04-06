@@ -113,6 +113,7 @@ mod implementation {
         /// assert!(example_path.starts_with("/api/"));
         /// ```
         pub fn handle(&self, path: &str, state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
+            debug_assert!(!path.is_empty(), "path must not be empty");
             // Check exact routes first
             for (route_path, handler) in &self.exact_routes {
                 if path == *route_path {
@@ -246,6 +247,7 @@ mod implementation {
     /// };
     /// ```
     pub fn handle_request(path: &str, state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         DEMO_ROUTES.handle(path, state)
     }
 }
@@ -258,6 +260,7 @@ pub fn handle_request(
     _path: &str,
     _state: &std::sync::Arc<parking_lot::RwLock<crate::demo::server::DemoState>>,
 ) -> http::Response<bytes::Bytes> {
+    debug_assert!(!_path.is_empty(), "_path must not be empty");
     http::Response::builder()
         .status(http::StatusCode::NOT_FOUND)
         .body(bytes::Bytes::from_static(b"Demo mode disabled"))

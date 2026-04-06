@@ -53,6 +53,7 @@ impl FileHealthBaseline {
 
     /// Check if a file violates the ratchet (grew larger)
     pub fn check_ratchet(&self, path: &str, current_lines: usize) -> Option<RatchetViolation> {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         if let Some(baseline) = self.files.get(path) {
             if current_lines > baseline.lines {
                 return Some(RatchetViolation {

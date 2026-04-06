@@ -129,6 +129,8 @@ impl PatternExtractor {
         ast_data: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!ast_data.is_empty(), "ast_data must not be empty");
         // Extract patterns using regex-based AST pattern matching
         // Language-specific extraction based on file extension
 

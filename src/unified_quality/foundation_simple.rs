@@ -255,6 +255,7 @@ impl QualityMonitor {
     
     /// Analyze a batch of files
     async fn analyze_batch(&self, paths: &[PathBuf]) -> Result<()> {
+        debug_assert!(!paths.is_empty(), "paths must not be empty");
         for path in paths {
             if let Ok(content) = std::fs::read_to_string(path) {
                 if let Ok(mut parser) = self.parser.lock() {

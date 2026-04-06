@@ -2,6 +2,7 @@
 impl CppAstVisitor {
     /// Checks if a line is a function declaration (complexity ≤10)
     fn is_function_declaration(&self, line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Basic check: contains parentheses and is not a preprocessing directive
         if !line.contains("(") || line.starts_with("#") {
             return false;
@@ -48,12 +49,14 @@ impl CppAstVisitor {
 
     /// Checks if a function declaration is a class method (complexity ≤10)
     fn is_class_method(&self, line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Class methods have :: in their name
         line.contains("::") && line.contains("(")
     }
 
     /// Extracts function name from declaration line (complexity ≤10)
     fn extract_function_name(&self, line: &str) -> Result<String, String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Handle method with :: scope resolution
         if line.contains("::") {
             let parts: Vec<&str> = line.split("::").collect();
@@ -83,6 +86,7 @@ impl CppAstVisitor {
 
     /// Extracts class name from declaration line (complexity ≤10)
     fn extract_class_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let words: Vec<&str> = line.split_whitespace().collect();
 
         // Find the word after "class" or "struct"
@@ -102,6 +106,7 @@ impl CppAstVisitor {
 
     /// Extracts namespace name from declaration line (complexity ≤10)
     fn extract_namespace_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let words: Vec<&str> = line.split_whitespace().collect();
 
         // Find the word after "namespace"
@@ -121,6 +126,7 @@ impl CppAstVisitor {
 
     /// Extracts enum name from declaration line (complexity ≤10)
     fn extract_enum_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let words: Vec<&str> = line.split_whitespace().collect();
 
         // Handle both "enum Foo" and "enum class Foo"
@@ -148,6 +154,7 @@ impl CppAstVisitor {
 
     /// Extracts typedef name from declaration line (complexity ≤10)
     fn extract_typedef_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // For typedef, the name is typically the last token before the semicolon
         let before_semicolon = line.split(';').next().unwrap_or("");
         let words: Vec<&str> = before_semicolon.split_whitespace().collect();
@@ -162,6 +169,7 @@ impl CppAstVisitor {
 
     /// Extracts 'using' alias name (C++11 style typedef) (complexity ≤10)
     fn extract_using_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // For "using Alias = Type;", extract "Alias"
         if line.contains("=") {
             let parts: Vec<&str> = line.split('=').collect();
@@ -181,6 +189,7 @@ impl CppAstVisitor {
 
     /// Gets qualified name for a symbol (complexity ≤10)
     fn get_qualified_name(&self, name: &str) -> String {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         // Build qualified name based on current namespace and class
         let mut qualified_name = String::new();
 

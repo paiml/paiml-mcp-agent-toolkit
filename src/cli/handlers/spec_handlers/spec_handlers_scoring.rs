@@ -1,4 +1,5 @@
 fn count_citations(content: &str) -> usize {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     // Count unique citation references like [1], [2], etc. in body text
     let mut seen = std::collections::HashSet::new();
     let re = regex::Regex::new(r"\[(\d+)\]").expect("internal error");
@@ -44,6 +45,7 @@ fn calculate_spec_score(spec: &ParsedSpec) -> f64 {
 }
 
 fn format_spec_score_text(spec: &ParsedSpec, score: f64, verbose: bool) -> String {
+    debug_assert!(score >= 0.0, "score must be non-negative");
     let mut out = String::new();
 
     out.push_str("📋 Specification Score\n");
@@ -77,6 +79,7 @@ fn format_spec_score_text(spec: &ParsedSpec, score: f64, verbose: bool) -> Strin
 }
 
 fn format_spec_score_json(spec: &ParsedSpec, score: f64) -> anyhow::Result<String> {
+    debug_assert!(score >= 0.0, "score must be non-negative");
     let result = serde_json::json!({
         "title": spec.title,
         "score": score,
@@ -90,6 +93,7 @@ fn format_spec_score_json(spec: &ParsedSpec, score: f64) -> anyhow::Result<Strin
 }
 
 fn format_spec_score_markdown(spec: &ParsedSpec, score: f64) -> String {
+    debug_assert!(score >= 0.0, "score must be non-negative");
     let mut out = String::new();
 
     out.push_str("# Specification Score Report\n\n");

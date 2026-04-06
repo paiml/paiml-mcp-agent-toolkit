@@ -103,6 +103,7 @@ impl WrapperSpec {
     /// Set the confidence threshold.
     #[must_use]
     pub fn confidence_threshold(mut self, threshold: f64) -> Self {
+        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         self.confidence_threshold = threshold;
         self
     }

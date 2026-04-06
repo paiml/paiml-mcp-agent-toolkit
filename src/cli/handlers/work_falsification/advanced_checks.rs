@@ -88,6 +88,7 @@ pub(crate) async fn test_satd_detection(
 /// Must start with `//` but NOT `///` or `//!`, and must not be
 /// a SECURITY/SAFETY annotation.
 fn is_satd_comment(trimmed: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     if !trimmed.starts_with("//") || trimmed.starts_with("///") || trimmed.starts_with("//!") {
         return false;
     }
@@ -102,6 +103,8 @@ fn extract_satd_markers(
     file: &Path,
     satd_patterns: &[&str],
 ) -> Vec<(PathBuf, String)> {
+    debug_assert!(file.exists(), "file must exist: {}", file.display());
+    debug_assert!(!line_content.is_empty(), "line_content must not be empty");
     let trimmed = line_content.trim();
     satd_patterns
         .iter()
@@ -261,6 +264,7 @@ pub(crate) async fn test_dead_code_detection(
 
 /// Check if a file should be skipped for per-file coverage checks.
 fn is_excluded_from_per_file_coverage(filename: &str) -> bool {
+    debug_assert!(!filename.is_empty(), "filename must not be empty");
     filename.contains("/tests/") || filename.contains("_test.rs") || filename.contains("/target/")
 }
 
@@ -279,6 +283,7 @@ fn extract_file_line_coverage(file_entry: &serde_json::Value) -> f64 {
 /// Each entry is `(filename, coverage_pct)`. Test files and generated files
 /// are excluded.
 fn collect_files_below_threshold(json: &serde_json::Value, threshold: f64) -> Vec<(PathBuf, f64)> {
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let data = match json.get("data").and_then(|d| d.as_array()) {
         Some(d) => d,
         None => return Vec::new(),
@@ -310,6 +315,7 @@ fn build_per_file_coverage_result(
     files_below_threshold: Vec<(PathBuf, f64)>,
     threshold: f64,
 ) -> FalsificationResult {
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     if files_below_threshold.is_empty() {
         return FalsificationResult::passed(format!("All files >= {:.1}% coverage", threshold));
     }

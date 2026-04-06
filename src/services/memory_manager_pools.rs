@@ -45,6 +45,7 @@ impl Drop for PooledBuffer {
 
 impl StringInterner {
     fn new(max_size: usize) -> Self {
+        debug_assert!(max_size > 0, "max_size must be positive");
         Self {
             strings: RwLock::new(FxHashSet::default()),
             total_size: Mutex::new(0),
@@ -54,6 +55,7 @@ impl StringInterner {
 
     /// Intern a string, returning a shared reference
     fn intern(&self, s: &str) -> Result<Arc<str>> {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         // Check if string already exists
         {
             let strings = self.strings.read();
@@ -100,6 +102,7 @@ impl StringInterner {
 
 impl MemoryPool {
     fn new(max_size: usize) -> Self {
+        debug_assert!(max_size > 0, "max_size must be positive");
         Self {
             buffers: Mutex::new(VecDeque::new()),
             total_size: Mutex::new(0),
@@ -111,6 +114,7 @@ impl MemoryPool {
 
     /// Get a buffer from the pool or allocate a new one
     fn get_buffer(&self, min_size: usize) -> Vec<u8> {
+        debug_assert!(min_size > 0, "min_size must be positive");
         let mut buffers = self.buffers.lock();
         let mut total_size = self.total_size.lock();
 

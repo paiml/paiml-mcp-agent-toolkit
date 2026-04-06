@@ -22,6 +22,8 @@ impl HooksCacheManager {
 
     /// Check if a specific gate can be skipped (Level 1 cache)
     pub fn check_gate(&self, gate_name: &str, files: &[PathBuf]) -> Result<Option<GateCacheEntry>> {
+        debug_assert!(!gate_name.is_empty(), "gate_name must not be empty");
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let gate_path = self
             .cache_dir
             .join("gates")
@@ -52,6 +54,8 @@ impl HooksCacheManager {
         duration_ms: u64,
         warnings: Vec<String>,
     ) -> Result<()> {
+        debug_assert!(!gate_name.is_empty(), "gate_name must not be empty");
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let entry = GateCacheEntry {
             files_hash: self.hash_files(files)?,
             result,
@@ -219,6 +223,7 @@ impl HooksCacheManager {
         results: &[(String, GateRunResult)],
         errors: &[(String, String)],
     ) -> CacheResult {
+        debug_assert!(!results.is_empty(), "results must not be empty");
         if !errors.is_empty() {
             CacheResult::Fail
         } else if results.iter().any(|(_, r)| r.result == CacheResult::Fail) {

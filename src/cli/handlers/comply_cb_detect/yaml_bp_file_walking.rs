@@ -52,6 +52,7 @@ pub fn compute_yaml_production_lines(content: &str) -> Vec<(usize, String)> {
 }
 
 fn strip_yaml_inline_comment(line: &str) -> String {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let mut in_single = false;
     let mut in_double = false;
     let bytes = line.as_bytes();

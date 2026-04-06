@@ -254,17 +254,20 @@ impl TestBlockTracker {
     }
 
     fn update_test_block_depth(&mut self, trimmed_line: &str) {
+        debug_assert!(!trimmed_line.is_empty(), "trimmed_line must not be empty");
         self.add_opening_braces(trimmed_line);
         self.subtract_closing_braces(trimmed_line);
     }
 
     fn add_opening_braces(&mut self, trimmed_line: &str) {
+        debug_assert!(!trimmed_line.is_empty(), "trimmed_line must not be empty");
         if trimmed_line.contains('{') {
             self.test_block_depth += trimmed_line.matches('{').count();
         }
     }
 
     fn subtract_closing_braces(&mut self, trimmed_line: &str) {
+        debug_assert!(!trimmed_line.is_empty(), "trimmed_line must not be empty");
         if trimmed_line.contains('}') {
             self.test_block_depth = self
                 .test_block_depth

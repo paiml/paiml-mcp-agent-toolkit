@@ -57,6 +57,7 @@ fn process_watch_event(
     cache: &DashMap<PathBuf, AgentsMdFile>,
     tx: &mpsc::Sender<FileChange>,
 ) {
+    debug_assert!(!file_name.is_empty(), "file_name must not be empty");
     let Some(change) = event_to_change_type(&event.kind) else {
         return;
     };
@@ -291,6 +292,7 @@ impl AgentsMdDiscovery {
 
     /// Find common root of files
     fn find_common_root(&self, files: &[AgentsMdFile]) -> PathBuf {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         if files.is_empty() {
             return PathBuf::new();
         }

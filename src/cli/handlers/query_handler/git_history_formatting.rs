@@ -50,6 +50,7 @@ fn format_commit_entry(
     project_path: &std::path::Path,
     total_commits: usize,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let commit = &hit.commit;
     let short_hash = commit.hash.get(..7.min(commit.hash.len())).unwrap_or(&commit.hash);
     let (type_color, type_tag) = classify_commit_type(&commit.message_subject);
@@ -91,6 +92,7 @@ fn format_commit_metadata(
     commit: &CommitInfo,
     project_path: &std::path::Path,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let date = format_timestamp(commit.timestamp);
     out.push_str(&format!(
         "     {CYAN}{}{RESET} {DIM}{}{RESET}",
@@ -129,6 +131,7 @@ fn format_commit_files(
     hotspots: &HashMap<String, FileHotspot>,
     total_commits: usize,
 ) {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     out.push_str("     ");
     for (fi, file_path) in files.iter().enumerate() {
         if fi > 0 { out.push_str(", "); }
@@ -144,6 +147,7 @@ fn format_commit_files(
 /// Format a single file path with quality annotations from hotspot data
 #[allow(clippy::cast_possible_truncation)]
 fn format_annotated_file(out: &mut String, file_path: &str, hotspot: &FileHotspot, total_commits: usize) {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let grade = hotspot.annotation.tdg_grade.as_deref().unwrap_or("?");
     let grade_color = grade_to_color(grade);
     out.push_str(&format!("{DIM_CYAN}{}{RESET} {grade_color}[{grade}]{RESET}", file_path));
@@ -162,6 +166,7 @@ fn format_annotated_file(out: &mut String, file_path: &str, hotspot: &FileHotspo
 
 /// Map TDG grade letter to ANSI color code
 fn grade_to_color(grade: &str) -> &'static str {
+    debug_assert!(!grade.is_empty(), "grade must not be empty");
     match grade {
         "A" | "B" => GREEN,
         "C" => YELLOW,
@@ -188,6 +193,7 @@ fn format_hotspot_section(out: &mut String, hotspots: &HashMap<String, FileHotsp
 /// Format a single hotspot entry
 #[allow(clippy::cast_possible_truncation)]
 fn format_hotspot_entry(out: &mut String, path: &str, hotspot: &FileHotspot, total_commits: usize) {
+    debug_assert!(!path.is_empty(), "path must not be empty");
     let pct = if total_commits > 0 { hotspot.commit_count as f32 / total_commits as f32 * 100.0 } else { 0.0 };
     let churn_color = if pct > 30.0 { BRIGHT_RED } else if pct > 15.0 { RED } else if pct > 5.0 { YELLOW } else { DIM };
     let grade = hotspot.annotation.tdg_grade.as_deref().unwrap_or("-");

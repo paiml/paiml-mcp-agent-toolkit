@@ -186,6 +186,8 @@ async fn generate_pdmt_todos(params: PdmtParams) -> (Option<Value>, Option<Error
 }
 
 fn generate_todos_from_requirement(requirement: &str, seed: u64, granularity: &str) -> Vec<Value> {
+    debug_assert!(!requirement.is_empty(), "requirement must not be empty");
+    debug_assert!(!granularity.is_empty(), "granularity must not be empty");
     // Deterministic task generation based on requirement analysis
     let mut todos = Vec::new();
 

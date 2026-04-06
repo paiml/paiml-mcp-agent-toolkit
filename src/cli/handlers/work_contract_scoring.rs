@@ -58,6 +58,7 @@ pub enum ScoreGrade {
 
 impl ScoreGrade {
     pub fn from_score(score: f64) -> Self {
+        debug_assert!(score >= 0.0, "score must be non-negative");
         if score >= 0.90 {
             ScoreGrade::A
         } else if score >= 0.75 {
@@ -353,6 +354,8 @@ pub fn record_trend_snapshot(
     git_sha: &str,
     project_path: &Path,
 ) -> Result<PathBuf> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(!git_sha.is_empty(), "git_sha must not be empty");
     let verified = contract
         .claims
         .iter()

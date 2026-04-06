@@ -12,6 +12,8 @@ pub async fn handle_quality_gates_command(
     json: bool,
     project_dir: PathBuf,
 ) -> Result<()> {
+    debug_assert!(config_path.exists(), "config_path must exist: {}", config_path.display());
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     match command {
         Some(QualityGatesCommand::Init { force }) => {
             handle_init_config(&config_path, force)?;

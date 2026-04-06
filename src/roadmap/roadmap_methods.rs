@@ -21,12 +21,14 @@ impl Roadmap {
     /// Get a specific sprint
     #[must_use]
     pub fn get_sprint(&self, sprint_id: &str) -> Option<&Sprint> {
+        debug_assert!(!sprint_id.is_empty(), "sprint_id must not be empty");
         self.sprints.get(sprint_id)
     }
 
     /// Get a specific task across all sprints
     #[must_use]
     pub fn get_task(&self, task_id: &str) -> Option<&Task> {
+        debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         for sprint in self.sprints.values() {
             if let Some(task) = sprint.tasks.iter().find(|t| t.id == task_id) {
                 return Some(task);
@@ -37,6 +39,7 @@ impl Roadmap {
 
     /// Update task status
     pub fn update_task_status(&mut self, task_id: &str, status: TaskStatus) -> Result<()> {
+        debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         // Update in sprints
         for sprint in self.sprints.values_mut() {
             if let Some(task) = sprint.tasks.iter_mut().find(|t| t.id == task_id) {

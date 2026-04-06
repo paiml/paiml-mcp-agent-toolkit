@@ -293,6 +293,7 @@ fn count_files_by_extension(path: &Path) -> HashMap<String, usize> {
 
 /// Map file extension to language
 fn extension_to_language(ext: &str) -> Option<&'static str> {
+    debug_assert!(!ext.is_empty(), "ext must not be empty");
     match ext {
         "rs" => Some("rust"),
         "py" => Some("python"),

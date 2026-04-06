@@ -84,6 +84,7 @@ fn build_complexity_response(
     file_count: usize,
     args: &AnalyzeComplexityArgs,
 ) -> McpResponse {
+    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     let result = json!({
         "content": [{
             "type": "text",
@@ -246,6 +247,7 @@ fn matches_include_filters(path: &Path, include_patterns: &Option<Vec<String>>) 
 }
 
 fn matches_pattern(path_str: &str, pattern: &str) -> bool {
+    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     if pattern.contains("**") {
         // Match any path containing the pattern after **
         let parts: Vec<&str> = pattern.split("**").collect();

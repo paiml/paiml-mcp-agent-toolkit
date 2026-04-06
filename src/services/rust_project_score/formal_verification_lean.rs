@@ -108,6 +108,7 @@ impl FormalVerificationScorer {
 
     /// Count sorry occurrences in a single file's content, respecting comments
     fn count_sorrys_in_content(content: &str) -> usize {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut count = 0;
         let mut in_block_comment = 0i32;
 
@@ -136,6 +137,7 @@ impl FormalVerificationScorer {
 
     /// Strips block comment content from a line, updating nesting depth.
     fn strip_lean_block_comments_inline(line: &str, depth: &mut i32) -> String {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let bytes = line.as_bytes();
         let mut result = String::with_capacity(line.len());
         let mut i = 0;
@@ -162,6 +164,7 @@ impl FormalVerificationScorer {
 
     /// Checks if line contains "sorry" as a standalone word.
     fn contains_sorry_word(line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let bytes = line.as_bytes();
         let sorry = b"sorry";
         let mut pos = 0;

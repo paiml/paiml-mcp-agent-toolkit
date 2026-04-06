@@ -38,6 +38,7 @@ impl WasmLanguageDetector {
     /// Detect if binary data is WebAssembly
     #[must_use]
     pub fn is_wasm_binary(&self, data: &[u8]) -> bool {
+        debug_assert!(!data.is_empty(), "data must not be empty");
         data.len() >= 8 && &data[0..4] == b"\0asm"
     }
 }

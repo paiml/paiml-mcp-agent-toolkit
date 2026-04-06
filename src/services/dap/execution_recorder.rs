@@ -219,6 +219,7 @@ impl<W: Write> ExecutionRecorder<W> {
 
     /// Save recording to file (Sprint 72 JSON format - deprecated, use .pmat instead)
     pub fn save_to_file(&self, path: &str) -> Result<(), String> {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         let json = serde_json::to_string_pretty(&self.snapshots)
             .map_err(|e| format!("Failed to serialize: {}", e))?;
 
@@ -263,6 +264,7 @@ impl ExecutionRecorder<std::io::Sink> {
 
     /// Load recording from file (Sprint 72 JSON format)
     pub fn load_from_file(path: &str) -> Result<Self, String> {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         let json =
             std::fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
 

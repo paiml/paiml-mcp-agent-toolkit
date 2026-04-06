@@ -1210,6 +1210,7 @@ fn collect_known_fn_names(
 
 /// Extract fn/const/static names from a single Rust source file
 fn extract_names_from_source(content: &str, names: &mut std::collections::HashSet<String>) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
         let t = line.trim();
         // fn declarations (all visibility/async/unsafe/const variants)
@@ -1257,6 +1258,7 @@ fn cross_reference_bindings(
     entries: &[(String, String)],
     known_fns: &std::collections::HashSet<String>,
 ) -> (usize, usize, usize, Vec<String>) {
+    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let total = entries.len();
     let mut missing = Vec::new();
     let mut verified = 0usize;
@@ -1281,6 +1283,9 @@ fn parse_binding_entries(
     contracts_dir: &Path,
     entries: &mut Vec<(String, String)>,
 ) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
+    debug_assert!(contracts_dir.exists(), "contracts_dir must exist: {}", contracts_dir.display());
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut current_fn = None;
     let mut current_status = None;
     for line in content.lines() {

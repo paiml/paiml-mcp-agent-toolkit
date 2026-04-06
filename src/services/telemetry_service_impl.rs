@@ -133,6 +133,7 @@ impl TelemetryService {
 
     /// Get telemetry data for a specific service
     pub async fn get_service_telemetry(&self, service_name: &str) -> Option<ServiceTelemetryData> {
+        debug_assert!(!service_name.is_empty(), "service_name must not be empty");
         self.services.get(service_name).map(|entry| entry.clone())
     }
 
@@ -212,6 +213,7 @@ fn build_system_data(totals: ServiceTotals) -> ServiceTelemetryData {
 }
 
 fn log_operation_result(event_id: &str, input: &TelemetryInput, event_count: u64) {
+    debug_assert!(!event_id.is_empty(), "event_id must not be empty");
     if input.metrics.success {
         info!(
             event_id = %event_id,

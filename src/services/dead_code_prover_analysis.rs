@@ -71,6 +71,7 @@ impl DeadCodeProver {
     }
 
     fn classify_symbol(&self, symbol: SymbolId, file_path_str: &str, line_num: usize) -> DeadCodeProof {
+        debug_assert!(!file_path_str.is_empty(), "file_path_str must not be empty");
         if self.is_ffi_visible(&symbol, file_path_str, line_num) {
             return DeadCodeProof {
                 item: symbol,
@@ -108,6 +109,7 @@ impl DeadCodeProver {
     }
 
     fn is_ffi_visible(&self, symbol: &SymbolId, file_path_str: &str, line_num: usize) -> bool {
+        debug_assert!(!file_path_str.is_empty(), "file_path_str must not be empty");
         if self.ffi_tracker.is_externally_visible(symbol) {
             return true;
         }

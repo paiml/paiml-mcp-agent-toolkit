@@ -9,6 +9,7 @@ impl PythonStrategy {
     // Tree-sitter-python parsing (modern, preferred)
     #[cfg(feature = "python-ast")]
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut parser = TsParser::new();
         parser
             .set_language(&tree_sitter_python::LANGUAGE.into())
@@ -50,6 +51,7 @@ impl PythonStrategy {
     #[cfg(not(feature = "python-ast"))]
     #[allow(dead_code)]
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
+        debug_assert!(!_content.is_empty(), "_content must not be empty");
         Err(anyhow::anyhow!(
             "Python AST parsing not available - compile with 'python-ast' feature"
         ))
@@ -57,6 +59,7 @@ impl PythonStrategy {
 
     #[cfg(feature = "python-ast")]
     fn convert_tree_to_dag(&self, tree: &Tree, content: &str) -> AstDag {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut dag = AstDag::new();
         let root = tree.root_node();
         let mut visitor = PythonTreeSitterVisitor::new(&mut dag, content);

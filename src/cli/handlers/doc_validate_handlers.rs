@@ -320,6 +320,7 @@ impl ValidateDocsCmd {
 }
 
 fn xml_escape(s: &str) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")

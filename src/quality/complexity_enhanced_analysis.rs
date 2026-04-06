@@ -84,6 +84,7 @@ fn count_lines(block: &syn::Block) -> usize {
 }
 
 fn tokenize(code: &str) -> Vec<String> {
+    debug_assert!(!code.is_empty(), "code must not be empty");
     let mut tokens = Vec::new();
     let mut current = String::new();
 
@@ -109,6 +110,7 @@ fn tokenize(code: &str) -> Vec<String> {
 }
 
 fn is_operator(token: &str) -> bool {
+    debug_assert!(!token.is_empty(), "token must not be empty");
     matches!(
         token,
         "+" | "-"
@@ -147,6 +149,7 @@ fn is_operator(token: &str) -> bool {
 }
 
 fn is_operand(token: &str) -> bool {
+    debug_assert!(!token.is_empty(), "token must not be empty");
     !is_operator(token) && !token.chars().all(|c| c.is_ascii_punctuation())
 }
 

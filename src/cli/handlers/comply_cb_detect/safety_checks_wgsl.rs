@@ -87,6 +87,8 @@ fn check_line_for_barrier(
     line_num: usize,
     file_path: &str,
 ) -> Option<CbPatternViolation> {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     if in_conditional
         && (trimmed.contains("workgroupBarrier") || trimmed.contains("storageBarrier"))
     {

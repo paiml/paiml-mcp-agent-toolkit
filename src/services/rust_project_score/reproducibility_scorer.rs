@@ -71,6 +71,11 @@ impl Scorer for ReproducibilityScorer {
         project_path: &Path,
         _mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Run all Popper B-F scorers
         let b = self.popper_b.score(project_path).ok();
         let c = self.popper_c.score(project_path).ok();

@@ -54,6 +54,7 @@ pub(crate) fn build_corpus_entry(func: &FunctionEntry) -> String {
 
 /// Build name_index, file_index, and corpus from functions.
 pub(crate) fn build_indices(functions: &[FunctionEntry]) -> BuildIndicesResult {
+    debug_assert!(!functions.is_empty(), "functions must not be empty");
     build_indices_impl(functions, true)
 }
 
@@ -62,10 +63,12 @@ pub(crate) fn build_indices(functions: &[FunctionEntry]) -> BuildIndicesResult {
 /// Used by SQLite load path where FTS5 handles search, saving ~36MB
 /// of corpus string allocation for 90K functions.
 pub(crate) fn build_indices_without_corpus(functions: &[FunctionEntry]) -> BuildIndicesResult {
+    debug_assert!(!functions.is_empty(), "functions must not be empty");
     build_indices_impl(functions, false)
 }
 
 fn build_indices_impl(functions: &[FunctionEntry], include_corpus: bool) -> BuildIndicesResult {
+    debug_assert!(!functions.is_empty(), "functions must not be empty");
     // Estimate unique names ~60% of functions, unique files ~20% of functions
     let name_cap = functions.len() * 3 / 5;
     let file_cap = functions.len() / 5;

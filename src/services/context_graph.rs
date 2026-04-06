@@ -147,6 +147,8 @@ impl ProjectContextGraph {
     ///
     /// Returns error if CSR graph operation fails
     pub fn add_edge(&mut self, from: &str, to: &str) -> Result<()> {
+        debug_assert!(!from.is_empty(), "from must not be empty");
+        debug_assert!(!to.is_empty(), "to must not be empty");
         if let (Some(&from_id), Some(&to_id)) = (self.node_map.get(from), self.node_map.get(to)) {
             self.graph
                 .add_edge(from_id, to_id, 1.0)

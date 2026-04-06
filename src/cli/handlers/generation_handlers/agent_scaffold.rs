@@ -185,6 +185,7 @@ async fn execute_scaffold_operation(
     dry_run: bool,
     force: bool,
 ) -> Result<()> {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     use crate::cli::progress::ProgressIndicator;
     use crate::scaffold::agent::scaffold_agent;
 

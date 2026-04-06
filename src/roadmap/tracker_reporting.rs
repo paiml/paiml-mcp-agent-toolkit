@@ -54,6 +54,7 @@ pub struct RoadmapDashboard;
 impl RoadmapDashboard {
     /// Generate markdown dashboard
     pub async fn generate(sprint_id: &str, roadmap: &Roadmap) -> Result<String> {
+        debug_assert!(!sprint_id.is_empty(), "sprint_id must not be empty");
         let mut output = String::new();
 
         let sprint = roadmap

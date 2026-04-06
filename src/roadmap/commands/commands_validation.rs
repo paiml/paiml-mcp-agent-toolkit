@@ -61,6 +61,7 @@ async fn validate_sprint(
 }
 
 async fn quality_check(task_id: &str, config: &RoadmapConfig) -> Result<()> {
+    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
     println!("🔍 Running quality checks for task {task_id}...");
 
     // Run complexity check

@@ -20,6 +20,7 @@
 /// assert_eq!(dataset.len(), 100_000);
 /// ```
 pub fn generate_test_dataset(size: usize) -> Vec<f64> {
+    debug_assert!(size > 0, "size must be positive");
     // Use a deterministic seed for reproducibility
     // Generate data with realistic range (avoid overflow/underflow)
     (0..size)
@@ -54,6 +55,7 @@ pub fn generate_test_dataset(size: usize) -> Vec<f64> {
 /// assert!((mean - 3.0).abs() < 0.01);
 /// ```
 pub fn mean_and_std(values: &[f64]) -> (f64, f64) {
+    debug_assert!(!values.is_empty(), "values must not be empty");
     use aprender::primitives::Vector;
 
     if values.is_empty() {

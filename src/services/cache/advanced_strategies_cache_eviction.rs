@@ -32,6 +32,7 @@ where
     }
 
     pub(crate) fn determine_initial_tier(&self, _key: &K, size: usize) -> CacheTier {
+        debug_assert!(size > 0, "size must be positive");
         // Simple heuristic - could be more sophisticated
         if size < 64 * 1024 {
             // < 64KB

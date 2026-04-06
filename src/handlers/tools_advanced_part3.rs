@@ -56,6 +56,7 @@ fn get_default_analysis_types() -> Vec<crate::services::deep_context::AnalysisTy
 }
 
 fn parse_analysis_type_string(s: &str) -> Option<crate::services::deep_context::AnalysisType> {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     use crate::services::deep_context::AnalysisType;
 
     match s {
@@ -355,6 +356,7 @@ fn count_violations_by_severity(
     violations: &[crate::services::makefile_linter::Violation],
     _target_severity: crate::services::makefile_linter::Severity,
 ) -> usize {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     violations
         .iter()
         .filter(|v| matches!(&v.severity, _target_severity))

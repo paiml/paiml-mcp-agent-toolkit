@@ -22,6 +22,7 @@ impl TruenoOlapAnalytics {
     /// let analytics = TruenoOlapAnalytics::new("/tmp/tdg_scores.parquet").await?;
     /// ```
     pub async fn new(path: &str) -> Result<Self> {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         let storage = if path.is_empty() {
             // Create empty storage
             trueno_db::storage::StorageEngine::new(vec![])
@@ -69,6 +70,7 @@ impl TruenoOlapAnalytics {
 
     /// Convert TdgScore to Arrow RecordBatch for trueno-db
     fn scores_to_arrow(&self, scores: &[TdgScore]) -> Result<arrow::record_batch::RecordBatch> {
+        debug_assert!(!scores.is_empty(), "scores must not be empty");
         use arrow::array::{Float32Array, RecordBatch, StringArray};
         use arrow::datatypes::{DataType, Field, Schema};
         use std::sync::Arc;
@@ -164,11 +166,13 @@ struct ArrowColumns<'a> {
 }
 
 fn downcast_f32<'a>(batch: &'a arrow::record_batch::RecordBatch, col: usize, name: &str) -> Result<&'a arrow::array::Float32Array> {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     batch.column(col).as_any().downcast_ref::<arrow::array::Float32Array>()
         .ok_or_else(|| anyhow::anyhow!("Expected Float32Array for {}", name))
 }
 
 fn downcast_string<'a>(batch: &'a arrow::record_batch::RecordBatch, col: usize, name: &str) -> Result<&'a arrow::array::StringArray> {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     batch.column(col).as_any().downcast_ref::<arrow::array::StringArray>()
         .ok_or_else(|| anyhow::anyhow!("Expected StringArray for {}", name))
 }
@@ -190,6 +194,7 @@ fn extract_arrow_columns(batch: &arrow::record_batch::RecordBatch) -> Result<Arr
 }
 
 fn parse_language_str(s: &str) -> Language {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     match s {
         "Rust" => Language::Rust,
         "Python" => Language::Python,

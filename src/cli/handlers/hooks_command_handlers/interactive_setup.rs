@@ -58,6 +58,7 @@ impl HooksCommand {
 
     /// Prompt user for a number with default
     fn prompt_number(&self, prompt: &str, default: u32) -> Result<u32> {
+        debug_assert!(!prompt.is_empty(), "prompt must not be empty");
         use std::io::{self, Write};
 
         print!("  {prompt}: ");

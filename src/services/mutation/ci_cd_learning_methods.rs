@@ -14,6 +14,7 @@ impl CiCdLearningManager {
         results: &[MutationResult],
         metadata: CiCdMetadata,
     ) -> Result<TrainingBatch> {
+        debug_assert!(!results.is_empty(), "results must not be empty");
         // Convert results to training data
         let samples: Vec<TrainingData> = results
             .iter()

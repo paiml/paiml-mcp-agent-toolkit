@@ -4,6 +4,7 @@ impl CppAstVisitor {
     /// Extracts function declarations (complexity ≤10)
     #[allow(clippy::cast_possible_truncation)]
     fn extract_function_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Track namespace context while parsing
         let mut namespace_stack: Vec<String> = Vec::new();
         let mut brace_depth = 0;
@@ -105,6 +106,7 @@ impl CppAstVisitor {
     /// Extracts class method declarations (complexity ≤10)
     #[allow(clippy::cast_possible_truncation)]
     fn extract_method_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_class = false;
         let mut current_class_name = String::new();
         let mut brace_depth = 0;
@@ -200,6 +202,7 @@ impl CppAstVisitor {
     /// Extracts enum declarations (complexity ≤10)
     #[allow(clippy::cast_possible_truncation)]
     fn extract_enum_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Track namespace context while parsing
         let mut namespace_stack: Vec<String> = Vec::new();
         let mut brace_depth = 0;
@@ -254,6 +257,7 @@ impl CppAstVisitor {
 
     /// Extracts typedef declarations (complexity ≤10)
     fn extract_typedef_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -284,6 +288,7 @@ impl CppAstVisitor {
 
     /// Extracts template declarations (complexity ≤10)
     fn extract_template_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_template = false;
         let mut template_line = 0;
 
@@ -336,6 +341,7 @@ impl CppAstVisitor {
     /// Counts enum variants (complexity ≤10)
     #[allow(clippy::cast_possible_truncation)]
     fn count_enum_variants(&self, source: &str, enum_start_line: usize) -> usize {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_enum = false;
         let mut brace_depth = 0;
         let mut variant_count = 0;

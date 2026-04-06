@@ -41,6 +41,7 @@ impl PerformanceMonitor {
 
     /// Run comprehensive performance benchmark
     pub async fn run_benchmark(&mut self, suite_name: &str) -> Result<BenchmarkReport> {
+        debug_assert!(!suite_name.is_empty(), "suite_name must not be empty");
         let suite = self
             .benchmarks
             .get(suite_name)

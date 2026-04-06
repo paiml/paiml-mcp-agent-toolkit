@@ -31,6 +31,7 @@ fn find_item_fuzzy(
     service: &RoadmapService,
     id: &str,
 ) -> Result<crate::models::roadmap::RoadmapItem> {
+    debug_assert!(!id.is_empty(), "id must not be empty");
     // First try exact match
     if let Ok(Some(item)) = service.find_item(id) {
         return Ok(item);
@@ -73,6 +74,7 @@ fn find_item_fuzzy(
 
 /// Extract line number from YAML error message
 fn extract_line_from_yaml_error(error: &str) -> Option<usize> {
+    debug_assert!(!error.is_empty(), "error must not be empty");
     // serde_yaml_ng errors often contain "at line X column Y"
     if let Some(pos) = error.find("at line ") {
         let rest = error.get(pos + 8..).unwrap_or_default();

@@ -6,6 +6,7 @@ impl<S: AgentState> RecoveryManager<S> {
         snapshot_config: SnapshotConfig,
         snapshot_path: &str,
     ) -> Result<Self, RecoveryError> {
+        debug_assert!(!snapshot_path.is_empty(), "snapshot_path must not be empty");
         let event_store = Arc::new(
             EventStore::new(event_store_config)
                 .await
@@ -71,6 +72,7 @@ impl<S: AgentState> RecoveryManager<S> {
         initial_state: S,
         pk: &str,
     ) -> Result<(S, u64), RecoveryError> {
+        debug_assert!(!pk.is_empty(), "pk must not be empty");
         if let Some(snapshot) = self
             .snapshot_store
             .find_partition_snapshots(pk)

@@ -252,6 +252,7 @@ fn cargo_metadata_target_dir(project_root: &Path) -> Vec<std::path::PathBuf> {
 
 /// Extract "target_directory" value from cargo metadata JSON output.
 fn extract_target_directory(json: &str) -> Option<&str> {
+    debug_assert!(!json.is_empty(), "json must not be empty");
     let idx = json.find("\"target_directory\":\"")?;
     let rest = json.get(idx + 20..)?;
     let end = rest.find('"')?;

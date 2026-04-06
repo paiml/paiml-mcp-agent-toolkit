@@ -26,6 +26,7 @@ impl fmt::Display for RepoScore {
 // Grade: conversion and formatting methods
 impl Grade {
     pub fn from_score(score: f64) -> Self {
+        debug_assert!(score >= 0.0, "score must be non-negative");
         match score {
             s if s >= 95.0 => Grade::APlus,
             s if s >= 90.0 => Grade::A,
@@ -96,6 +97,7 @@ impl CategoryScore {
         subcategories: Vec<SubcategoryScore>,
         findings: Vec<Finding>,
     ) -> Self {
+        debug_assert!(score >= 0.0, "score must be non-negative");
         let percentage = if max_score > 0.0 {
             (score / max_score) * 100.0
         } else {

@@ -3,6 +3,7 @@
 // validate_parameters, validate_template, and all related helpers.
 
 fn parse_template_uri(uri: &str) -> Result<(&str, &str, &str), TemplateError> {
+    debug_assert!(!uri.is_empty(), "uri must not be empty");
     let parts: Vec<&str> = uri
         .strip_prefix("template://")
         .ok_or_else(|| TemplateError::InvalidUri {
@@ -30,6 +31,7 @@ fn build_template_prefix(category: Option<&str>, toolchain: Option<&str>) -> Str
 }
 
 fn extract_filename(category: &str) -> String {
+    debug_assert!(!category.is_empty(), "category must not be empty");
     match category {
         "makefile" => "Makefile".to_string(),
         "readme" => "README.md".to_string(),

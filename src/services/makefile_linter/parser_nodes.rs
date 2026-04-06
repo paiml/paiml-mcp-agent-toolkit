@@ -194,6 +194,7 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn parse_targets(&self, input: &str) -> Result<Vec<String>, ParseError> {
+        debug_assert!(!input.is_empty(), "input must not be empty");
         input
             .split_whitespace()
             .map(std::string::ToString::to_string)

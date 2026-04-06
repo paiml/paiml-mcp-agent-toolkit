@@ -3,6 +3,7 @@
 impl RequestContext {
     #[must_use]
     pub fn new(protocol: &str) -> Self {
+        debug_assert!(!protocol.is_empty(), "protocol must not be empty");
         Self {
             request_id: Uuid::new_v4().to_string(),
             trace_id: Uuid::new_v4(),

@@ -154,6 +154,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         &self,
         entries: &[Entry<ClientRequest>],
     ) -> Result<(), std::io::Error> {
+        debug_assert!(!entries.is_empty(), "entries must not be empty");
         let mut log = self.log.write();
         for entry in entries {
             log.insert(entry.index, entry.clone());
@@ -181,6 +182,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         &self,
         entries: &[(&u64, &ClientRequest)],
     ) -> Result<(), std::io::Error> {
+        debug_assert!(!entries.is_empty(), "entries must not be empty");
         for (index, _data) in entries {
             if let Some(entry) = self.log.read().get(index) {
                 self.apply_entry(entry).await;

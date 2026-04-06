@@ -8,6 +8,8 @@ fn analyze_file_for_rename(
     entries: &[&FunctionEntry],
     index: &AgentContextIndex,
 ) -> RenameSuggestion {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
+    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let parent_file = detect_parent_file(file_path, index);
 
     // Cascading signal priority: try each analyzer in order
@@ -69,6 +71,8 @@ fn build_suggestion(
     reasoning: String,
     signal: RenameSignal,
 ) -> RenameSuggestion {
+    debug_assert!(!name.is_empty(), "name must not be empty");
+    debug_assert!(confidence >= 0.0, "confidence must be non-negative");
     let suggested_name = format!("{name}.rs");
     let suggested_path = replace_filename(ctx.file_path, &suggested_name);
 
@@ -115,6 +119,7 @@ fn build_suggestion(
 
 /// Check if the suggested path matches the parent file path.
 fn collides_with_parent(suggested_path: &str, parent_file: &Option<String>) -> bool {
+    debug_assert!(!suggested_path.is_empty(), "suggested_path must not be empty");
     parent_file
         .as_ref()
         .is_some_and(|parent| suggested_path == parent)
@@ -123,6 +128,8 @@ fn collides_with_parent(suggested_path: &str, parent_file: &Option<String>) -> b
 /// Check if the suggested name matches the immediate parent directory.
 /// E.g., `graph/mod_part_02.rs → graph.rs` is redundant inside a `graph/` dir.
 fn matches_parent_dir(file_path: &str, suggested_name: &str) -> bool {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
+    debug_assert!(!suggested_name.is_empty(), "suggested_name must not be empty");
     let parts: Vec<&str> = file_path.rsplitn(2, '/').collect();
     if parts.len() < 2 {
         return false;

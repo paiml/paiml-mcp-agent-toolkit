@@ -283,6 +283,7 @@ pub(super) fn detect_fault_patterns(functions: &[FunctionEntry]) -> HashMap<usiz
 /// Parses `asm("instruction.modifier ...")` and `asm volatile("...")` blocks
 /// to extract PTX opcode mnemonics like `mma.sync`, `cp.async`, `bar.sync`.
 fn extract_ptx_instruction_tags(source: &str, faults: &mut Vec<String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     // Known PTX instruction prefixes to search for in asm() string literals
     const PTX_OPCODES: &[&str] = &[
         "mma.sync",
@@ -379,6 +380,7 @@ pub(super) fn detect_inline_ptx_defects(source: &str, faults: &mut Vec<String>) 
 }
 
 fn detect_ptx_barrier_divergence(source: &str, faults: &mut Vec<String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut in_branch = false;
     for line in source.lines() {
         let t = line.trim();
@@ -396,6 +398,7 @@ fn detect_ptx_barrier_divergence(source: &str, faults: &mut Vec<String>) {
 }
 
 fn detect_ptx_early_exit(source: &str, faults: &mut Vec<String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut seen_return = false;
     for line in source.lines() {
         let t = line.trim();
@@ -410,6 +413,7 @@ fn detect_ptx_early_exit(source: &str, faults: &mut Vec<String>) {
 }
 
 fn detect_ptx_register_issues(source: &str, faults: &mut Vec<String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let reg_count = source.matches("\"=r\"").count() + source.matches("\"+r\"").count();
     if reg_count > 8 {
         faults.push("PTX_HIGH_REGS".to_string());
@@ -417,6 +421,7 @@ fn detect_ptx_register_issues(source: &str, faults: &mut Vec<String>) {
 }
 
 fn detect_ptx_shared_u64(source: &str, faults: &mut Vec<String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let has_shared = source.contains("st.shared") || source.contains("ld.shared");
     if has_shared && (source.contains("cvta.shared") || source.contains("cvta.to.shared")) {
         faults.push("PTX_SHARED_U64".to_string());
@@ -424,12 +429,14 @@ fn detect_ptx_shared_u64(source: &str, faults: &mut Vec<String>) {
 }
 
 fn detect_ptx_local_spills(source: &str, faults: &mut Vec<String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     if source.contains(".local") && (source.contains("st.local") || source.contains("ld.local")) {
         faults.push("PTX_REG_SPILL".to_string());
     }
 }
 
 fn detect_ptx_pred_overflow(source: &str, faults: &mut Vec<String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let pred_count = (0..16).filter(|i| source.contains(&format!("%p{i}"))).count();
     if pred_count > 8 {
         faults.push("PTX_PRED_OVERFLOW".to_string());
@@ -437,6 +444,7 @@ fn detect_ptx_pred_overflow(source: &str, faults: &mut Vec<String>) {
 }
 
 fn detect_ptx_empty_loop(source: &str, faults: &mut Vec<String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     if !source.contains("__global__") && !source.contains("__device__") {
         return;
     }
@@ -457,6 +465,7 @@ fn detect_ptx_empty_loop(source: &str, faults: &mut Vec<String>) {
 }
 
 fn detect_ptx_redundant_mov(source: &str, faults: &mut Vec<String>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     for line in source.lines() {
         let t = line.trim();
         if !t.contains("mov.") { continue; }

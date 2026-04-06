@@ -248,6 +248,7 @@ impl QualifiedName {
     /// assert!(QualifiedName::from_string("").is_err());
     /// ```
     pub fn from_string(qualified_str: &str) -> Result<Self, &'static str> {
+        debug_assert!(!qualified_str.is_empty(), "qualified_str must not be empty");
         if qualified_str.is_empty() {
             return Err("Empty qualified name");
         }
@@ -312,6 +313,7 @@ impl std::str::FromStr for QualifiedName {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         Self::from_string(s)
     }
 }

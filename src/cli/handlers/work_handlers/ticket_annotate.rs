@@ -206,6 +206,7 @@ fn find_related_files(
     item: &crate::models::roadmap::RoadmapItem,
     project_path: &Path,
 ) -> Vec<PathBuf> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut files = Vec::new();
 
     if let Some(ref spec_path) = item.spec {
@@ -289,6 +290,7 @@ fn analyze_churn_simple(project_path: &Path, files: &[PathBuf], days: u32) -> Ch
 
 /// Convert TDG score (0-5) to human-readable severity label.
 fn tdg_severity_label(score: f64) -> &'static str {
+    debug_assert!(score >= 0.0, "score must be non-negative");
     if score <= 1.0 {
         "Excellent"
     } else if score <= 2.0 {

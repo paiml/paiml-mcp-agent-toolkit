@@ -572,6 +572,7 @@ fn find_binding_yaml(project_path: &Path) -> Option<std::path::PathBuf> {
 
 /// Parse an integer metric from pv coverage output (e.g., "E0 (generic !is_empty):  3")
 fn parse_metric(output: &str, label: &str) -> usize {
+    debug_assert!(!output.is_empty(), "output must not be empty");
     output
         .lines()
         .find(|l| l.contains(label))
@@ -582,6 +583,7 @@ fn parse_metric(output: &str, label: &str) -> usize {
 
 /// Parse a float metric from pv coverage output (e.g., "Quality score:  0.55 ...")
 fn parse_float_metric(output: &str, label: &str) -> f64 {
+    debug_assert!(!output.is_empty(), "output must not be empty");
     output
         .lines()
         .find(|l| l.contains(label))

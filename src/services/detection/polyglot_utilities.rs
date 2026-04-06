@@ -17,6 +17,7 @@ impl PolyglotDetector {
     }
 
     fn estimate_file_complexity(&self, content: &str) -> f64 {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines = content.lines().count();
         let branches = content.matches("if").count()
             + content.matches("for").count()
@@ -72,6 +73,7 @@ impl PolyglotDetector {
 }
 
 fn detect_rust_frameworks(content: &str) -> Vec<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut frameworks = Vec::new();
     if content.contains("tokio") { frameworks.push("Tokio".to_string()); }
     if content.contains("serde") { frameworks.push("Serde".to_string()); }
@@ -80,6 +82,7 @@ fn detect_rust_frameworks(content: &str) -> Vec<String> {
 }
 
 fn detect_js_frameworks(content: &str) -> Vec<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut frameworks = Vec::new();
     if content.contains("React") { frameworks.push("React".to_string()); }
     if content.contains("Express") { frameworks.push("Express".to_string()); }
@@ -88,6 +91,7 @@ fn detect_js_frameworks(content: &str) -> Vec<String> {
 }
 
 fn detect_python_frameworks(content: &str) -> Vec<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut frameworks = Vec::new();
     if content.contains("django") { frameworks.push("Django".to_string()); }
     if content.contains("flask") { frameworks.push("Flask".to_string()); }

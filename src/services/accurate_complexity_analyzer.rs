@@ -75,6 +75,7 @@ pub struct ProjectComplexityResult {
 /// For duplicate function names (e.g. in different impl blocks), stores the
 /// first occurrence so the analyzer can match them in order of appearance.
 fn build_function_line_map(content: &str) -> std::collections::HashMap<String, u32> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut map = std::collections::HashMap::new();
     for (line_idx, line) in content.lines().enumerate() {
         if let Some(name) = extract_fn_name(line.trim()) {
@@ -88,6 +89,7 @@ fn build_function_line_map(content: &str) -> std::collections::HashMap<String, u
 /// Extract a function name from a trimmed source line, if it contains a function definition.
 /// Returns None for comments and non-function lines.
 fn extract_fn_name(trimmed: &str) -> Option<String> {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let fn_pos = trimmed.find("fn ")?;
     let before = trimmed.get(..fn_pos).unwrap_or_default();
     if before.contains("//") || before.contains("/*") {

@@ -22,6 +22,7 @@ pub async fn handle_serve(
 
 /// Extract Method: Handle HTTP server startup
 async fn handle_http_server(host: &str, port: u16, cors: bool) -> Result<()> {
+    debug_assert!(!host.is_empty(), "host must not be empty");
     eprintln!("🚀 Starting PMAT HTTP server on http://{host}:{port}");
     eprintln!("✅ Server ready!");
     eprintln!("📍 Health check: http://{host}:{port}/health");
@@ -34,6 +35,7 @@ async fn handle_http_server(host: &str, port: u16, cors: bool) -> Result<()> {
 
 /// Extract Method: Handle WebSocket server startup
 async fn handle_websocket_server(host: &str, port: u16) -> Result<()> {
+    debug_assert!(!host.is_empty(), "host must not be empty");
     eprintln!("🚀 Starting PMAT WebSocket server on ws://{host}:{port}");
     eprintln!("✅ WebSocket server ready!");
     eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
@@ -45,6 +47,7 @@ async fn handle_websocket_server(host: &str, port: u16) -> Result<()> {
 
 /// Extract Method: Handle HTTP-SSE server startup
 async fn handle_http_sse_server(host: &str, port: u16, cors: bool) -> Result<()> {
+    debug_assert!(!host.is_empty(), "host must not be empty");
     eprintln!("🚀 Starting PMAT HTTP-SSE server on http://{host}:{port}");
     eprintln!("✅ HTTP-SSE server ready!");
     eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
@@ -58,6 +61,7 @@ async fn handle_http_sse_server(host: &str, port: u16, cors: bool) -> Result<()>
 
 /// Extract Method: Handle hybrid server startup
 async fn handle_hybrid_server(host: &str, port: u16, cors: bool) -> Result<()> {
+    debug_assert!(!host.is_empty(), "host must not be empty");
     eprintln!("🚀 Starting PMAT hybrid server (HTTP + WebSocket) on {host}:{port}");
     eprintln!("✅ Hybrid server ready!");
     eprintln!("📍 HTTP endpoint: http://{host}:{port}");
@@ -71,6 +75,7 @@ async fn handle_hybrid_server(host: &str, port: u16, cors: bool) -> Result<()> {
 
 /// Extract Method: Handle full server startup  
 async fn handle_full_server(host: &str, port: u16, cors: bool) -> Result<()> {
+    debug_assert!(!host.is_empty(), "host must not be empty");
     eprintln!("🚀 Starting PMAT full server (HTTP + WebSocket + SSE) on {host}:{port}");
     eprintln!("✅ All transports ready!");
     eprintln!("📍 HTTP endpoint: http://{host}:{port}");

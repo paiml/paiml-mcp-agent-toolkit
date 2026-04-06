@@ -82,6 +82,9 @@ async fn run_tdg_analysis(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
+    debug_assert!(top > 0, "top must be positive");
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     if let Some(single_file) = file {
         // Single file mode
         analyze_single_file(
@@ -128,6 +131,7 @@ async fn run_tdg_analysis(
 
 /// Write TDG output to file or stdout
 async fn write_tdg_output(output: Option<PathBuf>, content: &str) -> Result<()> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, content).await?;
         eprintln!("📝 Results written to {}", output_path.display());

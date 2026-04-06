@@ -69,6 +69,7 @@ impl McpTool for LanguageBoundaryTool {
 }
 
 fn parse_language_param(value: &Value, key: &str) -> Option<Language> {
+    debug_assert!(!key.is_empty(), "key must not be empty");
     value[key].as_str().and_then(|l| match l.to_lowercase().as_str() {
         "java" => Some(Language::Java),
         "kotlin" => Some(Language::Kotlin),
@@ -146,6 +147,8 @@ fn filter_dependencies<'a>(
 }
 
 fn node_to_json(nodes: &[UnifiedNode], id: &str) -> Value {
+    debug_assert!(!id.is_empty(), "id must not be empty");
+    debug_assert!(!nodes.is_empty(), "nodes must not be empty");
     nodes.iter().find(|n| n.id == id).map(|n| {
         json!({"id": n.id, "name": n.name, "fqn": n.fqn, "kind": n.kind.as_str(), "file": n.file_path.display().to_string()})
     }).unwrap_or_else(|| json!({"id": id}))
@@ -184,6 +187,8 @@ fn build_boundary_stats(
 }
 
 fn recommendations_for_pair(a: &str, b: &str) -> Value {
+    debug_assert!(!a.is_empty(), "a must not be empty");
+    debug_assert!(!b.is_empty(), "b must not be empty");
     match (a, b) {
         ("Java", "Kotlin") | ("Kotlin", "Java") => json!([
             "Use Kotlin's @JvmName annotation to control Java-visible names",

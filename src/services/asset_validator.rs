@@ -59,6 +59,7 @@ impl AssetType {
 
     /// Parse from string (for --asset CLI flag).
     pub fn parse(s: &str) -> Option<Self> {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "readme" => Some(Self::Readme),
             "dockerfile" => Some(Self::Dockerfile),

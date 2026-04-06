@@ -113,6 +113,7 @@ pub enum SortMode {
 
 impl SortMode {
     pub fn parse(s: &str) -> Self {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "size" | "binary" | "kb" => SortMode::Size,
             "pagerank" | "rank" | "critical" => SortMode::PageRank,

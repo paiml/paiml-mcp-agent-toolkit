@@ -4,6 +4,7 @@
 
 impl BigOAnalyzer {
     fn get_loop_keywords(language: &str) -> Vec<&'static str> {
+        debug_assert!(!language.is_empty(), "language must not be empty");
         match language {
             "rust" => vec!["for", "while", "loop"],
             "javascript" | "typescript" => vec!["for", "while", "do"],
@@ -13,6 +14,8 @@ impl BigOAnalyzer {
     }
 
     fn detect_recursive_call(line: &str, function_name: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
+        debug_assert!(!function_name.is_empty(), "function_name must not be empty");
         let trimmed = line.trim();
         trimmed.contains(function_name)
             && !trimmed.starts_with("fn")
@@ -20,16 +23,19 @@ impl BigOAnalyzer {
     }
 
     fn detect_sorting_operation(line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let trimmed = line.trim();
         trimmed.contains(".sort(") || trimmed.contains("sort(")
     }
 
     fn detect_binary_search(line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let trimmed = line.trim();
         trimmed.contains("binary_search") || trimmed.contains("binarySearch")
     }
 
     fn detect_rust_iterator_patterns(function_body: &str) -> bool {
+        debug_assert!(!function_body.is_empty(), "function_body must not be empty");
         let linear_patterns = [
             ".iter()",
             ".into_iter()",
@@ -51,6 +57,7 @@ impl BigOAnalyzer {
     }
 
     fn calculate_loop_depth(lines: &[&str], loop_keywords: &[&str]) -> usize {
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         let mut loop_depth = 0;
         let mut max_loop_depth = 0;
 
@@ -88,6 +95,7 @@ impl BigOAnalyzer {
     }
 
     fn detect_space_complexity(function_body: &str) -> (ComplexityBound, bool) {
+        debug_assert!(!function_body.is_empty(), "function_body must not be empty");
         let space_indicators = [
             "Vec::new",
             "vec!",

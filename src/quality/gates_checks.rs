@@ -245,6 +245,7 @@ fn clean_old_files(dir: &Path, max_age_secs: u64) {
 /// - Time: O(n) where n is output length
 /// - Cyclomatic: 4
 fn parse_coverage_from_output(output: &str) -> f64 {
+    debug_assert!(!output.is_empty(), "output must not be empty");
     // Look for "TOTAL.*X.XX%"
     for line in output.lines() {
         if line.contains("TOTAL") {

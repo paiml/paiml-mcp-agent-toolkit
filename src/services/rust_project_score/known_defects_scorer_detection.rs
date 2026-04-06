@@ -10,6 +10,7 @@ impl KnownDefectsScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<(usize, usize)> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let unwrap_regex =
             Regex::new(r"\.unwrap\(\)").map_err(|e| ScorerError::IoError(e.to_string()))?;
 
@@ -105,6 +106,7 @@ impl KnownDefectsScorer {
     /// - Line comments: `//` (including doc comments `///` and `//!`)
     /// - Block comments: `/* */` (including doc comments `/** */`)
     fn strip_comments(content: &str) -> String {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut result = String::with_capacity(content.len());
         let mut chars = content.chars().peekable();
         let mut in_block_comment = false;

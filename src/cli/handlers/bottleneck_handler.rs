@@ -231,6 +231,7 @@ fn get_file_authors(
 
 /// Check if a file is auto-generated
 fn is_generated_file(path: &str) -> bool {
+    debug_assert!(!path.is_empty(), "path must not be empty");
     path.contains(".pmat/")
         || path.ends_with("Cargo.lock")
         || path.ends_with(".pmat/baseline.json")
@@ -240,6 +241,7 @@ fn is_generated_file(path: &str) -> bool {
 
 /// Classify the churn pattern
 fn classify_pattern(path: &str, touches: usize, lines: usize) -> String {
+    debug_assert!(!path.is_empty(), "path must not be empty");
     let filename = path.rsplit('/').next().unwrap_or(path);
 
     if filename == "mod.rs" || filename.contains("registry") || filename.contains("dispatch") {

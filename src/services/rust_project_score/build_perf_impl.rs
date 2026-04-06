@@ -94,6 +94,7 @@ impl BuildPerfScorer {
         project_path: &Path,
         _cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let target_path = project_path.join("target");
 
         // If no target directory, give full points (clean state)
@@ -124,6 +125,7 @@ impl BuildPerfScorer {
         project_path: &Path,
         _cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_lock_path = project_path.join("Cargo.lock");
 
         if cargo_lock_path.exists() {
@@ -140,6 +142,7 @@ impl BuildPerfScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_toml = project_path.join(".cargo").join("config.toml");
         let config_old = project_path.join(".cargo").join("config");
 
@@ -182,6 +185,7 @@ impl BuildPerfScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Check .cargo/config.toml first
         let config_path = project_path.join(".cargo").join("config.toml");
 
@@ -226,6 +230,7 @@ impl BuildPerfScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         let content = if let Some(cache) = cache {
@@ -273,6 +278,7 @@ impl BuildPerfScorer {
         project_path: &Path,
         _cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut score: f64 = 0.0;
 
         // Check for Makefile (most common)
@@ -299,6 +305,7 @@ impl BuildPerfScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -417,6 +424,7 @@ impl Scorer for BuildPerfScorer {
         project_path: &Path,
         _mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // This scorer doesn't have expensive operations
         self.score(project_path)
     }

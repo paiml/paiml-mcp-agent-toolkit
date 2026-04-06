@@ -289,6 +289,7 @@ pub fn detect_cb529_pmat_tracked_in_git(project_path: &Path) -> Vec<CbPatternVio
 /// Check if a path contains a `.pmat/` directory segment (not just a prefix).
 /// Matches: `.pmat/foo`, `crates/bar/.pmat/baz`, but NOT `some.pmat_file`.
 fn contains_pmat_segment(path: &str) -> bool {
+    debug_assert!(!path.is_empty(), "path must not be empty");
     // At start of path
     if path.starts_with(".pmat/") {
         return true;

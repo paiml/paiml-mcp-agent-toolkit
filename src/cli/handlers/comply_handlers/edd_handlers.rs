@@ -204,6 +204,7 @@ fn check_file_edd(
 
 /// Extract function name from a `pub fn` line.
 fn extract_fn_name(line: &str) -> String {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let after_fn = if line.contains("async fn ") {
         line.split("async fn ").nth(1)
     } else {
@@ -222,6 +223,7 @@ fn extract_fn_name(line: &str) -> String {
 
 /// Collect doc comments (`///` or `//!`) above a given line index.
 fn collect_doc_comments(lines: &[&str], fn_line: usize) -> String {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut doc_lines = Vec::new();
     let mut i = fn_line.saturating_sub(1);
 
@@ -254,6 +256,7 @@ fn collect_doc_comments(lines: &[&str], fn_line: usize) -> String {
 /// - ` ```math` code blocks
 /// - `\frac`, `\sum`, `\int`, `\partial` etc. (LaTeX commands)
 fn has_math_notation(doc: &str) -> bool {
+    debug_assert!(!doc.is_empty(), "doc must not be empty");
     // Display math: $$ ... $$
     if doc.contains("$$") {
         return true;

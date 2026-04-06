@@ -106,6 +106,7 @@ impl GitHistoryIndex {
         commit_hash: &str,
         embedding: &[f32],
     ) -> Result<(), GitHistoryError> {
+        debug_assert!(!commit_hash.is_empty(), "commit_hash must not be empty");
         let embedding_bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
 
         self.conn.execute(

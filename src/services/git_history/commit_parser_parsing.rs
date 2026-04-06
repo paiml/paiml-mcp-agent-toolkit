@@ -121,6 +121,7 @@ impl CommitParser {
 
     /// Check if commit is a fix (conventional commit or keyword)
     fn is_fix_commit(subject: &str) -> bool {
+        debug_assert!(!subject.is_empty(), "subject must not be empty");
         let lower = subject.to_lowercase();
         lower.starts_with("fix:")
             || lower.starts_with("fix(")
@@ -133,12 +134,15 @@ impl CommitParser {
 
     /// Check if commit is a feature (conventional commit)
     fn is_feat_commit(subject: &str) -> bool {
+        debug_assert!(!subject.is_empty(), "subject must not be empty");
         let lower = subject.to_lowercase();
         lower.starts_with("feat:") || lower.starts_with("feat(") || lower.starts_with("feature:")
     }
 
     /// Extract issue references from commit message
     fn extract_issue_refs(subject: &str, body: &str) -> Vec<String> {
+        debug_assert!(!subject.is_empty(), "subject must not be empty");
+        debug_assert!(!body.is_empty(), "body must not be empty");
         let mut refs = Vec::new();
         let full_text = format!("{} {}", subject, body);
 

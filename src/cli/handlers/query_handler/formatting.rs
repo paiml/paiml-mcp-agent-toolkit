@@ -106,6 +106,7 @@ fn try_special_output_modes_merged(
     before_context: Option<usize>,
     ctx: &MergeContext,
 ) -> anyhow::Result<bool> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     if files_with_matches {
         return handle_files_with_matches(results, raw_results, ctx);
     }
@@ -127,6 +128,7 @@ fn handle_files_with_matches(
     raw_results: &[RawSearchResult],
     ctx: &MergeContext,
 ) -> anyhow::Result<bool> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut seen = std::collections::HashSet::new();
     for r in results {
         seen.insert(r.file_path.clone());
@@ -157,6 +159,7 @@ fn handle_files_with_matches(
 }
 
 fn handle_count_mode(results: &[QueryResult], ctx: &MergeContext) -> anyhow::Result<bool> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut file_counts: std::collections::BTreeMap<String, usize> =
         std::collections::BTreeMap::new();
     for r in results {
@@ -189,6 +192,11 @@ fn print_context_for_result(
     ctx_before: usize,
     ctx_after: usize,
 ) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let start = r.start_line.saturating_sub(ctx_before).max(1);
     let file_path = project_path.join(&r.file_path);
     let content = match std::fs::read_to_string(&file_path) {
@@ -228,6 +236,12 @@ fn print_context_lines(
     ctx_before: usize,
     ctx_after: usize,
 ) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
+    debug_assert!(!results.is_empty(), "results must not be empty");
     for r in results {
         print_context_for_result(r, project_path, ctx_before, ctx_after);
     }
@@ -245,6 +259,12 @@ fn print_query_output(
     index: &AgentContextIndex,
     highlight: Option<(&str, bool)>,
 ) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let output = match format {
         QueryOutputFormat::Text => {
             if code {

@@ -5,6 +5,7 @@
 
         /// Strip ANSI escape codes from a string for test assertions
         fn strip_ansi(s: &str) -> String {
+            debug_assert!(!s.is_empty(), "s must not be empty");
             let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
             re.replace_all(s, "").to_string()
         }

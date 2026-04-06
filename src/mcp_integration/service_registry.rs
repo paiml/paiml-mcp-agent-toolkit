@@ -39,6 +39,7 @@ pub trait Service: Send + Sync {
 }
 
 impl Default for ServiceRegistry {
+    debug_assert!(!operation.is_empty(), "operation must not be empty");
     fn default() -> Self {
         Self::new()
     }

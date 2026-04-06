@@ -122,6 +122,7 @@ async fn format_context_content(
     format: &str,
     deep_context: &crate::services::deep_context::DeepContext,
 ) -> String {
+    debug_assert!(!format.is_empty(), "format must not be empty");
     if format == "json" {
         serde_json::to_string_pretty(deep_context).unwrap_or_default()
     } else {
@@ -141,6 +142,7 @@ fn build_context_response(
     content: String,
     deep_context: &crate::services::deep_context::DeepContext,
 ) -> serde_json::Value {
+    debug_assert!(!format.is_empty(), "format must not be empty");
     json!({
         "content": [{
             "type": "text",

@@ -67,6 +67,7 @@ impl SecurityReport {
     }
 
     pub fn add_check_result(&mut self, check_name: &str, passed: bool) {
+        debug_assert!(!check_name.is_empty(), "check_name must not be empty");
         if passed {
             self.passed_checks.push(check_name.to_string());
         } else {

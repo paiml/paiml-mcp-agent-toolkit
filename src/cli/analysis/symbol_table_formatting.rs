@@ -267,6 +267,7 @@ fn get_sorted_file_counts(symbols: &[Symbol]) -> Vec<(&str, usize)> {
 
 /// Extract filename from path (cognitive complexity ≤3)
 fn extract_filename(file_path: &str) -> &str {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     Path::new(file_path)
         .file_name()
         .and_then(|n| n.to_str())

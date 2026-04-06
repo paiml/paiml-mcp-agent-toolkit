@@ -83,6 +83,7 @@ fn create_single_file_result(
 
 /// Count top lint types from violations
 pub(crate) fn count_top_lints(violations: &[ViolationDetail]) -> Vec<(String, usize)> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut lint_counts: HashMap<String, usize> = HashMap::new();
 
     for violation in violations {

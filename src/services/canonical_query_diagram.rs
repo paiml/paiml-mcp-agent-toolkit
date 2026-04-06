@@ -6,6 +6,7 @@ fn generate_styled_architecture_diagram(
     edges: &[ComponentEdge],
     metrics: &FxHashMap<String, ComponentMetrics>,
 ) -> Result<String> {
+    debug_assert!(!edges.is_empty(), "edges must not be empty");
     let mut diagram = String::from("graph TD\n");
 
     render_component_nodes(&mut diagram, components, metrics);
@@ -48,6 +49,7 @@ fn render_component_nodes(
 }
 
 fn render_component_edges(diagram: &mut String, edges: &[ComponentEdge]) {
+    debug_assert!(!edges.is_empty(), "edges must not be empty");
     for edge in edges {
         let edge_class = match edge.weight {
             w if w > 10 => "strong-coupling",
@@ -78,6 +80,7 @@ fn render_component_edges(diagram: &mut String, edges: &[ComponentEdge]) {
 // Helper functions
 
 fn sanitize_component_id(name: &str) -> String {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     name.chars()
         .map(|c| if c.is_alphanumeric() { c } else { '_' })
         .collect::<String>()
@@ -86,6 +89,7 @@ fn sanitize_component_id(name: &str) -> String {
 }
 
 fn humanize_component_name(name: &str) -> String {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     name.split('_')
         .map(|part| {
             let mut chars = part.chars();
@@ -102,6 +106,7 @@ fn collect_component_nodes(
     dag: &crate::models::dag::DependencyGraph,
     module_name: &str,
 ) -> Vec<String> {
+    debug_assert!(!module_name.is_empty(), "module_name must not be empty");
     dag.nodes
         .iter()
         .filter(|(node_id, _)| node_id.starts_with(module_name))

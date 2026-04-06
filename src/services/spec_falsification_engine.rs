@@ -72,6 +72,7 @@ impl FalsificationEngine {
     }
 
     fn check_single_path(&self, path_str: &str) -> SpecEvidence {
+        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         let full_path = self.project_path.join(path_str);
         if full_path.exists() {
             return SpecEvidence {

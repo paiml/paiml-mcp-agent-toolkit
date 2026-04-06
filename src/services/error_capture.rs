@@ -53,6 +53,7 @@ impl CapturedError {
 
     /// Add backtrace to error
     pub fn with_backtrace(mut self, backtrace: &str) -> Self {
+        debug_assert!(!backtrace.is_empty(), "backtrace must not be empty");
         self.backtrace = Some(backtrace.to_string());
         self
     }

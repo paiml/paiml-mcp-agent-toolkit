@@ -62,18 +62,22 @@ impl WorkflowMonitor for DefaultWorkflowMonitor {
     }
 
     async fn on_step_started(&self, execution_id: Uuid, _step_id: &str) {
+        debug_assert!(!_step_id.is_empty(), "_step_id must not be empty");
         if let Some(metric) = self.metrics.write().get_mut(&execution_id) {
             metric.total_steps += 1;
         }
     }
 
     async fn on_step_completed(&self, execution_id: Uuid, _step_id: &str, _result: &Value) {
+        debug_assert!(!_step_id.is_empty(), "_step_id must not be empty");
         if let Some(metric) = self.metrics.write().get_mut(&execution_id) {
             metric.completed_steps += 1;
         }
     }
 
     async fn on_step_failed(&self, execution_id: Uuid, _step_id: &str, _error: &str) {
+        debug_assert!(!_step_id.is_empty(), "_step_id must not be empty");
+        debug_assert!(!_error.is_empty(), "_error must not be empty");
         if let Some(metric) = self.metrics.write().get_mut(&execution_id) {
             metric.failed_steps += 1;
         }

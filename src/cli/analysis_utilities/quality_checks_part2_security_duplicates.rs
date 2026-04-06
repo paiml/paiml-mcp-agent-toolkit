@@ -47,6 +47,8 @@ fn scan_content_for_pattern(
     path: &std::path::Path,
     violations: &mut Vec<QualityViolation>,
 ) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
+    debug_assert!(!content.is_empty(), "content must not be empty");
     for (line_no, line) in content.lines().enumerate() {
         if regex.is_match(line) {
             violations.push(QualityViolation {
@@ -196,6 +198,7 @@ async fn process_file_for_hash(path: &Path) -> Option<u64> {
 
 /// Check if file content is large enough to consider for duplicate detection
 fn is_file_large_enough(normalized_content: &str) -> bool {
+    debug_assert!(!normalized_content.is_empty(), "normalized_content must not be empty");
     normalized_content.len() > 50
 }
 
@@ -216,6 +219,7 @@ fn create_violations_for_duplicate_group(
     paths: &[PathBuf],
     violations: &mut Vec<QualityViolation>,
 ) {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     let files_str = format_file_list(paths);
 
     for path in paths {

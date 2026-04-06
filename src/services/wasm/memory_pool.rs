@@ -11,6 +11,7 @@ impl MemoryPool {
     /// Create a new memory pool
     #[must_use]
     pub fn new(max_size: usize) -> Self {
+        debug_assert!(max_size > 0, "max_size must be positive");
         Self { max_size }
     }
 

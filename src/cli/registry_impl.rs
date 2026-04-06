@@ -23,6 +23,7 @@ impl CommandRegistry {
 
     /// Find a command by path (e.g., "analyze complexity")
     pub fn find_command(&self, path: &str) -> Option<&CommandMetadata> {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         // First try exact match
         if let Some(cmd) = self.commands.get(path) {
             return Some(cmd);
@@ -58,6 +59,7 @@ impl CommandRegistry {
 
     /// Find commands by category
     pub fn find_by_category(&self, category: &str) -> Vec<&CommandMetadata> {
+        debug_assert!(!category.is_empty(), "category must not be empty");
         self.commands
             .values()
             .filter(|cmd| cmd.category == category)
@@ -139,6 +141,7 @@ impl CommandRegistry {
 
     /// Deserialize from JSON
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
+        debug_assert!(!json.is_empty(), "json must not be empty");
         serde_json::from_str(json)
     }
 }

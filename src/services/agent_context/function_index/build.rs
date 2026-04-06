@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 ///
 /// Checks first 5 lines for the annotation (it's always at the top).
 fn has_coverage_off(content: &str) -> bool {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     // Module-level inner attributes (#![...]) can appear anywhere before the first
     // code item, often after long doc comments (line 6-200+). Scan all #! lines.
     content.lines().any(|line| {
@@ -286,6 +287,7 @@ impl AgentContextIndex {
 
     /// Get functions in a file
     pub fn get_by_file(&self, file_path: &str) -> Vec<&FunctionEntry> {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.file_index
             .get(file_path)
             .map(|indices| indices.iter().map(|&i| &self.functions[i]).collect())

@@ -72,6 +72,7 @@ pub(crate) fn enrich_with_tarantula(path: &Path, findings: &mut [KaizenFinding])
 fn parse_lcov_line_hits(
     content: &str,
 ) -> std::collections::HashMap<String, std::collections::HashMap<usize, u64>> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut result: std::collections::HashMap<String, std::collections::HashMap<usize, u64>> =
         std::collections::HashMap::new();
     let mut current_file = String::new();

@@ -71,6 +71,9 @@ async fn handle_generate_examples(
     project_path: &Path,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
+    debug_assert!(!feature_name.is_empty(), "feature_name must not be empty");
     println!(
         "Generating example scripts for: {} ({})",
         feature_name, task_id
@@ -125,6 +128,8 @@ async fn handle_generate_examples(
 /// Generate example scripts for a feature (V2)
 /// Creates basic, error handling, and edge case examples
 pub fn generate_example_scripts(task_id: &str, feature_name: &str) -> Vec<ExampleScript> {
+    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
+    debug_assert!(!feature_name.is_empty(), "feature_name must not be empty");
     let sanitized_name = feature_name.replace('-', "_").to_lowercase();
 
     vec![
@@ -236,6 +241,7 @@ echo "✓ JSON output example completed successfully"
 /// Calculate epic summary from task scores (V2)
 /// Aggregates QA scores across all tasks in an epic
 pub fn calculate_epic_summary(epic_id: &str, tasks: &[(String, u32, u32)]) -> EpicSummary {
+    debug_assert!(!epic_id.is_empty(), "epic_id must not be empty");
     let total_tasks = tasks.len();
     let total_checks: u32 = tasks.iter().map(|(_, _, total)| total).sum();
     let passed_checks: u32 = tasks.iter().map(|(_, passed, _)| passed).sum();

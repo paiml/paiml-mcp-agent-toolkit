@@ -134,6 +134,7 @@ impl TdgAnalyzerAst {
         _language: Language,
         tracker: &mut PenaltyTracker,
     ) -> f32 {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Hash-based duplication detection with semantic filtering
         // Excludes comments and blank lines for accurate duplicate detection
         let mut points = self.config.weights.duplication;

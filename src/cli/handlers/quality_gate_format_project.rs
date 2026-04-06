@@ -1,6 +1,7 @@
 /// Toyota Way: Extract Method - Format quality gate results as `JUnit` XML (complexity ≤8)
 /// Creates JUnit-compatible XML output for CI/CD integration
 pub fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::fmt::Write;
     let mut output = String::new();
 
@@ -52,6 +53,7 @@ pub fn format_project_output(
     violations: &[QualityViolation],
     format: QualityGateOutputFormat,
 ) -> Result<String> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     match format {
         QualityGateOutputFormat::Json => Ok(serde_json::to_string_pretty(&json!({
             "passed": results.passed,
@@ -68,6 +70,7 @@ pub fn format_project_output(
 
 /// Format project summary
 fn format_project_summary(results: &QualityGateResults, violations: &[QualityViolation]) -> String {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut output = String::new();
 
     output.push_str("# Quality Gate Results\n\n");
@@ -98,6 +101,7 @@ fn format_project_summary(results: &QualityGateResults, violations: &[QualityVio
 fn group_violations_by_type(
     violations: &[QualityViolation],
 ) -> HashMap<String, Vec<&QualityViolation>> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut grouped = HashMap::new();
     for violation in violations {
         grouped

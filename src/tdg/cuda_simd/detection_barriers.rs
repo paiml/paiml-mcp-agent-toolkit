@@ -29,6 +29,7 @@ impl CudaSimdAnalyzer {
 
     /// Check if there's an early return in the same function scope before a barrier
     fn check_barrier_has_early_return(&self, lines: &[&str], barrier_line: usize) -> bool {
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         let before_barrier = lines[..barrier_line].join("\n");
         if !before_barrier.contains("return;")
             && !before_barrier.contains("return ")

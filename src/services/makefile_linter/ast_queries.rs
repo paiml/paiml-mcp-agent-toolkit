@@ -16,6 +16,7 @@ impl MakefileAst {
 
     #[must_use]
     pub fn find_rules_by_target(&self, target: &str) -> Vec<usize> {
+        debug_assert!(!target.is_empty(), "target must not be empty");
         self.nodes
             .iter()
             .enumerate()

@@ -19,6 +19,7 @@ impl HelpGenerator {
 
     /// Create with explicit width
     pub fn with_width(mut self, width: usize) -> Self {
+        debug_assert!(width > 0, "width must be positive");
         self.width = width;
         self
     }
@@ -31,6 +32,7 @@ impl HelpGenerator {
     /// # Returns
     /// Formatted help text string
     pub fn generate(&self, path: &str) -> String {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         match self.registry.find_command(path) {
             Some(metadata) => self.format_command_help(metadata),
             None => self.format_command_not_found(path),
@@ -198,6 +200,7 @@ impl HelpGenerator {
 
     /// Format command not found message with suggestions
     fn format_command_not_found(&self, path: &str) -> String {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         let mut out = String::new();
         out.push_str(&format!("error: unrecognized command '{}'\n\n", path));
 
@@ -322,6 +325,8 @@ impl HelpGenerator {
 
     /// Find commands similar to the query using edit distance
     fn find_similar_commands(&self, query: &str, limit: usize) -> Vec<(String, usize)> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
+        debug_assert!(limit > 0, "limit must be positive");
         let all_paths = self.registry.all_command_paths();
         let mut scored: Vec<(String, usize)> = all_paths
             .into_iter()
@@ -358,6 +363,7 @@ impl HelpGenerator {
 
     /// Print with ANSI colors
     fn print_colored(&self, text: &str) -> std::io::Result<()> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         // ANSI escape codes
         const RESET: &str = "\x1b[0m";
         const BOLD: &str = "\x1b[1m";

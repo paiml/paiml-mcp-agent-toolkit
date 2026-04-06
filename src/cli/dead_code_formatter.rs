@@ -270,6 +270,7 @@ impl GccFormatter {
         file_path: &str,
         item: &crate::models::dead_code::DeadCodeItem,
     ) {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let level = self.get_level(&item.item_type);
         let type_str = match &item.item_type {
             DeadCodeType::Function => "function",

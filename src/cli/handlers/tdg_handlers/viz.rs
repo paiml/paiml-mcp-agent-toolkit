@@ -29,6 +29,7 @@ fn collect_rust_files(path: &Path) -> Vec<PathBuf> {
 
 /// Parse visualization theme from string
 fn parse_viz_theme(theme_str: &str) -> crate::viz::terminal::TerminalTheme {
+    debug_assert!(!theme_str.is_empty(), "theme_str must not be empty");
     use crate::viz::terminal::TerminalTheme;
     match theme_str.to_lowercase().as_str() {
         "high-contrast" | "highcontrast" => TerminalTheme::HighContrast,

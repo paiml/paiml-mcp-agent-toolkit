@@ -126,6 +126,7 @@ impl DeepContextAnalyzer {
         &self,
         items: &[crate::services::context::AstItem],
     ) -> CategorizedAstItems {
+        debug_assert!(!items.is_empty(), "items must not be empty");
         let mut categorized = CategorizedAstItems::new();
 
         for item in items {
@@ -234,6 +235,8 @@ impl DeepContextAnalyzer {
     }
 
     fn format_import_path(&self, module: &str, items: &[String], alias: &Option<String>) -> String {
+        debug_assert!(!module.is_empty(), "module must not be empty");
+        debug_assert!(!items.is_empty(), "items must not be empty");
         if let Some(alias) = alias {
             format!("{module} as {alias}")
         } else if !items.is_empty() {
@@ -275,6 +278,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         functions: &[AstFunction],
     ) -> anyhow::Result<()> {
+        debug_assert!(!functions.is_empty(), "functions must not be empty");
         if functions.is_empty() {
             return Ok(());
         }

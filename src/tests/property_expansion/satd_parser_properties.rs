@@ -46,6 +46,7 @@ pub enum CommentStyle {
 
 impl CommentStyle {
     pub fn wrap(&self, content: &str) -> String {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         match self {
             CommentStyle::SingleLine => format!("// {}", content),
             CommentStyle::MultiLine => format!("/* {} */", content),
@@ -164,6 +165,7 @@ impl SatdDetector {
     
     /// Parse source code for all SATD occurrences
     pub fn parse_source(&self, source: &str) -> Vec<SatdDetection> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut detections = Vec::new();
         
         for (line_num, line) in source.lines().enumerate() {
@@ -183,6 +185,7 @@ fn generate_comment_with_markers(
     markers: Vec<SatdMarker>,
     noise: &str,
 ) -> String {
+    debug_assert!(!noise.is_empty(), "noise must not be empty");
     if markers.is_empty() {
         style.wrap(noise)
     } else {

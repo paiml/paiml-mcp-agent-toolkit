@@ -16,6 +16,8 @@ pub async fn handle_generate_checklist(
     project_path: &Path,
     output: Option<&Path>,
 ) -> anyhow::Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
     println!("Generating QA checklist for task: {}", task_id);
 
     let checklist = generate_checklist(task_id, task_type);
@@ -41,6 +43,7 @@ pub async fn handle_generate_checklist(
 
 /// Generate checklist based on task type
 pub fn generate_checklist(task_id: &str, task_type: QaTaskType) -> QaChecklist {
+    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
     let type_str = match task_type {
         QaTaskType::Feature => "feature",
         QaTaskType::Bugfix => "bugfix",

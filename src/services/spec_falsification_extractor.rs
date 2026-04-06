@@ -110,6 +110,9 @@ impl SpecClaimExtractor {
         _section: &str,
         _source: &Path,
     ) -> Option<SpecClaim> {
+        debug_assert!(_source.exists(), "_source must exist: {}", _source.display());
+        debug_assert!(!line.is_empty(), "line must not be empty");
+        debug_assert!(!_section.is_empty(), "_section must not be empty");
         let priority = self.classify_priority(line);
         let is_absolute = self.absolute_pattern.is_match(&line.to_lowercase());
         let signals = self.extract_signals(line);
@@ -131,6 +134,7 @@ impl SpecClaimExtractor {
     }
 
     fn classify_priority(&self, line: &str) -> ClaimPriority {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if self.rfc2119_must.is_match(line) {
             ClaimPriority::P0Critical
         } else if self.rfc2119_should.is_match(line) {
@@ -143,6 +147,7 @@ impl SpecClaimExtractor {
     }
 
     fn extract_signals(&self, line: &str) -> LineSignals {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let path_refs: Vec<String> = self
             .path_pattern
             .captures_iter(line)

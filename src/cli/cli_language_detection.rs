@@ -62,6 +62,7 @@ fn detect_by_project_files(path: &Path) -> Option<String> {
 }
 
 fn should_exclude_dir(name: &str) -> bool {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     name.starts_with('.')
         || matches!(
             name,
@@ -70,6 +71,7 @@ fn should_exclude_dir(name: &str) -> bool {
 }
 
 fn count_extension(ext: &str, lang_counts: &mut std::collections::HashMap<&'static str, usize>) {
+    debug_assert!(!ext.is_empty(), "ext must not be empty");
     match ext {
         "rs" => *lang_counts.entry("rust").or_insert(0) += 1,
         "ts" | "tsx" => *lang_counts.entry("typescript").or_insert(0) += 1,

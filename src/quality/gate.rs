@@ -186,6 +186,7 @@ impl QualityGateRunner {
     }
 
     fn detect_satd(&self, source: &str) -> Result<SatdResult, QualityViolation> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let detector = SatdDetector::new();
         Ok(detector.detect(source))
     }
@@ -196,11 +197,13 @@ impl QualityGateRunner {
     }
 
     fn calculate_entropy(&self, source: &str) -> f64 {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let calculator = EntropyCalculator::new();
         calculator.calculate(source)
     }
 
     fn is_efficiency_acceptable(&self, efficiency: &str) -> bool {
+        debug_assert!(!efficiency.is_empty(), "efficiency must not be empty");
         // Simple comparison logic for now
         let order = self.parse_big_o(&self.thresholds.max_big_o);
         let actual = self.parse_big_o(efficiency);
@@ -208,6 +211,7 @@ impl QualityGateRunner {
     }
 
     fn parse_big_o(&self, notation: &str) -> u32 {
+        debug_assert!(!notation.is_empty(), "notation must not be empty");
         // Simplified parsing - assign numeric values to complexity classes
         match notation {
             "O(1)" => 1,

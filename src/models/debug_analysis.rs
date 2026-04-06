@@ -50,6 +50,7 @@ impl WhyIteration {
     }
 
     pub fn with_confidence(mut self, confidence: f64) -> Self {
+        debug_assert!(confidence >= 0.0, "confidence must be non-negative");
         self.confidence = confidence.clamp(0.0, 1.0);
         self
     }

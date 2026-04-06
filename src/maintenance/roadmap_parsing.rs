@@ -4,6 +4,7 @@
 /// - Time: O(n) where n is content length
 /// - Cyclomatic: 3
 fn extract_version(content: &str) -> String {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .find(|line| line.contains("v2."))
@@ -25,6 +26,7 @@ fn extract_version(content: &str) -> String {
 /// - Time: O(1)
 /// - Cyclomatic: 6 (reduced from 12 via Extract Method refactoring)
 fn parse_sprint_header(line: &str) -> Option<Sprint> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     if !line.starts_with("### Sprint ") {
         return None;
     }
@@ -60,6 +62,7 @@ fn parse_sprint_header(line: &str) -> Option<Sprint> {
 /// - Time: O(n) where n is string length
 /// - Cyclomatic: 3
 fn parse_sprint_status(text: &str) -> SprintStatus {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     if text.contains(" - COMPLETE") {
         SprintStatus::Complete
     } else if text.contains(" - IN PROGRESS") {
@@ -75,6 +78,7 @@ fn parse_sprint_status(text: &str) -> SprintStatus {
 /// - Time: O(n) where n is string length
 /// - Cyclomatic: 3
 fn extract_duration(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     if let Some(start) = text.find('(') {
         if let Some(end) = text.find(')') {
             return text.get(start + 1..end).unwrap_or_default().to_string();
@@ -92,6 +96,7 @@ fn extract_duration(text: &str) -> String {
 /// - Time: O(1)
 /// - Cyclomatic: 6
 fn parse_ticket_line(line: &str) -> Option<Ticket> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let line = line.trim();
 
     if !line.starts_with("- [") {
@@ -147,6 +152,7 @@ fn parse_ticket_line(line: &str) -> Option<Ticket> {
 /// - Time: O(1)
 /// - Cyclomatic: 1
 fn is_quality_gate_section(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     line.trim() == "**Quality Gates:**"
 }
 
@@ -156,6 +162,7 @@ fn is_quality_gate_section(line: &str) -> bool {
 /// - Time: O(1)
 /// - Cyclomatic: 2
 fn parse_quality_gate(line: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let line = line.trim();
     if line.starts_with("- ") {
         Some(line.strip_prefix("- ")?.to_string())
@@ -173,6 +180,7 @@ fn parse_quality_gate(line: &str) -> Option<String> {
 /// - Time: O(1)
 /// - Cyclomatic: 3
 fn validate_ticket_id(id: &str) -> Result<()> {
+    debug_assert!(!id.is_empty(), "id must not be empty");
     if !id.starts_with("TICKET-PMAT-") {
         return Err(RoadmapError::InvalidTicketId(id.to_string()));
     }

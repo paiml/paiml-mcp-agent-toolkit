@@ -189,6 +189,7 @@ fn write_top_files_section(
     output: &mut String,
     files: &[crate::models::dead_code::FileDeadCodeMetrics],
 ) -> Result<()> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -270,6 +271,7 @@ fn format_dead_code_breakdown_section(
 fn format_dead_code_file_details_section(
     files: &[crate::models::dead_code::FileDeadCodeMetrics],
 ) -> String {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     let mut output = String::from(
         "## File Details\n\n\
          | File | Dead % | Dead Lines | Confidence | Items |\n\

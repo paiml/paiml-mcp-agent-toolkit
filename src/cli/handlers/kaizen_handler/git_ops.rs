@@ -137,6 +137,7 @@ pub(crate) fn create_github_issues(
 }
 
 pub(crate) fn truncate(s: &str, max: usize) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     if s.len() <= max {
         s.to_string()
     } else {

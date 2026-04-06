@@ -100,6 +100,11 @@ impl DeepContextAnalyzer {
         project_path: &PathBuf,
         progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<AnnotatedFileTree> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         progress.set_message("Discovering project structure...");
         let file_tree = self.discover_project_structure(project_path).await?;
         debug!("Discovery phase completed");
@@ -112,6 +117,11 @@ impl DeepContextAnalyzer {
         tracker: &crate::services::progress::ProgressTracker,
         progress: &crate::services::progress::ProgressBar,
     ) -> anyhow::Result<ParallelAnalysisResults> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         progress.set_message("Running parallel analyses...");
         let analysis_start = std::time::Instant::now();
         let analyses = self
@@ -204,6 +214,11 @@ impl DeepContextAnalyzer {
         Option<crate::models::project_meta::BuildInfo>,
         Option<crate::models::project_meta::ProjectOverview>,
     )> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         progress.set_message("Analyzing project metadata...");
         let (build_info, project_overview) = self.analyze_project_metadata(project_path).await?;
         debug!("Project metadata analysis completed");

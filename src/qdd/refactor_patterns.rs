@@ -33,6 +33,7 @@ impl PatternEngine {
     }
 
     fn apply_single_responsibility(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         // Simple implementation of SRP pattern
         let mut result = code.to_string();
         result.push_str("\n// Single Responsibility Pattern applied\n");
@@ -40,6 +41,7 @@ impl PatternEngine {
     }
 
     fn apply_dependency_injection(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         // Simple implementation of DI pattern
         let mut result = code.to_string();
         result.push_str("\n// Dependency Injection Pattern applied\n");

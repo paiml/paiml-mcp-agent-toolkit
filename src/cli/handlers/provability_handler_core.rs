@@ -122,6 +122,7 @@ fn format_provability_output(
 
 /// Write provability output to file or stdout (cognitive complexity ≤4)
 async fn write_provability_output(content: &str, output_path: &Option<PathBuf>) -> Result<()> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     if let Some(output_path) = output_path {
         tokio::fs::write(output_path, content).await?;
         use crate::cli::colors as c;

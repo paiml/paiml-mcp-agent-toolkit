@@ -105,6 +105,7 @@ impl<T: Clone + Send> PubSubService<T> {
 
     /// Get the number of subscribers for a topic
     pub async fn subscriber_count(&self, topic: &str) -> usize {
+        debug_assert!(!topic.is_empty(), "topic must not be empty");
         let subs = self.subscribers.read().await;
         subs.get(topic).map_or(0, std::vec::Vec::len)
     }

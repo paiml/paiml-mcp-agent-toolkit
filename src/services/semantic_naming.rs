@@ -97,6 +97,8 @@ impl SemanticNamer {
 
     /// Convert a file path to module notation based on language
     fn path_to_module(&self, path: &str, language: &str) -> String {
+        debug_assert!(!path.is_empty(), "path must not be empty");
+        debug_assert!(!language.is_empty(), "language must not be empty");
         let separator = self.patterns.get(language).copied().unwrap_or("::");
 
         // Strip common prefixes using string manipulation for simplicity
@@ -136,6 +138,7 @@ impl SemanticNamer {
 
     /// Clean a raw ID to make it more readable
     fn clean_id(&self, id: &str) -> String {
+        debug_assert!(!id.is_empty(), "id must not be empty");
         // Remove common prefixes
         let cleaned = id
             .trim_start_matches("node_")

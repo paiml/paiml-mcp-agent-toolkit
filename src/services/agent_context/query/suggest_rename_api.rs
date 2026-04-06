@@ -224,6 +224,7 @@ fn disambiguate_collisions(suggestions: &mut Vec<RenameSuggestion>) {
 
 /// Check if a file path contains a `_partN` or `_part_` split pattern in its filename stem.
 pub(crate) fn is_part_file(path: &str) -> bool {
+    debug_assert!(!path.is_empty(), "path must not be empty");
     let filename = Path::new(path)
         .file_stem()
         .and_then(|s| s.to_str())

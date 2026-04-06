@@ -37,12 +37,14 @@ impl BashComplexityAnalyzer {
 
     /// Analyzes pipeline complexity (complexity ≤10)
     pub fn analyze_pipeline_complexity(&mut self, pipeline: &str) -> Result<u32, String> {
+        debug_assert!(!pipeline.is_empty(), "pipeline must not be empty");
         let pipe_count = pipeline.matches('|').count();
         Ok(pipe_count as u32 + 1) // Base complexity of 1 plus number of pipes
     }
 
     /// Analyzes conditional complexity (complexity ≤10)
     pub fn analyze_conditional_complexity(&mut self, conditions: &str) -> Result<u32, String> {
+        debug_assert!(!conditions.is_empty(), "conditions must not be empty");
         let mut complexity = 1;
 
         // Count logical operators

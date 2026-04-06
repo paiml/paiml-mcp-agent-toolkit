@@ -65,6 +65,12 @@ pub fn build_coverage_map(
     json: &str,
     project_root: &Path,
 ) -> Result<HashMap<String, HashMap<usize, u64>>, String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
+    debug_assert!(!json.is_empty(), "json must not be empty");
     let export: LlvmCoverageExport = serde_json::from_str(json)
         .map_err(|e| format!("Failed to parse LLVM coverage JSON: {e}"))?;
 

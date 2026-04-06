@@ -77,6 +77,7 @@ pub fn expand_env_vars(template: &str) -> String {
 #[inline]
 /// Zero-allocation parameter parsing for common types
 pub fn parse_key_val(s: &str) -> Result<(String, Value), String> {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     let pos = s
         .find('=')
         .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{s}`"))?;

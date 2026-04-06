@@ -24,6 +24,8 @@ impl SemanticSimilarity {
     /// - Weighted matching (exact > partial)
     /// - Semantic keyword boosting
     pub fn calculate(&self, claim: &str, fact: &str) -> f32 {
+        debug_assert!(!claim.is_empty(), "claim must not be empty");
+        debug_assert!(!fact.is_empty(), "fact must not be empty");
         let claim_lower = claim.to_lowercase();
         let fact_lower = fact.to_lowercase();
 
@@ -74,6 +76,7 @@ impl SemanticSimilarity {
 
     /// Extract meaningful keywords (filter stopwords)
     fn extract_keywords(&self, text: &str) -> Vec<String> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         text.split_whitespace()
             .filter(|word| !self.stopwords.contains(&word.to_string()))
             .map(|s| s.to_string())
@@ -82,6 +85,7 @@ impl SemanticSimilarity {
 
     /// Get weight for a word (higher weight for important words)
     fn get_word_weight(&self, word: &str) -> f32 {
+        debug_assert!(!word.is_empty(), "word must not be empty");
         // Technical terms get higher weight
         match word {
             // Language names
@@ -105,6 +109,8 @@ impl SemanticSimilarity {
 
     /// Calculate semantic keyword boost
     fn semantic_keyword_boost(&self, claim: &str, fact: &str) -> f32 {
+        debug_assert!(!claim.is_empty(), "claim must not be empty");
+        debug_assert!(!fact.is_empty(), "fact must not be empty");
         let mut boost = 0.0;
 
         // Check for explicit contradictions first (highest priority)

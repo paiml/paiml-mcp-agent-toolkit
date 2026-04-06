@@ -40,6 +40,7 @@ fn write_graphml_header(graphml: &mut String) -> Result<()> {
 /// Write `GraphML` nodes section - EXTRACTED FUNCTION\
 /// Complexity: 4 (A+ standard)
 fn write_graphml_nodes(graphml: &mut String, nodes: &[NodeMetrics]) -> Result<()> {
+    debug_assert!(!nodes.is_empty(), "nodes must not be empty");
     use std::fmt::Write;
     for node in nodes {
         writeln!(graphml, r#"    <node id="{}" />"#, node.name)?;
@@ -76,6 +77,7 @@ fn write_graphml_footer(graphml: &mut String) -> Result<()> {
 /// Write `GraphML` to file - EXTRACTED FUNCTION
 /// Complexity: 4 (A+ standard)
 fn write_graphml_file(graphml: &str, output: &Option<PathBuf>) -> Result<()> {
+    debug_assert!(!graphml.is_empty(), "graphml must not be empty");
     if let Some(path) = output {
         let graphml_path = path.with_extension("graphml");
         std::fs::write(&graphml_path, graphml)?;

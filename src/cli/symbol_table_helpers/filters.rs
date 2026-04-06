@@ -35,6 +35,7 @@
 /// ```
 #[must_use]
 pub fn passes_type_filter(kind: &str, filter: &Option<super::super::SymbolTypeFilter>) -> bool {
+    debug_assert!(!kind.is_empty(), "kind must not be empty");
     match filter {
         Some(super::super::SymbolTypeFilter::Functions) => kind == "function",
         Some(super::super::SymbolTypeFilter::Classes) => kind == "class",

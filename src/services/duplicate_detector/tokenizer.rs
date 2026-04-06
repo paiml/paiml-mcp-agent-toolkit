@@ -32,6 +32,7 @@ impl UniversalFeatureExtractor {
 
     /// Tokenize source code based on language
     fn tokenize(&self, source: &str, lang: Language) -> Vec<Token> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         match lang {
             Language::Rust => self.tokenize_rust(source),
             Language::TypeScript | Language::JavaScript => self.tokenize_typescript(source),
@@ -154,6 +155,7 @@ impl UniversalFeatureExtractor {
     }
 
     fn tokenize_rust(&self, source: &str) -> Vec<Token> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut tokens = Vec::new();
         let mut chars = source.char_indices().peekable();
 
@@ -177,12 +179,14 @@ impl UniversalFeatureExtractor {
 
     /// Basic TypeScript/JavaScript tokenizer
     fn tokenize_typescript(&self, source: &str) -> Vec<Token> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simplified tokenizer - in production would use swc_ecma_parser
         self.tokenize_generic(source, TYPESCRIPT_KEYWORDS)
     }
 
     /// Basic Python tokenizer
     fn tokenize_python(&self, source: &str) -> Vec<Token> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simplified tokenizer - in production would use rustpython_parser
         self.tokenize_generic(source, PYTHON_KEYWORDS)
     }
@@ -215,6 +219,7 @@ impl UniversalFeatureExtractor {
 
     /// Generic tokenizer for any language
     fn tokenize_generic(&self, source: &str, keywords: &[&str]) -> Vec<Token> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut tokens = Vec::new();
         let mut chars = source.char_indices().peekable();
         while let Some((_, ch)) = chars.next() {
@@ -265,18 +270,21 @@ impl UniversalFeatureExtractor {
 
     /// Tokenize C/C++ source code
     fn tokenize_c_style(&self, source: &str) -> Vec<Token> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simplified tokenizer for C/C++ - in production would use tree-sitter-c/cpp
         self.tokenize_generic(source, C_CPP_KEYWORDS)
     }
 
     /// Tokenize Kotlin source code
     fn tokenize_kotlin(&self, source: &str) -> Vec<Token> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simplified tokenizer for Kotlin - in production would use tree-sitter-kotlin
         self.tokenize_generic(source, KOTLIN_KEYWORDS)
     }
 
     /// Check if string is a Rust keyword
     fn is_rust_keyword(&self, s: &str) -> bool {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         matches!(
             s,
             "fn" | "let"
@@ -313,6 +321,7 @@ impl UniversalFeatureExtractor {
 
     /// Check if string is a Rust operator
     fn is_rust_operator(&self, s: &str) -> bool {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         matches!(
             s,
             "+" | "-"

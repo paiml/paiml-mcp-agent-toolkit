@@ -93,6 +93,7 @@ impl MakefileCompressor {
     }
 
     fn is_critical_target(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.critical_targets.contains(name)
             || name.starts_with("docker")
             || name.starts_with("test-")

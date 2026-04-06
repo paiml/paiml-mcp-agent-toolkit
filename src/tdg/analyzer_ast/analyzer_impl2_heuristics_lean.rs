@@ -9,6 +9,7 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         score.confidence *= 0.9; // Pattern-based but well-defined
 
         let lines: Vec<&str> = source.lines().collect();
@@ -206,6 +207,7 @@ impl TdgAnalyzerAst {
 /// Skips line comments (`--`) and nested block comments (`/- ... -/`).
 /// Uses word-boundary checking to avoid false positives from identifiers.
 fn count_lean_sorry_ast(source: &str) -> usize {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut count = 0;
     let mut in_block_comment: i32 = 0;
 
@@ -236,6 +238,7 @@ fn count_lean_sorry_ast(source: &str) -> usize {
 
 /// Strips Lean block comment content (`/- ... -/`) from a line.
 fn strip_lean_block_comments_ast(line: &str, depth: &mut i32) -> String {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let mut result = String::with_capacity(line.len());
     let mut i = 0;
@@ -262,6 +265,7 @@ fn strip_lean_block_comments_ast(line: &str, depth: &mut i32) -> String {
 
 /// Checks if a line contains "sorry" as a standalone word.
 fn contains_lean_sorry_word_ast(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let sorry = b"sorry";
 

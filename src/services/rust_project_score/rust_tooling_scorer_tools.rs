@@ -126,6 +126,7 @@ impl RustToolingScorer {
 
     /// Parse cargo-audit JSON output to count vulnerabilities by severity
     fn parse_audit_json(&self, json_str: &str) -> VulnerabilityCount {
+        debug_assert!(!json_str.is_empty(), "json_str must not be empty");
         let mut counts = VulnerabilityCount::default();
 
         // Try to parse as JSON

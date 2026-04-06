@@ -171,6 +171,11 @@ impl MakefileScorer {
         repo_path: &Path,
         config: &ScorerConfig,
     ) -> Result<SubcategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let makefile_path = repo_path.join("Makefile");
 
         if !makefile_path.exists() {

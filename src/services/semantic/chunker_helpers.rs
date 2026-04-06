@@ -2,6 +2,8 @@
 /// Returns `true` if the sibling is a doc comment (include and continue scanning),
 /// `false` if scanning should stop (non-comment or non-doc comment).
 fn is_doc_comment(kind: &str, source: &str, sibling: Node) -> bool {
+    debug_assert!(!kind.is_empty(), "kind must not be empty");
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let is_comment = kind == "comment"      // TypeScript, C, C++, Go
         || kind == "line_comment"           // Rust
         || kind == "block_comment"; // Rust, C, C++
@@ -23,6 +25,7 @@ fn is_doc_comment(kind: &str, source: &str, sibling: Node) -> bool {
 /// Helper: Find preceding doc comments for a node (all languages)
 /// Returns the start byte position of the first comment, or node start if none
 fn find_doc_comment_start(node: Node, source: &str) -> usize {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut start_byte = node.start_byte();
 
     let parent = match node.parent() {
@@ -51,6 +54,7 @@ fn find_doc_comment_start(node: Node, source: &str) -> usize {
 
 /// Map Rust AST node kind to chunk type and name field
 fn rust_node_to_chunk(kind: &str) -> Option<(ChunkType, &'static str, bool)> {
+    debug_assert!(!kind.is_empty(), "kind must not be empty");
     // Returns (chunk_type, name_field, include_doc_comments)
     match kind {
         "function_item" => Some((ChunkType::Function, "name", true)),
@@ -66,6 +70,7 @@ fn rust_node_to_chunk(kind: &str) -> Option<(ChunkType, &'static str, bool)> {
 
 /// Find function name in C declarator
 fn find_function_declarator_name<'a>(node: Node<'a>, _source: &str) -> Option<Node<'a>> {
+    debug_assert!(!_source.is_empty(), "_source must not be empty");
     if node.kind() == "identifier" {
         return Some(node);
     }
@@ -87,6 +92,7 @@ fn push_chunk(
     node: Node,
     content: String,
 ) {
+    debug_assert!(!language.is_empty(), "language must not be empty");
     let checksum = compute_checksum(&content);
     chunks.push(CodeChunk {
         file_path: String::new(),
@@ -102,6 +108,7 @@ fn push_chunk(
 
 /// Compute SHA256 checksum of content
 fn compute_checksum(content: &str) -> String {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
     format!("{:x}", hasher.finalize())

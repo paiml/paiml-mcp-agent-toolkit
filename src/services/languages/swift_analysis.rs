@@ -36,6 +36,7 @@ impl SwiftSourceAnalyzer {
 
     /// Extracts function definitions from Swift source (complexity ≤10)
     fn extract_functions(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -60,6 +61,7 @@ impl SwiftSourceAnalyzer {
 
     /// Extracts class definitions from Swift source (complexity ≤10)
     fn extract_classes(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -87,6 +89,7 @@ impl SwiftSourceAnalyzer {
 
     /// Extracts method definitions from Swift classes (complexity ≤10)
     fn extract_methods(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_class = false;
         let mut brace_count = 0;
 
@@ -128,6 +131,7 @@ impl SwiftSourceAnalyzer {
 
     /// Extracts function name from Swift line (complexity ≤10)
     fn extract_function_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // func functionName(...) {
         let after_func = line.strip_prefix("func ")?.trim();
 
@@ -148,6 +152,7 @@ impl SwiftSourceAnalyzer {
 
     /// Extracts class name from Swift line (complexity ≤10)
     fn extract_class_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // class ClassName {
         // struct StructName {
         let after_keyword = if let Some(stripped) = line.strip_prefix("class ") {
@@ -168,6 +173,7 @@ impl SwiftSourceAnalyzer {
 
     /// Extracts visibility from Swift line (complexity ≤10)
     fn extract_visibility(&self, line: &str) -> String {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("private ") {
             "private".to_string()
         } else if line.contains("public ") {
@@ -181,6 +187,7 @@ impl SwiftSourceAnalyzer {
 
     /// Gets qualified name for Swift symbol (complexity ≤10)
     fn get_qualified_name(&self, symbol_name: &str) -> String {
+        debug_assert!(!symbol_name.is_empty(), "symbol_name must not be empty");
         if self.source_name.is_empty() {
             symbol_name.to_string()
         } else {

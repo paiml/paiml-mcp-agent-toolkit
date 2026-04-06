@@ -63,11 +63,13 @@ impl BoxDrawer {
 
     /// Draw a horizontal line
     pub fn horizontal(&self, width: usize) -> String {
+        debug_assert!(width > 0, "width must be positive");
         self.h.to_string().repeat(width)
     }
 
     /// Draw a box around content
     pub fn draw_box(&self, content: &[&str], width: usize) -> String {
+        debug_assert!(width > 0, "width must be positive");
         let mut lines = Vec::new();
 
         // Top border
@@ -93,6 +95,7 @@ impl BoxDrawer {
 
     /// Draw a section header
     pub fn section_header(&self, title: &str, width: usize) -> String {
+        debug_assert!(width > 0, "width must be positive");
         let dash_count = width.saturating_sub(title.len() + 2);
         format!(
             "{} {} {}",

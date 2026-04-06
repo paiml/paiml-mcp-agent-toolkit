@@ -190,6 +190,7 @@ impl DeepContextAnalyzer {
 
     /// Helper to create location objects
     fn create_location(&self, uri: &str, start_line: usize, end_line: usize) -> serde_json::Value {
+        debug_assert!(!uri.is_empty(), "uri must not be empty");
         serde_json::json!({
             "physicalLocation": {
                 "artifactLocation": {"uri": uri},

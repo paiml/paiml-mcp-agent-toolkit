@@ -12,6 +12,7 @@ fn find_coverage_for_file<'a>(
     file_path: &str,
     file_coverage: &'a HashMap<String, HashMap<usize, u64>>,
 ) -> Option<&'a HashMap<usize, u64>> {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     // Try exact match first
     if let Some(hits) = file_coverage.get(file_path) {
         return Some(hits);
@@ -166,6 +167,7 @@ pub fn enrich_with_coverage_diff(
 ///
 /// Returns None if no results have coverage data.
 pub fn format_coverage_summary(results: &[QueryResult]) -> Option<String> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let with_data: Vec<_> = results
         .iter()
         .filter(|r| r.coverage_status != "no_data" && !r.coverage_status.is_empty())

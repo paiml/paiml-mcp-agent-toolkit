@@ -289,6 +289,9 @@ pub struct TrustChainEntry {
 impl TrustChainEntry {
     /// Create a new trust chain entry linked to the previous
     pub fn new(manifest_path: &str, content_hash: &str, prev_hash: &str) -> Self {
+        debug_assert!(!manifest_path.is_empty(), "manifest_path must not be empty");
+        debug_assert!(!content_hash.is_empty(), "content_hash must not be empty");
+        debug_assert!(!prev_hash.is_empty(), "prev_hash must not be empty");
         let chain_input = format!("{}{}", content_hash, prev_hash);
         let chain_hash = format!("{:x}", Sha256::digest(chain_input.as_bytes()));
         Self {

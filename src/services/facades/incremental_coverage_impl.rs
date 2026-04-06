@@ -42,6 +42,8 @@ impl IncrementalCoverageFacade {
         base_branch: &str,
         target_branch: Option<&str>,
     ) -> Result<Vec<(PathBuf, String)>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+        debug_assert!(!base_branch.is_empty(), "base_branch must not be empty");
         use crate::cli::coverage_helpers::get_changed_files_for_coverage;
 
         get_changed_files_for_coverage(project_path, base_branch, target_branch).await
@@ -54,6 +56,7 @@ impl IncrementalCoverageFacade {
         changed_files: &[(PathBuf, String)],
         request: &IncrementalCoverageRequest,
     ) -> Result<Vec<ChangedFileCoverage>> {
+        debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
         let mut coverage_data = Vec::new();
 
         for (path, status) in changed_files {
@@ -148,6 +151,7 @@ impl IncrementalCoverageFacade {
         project_path: PathBuf,
         base_branch: String,
     ) -> Result<IncrementalCoverageResult> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let request = IncrementalCoverageRequest {
             project_path,
             base_branch,

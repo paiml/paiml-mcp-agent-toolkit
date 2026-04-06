@@ -157,6 +157,7 @@ fn build_review_checklist(
 
 /// Format review checklist as markdown.
 fn format_review_markdown(items: &[ReviewItem]) -> String {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut out = String::new();
     out.push_str("# PMAT Comply Review Checklist\n\n");
     out.push_str("**Layer 2 (Genchi Genbutsu)**: Reviewer must verify evidence.\n\n");

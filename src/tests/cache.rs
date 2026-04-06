@@ -36,10 +36,12 @@ async fn test_ast_cache() {
         type Value = FileContext;
 
         fn cache_key(&self, path: &PathBuf) -> String {
+            debug_assert!(path.exists(), "path must exist: {}", path.display());
             format!("test_ast:{}", path.display())
         }
 
         fn validate(&self, _path: &PathBuf, _cached: &FileContext) -> bool {
+            debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
             // Always valid for tests
             true
         }
@@ -239,10 +241,12 @@ async fn test_git_stats_cache() {
         type Value = GitStats;
 
         fn cache_key(&self, repo: &PathBuf) -> String {
+            debug_assert!(repo.exists(), "repo must exist: {}", repo.display());
             format!("test_git_stats:{}", repo.display())
         }
 
         fn validate(&self, _repo: &PathBuf, _cached: &GitStats) -> bool {
+            debug_assert!(_repo.exists(), "_repo must exist: {}", _repo.display());
             // Always valid for tests
             true
         }
@@ -288,10 +292,12 @@ async fn test_cache_eviction() {
         type Value = FileContext;
 
         fn cache_key(&self, path: &PathBuf) -> String {
+            debug_assert!(path.exists(), "path must exist: {}", path.display());
             format!("test_small:{}", path.display())
         }
 
         fn validate(&self, _path: &PathBuf, _cached: &FileContext) -> bool {
+            debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
             // Always valid for tests
             true
         }
@@ -358,10 +364,12 @@ async fn test_cache_clear() {
         type Value = FileContext;
 
         fn cache_key(&self, path: &PathBuf) -> String {
+            debug_assert!(path.exists(), "path must exist: {}", path.display());
             format!("test_clear:{}", path.display())
         }
 
         fn validate(&self, _path: &PathBuf, _cached: &FileContext) -> bool {
+            debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
             // Always valid for tests
             true
         }

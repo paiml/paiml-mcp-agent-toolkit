@@ -1,6 +1,8 @@
 /// Calculate Levenshtein distance between two strings
 #[must_use]
 pub fn levenshtein_distance(a: &str, b: &str) -> usize {
+    debug_assert!(!a.is_empty(), "a must not be empty");
+    debug_assert!(!b.is_empty(), "b must not be empty");
     let a_len = a.len();
     let b_len = b.len();
 
@@ -40,6 +42,8 @@ fn initialize_distance_matrix(a_len: usize, b_len: usize) -> Vec<Vec<usize>> {
 
 /// Calculate edit distances for all positions in the matrix
 fn calculate_edit_distances(matrix: &mut Vec<Vec<usize>>, a: &str, b: &str) {
+    debug_assert!(!a.is_empty(), "a must not be empty");
+    debug_assert!(!b.is_empty(), "b must not be empty");
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
 

@@ -108,6 +108,7 @@ impl FormalVerificationScorer {
         _mode: ScoringMode,
         cache: Option<&FileCache>,
     ) -> f64 {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let contract_macros = self.count_contract_macros(project_path, cache);
         let verus_specs = self.count_verus_specs(project_path, cache);
         let total = contract_macros + verus_specs;

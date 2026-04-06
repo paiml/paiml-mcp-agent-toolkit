@@ -179,6 +179,7 @@ impl UnifiedEngine {
         &self,
         path: &Path,
     ) -> Result<ComplexityInfo, EngineError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
 
         let (cyclomatic, cognitive, satd_count) = match extension {
@@ -259,6 +260,7 @@ impl UnifiedEngine {
         _path: &Path,
         metrics: ComplexityInfo,
     ) -> DefectPayload {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         DefectPayload {
             file_hash: 0,
             tdg_score: metrics.tdg,

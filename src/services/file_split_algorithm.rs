@@ -9,6 +9,7 @@ pub fn suggest_split(
     resolution: f64,
     min_cluster_lines: usize,
 ) -> Option<SplitPlan> {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     // Step 1: Get all function indices for this file
     let func_indices = index.file_index.get(file_path)?;
     if func_indices.is_empty() {
@@ -154,5 +155,6 @@ fn assign_orphans_to_clusters(
 }
 
 fn estimate_total_lines(entries: &[&FunctionEntry]) -> usize {
+    debug_assert!(!entries.is_empty(), "entries must not be empty");
     entries.iter().map(|e| e.end_line).max().unwrap_or(0)
 }

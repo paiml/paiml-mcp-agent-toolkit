@@ -189,6 +189,7 @@ impl<P: EventPersistence> EventStore<P> {
         partition_key: &str,
         since: Option<EventId>,
     ) -> Vec<StateEvent> {
+        debug_assert!(!partition_key.is_empty(), "partition_key must not be empty");
         let partitions = self.partitions.read();
         let events = self.events.read();
 

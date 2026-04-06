@@ -80,6 +80,11 @@ impl Scorer for FormalVerificationScorer {
         project_path: &Path,
         mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         self.score_internal(project_path, mode, None)
     }
 
@@ -128,6 +133,8 @@ struct KaniResult {
 
 /// Parse test count from cargo test output
 fn parse_test_count(output: &str, status: &str) -> usize {
+    debug_assert!(!output.is_empty(), "output must not be empty");
+    debug_assert!(!status.is_empty(), "status must not be empty");
     let pattern = format!(r"(\d+) {}", status);
     Regex::new(&pattern)
         .ok()

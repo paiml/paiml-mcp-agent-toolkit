@@ -186,6 +186,7 @@ impl AgentContextIndex {
     /// Falls back to reading the file directly when both in-memory and SQLite
     /// source are empty (e.g., lightweight-loaded index with stale DB).
     fn find_in_memory(&self, file_path: &str, start_line: usize) -> (Option<String>, usize) {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let indices = match self.file_index.get(file_path) {
             Some(i) => i,
             None => return (None, 0),
@@ -203,6 +204,7 @@ impl AgentContextIndex {
     }
 
     pub fn load_source_for(&self, file_path: &str, start_line: usize) -> String {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let (in_memory, end_line) = self.find_in_memory(file_path, start_line);
         if let Some(src) = in_memory {
             return src;

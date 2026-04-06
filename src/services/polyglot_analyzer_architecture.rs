@@ -4,6 +4,7 @@ impl PolyglotAnalyzer {
         project_path: &Path,
         language_info: &HashMap<String, LanguageInfo>,
     ) -> Result<Option<ArchitecturePattern>, Box<dyn std::error::Error>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let language_count = language_info.len();
 
         // Analyze project structure for architecture indicators
@@ -49,6 +50,7 @@ impl PolyglotAnalyzer {
         &self,
         project_path: &Path,
     ) -> Result<ArchitectureIndicators, Box<dyn std::error::Error>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Analyze directory structure
         let directory_structure = self.analyze_directory_structure(project_path).await?;
 
@@ -99,6 +101,7 @@ impl PolyglotAnalyzer {
         &self,
         project_path: &Path,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut directories = Vec::new();
         self.collect_directories_recursive(project_path, &mut directories, 0)?;
         Ok(directories)
@@ -111,6 +114,8 @@ impl PolyglotAnalyzer {
         directories: &mut Vec<String>,
         depth: usize,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        debug_assert!(dir_path.exists(), "dir_path must exist: {}", dir_path.display());
+        debug_assert!(depth > 0, "depth must be positive");
         if depth > 3 {
             // Limit recursion depth
             return Ok(());
@@ -205,6 +210,7 @@ impl PolyglotAnalyzer {
         _project_path: &Path,
         cross_deps: &[CrossLanguageDependency],
     ) -> Result<Vec<IntegrationPoint>, Box<dyn std::error::Error>> {
+        debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
         let mut integration_points = Vec::new();
 
         for dep in cross_deps {

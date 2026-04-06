@@ -33,6 +33,7 @@ impl AgentContextIndex {
         db_path: &std::path::Path,
         query: &str,
     ) -> Result<Vec<(usize, f32)>, String> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         use crate::services::agent_context::function_index::sqlite_backend::{
             fts5_search, open_db,
         };
@@ -46,6 +47,7 @@ impl AgentContextIndex {
     /// Used as fallback when no SQLite FTS5 index is available.
     #[allow(clippy::cast_possible_truncation)]
     fn calculate_relevance_scores_tf(&self, query: &str) -> Result<Vec<(usize, f32)>, String> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         if self.corpus.is_empty() {
             return Ok(Vec::new());
         }

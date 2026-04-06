@@ -41,6 +41,7 @@ impl ComplexityDefectAnalyzer {
         index: usize,
         config: &ComplexityConfig,
     ) -> Defect {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let severity = match score.severity {
             TDGSeverity::Critical => Severity::Critical,
             TDGSeverity::Warning => Severity::High,

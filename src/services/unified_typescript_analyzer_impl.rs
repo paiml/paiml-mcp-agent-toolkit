@@ -54,6 +54,7 @@ impl UnifiedTypeScriptAnalyzer {
     /// Parse TypeScript/JavaScript with SWC
     #[cfg(feature = "typescript-ast")]
     fn parse_typescript(&self, content: &str) -> Result<Module, AnalysisError> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let source_map = Lrc::new(SourceMap::default());
         let source_file = source_map.new_source_file(
             Lrc::new(FileName::Custom(self.file_path.display().to_string())),

@@ -6,6 +6,7 @@ pub fn format_as_full(
     project_path: &Path,
     include_evidence: bool,
 ) -> Result<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut output = String::new();
 
     write_report_header(&mut output, project_path, annotations.len())?;
@@ -25,6 +26,7 @@ fn write_report_header(
     project_path: &Path,
     total_proofs: usize,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::fmt::Write;
 
     writeln!(output, "# Full Proof Annotations Report\n")?;
@@ -65,6 +67,7 @@ fn write_file_section(
     mut proofs: Vec<(Location, ProofAnnotation)>,
     include_evidence: bool,
 ) -> Result<()> {
+    debug_assert!(file.exists(), "file must exist: {}", file.display());
     use std::fmt::Write;
 
     writeln!(output, "## File: {}\n", file.display())?;
@@ -160,6 +163,7 @@ pub fn format_as_markdown(
     project_path: &Path,
     include_evidence: bool,
 ) -> Result<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut output = String::new();
 
     write_markdown_header(&mut output, project_path, annotations.len())?;
@@ -178,6 +182,7 @@ fn write_markdown_header(
     project_path: &Path,
     total_proofs: usize,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::fmt::Write;
 
     writeln!(output, "# Proof Annotations Analysis\n")?;
@@ -254,6 +259,7 @@ fn write_file_proofs_section(
     proofs: &[(Location, ProofAnnotation)],
     include_evidence: bool,
 ) -> Result<()> {
+    debug_assert!(file.exists(), "file must exist: {}", file.display());
     use std::fmt::Write;
 
     writeln!(output, "### {}\n", file.display())?;
@@ -295,6 +301,7 @@ pub fn format_as_sarif(
     annotations: &[(Location, ProofAnnotation)],
     _project_path: &Path,
 ) -> Result<String> {
+    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     let mut results = Vec::new();
 
     for (location, annotation) in annotations {

@@ -168,6 +168,7 @@ impl std::str::FromStr for PmatSubAgent {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         match s {
             "complexity-analyst" => Ok(Self::ComplexityAnalyst),
             "mutation-tester" => Ok(Self::MutationTester),
@@ -242,6 +243,11 @@ impl SubAgentGenerator {
         agent: PmatSubAgent,
         output_dir: &Path,
     ) -> Result<PathBuf> {
+        debug_assert!(
+            output_dir.exists(),
+            "output_dir must exist: {}",
+            output_dir.display()
+        );
         let content = self.generate_subagent(agent)?;
         let filename = format!("{}.md", agent.name());
         let output_path = output_dir.join(filename);

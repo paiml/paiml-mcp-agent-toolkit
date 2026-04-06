@@ -20,6 +20,8 @@ use std::time::Duration;
 // ============ Helper Functions ============
 
 fn create_violation(lint_name: &str, severity: &str, line: u32) -> ViolationDetail {
+    debug_assert!(!lint_name.is_empty(), "lint_name must not be empty");
+    debug_assert!(!severity.is_empty(), "severity must not be empty");
     ViolationDetail {
         file: PathBuf::from("src/main.rs"),
         line,

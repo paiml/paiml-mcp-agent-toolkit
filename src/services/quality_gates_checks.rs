@@ -199,6 +199,7 @@ impl QAVerification {
 }
 
 fn calculate_complexity_entropy(functions: &[&FunctionComplexityForQA]) -> f64 {
+    debug_assert!(!functions.is_empty(), "functions must not be empty");
     let mut freq_map = FxHashMap::default();
     for func in functions {
         *freq_map.entry(func.cyclomatic).or_insert(0) += 1;

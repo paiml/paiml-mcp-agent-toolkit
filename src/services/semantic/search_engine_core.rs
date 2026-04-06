@@ -11,6 +11,7 @@ impl SemanticSearchEngine {
     /// This version uses pure Rust TF-IDF embeddings via aprender.
     /// No external API keys or internet connection required.
     pub async fn new(db_path: &str) -> Result<Self, String> {
+        debug_assert!(!db_path.is_empty(), "db_path must not be empty");
         let vector_db = TursoVectorDB::new_local(db_path).await?;
 
         Ok(Self {
@@ -22,6 +23,8 @@ impl SemanticSearchEngine {
     /// Create new search engine (backward compatible - ignores api_key)
     #[deprecated(note = "Use new() without api_key - local embeddings don't require API keys")]
     pub async fn new_with_key(_api_key: &str, db_path: &str) -> Result<Self, String> {
+        debug_assert!(!_api_key.is_empty(), "_api_key must not be empty");
+        debug_assert!(!db_path.is_empty(), "db_path must not be empty");
         Self::new(db_path).await
     }
 
@@ -413,6 +416,7 @@ impl SemanticSearchEngine {
 
     /// Check if path matches pattern
     fn matches_pattern(path: &str, pattern: &str) -> bool {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         if let Some(suffix) = pattern.strip_prefix('*') {
             path.ends_with(suffix)
         } else {

@@ -47,6 +47,7 @@ impl PerformanceProfiler {
 
     /// Complete profiling an operation
     pub async fn complete_operation(&self, operation_id: &str) -> Result<()> {
+        debug_assert!(!operation_id.is_empty(), "operation_id must not be empty");
         let mut active = self.active_profiles.write().await;
 
         if let Some(mut profile) = active.remove(operation_id) {

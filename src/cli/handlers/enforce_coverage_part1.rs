@@ -178,6 +178,8 @@ mod tests {
 
     /// Create a test violation
     fn make_test_violation(violation_type: &str, severity: &str) -> QualityViolation {
+        debug_assert!(!violation_type.is_empty(), "violation_type must not be empty");
+        debug_assert!(!severity.is_empty(), "severity must not be empty");
         QualityViolation {
             violation_type: violation_type.to_string(),
             severity: severity.to_string(),
@@ -196,6 +198,9 @@ mod tests {
         current: f64,
         target: f64,
     ) -> QualityViolation {
+        debug_assert!(!violation_type.is_empty(), "violation_type must not be empty");
+        debug_assert!(!severity.is_empty(), "severity must not be empty");
+        debug_assert!(!location.is_empty(), "location must not be empty");
         QualityViolation {
             violation_type: violation_type.to_string(),
             severity: severity.to_string(),

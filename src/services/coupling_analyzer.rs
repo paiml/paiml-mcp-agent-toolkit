@@ -140,6 +140,7 @@ impl CouplingAnalyzer {
     /// Extract file path from node key
     #[allow(dead_code)]
     fn extract_file_path(node_key: &str) -> Option<PathBuf> {
+        debug_assert!(!node_key.is_empty(), "node_key must not be empty");
         // Simple extraction - assumes node key contains file path
         if node_key.contains("::") {
             // Format: "file_path::module_name"

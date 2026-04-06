@@ -71,6 +71,7 @@ impl DuplicateDetector {
         files: &[std::path::PathBuf],
         config: &DuplicateConfig,
     ) -> Result<DuplicateDetectionResult> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         // Delegate to the existing duplicate_detector module functionality
         // Convert to the existing detector's expected input format
         let duplicate_config = crate::services::duplicate_detector::DuplicateDetectionConfig {

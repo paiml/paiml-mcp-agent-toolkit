@@ -340,6 +340,11 @@ fn merge_and_cache_workspace(
     workspace_idx: &std::path::Path,
     quiet: bool,
 ) {
+    debug_assert!(
+        workspace_idx.exists(),
+        "workspace_idx must exist: {}",
+        workspace_idx.display()
+    );
     if !quiet {
         eprintln!("Merging {} sibling project(s):", siblings.len());
     }

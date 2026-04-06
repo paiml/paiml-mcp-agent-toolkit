@@ -1,5 +1,6 @@
 /// Extract chunks from TypeScript code
 fn chunk_typescript_file(source: &str) -> Result<Vec<CodeChunk>, String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let tree = parse_typescript(source)?;
     let root = tree.root_node();
     let mut chunks = Vec::new();
@@ -11,6 +12,7 @@ fn chunk_typescript_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 
 /// Parse TypeScript source code
 fn parse_typescript(source: &str) -> Result<Tree, String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut parser = Parser::new();
     parser
         .set_language(&tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into())
@@ -22,6 +24,7 @@ fn parse_typescript(source: &str) -> Result<Tree, String> {
 
 /// Extract TypeScript class declaration
 fn extract_ts_class(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     if let Some(name_node) = node.child_by_field_name("name") {
         let name = source[name_node.byte_range()].to_string();
         let content = source[node.byte_range()].to_string();
@@ -41,6 +44,7 @@ fn extract_ts_class(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
 
 /// Extract TypeScript interface declaration
 fn extract_ts_interface(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     if let Some(name_node) = node.child_by_field_name("name") {
         let name = source[name_node.byte_range()].to_string();
         let content = source[node.byte_range()].to_string();
@@ -60,6 +64,7 @@ fn extract_ts_interface(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
 
 /// Extract TypeScript function declaration
 fn extract_ts_function(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     if let Some(name_node) = node.child_by_field_name("name") {
         let name = source[name_node.byte_range()].to_string();
         let start_byte = find_doc_comment_start(node, source);
@@ -83,6 +88,7 @@ fn extract_ts_function(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
 
 /// Check if a variable_declarator contains an arrow function and extract it
 fn try_extract_arrow_function(decl: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let name_node = match decl.child_by_field_name("name") {
         Some(n) => n,
         None => return,
@@ -108,6 +114,7 @@ fn try_extract_arrow_function(decl: Node, source: &str, chunks: &mut Vec<CodeChu
 
 /// Extract TypeScript arrow function from variable declaration
 fn extract_ts_arrow_function(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "variable_declarator" {
@@ -118,6 +125,7 @@ fn extract_ts_arrow_function(node: Node, source: &str, chunks: &mut Vec<CodeChun
 
 /// Extract items from TypeScript AST
 fn extract_typescript_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     match node.kind() {
         "class_declaration" => extract_ts_class(node, source, chunks),
         "interface_declaration" => extract_ts_interface(node, source, chunks),

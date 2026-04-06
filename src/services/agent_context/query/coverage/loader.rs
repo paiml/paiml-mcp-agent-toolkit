@@ -66,6 +66,11 @@ pub async fn enrich_results_with_coverage(
     project_root: &Path,
     coverage_file: Option<&Path>,
 ) -> Result<(), String> {
+    debug_assert!(
+        project_root.exists(),
+        "project_root must exist: {}",
+        project_root.display()
+    );
     use std::process::Command;
 
     if results.is_empty() {

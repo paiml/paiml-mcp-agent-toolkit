@@ -25,6 +25,7 @@ impl TemplateService for DefaultTemplateService {
     }
 
     async fn get_template(&self, template_id: &str) -> Result<TemplateInfo, AppError> {
+        debug_assert!(!template_id.is_empty(), "template_id must not be empty");
         if template_id == "makefile/rust/cli" {
             Ok(TemplateInfo {
                 id: template_id.to_string(),

@@ -2,6 +2,7 @@
 // Churn-related code moved to tdg_calculator_factors_churn.rs
 
 fn is_function_start(trimmed: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.starts_with("fn ")
         || trimmed.starts_with("def ")
         || trimmed.starts_with("function ")
@@ -9,6 +10,7 @@ fn is_function_start(trimmed: &str) -> bool {
 }
 
 fn is_control_flow(trimmed: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.starts_with("if ")
         || trimmed.starts_with("elif ")
         || trimmed.starts_with("while ")

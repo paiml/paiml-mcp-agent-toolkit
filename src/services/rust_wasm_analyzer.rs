@@ -229,6 +229,7 @@ fn analyze_type(ty: &Type) -> Vec<MemoryPattern> {
 
 /// Check if attributes contain a specific attribute name
 fn has_attribute(attrs: &[Attribute], name: &str) -> bool {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     attrs.iter().any(|attr| {
         attr.path()
             .segments

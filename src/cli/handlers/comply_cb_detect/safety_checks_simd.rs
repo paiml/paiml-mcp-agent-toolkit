@@ -3,6 +3,7 @@
 
 /// Mark all lines in a function body as protected, starting from the `fn` declaration line.
 fn mark_function_body(lines: &[&str], fn_line: usize, protected: &mut HashSet<usize>) {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut depth: usize = 0;
     let mut entered_body = false;
     for k in fn_line..lines.len() {

@@ -1,6 +1,7 @@
 impl VelocityTracker {
     #[must_use]
     pub fn new(sprint_id: &str) -> Self {
+        debug_assert!(!sprint_id.is_empty(), "sprint_id must not be empty");
         Self {
             sprint_id: sprint_id.to_string(),
             started_at: Utc::now(),
@@ -24,6 +25,7 @@ impl VelocityTracker {
 
     /// Load tracker from file
     pub fn load(sprint_id: &str) -> Result<Self> {
+        debug_assert!(!sprint_id.is_empty(), "sprint_id must not be empty");
         let path = format!("docs/execution/velocity_{sprint_id}.json");
         let content = std::fs::read_to_string(&path)?;
         Ok(serde_json::from_str(&content)?)
@@ -115,6 +117,8 @@ impl VelocityTracker {
 
     /// Add a quality score
     pub fn add_quality_score(&mut self, task_id: &str, score: f64) {
+        debug_assert!(!task_id.is_empty(), "task_id must not be empty");
+        debug_assert!(score >= 0.0, "score must be non-negative");
         self.quality_scores.push(QualityScore {
             task_id: task_id.to_string(),
             score,

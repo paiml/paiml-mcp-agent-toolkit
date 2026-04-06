@@ -24,6 +24,7 @@ impl DagBuilder {
     }
 
     fn process_single_relationship(&mut self, item: &AstItem, file_module_id: &str) {
+        debug_assert!(!file_module_id.is_empty(), "file_module_id must not be empty");
         match item {
             AstItem::Use { path, line: _ } => {
                 self.process_use_import(path, file_module_id);
@@ -48,6 +49,8 @@ impl DagBuilder {
     }
 
     fn process_use_import(&mut self, path: &str, file_module_id: &str) {
+        debug_assert!(!path.is_empty(), "path must not be empty");
+        debug_assert!(!file_module_id.is_empty(), "file_module_id must not be empty");
         // Create import edges from the file module to imported items
         if let Some(target_id) = self.resolve_import_path(path) {
             self.add_edge(Edge {
@@ -65,6 +68,9 @@ impl DagBuilder {
         items: &[String],
         file_module_id: &str,
     ) {
+        debug_assert!(!module.is_empty(), "module must not be empty");
+        debug_assert!(!file_module_id.is_empty(), "file_module_id must not be empty");
+        debug_assert!(!items.is_empty(), "items must not be empty");
         // Handle language-specific imports (Python, JavaScript, etc.)
         // Create import edge to the module
         if let Some(target_id) = self.resolve_import_path(module) {
@@ -95,6 +101,7 @@ impl DagBuilder {
         type_name: &str,
         trait_name: &Option<String>,
     ) {
+        debug_assert!(!type_name.is_empty(), "type_name must not be empty");
         // Create inheritance edges for trait implementations
         if let (Some(trait_name), Some(struct_id)) =
             (trait_name.as_ref(), self.type_map.get(type_name))
@@ -151,6 +158,7 @@ impl DagBuilder {
     }
 
     fn normalize_path(&self, path: &str) -> String {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         // Convert file path to a module-like identifier
         path.trim_start_matches("./")
             .trim_start_matches('/')
@@ -164,6 +172,7 @@ impl DagBuilder {
     }
 
     fn path_to_module(&self, path: &str) -> String {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         // Convert file path to module notation using semantic namer
         let ext = std::path::Path::new(path)
             .extension()
@@ -197,6 +206,7 @@ impl DagBuilder {
     }
 
     fn extract_module_name(&self, path: &str) -> String {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         // Extract just the file name without extension
         std::path::Path::new(path)
             .file_stem()
@@ -206,6 +216,7 @@ impl DagBuilder {
     }
 
     fn resolve_import_path(&self, import_path: &str) -> Option<String> {
+        debug_assert!(!import_path.is_empty(), "import_path must not be empty");
         // Try to resolve the import to a known node
         // First check if it's a direct type reference
         if let Some(type_id) = self.type_map.get(import_path) {
@@ -237,6 +248,7 @@ impl DagBuilder {
 
 /// Detect programming language from file path extension
 fn detect_language_from_path(file_path: &str) -> &'static str {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let ext = std::path::Path::new(file_path)
         .extension()
         .and_then(|e| e.to_str())

@@ -65,6 +65,8 @@ pub fn parse_roadmap(content: &str) -> Result<Roadmap> {
 
 /// Update roadmap state based on sprint header
 fn update_roadmap_state(roadmap: &mut Roadmap, line: &str, version: &str) {
+    debug_assert!(!line.is_empty(), "line must not be empty");
+    debug_assert!(!version.is_empty(), "version must not be empty");
     // Determine if this is the current sprint
     if line.contains("Current Sprint:")
         || (roadmap.current_sprint.is_none() && !line.contains("Previous"))

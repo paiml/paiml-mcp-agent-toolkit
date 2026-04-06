@@ -200,18 +200,21 @@ impl CacheKeyBuilder {
     /// Build cache key for refactoring plans
     #[must_use]
     pub fn refactor_plan_key(file_path: &str, config_hash: u64) -> String {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         format!("refactor_plan:{file_path}:{config_hash}")
     }
 
     /// Build cache key for complexity metrics
     #[must_use]
     pub fn complexity_key(file_path: &str) -> String {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         format!("complexity:{file_path}")
     }
 
     /// Build cache key for MCP method results
     #[must_use]
     pub fn method_result_key(method: &str, params_hash: u64) -> String {
+        debug_assert!(!method.is_empty(), "method must not be empty");
         format!("method:{method}:{params_hash}")
     }
 }

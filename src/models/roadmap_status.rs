@@ -37,6 +37,7 @@ impl ItemStatus {
     ///
     /// Returns helpful error messages with suggestions for typos
     pub fn from_string(s: &str) -> Result<Self, String> {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         // Normalize: lowercase, remove hyphens/underscores, trim whitespace
         let normalized = s.to_lowercase().replace(['-', '_'], "").trim().to_string();
 
@@ -152,6 +153,8 @@ impl ItemStatus {
 
 /// Simple Levenshtein distance for typo suggestions
 fn levenshtein_distance(a: &str, b: &str) -> usize {
+    debug_assert!(!a.is_empty(), "a must not be empty");
+    debug_assert!(!b.is_empty(), "b must not be empty");
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
     let a_len = a_chars.len();

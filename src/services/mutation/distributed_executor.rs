@@ -21,6 +21,7 @@ async fn initialize_worker_monitoring(
 }
 
 fn compute_worker_id(mutant_id: &str, worker_count: usize) -> usize {
+    debug_assert!(!mutant_id.is_empty(), "mutant_id must not be empty");
     let numeric_id = mutant_id.parse::<usize>().unwrap_or_else(|_| {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};

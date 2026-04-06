@@ -184,6 +184,7 @@ fn validate_single_parameter(
     value: &serde_json::Value,
     param_spec: &ParameterSpec,
 ) -> Option<String> {
+    debug_assert!(!key.is_empty(), "key must not be empty");
     if let Some(pattern) = &param_spec.validation_pattern {
         if let Ok(regex) = regex::Regex::new(pattern) {
             if let Some(str_val) = value.as_str() {
@@ -203,6 +204,7 @@ fn create_validation_response(
     validation_result: ValidationResult,
     resource_uri: &str,
 ) -> McpResponse {
+    debug_assert!(!resource_uri.is_empty(), "resource_uri must not be empty");
     let is_valid = validation_result.missing_required.is_empty()
         && validation_result.validation_errors.is_empty();
 
@@ -227,6 +229,8 @@ fn create_validation_response(
 
 // Helper to determine template variant
 fn get_template_variant(template_type: &str, toolchain: &str) -> Option<&'static str> {
+    debug_assert!(!template_type.is_empty(), "template_type must not be empty");
+    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     match template_type {
         "makefile" | "readme" | "gitignore" => match toolchain {
             "rust" | "deno" | "python-uv" => Some("cli"),
@@ -243,6 +247,8 @@ async fn generate_single_template<T: TemplateServerTrait>(
     toolchain: &str,
     parameters: serde_json::Map<String, serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
+    debug_assert!(!template_type.is_empty(), "template_type must not be empty");
+    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     let variant = get_template_variant(template_type, toolchain)
         .ok_or_else(|| format!("No variant for {template_type} with {toolchain}"))?;
 

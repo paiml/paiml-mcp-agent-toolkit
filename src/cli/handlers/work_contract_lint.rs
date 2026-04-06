@@ -196,6 +196,7 @@ fn lint_aud_002(
     project_path: &Path,
     findings: &mut Vec<LintFinding>,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if !contract.is_dbc() || contract.invariant.is_empty() {
         return;
     }
@@ -240,6 +241,8 @@ fn lint_scr_001(
     min_score: f64,
     findings: &mut Vec<LintFinding>,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(min_score >= 0.0, "min_score must be non-negative");
     let score = score_contract(contract, project_path);
     if score.total < min_score {
         findings.push(LintFinding {
@@ -282,6 +285,7 @@ fn lint_drf_001(
     project_path: &Path,
     findings: &mut Vec<LintFinding>,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let drift = compute_drift_metrics(contract, project_path);
     if drift.is_stale {
         findings.push(LintFinding {
@@ -327,6 +331,7 @@ fn lint_trd_001(
     project_path: &Path,
     findings: &mut Vec<LintFinding>,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let trend = load_quality_trend(project_path, &contract.work_item_id);
     if trend.drift_detected {
         findings.push(LintFinding {
@@ -347,6 +352,7 @@ fn lint_trd_002(
     project_path: &Path,
     findings: &mut Vec<LintFinding>,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let rescue_records = RescueRecord::load_all(project_path, &contract.work_item_id);
     if rescue_records.len() < 2 {
         return; // Not enough data
@@ -379,6 +385,7 @@ fn lint_trd_002(
 /// Produces OASIS SARIF output for CI/CD integration with GitHub Code Scanning,
 /// VS Code SARIF Viewer, etc.
 pub fn lint_report_to_sarif(report: &LintReport, contract_path: &str) -> serde_json::Value {
+    debug_assert!(!contract_path.is_empty(), "contract_path must not be empty");
     let results: Vec<serde_json::Value> = report
         .findings
         .iter()

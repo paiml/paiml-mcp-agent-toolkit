@@ -171,6 +171,7 @@ impl DocValidator {
     /// Handles: https://crates.io/crates/{crate_name}
     #[cfg(feature = "http-client")]
     fn extract_crates_io_crate_name(url: &str) -> Option<String> {
+        debug_assert!(!url.is_empty(), "url must not be empty");
         // Match patterns like:
         // - https://crates.io/crates/trueno
         // - http://crates.io/crates/trueno
@@ -209,6 +210,7 @@ impl DocValidator {
         client: &reqwest::Client,
         crate_name: &str,
     ) -> (ValidationStatus, Option<String>, Option<u16>) {
+        debug_assert!(!crate_name.is_empty(), "crate_name must not be empty");
         // Use the crates.io API which accepts programmatic access
         let api_url = format!("https://crates.io/api/v1/crates/{}", crate_name);
 

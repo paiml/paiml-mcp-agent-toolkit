@@ -5,6 +5,7 @@
 /// Uses syntect for rich syntax highlighting, or match highlighting for literal/regex modes.
 /// `highlight`: `Some((pattern, is_regex))` for grep-like match highlighting, `None` for syntect.
 pub fn format_text_with_code(results: &[QueryResult], highlight: Option<(&str, bool)>) -> String {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut output = String::new();
 
     for r in results.iter() {
@@ -123,6 +124,7 @@ fn format_text_details(r: &QueryResult, output: &mut String) {
 
 /// Format results as text (colorized for terminal)
 pub fn format_text(results: &[QueryResult]) -> String {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut output = String::new();
     output.push_str(&format!(
         "\x1b[1mFound {} functions:\x1b[0m\n\n",

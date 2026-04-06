@@ -48,6 +48,7 @@ pub fn detect_cb611_weak_table_misuse(project_path: &Path) -> Vec<CbPatternViola
 
 /// Check if a line declares a weak-key-only table (`__mode = "k"`, not "v" or "kv").
 fn is_weak_key_only_declaration(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     line.contains("__mode")
         && (line.contains("\"k\"") || line.contains("'k'"))
         && !line.contains("\"v\"")
@@ -58,6 +59,7 @@ fn is_weak_key_only_declaration(line: &str) -> bool {
 
 /// Classify the key type after `var[...` -- returns "string", "numeric", or None.
 fn classify_bracket_key(after_bracket: &str) -> Option<&'static str> {
+    debug_assert!(!after_bracket.is_empty(), "after_bracket must not be empty");
     if after_bracket.starts_with('"') || after_bracket.starts_with('\'') {
         Some("string")
     } else if after_bracket.starts_with(|c: char| c.is_ascii_digit()) {
@@ -73,6 +75,7 @@ fn detect_weak_key_with_value_types(
     rel: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
+    debug_assert!(!rel.is_empty(), "rel must not be empty");
     // Phase 1: Find variables assigned weak-key tables
     let weak_key_vars: std::collections::HashSet<String> = prod_lines
         .iter()
@@ -112,6 +115,7 @@ fn detect_weak_key_with_value_types(
 /// Extract variable name from weak table assignment.
 /// E.g. `local cache = setmetatable({}, { __mode = "k" })` -> Some("cache")
 fn extract_weak_table_var(line: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let eq_pos = line.find('=')?;
     let lhs = line[..eq_pos].trim();
     let lhs = lhs.strip_prefix("local ").unwrap_or(lhs).trim();
@@ -396,6 +400,7 @@ fn build_require_graph(
 
 /// Extract module names from top-level require() calls (not inside functions).
 fn extract_top_level_requires(content: &str) -> Vec<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut requires = Vec::new();
     let mut func_depth: i32 = 0;
 
@@ -427,6 +432,7 @@ fn extract_top_level_requires(content: &str) -> Vec<String> {
 /// Extract module name from a require() call.
 /// Matches: require("foo"), require('foo'), require "foo", require 'foo'
 fn extract_require_module(line: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let req_idx = line.find("require")?;
     let after = line[req_idx + 7..].trim();
     // Skip if require is part of a larger word
@@ -477,6 +483,7 @@ fn dfs_find_cycle(
     rec_stack: &mut Vec<String>,
     cycles: &mut Vec<Vec<String>>,
 ) {
+    debug_assert!(!node.is_empty(), "node must not be empty");
     visited.insert(node.to_string());
     rec_stack.push(node.to_string());
 

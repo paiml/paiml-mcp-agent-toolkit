@@ -95,6 +95,8 @@ async fn execute_single_file_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     match check {
         QualityCheckType::Complexity => {
             run_single_file_complexity_check(

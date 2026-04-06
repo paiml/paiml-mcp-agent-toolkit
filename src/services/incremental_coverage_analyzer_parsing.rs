@@ -30,6 +30,7 @@ impl IncrementalCoverageAnalyzer {
     }
 
     fn parse_rust_file(&self, content: &str) -> Result<AstNode> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Simplified parsing - in production would use syn
         let mut functions = Vec::new();
         let mut dependencies = Vec::new();
@@ -60,6 +61,7 @@ impl IncrementalCoverageAnalyzer {
     }
 
     fn parse_typescript_file(&self, content: &str) -> Result<AstNode> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Simplified parsing
         let mut functions = Vec::new();
         let mut dependencies = Vec::new();
@@ -88,6 +90,7 @@ impl IncrementalCoverageAnalyzer {
     }
 
     fn parse_python_file(&self, content: &str) -> Result<AstNode> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Simplified parsing
         let mut functions = Vec::new();
         let mut dependencies = Vec::new();
@@ -117,6 +120,7 @@ impl IncrementalCoverageAnalyzer {
 }
 
 fn extract_function_name(line: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     // Simplified function name extraction
     if let Some(pos) = line.find("function ") {
         let start = pos + 9;

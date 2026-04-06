@@ -302,6 +302,7 @@ fn is_excluded_path(path: &Path) -> bool {
 
 /// Check if path contains excluded directories
 pub fn is_excluded_directory(path_str: &str) -> bool {
+    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     // Normalize path for consistent matching
     let normalized = path_str.replace('\\', "/");
 
@@ -395,6 +396,7 @@ pub fn is_excluded_directory(path_str: &str) -> bool {
 /// Check if filename indicates a test file
 #[must_use]
 pub fn is_excluded_filename(filename: &str) -> bool {
+    debug_assert!(!filename.is_empty(), "filename must not be empty");
     is_test_file(filename)
         || is_example_or_demo_file(filename)
         || is_benchmark_file(filename)
@@ -403,6 +405,7 @@ pub fn is_excluded_filename(filename: &str) -> bool {
 
 /// Check if filename is a test file (cognitive complexity ≤6)
 pub fn is_test_file(filename: &str) -> bool {
+    debug_assert!(!filename.is_empty(), "filename must not be empty");
     const TEST_SUFFIXES: &[&str] = &["_test.rs", "_tests.rs", "tests.rs"];
     const TEST_PREFIXES: &[&str] = &["test_", "tests_"];
     const TEST_CONTAINS: &[&str] = &[
@@ -422,6 +425,7 @@ pub fn is_test_file(filename: &str) -> bool {
 
 /// Check if filename is an example or demo file (cognitive complexity ≤4)
 pub fn is_example_or_demo_file(filename: &str) -> bool {
+    debug_assert!(!filename.is_empty(), "filename must not be empty");
     const EXAMPLE_DEMO_PREFIXES: &[&str] = &["example_", "demo_"];
     const EXAMPLE_DEMO_CONTAINS: &[&str] = &["_example", "_demo"];
 
@@ -433,6 +437,7 @@ pub fn is_example_or_demo_file(filename: &str) -> bool {
 
 /// Check if filename is a benchmark file (cognitive complexity ≤4)
 pub fn is_benchmark_file(filename: &str) -> bool {
+    debug_assert!(!filename.is_empty(), "filename must not be empty");
     const BENCH_SUFFIXES: &[&str] = &["_bench.rs", "_benchmark.rs"];
     const BENCH_CONTAINS: &[&str] = &["bench_", "benchmark_"];
 
@@ -442,6 +447,7 @@ pub fn is_benchmark_file(filename: &str) -> bool {
 
 /// Check if filename is a mock or stub file (cognitive complexity ≤4)
 pub fn is_mock_or_stub_file(filename: &str) -> bool {
+    debug_assert!(!filename.is_empty(), "filename must not be empty");
     const MOCK_STUB_PREFIXES: &[&str] = &["mock_", "stub_", "stubs_"];
     const MOCK_STUB_CONTAINS: &[&str] = &["_mock", "_stub", "_stubs"];
 

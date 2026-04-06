@@ -77,6 +77,7 @@ impl DataScienceAnalyzer {
         means: &[f32],
         stds: &[f32],
     ) -> String {
+        debug_assert!(!features.is_empty(), "features must not be empty");
         let mut reasons = Vec::new();
 
         // Check each feature for high Z-score

@@ -104,6 +104,7 @@ async fn handle_org_analyze(
     top_n: usize,
     min_frequency: usize,
 ) -> Result<()> {
+    debug_assert!(!org.is_empty(), "org must not be empty");
     println!(
         "\n{}",
         c::header(&format!("Analyzing GitHub Organization: {}", org))

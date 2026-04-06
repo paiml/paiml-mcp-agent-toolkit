@@ -122,6 +122,7 @@ pub fn detect_cb801_null_usage(project_path: &Path) -> Vec<CbPatternViolation> {
 
 /// Check if line contains `null` as a standalone keyword.
 fn contains_null_literal(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let null_bytes = b"null";
     let len = bytes.len();
@@ -191,6 +192,7 @@ pub fn detect_cb802_wildcard_import(project_path: &Path) -> Vec<CbPatternViolati
 
 /// Wildcard imports from standard library are generally acceptable.
 fn is_allowed_wildcard_import(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let allowed = [
         "scala.collection.",
         "scala.concurrent.",

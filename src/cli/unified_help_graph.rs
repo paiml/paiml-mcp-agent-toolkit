@@ -100,6 +100,7 @@ impl CommandGraph {
 
     /// Get top-k most important commands
     pub fn top_k_important(&self, k: usize) -> Vec<(String, f32)> {
+        debug_assert!(k > 0, "k must be positive");
         let mut all: Vec<_> = self
             .importance_scores
             .iter()

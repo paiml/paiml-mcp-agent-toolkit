@@ -25,6 +25,7 @@ pub struct GitHubMcpIntegration;
 impl GitHubMcpIntegration {
     /// Create GitHub Issues service for MCP integration
     pub fn create_github_service(token: &str) -> Result<GitHubIssuesService, String> {
+        debug_assert!(!token.is_empty(), "token must not be empty");
         GitHubIssuesService::new(token)
             .map_err(|e| format!("Failed to create GitHub service: {}", e))
     }

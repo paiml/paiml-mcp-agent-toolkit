@@ -73,6 +73,7 @@ impl SymbolTable {
     /// Check if symbol is visible from a module
     /// Complexity: 5 (path comparison)
     fn is_visible(&self, entry: &SymbolEntry, from_module: &str) -> bool {
+        debug_assert!(!from_module.is_empty(), "from_module must not be empty");
         match entry.symbol.visibility {
             Visibility::Public => true,
             Visibility::Private => {

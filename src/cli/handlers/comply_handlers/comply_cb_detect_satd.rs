@@ -71,6 +71,7 @@ pub fn classify_satd_manifestation(content: &str) -> SATDManifestationType {
 
 /// Classify based on pattern ID from CB-050 detection
 pub fn classify_satd_by_pattern_id(pattern_id: &str) -> SATDManifestationType {
+    debug_assert!(!pattern_id.is_empty(), "pattern_id must not be empty");
     match pattern_id {
         // Code patterns - will crash at runtime
         "CB-050-A" => SATDManifestationType::Code, // todo!()

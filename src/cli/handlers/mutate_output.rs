@@ -43,6 +43,7 @@ fn output_json(
     results: &[MutationResult],
     failures_only: bool,
 ) -> Result<()> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::services::mutation::types::MutantStatus;
 
     // Sprint 62 Day 2: Filter for failures-only mode
@@ -91,6 +92,7 @@ fn output_markdown(
     results: &[MutationResult],
     failures_only: bool,
 ) -> Result<()> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::services::mutation::types::MutantStatus;
 
     // Sprint 62 Day 2: Filter for failures-only mode
@@ -268,6 +270,7 @@ fn output_text_summary(score: &MutationScore) {
 
 /// Print survived mutants with code snippets
 fn output_survived_mutants(results: &[&MutationResult]) {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::cli::colors as c;
 
     if results.is_empty() {
@@ -303,6 +306,7 @@ fn output_survived_mutants(results: &[&MutationResult]) {
 
 /// Print a list of mutant results under a titled section
 fn output_mutant_section(title: &str, results: &[&MutationResult]) {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::cli::colors as c;
 
     if results.is_empty() {
@@ -338,6 +342,7 @@ fn output_text(
     results: &[MutationResult],
     failures_only: bool,
 ) -> Result<()> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::services::mutation::types::MutantStatus;
     use crate::cli::colors as c;
 

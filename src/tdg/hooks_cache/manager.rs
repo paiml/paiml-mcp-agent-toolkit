@@ -139,6 +139,7 @@ impl HooksCacheManager {
 
     /// Clear specific gate cache
     pub fn clear_gate(&self, gate_name: &str) -> Result<()> {
+        debug_assert!(!gate_name.is_empty(), "gate_name must not be empty");
         let gate_path = self
             .cache_dir
             .join("gates")

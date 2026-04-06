@@ -231,6 +231,10 @@ fn replace_function(
     refactored_content: &str,
     function_name: &str,
 ) -> Result<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!function_signature.is_empty(), "function_signature must not be empty");
+    debug_assert!(!refactored_content.is_empty(), "refactored_content must not be empty");
+    debug_assert!(!function_name.is_empty(), "function_name must not be empty");
     // Find the start of the function
     let start_pos = content
         .find(function_signature)
@@ -257,6 +261,7 @@ fn replace_function(
     ///
     /// Returns an error if the operation fails
 fn find_function_end(content: &str, start: usize) -> Result<usize> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let content_after = content.get(start..).unwrap_or_default();
     let mut brace_count = 0;
     let mut in_function = false;
@@ -288,6 +293,8 @@ fn find_function_end(content: &str, start: usize) -> Result<usize> {
     ///
     /// Returns an error if the operation fails
 fn extract_function(content: &str, function_name: &str) -> Result<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!function_name.is_empty(), "function_name must not be empty");
     let signature = format!("pub async fn {}", function_name);
     let start = content
         .find(&signature)
@@ -304,6 +311,7 @@ fn extract_function(content: &str, function_name: &str) -> Result<String> {
     ///
     /// Returns an error if the operation fails
 fn apply_format_output_refactoring(content: &str) -> Result<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     // This would contain the actual refactoring logic
     // For now, we'll use a simplified version
     let refactored = r#"
@@ -379,6 +387,7 @@ impl<'a> OutputFormatter<'a> {
     ///
     /// Returns an error if the operation fails
 fn apply_refactor_auto_refactoring(content: &str) -> Result<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     // Implementation would go here
     // For brevity, returning the original content
     Ok(content.to_string())
@@ -390,6 +399,7 @@ fn apply_refactor_auto_refactoring(content: &str) -> Result<String> {
 ///
 /// Returns an error if the operation fails
 fn apply_defect_markdown_refactoring(content: &str) -> Result<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     // Implementation would go here
     // For brevity, returning the original content
     Ok(content.to_string())

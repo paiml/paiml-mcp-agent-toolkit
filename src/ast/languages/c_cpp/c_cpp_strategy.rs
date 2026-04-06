@@ -32,6 +32,7 @@ impl CStrategy {
 
     #[cfg(feature = "c-ast")]
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut parser = tree_sitter::Parser::new();
         parser
             .set_language(&tree_sitter_c::LANGUAGE.into())
@@ -45,6 +46,7 @@ impl CStrategy {
     #[cfg(not(feature = "c-ast"))]
     #[allow(dead_code)]
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
+        debug_assert!(!_content.is_empty(), "_content must not be empty");
         Err(anyhow::anyhow!(
             "C AST parsing not available - compile with 'c-ast' feature"
         ))
@@ -52,6 +54,7 @@ impl CStrategy {
 
     #[cfg(feature = "c-ast")]
     fn convert_to_dag(&self, tree: &Tree, content: &str) -> AstDag {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut dag = AstDag::new();
         let root = tree.root_node();
         let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::C);
@@ -158,6 +161,7 @@ impl CppStrategy {
 
     #[cfg(feature = "cpp-ast")]
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut parser = tree_sitter::Parser::new();
         parser
             .set_language(&tree_sitter_cpp::LANGUAGE.into())
@@ -171,6 +175,7 @@ impl CppStrategy {
     #[cfg(not(feature = "cpp-ast"))]
     #[allow(dead_code)]
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
+        debug_assert!(!_content.is_empty(), "_content must not be empty");
         Err(anyhow::anyhow!(
             "C++ AST parsing not available - compile with 'cpp-ast' feature"
         ))
@@ -178,6 +183,7 @@ impl CppStrategy {
 
     #[cfg(feature = "cpp-ast")]
     fn convert_to_dag(&self, tree: &Tree, content: &str) -> AstDag {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut dag = AstDag::new();
         let root = tree.root_node();
         let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::Cpp);

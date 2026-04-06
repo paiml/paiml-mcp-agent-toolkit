@@ -134,6 +134,7 @@ impl AgentsMdParser {
         state: &mut ParseState,
         document: &mut AgentsMdDocument,
     ) {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         if state.in_code_block {
             state.code_block_content.push_str(text);
         } else if state.in_list {
@@ -150,6 +151,7 @@ impl AgentsMdParser {
 
     /// Start a new section when a heading text is encountered
     fn start_new_section(text: &str, state: &mut ParseState, document: &mut AgentsMdDocument) {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         if let Some(section) = state.current_section.take() {
             document.sections.push(section);
         }

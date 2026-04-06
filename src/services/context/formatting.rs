@@ -51,6 +51,7 @@ fn format_dependencies(output: &mut String, dependencies: &[String]) {
 }
 
 fn format_files(output: &mut String, files: &[FileContext]) {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     output.push_str("\n## Files\n\n");
 
     for file in files {
@@ -62,6 +63,7 @@ fn format_files(output: &mut String, files: &[FileContext]) {
 }
 
 pub(crate) fn group_items_by_type(items: &[AstItem]) -> GroupedItems<'_> {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut grouped = GroupedItems::new();
 
     for item in items {
@@ -92,6 +94,7 @@ fn format_item_group<F>(output: &mut String, title: &str, items: &[&AstItem], fo
 where
     F: Fn(&AstItem) -> String,
 {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     if !items.is_empty() {
         output.push_str(&format!("**{title}:**\n"));
         for item in items {

@@ -47,6 +47,7 @@ pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>,
 /// assert_eq!(state.targets.len(), deserialized.targets.len());
 /// ```
 pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine, String> {
+    debug_assert!(!data.is_empty(), "data must not be empty");
     // JSON deserialization ensures compatibility with the serialization format
     // This maintains consistency with the serialize_state_to_capnp function
     serde_json::from_slice(data).map_err(|e| format!("Deserialization error: {e}"))

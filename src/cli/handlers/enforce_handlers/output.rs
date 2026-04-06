@@ -5,6 +5,7 @@ use super::types::{EnforcementResult, EnforcementState, QualityProfile, QualityV
 use crate::cli::colors as c;
 
 fn parse_line_num(location: &str) -> i32 {
+    debug_assert!(!location.is_empty(), "location must not be empty");
     location
         .split(':')
         .nth(1)
@@ -183,6 +184,7 @@ pub fn format_violations_output(
     profile: &QualityProfile,
     format: EnforceOutputFormat,
 ) -> Result<String> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     if format == EnforceOutputFormat::Json {
         let json_output = serde_json::json!({
             "profile": profile.clone(),

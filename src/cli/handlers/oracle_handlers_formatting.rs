@@ -4,6 +4,7 @@ fn format_pdca_results(
     targets: &ConvergenceTargets,
     format: OracleOutputFormat,
 ) -> Result<String> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     match format {
         OracleOutputFormat::Text => format_pdca_text(results, targets),
         OracleOutputFormat::Json => format_pdca_json(results),
@@ -15,6 +16,7 @@ fn format_pdca_text(
     results: &[crate::services::oracle::PdcaIterationResult],
     targets: &ConvergenceTargets,
 ) -> Result<String> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut output = String::new();
     output.push_str("=== PDCA Loop Results ===\n\n");
 
@@ -70,6 +72,7 @@ fn format_pdca_text(
 }
 
 fn format_pdca_json(results: &[crate::services::oracle::PdcaIterationResult]) -> Result<String> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let json_results: Vec<_> = results
         .iter()
         .map(|r| {
@@ -94,6 +97,7 @@ fn format_pdca_markdown(
     results: &[crate::services::oracle::PdcaIterationResult],
     targets: &ConvergenceTargets,
 ) -> Result<String> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut output = String::new();
     output.push_str("# PMAT Oracle - PDCA Loop Results\n\n");
 

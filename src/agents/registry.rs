@@ -56,6 +56,7 @@ impl AgentRegistry {
     }
 
     pub async fn register_agent_with_capability(&self, capability: &str, agent_id: AgentId) {
+        debug_assert!(!capability.is_empty(), "capability must not be empty");
         self.agents_by_capability
             .insert(capability.to_string(), agent_id);
     }
@@ -106,6 +107,7 @@ impl AgentRegistry {
     }
 
     pub async fn register(&self, _name: &str, agent: Arc<dyn std::any::Any + Send + Sync>) {
+        debug_assert!(!_name.is_empty(), "_name must not be empty");
         // Legacy method - kept for compatibility
         let _ = agent; // Suppress unused warning
                        // Extract AgentId if needed

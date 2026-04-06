@@ -50,6 +50,7 @@ pub(super) fn check_lock_poisoning_line(
 /// Check if a line should be skipped for lock poisoning analysis
 /// (comments or `.lock()` inside a string literal).
 fn should_skip_line(trimmed: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("*") {
         return true;
     }
@@ -251,6 +252,8 @@ fn check_coverage_threshold_line(
     line_num: usize,
     file_path: &str,
 ) -> Option<CbPatternViolation> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let line_lower = line.to_lowercase();
     for &(pattern, sep) in COVERAGE_THRESHOLD_PATTERNS {
         if !line_lower.contains(pattern) {

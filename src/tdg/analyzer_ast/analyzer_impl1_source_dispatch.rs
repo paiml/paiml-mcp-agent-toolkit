@@ -96,6 +96,7 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         #[cfg(feature = "rust-ast")]
         {
             use syn::{visit::Visit, File};
@@ -165,6 +166,7 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         #[cfg(feature = "python-ast")]
         {
             // Modern tree-sitter-python parsing (replaces rustpython-parser)

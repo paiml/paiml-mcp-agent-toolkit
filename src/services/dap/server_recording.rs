@@ -24,6 +24,7 @@ impl DapServer {
     ///
     /// Creates recording directory if needed and sets up ExecutionRecorder
     fn start_recording(&self, program: &str, args: Vec<String>) -> anyhow::Result<()> {
+        debug_assert!(!program.is_empty(), "program must not be empty");
         // Only start recording if recording_dir is configured
         let recording_dir = match &self.recording_dir {
             Some(dir) => dir,

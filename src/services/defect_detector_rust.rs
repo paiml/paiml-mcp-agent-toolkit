@@ -49,6 +49,7 @@ impl RustDefectDetector {
 
     /// Check if content contains test-related markers
     fn has_test_markers(&self, content: &str) -> bool {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Check for test cfg attributes
         let has_cfg_test = content.contains("#[cfg(test)]")
             || content.contains("#[cfg(all(test,")
@@ -208,6 +209,7 @@ impl Default for RustDefectDetector {
 /// Strip contents of string literals to prevent false-positive defect detection.
 /// Replaces `"..."` contents with spaces (preserving column offsets).
 fn strip_string_literals(line: &str) -> String {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let len = bytes.len();
     let mut out = Vec::with_capacity(len);

@@ -92,6 +92,7 @@ fn process_parsed_ast(
     wasm_complexity: bool,
     security: bool,
 ) -> Result<Option<(PathBuf, WasmComplexity)>> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let mut result = None;
 
     if wasm_complexity {

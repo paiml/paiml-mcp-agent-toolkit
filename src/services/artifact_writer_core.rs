@@ -184,6 +184,8 @@ impl ArtifactWriter {
         content: &str,
         _artifact_type: ArtifactType,
     ) -> Result<Hash, TemplateError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Compute hash first
         let hash = blake3::hash(content.as_bytes());
 

@@ -31,6 +31,7 @@ impl LuaStrategy {
 
     #[cfg(feature = "lua-ast")]
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut parser = TsParser::new();
         parser
             .set_language(&tree_sitter_lua::LANGUAGE.into())
@@ -71,6 +72,7 @@ impl LuaStrategy {
     #[cfg(not(feature = "lua-ast"))]
     #[allow(dead_code)]
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
+        debug_assert!(!_content.is_empty(), "_content must not be empty");
         Err(anyhow::anyhow!(
             "Lua AST parsing not available - compile with 'lua-ast' feature"
         ))
@@ -78,6 +80,7 @@ impl LuaStrategy {
 
     #[cfg(feature = "lua-ast")]
     fn convert_tree_to_dag(&self, tree: &Tree, content: &str) -> AstDag {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut dag = AstDag::new();
         let root = tree.root_node();
         let mut visitor = LuaTreeSitterVisitor::new(&mut dag, content);

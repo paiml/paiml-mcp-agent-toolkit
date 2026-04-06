@@ -35,6 +35,7 @@ impl ReadmeCompressor {
         in_code_block: bool,
         text_buffer: &mut String,
     ) {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         if let Some(ref mut section) = current_section {
             if section.title.is_empty() {
                 section.title = text.to_string();
@@ -71,6 +72,7 @@ impl ReadmeCompressor {
     }
 
     fn parse_markdown_sections(&self, content: &str) -> Vec<Section> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let parser = Parser::new(content);
         let mut sections = Vec::new();
         let mut current_section: Option<Section> = None;

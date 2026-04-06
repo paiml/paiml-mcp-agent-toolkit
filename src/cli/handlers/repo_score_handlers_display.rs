@@ -87,6 +87,7 @@ fn format_category(
     category: &crate::services::repo_score::CategoryScore,
     verbose: bool,
 ) -> String {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     use crate::cli::colors as c;
 
     let mut output = String::new();

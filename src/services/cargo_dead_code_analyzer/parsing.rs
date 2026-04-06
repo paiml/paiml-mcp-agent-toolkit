@@ -4,6 +4,7 @@
 impl CargoDeadCodeAnalyzer {
     /// Parse cargo's JSON output for dead code warnings
     fn parse_cargo_warnings(&self, output: &str) -> Result<Vec<(PathBuf, DeadItem)>> {
+        debug_assert!(!output.is_empty(), "output must not be empty");
         let mut dead_items = Vec::new();
 
         for line in output.lines() {

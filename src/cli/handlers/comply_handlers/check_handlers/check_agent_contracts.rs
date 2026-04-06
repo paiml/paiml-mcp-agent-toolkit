@@ -885,6 +885,8 @@ fn process_commit_for_ai_check(
     ai_commits_with_contract: &mut usize,
     ai_commits_without_contract: &mut Vec<String>,
 ) {
+    debug_assert!(!subject.is_empty(), "subject must not be empty");
+    debug_assert!(!body.is_empty(), "body must not be empty");
     let full_text = format!("{}\n{}", subject, body);
     let is_ai = AI_COAUTHOR_PATTERNS
         .iter()

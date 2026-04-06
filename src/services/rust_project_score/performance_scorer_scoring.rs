@@ -33,6 +33,7 @@ impl PerformanceScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         // Try cache first, fall back to filesystem
@@ -82,6 +83,7 @@ impl PerformanceScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         // Try cache first, fall back to filesystem
@@ -110,6 +112,7 @@ impl PerformanceScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(

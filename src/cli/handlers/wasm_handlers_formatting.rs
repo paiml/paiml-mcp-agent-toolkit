@@ -5,6 +5,7 @@ fn format_assemblyscript_results(
     perf: bool,
     elapsed: std::time::Duration,
 ) -> Result<String> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     if format == &ComplexityOutputFormat::Json {
         let output = serde_json::json!({
             "analysis_type": "assemblyscript",
@@ -61,6 +62,7 @@ fn format_webassembly_results(
     perf: bool,
     elapsed: std::time::Duration,
 ) -> Result<String> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     if format == &ComplexityOutputFormat::Json {
         let output = serde_json::json!({
             "analysis_type": "webassembly",

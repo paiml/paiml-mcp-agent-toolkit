@@ -78,6 +78,7 @@ fn add_pool_efficiency_recommendations(
 
 /// Output memory statistics in requested format
 fn output_memory_stats(output: &MemoryStatsOutput, format: &str, detailed: bool) -> Result<()> {
+    debug_assert!(!format.is_empty(), "format must not be empty");
     match format {
         "json" => output_json_format(output),
         "csv" => output_csv_format(output),
@@ -155,6 +156,7 @@ fn print_pool_stats(pool_stats: &HashMap<String, PoolStatsOutput>) {
 
 /// Print statistics for a single pool
 fn print_single_pool_stats(pool_name: &str, stats: &PoolStatsOutput) {
+    debug_assert!(!pool_name.is_empty(), "pool_name must not be empty");
     use crate::cli::colors as c;
 
     println!("  {}:", c::label(pool_name));
@@ -179,6 +181,7 @@ fn print_single_pool_stats(pool_name: &str, stats: &PoolStatsOutput) {
 
 /// Print recommendations
 fn print_recommendations(recommendations: &[String]) {
+    debug_assert!(!recommendations.is_empty(), "recommendations must not be empty");
     use crate::cli::colors as c;
 
     println!("{}", c::subheader("Recommendations:"));

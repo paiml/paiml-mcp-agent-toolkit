@@ -10,6 +10,7 @@ impl TdgAnalyzerAst {
         path: &Path,
         priority: OperationPriority,
     ) -> Result<TdgScore> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let start_time = SystemTime::now();
         let language = Language::from_extension(path);
 
@@ -41,6 +42,7 @@ impl TdgAnalyzerAst {
         path: &Path,
         priority: OperationPriority,
     ) -> Result<Option<crate::tdg::resource_control::ResourceAllocation>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(controller) = &self.resource_controller {
             let estimated_memory = self.estimate_analysis_memory(path)?;
             Ok(Some(
@@ -66,6 +68,7 @@ impl TdgAnalyzerAst {
         path: &Path,
         start_time: SystemTime,
     ) -> Result<Option<TdgScore>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(storage) = &self.storage {
             if let Some(hot_entry) = storage.get_hot(content_hash) {
                 // Record performance sample for cache hit
@@ -100,6 +103,8 @@ impl TdgAnalyzerAst {
         content_hash: blake3::Hash,
         start_time: SystemTime,
     ) -> Result<TdgScore> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Perform fresh analysis
         let analysis_start = SystemTime::now();
         let score = self.analyze_source(source, language, Some(path.to_path_buf()))?;
@@ -128,6 +133,7 @@ impl TdgAnalyzerAst {
         analysis_duration: Duration,
         language: Language,
     ) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(storage) = &self.storage {
             let file_metadata = fs::metadata(path)?;
             let record = FullTdgRecord {

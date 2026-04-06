@@ -8,6 +8,7 @@ impl LanguageAnalyzer {
         path: &Path,
         analysis_types: Vec<AnalysisType>,
     ) -> Result<LanguageAnalysisResult> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let start_time = std::time::Instant::now();
 
         // Detect language
@@ -64,6 +65,7 @@ impl LanguageAnalyzer {
 
     /// Analyze file metadata (lines, size, etc.)
     fn analyze_file_metadata(&self, content: &str, language: Language) -> FileMetadata {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let total_lines = lines.len();
 
@@ -95,6 +97,7 @@ impl LanguageAnalyzer {
 
     /// Check if a line is a comment for the given language
     fn is_comment_line(&self, line: &str, language: Language) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         match self.get_comment_style(language) {
             CommentStyle::CStyle => self.is_c_style_comment(line),
             CommentStyle::Hash => line.starts_with('#'),
@@ -149,6 +152,7 @@ impl LanguageAnalyzer {
 
     /// Check if line is C-style comment
     fn is_c_style_comment(&self, line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         line.starts_with("//") || line.starts_with("/*") || line.starts_with('*')
     }
 }

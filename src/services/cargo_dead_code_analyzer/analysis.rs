@@ -115,6 +115,8 @@ impl CargoDeadCodeAnalyzer {
         item_re: &regex::Regex,
         suppressed_items: &mut Vec<(PathBuf, DeadItem)>,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         for (i, line) in lines.iter().enumerate() {
             if suppression_re.is_match(line) {
                 // Try to find the item on the next non-attribute line

@@ -164,6 +164,7 @@ impl BreakpointManager {
     /// - "count == 3"
     /// - "name == 'test'"
     fn evaluate_condition(&self, condition: &str, variables: &Value) -> bool {
+        debug_assert!(!condition.is_empty(), "condition must not be empty");
         // Simple expression parser for common cases
         let condition = condition.trim();
 
@@ -229,6 +230,7 @@ impl Default for BreakpointManager {
 // Helper functions for expression parsing
 
 fn parse_equality(condition: &str) -> Option<(&str, &str)> {
+    debug_assert!(!condition.is_empty(), "condition must not be empty");
     if let Some(pos) = condition.find("==") {
         let var = &condition[..pos];
         let value = &condition[pos + 2..];
@@ -238,6 +240,7 @@ fn parse_equality(condition: &str) -> Option<(&str, &str)> {
 }
 
 fn parse_inequality(condition: &str) -> Option<(&str, &str)> {
+    debug_assert!(!condition.is_empty(), "condition must not be empty");
     if let Some(pos) = condition.find("!=") {
         let var = &condition[..pos];
         let value = &condition[pos + 2..];
@@ -247,6 +250,7 @@ fn parse_inequality(condition: &str) -> Option<(&str, &str)> {
 }
 
 fn parse_comparison<'a>(condition: &'a str, op: &str) -> Option<(&'a str, &'a str)> {
+    debug_assert!(!op.is_empty(), "op must not be empty");
     if let Some(pos) = condition.find(op) {
         let var = &condition[..pos];
         let value = &condition[pos + op.len()..];
@@ -256,6 +260,7 @@ fn parse_comparison<'a>(condition: &'a str, op: &str) -> Option<(&'a str, &'a st
 }
 
 fn check_equality(var_value: &Value, expected: &str) -> bool {
+    debug_assert!(!expected.is_empty(), "expected must not be empty");
     match var_value {
         Value::Number(n) => {
             if let Ok(expected_num) = expected.parse::<i64>() {
@@ -280,6 +285,7 @@ fn check_equality(var_value: &Value, expected: &str) -> bool {
 }
 
 fn check_greater_than(var_value: &Value, expected: &str) -> bool {
+    debug_assert!(!expected.is_empty(), "expected must not be empty");
     if let Value::Number(n) = var_value {
         if let Ok(expected_num) = expected.parse::<i64>() {
             if let Some(actual) = n.as_i64() {
@@ -296,6 +302,7 @@ fn check_greater_than(var_value: &Value, expected: &str) -> bool {
 }
 
 fn check_less_than(var_value: &Value, expected: &str) -> bool {
+    debug_assert!(!expected.is_empty(), "expected must not be empty");
     if let Value::Number(n) = var_value {
         if let Ok(expected_num) = expected.parse::<i64>() {
             if let Some(actual) = n.as_i64() {
@@ -312,6 +319,7 @@ fn check_less_than(var_value: &Value, expected: &str) -> bool {
 }
 
 fn check_greater_than_or_equal(var_value: &Value, expected: &str) -> bool {
+    debug_assert!(!expected.is_empty(), "expected must not be empty");
     if let Value::Number(n) = var_value {
         if let Ok(expected_num) = expected.parse::<i64>() {
             if let Some(actual) = n.as_i64() {
@@ -328,6 +336,7 @@ fn check_greater_than_or_equal(var_value: &Value, expected: &str) -> bool {
 }
 
 fn check_less_than_or_equal(var_value: &Value, expected: &str) -> bool {
+    debug_assert!(!expected.is_empty(), "expected must not be empty");
     if let Value::Number(n) = var_value {
         if let Ok(expected_num) = expected.parse::<i64>() {
             if let Some(actual) = n.as_i64() {

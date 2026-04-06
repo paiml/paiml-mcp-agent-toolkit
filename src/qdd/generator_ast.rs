@@ -80,6 +80,7 @@ impl AstBuilder {
 
     /// Generate example value for doctest
     pub fn generate_example_value(&self, param_type: &str) -> String {
+        debug_assert!(!param_type.is_empty(), "param_type must not be empty");
         match param_type {
             "u32" | "i32" => "42".to_string(),
             "f32" | "f64" => "3.14".to_string(),

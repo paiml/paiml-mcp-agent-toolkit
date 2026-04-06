@@ -64,6 +64,7 @@ impl WorkflowRepository for InMemoryWorkflowRepository {
     }
 
     async fn get_by_name(&self, name: &str) -> Result<Option<Workflow>, WorkflowError> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = self.name_index.read().get(name).copied();
         if let Some(id) = id {
             self.get(id).await

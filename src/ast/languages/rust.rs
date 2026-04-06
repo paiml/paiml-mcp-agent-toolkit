@@ -29,6 +29,7 @@ impl RustStrategy {
     }
 
     fn parse_syn_file(&self, content: &str) -> Result<SynFile> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         syn::parse_file(content).map_err(|e| anyhow::anyhow!("Rust parse error: {e}"))
     }
 

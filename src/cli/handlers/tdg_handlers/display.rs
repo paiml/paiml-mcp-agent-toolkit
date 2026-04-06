@@ -15,6 +15,7 @@ pub(crate) fn format_history_output(
     records: &[crate::tdg::storage::FullTdgRecord],
     format: TdgOutputFormat,
 ) -> Result<String> {
+    debug_assert!(!records.is_empty(), "records must not be empty");
     use chrono::{DateTime, Utc};
 
     if format == TdgOutputFormat::Table {

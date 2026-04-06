@@ -5,6 +5,7 @@ fn format_json(
     score: &crate::services::rust_project_score::orchestrator::ProjectScore,
     recommendations: &[String],
 ) -> Result<String> {
+    debug_assert!(!recommendations.is_empty(), "recommendations must not be empty");
     // Calculate totals excluding N/A categories (#237: GPU N/A pollutes totals)
     let applicable_earned: f64 = score
         .categories
@@ -45,6 +46,7 @@ fn format_yaml(
     score: &crate::services::rust_project_score::orchestrator::ProjectScore,
     recommendations: &[String],
 ) -> Result<String> {
+    debug_assert!(!recommendations.is_empty(), "recommendations must not be empty");
     // Calculate totals excluding N/A categories (#237: GPU N/A pollutes totals)
     let applicable_earned: f64 = score
         .categories

@@ -22,6 +22,7 @@ pub fn detect_cb125_coverage_exclusion_gaming(project_path: &Path) -> Vec<CbPatt
 
 /// Count pipe-separated patterns in --ignore-filename-regex lines.
 fn count_exclusion_patterns(content: &str) -> (usize, usize) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut count = 0;
     let mut last_line = 0;
     for (line_num, line) in content.lines().enumerate() {
@@ -49,6 +50,8 @@ fn classify_exclusion_severity(
     line: usize,
     makefile_path: &Path,
 ) -> Vec<CbPatternViolation> {
+    debug_assert!(makefile_path.exists(), "makefile_path must exist: {}", makefile_path.display());
+    debug_assert!(count > 0, "count must be positive");
     let file = makefile_path.display().to_string();
     let (pattern_id, desc, severity) = if count > 50 {
         ("CB-125-C", format!(

@@ -156,6 +156,7 @@ impl CargoMutantsWrapper {
     ///
     /// Returns error if version string format is invalid or version numbers cannot be parsed.
     fn parse_version(version_str: &str) -> Result<(u32, u32)> {
+        debug_assert!(!version_str.is_empty(), "version_str must not be empty");
         // Parse version (example: "cargo-mutants 24.7.1")
         let parts: Vec<&str> = version_str.split_whitespace().collect();
         if parts.len() < 2 {

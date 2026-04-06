@@ -62,6 +62,7 @@ pub async fn collect_and_filter_annotations(
     project_path: &Path,
     filter: &ProofAnnotationFilter,
 ) -> Vec<(Location, ProofAnnotation)> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let proof_map = annotator.collect_proofs(project_path).await;
 
     proof_map

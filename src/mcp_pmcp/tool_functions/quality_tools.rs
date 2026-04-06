@@ -1,4 +1,5 @@
 pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Value> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::tdg::analyzer_simple::TdgAnalyzer;
 
     if paths.is_empty() {
@@ -125,6 +126,7 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
 }
 
 pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::tdg::analyzer_simple::TdgAnalyzer;
 
     if paths.is_empty() {
@@ -185,6 +187,7 @@ pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
 }
 
 pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> Result<Value> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::models::git_context::GitContext;
     use crate::tdg::analyzer_simple::TdgAnalyzer;
     use crate::tdg::baseline::{BaselineEntry, TdgBaseline};

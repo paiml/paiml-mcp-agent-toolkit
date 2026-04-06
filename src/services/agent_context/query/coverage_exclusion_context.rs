@@ -33,6 +33,7 @@ impl ExclusionContext {
         result: &QueryResult,
         project_path: &Path,
     ) -> CoverageExclusion {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // 1. Dead code check (function-level, highest signal)
         let dead_key = format!("{}::{}", result.file_path, result.function_name);
         if self.dead_functions.contains(&dead_key) {
@@ -102,6 +103,7 @@ pub fn classify_exclusions(
     project_path: &Path,
     cached_coverage_off: Option<&HashSet<String>>,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut ctx = ExclusionContext::build(project_path, cached_coverage_off);
     for result in results.iter_mut() {
         let exclusion = ctx.classify(result, project_path);

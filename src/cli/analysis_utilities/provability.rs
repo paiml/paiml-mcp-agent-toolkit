@@ -103,6 +103,7 @@ fn format_provability_output(
 
 /// Write provability output to file or stdout
 async fn write_provability_output(output: Option<PathBuf>, content: &str) -> Result<()> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, content).await?;
         eprintln!(
@@ -185,6 +186,7 @@ fn create_defect_config(
     include: Option<String>,
     exclude: Option<String>,
 ) -> crate::cli::defect_prediction_helpers::DefectPredictionConfig {
+    debug_assert!(min_lines > 0, "min_lines must be positive");
     crate::cli::defect_prediction_helpers::DefectPredictionConfig {
         confidence_threshold,
         min_lines,

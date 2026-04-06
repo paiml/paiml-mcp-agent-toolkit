@@ -53,6 +53,7 @@ impl DocumentationScorer {
         documented: &mut usize,
         cache: Option<&FileCache>,
     ) -> ScorerResult<()> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if let Some(cache) = cache {
             for (_path, content) in cache.get_rust_files_in_dir(dir) {
                 self.analyze_doc_coverage(content, total, documented);
@@ -69,6 +70,7 @@ impl DocumentationScorer {
         total: &mut usize,
         documented: &mut usize,
     ) -> ScorerResult<()> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let Ok(entries) = std::fs::read_dir(dir) else {
             return Ok(());
         };
@@ -87,6 +89,7 @@ impl DocumentationScorer {
 
     /// Analyze documentation coverage in Rust source code
     fn analyze_doc_coverage(&self, content: &str, total: &mut usize, documented: &mut usize) {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let mut i = 0;
 

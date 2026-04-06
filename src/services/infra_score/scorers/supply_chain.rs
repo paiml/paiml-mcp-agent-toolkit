@@ -198,6 +198,7 @@ fn check_branch_protection(repo_path: &Path, workflows: &[(String, String)]) -> 
 
 /// SC-02: No hardcoded secrets in workflow files
 fn check_no_hardcoded_secrets(content: &str) -> InfraCheck {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let secret_patterns = [
         // API keys and tokens
         "AKIA",           // AWS access key prefix
@@ -293,6 +294,7 @@ fn check_dependency_review(content: &str, repo_path: &Path) -> InfraCheck {
 
 /// SC-04: SLSA provenance / attestation
 fn check_provenance(content: &str) -> InfraCheck {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let provenance_patterns = [
         "slsa-framework",
         "slsa-verifier",

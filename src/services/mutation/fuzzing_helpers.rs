@@ -1,6 +1,7 @@
 /// Execute mutant code with given input (simulated for Phase 1)
 /// Real implementation would compile mutant and execute with input
 fn execute_mutant_with_input(_mutant_source: &str, input: &[u8]) -> Result<()> {
+    debug_assert!(!_mutant_source.is_empty(), "_mutant_source must not be empty");
     // Phase 1: Simulate execution
     // This would be replaced with actual compilation + execution
 

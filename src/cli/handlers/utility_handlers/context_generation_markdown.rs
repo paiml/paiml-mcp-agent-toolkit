@@ -4,6 +4,8 @@ fn generate_markdown_context(
     project_path: &Path,
     context: &crate::services::deep_context::DeepContext,
 ) -> Result<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     let mut builder = MarkdownBuilder::new();
 
     // Add header

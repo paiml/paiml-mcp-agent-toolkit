@@ -136,6 +136,7 @@ impl PdcaLoop {
         project_path: &Path,
         max_iterations: usize,
     ) -> Result<Vec<PdcaIterationResult>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let limited_config = OracleConfig {
             max_iterations,
             ..self.config.clone()
@@ -250,6 +251,7 @@ impl PdcaLoop {
 
     /// Calculate progress across iterations
     fn calculate_progress(&self, results: &[PdcaIterationResult]) -> f32 {
+        debug_assert!(!results.is_empty(), "results must not be empty");
         if results.len() < 2 {
             return 1.0;
         }

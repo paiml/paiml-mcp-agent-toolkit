@@ -35,6 +35,7 @@ pub fn parse_function_spec(spec: &str, project_path: &Path) -> Result<FunctionId
 /// Extract function name from a line
 #[allow(dead_code)]
 fn extract_function_name(line: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let line = line.trim();
     let start = line.find("fn ")? + 3;
     let end = line.get(start..)?.find(['(', '<'])?;
@@ -84,6 +85,7 @@ fn calculate_average_score(summaries: &[ProofSummary]) -> f64 {
 }
 
 fn extract_filename(file_path: &str) -> &str {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     std::path::Path::new(file_path)
         .file_name()
         .and_then(|n| n.to_str())

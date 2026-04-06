@@ -103,6 +103,7 @@ fn create_complexity_violation(
     file_path: &Path,
     max_complexity: u32,
 ) -> QualityViolation {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     QualityViolation {
         check_type: "complexity".to_string(),
         severity: "error".to_string(),

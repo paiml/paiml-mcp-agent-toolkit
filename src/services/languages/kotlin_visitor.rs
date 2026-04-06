@@ -36,6 +36,7 @@ impl KotlinAstVisitor {
 
     /// Check basic Kotlin syntax validity (complexity ≤10)
     fn is_valid_kotlin_syntax(&self, source: &str) -> bool {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let open_braces = source.chars().filter(|&c| c == '{').count();
         let close_braces = source.chars().filter(|&c| c == '}').count();
 
@@ -45,6 +46,7 @@ impl KotlinAstVisitor {
 
     /// Extracts package declaration (complexity ≤10)
     fn extract_package_declaration(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -58,6 +60,7 @@ impl KotlinAstVisitor {
 
     /// Extracts class declarations (complexity ≤10)
     fn extract_class_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -81,6 +84,7 @@ impl KotlinAstVisitor {
 
     /// Helper to extract class name from line (complexity ≤10)
     fn extract_class_name_from_line(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("class ") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -95,6 +99,8 @@ impl KotlinAstVisitor {
 
     /// Count methods in a class (complexity ≤10)
     fn count_class_members(&self, source: &str, class_name: &str) -> usize {
+        debug_assert!(!source.is_empty(), "source must not be empty");
+        debug_assert!(!class_name.is_empty(), "class_name must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         let mut count = 0;
         let mut in_class = false;
@@ -129,6 +135,7 @@ impl KotlinAstVisitor {
 
     /// Extracts function declarations (complexity ≤10)
     fn extract_function_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -150,6 +157,7 @@ impl KotlinAstVisitor {
 
     /// Helper to extract function name from line (complexity ≤10)
     fn extract_function_name_from_line(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("fun ") && line.contains('(') && !line.contains("class") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -165,6 +173,7 @@ impl KotlinAstVisitor {
 
     /// Helper to extract function visibility (complexity ≤10)
     fn extract_function_visibility(&self, line: &str) -> String {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("public") {
             "public".to_string()
         } else if line.contains("private") {
@@ -178,6 +187,7 @@ impl KotlinAstVisitor {
 
     /// Extracts interface declarations (complexity ≤10)
     fn extract_interface_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -197,6 +207,7 @@ impl KotlinAstVisitor {
 
     /// Helper to extract interface name from line (complexity ≤10)
     fn extract_interface_name_from_line(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("interface ") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -211,6 +222,7 @@ impl KotlinAstVisitor {
 
     /// Extracts coroutine declarations (complexity ≤10)
     fn extract_coroutine_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -226,6 +238,7 @@ impl KotlinAstVisitor {
 
     /// Gets qualified name for a symbol (complexity ≤10)
     fn get_qualified_name(&self, name: &str) -> String {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         if self.package_name.is_empty() {
             name.to_string()
         } else {

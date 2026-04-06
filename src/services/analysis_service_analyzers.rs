@@ -7,6 +7,7 @@ impl AnalysisService {
         _path: &Path,
         _options: &AnalysisOptions,
     ) -> Result<ComplexityResults> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Implementation would call the actual complexity analyzer
         // This is a simplified version
         Ok(ComplexityResults {
@@ -22,6 +23,7 @@ impl AnalysisService {
         path: &Path,
         _options: &AnalysisOptions,
     ) -> Result<SatdResults> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use the actual SATD detector
         let results = self
             .satd_detector
@@ -53,6 +55,7 @@ impl AnalysisService {
         path: &Path,
         options: &AnalysisOptions,
     ) -> Result<DeadCodeResults> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::models::dead_code::DeadCodeAnalysisConfig;
 
         let config = DeadCodeAnalysisConfig {

@@ -9,6 +9,7 @@ impl KotlinAstStrategy {
         node: &crate::models::unified_ast::UnifiedAstNode,
         content: &str,
     ) -> Option<String> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // For now, extract a reasonable segment from the source range
         let start = node.source_range.start as usize;
         let end = node.source_range.end as usize;
@@ -31,6 +32,7 @@ impl KotlinAstStrategy {
 
     /// Extract function name from Kotlin source text
     pub(crate) fn extract_function_name(source_text: &str) -> Option<String> {
+        debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for pattern: fun name(...)
         if let Some(fun_pos) = source_text.find("fun ") {
             let after_fun = &source_text[fun_pos + 4..];
@@ -48,6 +50,7 @@ impl KotlinAstStrategy {
 
     /// Extract class/interface/object name from source text
     pub(crate) fn extract_class_name(source_text: &str) -> Option<String> {
+        debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for patterns like "class Name", "interface Name", "object Name",
         // "data class Name", "enum class Name"
         let lines = source_text.lines().next()?; // Get first line
@@ -117,6 +120,7 @@ impl AstStrategy for KotlinAstStrategy {
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
+        debug_assert!(!ext.is_empty(), "ext must not be empty");
         matches!(ext, "kt" | "kts")
     }
 }

@@ -157,6 +157,7 @@ impl SelfDiagnostic {
     }
 
     fn classify_error(&self, error: &str) -> String {
+        debug_assert!(!error.is_empty(), "error must not be empty");
         if error.contains("Permission denied") {
             "permission_denied".into()
         } else if error.contains("not found") {

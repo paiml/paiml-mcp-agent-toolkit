@@ -45,11 +45,13 @@ impl LanguageAdapter for WasmAdapter {
     }
 
     async fn parse(&self, source: &str) -> Result<String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // WAT is already text format, return as-is
         Ok(source.to_string())
     }
 
     async fn unparse(&self, ast: &str) -> Result<String> {
+        debug_assert!(!ast.is_empty(), "ast must not be empty");
         // WAT is already text format, return as-is
         Ok(ast.to_string())
     }
@@ -119,6 +121,7 @@ impl MutationOperator for WasmNumericMutator {
 impl WasmNumericMutator {
     /// Mutate WASM instructions in WAT text format
     pub fn mutate_wat(&self, wat_text: &str) -> Result<Vec<String>> {
+        debug_assert!(!wat_text.is_empty(), "wat_text must not be empty");
         let mut mutants = Vec::new();
 
         // i32 arithmetic mutations
@@ -187,6 +190,7 @@ impl MutationOperator for WasmControlFlowMutator {
 impl WasmControlFlowMutator {
     /// Mutate WASM control flow in WAT text
     pub fn mutate_wat(&self, wat_text: &str) -> Result<Vec<String>> {
+        debug_assert!(!wat_text.is_empty(), "wat_text must not be empty");
         let mut mutants = Vec::new();
 
         // Branch mutations
@@ -235,6 +239,7 @@ impl MutationOperator for WasmLocalMutator {
 impl WasmLocalMutator {
     /// Mutate WASM local operations in WAT text
     pub fn mutate_wat(&self, wat_text: &str) -> Result<Vec<String>> {
+        debug_assert!(!wat_text.is_empty(), "wat_text must not be empty");
         let mut mutants = Vec::new();
 
         // local.set → local.tee mutation

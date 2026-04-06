@@ -176,6 +176,7 @@ pub fn parse_cargo_dependencies(cargo_toml_path: &Path) -> Result<Vec<DepInfo>> 
 }
 
 fn parse_cargo_toml_content(content: &str) -> Result<Vec<DepInfo>> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let table: toml::Value =
         toml::from_str(content).with_context(|| "Failed to parse Cargo.toml")?;
 
@@ -210,6 +211,8 @@ fn parse_cargo_toml_content(content: &str) -> Result<Vec<DepInfo>> {
 }
 
 fn parse_single_dep(name: &str, value: &toml::Value, section: &str) -> DepInfo {
+    debug_assert!(!name.is_empty(), "name must not be empty");
+    debug_assert!(!section.is_empty(), "section must not be empty");
     match value {
         toml::Value::String(version) => DepInfo {
             name: name.to_string(),
@@ -248,6 +251,7 @@ fn parse_single_dep(name: &str, value: &toml::Value, section: &str) -> DepInfo {
 // ── Version Checking ─────────────────────────────────────────────────────
 
 fn check_latest_version(crate_name: &str) -> Result<Option<String>> {
+    debug_assert!(!crate_name.is_empty(), "crate_name must not be empty");
     let output = std::process::Command::new("cargo")
         .args(["search", crate_name, "--limit", "1"])
         .output()

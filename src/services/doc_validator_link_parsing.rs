@@ -52,6 +52,7 @@ pub fn extract_links(content: &str, source_file: &Path) -> Vec<Link> {
 /// assert_eq!(classify_link("mailto:user@example.com"), LinkType::Email);
 /// ```ignore
 pub fn classify_link(target: &str) -> LinkType {
+    debug_assert!(!target.is_empty(), "target must not be empty");
     if target.starts_with("http://") || target.starts_with("https://") {
         LinkType::ExternalHttp
     } else if target.starts_with('#') {

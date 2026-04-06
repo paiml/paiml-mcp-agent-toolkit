@@ -1148,6 +1148,7 @@ pub(crate) fn check_verification_ratchet(project_path: &Path) -> ComplianceCheck
 /// Handles Rust string forms: "...", '...', r"...", r#"..."#, r##"..."## etc.
 /// Returns (open_count, close_count).
 fn count_braces_outside_literals(line: &str) -> (i64, i64) {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let mut opens = 0i64;
     let mut closes = 0i64;
     let mut in_string = false;
@@ -1217,6 +1218,8 @@ fn count_braces_outside_literals(line: &str) -> (i64, i64) {
 }
 
 fn extract_level(content: &str, field: &str) -> Option<u8> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!field.is_empty(), "field must not be empty");
     for line in content.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with(field) {
@@ -1440,6 +1443,7 @@ fn count_enforcement(dir: &Path, calls: &mut usize, fns: &mut usize) {
 
 /// Count fn definitions and enforcement call sites in source text, skipping test modules.
 fn count_enforcement_in_source(content: &str, calls: &mut usize, fns: &mut usize) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut pending_test = false;
     let mut in_test_module = false;
     let mut brace_depth_at_test = 0i32;
@@ -1467,6 +1471,7 @@ fn count_enforcement_in_source(content: &str, calls: &mut usize, fns: &mut usize
 
 /// Check if a trimmed line is a Rust function definition.
 fn is_fn_definition(t: &str) -> bool {
+    debug_assert!(!t.is_empty(), "t must not be empty");
     const PREFIXES: &[&str] = &[
         "fn ", "pub fn ", "async fn ", "pub async fn ",
         "const fn ", "pub const fn ", "unsafe fn ", "pub unsafe fn ",
@@ -2275,6 +2280,7 @@ struct AgContract {
 
 /// Extract a JSON array of strings from a field.
 fn extract_string_array(v: &serde_json::Value, field: &str) -> Vec<String> {
+    debug_assert!(!field.is_empty(), "field must not be empty");
     v.get(field)
         .and_then(|a| a.as_array())
         .map(|arr| {
@@ -2412,6 +2418,7 @@ fn dfs_cycle_check(
     in_stack: &mut std::collections::HashSet<String>,
     cycles: &mut Vec<String>,
 ) {
+    debug_assert!(!node.is_empty(), "node must not be empty");
     visited.insert(node.to_string());
     in_stack.insert(node.to_string());
 
@@ -3063,6 +3070,7 @@ pub(crate) fn handle_asset_validate(
 /// Escape a string for safe inclusion in YAML double-quoted values.
 /// Handles newlines, quotes, backslashes, and colons.
 fn yaml_escape_string(s: &str) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     s.replace('\\', "\\\\")
         .replace('"', "\\\"")
         .replace('\n', "\\n")

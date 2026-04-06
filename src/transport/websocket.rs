@@ -120,6 +120,7 @@ impl WebSocketTransportAdapter {
     /// # }
     /// ```
     pub async fn serve(addr: &str) -> Result<WebSocketServer, TransportError> {
+        debug_assert!(!addr.is_empty(), "addr must not be empty");
         info!("Starting WebSocket server on {}", addr);
         
         let listener = tokio::net::TcpListener::bind(addr)

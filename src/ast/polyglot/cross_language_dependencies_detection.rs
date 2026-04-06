@@ -122,6 +122,7 @@ impl CrossLanguageDependencies {
         kind: ReferenceKind,
         confidence: f64,
     ) {
+        debug_assert!(confidence >= 0.0, "confidence must be non-negative");
         let dependency = CrossLanguageDependency {
             source_id: source.id.clone(),
             target_id: target.id.clone(),

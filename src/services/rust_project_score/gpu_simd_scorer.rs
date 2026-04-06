@@ -89,6 +89,8 @@ impl GpuSimdScorer {
     }
 
     fn file_has_gpu_simd_indicators(path_str: &str, content: &str) -> bool {
+        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
+        debug_assert!(!content.is_empty(), "content must not be empty");
         const CUDA_EXTENSIONS: &[&str] = &["cu", "cuh", "ptx"];
         // Use concat! to avoid self-matching during CB-021 compliance scanning
         const SIMD_PATTERNS: &[&str] = &[
@@ -155,6 +157,11 @@ impl Scorer for GpuSimdScorer {
         project_path: &Path,
         _mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         self.score_with_cache(project_path, _mode, None)
     }
 
@@ -164,6 +171,11 @@ impl Scorer for GpuSimdScorer {
         _mode: ScoringMode,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Check if project has GPU/SIMD code
         if !self.has_gpu_simd_code(project_path, cache) {
             // N/A: Project doesn't have GPU/SIMD code — excluded from grade

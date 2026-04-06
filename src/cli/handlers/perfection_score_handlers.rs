@@ -162,6 +162,7 @@ fn format_markdown(result: &PerfectionScoreResult, breakdown: bool) -> String {
 }
 
 fn create_progress_bar(current: f64, max: f64, width: usize) -> String {
+    debug_assert!(width > 0, "width must be positive");
     let percentage = (current / max).clamp(0.0, 1.0);
     let filled = (percentage * width as f64) as usize;
     let empty = width - filled;

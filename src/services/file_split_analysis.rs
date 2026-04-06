@@ -37,6 +37,7 @@ fn compute_cohesion(
 
 /// Compute split impact: which files import this module.
 fn compute_impact(index: &AgentContextIndex, file_path: &str) -> SplitImpact {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let mut importing_files = Vec::new();
 
     // Scan for files that reference functions in this file

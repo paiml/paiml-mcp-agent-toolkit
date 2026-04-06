@@ -33,6 +33,7 @@ impl MetricTrendStore {
 
     /// Record new metric observation
     pub fn record(&mut self, metric: &str, value: f64, timestamp: i64) -> Result<()> {
+        debug_assert!(!metric.is_empty(), "metric must not be empty");
         let obs = MetricObservation {
             metric: metric.to_string(),
             value,
@@ -89,6 +90,7 @@ impl MetricTrendStore {
 
     /// Get trend analysis for metric (last N days)
     pub fn trend(&mut self, metric: &str, days: usize) -> Result<TrendAnalysis> {
+        debug_assert!(!metric.is_empty(), "metric must not be empty");
         // Load from disk if not cached
         if !self.cache.contains_key(metric) {
             self.load(metric)?;

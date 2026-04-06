@@ -6,6 +6,7 @@ pub async fn analyze_tdg(
     include_components: Option<bool>,
     with_git_context: Option<bool>, // Sprint 65: Git-commit correlation
 ) -> Result<Value> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::tdg::TdgAnalyzer;
 
     if paths.is_empty() {
@@ -88,6 +89,7 @@ async fn analyze_multiple_tdg_paths(
     analyzer: &crate::tdg::TdgAnalyzer,
     paths: &[PathBuf],
 ) -> Result<Value> {
+    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::tdg::ProjectScore;
     let mut all_scores = Vec::new();
 

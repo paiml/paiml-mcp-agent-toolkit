@@ -121,6 +121,7 @@ fn emit_colon_dot_violations(
     rel: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
+    debug_assert!(!rel.is_empty(), "rel must not be empty");
     for (table_name, (colon_lines, dot_lines)) in table_usage {
         if !colon_lines.is_empty() && !dot_lines.is_empty() {
             let first_line = *colon_lines

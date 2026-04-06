@@ -148,6 +148,7 @@ impl JsonRpcError {
 
     #[must_use]
     pub fn method_not_found(method: &str) -> Self {
+        debug_assert!(!method.is_empty(), "method must not be empty");
         Self {
             code: Self::METHOD_NOT_FOUND,
             message: format!("Method not found: {method}"),

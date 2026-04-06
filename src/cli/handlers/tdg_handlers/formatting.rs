@@ -29,6 +29,7 @@ pub(crate) fn format_tdg_output(
 
 /// Write TDG output to file or stdout (cognitive complexity ≤3)
 pub(crate) fn write_tdg_output(output_str: &str, config: &TdgCommandConfig) -> Result<()> {
+    debug_assert!(!output_str.is_empty(), "output_str must not be empty");
     if let Some(output_path) = &config.output {
         std::fs::write(output_path, output_str)?;
     } else {

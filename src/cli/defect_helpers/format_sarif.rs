@@ -10,6 +10,11 @@ pub fn format_defect_sarif(
     predictions: &[(String, DefectScore)],
     _project_path: &Path,
 ) -> Result<String> {
+    debug_assert!(
+        _project_path.exists(),
+        "_project_path must exist: {}",
+        _project_path.display()
+    );
     let mut results = Vec::new();
 
     for (file, score) in predictions {

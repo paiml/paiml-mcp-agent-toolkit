@@ -78,6 +78,7 @@ impl VariableInspectorView {
 
     /// Set viewport height
     pub fn set_viewport_height(&mut self, height: usize) {
+        debug_assert!(height > 0, "height must be positive");
         self.viewport_height = height;
     }
 

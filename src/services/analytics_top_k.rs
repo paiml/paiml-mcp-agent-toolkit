@@ -72,6 +72,7 @@ where
     /// let selector = TopKSelector::<u32>::new(10);
     /// ```
     pub fn new(k: usize) -> Self {
+        debug_assert!(k > 0, "k must be positive");
         assert!(k > 0, "k must be greater than 0");
         Self {
             k,
@@ -108,6 +109,7 @@ where
     /// assert_eq!(result, vec![9, 8, 7]);
     /// ```
     pub fn select(&self, data: &[T]) -> Vec<T> {
+        debug_assert!(!data.is_empty(), "data must not be empty");
         if data.is_empty() {
             return Vec::new();
         }
@@ -186,6 +188,8 @@ where
 /// assert_eq!(top_10[0], 99_999);
 /// ```
 pub fn select_top_k(data: &[i64], k: usize) -> Result<Vec<i64>, Box<dyn std::error::Error>> {
+    debug_assert!(k > 0, "k must be positive");
+    debug_assert!(!data.is_empty(), "data must not be empty");
     const ARROW_THRESHOLD: usize = 10_000;
 
     if data.len() < ARROW_THRESHOLD {
@@ -227,6 +231,8 @@ pub fn select_top_k(data: &[i64], k: usize) -> Result<Vec<i64>, Box<dyn std::err
 /// Returns error if Arrow conversion fails
 #[cfg(feature = "analytics-simd")]
 pub fn select_top_k_arrow(data: &[i64], k: usize) -> Result<Vec<i64>, Box<dyn std::error::Error>> {
+    debug_assert!(k > 0, "k must be positive");
+    debug_assert!(!data.is_empty(), "data must not be empty");
     use arrow::array::{Int64Array, RecordBatch};
     use arrow::datatypes::{DataType, Field, Schema};
     use std::sync::Arc;

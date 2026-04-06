@@ -61,6 +61,7 @@ impl RoadmapService {
 
     /// Parse YAML with enhanced error reporting
     fn parse_roadmap_yaml(&self, contents: &str) -> Result<Roadmap> {
+        debug_assert!(!contents.is_empty(), "contents must not be empty");
         serde_yaml_ng::from_str(contents).map_err(|e| {
             // Extract line/column info if available
             let location_info = if let Some(location) = e.location() {

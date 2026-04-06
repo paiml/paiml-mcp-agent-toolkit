@@ -63,6 +63,7 @@ pub fn detect_cb608_unchecked_nil_err(project_path: &Path) -> Vec<CbPatternViola
 
 /// Check if a line calls a known nil-returning function and return which one.
 fn calls_nil_err_function(line: &str) -> Option<&'static str> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     for &func in NIL_ERR_FUNCTIONS {
         let call = format!("{func}(");
         if line.contains(&call) {
@@ -74,6 +75,7 @@ fn calls_nil_err_function(line: &str) -> Option<&'static str> {
 
 /// Check if a line captures both return values (e.g., `local ok, err = ...`).
 fn captures_error_return(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     // Pattern: `local x, y = ...` or `x, y = ...`
     let trimmed = line.trim_start_matches("local ");
     if let Some(eq_pos) = trimmed.find('=') {
@@ -140,6 +142,7 @@ pub fn detect_cb609_assert_in_library(project_path: &Path) -> Vec<CbPatternViola
 
 /// Check if line contains an assert() call (not assert.xxx from test frameworks).
 fn is_assert_call(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     if let Some(pos) = line.find("assert(") {
         // Exclude `assert.is_true(` etc. (test framework methods)
         if pos > 0 && line.as_bytes()[pos - 1] == b'.' {
@@ -217,6 +220,7 @@ pub fn detect_cb610_string_accumulator_in_loop(project_path: &Path) -> Vec<CbPat
 
 /// Check if a line is a string accumulator pattern: `var = var .. expr`.
 fn is_string_accumulator(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     // Match `x = x .. y` pattern
     if let Some(eq_pos) = line.find('=') {
         // Skip `==` comparisons

@@ -91,6 +91,7 @@ quality:
 }
 
 fn generate_claude_md(project_name: &str) -> String {
+    debug_assert!(!project_name.is_empty(), "project_name must not be empty");
     format!(
         r#"# Claude Code Configuration for {project_name}
 

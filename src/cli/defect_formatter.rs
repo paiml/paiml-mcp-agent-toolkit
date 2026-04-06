@@ -61,6 +61,8 @@ impl FullReportFormatter {
         count: usize,
         total: f32,
     ) -> Result<()> {
+        debug_assert!(!level.is_empty(), "level must not be empty");
+        debug_assert!(count > 0, "count must be positive");
         let percentage = (count as f32 / total) * 100.0;
         writeln!(output, "- {level} risk files: {count} ({percentage:.1}%)")?;
         Ok(())
@@ -229,6 +231,7 @@ impl DefectFormatterFactory {
     /// Create a formatter for the given output format
     #[must_use]
     pub fn create(format: &str) -> Box<dyn DefectReportFormatter> {
+        debug_assert!(!format.is_empty(), "format must not be empty");
         match format {
             "sarif" => Box::new(SarifFormatter),
             "csv" => Box::new(CsvFormatter),
@@ -243,6 +246,7 @@ pub fn format_defect_report(
     format: &str,
     top_files: usize,
 ) -> Result<String> {
+    debug_assert!(!format.is_empty(), "format must not be empty");
     let formatter = DefectFormatterFactory::create(format);
     formatter.format(report, top_files)
 }

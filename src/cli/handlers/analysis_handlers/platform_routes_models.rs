@@ -101,6 +101,7 @@ fn format_size(bytes: u64) -> String {
 }
 
 fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64) {
+    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let has_lfs = entries.iter().any(|e| e.lfs_tracked);
     let width = if has_lfs { 78 } else { 72 };
 
@@ -146,6 +147,7 @@ fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64)
 }
 
 fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) -> Result<()> {
+    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let json_entries: Vec<serde_json::Value> = entries
         .iter()
         .map(|e| {
@@ -194,6 +196,7 @@ fn detect_lfs_patterns(project_path: &std::path::Path) -> Vec<String> {
 
 /// Check if a filename matches any LFS glob pattern
 fn is_lfs_tracked(filename: &str, lfs_patterns: &[String]) -> bool {
+    debug_assert!(!filename.is_empty(), "filename must not be empty");
     for pattern in lfs_patterns {
         // Simple glob matching: *.ext
         if let Some(ext_pattern) = pattern.strip_prefix("*.") {

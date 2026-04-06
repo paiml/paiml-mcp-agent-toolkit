@@ -23,6 +23,7 @@ fn format_tdg_single_file_output(
     include_components: bool,
     verbose: bool,
 ) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::tdg::{TDGHotspot, TDGSeverity, TDGSummary};
 
     // Create a single-file summary

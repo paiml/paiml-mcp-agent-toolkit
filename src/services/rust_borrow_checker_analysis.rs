@@ -11,6 +11,7 @@ impl RustBorrowChecker {
 
     #[cfg(not(feature = "rust-ast"))]
     fn contains_unsafe(&self, _content: &str) -> bool {
+        debug_assert!(!_content.is_empty(), "_content must not be empty");
         // Without syn, do a simple text search
         _content.contains("unsafe")
     }
@@ -112,6 +113,7 @@ impl RustBorrowChecker {
         &self,
         file_path: &Path,
     ) -> Result<Vec<(Location, ProofAnnotation)>, ProofCollectionError> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let content = std::fs::read_to_string(file_path).map_err(ProofCollectionError::Io)?;
 
         let syntax = syn::parse_file(&content).map_err(|e| ProofCollectionError::Parse {
@@ -178,6 +180,7 @@ impl RustBorrowChecker {
         &self,
         file_path: &Path,
     ) -> Result<Vec<(Location, ProofAnnotation)>, ProofCollectionError> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let content = std::fs::read_to_string(file_path).map_err(ProofCollectionError::Io)?;
 
         let mut annotations = Vec::new();

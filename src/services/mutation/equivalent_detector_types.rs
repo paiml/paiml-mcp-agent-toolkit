@@ -26,6 +26,7 @@ pub struct EquivalenceFeatures {
 impl EquivalenceFeatures {
     /// Extract features from mutant and original source pair
     pub fn from_mutant_pair(mutant: &Mutant, original: &str) -> Self {
+        debug_assert!(!original.is_empty(), "original must not be empty");
         let mutated = &mutant.mutated_source;
 
         // Simple pattern detection (Phase 1)

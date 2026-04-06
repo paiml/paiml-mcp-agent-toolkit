@@ -26,6 +26,7 @@ fn get_relative_path(path: &Path, project_path: &Path) -> String {
 }
 
 fn calculate_cyclomatic_complexity(content: &str) -> u32 {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let control_flow_keywords = ["if", "else", "for", "while", "match", "loop", "?"];
     control_flow_keywords
         .iter()
@@ -39,6 +40,7 @@ fn calculate_cognitive_complexity(cyclomatic_complexity: u32) -> u32 {
 }
 
 fn calculate_duplicate_ratio(lines: &[&str]) -> f32 {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut line_counts = std::collections::HashMap::new();
     let mut duplicate_lines = 0;
 
@@ -65,6 +67,7 @@ fn calculate_duplicate_ratio(lines: &[&str]) -> f32 {
 }
 
 fn calculate_efferent_coupling(content: &str) -> f32 {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .filter(|line| line.trim().starts_with("use "))
@@ -72,6 +75,7 @@ fn calculate_efferent_coupling(content: &str) -> f32 {
 }
 
 fn is_public_declaration(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim();
     trimmed.starts_with("pub fn")
         || trimmed.starts_with("pub struct")
@@ -81,6 +85,7 @@ fn is_public_declaration(line: &str) -> bool {
 }
 
 fn calculate_afferent_coupling(content: &str) -> f32 {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .filter(|line| is_public_declaration(line))
@@ -387,6 +392,7 @@ fn build_dead_code_response(
     content_text: String,
     result: &crate::models::dead_code::DeadCodeRankingResult,
 ) -> serde_json::Value {
+    debug_assert!(!format.is_empty(), "format must not be empty");
     json!({
         "content": [{
             "type": "text",
@@ -406,6 +412,7 @@ fn format_dead_code_output(
     result: &crate::models::dead_code::DeadCodeRankingResult,
     format: &str,
 ) -> anyhow::Result<String> {
+    debug_assert!(!format.is_empty(), "format must not be empty");
     use crate::cli::DeadCodeOutputFormat;
 
     let output_format = match format {

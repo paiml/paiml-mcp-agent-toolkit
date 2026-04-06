@@ -206,6 +206,7 @@ fn check_reusable_workflow(workflows: &[(String, String)]) -> InfraCheck {
 
 /// WA-02: Check for self-hosted runners
 fn check_self_hosted(content: &str) -> InfraCheck {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
         let trimmed = line.trim().to_lowercase();
         if trimmed.contains("runs-on") && trimmed.contains("self-hosted") {
@@ -227,6 +228,7 @@ fn check_self_hosted(content: &str) -> InfraCheck {
 
 /// WA-03: Check for workflow_dispatch trigger
 fn check_workflow_dispatch(content: &str) -> InfraCheck {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with("workflow_dispatch") {
@@ -248,6 +250,7 @@ fn check_workflow_dispatch(content: &str) -> InfraCheck {
 
 /// WA-04: Check for concurrency with cancel-in-progress
 fn check_concurrency(content: &str) -> InfraCheck {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let has_concurrency = content
         .lines()
         .any(|l| l.trim().starts_with("concurrency:") || l.trim() == "concurrency:");
@@ -275,6 +278,7 @@ fn check_concurrency(content: &str) -> InfraCheck {
 
 /// WA-05: Check for gate/aggregation job with if: always()
 fn check_gate_job(content: &str) -> InfraCheck {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let has_always = content.lines().any(|l| {
         let t = l.trim();
         t.contains("if:") && t.contains("always()")
@@ -354,6 +358,7 @@ fn check_branch_protection(repo_path: &Path) -> InfraCheck {
 
 /// WA-07: Check for required status check patterns (needs: [...])
 fn check_required_status_checks(content: &str) -> InfraCheck {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let has_needs = content.lines().any(|l| {
         let t = l.trim();
         t.starts_with("needs:") || t.starts_with("needs: [")

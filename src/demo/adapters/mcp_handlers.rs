@@ -202,6 +202,7 @@ impl McpDemoAdapter {
     }
 
     async fn execute_context_analysis(&self, path: &str) -> Result<Value, McpDemoError> {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         use crate::services::deep_context::{AnalysisType, DeepContextAnalyzer, DeepContextConfig};
         use std::path::PathBuf;
 

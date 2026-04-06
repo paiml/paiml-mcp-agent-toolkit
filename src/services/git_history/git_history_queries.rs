@@ -33,6 +33,7 @@ impl GitHistoryIndex {
 
     /// Set last indexed commit hash
     pub fn set_last_indexed_commit(&self, commit_hash: &str) -> Result<(), GitHistoryError> {
+        debug_assert!(!commit_hash.is_empty(), "commit_hash must not be empty");
         self.conn.execute(
             "INSERT OR REPLACE INTO git_metadata (key, value) VALUES ('last_indexed_commit', ?1)",
             [commit_hash],
@@ -76,6 +77,7 @@ impl GitHistoryIndex {
 
     /// Check if a commit exists in the index
     pub fn commit_exists(&self, commit_hash: &str) -> Result<bool, GitHistoryError> {
+        debug_assert!(!commit_hash.is_empty(), "commit_hash must not be empty");
         let count: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM git_commits WHERE commit_hash = ?1",
             [commit_hash],

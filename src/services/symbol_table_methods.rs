@@ -138,6 +138,8 @@ impl SymbolTable {
         module: Option<&str>,
         name: &str,
     ) -> Option<QualifiedName> {
+        debug_assert!(file.exists(), "file must exist: {}", file.display());
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let module_path = match module {
             Some(explicit_module) => self.parse_explicit_module(explicit_module),
             None => self.infer_module_from_file_path(file),

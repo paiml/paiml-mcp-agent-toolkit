@@ -40,6 +40,8 @@ pub(crate) fn is_generic_callee(name: &str) -> bool {
 /// Used to exclude test code from the index at build time, reducing index size
 /// by 25-70% for test-heavy repos.
 pub(crate) fn is_test_chunk(chunk_name: &str, file_path: &str) -> bool {
+    debug_assert!(!chunk_name.is_empty(), "chunk_name must not be empty");
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     // File-level: skip test directories and test file suffixes
     if file_path.contains("/tests/")
         || file_path.contains("/test/")
@@ -87,6 +89,7 @@ fn record_call_edges_from_source(
     called_by: &mut HashMap<usize, Vec<usize>>,
     seen: &mut std::collections::HashSet<usize>,
 ) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     for ident in source.split(|c: char| !c.is_alphanumeric() && c != '_') {
         if ident.len() < 3 || is_keyword(ident) || is_generic_callee(ident) {
             continue;
@@ -113,6 +116,7 @@ pub(crate) fn build_call_graph(
     functions: &[FunctionEntry],
     name_index: &HashMap<String, Vec<usize>>,
 ) -> (HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>) {
+    debug_assert!(!functions.is_empty(), "functions must not be empty");
     let capacity = functions.len() / 2;
     let mut calls: HashMap<usize, Vec<usize>> = HashMap::with_capacity(capacity);
     let mut called_by: HashMap<usize, Vec<usize>> = HashMap::with_capacity(capacity);

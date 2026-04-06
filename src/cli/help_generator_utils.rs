@@ -3,6 +3,8 @@
 
 /// Simple Levenshtein distance for command suggestions
 fn levenshtein(a: &str, b: &str) -> usize {
+    debug_assert!(!a.is_empty(), "a must not be empty");
+    debug_assert!(!b.is_empty(), "b must not be empty");
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
     let a_len = a_chars.len();
@@ -43,5 +45,6 @@ fn levenshtein(a: &str, b: &str) -> usize {
 
 /// Truncate string to max length with ellipsis
 fn truncate_str(s: &str, max_len: usize) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     batuta_common::display::truncate_str(s, max_len)
 }

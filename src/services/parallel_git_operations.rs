@@ -189,6 +189,7 @@ impl ParallelGitExecutor {
 
     /// Parse commit log output
     fn parse_commit_log(output: &str) -> Vec<CommitInfo> {
+        debug_assert!(!output.is_empty(), "output must not be empty");
         output
             .lines()
             .filter_map(|line| {

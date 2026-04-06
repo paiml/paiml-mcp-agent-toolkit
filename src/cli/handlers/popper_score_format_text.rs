@@ -10,6 +10,7 @@ fn format_text_category(
     verbose: bool,
     failures_only: bool,
 ) {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     use crate::cli::colors as c;
 
     if category.is_not_applicable {

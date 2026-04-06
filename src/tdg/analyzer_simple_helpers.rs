@@ -3,6 +3,7 @@
 
 impl TdgAnalyzer {
     fn estimate_cyclomatic_complexity(&self, lines: &[&str]) -> u32 {
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         let mut complexity = 1;
 
         for line in lines {
@@ -15,6 +16,7 @@ impl TdgAnalyzer {
     }
 
     fn estimate_nesting_depth(&self, source: &str) -> usize {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut max_depth = 0;
         let mut current_depth = 0;
 
@@ -33,6 +35,7 @@ impl TdgAnalyzer {
     }
 
     fn estimate_duplication_ratio(&self, source: &str) -> f32 {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source
             .lines()
             .map(str::trim)
@@ -142,6 +145,7 @@ impl TdgAnalyzer {
 /// Skips line comments (`--`) and nested block comments (`/- ... -/`).
 /// Uses word-boundary checking to avoid false positives from identifiers.
 fn count_lean_sorry(source: &str) -> usize {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut count = 0;
     let mut in_block_comment: i32 = 0;
 
@@ -172,6 +176,7 @@ fn count_lean_sorry(source: &str) -> usize {
 
 /// Strips Lean block comment content (`/- ... -/`) from a line.
 fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let mut result = String::with_capacity(line.len());
     let mut i = 0;
@@ -198,6 +203,7 @@ fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
 
 /// Checks if a line contains "sorry" as a standalone word.
 fn contains_lean_sorry_word(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let sorry = b"sorry";
 
@@ -223,6 +229,7 @@ fn contains_lean_sorry_word(line: &str) -> bool {
 
 /// Count control flow keywords in a single trimmed line.
 fn count_control_flow_keywords(trimmed: &str) -> u32 {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let mut count = 0;
     if trimmed.starts_with("if ") || trimmed.contains(" if ") {
         count += 1;
@@ -241,6 +248,7 @@ fn count_control_flow_keywords(trimmed: &str) -> u32 {
 
 /// Count logical operators (&& and ||) in a single trimmed line.
 fn count_logical_operators(trimmed: &str) -> u32 {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     if trimmed.contains(" && ") || trimmed.contains(" || ") {
         trimmed.matches(" && ").count() as u32 + trimmed.matches(" || ").count() as u32
     } else {

@@ -10,6 +10,7 @@ pub struct CAnalyzer;
 
 impl LanguageAnalyzer for CAnalyzer {
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
 
@@ -38,6 +39,7 @@ impl LanguageAnalyzer for CAnalyzer {
     }
 
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let function_lines = &lines[function.line_start..=function.line_end];
 
@@ -54,6 +56,7 @@ impl CAnalyzer {
     ///          static void* malloc(size_t size) {
     ///          extern inline char get_char(void) {
     fn is_function_declaration(&self, line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Must contain both '(' and '{'
         if !line.contains('(') || !line.contains('{') {
             return false;
@@ -91,6 +94,7 @@ impl CAnalyzer {
     ///         static void* malloc(size_t size) {
     ///         extern inline char get_char(void) {
     fn extract_function_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Remove storage class specifiers
         let mut cleaned = line.to_string();
         for keyword in &["static ", "extern ", "inline ", "__inline__ "] {
@@ -131,6 +135,7 @@ impl CAnalyzer {
 
     /// Check if string is a valid C identifier
     fn is_valid_identifier(&self, s: &str) -> bool {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         if s.is_empty() {
             return false;
         }
@@ -145,6 +150,7 @@ impl CAnalyzer {
 
     /// Find the closing brace of a function
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         find_brace_balanced_end(lines, start, false)
     }
 }

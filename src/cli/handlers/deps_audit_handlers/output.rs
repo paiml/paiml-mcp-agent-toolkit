@@ -5,6 +5,7 @@ use crate::cli::colors;
 
 /// Print Pareto analysis report
 pub fn print_pareto_report(entries: &[ParetoEntry]) {
+    debug_assert!(!entries.is_empty(), "entries must not be empty");
     println!("{}", colors::rule());
     println!(
         "{}📊  Pareto Analysis: 80/20 Dependency Removal{}",

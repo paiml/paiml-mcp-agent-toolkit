@@ -177,6 +177,7 @@ impl UnifiedNode {
 
     /// Check if this node has a specific modifier
     pub fn has_modifier(&self, modifier: &str) -> bool {
+        debug_assert!(!modifier.is_empty(), "modifier must not be empty");
         self.attributes
             .contains_key(&format!("modifier:{}", modifier))
     }

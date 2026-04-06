@@ -60,6 +60,7 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze function complexity
     fn analyze_function(&mut self, name: &str, body: &RuchyAst, line_start: u32, line_end: u32) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.defined_functions.insert(name.to_string());
         self.track_operator("fun");
         self.track_operand(name);
@@ -223,6 +224,8 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze import statement
     fn analyze_import(&mut self, module: &str, items: &[String], line: u32) {
+        debug_assert!(!module.is_empty(), "module must not be empty");
+        debug_assert!(!items.is_empty(), "items must not be empty");
         self.imports.push(RuchyImport {
             module: module.to_string(),
             items: items.to_vec(),
@@ -234,6 +237,7 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze export statement
     fn analyze_export(&mut self, items: &[String]) {
+        debug_assert!(!items.is_empty(), "items must not be empty");
         for item in items {
             self.exports.insert(item.clone());
         }
@@ -249,6 +253,7 @@ impl RuchyComplexityAnalyzer {
         line_start: u32,
         line_end: u32,
     ) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.track_operator("actor");
         self.track_operand(name);
 

@@ -149,6 +149,7 @@ async fn handle_processing_modes(
     backup: bool,
     backup_dir: &Path,
 ) -> Result<RefactorDocsResult> {
+    debug_assert!(backup_dir.exists(), "backup_dir must exist: {}", backup_dir.display());
     result = handle_interactive_processing(result, format, dry_run, auto_remove).await?;
     handle_backup_processing(&result, backup, dry_run, auto_remove, backup_dir).await?;
     handle_file_removal_processing(&result, dry_run, auto_remove, format).await?;
@@ -186,6 +187,7 @@ async fn handle_backup_processing(
     auto_remove: bool,
     backup_dir: &Path,
 ) -> Result<()> {
+    debug_assert!(backup_dir.exists(), "backup_dir must exist: {}", backup_dir.display());
     if should_create_backup(backup, dry_run, &result.cruft_files, auto_remove) {
         create_backup(&result.cruft_files, backup_dir).await?;
     }

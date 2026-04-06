@@ -17,12 +17,14 @@ impl SimpleProgressStyle {
 
     /// Set template (no-op)
     pub fn template(self, _template: &str) -> Result<Self, std::convert::Infallible> {
+        debug_assert!(!_template.is_empty(), "_template must not be empty");
         Ok(self)
     }
 
     /// Set tick characters (no-op) - compat with indicatif tick_chars()
     #[must_use]
     pub fn tick_chars(self, _chars: &str) -> Self {
+        debug_assert!(!_chars.is_empty(), "_chars must not be empty");
         self
     }
 
@@ -35,6 +37,7 @@ impl SimpleProgressStyle {
     /// Set progress characters (no-op)
     #[must_use]
     pub fn progress_chars(self, _chars: &str) -> Self {
+        debug_assert!(!_chars.is_empty(), "_chars must not be empty");
         self
     }
 }
@@ -139,6 +142,7 @@ impl FileClassificationReporter {
         path: &std::path::Path,
         reason: crate::services::file_classifier::SkipReason,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::file_classifier::SkipReason;
 
         self.skipped_count.fetch_add(1, Ordering::Relaxed);

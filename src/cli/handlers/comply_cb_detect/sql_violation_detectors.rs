@@ -131,6 +131,7 @@ pub fn detect_cb701_missing_where(project_path: &Path) -> Vec<CbPatternViolation
 
 /// Check if a FROM clause has comma-separated tables (implicit join).
 fn has_implicit_join(lower: &str) -> bool {
+    debug_assert!(!lower.is_empty(), "lower must not be empty");
     let from_pos = match lower.find("from ") {
         Some(p) => p,
         None => return false,
@@ -340,6 +341,8 @@ pub fn detect_cb705_n_plus_1_query(project_path: &Path) -> Vec<CbPatternViolatio
 }
 
 fn detect_n_plus_1_in_content(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!rel.is_empty(), "rel must not be empty");
     let mut in_loop = false;
     let mut loop_depth: i32 = 0;
 

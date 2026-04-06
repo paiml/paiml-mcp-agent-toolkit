@@ -187,6 +187,7 @@ impl GpuDevice {
 
     /// Compute sum of f64 array using GPU
     pub fn compute_sum(&self, data: &[f64]) -> Result<f64> {
+        debug_assert!(!data.is_empty(), "data must not be empty");
         // For small datasets, GPU overhead isn't worth it
         if data.len() < 10_000 {
             return Ok(data.iter().sum());

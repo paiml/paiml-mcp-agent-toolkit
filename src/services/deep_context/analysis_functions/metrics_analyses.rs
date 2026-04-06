@@ -125,6 +125,7 @@ fn process_file_for_duplicate_detection(
 fn match_extension_to_language(
     ext: &str,
 ) -> anyhow::Result<Option<crate::services::duplicate_detector::Language>> {
+    debug_assert!(!ext.is_empty(), "ext must not be empty");
     use crate::services::duplicate_detector::Language;
 
     Ok(match ext {

@@ -13,6 +13,7 @@ impl LanguageAdapter for RustAdapter {
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse Rust source"))
     }
@@ -45,6 +46,7 @@ impl LanguageAdapter for PythonAdapter {
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse Python source"))
     }
@@ -77,6 +79,7 @@ impl LanguageAdapter for JavaScriptAdapter {
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse JavaScript source"))
     }
@@ -109,6 +112,7 @@ impl LanguageAdapter for TypeScriptAdapter {
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse TypeScript source"))
     }
@@ -141,6 +145,7 @@ impl LanguageAdapter for GoAdapter {
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse Go source"))
     }
@@ -173,6 +178,7 @@ impl LanguageAdapter for LuaAdapter {
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse Lua source"))
     }

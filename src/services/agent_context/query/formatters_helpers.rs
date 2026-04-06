@@ -90,6 +90,7 @@ fn format_coverage_diff_text(diff: f32, out: &mut String) {
 
 #[allow(clippy::incompatible_msrv)]
 fn truncate_doc(doc: &str) -> String {
+    debug_assert!(!doc.is_empty(), "doc must not be empty");
     let first_line = doc.lines().next().unwrap_or(doc);
     if first_line.len() > 100 {
         format!(
@@ -279,6 +280,7 @@ fn format_fault_lines(faults: &[String], output: &mut String) {
 /// For literal mode (`is_regex=false`), does case-insensitive substring matching.
 /// For regex mode (`is_regex=true`), uses regex pattern matching.
 fn highlight_matches_in_line(line: &str, pattern: &str, is_regex: bool) -> String {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     const HL_START: &str = "\x1b[1;43m"; // Bold + yellow background
     const HL_END: &str = "\x1b[0m";
 
@@ -334,6 +336,8 @@ fn highlight_source(
     start_line: usize,
     highlight: Option<(&str, bool)>,
 ) {
+    debug_assert!(!source.is_empty(), "source must not be empty");
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     if let Some((pattern, is_regex)) = highlight {
         // Match highlighting mode: line numbers + yellow highlight on matches
         for (i, line) in source.lines().enumerate() {

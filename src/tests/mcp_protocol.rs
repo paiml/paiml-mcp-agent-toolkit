@@ -10,6 +10,7 @@ fn create_test_server() -> Arc<StatelessTemplateServer> {
 }
 
 fn create_request(method: &str, params: Option<Value>) -> McpRequest {
+    debug_assert!(!method.is_empty(), "method must not be empty");
     McpRequest {
         jsonrpc: "2.0".to_string(),
         id: json!(1),

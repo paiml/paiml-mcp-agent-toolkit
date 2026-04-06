@@ -168,6 +168,7 @@ async fn show_system_telemetry() -> Result<()> {
 
 /// Show telemetry data for a specific service
 async fn show_service_telemetry(service_name: &str) -> Result<()> {
+    debug_assert!(!service_name.is_empty(), "service_name must not be empty");
     info!(service = %service_name, "Generating service telemetry report");
 
     let telemetry_service = telemetry();

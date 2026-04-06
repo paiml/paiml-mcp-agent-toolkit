@@ -109,6 +109,8 @@ fn filter_and_sort_hotspots(
     critical_only: bool,
     top: usize,
 ) -> Vec<crate::models::tdg::TDGHotspot> {
+    debug_assert!(top > 0, "top must be positive");
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let mut filtered_hotspots: Vec<_> = summary.hotspots.iter()
         .filter(|h| {
             if critical_only {
@@ -136,6 +138,7 @@ fn generate_output_content(
     include_components: bool,
     verbose: bool,
 ) -> Result<String> {
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     match format {
         TdgOutputFormat::Table => {
             let mut table = String::new();
@@ -309,6 +312,7 @@ fn generate_output_content(
 
 /// Handle output - write to file or print to stdout
 async fn handle_output(output: Option<PathBuf>, output_content: &str) -> Result<()> {
+    debug_assert!(!output_content.is_empty(), "output_content must not be empty");
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, output_content).await?;
         eprintln!("📝 Results written to {}", output_path.display());

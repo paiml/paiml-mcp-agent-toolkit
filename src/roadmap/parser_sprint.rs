@@ -7,6 +7,7 @@ fn parse_sprint_section(
     captures: &regex::Captures,
     parsers: &Parsers,
 ) -> Result<(Sprint, String, usize)> {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let version = captures
         .get(1)
         .expect("internal error")
@@ -26,6 +27,7 @@ fn parse_sprint_section(
 
 /// Create initial sprint structure with defaults (cognitive complexity <=2)
 fn create_initial_sprint(version: &str, title: &str) -> Sprint {
+    debug_assert!(!version.is_empty(), "version must not be empty");
     Sprint {
         version: version.to_string(),
         title: title.to_string(),
@@ -45,6 +47,7 @@ fn parse_sprint_content(
     sprint: &mut Sprint,
     parsers: &Parsers,
 ) -> Result<usize> {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut i = start_idx + 1;
 
     while i < lines.len() {
@@ -67,6 +70,7 @@ fn process_sprint_line(
     sprint: &mut Sprint,
     parsers: &Parsers,
 ) -> Result<usize> {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let line = lines[current_idx];
 
     if line.contains("**Duration**:") {
@@ -91,11 +95,13 @@ fn process_sprint_line(
 
 /// Check if line indicates start of next section (cognitive complexity <=1)
 fn is_next_section_start(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     line.starts_with("## ") && line.contains("Sprint:")
 }
 
 /// Process duration line and update sprint dates (cognitive complexity <=2)
 fn process_duration_line(line: &str, sprint: &mut Sprint) {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     if let Some(duration) = parse_duration(line) {
         sprint.start_date = duration.0;
         sprint.end_date = duration.1;
@@ -104,6 +110,7 @@ fn process_duration_line(line: &str, sprint: &mut Sprint) {
 
 /// Process priority line and update sprint priority (cognitive complexity <=2)
 fn process_priority_line(line: &str, sprint: &mut Sprint) {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     if let Some(priority) = parse_priority(line) {
         sprint.priority = priority;
     }
@@ -111,6 +118,7 @@ fn process_priority_line(line: &str, sprint: &mut Sprint) {
 
 /// Parse tasks table
 fn parse_tasks_table(lines: &[&str], task_regex: &Regex) -> Result<(Vec<Task>, usize)> {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut tasks = Vec::new();
     let mut i = 2; // Skip header and separator
 
@@ -126,6 +134,7 @@ fn parse_tasks_table(lines: &[&str], task_regex: &Regex) -> Result<(Vec<Task>, u
 
 /// Parse definition of done section
 fn parse_definition_of_done(lines: &[&str], done_regex: &Regex) -> Result<(Vec<String>, usize)> {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut items = Vec::new();
     let mut i = 1;
 
@@ -151,6 +160,7 @@ fn parse_backlog_section(
     start_idx: usize,
     task_regex: &Regex,
 ) -> Result<(Vec<Task>, usize)> {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut i = start_idx + 1;
 
     // Skip to table content

@@ -129,6 +129,7 @@ impl CoverageImprovementService {
     ///
     /// We extract the last percentage before the dash (line coverage)
     pub(crate) fn parse_coverage_percentage(output: &str) -> Result<f64> {
+        debug_assert!(!output.is_empty(), "output must not be empty");
         for line in output.lines() {
             if line.trim().starts_with("TOTAL") {
                 // Split by whitespace and find all percentages

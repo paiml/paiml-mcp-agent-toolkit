@@ -18,12 +18,14 @@ impl DapServer {
 
     /// Check if AST is cached for a given file path
     pub fn has_ast_for(&self, path: &str) -> bool {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         let cache = self.ast_cache.lock().expect("Mutex should not be poisoned");
         cache.contains_key(Path::new(path))
     }
 
     /// Get variables at a specific line in a file using VariableInspector
     pub fn get_variables_at_line(&self, path: &str, line: usize) -> Result<Vec<Variable>, String> {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         // Read file contents
         let source = std::fs::read_to_string(path)
             .map_err(|e| format!("Failed to read file {}: {}", path, e))?;
@@ -49,6 +51,7 @@ impl DapServer {
 
     /// Simulate stopping at a specific line (for testing)
     pub fn simulate_stop_at_line(&mut self, path: &str, line: usize) {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         let mut stopped_file = self
             .current_stopped_file
             .lock()

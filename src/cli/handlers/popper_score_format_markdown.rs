@@ -13,6 +13,7 @@ fn format_markdown_category_row(
     category: &crate::services::popper_score::PopperCategoryScore,
     is_gateway: bool,
 ) {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     if category.is_not_applicable {
         output.push_str(&format!("| {} | N/A | N/A | ⚪ N/A |\n", name));
         return;

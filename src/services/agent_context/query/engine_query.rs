@@ -215,6 +215,7 @@ impl AgentContextIndex {
 
     /// Browse all functions sorted by PageRank (for enrichment-only queries).
     fn browse_all(&self, limit: usize, options: &QueryOptions) -> Vec<QueryResult> {
+        debug_assert!(limit > 0, "limit must be positive");
         let mut indexed: Vec<(usize, f32)> = self
             .graph_metrics
             .iter()

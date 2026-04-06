@@ -44,6 +44,8 @@ pub fn detect_bricks_without_assertions(project_path: &Path) -> Vec<CbPatternVio
 
 /// Check a single line for high coefficient of variation (CV > 15%) anomaly.
 fn check_cv_anomaly(line: &str, content: &str) -> Option<ProfilerAnomaly> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
+    debug_assert!(!content.is_empty(), "content must not be empty");
     if !line.contains("\"cv\"") && !line.contains("\"cv_percent\"") {
         return None;
     }
@@ -64,6 +66,8 @@ fn check_cv_anomaly(line: &str, content: &str) -> Option<ProfilerAnomaly> {
 
 /// Check a single line for low efficiency (< 25%) anomaly.
 fn check_efficiency_anomaly(line: &str, content: &str) -> Option<ProfilerAnomaly> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
+    debug_assert!(!content.is_empty(), "content must not be empty");
     if !line.contains("\"efficiency\"") {
         return None;
     }
@@ -84,6 +88,7 @@ fn check_efficiency_anomaly(line: &str, content: &str) -> Option<ProfilerAnomaly
 
 /// Scan profiler file content for CV and efficiency anomalies.
 fn check_profiler_file(content: &str) -> Vec<ProfilerAnomaly> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut anomalies = Vec::new();
     for line in content.lines() {
         let trimmed = line.trim();
@@ -124,6 +129,7 @@ pub fn detect_profiler_anomalies(project_path: &Path) -> Vec<ProfilerAnomaly> {
 
 /// Helper to extract numeric value from JSON line like `"cv": 0.18,`
 pub fn extract_json_number(line: &str) -> Option<f64> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     line.split(':')
         .nth(1)?
         .trim()

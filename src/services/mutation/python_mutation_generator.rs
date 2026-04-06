@@ -48,6 +48,7 @@ impl PythonMutationGenerator {
 
     /// Parse Python source using tree-sitter
     fn parse_python(&self, source: &str) -> Result<Tree> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_python::LANGUAGE.into())
@@ -60,6 +61,7 @@ impl PythonMutationGenerator {
 
     /// Recursively visit AST nodes and apply mutation operators
     fn visit_node(&self, node: &Node, source: &[u8], mutants: &mut Vec<Mutant>, file_path: &str) {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         // Apply all operators to current node
         for operator in &self.operators {
             if operator.can_mutate(node, source) {
@@ -95,6 +97,7 @@ impl PythonMutationGenerator {
 
 /// Helper to map operator name to MutationOperatorType enum
 fn map_operator_name_to_type(name: &str) -> MutationOperatorType {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     match name {
         "PythonBinaryOp" => MutationOperatorType::ArithmeticReplacement,
         "PythonRelationalOp" => MutationOperatorType::RelationalReplacement,

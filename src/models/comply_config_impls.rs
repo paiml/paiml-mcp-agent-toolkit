@@ -101,11 +101,13 @@ impl PmatYamlConfig {
 impl ComplyConfig {
     /// Check if a specific check is enabled
     pub fn is_check_enabled(&self, check_id: &str) -> bool {
+        debug_assert!(!check_id.is_empty(), "check_id must not be empty");
         self.checks.get(check_id).map(|c| c.enabled).unwrap_or(true) // Default to enabled for unknown checks
     }
 
     /// Get the severity for a check
     pub fn get_severity(&self, check_id: &str) -> CheckSeverity {
+        debug_assert!(!check_id.is_empty(), "check_id must not be empty");
         self.checks
             .get(check_id)
             .map(|c| c.severity)
@@ -114,6 +116,7 @@ impl ComplyConfig {
 
     /// Get the threshold for a check
     pub fn get_threshold(&self, check_id: &str) -> Option<f64> {
+        debug_assert!(!check_id.is_empty(), "check_id must not be empty");
         self.checks.get(check_id).and_then(|c| c.threshold)
     }
 
@@ -131,6 +134,8 @@ impl ComplyConfig {
     /// Matches against the `suppressions` rules from `.pmat.yaml`.
     /// Returns `Some(reason)` if suppressed, `None` if not.
     pub fn is_suppressed(&self, check_id: &str, file_path: &str) -> Option<String> {
+        debug_assert!(!check_id.is_empty(), "check_id must not be empty");
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let today = current_date_iso();
         for rule in &self.suppressions {
             // Check rule ID match (case-insensitive)

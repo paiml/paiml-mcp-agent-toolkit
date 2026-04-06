@@ -14,6 +14,7 @@ pub enum SqlOutputFormat {
 
 impl SqlOutputFormat {
     pub fn from_str_opt(s: &str) -> Self {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "json" => Self::Json,
             "csv" => Self::Csv,
@@ -190,6 +191,7 @@ pub fn handle_sql(query: &str, format: SqlOutputFormat, db_path: &Path) -> Resul
 
 /// Resolve a query: if it's a named example, return the example SQL
 fn resolve_query(query: &str) -> &str {
+    debug_assert!(!query.is_empty(), "query must not be empty");
     for (name, sql) in EXAMPLE_QUERIES {
         if *name == query {
             return sql;
@@ -225,6 +227,8 @@ fn open_readonly(db_path: &Path) -> Result<rusqlite::Connection> {
 
 /// Print results as aligned table
 fn print_table(columns: &[String], rows: &[Vec<String>]) {
+    debug_assert!(!columns.is_empty(), "columns must not be empty");
+    debug_assert!(!rows.is_empty(), "rows must not be empty");
     if rows.is_empty() {
         println!("(0 rows)");
         return;
@@ -270,6 +274,8 @@ fn print_table(columns: &[String], rows: &[Vec<String>]) {
 
 /// Print results as JSON array
 fn print_json(columns: &[String], rows: &[Vec<String>]) {
+    debug_assert!(!columns.is_empty(), "columns must not be empty");
+    debug_assert!(!rows.is_empty(), "rows must not be empty");
     print!("[");
     for (i, row) in rows.iter().enumerate() {
         if i > 0 {
@@ -296,6 +302,8 @@ fn print_json(columns: &[String], rows: &[Vec<String>]) {
 
 /// Print results as CSV
 fn print_csv(columns: &[String], rows: &[Vec<String>]) {
+    debug_assert!(!columns.is_empty(), "columns must not be empty");
+    debug_assert!(!rows.is_empty(), "rows must not be empty");
     println!("{}", columns.join(","));
     for row in rows {
         let escaped: Vec<String> = row

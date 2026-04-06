@@ -53,6 +53,7 @@ impl Scorer for RustToolingScorer {
         project_path: &Path,
         mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Backward compatibility: call with no cache
         self.score_internal(project_path, mode, None)
     }

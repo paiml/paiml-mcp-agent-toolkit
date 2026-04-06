@@ -77,6 +77,7 @@ pub fn calculate_simple_complexity(content: &str) -> u32 {
 }
 
 fn count_line_complexity(line: &str) -> u32 {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let mut line_complexity = 0u32;
 
     line_complexity += count_conditional_statements(line);
@@ -89,14 +90,17 @@ fn count_line_complexity(line: &str) -> u32 {
 }
 
 fn count_conditional_statements(line: &str) -> u32 {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     u32::from(line.starts_with("if ") || line.starts_with("else if"))
 }
 
 fn count_loop_statements(line: &str) -> u32 {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     u32::from(line.starts_with("for ") || line.starts_with("while "))
 }
 
 fn count_pattern_matching(line: &str) -> u32 {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     u32::from(
         line.starts_with("match ")
             || line.starts_with("switch ")

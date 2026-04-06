@@ -198,6 +198,7 @@ impl MakefileRule for RecursiveExpansionRule {
 }
 
 fn extract_var_refs(text: &str) -> HashSet<String> {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     let mut vars = HashSet::new();
     let mut i = 0;
     let bytes = text.as_bytes();
@@ -221,6 +222,7 @@ fn process_variable_reference(
     start_idx: usize,
     vars: &mut HashSet<String>,
 ) -> Option<usize> {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     match bytes[start_idx] {
         b'(' => process_parenthesized_var(text, start_idx, vars),
         b'{' => process_braced_var(text, start_idx, vars),
@@ -237,6 +239,7 @@ fn process_parenthesized_var(
     start_idx: usize,
     vars: &mut HashSet<String>,
 ) -> Option<usize> {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     if let Some(end) = text.get(start_idx + 1..).unwrap_or_default().find(')') {
         let var_ref = text
             .get(start_idx + 1..start_idx + 1 + end)
@@ -252,6 +255,7 @@ fn process_parenthesized_var(
 }
 
 fn process_braced_var(text: &str, start_idx: usize, vars: &mut HashSet<String>) -> Option<usize> {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     if let Some(end) = text.get(start_idx + 1..).unwrap_or_default().find('}') {
         let var_name = text
             .get(start_idx + 1..start_idx + 1 + end)
@@ -274,14 +278,17 @@ fn process_single_char_var(c: u8, vars: &mut HashSet<String>) {
 }
 
 fn should_include_var_ref(var_ref: &str) -> bool {
+    debug_assert!(!var_ref.is_empty(), "var_ref must not be empty");
     !is_function_call(var_ref) && !is_automatic_var(var_ref)
 }
 
 fn extract_var_name(var_ref: &str) -> &str {
+    debug_assert!(!var_ref.is_empty(), "var_ref must not be empty");
     var_ref.split(':').next().unwrap_or(var_ref)
 }
 
 fn count_var_usage(text: &str) -> HashMap<String, usize> {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     let mut counts = HashMap::new();
     let vars = extract_var_refs(text);
 
@@ -304,6 +311,7 @@ fn count_var_usage(text: &str) -> HashMap<String, usize> {
 }
 
 fn is_function_call(text: &str) -> bool {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     let functions = [
         "shell ",
         "wildcard ",
@@ -337,6 +345,7 @@ fn is_function_call(text: &str) -> bool {
 }
 
 fn is_automatic_var(var: &str) -> bool {
+    debug_assert!(!var.is_empty(), "var must not be empty");
     matches!(var, "@" | "<" | "^" | "?" | "*" | "%" | "+" | "|" | "$")
 }
 

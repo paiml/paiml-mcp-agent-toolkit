@@ -30,6 +30,7 @@ impl LanguageAdapter for LuaAdapter {
     }
 
     async fn parse(&self, source: &str) -> Result<String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Validate basic Lua syntax by checking for obvious parse errors
         if source.trim().is_empty() {
             return Err(anyhow::anyhow!("Empty Lua source"));
@@ -38,6 +39,7 @@ impl LanguageAdapter for LuaAdapter {
     }
 
     async fn unparse(&self, ast: &str) -> Result<String> {
+        debug_assert!(!ast.is_empty(), "ast must not be empty");
         Ok(ast.to_string())
     }
 
@@ -137,6 +139,8 @@ async fn run_busted_tests(project_root: &Path) -> Result<TestRunResult> {
 
 /// Parse busted test failures from output.
 pub fn parse_busted_failures(stdout: &str, stderr: &str) -> Vec<String> {
+    debug_assert!(!stdout.is_empty(), "stdout must not be empty");
+    debug_assert!(!stderr.is_empty(), "stderr must not be empty");
     let mut failures = Vec::new();
     for line in stdout.lines().chain(stderr.lines()) {
         let trimmed = line.trim();

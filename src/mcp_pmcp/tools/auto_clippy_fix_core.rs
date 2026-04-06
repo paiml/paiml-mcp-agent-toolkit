@@ -14,6 +14,7 @@ fn parse_confidence_level(level: &Option<String>) -> Result<ConfidenceLevel> {
 
 /// Run clippy analysis and parse output (complexity: 5)
 async fn run_clippy_analysis(path: &str) -> Result<Vec<ClippyDiagnostic>> {
+    debug_assert!(!path.is_empty(), "path must not be empty");
     use tokio::process::Command;
 
     let output = Command::new("cargo")
@@ -34,6 +35,7 @@ async fn run_clippy_analysis(path: &str) -> Result<Vec<ClippyDiagnostic>> {
 
 /// Parse clippy JSON output (complexity: 6)
 fn parse_clippy_output(output: &str) -> Result<Vec<ClippyDiagnostic>> {
+    debug_assert!(!output.is_empty(), "output must not be empty");
     let mut diagnostics = Vec::new();
 
     for line in output.lines() {

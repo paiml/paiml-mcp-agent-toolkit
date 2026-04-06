@@ -125,6 +125,7 @@ pub enum QddOutputFormat {
 
 /// Parse parameter as type:name
 fn parse_parameter(s: &str) -> Result<(String, String), String> {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     let parts: Vec<&str> = s.split(':').collect();
     if parts.len() != 2 {
         return Err("Parameter must be in format type:name".to_string());

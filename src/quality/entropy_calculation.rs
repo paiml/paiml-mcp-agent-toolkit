@@ -56,6 +56,7 @@ impl EntropyCalculator {
     }
 
     fn tokenize(&self, source: &str) -> Vec<String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simple tokenization based on whitespace and common delimiters
         let mut tokens = Vec::new();
         let mut current_token = String::new();

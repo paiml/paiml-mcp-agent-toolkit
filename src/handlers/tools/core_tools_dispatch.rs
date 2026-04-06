@@ -61,6 +61,7 @@ async fn dispatch_tool_call<T: TemplateServerTrait>(
 
 /// Check if a tool name is a template tool
 pub fn is_template_tool(tool_name: &str) -> bool {
+    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     matches!(
         tool_name,
         "generate_template"
@@ -73,6 +74,7 @@ pub fn is_template_tool(tool_name: &str) -> bool {
 
 /// Check if a tool name is an analysis tool
 pub fn is_analysis_tool(tool_name: &str) -> bool {
+    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     matches!(
         tool_name,
         "analyze_code_churn"
@@ -132,6 +134,7 @@ async fn dispatch_analysis_tool(
     tool_name: &str,
     arguments: serde_json::Value,
 ) -> McpResponse {
+    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     // Group 1: Core analysis tools
     if let Some(response) =
         handle_core_analysis_tools(request_id.clone(), tool_name, arguments.clone()).await
@@ -167,6 +170,7 @@ async fn handle_core_analysis_tools(
     tool_name: &str,
     arguments: serde_json::Value,
 ) -> Option<McpResponse> {
+    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     match tool_name {
         "analyze_complexity" => Some(handle_analyze_complexity(request_id, arguments).await),
         "analyze_dead_code" => Some(handle_analyze_dead_code(request_id, arguments).await),
@@ -182,6 +186,7 @@ async fn handle_advanced_analysis_tools(
     tool_name: &str,
     arguments: serde_json::Value,
 ) -> Option<McpResponse> {
+    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     match tool_name {
         "analyze_code_churn" => Some(handle_analyze_code_churn(request_id, arguments).await),
         "analyze_dag" => Some(handle_analyze_dag(request_id, arguments).await),
@@ -201,6 +206,7 @@ async fn handle_specialized_analysis_tools(
     tool_name: &str,
     arguments: serde_json::Value,
 ) -> Option<McpResponse> {
+    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     match tool_name {
         "analyze_system_architecture" => {
             Some(handle_analyze_system_architecture(request_id, arguments).await)

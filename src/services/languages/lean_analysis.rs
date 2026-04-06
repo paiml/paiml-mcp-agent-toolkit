@@ -39,6 +39,7 @@ pub fn count_sorry(source: &str) -> usize {
 /// Strips block comment content from a line, updating nesting depth.
 /// Returns the text outside block comments.
 fn strip_block_comments(line: &str, depth: &mut i32) -> String {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let mut result = String::with_capacity(line.len());
     let mut i = 0;
@@ -65,6 +66,7 @@ fn strip_block_comments(line: &str, depth: &mut i32) -> String {
 
 /// Checks if a line contains "sorry" as a standalone word (not part of an identifier).
 fn contains_sorry_word(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let sorry = b"sorry";
 

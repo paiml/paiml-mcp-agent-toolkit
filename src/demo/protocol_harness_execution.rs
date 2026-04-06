@@ -60,6 +60,7 @@ impl DemoEngine {
         protocol_name: &str,
         request: Value,
     ) -> Result<ApiTrace, DemoError> {
+        debug_assert!(!protocol_name.is_empty(), "protocol_name must not be empty");
         let trace_id = Uuid::new_v4();
         let start_time = std::time::Instant::now();
 

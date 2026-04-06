@@ -67,6 +67,7 @@ impl PolyglotDetector {
         files: &[std::path::PathBuf],
         _config: &PolyglotConfig,
     ) -> Result<PolyglotAnalysis> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         // Delegate to the existing polyglot_analyzer module functionality
         let _analyzer = crate::services::polyglot_analyzer::PolyglotAnalyzer::new();
 
@@ -142,6 +143,8 @@ impl PolyglotDetector {
         language: &str,
         files: &[&std::path::PathBuf],
     ) -> Result<LanguageStats> {
+        debug_assert!(!language.is_empty(), "language must not be empty");
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut total_lines = 0;
         let mut complexity_scores = Vec::new();
         let mut frameworks = std::collections::HashSet::new();
@@ -179,6 +182,7 @@ impl PolyglotDetector {
         &self,
         files: &[std::path::PathBuf],
     ) -> Result<Vec<CrossLanguageDependency>> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut dependencies = Vec::new();
 
         // This is a simplified implementation
@@ -242,6 +246,7 @@ impl PolyglotDetector {
         &self,
         files: &[std::path::PathBuf],
     ) -> Result<Vec<IntegrationPoint>> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut integration_points = Vec::new();
 
         // Look for common integration patterns

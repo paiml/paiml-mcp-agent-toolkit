@@ -168,6 +168,7 @@ impl SemanticComplexityScorer {
 impl Scorer for SemanticComplexityScorer {
     #[allow(clippy::cast_possible_truncation)]
     fn score(&self, tree: &Tree, _source: &str, _language: Language, config: &TdgConfig, tracker: &mut PenaltyTracker) -> Result<f32> {
+        debug_assert!(!_source.is_empty(), "_source must not be empty");
         let mut points = config.weights.semantic_complexity;
         let root = tree.root_node();
 

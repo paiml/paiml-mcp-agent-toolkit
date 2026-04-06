@@ -14,10 +14,12 @@ impl ReachabilityAnalyzer {
 
     /// Find entry points in AST
     pub fn find_entry_points(&mut self, ast: &UnifiedAstNode, file_path: &str) {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.visit_for_entry_points(ast, file_path);
     }
 
     fn visit_for_entry_points(&mut self, node: &UnifiedAstNode, file_path: &str) {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         if let AstKind::Function(FunctionKind::Regular) = &node.kind {
             // Check for main function
             if let Some(name) = self.extract_function_name(node) {

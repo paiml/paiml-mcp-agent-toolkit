@@ -20,6 +20,7 @@ impl StatelessTemplateServer {
     }
 
     pub async fn get_template_metadata(&self, uri: &str) -> Result<Arc<TemplateResource>> {
+        debug_assert!(!uri.is_empty(), "uri must not be empty");
         // Parse URI and fetch from embedded templates
         let parts: Vec<&str> = uri
             .strip_prefix("template://")
@@ -38,6 +39,7 @@ impl StatelessTemplateServer {
     }
 
     pub async fn get_template_content(&self, uri: &str) -> Result<Arc<str>> {
+        debug_assert!(!uri.is_empty(), "uri must not be empty");
         // Fetch from embedded templates
         crate::services::embedded_templates::get_template_content(uri)
             .await
@@ -54,10 +56,12 @@ impl StatelessTemplateServer {
 #[async_trait::async_trait]
 impl TemplateServerTrait for StatelessTemplateServer {
     async fn get_template_metadata(&self, uri: &str) -> Result<Arc<TemplateResource>> {
+        debug_assert!(!uri.is_empty(), "uri must not be empty");
         self.get_template_metadata(uri).await
     }
 
     async fn get_template_content(&self, s3_key: &str) -> Result<Arc<str>> {
+        debug_assert!(!s3_key.is_empty(), "s3_key must not be empty");
         self.get_template_content(s3_key).await
     }
 

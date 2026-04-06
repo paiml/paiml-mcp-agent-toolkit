@@ -101,6 +101,7 @@ impl ClaudeCodeAgentMcpServer {
 
     /// Handle incoming MCP request
     async fn handle_mcp_request(&mut self, request_json: &str) -> Result<Option<Value>> {
+        debug_assert!(!request_json.is_empty(), "request_json must not be empty");
         // Parse JSON-RPC request
         let request: Value = serde_json::from_str(request_json)?;
 
@@ -278,6 +279,7 @@ impl ClaudeCodeAgentMcpServer {
         target_path: &str,
         quality_result: &QualityGateOutput,
     ) -> String {
+        debug_assert!(!target_path.is_empty(), "target_path must not be empty");
         let mut result_text = format!("🏁 Quality Gate Results for {target_path}\n\n");
 
         let all_passed = quality_result.results.iter().all(|r| r.passed);
@@ -347,6 +349,7 @@ impl ClaudeCodeAgentMcpServer {
     }
 
     fn format_complexity_analysis_results(&self, file_path: &str) -> String {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let mut result_text = format!("🧮 Complexity Analysis for {file_path}\n\n");
 
         result_text.push_str("📊 Summary:\n");

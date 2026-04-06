@@ -40,6 +40,7 @@ impl Language {
 
     /// Returns the language from a file extension
     pub fn from_extension(ext: &str) -> Option<Self> {
+        debug_assert!(!ext.is_empty(), "ext must not be empty");
         match ext.to_lowercase().as_str() {
             "java" => Some(Language::Java),
             "kt" | "kts" => Some(Language::Kotlin),

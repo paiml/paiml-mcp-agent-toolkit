@@ -150,6 +150,10 @@ impl RedTeamHandler {
         commit_message: &str,
         context: &RepositoryContext,
     ) -> RedTeamResult {
+        debug_assert!(
+            !commit_message.is_empty(),
+            "commit_message must not be empty"
+        );
         // Step 1: Extract claims
         let claims = self.extractor.extract(commit_message);
 

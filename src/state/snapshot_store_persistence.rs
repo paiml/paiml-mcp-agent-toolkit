@@ -2,6 +2,7 @@
 
 impl SnapshotStore {
     pub async fn new(base_path: &str, config: SnapshotConfig) -> Result<Self, SnapshotError> {
+        debug_assert!(!base_path.is_empty(), "base_path must not be empty");
         // Create snapshot directory if it doesn't exist
         create_dir_all(base_path)
             .await

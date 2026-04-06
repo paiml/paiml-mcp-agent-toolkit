@@ -113,6 +113,7 @@ fn execute_renames(
     suggestions: &[RenameSuggestion],
     project_path: &std::path::Path,
 ) -> anyhow::Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let applicable: Vec<&RenameSuggestion> = suggestions
         .iter()
         .filter(|s| s.confidence >= 0.70 && s.signal != RenameSignal::NoSignal)

@@ -9,6 +9,7 @@ use crate::cli::handlers::work_falsification::{ClaimResult, FalsificationReport}
 // ============ Helpers ============
 
 fn make_claim(index: usize, hypothesis: &str, falsified: bool, is_blocking: bool) -> ClaimResult {
+    debug_assert!(!hypothesis.is_empty(), "hypothesis must not be empty");
     ClaimResult {
         index,
         hypothesis: hypothesis.to_string(),

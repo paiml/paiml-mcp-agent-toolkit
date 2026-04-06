@@ -59,6 +59,7 @@ pub(crate) async fn analyze_multiple_files(
     files: &[PathBuf],
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     eprintln!("🔍 Analyzing complexity of {} files...", files.len());
 
     let mut all_metrics = Vec::new();

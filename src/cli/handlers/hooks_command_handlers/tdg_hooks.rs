@@ -34,6 +34,7 @@ fn atomic_write_hook(hook_path: &Path, content: &str) -> Result<()> {
 /// Escape shell metacharacters in template substitution values (CB-1336 fix).
 /// Prevents injection when config values like baseline_path contain shell metacharacters.
 fn shell_escape(s: &str) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     let mut escaped = String::with_capacity(s.len());
     for c in s.chars() {
         match c {

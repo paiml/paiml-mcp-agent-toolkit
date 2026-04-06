@@ -37,6 +37,7 @@ impl DependencyGraphBuilder {
     /// Parse Rust symbols
     /// Complexity: 8
     fn parse_rust_symbols(&self, content: &str) -> Result<Vec<Symbol>> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut symbols = Vec::new();
 
         // Simple regex-based parsing for MVP
@@ -80,6 +81,7 @@ impl DependencyGraphBuilder {
     /// Parse Python symbols
     /// Complexity: 7
     fn parse_python_symbols(&self, content: &str) -> Result<Vec<Symbol>> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut symbols = Vec::new();
 
         for (line_num, line) in content.lines().enumerate() {
@@ -118,6 +120,7 @@ impl DependencyGraphBuilder {
     /// Parse TypeScript/JavaScript symbols
     /// Complexity: 8
     fn parse_typescript_symbols(&self, content: &str) -> Result<Vec<Symbol>> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut symbols = Vec::new();
 
         for (line_num, line) in content.lines().enumerate() {

@@ -122,6 +122,11 @@ impl RustProjectScoreOrchestrator {
         project_path: &Path,
         mode: ScoringMode,
     ) -> ScorerResult<ProjectScore> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Verify project has Cargo.toml or lakefile.lean (root or lean/ subdir)
         let is_rust = project_path.join("Cargo.toml").exists();
         let is_lean = project_path.join("lakefile.lean").exists()

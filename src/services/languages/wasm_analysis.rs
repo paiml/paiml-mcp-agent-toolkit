@@ -51,6 +51,7 @@ impl WasmModuleAnalyzer {
 
     /// Analyzes WASM text format (.wat) (complexity ≤10)
     pub fn analyze_wat_text(mut self, wat_source: &str) -> Result<Vec<AstItem>, String> {
+        debug_assert!(!wat_source.is_empty(), "wat_source must not be empty");
         let mut function_count = 0;
 
         for line in wat_source.lines() {
@@ -96,6 +97,7 @@ impl WasmModuleAnalyzer {
 
     /// Extracts function name from WAT line (complexity ≤10)
     fn extract_wat_function_name(&self, line: &str) -> String {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if let Some(start) = line.find('$') {
             if let Some(end) = line[start..].find(' ') {
                 line[start + 1..start + end].to_string()
@@ -109,6 +111,7 @@ impl WasmModuleAnalyzer {
 
     /// Gets qualified name for WASM symbol (complexity ≤10)
     fn get_qualified_name(&self, symbol_name: &str) -> String {
+        debug_assert!(!symbol_name.is_empty(), "symbol_name must not be empty");
         if self.module_name.is_empty() {
             symbol_name.to_string()
         } else {

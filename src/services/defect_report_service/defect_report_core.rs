@@ -129,6 +129,7 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing complexity defects");
 
@@ -146,6 +147,7 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing SATD defects");
 
@@ -163,6 +165,7 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing dead code defects");
 
@@ -180,6 +183,7 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing duplication defects");
 
@@ -197,6 +201,7 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing performance defects");
 
@@ -214,6 +219,7 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing architecture defects");
 

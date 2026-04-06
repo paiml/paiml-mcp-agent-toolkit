@@ -27,6 +27,7 @@ impl DependencyGraph {
     }
 
     fn dfs(&self, node: &str, visited: &mut HashSet<String>, stack: &mut Vec<String>) {
+        debug_assert!(!node.is_empty(), "node must not be empty");
         visited.insert(node.to_string());
 
         if let Some(neighbors) = self.edges.get(node) {

@@ -36,6 +36,7 @@ async fn analyze_scala_file(
 }
 
 fn count_by_kinds(items: &[crate::services::context::AstItem], kinds: &[&str]) -> usize {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     items
         .iter()
         .filter(|item| {
@@ -46,6 +47,7 @@ fn count_by_kinds(items: &[crate::services::context::AstItem], kinds: &[&str]) -
 }
 
 fn count_classes(items: &[crate::services::context::AstItem]) -> usize {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     items
         .iter()
         .filter(|item| {
@@ -59,6 +61,7 @@ fn count_classes(items: &[crate::services::context::AstItem]) -> usize {
 }
 
 fn count_case_classes(items: &[crate::services::context::AstItem]) -> usize {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     items
         .iter()
         .filter(|item| {
@@ -103,6 +106,8 @@ fn build_file_metrics(
     method_count: usize,
     content: &str,
 ) -> Value {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!items.is_empty(), "items must not be empty");
     let total_complexity: u32 = items.iter().map(extract_complexity).sum();
     let max_complexity = items.iter().map(extract_complexity).max().unwrap_or(0);
     let avg_complexity = if method_count > 0 {
@@ -275,6 +280,7 @@ fn find_scala_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<Path
 
 /// Helper function to calculate the percentage of functional code patterns vs imperative
 fn calculate_functional_percentage(items: &[crate::services::context::AstItem]) -> f64 {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut functional_score = 0.0;
     let mut imperative_score = 0.0;
 

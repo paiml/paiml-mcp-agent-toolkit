@@ -153,6 +153,8 @@ impl CudaSimdAnalyzer {
         has_avx512: bool, has_avx: bool, has_target_feature: bool,
         content: &str, path: &Path, analysis: &mut FileAnalysis,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         if (has_avx512 || has_avx) && !has_target_feature && !content.contains("is_x86_feature_detected") {
             analysis.defects.push(DetectedDefect {
                 defect_class: DefectClass {

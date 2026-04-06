@@ -297,6 +297,7 @@ impl AgentsMdGenerator {
 
     /// Update existing AGENTS.md
     pub fn update_existing(&self, current: &str, updates: Updates) -> Result<String> {
+        debug_assert!(!current.is_empty(), "current must not be empty");
         let parser = super::parser::AgentsMdParser::new();
         let mut doc = parser.parse(current)?;
 

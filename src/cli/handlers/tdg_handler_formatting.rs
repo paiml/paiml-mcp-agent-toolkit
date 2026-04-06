@@ -23,6 +23,7 @@ fn format_single_file_output(
     include_components: bool,
     verbose: bool,
 ) -> Result<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Create a single-file summary
     let hotspot = TDGHotspot {
         path: path.display().to_string(),

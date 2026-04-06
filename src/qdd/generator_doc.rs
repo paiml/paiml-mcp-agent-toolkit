@@ -16,6 +16,7 @@ impl DocGenerator {
 
     /// Generate documentation for a function
     pub fn generate_for_function(&self, _code: &str, spec: &CreateSpec) -> Result<String> {
+        debug_assert!(!_code.is_empty(), "_code must not be empty");
         let mut docs = String::new();
 
         docs.push_str(&format!("# {}\n\n", spec.name));
@@ -61,6 +62,7 @@ impl DocGenerator {
     }
 
     pub fn generate_example_value(&self, param_type: &str) -> String {
+        debug_assert!(!param_type.is_empty(), "param_type must not be empty");
         match param_type {
             "u32" | "i32" => "42".to_string(),
             "f32" | "f64" => "3.14".to_string(),

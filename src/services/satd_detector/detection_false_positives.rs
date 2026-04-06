@@ -4,6 +4,7 @@
 impl SATDDetector {
     /// Check if line is false positive SATD
     pub(crate) fn is_false_positive_line(&self, line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let trimmed = line.trim();
 
         self.is_string_literal(trimmed)
@@ -20,6 +21,7 @@ impl SATDDetector {
     }
 
     fn is_string_literal(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         trimmed.contains(r#""TODO"#)
             || trimmed.contains(r#""FIXME"#)
             || trimmed.contains(r#""HACK"#)
@@ -29,10 +31,12 @@ impl SATDDetector {
     }
 
     fn is_raw_string_literal(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         trimmed.contains("r#\"") || trimmed.contains("r\"")
     }
 
     fn is_satd_processing_code(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         trimmed.contains(".matches(")
             || trimmed.contains("regex:")
             || trimmed.contains("DebtPattern")
@@ -43,10 +47,12 @@ impl SATDDetector {
     }
 
     fn is_assignment_with_satd(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         trimmed.contains(" = ") && (trimmed.contains("TODO") || trimmed.contains("FIXME"))
     }
 
     fn is_format_string(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         (trimmed.contains("format!")
             || trimmed.contains("println!")
             || trimmed.contains("write!")
@@ -55,6 +61,7 @@ impl SATDDetector {
     }
 
     fn is_url_or_path(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         // Check for actual URLs or file paths, not just comment markers
         (trimmed.contains("http://")
             || trimmed.contains("https://")
@@ -66,6 +73,7 @@ impl SATDDetector {
     }
 
     fn is_security_documentation(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         // Security-related documentation/comments (not actual security debt)
         (trimmed.contains("Security") || trimmed.contains("security"))
             && (trimmed.contains("check")
@@ -81,6 +89,7 @@ impl SATDDetector {
     }
 
     fn is_pattern_definition(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         // Pattern definitions in SATD detection code
         trimmed.contains("let valid_patterns")
             || trimmed.contains("let patterns")
@@ -90,12 +99,14 @@ impl SATDDetector {
     }
 
     fn is_enum_or_struct_field(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         // Enum variants or struct fields that mention SATD concepts
         (trimmed.contains("Security") || trimmed.contains("Design") || trimmed.contains("Defect"))
             && (trimmed.contains(',') || trimmed.contains('=') || trimmed.contains("::"))
     }
 
     fn is_markdown_header(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         // Markdown headers: # Security, ## Security, ### Security, etc.
         // Common in CHANGELOG.md, README.md, and documentation templates
         let starts_with_hash = trimmed.starts_with('#');
@@ -121,6 +132,7 @@ impl SATDDetector {
     }
 
     fn is_functional_description(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         // Comments describing functionality, not admitting technical debt
         if trimmed.starts_with("//") {
             let comment_text = trimmed.trim_start_matches("//").trim().to_lowercase();
@@ -205,6 +217,7 @@ impl SATDDetector {
     /// Check if comment contains bug tracking ID (like JIRA tickets)
     /// Patterns: BUG-123, PMAT-BUG-456, Issue-789
     fn is_bug_tracking_id(&self, text: &str) -> bool {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let text_lower = text.to_lowercase();
         // Pattern 1: BUG-XXX (where XXX is digits)
         if text_lower.contains("bug-") {
@@ -231,6 +244,7 @@ impl SATDDetector {
     /// Check if comment describes a FIXED bug (not a current bug)
     /// Patterns: "Bug: Previously...", "CRITICAL FIX:", "Root cause:", etc.
     fn is_fixed_bug_description(&self, text: &str) -> bool {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let text_lower = text.to_lowercase();
         // Pattern 1: "Bug: Previously..." - past tense description
         if text_lower.starts_with("bug:") && text_lower.contains("previous") {
@@ -255,6 +269,7 @@ impl SATDDetector {
 
     /// Check if line is documentation, test, or metadata about SATD
     pub(crate) fn is_documentation_or_metadata(&self, line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let trimmed = line.trim();
 
         self.is_documentation_comment(trimmed)
@@ -264,6 +279,7 @@ impl SATDDetector {
     }
 
     fn is_documentation_comment(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         self.is_module_documentation(trimmed)
             || self.is_technical_debt_documentation(trimmed)
             || self.is_api_documentation(trimmed)
@@ -271,10 +287,12 @@ impl SATDDetector {
     }
 
     fn is_module_documentation(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         trimmed.starts_with("//!") || trimmed.starts_with("///")
     }
 
     fn is_technical_debt_documentation(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         let lower = trimmed.to_lowercase();
         let mentions_td_concepts = lower.contains("technical debt")
             || trimmed.contains("TDG")
@@ -289,6 +307,7 @@ impl SATDDetector {
     }
 
     fn is_api_documentation(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         let is_doc_marker = trimmed.starts_with('*')
             || trimmed.contains("@param")
             || trimmed.contains("@return")
@@ -301,6 +320,7 @@ impl SATDDetector {
     }
 
     fn is_doctest_example(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         let has_comment_marker = trimmed.contains("// ");
         let has_debt_marker = trimmed.contains("TODO") || trimmed.contains("FIXME");
         let has_code_marker =
@@ -309,6 +329,7 @@ impl SATDDetector {
     }
 
     fn is_test_code(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         (trimmed.contains("assert")
             || trimmed.contains("expect")
             || trimmed.contains(".unwrap()")
@@ -317,6 +338,7 @@ impl SATDDetector {
     }
 
     fn is_log_message(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         (trimmed.contains("log::")
             || trimmed.contains("debug!")
             || trimmed.contains("info!")

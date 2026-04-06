@@ -7,6 +7,7 @@ impl DemoRunner {
         response: McpResponse,
         elapsed_ms: u64,
     ) -> DemoStep {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let success = response.error.is_none();
         let output = if success {
             response.result.clone()
@@ -37,6 +38,7 @@ impl DemoRunner {
         repo_path: &Path,
         url: Option<&str>,
     ) -> Result<DemoReport> {
+        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let start = Instant::now();
 
         // Clone remote repository if URL provided or if path looks like a GitHub URL
@@ -415,6 +417,7 @@ impl DemoRunner {
     }
 
     fn build_mcp_request(&self, method: &str, arguments: Value) -> McpRequest {
+        debug_assert!(!method.is_empty(), "method must not be empty");
         McpRequest {
             jsonrpc: "2.0".to_string(),
             id: json!(format!("demo-{}", method)),

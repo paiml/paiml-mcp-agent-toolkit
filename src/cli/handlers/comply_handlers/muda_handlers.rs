@@ -73,6 +73,7 @@ impl std::fmt::Display for MudaGrade {
 
 impl MudaGrade {
     fn from_score(score: f64) -> Self {
+        debug_assert!(score >= 0.0, "score must be non-negative");
         match score as u32 {
             0..=20 => MudaGrade::Lean,
             21..=40 => MudaGrade::Efficient,

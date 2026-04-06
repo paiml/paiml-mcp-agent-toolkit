@@ -110,6 +110,7 @@ fn collect_rs_source_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
 /// Only counts markers in actual production code comments, not string literals,
 /// doc comments, security annotations, or test modules.
 fn count_satd_in_content(content: &str) -> usize {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut count = 0;
     let mut in_raw_string = false;
     let mut in_test_module = false;
@@ -151,6 +152,7 @@ fn count_satd_in_content(content: &str) -> usize {
 /// Check if a line is a genuine SATD comment (not a string literal,
 /// doc comment, or security annotation).
 fn is_satd_marker(trimmed: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     // Must be a line comment (not doc comment)
     if !trimmed.starts_with("//") || trimmed.starts_with("///") || trimmed.starts_with("//!") {
         return false;
@@ -182,6 +184,7 @@ fn is_satd_marker(trimmed: &str) -> bool {
 
 /// Strip content inside double quotes to avoid matching string literals.
 fn strip_quoted_strings(s: &str) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     let mut result = String::with_capacity(s.len());
     let mut in_quote = false;
     let mut prev_escape = false;

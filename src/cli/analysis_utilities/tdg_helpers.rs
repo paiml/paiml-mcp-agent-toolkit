@@ -53,6 +53,7 @@ fn should_include_score(
     threshold: f64,
     critical_only: bool,
 ) -> bool {
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     if critical_only && score.value <= 2.5 {
         return false;
     }
@@ -86,6 +87,7 @@ fn apply_results_filtering(
 fn create_summary_from_file_results(
     results: &[(crate::models::tdg::TDGScore, PathBuf)],
 ) -> crate::models::tdg::TDGSummary {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::models::tdg::{TDGHotspot, TDGSeverity, TDGSummary};
 
     let total_files = results.len();

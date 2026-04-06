@@ -86,6 +86,7 @@ impl CodeQualityScorer {
         mode: ScoringMode,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
                 "No Cargo.toml found - not a valid Rust project".to_string(),

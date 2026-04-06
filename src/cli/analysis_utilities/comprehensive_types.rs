@@ -19,6 +19,7 @@ pub struct QualityGateResults {
 impl QualityGateResults {
     /// Recalculate per-category violation counts from the filtered violations list (#196).
     pub fn recalculate_from(&mut self, violations: &[QualityViolation]) {
+        debug_assert!(!violations.is_empty(), "violations must not be empty");
         self.complexity_violations = violations.iter().filter(|v| v.check_type == "complexity").count();
         self.dead_code_violations = violations.iter().filter(|v| v.check_type == "dead_code").count();
         self.satd_violations = violations.iter().filter(|v| v.check_type == "satd").count();

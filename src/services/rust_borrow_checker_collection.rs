@@ -113,6 +113,8 @@ impl RustBorrowChecker {
         path: &Path,
         cache: &Arc<RwLock<ProofCache>>,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!cache_key.is_empty(), "cache_key must not be empty");
         let cache_annotations: Vec<ProofAnnotation> = file_annotations
             .iter()
             .map(|(_, annotation)| annotation.clone())
@@ -164,6 +166,7 @@ impl ProofSource for RustBorrowChecker {
     ) -> Pin<
         Box<dyn Future<Output = Result<ProofCollectionResult, ProofCollectionError>> + Send + '_>,
     > {
+        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let project_root = project_root.to_owned();
         let cache = cache.clone();
         let rustc_version = self.rustc_version.clone();

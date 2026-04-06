@@ -100,6 +100,7 @@ where
 
     /// Get cache file path for a key
     fn cache_file_path(&self, cache_key: &str) -> PathBuf {
+        debug_assert!(!cache_key.is_empty(), "cache_key must not be empty");
         let mut hasher = DefaultHasher::new();
         cache_key.hash(&mut hasher);
         let hash = hasher.finish();

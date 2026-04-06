@@ -95,6 +95,7 @@ impl std::str::FromStr for ChurnOutputFormat {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "json" => Ok(ChurnOutputFormat::Json),
             "markdown" => Ok(ChurnOutputFormat::Markdown),

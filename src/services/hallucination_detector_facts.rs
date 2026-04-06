@@ -48,6 +48,7 @@ impl CodeFactDatabase {
 
     /// Check if database supports a language
     pub fn has_language_support(&self, language: &str) -> bool {
+        debug_assert!(!language.is_empty(), "language must not be empty");
         self.languages.iter().any(|l| l == language)
     }
 
@@ -60,6 +61,7 @@ impl CodeFactDatabase {
 
     /// Check if database has a capability
     pub fn has_capability(&self, capability: &str) -> bool {
+        debug_assert!(!capability.is_empty(), "capability must not be empty");
         self.capabilities.iter().any(|c| c == capability)
     }
 }

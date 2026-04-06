@@ -85,6 +85,8 @@ impl FiveWhysAnalyzer {
         depth: u8,
         previous_whys: &[WhyIteration],
     ) -> Result<WhyIteration> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!issue.is_empty(), "issue must not be empty");
         // Formulate question
         let question = self.formulate_question(issue, depth, previous_whys)?;
 
@@ -111,6 +113,7 @@ impl FiveWhysAnalyzer {
         depth: u8,
         previous_whys: &[WhyIteration],
     ) -> Result<String> {
+        debug_assert!(!issue.is_empty(), "issue must not be empty");
         let question = if depth == 1 {
             format!("Why did this occur: {}?", issue)
         } else if let Some(prev) = previous_whys.last() {
@@ -494,6 +497,7 @@ impl FiveWhysAnalyzer {
         evidence: &[Evidence],
         depth: u8,
     ) -> Result<String> {
+        debug_assert!(!_question.is_empty(), "_question must not be empty");
         let signals = EvidenceSignals::from_evidence(evidence);
         Ok(signals.hypothesis_for_depth(depth))
     }
@@ -703,6 +707,7 @@ impl FiveWhysAnalyzer {
         whys: &[WhyIteration],
         root_cause: &str,
     ) -> Result<Vec<Recommendation>> {
+        debug_assert!(!root_cause.is_empty(), "root_cause must not be empty");
         let mut recommendations = Vec::new();
 
         // Analyze evidence across all whys to generate recommendations

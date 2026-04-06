@@ -36,6 +36,11 @@ pub(crate) fn build_document_index(
     conn: &Connection,
     project_path: &Path,
 ) -> Result<DocumentBuildResult, String> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let project_root = project_path
         .canonicalize()
         .map_err(|e| format!("Invalid project path: {e}"))?;

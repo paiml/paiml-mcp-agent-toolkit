@@ -105,6 +105,7 @@ fn add_summary_section(output: &mut String, results: &QualityGateResults) {
 
 /// Toyota Way: Extract Method - Add violations section (complexity ≤8)
 fn add_violations_section(output: &mut String, violations: &[QualityViolation]) {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     output.push_str("\n## Violations\n\n");
 
     // Group violations by type for better organization
@@ -164,6 +165,7 @@ fn add_violation_entry(output: &mut String, violation: &QualityViolation) {
 
 /// Toyota Way: Extract Method - Get severity icon (complexity ≤2)
 fn get_severity_icon(severity: &str) -> &'static str {
+    debug_assert!(!severity.is_empty(), "severity must not be empty");
     match severity {
         "error" => "🔴",
         "warning" => "🟡",

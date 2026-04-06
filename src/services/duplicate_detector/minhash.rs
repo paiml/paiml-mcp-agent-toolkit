@@ -39,6 +39,8 @@ impl MinHashGenerator {
     /// Generate k-shingles from tokens
     #[must_use]
     pub fn generate_shingles(&self, tokens: &[Token], k: usize) -> Vec<u64> {
+        debug_assert!(k > 0, "k must be positive");
+        debug_assert!(!tokens.is_empty(), "tokens must not be empty");
         if tokens.len() < k {
             return vec![];
         }

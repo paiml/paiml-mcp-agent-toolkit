@@ -8,6 +8,7 @@ impl GitSafetyNet {
     }
 
     fn create_branch(&self, name: &str) -> Result<()> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         Command::new("git")
             .current_dir(&self.work_dir)
             .args(["checkout", "-b", name])

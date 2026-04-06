@@ -155,6 +155,7 @@ pub async fn quality_driven_development(
     inputs: Option<Vec<(String, String)>>,
     output_type: Option<&str>,
 ) -> Result<Value> {
+    debug_assert!(!operation_type.is_empty(), "operation_type must not be empty");
     let profile = select_quality_profile(quality_profile);
     let qdd_tool = QddTool::with_profile(profile.clone());
 
@@ -202,6 +203,7 @@ pub async fn generate_defect_aware_prompt(
     context: String,
     summary_path: PathBuf,
 ) -> Result<Value> {
+    debug_assert!(summary_path.exists(), "summary_path must exist: {}", summary_path.display());
     use crate::prompts::DefectAwarePromptGenerator;
 
     // Validate summary file exists

@@ -49,6 +49,7 @@ impl CompressionHeader {
     }
 
     fn decode(data: &[u8]) -> io::Result<(Self, usize)> {
+        debug_assert!(!data.is_empty(), "data must not be empty");
         if data.len() < 12 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,

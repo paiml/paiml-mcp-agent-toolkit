@@ -115,6 +115,7 @@ impl RrfFusion {
 
     /// Calculate Mean Reciprocal Rank (MRR)
     fn mean_reciprocal_rank(results: &[String], ground_truth: &[String]) -> f32 {
+        debug_assert!(!results.is_empty(), "results must not be empty");
         if results.is_empty() || ground_truth.is_empty() {
             return 0.0;
         }

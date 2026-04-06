@@ -372,6 +372,7 @@ impl BackwardCompatibility {
     }
 
     fn normalize_format_string(fmt_str: &str) -> &'static str {
+        debug_assert!(!fmt_str.is_empty(), "fmt_str must not be empty");
         match fmt_str {
             "human" | "pretty" | "summary" => "summary",
             "json" | "machine" => "json",

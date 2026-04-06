@@ -31,6 +31,7 @@ impl EnhancedTypeScriptVisitor {
 
     /// Creates a qualified name for the current context
     fn get_qualified_name(&self, name: &str) -> String {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let mut parts = Vec::new();
 
         // Add module path
@@ -86,6 +87,7 @@ impl EnhancedTypeScriptVisitor {
 
     /// Extracts methods from object literals (complexity <=10)
     fn extract_object_methods(&mut self, obj_lit: &ObjectLit, object_name: &str) {
+        debug_assert!(!object_name.is_empty(), "object_name must not be empty");
         for prop_or_spread in &obj_lit.props {
             if let PropOrSpread::Prop(prop) = prop_or_spread {
                 match prop.as_ref() {

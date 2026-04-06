@@ -485,6 +485,7 @@ impl RepositoryContext {
     }
 
     pub fn with_coverage_error(mut self, error: &str) -> Self {
+        debug_assert!(!error.is_empty(), "error must not be empty");
         self.coverage_error = Some(error.to_string());
         self
     }

@@ -54,6 +54,7 @@ impl WasmSecurityValidator {
 
     /// Validate WebAssembly binary
     pub fn validate(&self, data: &[u8]) -> Result<SecurityValidation> {
+        debug_assert!(!data.is_empty(), "data must not be empty");
         let mut issues = Vec::new();
 
         // Check magic number
@@ -94,6 +95,7 @@ impl WasmSecurityValidator {
 
     /// Validate text content for security issues
     pub fn validate_text(&self, _content: &str) -> Result<()> {
+        debug_assert!(!_content.is_empty(), "_content must not be empty");
         // Basic security validation
         Ok(())
     }

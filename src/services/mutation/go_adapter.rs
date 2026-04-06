@@ -33,6 +33,7 @@ impl LanguageAdapter for GoAdapter {
 
     #[cfg(feature = "go-ast")]
     async fn parse(&self, source: &str) -> Result<String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Create tree-sitter parser for Go
         let mut parser = Parser::new();
         parser
@@ -54,10 +55,12 @@ impl LanguageAdapter for GoAdapter {
 
     #[cfg(not(feature = "go-ast"))]
     async fn parse(&self, source: &str) -> Result<String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         Ok(source.to_string())
     }
 
     async fn unparse(&self, ast: &str) -> Result<String> {
+        debug_assert!(!ast.is_empty(), "ast must not be empty");
         Ok(ast.to_string())
     }
 
@@ -109,6 +112,8 @@ pub fn find_go_mod_root(start: &Path) -> Option<&Path> {
 
 /// Parse test failures from go test output
 pub fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
+    debug_assert!(!stdout.is_empty(), "stdout must not be empty");
+    debug_assert!(!stderr.is_empty(), "stderr must not be empty");
     let mut failures = Vec::new();
 
     for line in stdout.lines().chain(stderr.lines()) {
@@ -125,6 +130,7 @@ pub fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
 
 /// Extract test name from go test failure line
 fn extract_test_name_from_go_test(line: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     // Pattern: "--- FAIL: TestAdd (0.00s)"
     let trimmed = line.trim();
 

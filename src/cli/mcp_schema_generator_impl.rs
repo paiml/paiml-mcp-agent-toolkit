@@ -109,6 +109,7 @@ impl McpSchemaGenerator {
 
     /// Convert CLI argument name to MCP property name (kebab-case to snake_case)
     fn arg_to_property_name(&self, name: &str) -> String {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         name.replace('-', "_")
     }
 
@@ -155,6 +156,7 @@ impl McpSchemaGenerator {
 
     /// Check if JSON schema has a property
     fn schema_has_property(&self, schema: &Value, property: &str) -> bool {
+        debug_assert!(!property.is_empty(), "property must not be empty");
         schema
             .get("properties")
             .and_then(|p| p.as_object())

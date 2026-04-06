@@ -109,6 +109,7 @@ impl QualityBaseline {
 
     /// Generate actionable recommendation
     fn generate_recommendation(&self, violations: &[Violation]) -> String {
+        debug_assert!(!violations.is_empty(), "violations must not be empty");
         if violations.is_empty() {
             return "Quality metrics are within acceptable bounds.".to_string();
         }

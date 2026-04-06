@@ -35,6 +35,7 @@ impl DeadCodeAnalyzer {
         project_path: &Path,
         config: crate::models::dead_code::DeadCodeAnalysisConfig,
     ) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         use crate::services::context::analyze_project_for_dead_code;
         use chrono::Utc;
 

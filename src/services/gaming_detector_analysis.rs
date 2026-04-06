@@ -41,6 +41,7 @@ pub fn detect_coverage_gaming(project_path: &Path) -> Result<GamingDetectionResu
 /// Update raw string tracking state and determine if the line should be skipped.
 /// Returns (should_skip, new_in_raw_string_state).
 fn update_raw_string_state(trimmed: &str, in_raw_string: bool) -> (bool, bool) {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     if in_raw_string {
         let closed = trimmed.contains("\"#");
         return (true, !closed);

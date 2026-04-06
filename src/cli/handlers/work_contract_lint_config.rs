@@ -88,6 +88,7 @@ impl LintConfig {
 
     /// Parse lint config from TOML string
     pub fn parse(toml_str: &str) -> Result<Self> {
+        debug_assert!(!toml_str.is_empty(), "toml_str must not be empty");
         // Manual TOML parsing (avoid adding toml dep just for this)
         let mut config = Self::default();
 
@@ -149,6 +150,7 @@ impl LintConfig {
 
     /// Get the effective severity for a rule, considering overrides and strict mode
     pub fn effective_severity(&self, rule_id: &str, default: LintSeverity) -> Option<LintSeverity> {
+        debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         // Suppressed rules are completely silenced
         if self.suppress.contains(&rule_id.to_string()) {
             return None;
@@ -175,6 +177,7 @@ impl LintConfig {
 
     /// Check if a rule is suppressed
     pub fn is_suppressed(&self, rule_id: &str) -> bool {
+        debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         self.suppress.contains(&rule_id.to_string())
             || self
                 .rules

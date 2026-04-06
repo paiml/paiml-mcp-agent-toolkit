@@ -213,6 +213,7 @@ fn should_analyze_path(path: &std::path::Path, include_patterns: &[String]) -> b
 #[cfg(feature = "watch")]
 /// Check if file is a source code file
 fn is_source_code_file(path_str: &str) -> bool {
+    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     path_str.ends_with(".rs")
         || path_str.ends_with(".ts")
         || path_str.ends_with(".tsx")
@@ -230,6 +231,7 @@ fn is_source_code_file(path_str: &str) -> bool {
 #[cfg(feature = "watch")]
 /// Check if file should be included based on patterns
 fn should_include_file(path_str: &str, include_patterns: &[String]) -> bool {
+    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     if include_patterns.is_empty() {
         return true;
     }

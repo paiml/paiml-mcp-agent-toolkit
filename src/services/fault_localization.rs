@@ -87,6 +87,7 @@ impl std::str::FromStr for SbflFormula {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "tarantula" => Ok(SbflFormula::Tarantula),
             "ochiai" => Ok(SbflFormula::Ochiai),
@@ -151,6 +152,7 @@ impl std::str::FromStr for ReportFormat {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "terminal" | "text" => Ok(ReportFormat::Terminal),
             "json" => Ok(ReportFormat::Json),

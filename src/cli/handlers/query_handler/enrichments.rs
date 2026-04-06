@@ -51,6 +51,11 @@ async fn apply_duplicates(
     project_path: &std::path::Path,
     quiet: bool,
 ) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     try_enrich!(
         results,
         quiet,
@@ -93,6 +98,11 @@ async fn apply_coverage_enrichment(
     coverage_file: &Option<PathBuf>,
     uncovered_only: bool,
 ) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let cov_path = coverage_file.as_deref();
     try_enrich!(
         results,

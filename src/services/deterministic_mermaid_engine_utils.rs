@@ -34,6 +34,7 @@ impl DeterministicMermaidEngine {
 
     /// Heuristic to determine if a module is a service
     fn is_service_module(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         name.contains("service")
             || name.contains("handler")
             || name.contains("controller")

@@ -109,6 +109,7 @@ impl CallGraph {
     }
 
     fn get_dependents(&self, module: &str) -> Vec<String> {
+        debug_assert!(!module.is_empty(), "module must not be empty");
         self.reverse_edges
             .get(module)
             .map(|deps| deps.iter().cloned().collect())

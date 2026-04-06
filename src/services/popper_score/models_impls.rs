@@ -88,6 +88,7 @@ const GRADE_THRESHOLDS: &[(f64, PopperGrade)] = &[
 impl PopperGrade {
     /// Calculate grade from normalized score (0-100)
     pub fn from_normalized_score(score: f64) -> Self {
+        debug_assert!(score >= 0.0, "score must be non-negative");
         GRADE_THRESHOLDS
             .iter()
             .find(|(threshold, _)| score >= *threshold)

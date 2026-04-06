@@ -54,6 +54,7 @@ impl TypeScriptMutationGenerator {
 
     /// Parse TypeScript source to AST
     fn parse_typescript(&self, source: &str) -> Result<Tree> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
         // Use tree-sitter-javascript which supports both JS and TS syntax
         parser
@@ -73,6 +74,7 @@ impl TypeScriptMutationGenerator {
         mutants: &mut Vec<Mutant>,
         file_path: &str,
     ) {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         // Try each operator on this node
         for operator in &self.operators {
             if operator.can_mutate(node, source) {
@@ -118,6 +120,7 @@ impl TypeScriptMutationGenerator {
 
 /// Sanitize mutation description for use in ID
 fn sanitize_description(desc: &str) -> String {
+    debug_assert!(!desc.is_empty(), "desc must not be empty");
     desc.replace(" ", "_")
         .replace("→", "to")
         .replace("?", "")
@@ -138,6 +141,7 @@ fn sanitize_description(desc: &str) -> String {
 
 /// Map operator name to MutationOperatorType
 fn map_operator_name_to_type(name: &str) -> MutationOperatorType {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     match name {
         "AOR/ROR" => MutationOperatorType::ArithmeticReplacement,
         "Strict Equality" => MutationOperatorType::RelationalReplacement,

@@ -228,6 +228,7 @@ impl RecommendationEngine {
         &self,
         path: &str,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         let mut detected_frameworks = Vec::new();
 
         for (language, signatures) in &self.framework_signatures {
@@ -250,6 +251,7 @@ impl RecommendationEngine {
         _path: &str,
         signature: &FrameworkSignature,
     ) -> Result<f64, Box<dyn std::error::Error>> {
+        debug_assert!(!_path.is_empty(), "_path must not be empty");
         let confidence = 0.0;
         let mut total_checks = 0.0;
 
@@ -270,6 +272,10 @@ impl RecommendationEngine {
         detected_language: &str,
         complexity_preference: Option<ComplexityTier>,
     ) -> Vec<RepositoryRecommendation> {
+        debug_assert!(
+            !detected_language.is_empty(),
+            "detected_language must not be empty"
+        );
         let language_key = detected_language.to_lowercase();
 
         if let Some(repos) = self.curated_repositories.get(&language_key) {
@@ -303,6 +309,7 @@ impl RecommendationEngine {
         &self,
         framework: &str,
     ) -> Vec<RepositoryRecommendation> {
+        debug_assert!(!framework.is_empty(), "framework must not be empty");
         let mut recommendations = Vec::new();
 
         for repos in self.curated_repositories.values() {
@@ -332,6 +339,7 @@ impl RecommendationEngine {
         language: &str,
         detected_frameworks: &[String],
     ) -> Vec<String> {
+        debug_assert!(!language.is_empty(), "language must not be empty");
         let mut learning_path = Vec::new();
 
         learning_path.push(format!("Start with basic {language} syntax and concepts"));

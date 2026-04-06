@@ -59,6 +59,7 @@ impl JavaScriptAstVisitor {
     /// Analyze JavaScript source code (feature not enabled)
     #[cfg(not(feature = "typescript-ast"))]
     pub fn analyze_javascript_source(&self, _source: &str) -> Result<Vec<AstItem>> {
+        debug_assert!(!_source.is_empty(), "_source must not be empty");
         // Return empty result when TypeScript AST feature is not enabled
         Ok(Vec::new())
     }

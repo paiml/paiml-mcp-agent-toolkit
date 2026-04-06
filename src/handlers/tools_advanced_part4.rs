@@ -75,6 +75,7 @@ fn format_satd_json_output(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     items: &[crate::services::satd_detector::TechnicalDebt],
 ) -> serde_json::Value {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     json!({
         "project_path": args.project_path,
         "total_debt_items": result.summary.total_items,
@@ -124,6 +125,7 @@ fn group_and_sort_satd_items(
     &std::path::Path,
     Vec<&crate::services::satd_detector::TechnicalDebt>,
 )> {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     use std::collections::HashMap;
 
     let mut files_map: HashMap<
@@ -144,6 +146,7 @@ fn format_satd_summary_output(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     items: &[crate::services::satd_detector::TechnicalDebt],
 ) -> serde_json::Value {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut summary = build_satd_summary_header(result);
     let sorted_files = group_and_sort_satd_items(items);
 
@@ -170,6 +173,7 @@ fn format_satd_output(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     items: &[crate::services::satd_detector::TechnicalDebt],
 ) -> serde_json::Value {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     match args.format.as_str() {
         "json" => format_satd_json_output(args, result, items),
         _ => format_satd_summary_output(result, items),
@@ -232,6 +236,7 @@ async fn execute_lint_hotspot_analysis(
     args: &LintHotspotArgs,
     project_path: &Path,
 ) -> Result<std::path::PathBuf, String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::handlers::lint_hotspot_handlers::handle_analyze_lint_hotspot;
     use crate::cli::LintHotspotOutputFormat;
 

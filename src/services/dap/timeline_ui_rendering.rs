@@ -199,6 +199,7 @@ impl TimelineUI {
 
     /// Render timeline with specific width (legacy)
     pub fn render_with_width(&self, width: usize) -> String {
+        debug_assert!(width > 0, "width must be positive");
         let total_frames = if !self.snapshots_legacy.is_empty() {
             self.snapshots_legacy.len()
         } else {

@@ -114,6 +114,7 @@ impl CliAdapter {
         include_dead_code: bool,
         enhanced: bool,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let body = json!({
             "project_path": project_path.to_string_lossy(),
             "dag_type": dag_type_to_string(dag_type),

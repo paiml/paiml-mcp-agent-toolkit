@@ -179,6 +179,7 @@ fn process_function_metrics(
 
 /// Calculate average metrics
 fn calculate_averages(total: u32, count: usize) -> f64 {
+    debug_assert!(count > 0, "count must be positive");
     if count > 0 {
         f64::from(total) / count as f64
     } else {

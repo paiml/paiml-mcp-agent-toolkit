@@ -11,6 +11,7 @@ impl CliAdapter {
         port: u16,
         cors: bool,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(!host.is_empty(), "host must not be empty");
         let body = json!({
             "host": host,
             "port": port,

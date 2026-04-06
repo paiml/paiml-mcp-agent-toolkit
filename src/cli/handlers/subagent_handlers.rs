@@ -61,6 +61,7 @@ pub fn list_subagents(show_all: bool) -> Result<()> {
 
 /// Create a specific sub-agent.
 pub fn create_subagent(agent_name: &str, output_dir: Option<PathBuf>) -> Result<()> {
+    debug_assert!(!agent_name.is_empty(), "agent_name must not be empty");
     // Parse agent name
     let agent: PmatSubAgent = agent_name.parse()?;
 
@@ -159,6 +160,7 @@ pub fn create_all_mvp_subagents(output_dir: Option<PathBuf>) -> Result<()> {
 
 /// Check for required markdown sections in sub-agent definition.
 fn check_required_sections(content: &str, issues: &mut Vec<String>) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let required_sections = [
         "# ", // Title
         "## Description",
@@ -180,6 +182,7 @@ fn check_required_sections(content: &str, issues: &mut Vec<String>) {
 
 /// Check for common content patterns in sub-agent definition.
 fn check_content_patterns(content: &str, warnings: &mut Vec<String>) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     if !content.contains("MCP") {
         warnings.push("No MCP tools mentioned (expected for PMAT sub-agents)".to_string());
     }
@@ -195,6 +198,7 @@ fn check_content_patterns(content: &str, warnings: &mut Vec<String>) {
 
 /// Check markdown formatting rules.
 fn check_markdown_format(content: &str, issues: &mut Vec<String>) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     if !content.starts_with("# ") {
         issues.push("File should start with # title".to_string());
     }

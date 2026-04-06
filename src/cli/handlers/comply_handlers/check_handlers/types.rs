@@ -93,6 +93,7 @@ pub(crate) fn filter_check_by_config(
     check_id: &str,
     config: &ComplyConfig,
 ) -> ComplianceCheck {
+    debug_assert!(!check_id.is_empty(), "check_id must not be empty");
     if !config.is_check_enabled(check_id) {
         return ComplianceCheck {
             name: check.name,
@@ -136,6 +137,10 @@ pub(crate) fn skip_check(name: &str, message: &str) -> ComplianceCheck {
 }
 
 pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
+    debug_assert!(
+        !project_version.is_empty(),
+        "project_version must not be empty"
+    );
     let current_parts: Vec<u32> = PMAT_VERSION
         .split('.')
         .filter_map(|s| s.parse().ok())
@@ -162,6 +167,7 @@ pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
 }
 
 pub(crate) fn get_breaking_changes_since(_from_version: &str) -> Vec<BreakingChange> {
+    debug_assert!(!_from_version.is_empty(), "_from_version must not be empty");
     vec![]
 }
 
@@ -173,6 +179,8 @@ pub(crate) struct ChangelogEntry {
 }
 
 pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
+    debug_assert!(!_from.is_empty(), "_from must not be empty");
+    debug_assert!(!_to.is_empty(), "_to must not be empty");
     vec![
         ChangelogEntry {
             version: PMAT_VERSION.to_string(),

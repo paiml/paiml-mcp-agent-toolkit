@@ -171,6 +171,7 @@ impl QualityGateService {
         path: &Path,
         max_percentage: f64,
     ) -> Result<QualityCheckResult> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let input = AnalysisInput {
             operation: AnalysisOperation::DeadCode,
             path: path.to_path_buf(),
@@ -235,6 +236,7 @@ impl QualityGateService {
         check_cli: bool,
         check_mcp: bool,
     ) -> Result<QualityCheckResult> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         use crate::docs_enforcement::mcp_checker::load_mcp_tool_definitions;
         use crate::docs_enforcement::mcp_checker::validate_mcp_documentation;
 

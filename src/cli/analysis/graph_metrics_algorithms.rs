@@ -165,6 +165,8 @@ fn calculate_pagerank(
     max_iter: usize,
     threshold: f64,
 ) -> Result<Vec<f64>> {
+    debug_assert!(max_iter > 0, "max_iter must be positive");
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let n = graph.node_count();
     if n == 0 {
         return Ok(Vec::new());

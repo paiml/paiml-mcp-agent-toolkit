@@ -77,6 +77,7 @@ impl AgentContextBuilder {
     /// Parse and add a feature from a string.
     #[must_use]
     pub fn with_feature_str(mut self, feature_str: &str) -> Self {
+        debug_assert!(!feature_str.is_empty(), "feature_str must not be empty");
         if let Ok(feature) = feature_str.parse::<AgentFeature>() {
             self.context.features.insert(feature);
         }

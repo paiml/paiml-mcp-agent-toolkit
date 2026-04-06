@@ -86,6 +86,8 @@ impl SATDDetector {
         file_path: &Path,
         line_num: u32,
     ) -> Result<Option<TechnicalDebt>, TemplateError> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Skip lines that are likely test data or pattern definitions
         if self.is_likely_test_data_or_pattern(line, file_path) {
             return Ok(None);
@@ -126,6 +128,7 @@ impl SATDDetector {
 
     /// Extract comment content from various comment styles
     fn extract_comment_content(&self, line: &str) -> Result<Option<String>, TemplateError> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Input validation
         if line.len() > 10000 {
             return Err(TemplateError::ValidationError {
@@ -163,6 +166,7 @@ impl SATDDetector {
 
     /// Find the column where the comment starts
     fn find_comment_column(&self, line: &str) -> u32 {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         if let Some(pos) = line.find("//") {
             return pos as u32 + 1;
         }

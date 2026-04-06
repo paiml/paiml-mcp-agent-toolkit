@@ -47,6 +47,7 @@ impl WorkerMonitor {
 
     /// Record task failure
     pub async fn record_failure(&self, worker_id: usize, error: &str) {
+        debug_assert!(!error.is_empty(), "error must not be empty");
         let mut workers = self.workers.write().await;
 
         if let Some(worker) = workers.get_mut(&worker_id) {

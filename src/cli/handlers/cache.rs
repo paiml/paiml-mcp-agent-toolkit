@@ -41,6 +41,7 @@ pub async fn handle_cache_command(command: &CacheCommand) -> Result<()> {
 }
 
 async fn handle_cache_stats(detailed: bool, format: &str, history: bool) -> Result<()> {
+    debug_assert!(!format.is_empty(), "format must not be empty");
     let config = OrchestratorConfig::default();
     let orchestrator = CacheOrchestrator::new(config);
 

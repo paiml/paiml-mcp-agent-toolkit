@@ -212,6 +212,7 @@ impl GitAnalysisService {
     }
 
     fn parse_commit_line(line: &str) -> Option<(String, String, String)> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split('|').collect();
         if parts.len() == 3 {
             Some((
@@ -225,6 +226,7 @@ impl GitAnalysisService {
     }
 
     fn parse_numstat_line(line: &str) -> Option<(usize, usize, String)> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 3 {
             let additions = parts[0].parse::<usize>().ok()?;
@@ -237,6 +239,7 @@ impl GitAnalysisService {
     }
 
     fn generate_summary(files: &[FileChurnMetrics]) -> ChurnSummary {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut author_contributions: HashMap<String, usize> = HashMap::with_capacity(64);
         let mut total_commits = 0;
 

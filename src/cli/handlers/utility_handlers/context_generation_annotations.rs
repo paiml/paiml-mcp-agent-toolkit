@@ -4,6 +4,7 @@ fn get_simple_function_annotations(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) -> String {
+    debug_assert!(!func_name.is_empty(), "func_name must not be empty");
     let mut annotations = String::new();
 
     add_complexity_annotation(&mut annotations, func_name, file, analyses);
@@ -22,6 +23,7 @@ fn add_complexity_annotation(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
+    debug_assert!(!func_name.is_empty(), "func_name must not be empty");
     let complexity_added = analyses
         .complexity_report
         .as_ref()
@@ -107,6 +109,7 @@ fn add_pagerank_annotation(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
+    debug_assert!(!func_name.is_empty(), "func_name must not be empty");
     if let Some(dag) = &analyses.dependency_graph {
         if let Some((node_id, _)) = dag
             .nodes

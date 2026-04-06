@@ -1,5 +1,6 @@
 /// Parse coverage percentage from llvm-cov output
 fn parse_coverage_percentage(output: &str) -> f64 {
+    debug_assert!(!output.is_empty(), "output must not be empty");
     for line in output.lines() {
         if line.contains("TOTAL") {
             // Expected format: "TOTAL   1234   1000   80.0%"

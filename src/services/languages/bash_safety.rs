@@ -98,6 +98,7 @@ impl ShellCommandParser {
 
     /// Parses shell command line into tokens (complexity ≤10)
     pub fn parse_command_line(&mut self, line: &str) -> Result<Vec<String>, String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let tokens: Vec<String> = line
             .split_whitespace()
             .map(std::string::ToString::to_string)
@@ -112,6 +113,7 @@ impl ShellCommandParser {
         &mut self,
         line: &str,
     ) -> Result<Vec<(String, String)>, String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let mut assignments = Vec::new();
 
         if line.contains('=') && !line.trim().starts_with('#') {

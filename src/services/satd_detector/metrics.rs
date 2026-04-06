@@ -75,6 +75,11 @@ impl SATDDetector {
         debts: &[TechnicalDebt],
         project_root: &Path,
     ) -> Result<f64, TemplateError> {
+        debug_assert!(
+            project_root.exists(),
+            "project_root must exist: {}",
+            project_root.display()
+        );
         use chrono::Utc;
 
         let mut total_age_days = 0.0;
@@ -132,6 +137,16 @@ impl SATDDetector {
         line: u32,
         project_root: &Path,
     ) -> Option<String> {
+        debug_assert!(
+            relative_path.exists(),
+            "relative_path must exist: {}",
+            relative_path.display()
+        );
+        debug_assert!(
+            project_root.exists(),
+            "project_root must exist: {}",
+            project_root.display()
+        );
         use std::process::Command;
 
         let output = Command::new("git")
@@ -154,6 +169,7 @@ impl SATDDetector {
     }
 
     fn parse_git_blame_timestamp(&self, blame_output: &str) -> Option<i64> {
+        debug_assert!(!blame_output.is_empty(), "blame_output must not be empty");
         for line in blame_output.lines() {
             if let Some(timestamp_str) = line.strip_prefix("author-time ") {
                 return timestamp_str.parse::<i64>().ok();

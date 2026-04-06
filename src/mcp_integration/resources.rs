@@ -27,6 +27,7 @@ impl McpResource for AgentStateResource {
     }
 
     async fn read(&self, uri: &str) -> Result<ResourceContent, McpError> {
+        debug_assert!(!uri.is_empty(), "uri must not be empty");
         Ok(ResourceContent {
             uri: uri.to_string(),
             mime_type: Some("application/json".to_string()),
@@ -37,6 +38,7 @@ impl McpResource for AgentStateResource {
     }
 
     fn subscribe(&self, _uri: &str) -> Option<tokio::sync::watch::Receiver<ResourceContent>> {
+        debug_assert!(!_uri.is_empty(), "_uri must not be empty");
         None
     }
 }
@@ -66,6 +68,7 @@ impl McpResource for MetricsResource {
     }
 
     async fn read(&self, uri: &str) -> Result<ResourceContent, McpError> {
+        debug_assert!(!uri.is_empty(), "uri must not be empty");
         Ok(ResourceContent {
             uri: uri.to_string(),
             mime_type: Some("application/json".to_string()),
@@ -76,6 +79,7 @@ impl McpResource for MetricsResource {
     }
 
     fn subscribe(&self, _uri: &str) -> Option<tokio::sync::watch::Receiver<ResourceContent>> {
+        debug_assert!(!_uri.is_empty(), "_uri must not be empty");
         None
     }
 }
@@ -107,6 +111,7 @@ impl McpResource for QualityReportResource {
     }
 
     async fn read(&self, uri: &str) -> Result<ResourceContent, McpError> {
+        debug_assert!(!uri.is_empty(), "uri must not be empty");
         Ok(ResourceContent {
             uri: uri.to_string(),
             mime_type: Some("application/json".to_string()),
@@ -117,6 +122,7 @@ impl McpResource for QualityReportResource {
     }
 
     fn subscribe(&self, _uri: &str) -> Option<tokio::sync::watch::Receiver<ResourceContent>> {
+        debug_assert!(!_uri.is_empty(), "_uri must not be empty");
         None
     }
 }

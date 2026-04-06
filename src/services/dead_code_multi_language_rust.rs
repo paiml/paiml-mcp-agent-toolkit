@@ -25,6 +25,7 @@ fn count_rust_functions(path: &Path) -> Result<usize> {
 fn analyze_rust_files(
     files: &[std::path::PathBuf],
 ) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     let mut defined_functions = Vec::new();
     let mut called_functions = HashSet::new();
 

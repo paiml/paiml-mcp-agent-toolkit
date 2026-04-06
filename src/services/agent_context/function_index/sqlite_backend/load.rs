@@ -10,6 +10,7 @@ use rusqlite::{params, Connection};
 use std::collections::HashMap;
 
 fn parse_definition_type(s: &str) -> DefinitionType {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     match s {
         "Struct" => DefinitionType::Struct,
         "Enum" => DefinitionType::Enum,
@@ -181,6 +182,7 @@ pub(crate) fn load_source_by_location(
     file_path: &str,
     start_line: usize,
 ) -> Result<String, String> {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     conn.query_row(
         "SELECT source FROM functions WHERE file_path = ?1 AND start_line = ?2 LIMIT 1",
         params![file_path, start_line as i64],

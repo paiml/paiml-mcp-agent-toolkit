@@ -127,6 +127,8 @@ impl QualityRefactoringEngine {
 
     /// Reduce function complexity through decomposition
     fn reduce_function_complexity(&self, code: &str, _function_name: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
+        debug_assert!(!_function_name.is_empty(), "_function_name must not be empty");
         // Simple complexity reduction: extract method pattern
         let mut result = code.to_string();
 
@@ -164,12 +166,16 @@ impl QualityRefactoringEngine {
 
     /// Implement TODO comments
     fn implement_todo(&self, code: &str, _todo: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
+        debug_assert!(!_todo.is_empty(), "_todo must not be empty");
         let result = code.replace("todo!(", "Ok(Default::default()) // ");
         Ok(result)
     }
 
     /// Remove dead code
     fn remove_dead_code(&self, code: &str, _dead_code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
+        debug_assert!(!_dead_code.is_empty(), "_dead_code must not be empty");
         // Simple dead code removal (would be more sophisticated)
         let result = code.replace("// Dead code", "");
         Ok(result)
@@ -177,6 +183,8 @@ impl QualityRefactoringEngine {
 
     /// Reduce technical debt
     fn reduce_technical_debt(&self, code: &str, _debt: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
+        debug_assert!(!_debt.is_empty(), "_debt must not be empty");
         // Apply debt reduction patterns
         let mut result = code.to_string();
         result = result.replace("unwrap()", "?");
@@ -186,6 +194,8 @@ impl QualityRefactoringEngine {
 
     /// Add test coverage
     fn add_test_coverage(&self, code: &str, _uncovered: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
+        debug_assert!(!_uncovered.is_empty(), "_uncovered must not be empty");
         // Add basic test coverage
         let mut result = code.to_string();
         result.push_str("\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n");

@@ -130,6 +130,7 @@ async fn request_monitor_status(
     monitor: &mpsc::Sender<QualityMonitorCommand>,
     project_id: &str,
 ) -> Option<ProjectAnalysisResult> {
+    debug_assert!(!project_id.is_empty(), "project_id must not be empty");
     let (tx, rx) = oneshot::channel();
     let command = QualityMonitorCommand::GetStatus {
         project_id: project_id.to_string(),
@@ -144,6 +145,7 @@ async fn request_monitor_status(
 }
 
 fn format_status_response(project_id: &str, status: &ProjectAnalysisResult) -> Value {
+    debug_assert!(!project_id.is_empty(), "project_id must not be empty");
     json!({
         "type": "text",
         "text": format!("Quality Status for {}: {}", project_id,

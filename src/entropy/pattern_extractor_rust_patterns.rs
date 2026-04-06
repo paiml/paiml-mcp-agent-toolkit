@@ -6,6 +6,8 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: Result<T, E> handling
@@ -35,6 +37,8 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: Input validation — only match multi-condition validation blocks,
@@ -69,6 +73,8 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: File/resource management (open/close, lock/unlock)
@@ -101,6 +107,8 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: Complex if-else chains
@@ -130,6 +138,8 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: Iterator chains — only flag multi-step chains, not individual
@@ -162,6 +172,8 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: HTTP/API calls (reqwest, fetch, etc.)

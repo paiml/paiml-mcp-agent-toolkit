@@ -47,6 +47,8 @@ fn write_file_section(
     functions: &[(&FunctionId, &ProofSummary)],
     include_evidence: bool,
 ) -> Result<()> {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
+    debug_assert!(!functions.is_empty(), "functions must not be empty");
     use crate::cli::colors as c;
     writeln!(output, "{}\n", c::subheader(&c::path(file_path)))?;
 

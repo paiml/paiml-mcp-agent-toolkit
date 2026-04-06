@@ -221,6 +221,9 @@ impl TopicEngine {
         chunks: &[ChunkMetadata],
         num_topics: usize,
     ) -> Result<Vec<Topic>, String> {
+        debug_assert!(num_topics > 0, "num_topics must be positive");
+        debug_assert!(!vectors.is_empty(), "vectors must not be empty");
+        debug_assert!(!chunks.is_empty(), "chunks must not be empty");
         // Use clustering engine for K-means
         let clustering_engine = ClusteringEngine::new(Arc::clone(&self.vector_db));
 

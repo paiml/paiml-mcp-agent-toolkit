@@ -47,6 +47,7 @@ impl BytecodeAnalyzer {
 
     /// Parse name section for function name mappings
     fn parse_name_section(data: &[u8], name_map: &mut HashMap<u32, String>) {
+        debug_assert!(!data.is_empty(), "data must not be empty");
         let name_reader =
             wasmparser::NameSectionReader::new(wasmparser::BinaryReader::new(data, 0));
         for section in name_reader {

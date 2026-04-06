@@ -30,6 +30,7 @@ impl PdmtService {
         granularity: &str,
         quality_config: PdmtQualityConfig,
     ) -> Result<PdmtTodoList> {
+        debug_assert!(!granularity.is_empty(), "granularity must not be empty");
         info!(
             "Generating deterministic todos for {} requirements",
             requirements.len()

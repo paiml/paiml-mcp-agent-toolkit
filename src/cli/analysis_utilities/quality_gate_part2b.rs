@@ -5,6 +5,7 @@ async fn output_project_results(
     format: QualityGateOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let content = format_quality_gate_output(results, violations, format)?;
 
     if let Some(output_path) = output {
@@ -22,6 +23,7 @@ async fn output_project_results(
 
 /// Prints the final quality gate status
 fn print_quality_gate_final_status(results: &QualityGateResults, violations: &[QualityViolation]) {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     if results.passed {
         eprintln!("\n✅ Quality gate PASSED");
     } else {
@@ -101,6 +103,7 @@ fn persist_entropy_details_to_sqlite(
     violations: &[QualityViolation],
     quiet: bool,
 ) {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let entropy_tuples: Vec<_> = violations
         .iter()
         .filter(|v| v.check_type == "entropy")

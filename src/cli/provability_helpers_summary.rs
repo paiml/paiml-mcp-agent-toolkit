@@ -128,6 +128,7 @@ fn write_lowest_scoring_functions(
     summaries: &[ProofSummary],
     limit: usize,
 ) -> Result<()> {
+    debug_assert!(limit > 0, "limit must be positive");
     if function_ids.is_empty() {
         return Ok(());
     }

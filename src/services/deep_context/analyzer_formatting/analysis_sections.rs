@@ -79,6 +79,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         files: &[crate::models::churn::FileChurnMetrics],
     ) -> anyhow::Result<()> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         use std::fmt::Write;
 
         // Sort files by commit count
@@ -219,6 +220,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         files: &[crate::models::dead_code::FileDeadCodeMetrics],
     ) -> anyhow::Result<()> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         use std::fmt::Write;
         if !files.is_empty() {
             writeln!(output, "\n**Top Files with Dead Code:**")?;
@@ -333,6 +335,10 @@ impl DeepContextAnalyzer {
         output: &mut String,
         recommendations: &[PrioritizedRecommendation],
     ) -> anyhow::Result<()> {
+        debug_assert!(
+            !recommendations.is_empty(),
+            "recommendations must not be empty"
+        );
         if recommendations.is_empty() {
             return Ok(());
         }
@@ -381,6 +387,7 @@ impl DeepContextAnalyzer {
         number: usize,
         title: &str,
     ) -> anyhow::Result<()> {
+        debug_assert!(!emoji.is_empty(), "emoji must not be empty");
         use std::fmt::Write;
         writeln!(output, "### {emoji} {number} {title}")?;
         Ok(())

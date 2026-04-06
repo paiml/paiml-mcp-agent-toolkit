@@ -128,6 +128,7 @@ async fn discover_and_validate_files(
 fn calculate_defect_predictions(
     files: &[(std::path::PathBuf, String, usize)],
 ) -> Result<Vec<(String, DefectScore)>> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     let file_metrics = collect_file_metrics(files);
     let calculator = DefectProbabilityCalculator::new();
 

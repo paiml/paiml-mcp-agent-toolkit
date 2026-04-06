@@ -147,6 +147,7 @@ async fn show_configuration(
 
 /// Show specific configuration section
 fn show_configuration_section(config: &PmatConfig, section: &str) -> Result<()> {
+    debug_assert!(!section.is_empty(), "section must not be empty");
     use crate::cli::colors as c;
 
     println!("{}", c::header(&format!("Configuration Section: {section}")));

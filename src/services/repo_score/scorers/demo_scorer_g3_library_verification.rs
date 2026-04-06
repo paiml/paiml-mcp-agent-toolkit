@@ -37,6 +37,7 @@ fn file_contains_usage(
     libs: &[&str],
     usage_patterns: &std::collections::HashMap<&str, &[&str]>,
 ) -> bool {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     for lib in libs {
         if let Some(patterns) = usage_patterns.get(lib) {
             for pattern in *patterns {

@@ -131,6 +131,7 @@ async fn generate_mutants(
     engine: &MutationEngine,
     path: &PathBuf,
 ) -> Result<Vec<crate::services::mutation::Mutant>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("\n📝 Generating mutants...");
 
     let mutants = if path.is_file() {
@@ -201,6 +202,7 @@ fn format_report(
     operators: &Option<Vec<String>>,
     format: OutputFormat,
 ) -> serde_json::Value {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     match format {
         OutputFormat::Json => format_json_report(score, results, operators),
         _ => format_summary_report(score),
@@ -213,6 +215,7 @@ fn format_json_report(
     results: &[crate::services::mutation::MutationResult],
     operators: &Option<Vec<String>>,
 ) -> serde_json::Value {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     serde_json::json!({
         "mutation_score": score.score,
         "total_mutants": score.total,

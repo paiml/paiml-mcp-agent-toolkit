@@ -293,6 +293,7 @@ async fn run_and_format_tdg_analysis(
     project_path: PathBuf,
     format: Option<String>,
 ) -> McpResponse {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::tdg_calculator::TDGCalculator;
 
     // Create TDG calculator (primary service for analysis)

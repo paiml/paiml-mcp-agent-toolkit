@@ -33,6 +33,7 @@ pub fn renamed_export() -> i32 {
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub fn wasm_function(input: &str) -> String {
+    debug_assert!(!input.is_empty(), "input must not be empty");
     format!("Hello, {}!", input)
 }
 

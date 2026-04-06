@@ -16,6 +16,7 @@ fn is_cb_suppressed(v: &CbPatternViolation, config: Option<&ComplyConfig>) -> bo
 }
 
 fn suppression_suffix(count: u32, prefix: &str) -> String {
+    debug_assert!(count > 0, "count must be positive");
     if count > 0 {
         format!("{prefix}{count} suppressed via .pmat.yaml")
     } else {
@@ -39,6 +40,7 @@ fn aggregate_violations(
     comply_config: Option<&ComplyConfig>,
     fail_on_error: bool,
 ) -> ComplianceCheck {
+    debug_assert!(!check_name.is_empty(), "check_name must not be empty");
     let mut all_issues: Vec<String> = Vec::new();
     let mut suppressed_count = 0u32;
     let mut counts = [0u32; 3]; // [error, warning, info]

@@ -85,6 +85,7 @@ impl RuchyAstAnalyzer {
     }
 
     fn _analyze_function(&mut self, name: &str, _body: &ruchy::Expr) -> Result<()> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         // Simplified implementation for TDD GREEN phase
         // Store function metrics with basic complexity
         self.functions.push(FunctionComplexity {
@@ -246,10 +247,12 @@ impl RuchyParserState {
     }
 
     fn is_function_start(&self, trimmed: &str) -> bool {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         trimmed.starts_with("fun ") || trimmed.starts_with("@test") || trimmed.contains("fun test_")
     }
 
     fn start_function(&mut self, trimmed: &str, line_num: u32) {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         self.in_function = true;
         self.function_start = line_num + 1;
         self.function_name = self.extract_function_name(trimmed);
@@ -264,6 +267,7 @@ impl RuchyParserState {
     }
 
     fn extract_function_name(&self, trimmed: &str) -> String {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         if let Some(name_start) = trimmed.find("fun ") {
             let after_fun = &trimmed[name_start + 4..];
             after_fun.split('(').next().unwrap_or("").trim().to_string()
@@ -273,6 +277,7 @@ impl RuchyParserState {
     }
 
     fn update_complexity_metrics(&mut self, trimmed: &str) {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         // Control flow patterns and their complexity impacts
         let patterns = [
             ("if ", 1, 1),
@@ -297,6 +302,7 @@ impl RuchyParserState {
     }
 
     fn update_brace_count(&mut self, trimmed: &str) {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         self.brace_count += trimmed.chars().filter(|&c| c == '{').count() as i32;
         self.brace_count -= trimmed.chars().filter(|&c| c == '}').count() as i32;
     }

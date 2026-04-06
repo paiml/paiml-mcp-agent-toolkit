@@ -73,6 +73,7 @@ impl DriftDetector {
 
     /// Generate full drift report for multiple files
     pub fn generate_report(&self, paths: &[&Path]) -> DriftReport {
+        debug_assert!(!paths.is_empty(), "paths must not be empty");
         let mut all_errors = Vec::new();
         let mut documented_commands = HashSet::new();
 
@@ -118,11 +119,13 @@ impl DriftDetector {
 
     /// Check if command exists in registry
     fn command_exists(&self, path: &str) -> bool {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         self.registry.find_command(path).is_some()
     }
 
     /// Find similar command for suggestions
     fn find_similar_command(&self, query: &str) -> Option<String> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         let all_commands = self.registry.all_command_paths();
 
         all_commands
@@ -133,6 +136,7 @@ impl DriftDetector {
 
     /// Check if command is user-facing (should be documented)
     fn is_user_facing(&self, command: &str) -> bool {
+        debug_assert!(!command.is_empty(), "command must not be empty");
         // Filter out internal commands
         if let Some(cmd) = self.registry.find_command(command) {
             !cmd.category.to_lowercase().contains("internal")
@@ -143,6 +147,8 @@ impl DriftDetector {
 
     /// Validate a command example
     fn validate_example(&self, example: &str, file_name: &str) -> Option<DriftError> {
+        debug_assert!(!example.is_empty(), "example must not be empty");
+        debug_assert!(!file_name.is_empty(), "file_name must not be empty");
         // Extract command from example
         let parts: Vec<&str> = example.split_whitespace().collect();
         if parts.len() < 2 || parts[0] != "pmat" {
@@ -174,6 +180,8 @@ impl DriftDetector {
 
 /// Levenshtein distance for suggestions
 fn levenshtein(a: &str, b: &str) -> usize {
+    debug_assert!(!a.is_empty(), "a must not be empty");
+    debug_assert!(!b.is_empty(), "b must not be empty");
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
     let a_len = a_chars.len();

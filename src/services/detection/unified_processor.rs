@@ -55,6 +55,7 @@ impl UnifiedDetectionProcessor {
         &self,
         project_path: &Path,
     ) -> Result<polyglot::PolyglotAnalysis> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let input = DetectionInput::ProjectDirectory(project_path.to_path_buf());
         let config = DetectionConfig {
             detector_specific: DetectorSpecificConfig::Polyglot(polyglot::PolyglotConfig::default()),

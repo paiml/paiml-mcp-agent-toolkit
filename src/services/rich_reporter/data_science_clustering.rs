@@ -103,6 +103,8 @@ impl DataScienceAnalyzer {
         findings: &[Finding],
         labels: &[usize],
     ) -> Vec<FindingCluster> {
+        debug_assert!(!findings.is_empty(), "findings must not be empty");
+        debug_assert!(!labels.is_empty(), "labels must not be empty");
         let mut cluster_findings: HashMap<usize, Vec<&Finding>> = HashMap::new();
 
         for (finding, &label) in findings.iter().zip(labels.iter()) {

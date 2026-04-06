@@ -9,6 +9,7 @@ struct FeatureCheck {
 }
 
 fn check_ci_feature(content: &str, check: &FeatureCheck) -> (f64, Finding) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let found = check.keywords.iter().any(|kw| content.contains(kw));
     if found {
         (check.points, Finding {

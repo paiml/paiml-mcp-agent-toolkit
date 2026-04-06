@@ -58,6 +58,8 @@ async fn handle_spec(
     threshold: u32,
     gateway_threshold: u32,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(!target.is_empty(), "target must not be empty");
     use crate::cli::colors as c;
     use crate::services::spec_parser::{
         ClaimCategory, SpecParser, ValidationStatus as SpecValidationStatus,

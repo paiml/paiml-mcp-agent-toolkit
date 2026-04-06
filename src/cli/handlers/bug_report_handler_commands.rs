@@ -84,6 +84,7 @@ pub async fn handle_bug_report(
 
 /// Create GitHub issue using gh CLI
 fn create_github_issue(title: &str, body: &str) -> Result<()> {
+    debug_assert!(!body.is_empty(), "body must not be empty");
     use crate::cli::colors as c;
 
     // Check if gh is available

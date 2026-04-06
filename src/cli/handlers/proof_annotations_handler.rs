@@ -80,6 +80,11 @@ fn format_proof_annotations(
     project_path: &Path,
     include_evidence: bool,
 ) -> Result<String> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     match format {
         ProofAnnotationOutputFormat::Json => format_as_json(annotations, elapsed, annotator),
         ProofAnnotationOutputFormat::Summary => format_as_summary(annotations, elapsed),

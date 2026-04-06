@@ -73,6 +73,7 @@ async fn sort_targets_by_priority(
     mut targets: Vec<PathBuf>,
     _priority_expr: &str,
 ) -> anyhow::Result<Vec<PathBuf>> {
+    debug_assert!(!_priority_expr.is_empty(), "_priority_expr must not be empty");
     // In a real implementation, this would:
     // 1. Analyze each file to get metrics (complexity, defect_probability, etc.)
     // 2. Evaluate the priority expression for each file

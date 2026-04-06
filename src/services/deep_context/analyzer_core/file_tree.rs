@@ -13,6 +13,11 @@ impl DeepContextAnalyzer {
         &self,
         project_path: &PathBuf,
     ) -> anyhow::Result<AnnotatedFileTree> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut total_files = 0;
         let mut total_size_bytes = 0;
 
@@ -32,6 +37,7 @@ impl DeepContextAnalyzer {
         total_files: &mut usize,
         total_size: &mut u64,
     ) -> anyhow::Result<AnnotatedNode> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let metadata = std::fs::metadata(path)?;
         let name = path
             .file_name()

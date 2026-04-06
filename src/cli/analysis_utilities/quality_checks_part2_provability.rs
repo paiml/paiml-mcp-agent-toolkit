@@ -223,6 +223,8 @@ fn extract_functions_from_source(
     max_count: usize,
     functions: &mut Vec<crate::services::lightweight_provability_analyzer::FunctionId>,
 ) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
+    debug_assert!(!content.is_empty(), "content must not be empty");
     use crate::services::lightweight_provability_analyzer::FunctionId;
 
     let mut in_test_block = false;
@@ -252,6 +254,7 @@ fn extract_functions_from_source(
 
 /// Parse a function declaration line and return the function name if it matches.
 fn parse_fn_declaration(trimmed: &str) -> Option<String> {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let prefixes = [
         "pub fn ", "pub async fn ", "fn ", "async fn ",
         "pub(crate) fn ", "pub(crate) async fn ",
@@ -321,6 +324,7 @@ pub fn format_quality_gate_output(
     violations: &[QualityViolation],
     format: QualityGateOutputFormat,
 ) -> Result<String> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     match format {
         QualityGateOutputFormat::Json => format_qg_as_json(results, violations),
         QualityGateOutputFormat::Human => format_qg_as_human(results, violations),

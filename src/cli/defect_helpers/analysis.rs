@@ -28,6 +28,7 @@ pub async fn analyze_defect_probability(
     files: &[(PathBuf, String, usize)],
     config: &DefectPredictionConfig,
 ) -> Result<Vec<(String, DefectScore)>> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     eprintln!("📊 Analyzing {} files...", files.len());
 
     let calculator = DefectProbabilityCalculator::new();

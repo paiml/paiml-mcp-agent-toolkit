@@ -105,6 +105,7 @@ struct ParseState {
 
 /// Process a single line during roadmap parsing
 fn process_roadmap_line(state: &mut ParseState, line: &str) {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     if let Some(sprint_info) = parse_sprint_header(line) {
         if let Some(sprint) = state.current_sprint.take() {
             state.sprints.push(sprint);

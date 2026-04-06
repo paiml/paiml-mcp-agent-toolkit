@@ -287,6 +287,7 @@ fn should_skip_file(path: &Path) -> bool {
 }
 
 fn estimate_splits(line_count: usize, max_lines: usize) -> usize {
+    debug_assert!(max_lines > 0, "max_lines must be positive");
     if max_lines == 0 {
         return 1;
     }
@@ -304,6 +305,7 @@ fn estimate_splits(line_count: usize, max_lines: usize) -> usize {
 
 /// Returns true if a line starts a top-level Rust item (not indented).
 fn is_top_level_item(line: &str) -> Option<(&str, &str)> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim_start();
 
     // Must start at column 0 (no indentation) or after `pub`/`pub(crate)` etc.
@@ -350,6 +352,7 @@ fn is_top_level_item(line: &str) -> Option<(&str, &str)> {
 
 /// Strip `pub`, `pub(crate)`, `pub(super)`, `pub(in ...)` from the start.
 fn strip_visibility(s: &str) -> &str {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     if !s.starts_with("pub") {
         return s;
     }
@@ -368,6 +371,7 @@ fn strip_visibility(s: &str) -> &str {
 
 /// Extract the item name from the text after the keyword.
 fn extract_item_name(rest: &str) -> &str {
+    debug_assert!(!rest.is_empty(), "rest must not be empty");
     // Name is the first identifier-like token
     let name = rest
         .split(|c: char| !c.is_alphanumeric() && c != '_')
@@ -382,6 +386,7 @@ fn extract_item_name(rest: &str) -> &str {
 
 /// Detect split points: top-level items with their line ranges.
 fn find_split_points(content: &str) -> Vec<TopLevelItem> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let lines: Vec<&str> = content.lines().collect();
     let mut items = Vec::new();
     let mut brace_depth: i32 = 0;
@@ -538,6 +543,7 @@ fn find_split_points(content: &str) -> Vec<TopLevelItem> {
 
 /// Walk backwards from a line to find the start of preceding doc comments/attributes.
 fn find_attribute_start(lines: &[&str], item_line_idx: usize) -> usize {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut start = item_line_idx;
     while start > 0 {
         let prev = lines[start - 1].trim();
@@ -564,6 +570,7 @@ fn find_attribute_start(lines: &[&str], item_line_idx: usize) -> usize {
 
 /// Returns true if the content uses `include!()` pattern (file is already split).
 fn uses_include_pattern(content: &str) -> bool {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     content.lines().any(|line| {
         let trimmed = line.trim();
         trimmed.starts_with("include!(") || trimmed.starts_with("include!(concat!")
@@ -572,6 +579,7 @@ fn uses_include_pattern(content: &str) -> bool {
 
 /// Returns true if a line is a `use` statement.
 fn is_use_line(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim_start();
     trimmed.starts_with("use ")
         || trimmed.starts_with("pub use ")
@@ -580,6 +588,7 @@ fn is_use_line(line: &str) -> bool {
 
 /// Returns true if a line is a module-level attribute.
 fn is_module_attr(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim();
     trimmed.starts_with("#![")
 }
@@ -678,6 +687,13 @@ fn group_items_into_clusters(
     max_lines: usize,
     file_path: &Path,
 ) -> Vec<ItemCluster> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
+    debug_assert!(max_lines > 0, "max_lines must be positive");
+    debug_assert!(!items.is_empty(), "items must not be empty");
     if items.is_empty() {
         return Vec::new();
     }
@@ -778,6 +794,7 @@ fn name_submodule(items: &[TopLevelItem], file_path: &Path) -> String {
 
 /// Find a common name prefix among items (returns None if no useful prefix).
 fn find_common_prefix(items: &[TopLevelItem]) -> Option<String> {
+    debug_assert!(!items.is_empty(), "items must not be empty");
     if items.len() < 2 {
         return None;
     }
@@ -858,6 +875,10 @@ fn print_plan(plan: &SplitPlan, rel_path: &Path) {
 
 /// Build the actual file contents for each split target.
 fn build_split_targets(plan: &SplitPlan, original_content: &str) -> Result<Vec<SplitTarget>> {
+    debug_assert!(
+        !original_content.is_empty(),
+        "original_content must not be empty"
+    );
     let lines: Vec<&str> = original_content.lines().collect();
     let mut targets = Vec::new();
 

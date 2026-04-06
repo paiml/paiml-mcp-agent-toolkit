@@ -219,6 +219,7 @@ fn run_diagnostics(
 }
 
 fn should_include_category(category: &str, filter: &Option<String>) -> bool {
+    debug_assert!(!category.is_empty(), "category must not be empty");
     match filter {
         None => true,
         Some(f) => f.to_lowercase() == category,

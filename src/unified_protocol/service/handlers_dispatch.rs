@@ -85,6 +85,7 @@ async fn route_mcp_method(
     method: &str,
     params: Value,
 ) -> Result<Value, AppError> {
+    debug_assert!(!method.is_empty(), "method must not be empty");
     match method {
         "list_templates" => {
             let query: ListTemplatesQuery = serde_json::from_value(params)?;

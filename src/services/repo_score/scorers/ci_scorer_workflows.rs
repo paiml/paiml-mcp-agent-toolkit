@@ -71,6 +71,8 @@ fn check_workflow_structure(content: &str, workflow_name: &str, workflow_path: &
 }
 
 fn ci_pattern_finding(detected: bool, success_msg: &str, missing_msg: &str) -> (f64, Finding) {
+    debug_assert!(!success_msg.is_empty(), "success_msg must not be empty");
+    debug_assert!(!missing_msg.is_empty(), "missing_msg must not be empty");
     if detected {
         (1.0, Finding {
             severity: Severity::Success,

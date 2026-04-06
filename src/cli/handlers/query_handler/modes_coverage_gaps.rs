@@ -119,6 +119,7 @@ pub(super) async fn handle_coverage_gaps_mode(
 
 /// Format and print coverage gap results in text mode (testable gaps only)
 fn print_coverage_gaps_text(results: &[QueryResult]) {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     println!(
         "{BOLD}{UNDERLINE}Coverage Gaps{RESET} ({} testable functions with uncovered code)\n",
         results.len()
@@ -210,6 +211,7 @@ fn print_excluded_results(excluded: &[&QueryResult]) {
 /// `--files-with-matches`: prints file paths sorted by total uncovered lines desc.
 /// `--count`: prints `file_path: N uncovered lines (M functions)` sorted desc.
 fn output_coverage_gaps_by_file(results: &[QueryResult], files_only: bool) -> anyhow::Result<()> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     use std::collections::BTreeMap;
     let mut by_file: BTreeMap<&str, (usize, usize)> = BTreeMap::new(); // (uncov_lines, func_count)
     for r in results {

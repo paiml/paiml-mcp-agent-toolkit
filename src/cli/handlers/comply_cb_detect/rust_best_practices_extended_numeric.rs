@@ -79,6 +79,7 @@ pub fn detect_cb528_division_by_length(project_path: &Path) -> Vec<CbPatternViol
 
 /// Check if a line contains `/ something.len()` pattern
 fn has_division_by_len(line: &str, marker: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let mut search_from = 0;
     while let Some(pos) = line[search_from..].find(marker) {
         let abs_pos = search_from + pos;
@@ -92,6 +93,7 @@ fn has_division_by_len(line: &str, marker: &str) -> bool {
 
 /// Check if there's a `/` division operator before position `pos` in the line
 fn check_division_before(line: &str, pos: usize) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let before = &line[..pos];
     let before_trimmed = before.trim_end();
     // Direct `/ expr.len()` — slash immediately before the expression
@@ -117,6 +119,7 @@ fn check_division_before(line: &str, pos: usize) -> bool {
 
 /// Check if the surrounding context has a guard against empty len
 fn has_len_guard(lines: &[&str], line_idx: usize) -> bool {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let lookback = 8;
     let start = line_idx.saturating_sub(lookback);
 
@@ -233,6 +236,8 @@ pub fn detect_cb530_log_without_clamp(project_path: &Path) -> Vec<CbPatternViola
 
 /// Check if the log call is guarded by .max() or .clamp() on the same expression
 fn has_log_guard(line: &str, log_fn: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
+    debug_assert!(!log_fn.is_empty(), "log_fn must not be empty");
     // Find the log call position
     if let Some(pos) = line.find(log_fn) {
         let before = &line[..pos];
@@ -252,6 +257,8 @@ fn has_log_guard(line: &str, log_fn: &str) -> bool {
 
 /// Check if the log is applied to a known positive literal like `2.0_f64.ln()`
 fn is_positive_literal_log(line: &str, log_fn: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
+    debug_assert!(!log_fn.is_empty(), "log_fn must not be empty");
     if let Some(pos) = line.find(log_fn) {
         let before = &line[..pos];
         let expr = before.trim_end();
@@ -275,6 +282,8 @@ fn is_positive_literal_log(line: &str, log_fn: &str) -> bool {
 
 /// Check if the log call appears inside a string literal
 fn is_log_in_string(line: &str, log_fn: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
+    debug_assert!(!log_fn.is_empty(), "log_fn must not be empty");
     if let Some(pos) = line.find(log_fn) {
         let before = &line[..pos];
         // Count unescaped quotes before the log call
@@ -288,6 +297,7 @@ fn is_log_in_string(line: &str, log_fn: &str) -> bool {
 
 /// Check preceding lines for variable-level guards
 fn has_log_guard_context(lines: &[&str], line_idx: usize) -> bool {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let lookback = 3;
     let start = line_idx.saturating_sub(lookback);
     for line in &lines[start..line_idx] {

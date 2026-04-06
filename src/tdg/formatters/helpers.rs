@@ -2,6 +2,7 @@
 use super::super::Grade;
 
 pub(crate) fn progress_bar(value: f32, max_value: f32, width: usize) -> String {
+    debug_assert!(width > 0, "width must be positive");
     let ratio = (value / max_value).clamp(0.0, 1.0);
     let filled = (ratio * width as f32) as usize;
     let empty = width - filled;

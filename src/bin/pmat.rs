@@ -144,18 +144,22 @@ fn categorize_error(error: &anyhow::Error) -> ExitCode {
 }
 
 fn is_quality_gate_error(error_str: &str) -> bool {
+    debug_assert!(!error_str.is_empty(), "error_str must not be empty");
     error_str.contains("quality gate") || error_str.contains("violation")
 }
 
 fn is_configuration_error(error_str: &str) -> bool {
+    debug_assert!(!error_str.is_empty(), "error_str must not be empty");
     error_str.contains("config") || error_str.contains("parse")
 }
 
 fn is_analysis_error(error_str: &str) -> bool {
+    debug_assert!(!error_str.is_empty(), "error_str must not be empty");
     error_str.contains("analysis") || error_str.contains("complexity")
 }
 
 fn is_permission_error(error_str: &str) -> bool {
+    debug_assert!(!error_str.is_empty(), "error_str must not be empty");
     error_str.contains("permission") || error_str.contains("access")
 }
 

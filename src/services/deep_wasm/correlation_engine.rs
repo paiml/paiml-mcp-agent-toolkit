@@ -39,6 +39,7 @@ impl CorrelationEngine {
 
     /// Create correlation engine with custom confidence threshold
     pub fn with_confidence_threshold(threshold: f64) -> Self {
+        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         Self {
             confidence_threshold: threshold.clamp(0.0, 1.0),
         }

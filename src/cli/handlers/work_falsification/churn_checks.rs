@@ -101,6 +101,7 @@ impl MatchParser {
     }
 
     fn process_line(&mut self, trimmed: &str) {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         if !self.in_match {
             if trimmed.contains("match ") && trimmed.ends_with('{') {
                 self.in_match = true;
@@ -116,6 +117,7 @@ impl MatchParser {
     }
 
     fn update_brace_depth(&mut self, trimmed: &str) {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         for ch in trimmed.chars() {
             match ch {
                 '{' => self.brace_depth += 1,
@@ -140,6 +142,7 @@ impl MatchParser {
     }
 
     fn try_extract_arm(&mut self, trimmed: &str) {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         let Some(pattern) = trimmed.split("=>").next() else {
             return;
         };
@@ -248,6 +251,7 @@ pub(crate) fn test_fix_chain_limit(
 
 /// Check if a git log line is a commit header (starts with hex hash, length > 8)
 fn is_commit_line(trimmed: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.len() > 8
         && trimmed
             .as_bytes()
@@ -273,6 +277,7 @@ fn collect_violations(
 
 /// Increment streak counts for each file in the current commit
 fn increment_streaks(files: &[String], streaks: &mut std::collections::HashMap<String, usize>) {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     for file in files {
         *streaks.entry(file.clone()).or_insert(0) += 1;
     }
@@ -281,6 +286,7 @@ fn increment_streaks(files: &[String], streaks: &mut std::collections::HashMap<S
 /// Parse git log output to detect consecutive fix-commit chains per file.
 /// Returns (file, chain_length) for files exceeding the threshold.
 pub(crate) fn detect_fix_chains(log: &str, max_chain: usize) -> Vec<(String, usize)> {
+    debug_assert!(!log.is_empty(), "log must not be empty");
     let mut streaks: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     let mut violations: Vec<(String, usize)> = Vec::new();
     let mut current_is_fix = false;

@@ -46,6 +46,7 @@ where
             Ok(v)
         }
         fn visit_str<E: de::Error>(self, v: &str) -> Result<bool, E> {
+            debug_assert!(!v.is_empty(), "v must not be empty");
             match v {
                 "true" => Ok(true),
                 "false" => Ok(false),

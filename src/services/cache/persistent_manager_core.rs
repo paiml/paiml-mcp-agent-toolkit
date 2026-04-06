@@ -41,6 +41,7 @@ impl PersistentCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<FileContext>>,
     {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_buf = path.to_path_buf();
 
         // Try cache first

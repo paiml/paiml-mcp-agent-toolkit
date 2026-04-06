@@ -1,5 +1,6 @@
 
 fn calculate_item_counts(summary: &mut ProjectSummary, files: &[FileContext]) {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     for file in files {
         for item in &file.items {
             match item {

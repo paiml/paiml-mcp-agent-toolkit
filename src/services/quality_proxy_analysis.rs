@@ -6,6 +6,8 @@ impl QualityProxyService {
         extension: &str,
         config: &QualityConfig,
     ) -> Result<((QualityMetrics, bool), Vec<QualityViolation>)> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let mut violations = Vec::new();
 
         if extension != "rs" {
@@ -140,6 +142,8 @@ impl QualityProxyService {
     }
 
     fn check_documentation(&self, content: &str, file_path: &str) -> Vec<QualityViolation> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let mut violations = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
 
@@ -176,6 +180,7 @@ impl QualityProxyService {
     }
 
     fn create_temp_file(&self, content: &str, extension: &str) -> Result<tempfile::NamedTempFile> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use std::io::Write;
 
         let mut temp_file = tempfile::Builder::new()
@@ -189,6 +194,7 @@ impl QualityProxyService {
     }
 
     async fn run_lint_checks(&self, content: &str) -> Result<Vec<(usize, String)>> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use std::fs;
         use std::io::Write;
         use std::process::Command;
@@ -244,6 +250,7 @@ edition = "2021"
     }
 
     async fn format_rust_code(&self, content: &str) -> Result<String> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use std::process::Command;
 
         let temp_file = self.create_temp_file(content, "rs")?;

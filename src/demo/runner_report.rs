@@ -96,6 +96,7 @@ impl DemoReport {
     }
 
     fn format_highlight(capability: &str, result: &Value) -> Option<String> {
+        debug_assert!(!capability.is_empty(), "capability must not be empty");
         let v: Value = serde_json::from_value(result.clone()).ok()?;
         match capability {
             "Code Complexity Analysis" => {
@@ -135,6 +136,7 @@ impl DemoReport {
     }
 
     fn render_step_highlights(&self, output: &mut String, capability: &str, result: &Value) {
+        debug_assert!(!capability.is_empty(), "capability must not be empty");
         if let Some(line) = Self::format_highlight(capability, result) {
             writeln!(output, "{line}").expect("Writing to String buffer cannot fail");
         }

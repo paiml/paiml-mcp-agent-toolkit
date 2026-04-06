@@ -79,6 +79,7 @@ impl CommitClassifier {
 
     /// Tokenize text into words
     fn tokenize(text: &str) -> Vec<String> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let text = text.to_lowercase();
         // Remove patterns that aren't useful
         let text = regex::Regex::new(r"co-authored-by:.*")

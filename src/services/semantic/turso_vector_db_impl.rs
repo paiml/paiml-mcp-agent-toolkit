@@ -120,6 +120,7 @@ impl TursoVectorDB {
     /// # Returns
     /// Array of row IDs
     pub async fn batch_insert(&self, entries: &[EmbeddingEntry]) -> Result<Vec<i64>, String> {
+        debug_assert!(!entries.is_empty(), "entries must not be empty");
         let mut ids = Vec::new();
 
         for entry in entries {
@@ -138,6 +139,7 @@ impl TursoVectorDB {
     /// # Returns
     /// Array of search results
     pub async fn query_by_file(&self, file_path: &str) -> Result<Vec<SearchResult>, String> {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let file_index = self
             .file_index
             .read()
@@ -183,6 +185,7 @@ impl TursoVectorDB {
     /// # Returns
     /// Array of search results
     pub async fn query_by_language(&self, language: &str) -> Result<Vec<SearchResult>, String> {
+        debug_assert!(!language.is_empty(), "language must not be empty");
         let metadata_map = self
             .metadata
             .read()
@@ -266,6 +269,7 @@ impl TursoVectorDB {
     /// # Returns
     /// Number of rows deleted
     pub async fn delete_by_file(&self, file_path: &str) -> Result<usize, String> {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let chunk_ids = {
             let mut file_index = self
                 .file_index
@@ -295,6 +299,7 @@ impl TursoVectorDB {
 
     /// Alias for delete_by_file (for backward compatibility)
     pub async fn delete_file_entries(&self, file_path: &str) -> Result<usize, String> {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.delete_by_file(file_path).await
     }
 
@@ -304,6 +309,8 @@ impl TursoVectorDB {
         file_path: &str,
         chunk_name: &str,
     ) -> Result<Option<SearchResult>, String> {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
+        debug_assert!(!chunk_name.is_empty(), "chunk_name must not be empty");
         let results = self.query_by_file(file_path).await?;
         Ok(results.into_iter().find(|r| r.chunk_name == chunk_name))
     }

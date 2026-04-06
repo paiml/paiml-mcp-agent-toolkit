@@ -80,6 +80,7 @@ impl DagBuilder {
         file: &FileContext,
         function_complexity: &FxHashMap<&str, u32>,
     ) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}::{}", self.normalize_path(&file.path), name);
         let node = NodeInfo {
             id: id.clone(),
@@ -105,6 +106,7 @@ impl DagBuilder {
         file: &FileContext,
         class_complexity: &FxHashMap<&str, u32>,
     ) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}::{}", self.normalize_path(&file.path), name);
         let node = NodeInfo {
             id: id.clone(),
@@ -128,6 +130,7 @@ impl DagBuilder {
         line: usize,
         file: &FileContext,
     ) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}::{}", self.normalize_path(&file.path), name);
         let node = NodeInfo {
             id: id.clone(),
@@ -148,6 +151,7 @@ impl DagBuilder {
         line: usize,
         file: &FileContext,
     ) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}::{}", self.normalize_path(&file.path), name);
         let node = NodeInfo {
             id: id.clone(),

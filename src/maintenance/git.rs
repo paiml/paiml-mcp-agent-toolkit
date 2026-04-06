@@ -46,6 +46,10 @@ pub type Result<T> = std::result::Result<T, GitError>;
 /// - Time: O(n) where n is message length
 /// - Cyclomatic: 3
 pub fn extract_ticket_ids(commit_message: &str) -> Vec<String> {
+    debug_assert!(
+        !commit_message.is_empty(),
+        "commit_message must not be empty"
+    );
     use regex::Regex;
 
     let re = Regex::new(r"TICKET-PMAT-\d{4}").expect("internal error");

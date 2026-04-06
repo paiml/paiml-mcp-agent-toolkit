@@ -101,6 +101,7 @@ pub struct WorkflowPrompt {
 impl WorkflowPrompt {
     /// Load a prompt from YAML string
     pub fn from_yaml(yaml_str: &str) -> Result<Self, serde_yaml_ng::Error> {
+        debug_assert!(!yaml_str.is_empty(), "yaml_str must not be empty");
         serde_yaml_ng::from_str(yaml_str)
     }
 

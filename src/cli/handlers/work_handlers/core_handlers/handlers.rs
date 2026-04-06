@@ -260,6 +260,7 @@ fn create_spec_if_needed(
 
 /// Print next steps after work start (helper for handle_work_start)
 fn print_work_start_next_steps(id: &str) {
+    debug_assert!(!id.is_empty(), "id must not be empty");
     println!();
     println!("{}", c::subheader("🎯 Next steps:"));
     println!("   1. Review specification (if created)");

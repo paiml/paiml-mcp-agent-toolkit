@@ -121,6 +121,7 @@ impl DagEngine {
         path: &mut Vec<String>,
         cycles: &mut Vec<Vec<String>>,
     ) {
+        debug_assert!(!node.is_empty(), "node must not be empty");
         visited.insert(node.to_string());
         rec_stack.insert(node.to_string());
         path.push(node.to_string());
@@ -258,6 +259,7 @@ impl DagEngine {
     }
 
     fn dfs_longest_path(&self, node: &str, visited: &mut HashSet<String>) -> Vec<String> {
+        debug_assert!(!node.is_empty(), "node must not be empty");
         if visited.contains(node) {
             return Vec::new();
         }

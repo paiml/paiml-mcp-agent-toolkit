@@ -27,6 +27,7 @@ pub fn load_quality_profile(
     profile_name: &str,
     _config_path: Option<PathBuf>,
 ) -> Result<QualityProfile> {
+    debug_assert!(!profile_name.is_empty(), "profile_name must not be empty");
     // In real implementation, would load from .pmat-extreme.toml
     // For now, return default extreme profile
     match profile_name {
@@ -42,6 +43,7 @@ pub fn initialize_enforcement_environment(
     cache_dir: &Option<PathBuf>,
     clear_cache: bool,
 ) -> Result<QualityProfile> {
+    debug_assert!(!profile_name.is_empty(), "profile_name must not be empty");
     let profile = load_quality_profile(profile_name, config_path)?;
 
     if clear_cache {

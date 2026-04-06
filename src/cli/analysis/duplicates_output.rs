@@ -177,6 +177,7 @@ fn write_file_stats_list(
 
 /// Extract filename from full path
 fn extract_filename(file_path: &str) -> &str {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     std::path::Path::new(file_path)
         .file_name()
         .and_then(|n| n.to_str())

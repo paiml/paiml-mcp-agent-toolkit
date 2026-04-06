@@ -46,6 +46,8 @@ impl DogfoodingEngine {
         root: &Path,
         date: &str,
     ) -> Result<String, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
+        debug_assert!(!date.is_empty(), "date must not be empty");
         let mut analysis = String::new();
 
         analysis.push_str(&format!("# Code Churn Analysis - {date}\n\n"));
@@ -89,6 +91,7 @@ impl DogfoodingEngine {
 
     /// Generate server info markdown
     pub fn generate_server_info(&self, date: &str) -> Result<String, TemplateError> {
+        debug_assert!(!date.is_empty(), "date must not be empty");
         let mut info = String::new();
 
         info.push_str(&format!("# Server Information - {date}\n\n"));
@@ -146,6 +149,7 @@ impl DogfoodingEngine {
         path: &Path,
         ast: &crate::services::unified_ast_engine::FileAst,
     ) -> Result<FileContext, TemplateError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::unified_ast_engine::FileAst;
 
         match ast {

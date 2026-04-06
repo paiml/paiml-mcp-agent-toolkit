@@ -177,6 +177,7 @@ async fn analyze_lua_complexity_metrics(
 fn extract_lua_function_complexities(
     content: &str,
 ) -> Vec<crate::services::complexity::FunctionComplexity> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     use crate::services::complexity::{ComplexityMetrics as CMetrics, FunctionComplexity as FComp};
 
     let patterns = [

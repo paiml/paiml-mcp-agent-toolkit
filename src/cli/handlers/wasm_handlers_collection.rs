@@ -56,6 +56,7 @@ fn is_assemblyscript_typescript(path: &Path) -> bool {
 
 /// Check if content contains `AssemblyScript` markers
 fn contains_assemblyscript_markers(content: &str) -> bool {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     content.contains("@global")
         || content.contains("@inline")
         || content.contains("i32")

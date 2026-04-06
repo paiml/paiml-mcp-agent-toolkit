@@ -225,6 +225,7 @@ impl ComprehensiveAnalysisConfig {
         confidence_threshold: f32,
         min_lines: usize,
     ) -> Self {
+        debug_assert!(min_lines > 0, "min_lines must be positive");
         Self {
             include_complexity,
             include_tdg,
@@ -246,6 +247,7 @@ async fn run_comprehensive_analyses(
     project_path: &Path,
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     run_comprehensive_analyses_with_config(report, project_path, config).await
 }
 
@@ -255,6 +257,7 @@ async fn run_comprehensive_analyses_with_config(
     project_path: &Path,
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Run SATD analysis (always run)
     eprintln!("🔍 Analyzing technical debt...");
     report.satd = Some(
@@ -277,6 +280,7 @@ async fn run_optional_analyses(
     project_path: &Path,
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     run_complexity_if_requested(report, project_path, config).await?;
     run_tdg_if_requested(report, project_path, config).await?;
     run_dead_code_if_requested(report, project_path, config).await?;
@@ -291,6 +295,7 @@ async fn run_complexity_if_requested(
     project_path: &Path,
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if config.include_complexity {
         eprintln!("📊 Analyzing complexity...");
         report.complexity = Some(
@@ -311,6 +316,7 @@ async fn run_tdg_if_requested(
     project_path: &Path,
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if config.include_tdg {
         eprintln!("📈 Analyzing technical debt gradient...");
         report.tdg = Some(create_tdg_report(project_path).await?);
@@ -324,6 +330,7 @@ async fn run_dead_code_if_requested(
     project_path: &Path,
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if config.include_dead_code {
         eprintln!("💀 Analyzing dead code...");
         report.dead_code = Some(
@@ -344,6 +351,7 @@ async fn run_defects_if_requested(
     project_path: &Path,
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if config.include_defects {
         eprintln!("🐛 Predicting defects...");
         report.defects = Some(
@@ -360,6 +368,7 @@ async fn run_duplicates_if_requested(
     project_path: &Path,
     config: &ComprehensiveAnalysisConfig,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if config.include_duplicates {
         eprintln!("👥 Detecting duplicates...");
         report.duplicates = Some(

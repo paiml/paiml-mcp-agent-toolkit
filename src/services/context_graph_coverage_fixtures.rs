@@ -4,6 +4,7 @@
 
     /// Create a function AstItem for testing
     fn create_function(name: &str, line: usize) -> AstItem {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         AstItem::Function {
             name: name.to_string(),
             visibility: "pub".to_string(),
@@ -14,6 +15,7 @@
 
     /// Create an async function AstItem for testing
     fn create_async_function(name: &str, line: usize) -> AstItem {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         AstItem::Function {
             name: name.to_string(),
             visibility: "pub".to_string(),
@@ -24,6 +26,7 @@
 
     /// Create a struct AstItem for testing
     fn create_struct(name: &str, line: usize) -> AstItem {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         AstItem::Struct {
             name: name.to_string(),
             visibility: "pub".to_string(),
@@ -35,6 +38,7 @@
 
     /// Create a private function AstItem for testing
     fn create_private_function(name: &str, line: usize) -> AstItem {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         AstItem::Function {
             name: name.to_string(),
             visibility: "".to_string(),

@@ -63,6 +63,7 @@ fn filter_makefile_violations(
     violations: &[makefile_linter::Violation],
     rules: &[String],
 ) -> Vec<makefile_linter::Violation> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     if rules.is_empty() || rules == vec!["all"] {
         violations.to_vec()
     } else {
@@ -161,6 +162,7 @@ fn write_makefile_human_header(
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::fmt::Write;
     writeln!(output, "# Makefile Analysis Report\n")?;
     writeln!(output, "**File**: {}", path.display())?;

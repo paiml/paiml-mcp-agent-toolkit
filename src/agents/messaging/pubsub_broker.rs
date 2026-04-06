@@ -79,6 +79,7 @@ impl WildcardMatcher {
     }
 
     pub fn matches(&self, topic: &str) -> Vec<Uuid> {
+        debug_assert!(!topic.is_empty(), "topic must not be empty");
         self.patterns
             .iter()
             .filter(|(pattern, _)| self.pattern_matches(pattern, topic))
@@ -87,6 +88,7 @@ impl WildcardMatcher {
     }
 
     fn pattern_matches(&self, pattern: &str, topic: &str) -> bool {
+        debug_assert!(!topic.is_empty(), "topic must not be empty");
         // Simple wildcard matching (* and ?)
         let pattern_parts: Vec<&str> = pattern.split('.').collect();
         let topic_parts: Vec<&str> = topic.split('.').collect();

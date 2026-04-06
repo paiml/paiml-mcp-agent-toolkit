@@ -150,6 +150,7 @@ async fn test_shows_signatures_not_bodies() {
 
     let code = r#"
 fn fibonacci(n: u32) -> u64 {
+    debug_assert!(n > 0, "n must be positive");
     if n <= 1 {
         return n as u64;
     }
@@ -157,6 +158,7 @@ fn fibonacci(n: u32) -> u64 {
 }
 
 async fn fetch_data(url: &str) -> Result<String, Error> {
+    debug_assert!(!url.is_empty(), "url must not be empty");
     let client = Client::new();
     let response = client.get(url).send().await?;
     Ok(response.text().await?)

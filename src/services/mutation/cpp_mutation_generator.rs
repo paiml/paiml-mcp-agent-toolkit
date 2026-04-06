@@ -50,6 +50,7 @@ impl CppMutationGenerator {
 
     /// Parse C++ source using tree-sitter
     fn parse_cpp(&self, source: &str) -> Result<Tree> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_cpp::LANGUAGE.into())
@@ -62,6 +63,7 @@ impl CppMutationGenerator {
 
     /// Recursively visit AST nodes and apply mutation operators
     fn visit_node(&self, node: &Node, source: &[u8], mutants: &mut Vec<Mutant>, file_path: &str) {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         // Apply all operators to current node
         for operator in &self.operators {
             if operator.can_mutate(node, source) {
@@ -97,6 +99,7 @@ impl CppMutationGenerator {
 
 /// Helper to map operator name to MutationOperatorType enum
 fn map_operator_name_to_type(name: &str) -> MutationOperatorType {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     match name {
         "CppBinaryOp" => MutationOperatorType::ArithmeticReplacement,
         "CppRelationalOp" => MutationOperatorType::RelationalReplacement,

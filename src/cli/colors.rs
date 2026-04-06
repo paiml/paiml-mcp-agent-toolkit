@@ -109,6 +109,7 @@ pub fn label(text: &str) -> String {
 /// Format a grade with appropriate color
 #[inline]
 pub fn grade(g: &str) -> String {
+    debug_assert!(!g.is_empty(), "g must not be empty");
     let color = match g.chars().next() {
         Some('A') => GREEN,
         Some('B') => YELLOW,

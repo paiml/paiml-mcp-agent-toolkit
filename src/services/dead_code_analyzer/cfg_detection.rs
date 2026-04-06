@@ -13,6 +13,7 @@
 /// Also detects module-level cfg gating by scanning for `#[cfg` on
 /// `mod` blocks that enclose the function.
 pub(crate) fn is_cfg_gated(file_path: &str, fn_line: u32) -> bool {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let content = match std::fs::read_to_string(file_path) {
         Ok(c) => c,
         Err(_) => return false,
@@ -25,6 +26,7 @@ pub(crate) fn is_cfg_gated(file_path: &str, fn_line: u32) -> bool {
 
 /// Check if a line is a conditional compilation attribute.
 fn is_conditional_attr(trimmed: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.starts_with("#[cfg(")
         || trimmed.starts_with("#[cfg_attr(")
         || trimmed.starts_with("#[target_feature(")
@@ -32,6 +34,7 @@ fn is_conditional_attr(trimmed: &str) -> bool {
 
 /// Check if a line is an annotation or preamble (attributes, comments, keywords).
 fn is_annotation_or_preamble(trimmed: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.is_empty()
         || trimmed.starts_with("#[")
         || trimmed.starts_with("///")
@@ -47,6 +50,7 @@ fn is_annotation_or_preamble(trimmed: &str) -> bool {
 
 /// Scan up to 10 lines above a function for direct cfg/target_feature attributes.
 fn has_cfg_attribute_above(lines: &[&str], fn_idx: usize) -> bool {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let start = fn_idx.saturating_sub(10);
     for i in start..fn_idx {
         let Some(line) = lines.get(i) else { continue };
@@ -67,6 +71,7 @@ fn has_cfg_attribute_above(lines: &[&str], fn_idx: usize) -> bool {
 /// and brace nesting to determine if the function at `fn_idx` is enclosed in
 /// a cfg-gated module.
 fn is_inside_cfg_module(lines: &[&str], fn_idx: usize) -> bool {
+    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut brace_depth: i32 = 0;
     let mut cfg_depth: Option<i32> = None;
     let mut pending_cfg = false;
@@ -95,12 +100,14 @@ fn is_inside_cfg_module(lines: &[&str], fn_idx: usize) -> bool {
 
 /// Check if a trimmed line starts a module block (e.g. `mod foo {` or `pub mod foo {`).
 fn is_cfg_mod_start(trimmed: &str) -> bool {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     (trimmed.starts_with("mod ") || trimmed.starts_with("pub mod ")) && trimmed.contains('{')
 }
 
 /// Update brace depth by counting `{` and `}` in a line.
 /// Clears `cfg_depth` when the cfg-gated module scope is closed.
 fn update_brace_depth(trimmed: &str, mut depth: i32, cfg_depth: &mut Option<i32>) -> i32 {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     for ch in trimmed.chars() {
         match ch {
             '{' => depth += 1,

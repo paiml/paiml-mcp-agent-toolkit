@@ -14,6 +14,7 @@ use tempfile::TempDir;
 
     /// Create a project with .pmat directory and project.toml
     fn create_pmat_project(version: &str) -> TempDir {
+        debug_assert!(!version.is_empty(), "version must not be empty");
         let temp = create_temp_project();
         let pmat_dir = temp.path().join(".pmat");
         fs::create_dir_all(&pmat_dir).expect("Failed to create .pmat dir");
@@ -31,6 +32,7 @@ auto_update = false
 
     /// Create a project with .pmat-metrics.toml
     fn create_project_with_metrics(version: &str) -> TempDir {
+        debug_assert!(!version.is_empty(), "version must not be empty");
         let temp = create_pmat_project(version);
         let metrics_content = r#"
 [thresholds]

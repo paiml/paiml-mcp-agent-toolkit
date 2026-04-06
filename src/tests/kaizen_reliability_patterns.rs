@@ -20,6 +20,7 @@ where
     Fut: Future<Output = Result<T, E>>,
     E: std::fmt::Display,
 {
+    debug_assert!(!operation_name.is_empty(), "operation_name must not be empty");
     let mut attempts = 0;
     let mut delay = Duration::from_millis(10);
 
@@ -55,6 +56,7 @@ pub async fn poka_yoke_timeout<F, T>(
 where
     F: Future<Output = T>,
 {
+    debug_assert!(!operation_name.is_empty(), "operation_name must not be empty");
     let start = Instant::now();
 
     match timeout(timeout_duration, operation).await {
@@ -108,6 +110,8 @@ impl JidokaTestSetup {
 
     /// Set deterministic environment variable with cleanup
     pub fn set_env_var(&mut self, key: &str, value: &str) {
+        debug_assert!(!key.is_empty(), "key must not be empty");
+        debug_assert!(!value.is_empty(), "value must not be empty");
         let key = key.to_string();
         let original_value = std::env::var(&key).ok();
 

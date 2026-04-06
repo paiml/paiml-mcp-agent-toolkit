@@ -60,6 +60,7 @@ impl SessionCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<FileContext>>,
     {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_buf = path.to_path_buf();
 
         // Try cache first
@@ -83,6 +84,7 @@ impl SessionCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<TemplateResource>>,
     {
+        debug_assert!(!uri.is_empty(), "uri must not be empty");
         let uri_string = uri.to_string();
 
         // Try cache first
@@ -109,6 +111,7 @@ impl SessionCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<DependencyGraph>>,
     {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let key = (path.to_path_buf(), dag_type);
 
         // Try cache first
@@ -133,6 +136,7 @@ impl SessionCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<CodeChurnAnalysis>>,
     {
+        debug_assert!(repo.exists(), "repo must exist: {}", repo.display());
         let key = (repo.to_path_buf(), period_days);
 
         // Try cache first
@@ -156,6 +160,7 @@ impl SessionCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<GitStats>>,
     {
+        debug_assert!(repo.exists(), "repo must exist: {}", repo.display());
         let path_buf = repo.to_path_buf();
 
         // Try cache first

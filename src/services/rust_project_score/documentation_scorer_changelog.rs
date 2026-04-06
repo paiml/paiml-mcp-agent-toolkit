@@ -3,6 +3,7 @@
 /// Matches lines containing `[N.` or `## N.` where N is any digit sequence,
 /// supporting semver major versions beyond 0/1/2.
 fn count_version_entries(content: &str) -> usize {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .filter(|line| {
@@ -16,6 +17,7 @@ fn count_version_entries(content: &str) -> usize {
 
 /// Check if line contains a bracketed version like `[1.2.3]` or `[0.1.0]`
 fn has_version_bracket(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     for i in 0..bytes.len().saturating_sub(2) {
         if bytes[i] == b'[' && bytes[i + 1].is_ascii_digit() {
@@ -34,6 +36,7 @@ fn has_version_bracket(line: &str) -> bool {
 
 /// Check if line contains a heading version like `## 0.1.0` (without brackets)
 fn has_version_heading(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     if let Some(rest) = line.strip_prefix("## ") {
         let rest = rest.trim();
         // First char must be a digit, followed eventually by a dot
@@ -83,6 +86,7 @@ impl DocumentationScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<Option<String>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let changelog_path = project_path.join("CHANGELOG.md");
         let ws_changelog = project_path.parent().map(|p| p.join("CHANGELOG.md"));
 
@@ -110,6 +114,7 @@ impl DocumentationScorer {
         path: &std::path::PathBuf,
         cache: Option<&FileCache>,
     ) -> Option<String> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !path.exists() {
             return None;
         }

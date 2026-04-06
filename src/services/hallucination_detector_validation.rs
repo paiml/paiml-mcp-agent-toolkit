@@ -119,6 +119,7 @@ impl DocAccuracyValidator {
 
     /// Check if results contain any contradictions
     pub fn has_contradictions(&self, results: &[ValidationResult]) -> bool {
+        debug_assert!(!results.is_empty(), "results must not be empty");
         results
             .iter()
             .any(|r| r.status == ValidationStatus::Contradiction)

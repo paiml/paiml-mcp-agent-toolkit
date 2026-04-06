@@ -25,6 +25,7 @@ use crate::services::lightweight_provability_analyzer::{
 use std::path::PathBuf;
 
 fn strip_ansi(s: &str) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     let re = regex::Regex::new(r"\x1b\[[0-9;]*m").unwrap();
     re.replace_all(s, "").to_string()
 }
@@ -193,6 +194,7 @@ fn test_parse_function_spec_windows_style_path() {
 // ============================================================
 
 fn create_summary(score: f64) -> ProofSummary {
+    debug_assert!(score >= 0.0, "score must be non-negative");
     ProofSummary {
         provability_score: score,
         analysis_time_us: 100,
@@ -256,6 +258,8 @@ fn test_filter_summaries_boundary_exact() {
 // ============================================================
 
 fn create_function_id(file: &str, name: &str, line: usize) -> FunctionId {
+    debug_assert!(!file.is_empty(), "file must not be empty");
+    debug_assert!(!name.is_empty(), "name must not be empty");
     FunctionId {
         file_path: file.to_string(),
         function_name: name.to_string(),

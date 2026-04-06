@@ -180,6 +180,7 @@ fn nest_children_into_modules(flat_items: Vec<ExtractedItem>) -> Vec<ExtractedIt
 
 /// Route to the correct language parser.
 fn parse_for_language(source: &str, language: Language) -> Result<Tree, String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     match language {
         #[cfg(feature = "rust-ast")]
         Language::Rust => parse_rust(source),
@@ -200,6 +201,7 @@ fn parse_for_language(source: &str, language: Language) -> Result<Tree, String> 
 
 /// Collect top-level import statements from the AST root.
 fn collect_imports(root: Node, source: &str, language: Language) -> Vec<String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let import_kinds: &[&str] = match language {
         Language::Rust => &["use_declaration", "extern_crate_declaration"],
         Language::Python => &["import_statement", "import_from_statement"],

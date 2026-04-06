@@ -65,6 +65,7 @@ fn handle_init(
     priority: String,
     roadmap_path: PathBuf,
 ) -> Result<()> {
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     // Validate priority
     Priority::from_str(&priority)
         .map_err(|()| anyhow::anyhow!("Invalid priority format. Use P0, P1, or P2"))?;

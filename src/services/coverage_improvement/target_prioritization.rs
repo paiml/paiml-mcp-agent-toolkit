@@ -94,6 +94,7 @@ impl CoverageImprovementService {
 
     /// Run a PMAT analyze command and return stdout
     async fn run_pmat_analyze(&self, analysis_type: &str) -> Result<String> {
+        debug_assert!(!analysis_type.is_empty(), "analysis_type must not be empty");
         let output = Command::new("pmat")
             .args(["analyze", analysis_type, "--format", "json"])
             .current_dir(&self.config.project_path)
@@ -124,6 +125,8 @@ impl CoverageImprovementService {
         file_scores: &mut std::collections::HashMap<PathBuf, f64>,
         weight: f64,
     ) -> Result<()> {
+        debug_assert!(!output.is_empty(), "output must not be empty");
+        debug_assert!(weight >= 0.0, "weight must be non-negative");
         // Try to parse as JSON first
         if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(output) {
             // Extract file paths from JSON
@@ -147,6 +150,7 @@ impl CoverageImprovementService {
         file_scores: &mut std::collections::HashMap<PathBuf, f64>,
         weight: f64,
     ) {
+        debug_assert!(weight >= 0.0, "weight must be non-negative");
         match json {
             serde_json::Value::Object(map) => {
                 // Look for common field names that might contain file paths
@@ -177,6 +181,7 @@ impl CoverageImprovementService {
 
     /// Extract file path from a text line
     pub(crate) fn extract_file_path_from_line(&self, line: &str) -> Option<PathBuf> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Look for patterns like "src/path/to/file.rs"
         let parts: Vec<&str> = line.split_whitespace().collect();
         for part in parts {

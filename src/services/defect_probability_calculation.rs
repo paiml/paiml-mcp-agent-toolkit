@@ -64,6 +64,7 @@ impl DefectProbabilityCalculator {
 
     #[must_use]
     pub fn calculate_batch(&self, metrics: &[FileMetrics]) -> Vec<(String, DefectScore)> {
+        debug_assert!(!metrics.is_empty(), "metrics must not be empty");
         metrics
             .iter()
             .map(|m| (m.file_path.clone(), self.calculate(m)))
@@ -180,6 +181,7 @@ impl DefectProbabilityCalculator {
 }
 
 fn add_factor_recommendations(recommendations: &mut Vec<String>, factor_name: &str, metrics: &FileMetrics) {
+    debug_assert!(!factor_name.is_empty(), "factor_name must not be empty");
     match factor_name {
         "complexity" => {
             recommendations.push("Consider breaking down complex functions into smaller, more focused units".to_string());

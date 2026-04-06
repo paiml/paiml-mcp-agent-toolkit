@@ -54,6 +54,8 @@ fn format_refactor_status(
     format: RefactorOutputFormat,
     checkpoint: &PathBuf,
 ) -> anyhow::Result<()> {
+    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
+    debug_assert!(!checkpoint_data.is_empty(), "checkpoint_data must not be empty");
     match format {
         RefactorOutputFormat::Json => format_as_json(checkpoint_data),
         RefactorOutputFormat::Table => format_as_table(checkpoint_data),
@@ -64,6 +66,7 @@ fn format_refactor_status(
 /// Format status as JSON - EXTRACTED FUNCTION
 /// Complexity: 3 (A+ standard)
 fn format_as_json(checkpoint_data: &str) -> anyhow::Result<()> {
+    debug_assert!(!checkpoint_data.is_empty(), "checkpoint_data must not be empty");
     let parsed: serde_json::Value = serde_json::from_str(checkpoint_data)?;
     println!("{}", serde_json::to_string_pretty(&parsed)?);
     Ok(())
@@ -72,6 +75,7 @@ fn format_as_json(checkpoint_data: &str) -> anyhow::Result<()> {
 /// Format status as table - EXTRACTED FUNCTION
 /// Complexity: 8 (A+ standard)
 fn format_as_table(checkpoint_data: &str) -> anyhow::Result<()> {
+    debug_assert!(!checkpoint_data.is_empty(), "checkpoint_data must not be empty");
     let state: serde_json::Value = serde_json::from_str(checkpoint_data)?;
 
     // Print table header

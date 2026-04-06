@@ -152,6 +152,7 @@ impl DeadCodeSummary {
     /// Create a new summary from file metrics
     #[must_use]
     pub fn from_files(files: &[FileDeadCodeMetrics]) -> Self {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         let total_files_analyzed = files.len();
         let files_with_dead_code = files.iter().filter(|f| f.dead_lines > 0).count();
         let total_dead_lines = files.iter().map(|f| f.dead_lines).sum();

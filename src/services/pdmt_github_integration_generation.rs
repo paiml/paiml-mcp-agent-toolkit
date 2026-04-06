@@ -171,6 +171,7 @@ impl PdmtGitHubService {
 
     /// Extract validation commands from issue body
     pub(crate) fn extract_validation_commands(&self, body: &str) -> Vec<String> {
+        debug_assert!(!body.is_empty(), "body must not be empty");
         let mut commands = Vec::new();
         let mut in_code_block = false;
 
@@ -193,6 +194,7 @@ impl PdmtGitHubService {
 
     /// Extract success criteria from issue body
     pub(crate) fn extract_success_criteria(&self, body: &str) -> Vec<String> {
+        debug_assert!(!body.is_empty(), "body must not be empty");
         let mut criteria = Vec::new();
 
         for line in body.lines() {

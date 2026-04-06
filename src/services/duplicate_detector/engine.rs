@@ -41,6 +41,7 @@ impl DuplicateDetectionEngine {
 
     /// Detect duplicates in a set of files
     pub fn detect_duplicates(&self, files: &[(PathBuf, String, Language)]) -> Result<CloneReport> {
+        debug_assert!(!files.is_empty(), "files must not be empty");
         // Phase 1: Extract fragments from all files
         let mut all_fragments = Vec::new();
         for (path, content, lang) in files {
@@ -93,6 +94,8 @@ impl DuplicateDetectionEngine {
         lines: &[&str],
         lang: Language,
     ) -> Result<Vec<CodeFragment>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         let mut fragments = Vec::new();
         let mut current_function_start = None;
 
@@ -121,6 +124,8 @@ impl DuplicateDetectionEngine {
         lang: Language,
         fragments: &mut Vec<CodeFragment>,
     ) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         let fragment_content = lines[start_line..=end_line].join("\n");
         let fragment_tokens = self
             .feature_extractor
@@ -149,6 +154,8 @@ impl DuplicateDetectionEngine {
         end_line: usize,
         lang: Language,
     ) -> Result<CodeFragment> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let id = self
             .next_fragment_id
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -191,6 +198,7 @@ impl DuplicateDetectionEngine {
 
     /// Check if line starts a function
     pub(crate) fn is_function_start(&self, line: &str, lang: Language) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         match lang {
             Language::Rust => line.contains("fn ") && line.contains('('),
             Language::TypeScript | Language::JavaScript => {
@@ -209,6 +217,7 @@ impl DuplicateDetectionEngine {
 
     /// Check if line ends a function
     pub(crate) fn is_function_end(&self, line: &str, lang: Language) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         match lang {
             Language::Rust
             | Language::TypeScript

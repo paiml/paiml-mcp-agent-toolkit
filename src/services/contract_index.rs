@@ -86,11 +86,13 @@ impl ContractIndex {
 
     /// Check if a file has contract bindings.
     pub fn has_bindings(&self, file_path: &str) -> bool {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.file_bindings.contains_key(file_path)
     }
 
     /// Get bindings for a file. Returns empty slice if none.
     pub fn get_bindings(&self, file_path: &str) -> &[String] {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.file_bindings
             .get(file_path)
             .map(|v| v.as_slice())

@@ -253,6 +253,7 @@ fn run_cmd_with_env(path: &Path, cmd: &str, args: &[&str], env: &[(&str, &str)])
 
 /// Get fix hint for a failed check
 fn get_fix_hint(check: &str) -> Option<String> {
+    debug_assert!(!check.is_empty(), "check must not be empty");
     match check {
         "cargo-fmt" => Some("Run `cargo fmt --all` or use `pmat ci-local --fix`".to_string()),
         "clippy-default" | "clippy-all-features" => {

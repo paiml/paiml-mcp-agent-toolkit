@@ -2,6 +2,8 @@
 
 /// Detect identity operations like +0, *1, -0, /1
 fn detect_identity_operations(original: &str, mutated: &str) -> bool {
+    debug_assert!(!original.is_empty(), "original must not be empty");
+    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     // Check if original has identity op and mutated removes it
     let has_add_zero = original.contains("+ 0") || original.contains("+0");
     let has_mul_one = original.contains("* 1") || original.contains("*1");
@@ -20,6 +22,8 @@ fn detect_identity_operations(original: &str, mutated: &str) -> bool {
 
 /// Detect boolean tautologies
 fn detect_boolean_tautology(original: &str, mutated: &str) -> bool {
+    debug_assert!(!original.is_empty(), "original must not be empty");
+    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     detect_or_true_tautology(original, mutated)
         || detect_and_false_contradiction(original, mutated)
         || detect_or_false_identity(original, mutated)
@@ -29,6 +33,8 @@ fn detect_boolean_tautology(original: &str, mutated: &str) -> bool {
 
 /// Detects x || true → true (tautology simplification)
 fn detect_or_true_tautology(original: &str, mutated: &str) -> bool {
+    debug_assert!(!original.is_empty(), "original must not be empty");
+    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     original.contains("|| true")
         && (mutated.contains("{ true }") || mutated.trim().ends_with("true"))
         && mutated.len() < original.len()
@@ -37,6 +43,8 @@ fn detect_or_true_tautology(original: &str, mutated: &str) -> bool {
 
 /// Detects x && false → false (contradiction simplification)
 fn detect_and_false_contradiction(original: &str, mutated: &str) -> bool {
+    debug_assert!(!original.is_empty(), "original must not be empty");
+    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     original.contains("&& false")
         && (mutated.contains("{ false }") || mutated.trim().ends_with("false"))
         && mutated.len() < original.len()
@@ -45,6 +53,8 @@ fn detect_and_false_contradiction(original: &str, mutated: &str) -> bool {
 
 /// Detects x || false → x (identity for OR)
 fn detect_or_false_identity(original: &str, mutated: &str) -> bool {
+    debug_assert!(!original.is_empty(), "original must not be empty");
+    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     original.contains("|| false")
         && !mutated.contains("||")
         && !mutated.contains("false")
@@ -53,6 +63,8 @@ fn detect_or_false_identity(original: &str, mutated: &str) -> bool {
 
 /// Detects x && true → x (identity for AND)
 fn detect_and_true_identity(original: &str, mutated: &str) -> bool {
+    debug_assert!(!original.is_empty(), "original must not be empty");
+    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     original.contains("&& true")
         && !mutated.contains("&&")
         && !mutated.contains("true")
@@ -61,11 +73,15 @@ fn detect_and_true_identity(original: &str, mutated: &str) -> bool {
 
 /// Detects !!x → x (double negation elimination)
 fn detect_double_negation(original: &str, mutated: &str) -> bool {
+    debug_assert!(!original.is_empty(), "original must not be empty");
+    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     original.contains("!!") && !mutated.contains("!!")
 }
 
 /// Detect commutative operation swap
 fn detect_commutative_swap(original: &str, mutated: &str) -> bool {
+    debug_assert!(!original.is_empty(), "original must not be empty");
+    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     let orig_tokens: Vec<&str> = original.split_whitespace().collect();
     let mut_tokens: Vec<&str> = mutated.split_whitespace().collect();
 
@@ -96,11 +112,14 @@ fn has_swapped_operands(orig: &[&str], mutated: &[&str], pos: usize) -> bool {
 
 /// Check if operator is commutative
 fn is_commutative_op(op: &str) -> bool {
+    debug_assert!(!op.is_empty(), "op must not be empty");
     matches!(op, "+" | "*" | "&&" | "||" | "==" | "!=")
 }
 
 /// Extract operator patterns from source pair
 fn extract_operator_patterns(original: &str, mutated: &str) -> Vec<String> {
+    debug_assert!(!original.is_empty(), "original must not be empty");
+    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     let mut patterns = Vec::new();
 
     // Identity operations
@@ -141,6 +160,8 @@ fn extract_operator_patterns(original: &str, mutated: &str) -> Vec<String> {
 
 /// Calculate token-based similarity
 fn calculate_token_similarity(s1: &str, s2: &str) -> f64 {
+    debug_assert!(!s1.is_empty(), "s1 must not be empty");
+    debug_assert!(!s2.is_empty(), "s2 must not be empty");
     let tokens1: Vec<&str> = s1.split_whitespace().collect();
     let tokens2: Vec<&str> = s2.split_whitespace().collect();
 
@@ -155,6 +176,8 @@ fn calculate_token_similarity(s1: &str, s2: &str) -> f64 {
 
 /// Calculate Levenshtein distance
 fn levenshtein_distance(s1: &str, s2: &str) -> usize {
+    debug_assert!(!s1.is_empty(), "s1 must not be empty");
+    debug_assert!(!s2.is_empty(), "s2 must not be empty");
     let len1 = s1.len();
     let len2 = s2.len();
 

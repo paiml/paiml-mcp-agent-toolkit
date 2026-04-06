@@ -191,6 +191,7 @@ impl MutantExecutor {
 
     /// Parse test output to determine mutant status
     fn parse_test_output(&self, output: &str) -> (MutantStatus, Vec<String>, Option<String>) {
+        debug_assert!(!output.is_empty(), "output must not be empty");
         // Check for compilation errors
         if output.contains("error: could not compile") || output.contains("error[E") {
             return (
@@ -220,6 +221,7 @@ impl MutantExecutor {
 
     /// Extract failed test names from output
     fn extract_test_failures(&self, output: &str) -> Vec<String> {
+        debug_assert!(!output.is_empty(), "output must not be empty");
         let mut failures = Vec::new();
 
         for line in output.lines() {

@@ -86,6 +86,7 @@ impl CentralityComputer {
 
 /// Convert HashMap<NodeId, f64> to Vec<f64> for consistent ordering.
 fn map_to_vec(map: &HashMap<usize, f64>, size: usize) -> Vec<f64> {
+    debug_assert!(size > 0, "size must be positive");
     let mut vec = vec![0.0; size];
     for (&node_id, &value) in map {
         if node_id < size {

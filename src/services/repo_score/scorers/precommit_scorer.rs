@@ -109,6 +109,11 @@ impl PrecommitScorer {
         repo_path: &Path,
         config: &ScorerConfig,
     ) -> Result<SubcategoryScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let precommit_path = repo_path.join(".git/hooks/pre-commit");
 
         if !precommit_path.exists() {

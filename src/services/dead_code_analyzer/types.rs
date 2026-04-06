@@ -203,6 +203,8 @@ impl VTableResolver {
 
     #[must_use]
     pub fn resolve_dynamic_call(&self, interface: &str, method: &str) -> Vec<NodeKey> {
+        debug_assert!(!interface.is_empty(), "interface must not be empty");
+        debug_assert!(!method.is_empty(), "method must not be empty");
         let mut targets = Vec::new();
 
         if let Some(impls) = self.interface_impls.get(interface) {

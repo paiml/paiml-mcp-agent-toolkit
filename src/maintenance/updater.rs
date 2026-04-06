@@ -176,6 +176,12 @@ fn process_ticket_update(
     ticket_id: &str,
     tickets_dir: &Path,
 ) -> Result<bool, Box<dyn std::error::Error>> {
+    debug_assert!(
+        tickets_dir.exists(),
+        "tickets_dir must exist: {}",
+        tickets_dir.display()
+    );
+    debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
     // Only update if ticket file was modified
     if !ticket_file_updated(commit, ticket_id) {
         return Ok(false);

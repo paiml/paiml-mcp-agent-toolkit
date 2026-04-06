@@ -85,6 +85,7 @@ impl CudaSimdAnalyzer {
         coalescing: &CoalescingResult,
         path: &Path,
     ) -> PopperScore {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let patterns = self.detect_rust_patterns(path);
 
         let falsifiability = Self::score_falsifiability(defects, barrier_safety, &patterns);

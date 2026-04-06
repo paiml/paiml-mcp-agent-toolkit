@@ -59,6 +59,8 @@ fn generate_badge_url(score: &RepoScore) -> String {
 
 /// Replace existing badge section in README
 fn replace_badge_section(content: &str, new_badge: &str) -> String {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!new_badge.is_empty(), "new_badge must not be empty");
     let start_marker = "<!-- PMAT-REPO-SCORE:START -->";
     let end_marker = "<!-- PMAT-REPO-SCORE:END -->";
 
@@ -79,6 +81,8 @@ fn replace_badge_section(content: &str, new_badge: &str) -> String {
 
 /// Insert badge after main title (first # heading)
 fn insert_badge_after_title(content: &str, badge: &str) -> String {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!badge.is_empty(), "badge must not be empty");
     let lines: Vec<&str> = content.lines().collect();
 
     // Find first heading line

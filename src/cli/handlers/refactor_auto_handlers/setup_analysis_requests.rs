@@ -93,6 +93,7 @@ async fn create_lint_fix_requests(
     violations: &[ViolationDetailJson],
     _context: &RefactorContext,
 ) -> Result<Vec<RefactoringRequest>> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut requests = Vec::new();
 
     for violation in violations {

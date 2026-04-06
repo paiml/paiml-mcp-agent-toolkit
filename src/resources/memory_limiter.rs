@@ -173,6 +173,7 @@ impl MemoryLimiter {
     }
 
     pub fn check_allocation(&self, size: usize) -> Result<(), ResourceError> {
+        debug_assert!(size > 0, "size must be positive");
         let current = self.allocated.load(Ordering::Relaxed);
         let limit = self.limits.read().max_bytes;
 
@@ -187,6 +188,7 @@ impl MemoryLimiter {
     }
 
     pub fn record_allocation(&self, size: usize) {
+        debug_assert!(size > 0, "size must be positive");
         let new_allocated = self.allocated.fetch_add(size, Ordering::SeqCst) + size;
 
         // Update peak if necessary
@@ -205,6 +207,7 @@ impl MemoryLimiter {
     }
 
     pub fn record_deallocation(&self, size: usize) {
+        debug_assert!(size > 0, "size must be positive");
         self.allocated.fetch_sub(size, Ordering::SeqCst);
     }
 

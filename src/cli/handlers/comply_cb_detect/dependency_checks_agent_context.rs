@@ -42,6 +42,7 @@ fn check_index_age(index_path: &Path) -> (Option<f64>, bool) {
 
 /// Return true when the line appears to be a negative example (e.g. "never do X").
 fn is_negative_example(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let lower = line.to_lowercase();
     lower.contains("bad")
         || lower.contains("don't")
@@ -51,6 +52,7 @@ fn is_negative_example(line: &str) -> bool {
 
 /// Scan content for forbidden patterns, excluding lines that are negative examples.
 fn find_forbidden_patterns(content: &str) -> Vec<ForbiddenPatternMatch> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut forbidden = Vec::new();
     for (line_num, line) in content.lines().enumerate() {
         for &pattern in FORBIDDEN_PATTERNS {

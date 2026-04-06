@@ -62,6 +62,7 @@ impl CliDemoAdapter {
     }
 
     async fn execute_context_analysis(&self, path: &str) -> Result<Value, CliDemoError> {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         use crate::services::deep_context::{AnalysisType, DeepContextAnalyzer, DeepContextConfig};
         use std::path::PathBuf;
 
@@ -122,6 +123,7 @@ impl CliDemoAdapter {
     }
 
     fn generate_cache_key(&self, path: &str) -> String {
+        debug_assert!(!path.is_empty(), "path must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 

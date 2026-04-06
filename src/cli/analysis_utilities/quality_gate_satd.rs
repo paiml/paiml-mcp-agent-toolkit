@@ -36,6 +36,7 @@ async fn analyze_satd_items(
     path: &Path,
     include_tests: bool,
 ) -> Result<Vec<crate::services::satd_detector::TechnicalDebt>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if include_tests {
         detector
             .analyze_directory_with_tests(path, true)
@@ -97,6 +98,7 @@ fn generate_satd_output(
 
 /// Toyota Way: Extract Method - handle output writing (complexity ≤3)
 async fn write_satd_output(output: Option<PathBuf>, content: &str) -> Result<()> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, content).await?;
         eprintln!("✅ SATD analysis written to: {}", output_path.display());
@@ -118,6 +120,7 @@ pub async fn handle_analyze_dag(
     include_dead_code: bool,
     enhanced: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🔍 Analyzing Directed Acyclic Graph (DAG)...");
     eprintln!("📊 DAG Type: {dag_type:?}");
     eprintln!("📁 Project: {}", project_path.display());

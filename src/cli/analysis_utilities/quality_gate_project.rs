@@ -157,6 +157,7 @@ async fn run_individual_project_checks(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::time::Instant;
 
     for check in checks {

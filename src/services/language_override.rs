@@ -30,6 +30,7 @@ pub fn get_effective_languages(
     override_opts: &LanguageOverride,
     path: &Path,
 ) -> Result<Vec<String>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Case 1: Single language override
     if let Some(lang) = &override_opts.language {
         let normalized = normalize_language_name(lang)?;
@@ -76,6 +77,7 @@ pub fn normalize_language_name(name: &str) -> Result<String> {
 /// - rust, python, javascript, typescript, go, cpp, c, java, kotlin,
 ///   swift, ruby, php, bash, wasm, etc.
 pub fn validate_language_support(language: &str) -> Result<()> {
+    debug_assert!(!language.is_empty(), "language must not be empty");
     let supported = [
         "rust",
         "python",
@@ -118,6 +120,7 @@ pub fn get_language_detection_with_override(
     override_opts: &LanguageOverride,
     path: &Path,
 ) -> Result<LanguageDetection> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(lang) = &override_opts.language {
         let normalized = normalize_language_name(lang)?;
         validate_language_support(&normalized)?;

@@ -82,6 +82,7 @@ impl ClaimCategory {
     }
 
     pub fn from_section(section: &str) -> Option<Self> {
+        debug_assert!(!section.is_empty(), "section must not be empty");
         let lower = section.to_lowercase();
         if lower.contains("falsif") || lower.contains("testab") || lower.contains("claim") {
             Some(Self::Falsifiability)

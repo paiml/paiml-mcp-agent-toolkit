@@ -27,6 +27,7 @@ impl AlertManager {
 
     /// Remove an alert rule
     pub async fn remove_rule(&self, rule_id: &str) -> Result<()> {
+        debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         let mut rules = self.rules.write().await;
         rules.remove(rule_id);
 
@@ -69,6 +70,7 @@ impl AlertManager {
 
     /// Evaluate all rules for a specific metric
     async fn evaluate_rules_for_metric(&self, metric_name: &str) -> Result<()> {
+        debug_assert!(!metric_name.is_empty(), "metric_name must not be empty");
         let rules = self.rules.read().await;
         let metrics = self.metric_values.read().await;
 
@@ -187,6 +189,7 @@ impl AlertManager {
 
     /// Auto-resolve alerts when condition is no longer met
     async fn auto_resolve_alert(&self, rule_id: &str) -> Result<()> {
+        debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         let mut active = self.active_alerts.write().await;
 
         let alerts_to_resolve: Vec<String> = active
@@ -234,6 +237,7 @@ impl AlertManager {
         acknowledged_by: String,
         comment: Option<String>,
     ) -> Result<()> {
+        debug_assert!(!alert_id.is_empty(), "alert_id must not be empty");
         let mut active = self.active_alerts.write().await;
 
         if let Some(alert) = active.get_mut(alert_id) {
@@ -268,6 +272,7 @@ impl AlertManager {
 
     /// Silence an alert
     pub async fn silence_alert(&self, alert_id: &str, _duration: Duration) -> Result<()> {
+        debug_assert!(!alert_id.is_empty(), "alert_id must not be empty");
         let mut active = self.active_alerts.write().await;
 
         if let Some(alert) = active.get_mut(alert_id) {
@@ -280,6 +285,7 @@ impl AlertManager {
 
     /// Get last alert for a rule
     async fn get_last_alert_for_rule(&self, rule_id: &str) -> Option<Alert> {
+        debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         let history = self.alert_history.read().await;
         history.iter().rev().find(|a| a.rule_id == rule_id).cloned()
     }

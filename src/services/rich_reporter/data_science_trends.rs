@@ -1,6 +1,7 @@
 impl DataScienceAnalyzer {
     /// Analyze metric trends
     pub fn analyze_trends(&self, metrics: &[(String, Vec<(i64, f64)>)]) -> Vec<MetricTrend> {
+        debug_assert!(!metrics.is_empty(), "metrics must not be empty");
         metrics
             .iter()
             .map(|(name, data)| {
@@ -49,6 +50,7 @@ impl DataScienceAnalyzer {
 
     /// Calculate trend direction from values
     fn calculate_trend_direction(&self, values: &[f64]) -> TrendDirection {
+        debug_assert!(!values.is_empty(), "values must not be empty");
         if values.len() < 2 {
             return TrendDirection::Stable;
         }
@@ -85,6 +87,7 @@ impl DataScienceAnalyzer {
     /// Convert values to sparkline indices (0-7)
     #[allow(clippy::cast_possible_truncation)]
     fn values_to_sparkline(&self, values: &[f64]) -> Vec<u8> {
+        debug_assert!(!values.is_empty(), "values must not be empty");
         if values.is_empty() {
             return Vec::new();
         }
@@ -105,6 +108,7 @@ impl DataScienceAnalyzer {
 
     /// Simple linear forecast for next value
     fn forecast_next(&self, values: &[f64]) -> Option<f64> {
+        debug_assert!(!values.is_empty(), "values must not be empty");
         if values.len() < 2 {
             return None;
         }

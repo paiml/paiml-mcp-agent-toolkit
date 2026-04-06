@@ -3,6 +3,7 @@
 
 /// Scalar implementation of churn statistics calculation
 fn calculate_churn_statistics_scalar(files: &[FileChurnMetrics]) -> (f64, f64, f64) {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     if files.is_empty() {
         return (0.0, 0.0, 0.0);
     }
@@ -26,6 +27,7 @@ fn calculate_churn_statistics_scalar(files: &[FileChurnMetrics]) -> (f64, f64, f
 /// SIMD implementation of churn statistics using Trueno
 #[cfg(feature = "simd")]
 fn calculate_churn_statistics_simd(files: &[FileChurnMetrics]) -> (f64, f64, f64) {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     use trueno::Vector;
 
     if files.is_empty() {
@@ -55,10 +57,12 @@ fn calculate_churn_statistics_simd(files: &[FileChurnMetrics]) -> (f64, f64, f64
 /// Calculate churn statistics - dispatches to SIMD or scalar implementation
 #[cfg(feature = "simd")]
 fn calculate_churn_statistics(files: &[FileChurnMetrics]) -> (f64, f64, f64) {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     calculate_churn_statistics_simd(files)
 }
 
 #[cfg(not(feature = "simd"))]
 fn calculate_churn_statistics(files: &[FileChurnMetrics]) -> (f64, f64, f64) {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     calculate_churn_statistics_scalar(files)
 }

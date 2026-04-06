@@ -70,6 +70,7 @@ fn annotate_file_functions(
     file_path: &str,
     funcs: &[&crate::services::agent_context::FunctionEntry],
 ) -> FileAnnotation {
+    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let mut annot = FileAnnotation::default();
     annot.function_count = funcs.len();
     let mut worst_tdg_score: f32 = 0.0;
@@ -191,6 +192,7 @@ fn build_file_annotations(
     Vec<CoChangePair>,
     HashMap<String, FileAnnotation>,
 ) {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let (mut hotspots, cochange_counts) = aggregate_hotspots(commits);
     let mut file_annots = build_code_annotations(index, &hotspots);
     load_dead_code_annotations(project_path, &mut file_annots, &mut hotspots);

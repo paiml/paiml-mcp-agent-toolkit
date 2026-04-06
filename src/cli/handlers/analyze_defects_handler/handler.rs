@@ -107,6 +107,7 @@ pub(crate) fn calculate_summary(
     files_with_defects: usize,
     defects: &[DefectPattern],
 ) -> DefectSummary {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     let mut critical = 0;
     let mut high = 0;
     let mut medium = 0;

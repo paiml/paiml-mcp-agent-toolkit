@@ -22,6 +22,8 @@ impl DefaultWorkflowExecutor {
         params: &Value,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
+        debug_assert!(!agent_name.is_empty(), "agent_name must not be empty");
+        debug_assert!(!operation.is_empty(), "operation must not be empty");
         // Get the agent ID from registry
         let agent_id = self
             .agent_registry
@@ -102,6 +104,7 @@ impl DefaultWorkflowExecutor {
         if_false: &Option<Box<WorkflowStep>>,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
+        debug_assert!(!condition.is_empty(), "condition must not be empty");
         // Evaluate condition
         let result = self.evaluate_condition(condition, context).await?;
 
@@ -121,6 +124,7 @@ impl DefaultWorkflowExecutor {
         max_iterations: Option<usize>,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
+        debug_assert!(!condition.is_empty(), "condition must not be empty");
         let mut iteration = 0;
         let mut outputs = vec![];
 

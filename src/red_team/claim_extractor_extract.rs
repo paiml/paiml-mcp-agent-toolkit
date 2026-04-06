@@ -28,6 +28,8 @@ impl ClaimExtractor {
         issue_number: Option<u32>,
         commit_message: &str,
     ) -> Claim {
+        debug_assert!(!text.is_empty(), "text must not be empty");
+        debug_assert!(!commit_message.is_empty(), "commit_message must not be empty");
         Claim {
             category,
             text: text.to_string(),
@@ -130,6 +132,7 @@ impl ClaimExtractor {
     }
 
     pub fn extract(&self, commit_message: &str) -> Vec<Claim> {
+        debug_assert!(!commit_message.is_empty(), "commit_message must not be empty");
         let mut claims_with_pos: Vec<(usize, Claim)> = Vec::new();
 
         self.extract_test_status(commit_message, &mut claims_with_pos);
@@ -152,6 +155,7 @@ impl ClaimExtractor {
     }
 
     fn is_absolute_claim(&self, text: &str) -> bool {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let text_lower = text.to_lowercase();
         self.absolute_keywords
             .iter()
@@ -159,6 +163,7 @@ impl ClaimExtractor {
     }
 
     fn extract_numeric_value(&self, text: &str) -> Option<f64> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let num_pattern = Regex::new(r"(\d+)").expect("Hardcoded regex pattern must be valid");
         num_pattern
             .captures(text)
@@ -167,12 +172,14 @@ impl ClaimExtractor {
     }
 
     fn has_scope_qualifier(&self, commit_message: &str) -> bool {
+        debug_assert!(!commit_message.is_empty(), "commit_message must not be empty");
         self.scope_patterns
             .iter()
             .any(|pattern| pattern.is_match(commit_message))
     }
 
     fn extract_scope(&self, commit_message: &str) -> Option<String> {
+        debug_assert!(!commit_message.is_empty(), "commit_message must not be empty");
         for pattern in &self.scope_patterns {
             if let Some(captures) = pattern.captures(commit_message) {
                 if let Some(scope_match) = captures.get(1) {

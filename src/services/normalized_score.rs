@@ -43,6 +43,7 @@ pub trait NormalizedScore: fmt::Display {
 
     /// Returns true if score meets the given threshold (0-100).
     fn meets_threshold(&self, threshold: f64) -> bool {
+        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         self.normalized() >= threshold.clamp(0.0, 100.0)
     }
 }
@@ -80,6 +81,7 @@ impl Ord for Grade {
 impl Grade {
     /// Convert a normalized score (0-100) to a grade.
     pub fn from_score(score: f64) -> Self {
+        debug_assert!(score >= 0.0, "score must be non-negative");
         match score {
             s if s >= 90.0 => Grade::A,
             s if s >= 80.0 => Grade::B,

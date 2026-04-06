@@ -80,6 +80,8 @@ impl MetricTrendStore {
         threshold: f64,
         forecast_days: usize,
     ) -> Result<PredictionResult> {
+        debug_assert!(!metric.is_empty(), "metric must not be empty");
+        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         // Load historical data
         if !self.cache.contains_key(metric) {
             self.load(metric)?;

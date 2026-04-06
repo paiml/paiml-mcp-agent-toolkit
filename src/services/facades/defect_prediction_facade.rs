@@ -167,6 +167,11 @@ impl DefectPredictionFacade {
         file_path: &PathBuf,
         request: &DefectPredictionRequest,
     ) -> Result<FilePrediction> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         // Get file metrics (would integrate with real analysis services)
         let lines = tokio::fs::read_to_string(file_path).await?.lines().count();
 

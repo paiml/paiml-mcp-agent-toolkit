@@ -33,6 +33,7 @@ impl LanguageAdapter for CppAdapter {
 
     #[cfg(feature = "cpp-ast")]
     async fn parse(&self, source: &str) -> Result<String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Create tree-sitter parser for C++
         let mut parser = Parser::new();
         parser
@@ -54,10 +55,12 @@ impl LanguageAdapter for CppAdapter {
 
     #[cfg(not(feature = "cpp-ast"))]
     async fn parse(&self, source: &str) -> Result<String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         Ok(source.to_string())
     }
 
     async fn unparse(&self, ast: &str) -> Result<String> {
+        debug_assert!(!ast.is_empty(), "ast must not be empty");
         Ok(ast.to_string())
     }
 
@@ -109,6 +112,8 @@ pub fn find_cmake_root(start: &Path) -> Option<&Path> {
 
 /// Parse test failures from ctest output
 pub fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
+    debug_assert!(!stdout.is_empty(), "stdout must not be empty");
+    debug_assert!(!stderr.is_empty(), "stderr must not be empty");
     let mut failures = Vec::new();
 
     for line in stdout.lines().chain(stderr.lines()) {
@@ -125,6 +130,7 @@ pub fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
 
 /// Extract test name from ctest failure line
 fn extract_test_name_from_ctest(line: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     // Pattern: "2/3 Test #2: TestSubtract .....................***Failed"
     let trimmed = line.trim();
 

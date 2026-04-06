@@ -13,6 +13,7 @@ use std::path::PathBuf;
 
 /// Convert MCP tool parameters to uniform contracts
 pub fn map_mcp_tool(tool_name: &str, params: Value) -> Result<Box<dyn ContractValidation>> {
+    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     match tool_name {
         "analyze_complexity" => map_complexity_contract(&params),
         "analyze_satd" => map_satd_contract(&params),

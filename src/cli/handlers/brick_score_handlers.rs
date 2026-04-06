@@ -172,6 +172,7 @@ fn format_single_category(
     failures_only: bool,
     output: &mut String,
 ) {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     let percentage = category.percentage();
     let icon = if percentage >= 80.0 {
         "✅"

@@ -114,6 +114,7 @@ pub async fn analyze_incremental_coverage(
 
 /// Check coverage threshold
 pub fn check_coverage_threshold(coverage_data: &CoverageUpdate, threshold: f64) -> Result<()> {
+    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let coverage = coverage_data.delta_coverage.percentage;
 
     eprintln!(
@@ -137,6 +138,7 @@ pub fn format_coverage_summary(
     base_branch: &str,
     target_branch: &Option<String>,
 ) -> Result<String> {
+    debug_assert!(!base_branch.is_empty(), "base_branch must not be empty");
     let mut output = String::new();
 
     writeln!(&mut output, "# Incremental Coverage Summary\n")?;

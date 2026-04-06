@@ -196,6 +196,8 @@ async fn extract_symbols_from_file(file_path: &Path) -> Result<Vec<Symbol>> {
 
 // Simple symbol extraction using regex
 fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
+    debug_assert!(!file.is_empty(), "file must not be empty");
     use regex::Regex;
 
     let mut symbols = Vec::new();
@@ -255,6 +257,7 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
 
 // Detect visibility from line content
 fn detect_visibility(line: &str) -> Visibility {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     if line.contains("pub ") || line.contains("export ") {
         Visibility::Public
     } else if line.contains("private ") {

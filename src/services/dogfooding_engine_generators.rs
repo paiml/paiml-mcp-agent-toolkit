@@ -8,6 +8,8 @@ impl DogfoodingEngine {
         root: &Path,
         date: &str,
     ) -> Result<String, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
+        debug_assert!(!date.is_empty(), "date must not be empty");
         let mut context = String::new();
 
         context.push_str(&format!("# AST Context Analysis - {date}\n\n"));
@@ -60,6 +62,8 @@ impl DogfoodingEngine {
         root: &Path,
         date: &str,
     ) -> Result<Value, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
+        debug_assert!(!date.is_empty(), "date must not be empty");
         let ast_forest = self.ast_engine.parse_project(root).await?;
         let ast_metrics = self.ast_engine.compute_metrics(&ast_forest)?;
         let churn_metrics = self.get_churn_metrics(root)?;
@@ -104,6 +108,8 @@ impl DogfoodingEngine {
         root: &Path,
         date: &str,
     ) -> Result<String, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
+        debug_assert!(!date.is_empty(), "date must not be empty");
         let mut analysis = String::new();
 
         analysis.push_str(&format!("# Complexity Analysis - {date}\n\n"));

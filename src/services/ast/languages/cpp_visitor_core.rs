@@ -40,6 +40,7 @@ impl CppAstVisitor {
     /// Extracts namespace declarations (complexity ≤10)
     #[allow(clippy::cast_possible_truncation)]
     fn extract_namespace_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_namespace = false;
         let mut brace_depth = 0;
         let mut _current_namespace = String::new();
@@ -74,6 +75,7 @@ impl CppAstVisitor {
     /// Extracts class declarations (complexity ≤10)
     #[allow(clippy::cast_possible_truncation)]
     fn extract_class_declarations(&mut self, source: &str) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_class = false;
         let mut brace_depth = 0;
         let mut current_class_name = String::new();

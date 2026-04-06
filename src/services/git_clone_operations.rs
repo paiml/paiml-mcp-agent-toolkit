@@ -119,6 +119,7 @@ impl GitCloner {
     }
 
     fn clone_shallow(&self, url: &str, target: &Path) -> Result<(), CloneError> {
+        debug_assert!(!url.is_empty(), "url must not be empty");
         let progress = self.progress.clone();
 
         // Set up fetch options

@@ -182,6 +182,7 @@ fn write_coverage_file_details(
     files: &[FileCoverageMetrics],
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     use std::fmt::Write;
 
     writeln!(output, "## Top Files by Coverage Change\n")?;
@@ -202,6 +203,7 @@ fn write_coverage_file_details(
 
 /// Calculate the number of files to display based on parameters
 pub fn calculate_files_to_show(files: &[FileCoverageMetrics], top_files: usize) -> usize {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     if top_files == 0 {
         files.len()
     } else {
@@ -215,6 +217,7 @@ fn write_file_entries(
     files: &[FileCoverageMetrics],
     files_to_show: usize,
 ) -> Result<()> {
+    debug_assert!(!files.is_empty(), "files must not be empty");
     use std::fmt::Write;
 
     for (i, file) in files.iter().take(files_to_show).enumerate() {

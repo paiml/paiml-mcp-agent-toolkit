@@ -44,6 +44,8 @@ impl LuaDefectDetector {
         file_path: &Path,
         defects: &mut Vec<DefectPattern>,
     ) {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lua_keywords = [
             "if", "then", "else", "elseif", "end", "do", "while", "repeat", "until", "for", "in",
             "function", "return", "break", "goto", "not", "and", "or",
@@ -132,6 +134,8 @@ impl LuaDefectDetector {
         file_path: &Path,
         defects: &mut Vec<DefectPattern>,
     ) {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut instances = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
@@ -170,6 +174,8 @@ impl LuaDefectDetector {
         file_path: &Path,
         defects: &mut Vec<DefectPattern>,
     ) {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut instances = Vec::new();
         for (line_num, line) in content.lines().enumerate() {
             let trimmed = line.trim();

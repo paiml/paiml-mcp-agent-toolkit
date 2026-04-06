@@ -66,6 +66,7 @@ async fn run_and_format_churn_analysis(
     period_days: u32,
     format: ChurnOutputFormat,
 ) -> McpResponse {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     match GitAnalysisService::analyze_code_churn(&project_path, period_days) {
         Ok(analysis) => {
             let content_text = format_churn_output(&analysis, &format);

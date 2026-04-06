@@ -267,6 +267,7 @@ pub fn detect_cb1053_undocumented_theorems(project_path: &Path) -> Vec<CbPattern
 
 /// Strip block comment content from a line, updating nesting depth.
 fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let mut result = String::with_capacity(line.len());
     let mut i = 0;
@@ -293,6 +294,7 @@ fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
 
 /// Check if line contains "sorry" as a standalone word.
 fn contains_sorry_word(line: &str) -> bool {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let sorry = b"sorry";
     let mut pos = 0;

@@ -28,6 +28,7 @@ impl WorkerMetrics {
 
     /// Record a task failure
     pub fn record_failure(&mut self, error: &str) {
+        debug_assert!(!error.is_empty(), "error must not be empty");
         self.failed_count += 1;
         self.state = WorkerState::Idle;
 

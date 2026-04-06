@@ -179,6 +179,7 @@ impl<'a> GitHistorySearchEngine<'a> {
 
     /// Get commit by hash
     fn get_commit_by_hash(&self, hash: &str) -> Result<Option<CommitInfo>, GitHistoryError> {
+        debug_assert!(!hash.is_empty(), "hash must not be empty");
         let conn = self.get_connection()?;
         let result = conn.query_row(
             r#"
@@ -200,6 +201,7 @@ impl<'a> GitHistorySearchEngine<'a> {
 
     /// Get files changed in a commit
     fn get_files_for_commit(&self, hash: &str) -> Result<Vec<String>, GitHistoryError> {
+        debug_assert!(!hash.is_empty(), "hash must not be empty");
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare("SELECT file_path FROM commit_files WHERE commit_hash = ?1")?;
 

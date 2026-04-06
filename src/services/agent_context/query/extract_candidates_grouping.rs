@@ -3,6 +3,7 @@
 
 /// Extract the name prefix before the first `_` (must be > 2 chars).
 fn extract_prefix(name: &str) -> Option<&str> {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     let prefix = name.split('_').next()?;
     if prefix.len() > 2 {
         Some(prefix)
@@ -13,6 +14,7 @@ fn extract_prefix(name: &str) -> Option<&str> {
 
 /// Group functions by name prefix (requires 3+ members per group, functions only).
 pub(crate) fn group_by_prefix(results: &[QueryResult]) -> HashMap<String, Vec<usize>> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut groups: HashMap<String, Vec<usize>> = HashMap::new();
     for (i, r) in results.iter().enumerate() {
         if r.definition_type != "function" {
@@ -32,6 +34,7 @@ pub(crate) fn group_by_prefix(results: &[QueryResult]) -> HashMap<String, Vec<us
 /// Two functions are in the same cluster if they are in the same file
 /// and one calls the other (or they share callees).
 pub(crate) fn group_by_call_cluster(results: &[QueryResult]) -> HashMap<String, Vec<usize>> {
+    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut by_file: HashMap<&str, Vec<usize>> = HashMap::new();
     for (i, r) in results.iter().enumerate() {
         if r.definition_type == "function" {
@@ -90,6 +93,7 @@ fn collect_neighbors(
     visited: &mut [bool],
     cluster: &mut Vec<usize>,
 ) {
+    debug_assert!(!edges.is_empty(), "edges must not be empty");
     for edge in edges {
         let Some(&global) = names.get(edge.as_str()) else {
             continue;
@@ -123,6 +127,8 @@ pub(crate) fn longest_common_prefix(names: &[&str]) -> String {
 }
 
 fn common_prefix_len(a: &str, b: &str, max: usize) -> usize {
+    debug_assert!(!a.is_empty(), "a must not be empty");
+    debug_assert!(!b.is_empty(), "b must not be empty");
     let limit = max.min(b.len());
     a.bytes()
         .zip(b.bytes())

@@ -30,6 +30,7 @@ fn setup_temp_roadmap() -> (TempDir, PathBuf) {
 
 /// Helper to write a valid roadmap
 fn write_valid_roadmap(path: &std::path::Path) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = r#"roadmap_version: '1.0'
 github_enabled: true
 github_repo: test/repo
@@ -97,6 +98,7 @@ fn test_extract_line_from_yaml_error_large_line_number() {
 
 /// Test helper that mimics the logic of extract_line_from_yaml_error
 fn extract_line_from_yaml_error_test(error: &str) -> Option<usize> {
+    debug_assert!(!error.is_empty(), "error must not be empty");
     if let Some(pos) = error.find("at line ") {
         let rest = &error[pos + 8..];
         if let Some(end) = rest.find(' ') {
@@ -196,6 +198,7 @@ fn test_tdg_severity_label_critical() {
 
 /// Test helper that mimics tdg_severity_label logic
 fn tdg_severity_label_test(score: f64) -> &'static str {
+    debug_assert!(score >= 0.0, "score must be non-negative");
     if score <= 1.0 {
         "Excellent"
     } else if score <= 2.0 {
@@ -998,6 +1001,7 @@ end_of_record
 
 /// Test helper for LCOV parsing
 fn parse_lcov_test(content: &str) -> (usize, usize) {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut lines_found: usize = 0;
     let mut lines_hit: usize = 0;
 

@@ -152,6 +152,7 @@ pub fn parse_analysis_filters(
 /// assert!(parse_analysis_type("invalid").is_err());
 /// ```
 pub fn parse_analysis_type(s: &str) -> anyhow::Result<AnalysisType> {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     match s.to_lowercase().as_str() {
         "complexity" => Ok(AnalysisType::Complexity),
         "dead-code" | "deadcode" => Ok(AnalysisType::DeadCode),

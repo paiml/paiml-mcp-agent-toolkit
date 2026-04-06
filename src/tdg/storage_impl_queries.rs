@@ -4,6 +4,7 @@ impl TieredStore {
     /// Searches both warm and cold storage for records matching the specified commit.
     /// Supports full SHA, short SHA (7 chars), or git tags.
     pub async fn get_by_commit(&self, commit_ref: &str) -> Result<Vec<FullTdgRecord>> {
+        debug_assert!(!commit_ref.is_empty(), "commit_ref must not be empty");
         let mut results = Vec::new();
 
         // Search warm storage

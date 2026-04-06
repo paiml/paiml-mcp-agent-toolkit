@@ -316,6 +316,7 @@ impl KotlinAstParser {
     }
 
     fn set_name_vector(&self, _node: &mut UnifiedAstNode, _name: &str) {
+        debug_assert!(!_name.is_empty(), "_name must not be empty");
         // Simplified implementation for now
     }
 
@@ -344,6 +345,10 @@ impl KotlinAstParser {
         node: Node,
         identifier_kind: &str,
     ) -> Option<String> {
+        debug_assert!(
+            !identifier_kind.is_empty(),
+            "identifier_kind must not be empty"
+        );
         // Check if the node is actually an enum by looking at the source
         let source_start = node.start_byte();
         let source_end = (source_start + 20)

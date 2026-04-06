@@ -65,6 +65,7 @@ fn check_cc003_pairs(
     config: &DetectionConfig,
     signatures: &HashMap<(&str, &str, &str), MinHashSignature>,
 ) -> Vec<CrossCrateFinding> {
+    debug_assert!(!func_name.is_empty(), "func_name must not be empty");
     let mut findings = Vec::new();
 
     for i in 0..impls.len() {
@@ -91,6 +92,7 @@ fn check_cc003_single_pair(
     config: &DetectionConfig,
     signatures: &HashMap<(&str, &str, &str), MinHashSignature>,
 ) -> Option<CrossCrateFinding> {
+    debug_assert!(!func_name.is_empty(), "func_name must not be empty");
     if upstream.crate_info.name == downstream.crate_info.name {
         return None;
     }
@@ -163,6 +165,12 @@ fn compute_cc003_similarity(
     min_similarity: f64,
     signatures: &HashMap<(&str, &str, &str), MinHashSignature>,
 ) -> Option<Option<f64>> {
+    debug_assert!(!up_crate.is_empty(), "up_crate must not be empty");
+    debug_assert!(!up_file.is_empty(), "up_file must not be empty");
+    debug_assert!(!down_crate.is_empty(), "down_crate must not be empty");
+    debug_assert!(!down_file.is_empty(), "down_file must not be empty");
+    debug_assert!(!func_name.is_empty(), "func_name must not be empty");
+    debug_assert!(min_similarity >= 0.0, "min_similarity must be non-negative");
     let up_key = (up_crate, up_file, func_name);
     let down_key = (down_crate, down_file, func_name);
 

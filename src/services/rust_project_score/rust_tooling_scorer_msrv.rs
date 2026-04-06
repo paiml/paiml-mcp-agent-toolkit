@@ -3,6 +3,7 @@
 
 /// Extract the MSRV version string from Cargo.toml content
 fn extract_msrv(content: &str) -> Option<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .find(|line| line.contains("rust-version"))
@@ -46,6 +47,7 @@ fn extract_profile_section<'a>(content: &'a str, header: &str) -> Option<&'a str
 
 /// Score release profile settings
 fn score_release_section(section: &str) -> f64 {
+    debug_assert!(!section.is_empty(), "section must not be empty");
     let mut score = 0.0;
     let has_lto = section.contains("lto = true")
         || section.contains("lto = \"thin\"")
@@ -66,6 +68,7 @@ fn score_release_section(section: &str) -> f64 {
 
 /// Check if a profile section has LTO enabled (penalty for dev/test)
 fn profile_has_lto(section: &str) -> bool {
+    debug_assert!(!section.is_empty(), "section must not be empty");
     section.contains("lto = true")
         || section.contains("lto = \"")
         || section.contains("lto = '")

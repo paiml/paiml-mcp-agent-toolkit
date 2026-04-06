@@ -61,6 +61,7 @@ impl ConcurrentDeepContextAnalyzer {
         path: &Path,
         ast_cache: &Arc<AstCache>,
     ) -> Result<CombinedAnalyses> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let pb = self.create_progress_bar("Running analyses", ANALYSIS_COUNT);
 
         // Clone for parallel execution

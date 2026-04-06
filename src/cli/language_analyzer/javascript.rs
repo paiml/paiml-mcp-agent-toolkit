@@ -10,6 +10,7 @@ pub struct JavaScriptAnalyzer;
 
 impl LanguageAnalyzer for JavaScriptAnalyzer {
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
 
@@ -73,6 +74,7 @@ impl LanguageAnalyzer for JavaScriptAnalyzer {
     }
 
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let function_lines = &lines[function.line_start..=function.line_end];
 
@@ -87,6 +89,7 @@ impl JavaScriptAnalyzer {
     ///
     /// Detects: `class Name`, `export class Name`, `export default class Name`
     fn extract_class_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let patterns = ["export default class ", "export class ", "class "];
 
         for pattern in &patterns {
@@ -113,6 +116,7 @@ impl JavaScriptAnalyzer {
     /// - Constructors: `constructor(params) {`
     /// - Getters/Setters: `get propertyName()`, `set propertyName(value)`
     fn extract_method_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         let trimmed = line.trim();
 
         // Skip non-method lines
@@ -158,6 +162,7 @@ impl JavaScriptAnalyzer {
 
     /// Extract simple method name from pattern: `methodName(params)`
     fn extract_simple_method_name(&self, text: &str) -> Option<String> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         if let Some(paren_pos) = text.find('(') {
             let before_paren = &text.get(..paren_pos).unwrap_or_default().trim();
             // Extract last word before '('
@@ -187,6 +192,7 @@ impl JavaScriptAnalyzer {
     }
 
     fn is_function_declaration(&self, line: &str) -> bool {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         line.starts_with("function ")
             || line.starts_with("async function ")
             || line.starts_with("export function ")
@@ -202,6 +208,7 @@ impl JavaScriptAnalyzer {
     }
 
     fn extract_function_name(&self, line: &str) -> Option<String> {
+        debug_assert!(!line.is_empty(), "line must not be empty");
         // Handle: function name(
         if let Some(pos) = line.find("function ") {
             let after = line.get(pos + 9..).unwrap_or_default();
@@ -229,6 +236,7 @@ impl JavaScriptAnalyzer {
     }
 
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         find_brace_balanced_end(lines, start, false)
     }
 }

@@ -197,6 +197,7 @@ fn is_binding_file(path: &Path) -> bool {
 
 /// Check whether file content contains provable-contracts schema markers.
 fn has_contract_markers(content: &str) -> bool {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     const MARKERS: &[&str] = &[
         "proof_obligations",
         "equations:",

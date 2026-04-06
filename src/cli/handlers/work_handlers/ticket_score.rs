@@ -10,6 +10,7 @@ pub async fn handle_work_score(
     path: Option<PathBuf>,
     format: String,
 ) -> Result<()> {
+    debug_assert!(min_score >= 0.0, "min_score must be non-negative");
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
 
     let contract = wc::WorkContract::load(&project_path, &id).with_context(|| {
@@ -50,6 +51,7 @@ fn print_score_json(
     trend: &wc::QualityTrend,
     lint_config: &wc::LintConfig,
 ) -> Result<()> {
+    debug_assert!(!id.is_empty(), "id must not be empty");
     let output = serde_json::json!({
         "work_item_id": id,
         "score": {
@@ -100,6 +102,7 @@ fn print_score_text(
     trend: &wc::QualityTrend,
     lint_config: &wc::LintConfig,
 ) {
+    debug_assert!(!id.is_empty(), "id must not be empty");
     use crate::cli::colors as c;
     println!("{}", c::header(&format!("Contract Score: {} ({})", id, contract.version)));
     println!();

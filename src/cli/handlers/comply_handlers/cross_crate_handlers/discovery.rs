@@ -138,6 +138,7 @@ pub(super) fn parse_workspace_members_with_globs(content: &str, base: &Path) -> 
 
 /// Extract the raw `members = [...]` array content from TOML.
 fn extract_members_array(content: &str) -> String {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut in_members = false;
     let mut bracket_depth = 0;
     let mut buf = String::new();
@@ -261,6 +262,11 @@ fn find_current_project(
     projects: &serde_json::Map<String, serde_json::Value>,
     canonical_ws: &Path,
 ) -> Option<String> {
+    debug_assert!(
+        canonical_ws.exists(),
+        "canonical_ws must exist: {}",
+        canonical_ws.display()
+    );
     projects.iter().find_map(|(name, info)| {
         let path_str = info.get("path")?.as_str()?;
         let project_path = PathBuf::from(path_str);
@@ -286,6 +292,7 @@ fn collect_related_crates(
     projects: &serde_json::Map<String, serde_json::Value>,
     current_name: &str,
 ) -> HashSet<String> {
+    debug_assert!(!current_name.is_empty(), "current_name must not be empty");
     let mut related = HashSet::new();
     related.insert(current_name.to_string());
 

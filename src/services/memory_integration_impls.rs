@@ -187,6 +187,7 @@ impl InternedStringSet {
 
     /// Insert a string with interning
     pub fn insert(&mut self, s: &str) -> Result<bool> {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         let interned = self.memory_manager.intern_string(s)?;
         Ok(self.strings.insert(interned))
     }
@@ -194,6 +195,7 @@ impl InternedStringSet {
     /// Check if string exists
     #[must_use]
     pub fn contains(&self, s: &str) -> bool {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         // Note: This requires interning the string to check, which is not ideal
         // In practice, you'd store the interned version when inserting
         if let Ok(interned) = self.memory_manager.intern_string(s) {

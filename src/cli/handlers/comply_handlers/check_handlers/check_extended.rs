@@ -281,6 +281,7 @@ fn format_dependency_message(report: &DependencyCountReport) -> String {
 }
 
 fn append_violation_details(msg: &mut String, report: &DependencyCountReport, limit: usize) {
+    debug_assert!(limit > 0, "limit must be positive");
     for v in report.violations.iter().take(limit) {
         let icon = if v.severity == crate::cli::handlers::comply_cb_detect::Severity::Error {
             "\u{2717}"
@@ -512,6 +513,7 @@ pub(crate) fn estimate_test_lines(content: &str) -> usize {
 }
 
 fn count_line_complexity(trimmed: &str) -> u32 {
+    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let flow_keywords: &[(&str, &str)] = &[
         ("if ", " if "),
         ("else if ", "} else if "),

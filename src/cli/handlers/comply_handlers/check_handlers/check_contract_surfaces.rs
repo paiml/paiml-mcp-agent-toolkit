@@ -908,6 +908,7 @@ enum ContractClass {
 
 /// Extract top-level YAML keys (lines at column 0 ending with ':')
 fn extract_top_level_keys(content: &str) -> Vec<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .filter(|l| {
@@ -939,6 +940,7 @@ const SCHEMA_REGISTRY_KEYS: &[&str] = &[
 
 /// Classify a contract by its top-level keys and precondition content.
 fn classify_contract(top_keys: &[String], content: &str) -> ContractClass {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let has_equations = top_keys.iter().any(|k| k == "equations");
     let has_enforcement_level = content
         .lines()
@@ -980,6 +982,7 @@ fn classify_contract(top_keys: &[String], content: &str) -> ContractClass {
 /// Detect if a contract is a generic API pattern with only placeholder assertions.
 /// Checks BOTH preconditions AND postconditions + invariant text.
 fn is_generic_api_pattern(content: &str) -> bool {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut assertions: Vec<String> = Vec::new();
     let mut in_list = false;
 
@@ -1090,6 +1093,7 @@ fn check_cargo_contracts(
 
 /// Extract dependency version from Cargo.toml content.
 fn extract_dep_version<'a>(content: &'a str, dep_name: &str) -> Option<&'a str> {
+    debug_assert!(!dep_name.is_empty(), "dep_name must not be empty");
     for line in content.lines() {
         let trimmed = line.trim();
         // Must start with dep name followed by space or =
@@ -1129,6 +1133,8 @@ fn extract_dep_version<'a>(content: &'a str, dep_name: &str) -> Option<&'a str> 
 
 /// Simple semver minimum check: does `actual` >= `minimum`?
 fn version_satisfies_minimum(actual: &str, minimum: &str) -> bool {
+    debug_assert!(!actual.is_empty(), "actual must not be empty");
+    debug_assert!(!minimum.is_empty(), "minimum must not be empty");
     let parse = |v: &str| -> Vec<u32> {
         v.split('.')
             .filter_map(|s| s.parse().ok())

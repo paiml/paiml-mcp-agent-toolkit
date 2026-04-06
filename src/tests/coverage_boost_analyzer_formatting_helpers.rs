@@ -56,6 +56,7 @@ fn make_build_info() -> BuildInfo {
 }
 
 fn make_annotated_node(name: &str, node_type: NodeType) -> AnnotatedNode {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     AnnotatedNode {
         name: name.to_string(),
         path: PathBuf::from(name),
@@ -74,6 +75,8 @@ fn make_annotated_tree(total_files: usize, total_size: u64) -> AnnotatedFileTree
 }
 
 fn make_file_context(path: &str, language: &str, items: Vec<AstItem>) -> FileContext {
+    debug_assert!(!path.is_empty(), "path must not be empty");
+    debug_assert!(!language.is_empty(), "language must not be empty");
     FileContext {
         path: path.to_string(),
         language: language.to_string(),
@@ -83,6 +86,8 @@ fn make_file_context(path: &str, language: &str, items: Vec<AstItem>) -> FileCon
 }
 
 fn make_enhanced_file_context(path: &str, language: &str) -> EnhancedFileContext {
+    debug_assert!(!path.is_empty(), "path must not be empty");
+    debug_assert!(!language.is_empty(), "language must not be empty");
     EnhancedFileContext {
         base: make_file_context(path, language, Vec::new()),
         complexity_metrics: None,
@@ -280,6 +285,8 @@ fn make_dead_code_result() -> DeadCodeRankingResult {
 }
 
 fn make_defect_hotspot(file: &str, line: u32, score: f32, hours: f32) -> DefectHotspot {
+    debug_assert!(!file.is_empty(), "file must not be empty");
+    debug_assert!(score >= 0.0, "score must be non-negative");
     DefectHotspot {
         location: FileLocation {
             file: PathBuf::from(file),
@@ -298,6 +305,9 @@ fn make_defect_hotspot(file: &str, line: u32, score: f32, hours: f32) -> DefectH
 }
 
 fn make_cross_lang_ref(src: &str, tgt: &str, confidence: f32) -> CrossLangReference {
+    debug_assert!(!src.is_empty(), "src must not be empty");
+    debug_assert!(!tgt.is_empty(), "tgt must not be empty");
+    debug_assert!(confidence >= 0.0, "confidence must be non-negative");
     CrossLangReference {
         source_file: PathBuf::from(src),
         target_file: PathBuf::from(tgt),

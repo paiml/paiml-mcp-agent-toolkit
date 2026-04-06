@@ -1,4 +1,5 @@
 fn generate_checklist(task_id: &str, task_type: QaTaskType) -> QaChecklist {
+    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
     let type_str = match task_type {
         QaTaskType::Feature => "feature",
         QaTaskType::Bugfix => "bugfix",

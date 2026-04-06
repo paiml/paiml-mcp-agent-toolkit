@@ -151,6 +151,7 @@ pub(crate) fn get_top_violations(
     violations: &[crate::entropy::violation_detector::ActionableViolation],
     top_n: usize,
 ) -> Vec<crate::entropy::violation_detector::ActionableViolation> {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     if top_n > 0 && violations.len() > top_n {
         violations.iter().take(top_n).cloned().collect()
     } else {
@@ -162,6 +163,7 @@ pub(crate) fn get_top_violations(
 pub(crate) fn format_violation_list(
     violations: &[crate::entropy::violation_detector::ActionableViolation],
 ) -> String {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use crate::cli::colors as c;
     violations
         .iter()
@@ -194,6 +196,7 @@ pub(crate) fn format_markdown_violations(
     violations: &[crate::entropy::violation_detector::ActionableViolation],
     max_count: usize,
 ) -> String {
+    debug_assert!(!violations.is_empty(), "violations must not be empty");
     violations
         .iter()
         .take(max_count)
@@ -240,6 +243,11 @@ fn index_workspace(
     workspace: &Path,
     language: Option<&str>,
 ) -> Result<usize> {
+    debug_assert!(
+        workspace.exists(),
+        "workspace must exist: {}",
+        workspace.display()
+    );
     println!("\u{1f50d} Indexing source files...");
     let num_docs = engine
         .index_directory(workspace, language)

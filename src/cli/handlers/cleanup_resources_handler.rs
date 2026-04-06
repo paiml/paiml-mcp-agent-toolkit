@@ -22,6 +22,7 @@ pub enum CleanupTarget {
 
 impl CleanupTarget {
     pub fn parse(s: &str) -> Option<Self> {
+        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "rust" => Some(Self::Rust),
             "docker" => Some(Self::Docker),

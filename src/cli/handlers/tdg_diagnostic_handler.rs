@@ -9,6 +9,7 @@ use std::path::PathBuf;
 /// Open URL in default browser using platform-specific command
 /// Replaces webbrowser crate to reduce transitive dependencies
 fn open_browser(url: &str) -> std::io::Result<()> {
+    debug_assert!(!url.is_empty(), "url must not be empty");
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open").arg(url).spawn()?;
@@ -325,6 +326,7 @@ fn handle_cleanup(storage: &TieredStore, max_age: u64) -> Result<()> {
 
 /// Handle migrate command
 fn handle_migrate(backend: &str, path: Option<&PathBuf>) -> Result<()> {
+    debug_assert!(!backend.is_empty(), "backend must not be empty");
     let backend_type = parse_backend_type(backend)?;
     let (warm_config, cold_config) = create_migration_configs(backend_type, path);
 
@@ -345,6 +347,7 @@ fn handle_migrate(backend: &str, path: Option<&PathBuf>) -> Result<()> {
 
 /// Parse backend type from string
 fn parse_backend_type(backend: &str) -> Result<StorageBackendType> {
+    debug_assert!(!backend.is_empty(), "backend must not be empty");
     match backend {
         "libsql" => Ok(StorageBackendType::Libsql),
         "inmemory" => Ok(StorageBackendType::InMemory),

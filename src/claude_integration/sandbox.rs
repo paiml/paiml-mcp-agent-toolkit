@@ -30,6 +30,7 @@ impl BridgeSandbox {
 
     /// Spawn bridge process with security layers
     pub fn spawn_isolated(&self, bridge_path: &str) -> io::Result<Child> {
+        debug_assert!(!bridge_path.is_empty(), "bridge_path must not be empty");
         // Create sandbox directory if it doesn't exist
         std::fs::create_dir_all(&self.sandbox_dir)?;
 

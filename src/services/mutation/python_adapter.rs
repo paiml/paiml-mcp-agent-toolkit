@@ -34,6 +34,7 @@ impl LanguageAdapter for PythonAdapter {
 
     #[cfg(feature = "python-ast")]
     async fn parse(&self, source: &str) -> Result<String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Parse using tree-sitter-python to validate syntax
         let mut parser = TsParser::new();
         parser
@@ -55,10 +56,12 @@ impl LanguageAdapter for PythonAdapter {
 
     #[cfg(not(feature = "python-ast"))]
     async fn parse(&self, source: &str) -> Result<String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         Ok(source.to_string())
     }
 
     async fn unparse(&self, ast: &str) -> Result<String> {
+        debug_assert!(!ast.is_empty(), "ast must not be empty");
         Ok(ast.to_string())
     }
 
@@ -132,6 +135,8 @@ pub fn find_pytest_root(start: &Path) -> Option<&Path> {
 
 /// Parse test failures from pytest output
 pub fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
+    debug_assert!(!stdout.is_empty(), "stdout must not be empty");
+    debug_assert!(!stderr.is_empty(), "stderr must not be empty");
     let mut failures = Vec::new();
 
     for line in stdout.lines().chain(stderr.lines()) {
@@ -148,6 +153,7 @@ pub fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
 
 /// Extract test name from pytest failure line
 fn extract_test_name_from_pytest(line: &str) -> Option<String> {
+    debug_assert!(!line.is_empty(), "line must not be empty");
     // Pattern: "FAILED tests/test_math.py::test_subtract"
     let trimmed = line.trim();
 

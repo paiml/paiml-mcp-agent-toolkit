@@ -135,6 +135,7 @@ impl UnifiedHelpService {
 
     /// Find closest command using edit distance
     fn find_closest(&self, commands: &[String], query: &str) -> Option<(String, usize)> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         commands
             .iter()
             .map(|cmd| {
@@ -146,6 +147,8 @@ impl UnifiedHelpService {
 
     /// Extract relevant snippet from document
     fn extract_snippet(&self, doc: &str, _query: &str) -> String {
+        debug_assert!(!doc.is_empty(), "doc must not be empty");
+        debug_assert!(!_query.is_empty(), "_query must not be empty");
         // Simple snippet: first 100 chars
         if doc.len() <= 100 {
             doc.to_string()
@@ -156,6 +159,7 @@ impl UnifiedHelpService {
 
     /// Get top important commands (for suggestions)
     pub fn get_important_commands(&self, k: usize) -> Vec<(String, f32)> {
+        debug_assert!(k > 0, "k must be positive");
         self.graph.top_k_important(k)
     }
 
@@ -166,12 +170,15 @@ impl UnifiedHelpService {
 
     /// Get commands by category
     pub fn get_by_category(&self, category: &str) -> Vec<&CommandMetadata> {
+        debug_assert!(!category.is_empty(), "category must not be empty");
         self.registry.find_by_category(category)
     }
 }
 
 /// Simple Levenshtein distance
 fn levenshtein(a: &str, b: &str) -> usize {
+    debug_assert!(!a.is_empty(), "a must not be empty");
+    debug_assert!(!b.is_empty(), "b must not be empty");
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
     let a_len = a_chars.len();

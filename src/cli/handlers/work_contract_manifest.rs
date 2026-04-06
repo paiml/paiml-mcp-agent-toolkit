@@ -182,6 +182,7 @@ impl FileEntry {
 
     /// Check if content contains SIMD patterns
     fn contains_simd_patterns(content: &str) -> bool {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Use concat! to avoid CB-021 self-detection when scanning this file
         let patterns = [
             "#[target_feature(enable",
@@ -200,6 +201,7 @@ impl FileEntry {
 
     /// Simple function count heuristic
     fn count_functions(content: &str, category: &FileCategory) -> usize {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         match category {
             FileCategory::RustSource | FileCategory::SimdAvx => {
                 // Count `fn ` occurrences (simple heuristic)

@@ -16,6 +16,7 @@ impl SnapshotStore {
     }
 
     pub fn find_partition_snapshots(&self, partition_key: &str) -> Vec<SnapshotMetadata> {
+        debug_assert!(!partition_key.is_empty(), "partition_key must not be empty");
         let snapshots = self.snapshots.read();
         snapshots
             .iter()

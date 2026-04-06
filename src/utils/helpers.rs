@@ -12,14 +12,17 @@ pub fn register_helpers(env: &mut minijinja::Environment<'_>) {
 }
 
 fn snake_case_filter(value: &str) -> String {
+    debug_assert!(!value.is_empty(), "value must not be empty");
     to_snake_case(value)
 }
 
 fn kebab_case_filter(value: &str) -> String {
+    debug_assert!(!value.is_empty(), "value must not be empty");
     to_kebab_case(value)
 }
 
 fn pascal_case_filter(value: &str) -> String {
+    debug_assert!(!value.is_empty(), "value must not be empty");
     to_pascal_case(value)
 }
 
@@ -33,6 +36,7 @@ fn current_date_fn() -> Value {
 
 // Case conversion utilities
 pub fn to_snake_case(s: &str) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     let mut result = String::with_capacity(1024);
     let mut prev_is_upper = false;
 
@@ -53,10 +57,12 @@ pub fn to_snake_case(s: &str) -> String {
 }
 
 fn to_kebab_case(s: &str) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     to_snake_case(s).replace('_', "-")
 }
 
 pub fn to_pascal_case(s: &str) -> String {
+    debug_assert!(!s.is_empty(), "s must not be empty");
     s.split(['_', '-', ' '])
         .filter(|s| !s.is_empty())
         .map(|s| {

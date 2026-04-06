@@ -364,6 +364,7 @@ struct BindingResult {
 // --- JSON parsing ---
 
 fn parse_pv_lint_json(json_str: &str) -> PvLintResult {
+    debug_assert!(!json_str.is_empty(), "json_str must not be empty");
     // Try to parse as JSON; fall back to text analysis
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(json_str) {
         let errors = value
@@ -420,6 +421,7 @@ fn parse_pv_lint_json(json_str: &str) -> PvLintResult {
 }
 
 fn parse_pv_score_json(json_str: &str) -> PvScoreResult {
+    debug_assert!(!json_str.is_empty(), "json_str must not be empty");
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(json_str) {
         let score = value
             .get("overall_score")

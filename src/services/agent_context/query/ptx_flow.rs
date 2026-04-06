@@ -162,6 +162,7 @@ fn find_consumer_nodes(
 
 /// Phase 3: build edges between PTX nodes using the call graph
 fn build_flow_edges(index: &AgentContextIndex, nodes: &[PtxFlowNode]) -> Vec<PtxFlowEdge> {
+    debug_assert!(!nodes.is_empty(), "nodes must not be empty");
     let func_idx_to_node: std::collections::HashMap<usize, usize> = nodes
         .iter()
         .enumerate()

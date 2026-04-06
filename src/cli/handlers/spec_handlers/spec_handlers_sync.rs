@@ -66,6 +66,8 @@ fn update_roadmap_item(
     dry_run: bool,
     updates: &mut Vec<String>,
 ) {
+    debug_assert!(rel_spec_path.exists(), "rel_spec_path must exist: {}", rel_spec_path.display());
+    debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
     for item in items.iter_mut() {
         if !item.id.eq_ignore_ascii_case(ticket_id) {
             continue;
@@ -117,6 +119,7 @@ fn print_sync_results(
     roadmap: &crate::models::roadmap::Roadmap,
     roadmap_path: &Path,
 ) -> anyhow::Result<()> {
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     use crate::cli::colors as c;
     if updates.is_empty() {
         println!("{}", c::pass("Specs and roadmap are in sync. No updates needed."));

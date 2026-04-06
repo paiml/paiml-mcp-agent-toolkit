@@ -9,6 +9,7 @@
 
     /// Create a WhyIteration with specified parameters
     fn create_test_why_iteration(depth: u8, confidence: f64) -> WhyIteration {
+        debug_assert!(confidence >= 0.0, "confidence must be non-negative");
         WhyIteration::new(
             depth,
             format!("Why did this happen (depth {})?", depth),

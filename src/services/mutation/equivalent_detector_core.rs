@@ -99,6 +99,7 @@ impl EquivalentMutantDetector {
 
     /// Detect if a mutant is equivalent to the original
     pub fn detect_equivalent(&self, mutant: &Mutant, original: &str) -> Result<EquivalenceResult> {
+        debug_assert!(!original.is_empty(), "original must not be empty");
         if !self.trained {
             anyhow::bail!("Detector not trained");
         }
@@ -171,6 +172,7 @@ impl EquivalentMutantDetector {
         mutant: &Mutant,
         original: &str,
     ) -> Result<(EquivalenceResult, String)> {
+        debug_assert!(!original.is_empty(), "original must not be empty");
         let result = self.detect_equivalent(mutant, original)?;
 
         let explanation = if result.is_equivalent {

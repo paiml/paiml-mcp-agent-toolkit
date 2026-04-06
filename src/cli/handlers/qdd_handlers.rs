@@ -364,6 +364,7 @@ fn display_refactor_results(
 
 /// Save refactored code to file
 fn save_refactored_code(output_path: &Path, code: &str) -> Result<()> {
+    debug_assert!(!code.is_empty(), "code must not be empty");
     std::fs::write(output_path, code)?;
     println!(
         "{}",

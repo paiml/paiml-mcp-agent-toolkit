@@ -19,6 +19,8 @@ impl PtxAnalysisState {
 
     /// First pass: identify loop labels (labels with back-edge branches)
     fn identify_loop_labels(&mut self, lines: &[&str], content: &str) {
+        debug_assert!(!content.is_empty(), "content must not be empty");
+        debug_assert!(!lines.is_empty(), "lines must not be empty");
         for line in lines {
             let trimmed = line.trim();
             if trimmed.ends_with(':') && !trimmed.starts_with('.') {
@@ -65,6 +67,7 @@ impl PtxAnalysisState {
 
     /// Update loop/label tracking state
     fn track_labels(&mut self, line_num: usize, trimmed: &str) {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         if trimmed.ends_with(':') && !trimmed.starts_with('.') {
             let label = trimmed.trim_end_matches(':');
             if self.loop_labels.contains(label) {
@@ -303,6 +306,7 @@ impl PtxAnalysisState {
 
     /// Track memory operations for coalescing analysis
     fn track_memory_ops(&self, trimmed: &str, analysis: &mut FileAnalysis) {
+        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         if trimmed.contains("ld.global") || trimmed.contains("st.global") {
             analysis.coalescing.total_operations += 1;
             if trimmed.contains("%tid") || trimmed.contains("param") {

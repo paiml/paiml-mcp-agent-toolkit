@@ -6,6 +6,7 @@ pub struct CommandSuggester {
 }
 
 fn find_closest(candidate: &str, commands: &[String], max_distance: usize) -> Option<String> {
+    debug_assert!(!candidate.is_empty(), "candidate must not be empty");
     let mut best_match = None;
     let mut best_distance = usize::MAX;
 
@@ -99,6 +100,7 @@ impl CommandSuggester {
     }
 
     fn suggest_single_arg(&self, arg: &str) -> Option<String> {
+        debug_assert!(!arg.is_empty(), "arg must not be empty");
         if self.analyze_subcommands.iter().any(|cmd| cmd == arg) {
             return Some(format!("Did you mean 'pmat analyze {arg}'?"));
         }

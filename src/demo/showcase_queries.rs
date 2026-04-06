@@ -42,6 +42,7 @@ impl ShowcaseGallery {
 
     #[must_use]
     pub fn get_repositories_by_language(&self, language: &str) -> Vec<&ShowcaseRepository> {
+        debug_assert!(!language.is_empty(), "language must not be empty");
         let lang_lower = language.to_lowercase();
         self.repositories
             .values()

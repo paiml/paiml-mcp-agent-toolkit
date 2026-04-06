@@ -99,12 +99,14 @@ impl RecoveryManager {
     }
 
     fn get_rollback_action(step_id: &str, _output: &Value) -> Option<String> {
+        debug_assert!(!step_id.is_empty(), "step_id must not be empty");
         // In production, would look up rollback actions from step metadata
         // For now, return a placeholder action
         Some(format!("undo_{}", step_id))
     }
 
     fn get_compensation_action(step_id: &str, _output: &Value) -> Option<String> {
+        debug_assert!(!step_id.is_empty(), "step_id must not be empty");
         // In production, would look up compensation actions from step metadata
         // For now, return a placeholder action
         Some(format!("compensate_{}", step_id))

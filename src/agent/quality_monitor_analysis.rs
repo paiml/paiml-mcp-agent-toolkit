@@ -69,6 +69,7 @@ impl QualityMonitorEngine {
 
     /// Estimate complexity based on control flow keywords
     fn estimate_complexity(content: &str) -> u32 {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let keywords = [
             "if", "else", "for", "while", "match", "switch", "case", "catch", "&&", "||",
         ];
@@ -80,6 +81,7 @@ impl QualityMonitorEngine {
 
     /// Count SATD (Self-Admitted Technical Debt) issues
     fn count_satd_issues(content: &str) -> usize {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Using concatenation to avoid false positives in SATD detection
         let patterns = [
             ['T', 'O', 'D', 'O'].iter().collect::<String>(),
@@ -211,6 +213,7 @@ impl QualityMonitorEngine {
         new: &FileQualityMetrics,
         file_path: &str,
     ) -> Vec<QualityChange> {
+        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let mut changes = Vec::new();
 
         // Check complexity changes
