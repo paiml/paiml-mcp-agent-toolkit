@@ -294,14 +294,20 @@ fire-and-forget with no closed-loop regeneration.
 | Repos with enforcement | "26/26 Grade A" | 7/26 | ~18/26 |
 | Enforcement rate | implied 100% | ~1% | ~60% (kaizen Grade A) |
 
-### Dogfood Results (2026-04-06)
+### Dogfood Results (2026-04-06, updated pmat v3.11.1)
 
 | Repo | Pass | Warn | Fail | CB-1354 | Notes |
 |------|------|------|------|---------|-------|
-| pmat | **76** | 6 | 0 | **4/4** | 4 bindings, 82 work contracts, 2 pv assertions |
-| aprender | **73** | 14 | 0 | **4/4** | 5 bindings, 39 contracts. 13 issues resolved. CB-1320/1322 fixed |
-| trueno | **65** | 18 | 0 | 1/4 | Only pv CLI |
-| realizar | **63** | 18 | 0 | 1/4 | CORS + JSON 404 fixes applied |
+| pmat | **74** | 8 | 2 | **4/4** | 4 bindings, 83 work contracts. FAIL: File Health (C grade), CB-1201 (pv lint YAML parse) |
+| aprender | **73** | 14 | 2 | **4/4** | 109 bindings, 39 work contracts, 12 apr-cli YAMLs. FAIL: File Health (C grade), CB-1308 (4 contracts at L4 not L5) |
+| trueno | **65** | 18 | 3 | 2/4 | Missing contracts/*.yaml, binding.yaml |
+| realizar | **63** | 18 | 1 | 3/4 | Missing binding.yaml |
+
+**Key changes from prior dogfood (same day, earlier run):**
+- pmat: 76/6/0 → **74/8/2** (File Health and pv lint regressions detected)
+- aprender: enforcement penetration **79.9%** (6157/7707 functions) — was reported as 0.7%
+- aprender bindings: **109** implemented (was reported as 5)
+- trueno/realizar: unchanged but CB-1354 readiness updated
 
 ### apr-cli QA Summary (2026-04-06)
 
@@ -317,8 +323,12 @@ fire-and-forget with no closed-loop regeneration.
 | UX | #660, #677 | Fixed: GGUF metadata, showcase exit code |
 | Asset compliance | #675 | Fixed: SVG accessibility, README <h1> |
 
-**Remaining open (30 total):** GPU-specific (#659, #670), CI (#681), contract
-infra (#673-674), feature gaps (#650, #654, #656, #661), bugs (#648-653).
+**Remaining open (18 total, down from 30):** GPU bugs (#573 CPU dequant path,
+#471 MoE hang, #620 parity contradiction, #641 rosetta 0 tokens), infra (#477
+cuda gate, #560 wgpu fallback), perf (#386 SIMD dequant, #434 OOM quantize,
+#478 32B OOM), features (#326 BERT, #367 InternLM, #393 hetero training,
+#428 online SGD, #540 Grade A refactor, #537 bug-hunter findings, #566
+finetune metrics, #574 tracing, #575 Whisper).
 
 ### Five Whys: Why Doesn't pmat comply Catch apr-cli Bugs? (2026-04-06)
 
@@ -336,9 +346,11 @@ provable-contracts postconditions. Yet `pmat comply check` shows 73/14/0.
 5. **Why isn't insertion automated?** Rust macros can't be auto-inserted. Need
    proc_macros (`#[contract]` attribute) or `build.rs` injection — not implemented.
 
-**Root cause:** `#[contract]` proc_macro EXISTS (provable-contracts-macros, 432 lines)
-and IS deployed (51 annotations in aprender) — but coverage is 0.7% (51/7700 functions).
-The pipeline works; the bottleneck is annotation coverage, not tooling.
+**Root cause (UPDATED 2026-04-06):** `#[contract]` proc_macro EXISTS
+(provable-contracts-macros) and IS deployed. Enforcement penetration measured
+at **79.9%** (6157/7707 functions) via CB-1340 — up from 0.7% (51 annotations)
+reported earlier. The pipeline works. Remaining gap: 4 contracts stuck at L4
+(not L5), and the 48 apr-cli command handlers need per-command Level A coverage.
 
 | Defect Class | Count | Contract Catchable? | Fix |
 |-------------|-------|--------------------|----|
@@ -349,12 +361,63 @@ The pipeline works; the bottleneck is annotation coverage, not tooling.
 | Missing guard | 5 | **YES** — input preconditions | `#[contract(requires = "!path.ends_with(.enc)")]` |
 | Format leak | 3 | **YES** — output postconditions | `#[contract(ensures = "!msg.contains(type_name)")]` |
 
+### apr-cli Level A Enforcement Policy (2026-04-06)
+
+**MANDATORY: ALL 48 apr-cli commands require Level A fixes ONLY.**
+
+Level A = TDG Grade A (score 0.0–0.2) + L3 provable-contracts enforcement
+(build.rs + traits + `#[contract]` proc_macro). No command ships at Grade B
+or below. No command ships without provable-contracts coverage.
+
+**Enforcement chain** (via `../provable-contracts`):
+
+| Requirement | Threshold | Enforcement |
+|-------------|-----------|-------------|
+| TDG Grade | **A** (0.0–0.2) for every command handler | `pmat analyze complexity --file` |
+| Contract YAML | Every command in `contracts/aprender/apr-*.yaml` | `pv lint` |
+| Enforcement level | **L3 minimum** (build.rs + traits) for all 48 commands | CB-1208 |
+| `#[contract]` annotation | **100%** of command entry points (`dispatch_core_command` arms) | CB-1203 |
+| Precondition coverage | Domain-specific (not placeholder) for all equations | CB-1210, CB-1211 |
+| Postcondition coverage | Exit code + output validity for all commands | CB-1214 E2 |
+| Falsification tests | Every command has ≥1 FALSIFY test | Contract YAML `falsification_tests` |
+| Kani harness | All proof obligations at L4+ for critical paths | CB-1205 |
+
+**Per-command contract requirements:**
+
+| Command Class | Contract YAML | Required Annotations |
+|---------------|--------------|---------------------|
+| ReadOnly (28 cmds) | `apr-cli-operations-v1` | `#[contract(ensures = "no_side_effects")]` on handler |
+| Mutating (16 cmds) | `apr-cli-operations-v1` | `#[contract(requires = "output_path.is_some()")]`, `#[contract(ensures = "exit != 0 on error")]` |
+| LongRunning (4 cmds: run, serve, chat, tui) | `apr-serve-v1`, `apr-chat-session-v1` | `#[contract(ensures = "graceful_shutdown")]`, `#[contract(ensures = "resource_cleanup")]` |
+| Sampling (run, serve) | `apr-cli-sampling-v1` | `#[contract(requires = "temperature >= 0.0")]`, `#[contract(ensures = "deterministic if seed set")]` |
+| Data (tokenize, pipeline, data) | `apr-data-pipeline-v1` | `#[contract(ensures = "roundtrip_fidelity")]` |
+| Training (train plan/apply/watch/sweep) | `apr-finetune-v1` | `#[contract(ensures = "loss_monotonic")]`, `#[contract(requires = "valid_config")]` |
+| Format (import, export, convert) | `apr-format-safety-v1` | `#[contract(ensures = "format_valid")]`, `#[contract(requires = "input_exists")]` |
+| GPU (compile, ptx, ptx-map, parity) | `apr-gpu-backend-v1` | `#[contract(ensures = "gpu_parity")]`, `#[contract(requires = "backend_available")]` |
+
+**Graduation criteria** (command moves from open→closed):
+
+1. Contract YAML exists with domain-specific pre/postconditions (not placeholders)
+2. `#[contract]` proc_macro annotation on handler entry point
+3. Binding in `contracts/aprender/binding.yaml` with `status: implemented`
+4. ≥1 falsification test in contract YAML
+5. TDG score ≤ 0.2 (Grade A) on handler function
+6. `pmat comply check` passes with 0 FAIL on the command's contract
+
+**What this replaces:** The previous P0–P2 tiered approach allowed Grade B/C
+commands to ship. That approach produced 56 bugs in aprender, 35 of which
+were contract-catchable. Level A enforcement eliminates the "ship now, contract
+later" pattern that caused 63% of preventable defects.
+
 ### Recommendations
 
-1. **P0:** Raise `#[contract]` annotation coverage from 0.7% to 10%+ (51→770 functions)
-2. **P1:** Fix CI RED #681 (trueno softmax postcondition)
-3. **P1:** Fix #674 ghost bindings (run `pv infer` to regenerate from AST)
-4. **P2:** Add `#[contract]` annotations to apr-cli serve/validate/run paths
+1. **P0:** Annotate all 48 command handlers with `#[contract]` — coverage target 100% (currently 79.9% crate-wide, but apr-cli command entry points unchecked)
+2. **P0:** Upgrade all apr-cli bindings to L3 enforcement in `binding.yaml` (109 bindings implemented, 4 stuck at L4 need L5)
+3. **P0:** Add postcondition `exit != 0 on error` to all 48 commands (eliminates silent-failure class: 11 bugs)
+4. **P0:** Add behavioral preconditions for flag handling (eliminates flag-ignored class: 10 bugs)
+5. **P1:** Fix CI RED #681 (trueno softmax postcondition)
+6. **P1:** Fix #674 ghost bindings (run `pv infer` to regenerate from AST)
+7. **P1:** Add Kani L4 harnesses for sampling parameter validation (temperature, top-k, top-p bounds)
 
 ### Falsification Summary (2026-04-05)
 
@@ -491,5 +554,6 @@ Priority: **P0** = blocks real enforcement, **P1** = completes spec claim, **P2*
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 3.4 | 2026-04-06 | **Level A enforcement**: ALL 48 apr-cli commands require Grade A TDG + L3 provable-contracts. No Grade B/C ships. |
 | 3.3 | 2026-04-06 | **82 closed** (18 open). All hardware tested. Deep investigation on 3 issues. **76/6/0.** |
 | 1.0–2.8 | 2026-04-05 | Phases 1-8, remediation R-1..R-10, falsification audit, brace counting. |
