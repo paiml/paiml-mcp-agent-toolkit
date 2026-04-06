@@ -298,18 +298,15 @@ fire-and-forget with no closed-loop regeneration.
 
 | Repo | Pass | Warn | Fail | CB-1354 | Notes |
 |------|------|------|------|---------|-------|
-| pmat | **75** | 8 | 1 | **4/4** | 4 bindings, 83 work contracts. FAIL: File Health (C grade). CB-1201 **FIXED** (prefer sibling provable-contracts/) |
-| aprender | **74** | 14 | 1 | **4/4** | 109 bindings, 39 work contracts, 12 apr-cli YAMLs. FAIL: CB-1308 (4 contracts at L4 not L5) |
-| trueno | **65** | 18 | 3 | 2/4 | Missing contracts/*.yaml, binding.yaml |
-| realizar | **63** | 18 | 1 | 3/4 | Missing binding.yaml |
+| pmat | **75** | 8 | 1 | **4/4** | 83 work contracts. FAIL: File Health only |
+| aprender | **75** | 13 | 1 | **4/4** | 109 bindings, 12 apr-cli YAMLs. FAIL: CB-1308 (4 L4→L5) |
+| trueno | **66** | 17 | 3 | 2/4 | Missing contracts/*.yaml, binding.yaml |
+| realizar | **67** | 18 | **0** | 3/4 | **Zero FAIL** after CB-1201 fix |
 
-**Changes this session:**
-- CB-1201 fixed: `resolve_contracts_dir()` now prefers `../provable-contracts/contracts/<name>/`
-  over local `contracts/` which contains work YAMLs (different schema). Root cause: `check_pv_lint`
-  ran `pv lint` without a path arg, defaulting to `contracts/` (82 work YAMLs → 82 parse errors).
-- pmat: 74/8/2 → **75/8/1** (CB-1201 fixed)
-- aprender enforcement penetration: **79.9%** (6157/7707). apr-cli crate: **0%** (#686)
-- aprender bindings: **109** implemented. 12 apr-cli YAMLs in provable-contracts.
+**CB-1201 fix** (this session): `resolve_contracts_dir()` now prefers
+`../provable-contracts/contracts/<name>/` over local `contracts/` which may
+contain work YAMLs (different schema). All 4 repos gained +1 to +4 passes.
+aprender: 79.9% enforcement penetration crate-wide, apr-cli crate **0%** (#686).
 
 ### apr-cli QA Summary (2026-04-06)
 
