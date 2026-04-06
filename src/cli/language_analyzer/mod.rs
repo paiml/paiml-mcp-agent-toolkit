@@ -26,6 +26,7 @@ use anyhow::Result;
 use std::path::Path;
 
 /// Analyze file complexity using appropriate language analyzer
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_file_complexity(path: &Path, content: &str) -> Result<FileComplexityMetrics> {
     let language = Language::from_path(path);
 
@@ -121,6 +122,7 @@ async fn try_ast_analysis(path: &Path, language: Language) -> Option<FileComplex
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn analyze_with_heuristics(
     path: &Path,
     content: &str,

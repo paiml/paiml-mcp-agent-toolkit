@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// Handle template listing command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_list(
     server: Arc<StatelessTemplateServer>,
     toolchain: Option<String>,
@@ -80,6 +81,7 @@ impl MarkdownBuilder {
 }
 
 /// Handle template search command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_search(
     server: Arc<StatelessTemplateServer>,
     query: String,
@@ -108,6 +110,7 @@ pub async fn handle_search(
 }
 
 /// Handle context generation command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_context(
     toolchain: Option<String>,
