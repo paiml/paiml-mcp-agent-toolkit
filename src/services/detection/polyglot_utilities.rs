@@ -38,6 +38,7 @@ impl PolyglotDetector {
     }
 
     fn scan_project_directory(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut files = Vec::new();
         if !dir.is_dir() {
             return Ok(files);
@@ -58,6 +59,7 @@ impl PolyglotDetector {
     }
 
     fn should_skip_directory(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.file_name()
             .and_then(|n| n.to_str())
             .map_or(true, |name| {

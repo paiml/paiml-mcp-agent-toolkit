@@ -61,6 +61,7 @@ impl DocumentationScorer {
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for CHANGELOG.md
     /// **Kaizen Round 5**: Also checks workspace root for monorepo structures
     fn score_changelog(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let content = self.read_best_changelog(project_path, cache)?;
         let Some(content) = content else {
             return Ok(0.0);

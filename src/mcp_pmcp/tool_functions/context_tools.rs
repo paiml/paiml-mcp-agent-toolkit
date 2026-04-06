@@ -223,6 +223,7 @@ pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<
         total_lines: &mut usize,
         languages: &mut HashSet<String>,
     ) -> Result<()> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if !dir.is_dir() {
             return Ok(());
         }

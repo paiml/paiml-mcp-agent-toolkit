@@ -56,6 +56,11 @@ impl PopperScorer for FalsifiabilityScorer {
     }
 
     fn score(&self, project_path: &Path) -> PopperScorerResult<PopperCategoryScore> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut category = PopperCategoryScore::new(self.name(), 0.0, self.max_points());
 
         // Score each sub-category

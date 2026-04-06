@@ -28,6 +28,7 @@ impl UnifiedCache {
     /// ```
     #[must_use]
     pub fn new(capacity: usize) -> Self {
+        debug_assert!(capacity > 0, "capacity must be positive");
         // Default to capacity 1 if 0 is provided (NonZeroUsize requirement)
         let capacity = std::num::NonZeroUsize::new(capacity)
             .unwrap_or(std::num::NonZeroUsize::new(1).expect("1 is non-zero (const)"));

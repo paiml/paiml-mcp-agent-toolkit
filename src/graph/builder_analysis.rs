@@ -5,6 +5,7 @@ impl DependencyGraphBuilder {
     /// Analyze single file and create node
     /// Complexity: 10 (parsing + node creation)
     fn analyze_file(&mut self, path: &Path) -> Result<NodeId> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)?;
 
         // Calculate hash for incremental updates
@@ -100,6 +101,7 @@ impl DependencyGraphBuilder {
     /// Convert path to module name
     /// Complexity: 4
     fn path_to_module(&self, path: &Path) -> String {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")

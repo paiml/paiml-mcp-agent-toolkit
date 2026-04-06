@@ -8,6 +8,7 @@ impl RustAdapter {
 
 impl LanguageAdapter for RustAdapter {
     fn detect(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "rs")
     }
 
@@ -39,6 +40,7 @@ impl PythonAdapter {
 
 impl LanguageAdapter for PythonAdapter {
     fn detect(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "py")
     }
 
@@ -70,6 +72,7 @@ impl JavaScriptAdapter {
 
 impl LanguageAdapter for JavaScriptAdapter {
     fn detect(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "js" || ext == "jsx")
     }
 
@@ -101,6 +104,7 @@ impl TypeScriptAdapter {
 
 impl LanguageAdapter for TypeScriptAdapter {
     fn detect(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "ts" || ext == "tsx")
     }
 
@@ -132,6 +136,7 @@ impl GoAdapter {
 
 impl LanguageAdapter for GoAdapter {
     fn detect(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "go")
     }
 
@@ -163,6 +168,7 @@ impl LuaAdapter {
 
 impl LanguageAdapter for LuaAdapter {
     fn detect(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "lua")
     }
 

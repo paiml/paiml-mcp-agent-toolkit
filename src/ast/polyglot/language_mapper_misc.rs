@@ -36,6 +36,7 @@ impl LanguageMapper for CSharpMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.convert_ast_items(items, path)
     }
 
@@ -79,6 +80,7 @@ impl LanguageMapper for RubyMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.convert_ast_items(items, path)
     }
 

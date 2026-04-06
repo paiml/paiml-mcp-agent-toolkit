@@ -143,6 +143,7 @@ impl FalsificationLedger {
 
     /// Check a single receipt file for integrity (Ok(true) = valid, Ok(false) = tampered)
     fn check_receipt_file(path: &Path) -> Result<bool> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
         let receipt: FalsificationReceipt = serde_json::from_str(&content)?;
         Ok(receipt.verify_integrity())

@@ -7,6 +7,7 @@ impl RustDefectDetector {
 
     /// Check if a file should be excluded from defect detection
     fn should_exclude_file(&self, file_path: &Path) -> bool {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let path_str = file_path.to_string_lossy();
         let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
@@ -101,6 +102,7 @@ impl RustDefectDetector {
     }
 
     fn detect_unwraps(&self, content: &str, file_path: &Path) -> Vec<DefectInstance> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut instances = Vec::new();
         // Track #[cfg(...)] blocks via brace depth so we can skip .unwrap()
         // inside conditional compilation code (issue #279).

@@ -33,6 +33,7 @@ impl Scorer for CodeQualityScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut recommendations = Vec::new();
 
         // Check complexity - USE SIMPLE FALLBACK (no subprocess, no cache)

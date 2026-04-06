@@ -89,6 +89,8 @@ impl FalsificationEngine {
     }
 
     fn find_similar_file(full_path: &Path, project_path: &Path) -> String {
+        debug_assert!(full_path.exists(), "full_path must exist: {}", full_path.display());
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let parent = full_path.parent().unwrap_or(project_path);
         let stem = full_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
         if !parent.exists() || stem.is_empty() {

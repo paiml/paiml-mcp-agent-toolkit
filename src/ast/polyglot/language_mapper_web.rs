@@ -64,6 +64,7 @@ impl LanguageMapper for TypeScriptMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.convert_ast_items(items, path)
     }
 
@@ -136,6 +137,7 @@ impl LanguageMapper for JavaScriptMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.convert_ast_items(items, path)
     }
 

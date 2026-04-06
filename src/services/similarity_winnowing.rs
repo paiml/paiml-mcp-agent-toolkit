@@ -5,6 +5,7 @@
 impl Winnowing {
     #[must_use]
     pub fn new(window_size: usize, k_gram_size: usize) -> Self {
+        debug_assert!(window_size > 0, "window_size must be positive");
         Self {
             window_size,
             k_gram_size,

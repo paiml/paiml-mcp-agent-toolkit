@@ -68,6 +68,11 @@ impl ContractIndex {
 
     /// Find the binding-index.json path (checks .pmat/ and contracts/).
     fn find_index_path(project_path: &Path) -> Option<PathBuf> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let primary = project_path.join(".pmat/binding-index.json");
         if primary.exists() {
             return Some(primary);

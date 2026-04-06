@@ -90,6 +90,7 @@ pub trait LanguageAdapter: Send + Sync {
 }
 
 pub struct RustAdapter {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
     parser: Parser,
 }
 

@@ -4,6 +4,7 @@
 impl DogfoodingEngine {
     /// Get churn metrics using the existing git analysis service
     fn get_churn_metrics(&self, root: &Path) -> Result<ChurnMetrics, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let churn_analysis = match GitAnalysisService::analyze_code_churn(root, 30) {
             Ok(analysis) => analysis,
             Err(_) => {

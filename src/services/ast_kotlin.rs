@@ -39,6 +39,7 @@ impl KotlinAstParser {
 
     #[must_use]
     pub fn with_limits(max_depth: usize, timeout: Duration) -> Self {
+        debug_assert!(max_depth > 0, "max_depth must be positive");
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_kotlin_ng::LANGUAGE.into())

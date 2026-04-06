@@ -229,6 +229,7 @@ impl SemanticSearchEngine {
         file_path: &str,
         limit: usize,
     ) -> Result<Vec<SearchResult>, String> {
+        debug_assert!(limit > 0, "limit must be positive");
         let file_embeddings = self.vector_db.query_by_file(file_path).await?;
 
         if file_embeddings.is_empty() {
@@ -396,6 +397,7 @@ impl SemanticSearchEngine {
 
     /// Detect programming language from file extension
     fn detect_language(path: &Path) -> Option<Language> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let extension = path.extension()?.to_str()?;
 
         match extension {

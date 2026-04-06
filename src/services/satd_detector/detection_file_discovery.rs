@@ -81,6 +81,7 @@ impl SATDDetector {
     }
 
     fn should_skip_directory(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
             self.is_excluded_directory_name(name)
         } else {
@@ -105,12 +106,14 @@ impl SATDDetector {
     }
 
     fn process_file(&self, path: &Path, files: &mut Vec<PathBuf>) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.is_valid_source_file(path) {
             files.push(path.to_path_buf());
         }
     }
 
     fn is_valid_source_file(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.is_source_file(path) && !self.is_test_file(path)
     }
 

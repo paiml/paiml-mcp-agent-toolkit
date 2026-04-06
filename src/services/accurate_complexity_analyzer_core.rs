@@ -76,6 +76,7 @@ impl AccurateComplexityAnalyzer {
 
     /// Check if file is a test file
     fn is_test_file(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         path_str.contains("/tests/")
             || path_str.contains("/test/")

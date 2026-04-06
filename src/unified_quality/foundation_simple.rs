@@ -211,6 +211,7 @@ impl QualityMonitor {
     
     /// Check if file should be analyzed
     fn should_analyze(path: &Path, patterns: &[String]) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         patterns.iter().any(|pattern| {
             if pattern.contains("**") {

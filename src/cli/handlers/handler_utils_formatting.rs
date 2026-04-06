@@ -46,6 +46,7 @@ pub fn score_to_severity(score: f64) -> &'static str {
 /// Get top N items from a slice, or all items if limit is 0
 #[must_use]
 pub fn get_top_n<T: Clone>(items: &[T], limit: usize) -> Vec<T> {
+    debug_assert!(limit > 0, "limit must be positive");
     if limit == 0 {
         items.to_vec()
     } else {
@@ -74,6 +75,7 @@ pub fn output_to_file_or_stdout(
 /// Format a count with appropriate pluralization
 #[must_use]
 pub fn pluralize(count: usize, singular: &str, plural: &str) -> String {
+    debug_assert!(count > 0, "count must be positive");
     if count == 1 {
         format!("{count} {singular}")
     } else {

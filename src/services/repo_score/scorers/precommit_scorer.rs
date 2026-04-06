@@ -252,12 +252,22 @@ mod tests {
     }
 
     fn create_git_repo(repo_path: &Path) {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let git_dir = repo_path.join(".git");
         let hooks_dir = git_dir.join("hooks");
         fs::create_dir_all(&hooks_dir).unwrap();
     }
 
     fn create_precommit_hook(repo_path: &Path, content: &str, executable: bool) {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let hook_path = repo_path.join(".git/hooks/pre-commit");
         fs::write(&hook_path, content).unwrap();
 

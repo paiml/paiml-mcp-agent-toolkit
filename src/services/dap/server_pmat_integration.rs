@@ -81,6 +81,7 @@ impl DapServer {
 
     /// Detect language from file path
     fn detect_language_from_path(&self, path: &Path) -> Option<Language> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let extension = path.extension()?.to_str()?;
 
         match extension {
@@ -94,6 +95,7 @@ impl DapServer {
 
     /// Parse and cache AST for a file
     fn parse_and_cache_ast(&self, path: &Path) -> Result<(), String> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Read source
         let source =
             std::fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;

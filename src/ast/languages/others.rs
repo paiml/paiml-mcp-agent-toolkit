@@ -47,6 +47,7 @@ impl LanguageStrategy for PlaceholderStrategy {
     }
 
     fn can_parse(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check file extension
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             if self.extensions.contains(&ext) {

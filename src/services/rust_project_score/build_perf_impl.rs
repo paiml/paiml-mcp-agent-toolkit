@@ -40,6 +40,7 @@ impl BuildPerfScorer {
     /// Validates:
     /// - `lto = true` or `lto = "thin"` or `lto = "fat"` in [profile.release]
     fn score_lto(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         let content = if let Some(cache) = cache {
@@ -353,30 +354,35 @@ impl BuildPerfScorer {
     }
 
     fn recommend_lto(&self, path: &Path, recs: &mut Vec<String>) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.score_lto(path, None).unwrap_or(0.0) < 2.0 {
             recs.push("Enable LTO: Add `lto = true` or `lto = \"thin\"` to [profile.release] for 10-20% smaller binaries".into());
         }
     }
 
     fn recommend_cargo_lock(&self, path: &Path, recs: &mut Vec<String>) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.score_cargo_lock(path, None).unwrap_or(0.0) < 2.0 {
             recs.push("Add Cargo.lock: Commit Cargo.lock for reproducible builds (required for binaries)".into());
         }
     }
 
     fn recommend_cargo_config(&self, path: &Path, recs: &mut Vec<String>) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.score_cargo_config(path, None).unwrap_or(0.0) < 2.0 {
             recs.push("Add .cargo/config.toml: Configure build settings for consistent builds across machines".into());
         }
     }
 
     fn recommend_codegen_units(&self, path: &Path, recs: &mut Vec<String>) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.score_codegen_units(path, None).unwrap_or(0.0) < 2.0 {
             recs.push("Optimize codegen-units: Add `codegen-units = 1` to [profile.release] for better optimization".into());
         }
     }
 
     fn recommend_build_system(&self, path: &Path, recs: &mut Vec<String>) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let score = self.score_build_system(path, None).unwrap_or(0.0);
         if score == 0.0 {
             recs.push("Add build automation: Create a Makefile or justfile for common build tasks".into());
@@ -402,6 +408,7 @@ impl Scorer for BuildPerfScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         self.score_internal(project_path, None)
     }
 
@@ -424,6 +431,7 @@ impl Scorer for BuildPerfScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut recs = Vec::new();
         self.recommend_lto(project_path, &mut recs);
         self.recommend_cargo_lock(project_path, &mut recs);

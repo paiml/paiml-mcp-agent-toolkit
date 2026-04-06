@@ -74,11 +74,13 @@ trait Refactoring: Send + Sync {
 struct DeadCodeAnalysisRefactoring;
 
 impl Refactoring for DeadCodeAnalysisRefactoring {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     /// Apply dead code analysis refactoring
     /// 
     /// # Errors
     /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Box::pin(async move {
             if !file_path.ends_with("complexity_handlers.rs") {
                 return Ok(false);
@@ -130,6 +132,7 @@ impl Refactoring for FormatOutputRefactoring {
     ///
     /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Box::pin(async move {
             if !file_path.ends_with("lint_hotspot_handlers.rs") {
                 return Ok(false);
@@ -163,6 +166,7 @@ impl Refactoring for RefactorAutoRefactoring {
     /// # Errors
     /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Box::pin(async move {
             if !file_path.ends_with("refactor_auto_handlers.rs") {
                 return Ok(false);
@@ -195,6 +199,7 @@ impl Refactoring for DefectMarkdownRefactoring {
     ///
     /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Box::pin(async move {
             if !file_path.ends_with("defect_helpers.rs") {
                 return Ok(false);

@@ -115,6 +115,7 @@ impl FileRanker for ComplexityRanker {
     type Metric = CompositeComplexityScore;
 
     fn compute_score(&self, file_path: &Path) -> Self::Metric {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let ext = file_path.extension().and_then(|s| s.to_str());
         match ext.and_then(language_score_params) {
             Some(params) => score_from_file_size(file_path, params),
@@ -147,6 +148,7 @@ pub fn rank_files_by_complexity(
     limit: usize,
     ranker: &ComplexityRanker,
 ) -> Vec<(String, CompositeComplexityScore)> {
+    debug_assert!(limit > 0, "limit must be positive");
     let mut rankings: Vec<_> = file_metrics
         .iter()
         .map(|metrics| {

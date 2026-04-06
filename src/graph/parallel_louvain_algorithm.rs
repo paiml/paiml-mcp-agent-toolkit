@@ -27,6 +27,7 @@ impl ParallelLouvain {
 
     /// Set number of threads (0 = use all available).
     pub fn with_num_threads(mut self, num_threads: usize) -> Self {
+        debug_assert!(num_threads > 0, "num_threads must be positive");
         self.num_threads = num_threads;
         self
     }

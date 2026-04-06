@@ -27,6 +27,7 @@ impl CudaSimdAnalyzer {
     /// - UNOPT_MEM: Multiple single loads could be vectorized
     /// - DEAD_CODE: Unreachable code after ret or unconditional branch
     fn detect_ptx_memory_patterns(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let lines: Vec<&str> = content.lines().collect();
         let mut state = PtxAnalysisState::new();
 

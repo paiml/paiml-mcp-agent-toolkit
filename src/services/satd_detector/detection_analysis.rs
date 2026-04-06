@@ -223,6 +223,7 @@ impl SATDDetector {
     }
 
     fn extract_debts_from_content(&self, content: &str, file_path: &Path) -> Vec<TechnicalDebt> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Validate file size before processing
         if content.len() > 10_000_000 {
             eprintln!(

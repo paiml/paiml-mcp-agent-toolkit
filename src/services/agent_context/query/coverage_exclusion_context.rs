@@ -59,6 +59,7 @@ impl ExclusionContext {
     /// With cached data (from index build), this is a pure HashSet lookup.
     /// Falls back to lazy file I/O only when no cached data is available.
     fn is_coverage_off_file(&mut self, file_path: &str, project_path: &Path) -> bool {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         if self.coverage_off_files.contains(file_path) {
             return true;
         }

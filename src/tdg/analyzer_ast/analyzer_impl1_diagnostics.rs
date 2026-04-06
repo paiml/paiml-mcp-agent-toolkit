@@ -100,6 +100,7 @@ impl TdgAnalyzerAst {
 
     /// Estimate memory required for file analysis
     fn estimate_analysis_memory(&self, path: &Path) -> Result<f64> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let metadata = fs::metadata(path)?;
         let file_size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
 

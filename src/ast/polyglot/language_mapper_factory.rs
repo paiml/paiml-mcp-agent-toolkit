@@ -100,6 +100,7 @@ impl LanguageMapper for StubMapper {
     }
 
     fn convert_ast_items(&self, _items: &[AstItem], _path: &Path) -> Vec<UnifiedNode> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Return an empty list for now - this is just a stub
         Vec::new()
     }

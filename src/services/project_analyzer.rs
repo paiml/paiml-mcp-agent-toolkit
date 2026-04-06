@@ -135,6 +135,7 @@ impl Project {
 
     /// Check if a file is a source file
     fn is_source_file(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(ext) = path.extension() {
             matches!(
                 ext.to_str().unwrap_or(""),

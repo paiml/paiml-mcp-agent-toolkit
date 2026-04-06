@@ -5,6 +5,7 @@ impl DependencyGraphBuilder {
     /// Collect all source files from workspace
     /// Complexity: 6 (directory traversal)
     fn collect_source_files(&self, root: &Path) -> Result<Vec<PathBuf>> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let mut files = Vec::new();
         self.collect_files_recursive(root, &mut files)?;
         Ok(files)
@@ -13,6 +14,7 @@ impl DependencyGraphBuilder {
     /// Recursively collect source files
     /// Complexity: 8 (recursive with early exit)
     fn collect_files_recursive(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if !dir.is_dir() {
             return Ok(());
         }
@@ -39,6 +41,7 @@ impl DependencyGraphBuilder {
     /// Check if file is a source file we can analyze
     /// Complexity: 3
     fn is_source_file(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         matches!(
             path.extension().and_then(|s| s.to_str()),
             Some("rs")

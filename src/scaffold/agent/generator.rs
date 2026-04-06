@@ -19,6 +19,7 @@ pub trait TemplateGenerator: Send + Sync {
 
     /// Post-generation hooks (e.g., running formatters, installing dependencies).
     fn post_generation_hooks(&self, _path: &Path) -> Result<()> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Default implementation does nothing
         Ok(())
     }

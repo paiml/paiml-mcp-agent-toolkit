@@ -149,6 +149,7 @@ pub(crate) fn write_risk_row(
     count: usize,
     total: f64,
 ) -> Result<()> {
+    debug_assert!(count > 0, "count must be positive");
     writeln!(
         output,
         "| {} | {} | {:.1}% |",

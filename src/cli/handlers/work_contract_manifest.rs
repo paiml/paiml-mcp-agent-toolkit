@@ -69,6 +69,7 @@ impl FileManifest {
 
     /// Check if path should be excluded from manifest
     fn is_excluded(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Exclude common non-source directories
@@ -154,6 +155,7 @@ impl FileEntry {
 
     /// Categorize Rust file (detect SIMD, tests, etc.)
     fn categorize_rust_file(path: &Path) -> Result<FileCategory> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
 
         // Check for test files

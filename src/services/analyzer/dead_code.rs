@@ -27,6 +27,7 @@ impl DeadCodeAnalyzer {
 
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
+        debug_assert!(capacity > 0, "capacity must be positive");
         Self {
             inner: OriginalAnalyzer::new(capacity),
         }
@@ -178,6 +179,7 @@ impl DeadCodeAnalyzerFactory {
 
     #[must_use]
     pub fn create_with_capacity(capacity: usize) -> DeadCodeAnalyzer {
+        debug_assert!(capacity > 0, "capacity must be positive");
         DeadCodeAnalyzer::with_capacity(capacity)
     }
 }

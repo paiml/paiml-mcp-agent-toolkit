@@ -54,6 +54,7 @@ impl LshIndex {
     /// * `(25, 4)` - Maximum recall for similarity > 0.3
     #[must_use]
     pub fn new(num_bands: usize, rows_per_band: usize) -> Self {
+        debug_assert!(num_bands > 0, "num_bands must be positive");
         let buckets = (0..num_bands).map(|_| HashMap::new()).collect();
         Self {
             bands: num_bands,

@@ -260,6 +260,11 @@ mod tests {
     }
 
     fn create_file(repo_path: &Path, relative_path: &str, content: &str) {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let file_path = repo_path.join(relative_path);
         if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent).expect("internal error");

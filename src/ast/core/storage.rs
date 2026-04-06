@@ -14,6 +14,7 @@ pub struct ColumnStore<T> {
 impl<T: Clone> ColumnStore<T> {
     #[must_use]
     pub fn new(capacity: usize) -> Self {
+        debug_assert!(capacity > 0, "capacity must be positive");
         Self {
             data: Vec::with_capacity(capacity),
             capacity,

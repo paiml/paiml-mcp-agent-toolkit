@@ -96,6 +96,7 @@ impl SimpleDeepContext {
 
     /// Check if a path matches any include pattern
     fn matches_include_patterns(path: &Path, ext: &str, patterns: &[String]) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         patterns.iter().any(|pattern| {
             // Glob pattern: extract extension from "**/*.rs"

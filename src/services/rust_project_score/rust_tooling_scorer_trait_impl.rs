@@ -43,6 +43,7 @@ impl Scorer for RustToolingScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Backward compatibility: call with default mode and no cache
         self.score_internal(project_path, ScoringMode::default(), None)
     }
@@ -69,6 +70,7 @@ impl Scorer for RustToolingScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut recommendations = vec![
             "Run 'cargo clippy --fix' to automatically fix clippy warnings".to_string(),
             "Run 'cargo fmt' to format code according to Rust style guidelines".to_string(),

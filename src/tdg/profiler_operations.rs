@@ -207,6 +207,7 @@ impl PerformanceProfiler {
 
     /// Get top bottlenecks
     pub async fn get_top_bottlenecks(&self, limit: usize) -> Vec<Bottleneck> {
+        debug_assert!(limit > 0, "limit must be positive");
         let bottlenecks = self.bottlenecks.read().await;
         let mut sorted: Vec<_> = bottlenecks.clone();
         sorted.sort_by(|a, b| {

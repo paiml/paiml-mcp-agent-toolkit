@@ -85,6 +85,11 @@ impl GitAnalysisService {
         project_path: &Path,
         since_date: &str,
     ) -> Result<Vec<FileChurnMetrics>, TemplateError> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         // Spawn git log with timeout to prevent runaway processes (#245)
         let (tx, rx) = std::sync::mpsc::channel();
         let project_dir = project_path.to_path_buf();

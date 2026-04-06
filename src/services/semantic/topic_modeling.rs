@@ -68,6 +68,7 @@ impl TopicEngine {
         num_topics: usize,
         filters: TopicFilters,
     ) -> Result<TopicResult, String> {
+        debug_assert!(num_topics > 0, "num_topics must be positive");
         // Validate input
         if num_topics == 0 {
             return Err("num_topics must be at least 1".to_string());

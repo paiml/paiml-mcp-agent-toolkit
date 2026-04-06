@@ -160,6 +160,7 @@ impl FiveWhysAnalyzer {
 
     /// Count SATD markers (TODO, FIXME, HACK, WORKAROUND, XXX) in source files.
     fn gather_satd_evidence(path: &Path) -> Option<Evidence> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let src_dir = path.join("src");
         let dir = if src_dir.is_dir() { &src_dir } else { path };
         let count = Self::count_satd_markers(dir);
@@ -185,6 +186,7 @@ impl FiveWhysAnalyzer {
     const SATD_MARKERS: &'static [&'static str] = &["TODO", "FIXME", "HACK", "WORKAROUND", "XXX"];
 
     fn count_satd_markers(dir: &Path) -> usize {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let entries = match std::fs::read_dir(dir) {
             Ok(e) => e,
             Err(_) => return 0,
@@ -214,6 +216,7 @@ impl FiveWhysAnalyzer {
 
     /// Count git commits in last 30 days.
     fn gather_git_churn_evidence(path: &Path) -> Option<Evidence> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let output = std::process::Command::new("git")
             .args(["rev-list", "--count", "--since=30.days", "HEAD"])
             .current_dir(path)
@@ -251,6 +254,7 @@ impl FiveWhysAnalyzer {
 
     /// Estimate complexity by counting Rust source lines and deeply-nested functions.
     fn gather_complexity_evidence(path: &Path) -> Option<Evidence> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let src_dir = path.join("src");
         if !src_dir.is_dir() {
             return None;
@@ -280,6 +284,7 @@ impl FiveWhysAnalyzer {
     /// Uses the same gamma-weighted computation as `check_swe_ci_evoscore`.
     /// Returns None (neutral) if insufficient data (<3 commits).
     fn gather_evoscore_evidence(path: &Path) -> Option<Evidence> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let metrics_dir = path.join(".pmat-metrics");
         if !metrics_dir.exists() {
             return None;
@@ -382,6 +387,7 @@ impl FiveWhysAnalyzer {
     /// Reads cached coverage data and computes a simple coverage ratio.
     /// Returns None if no coverage data is available.
     fn gather_coverage_delta_evidence(path: &Path) -> Option<Evidence> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let cache_path = path.join(".pmat/coverage-cache.json");
         let content = std::fs::read_to_string(&cache_path).ok()?;
         let data: serde_json::Value = serde_json::from_str(&content).ok()?;
@@ -438,6 +444,7 @@ impl FiveWhysAnalyzer {
     }
 
     fn count_lines_and_nesting(dir: &Path) -> (usize, usize) {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let entries = match std::fs::read_dir(dir) {
             Ok(e) => e,
             Err(_) => return (0, 0),
@@ -460,6 +467,7 @@ impl FiveWhysAnalyzer {
     }
 
     fn count_file_nesting(path: &Path) -> (usize, usize) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = match std::fs::read_to_string(path) {
             Ok(c) => c,
             Err(_) => return (0, 0),

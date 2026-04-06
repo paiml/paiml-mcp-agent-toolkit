@@ -123,6 +123,7 @@ impl QualityMonitorEngine {
 
     /// Check if a file should be analyzed based on patterns
     fn should_analyze_file(file_path: &Path, patterns: &[String]) -> bool {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let file_str = file_path.to_string_lossy();
 
         // Check if file matches any watch pattern

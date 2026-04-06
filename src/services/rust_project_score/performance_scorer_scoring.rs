@@ -53,6 +53,7 @@ impl PerformanceScorer {
     /// Score CI workflow for benchmark baselines (3pts)
     /// Checks for .github/workflows with benchmark automation
     fn score_benchmark_ci(&self, project_path: &Path) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let workflows_dir = project_path.join(".github/workflows");
         if !workflows_dir.exists() {
             return Ok(0.0);

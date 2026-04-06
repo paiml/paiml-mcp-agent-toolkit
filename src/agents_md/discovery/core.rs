@@ -242,6 +242,7 @@ impl AgentsMdDiscovery {
 
     /// Cache a discovered file
     fn cache_file(&self, path: &Path, depth: usize) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Ok(metadata) = std::fs::metadata(path) {
             if let Ok(modified) = metadata.modified() {
                 self.cache.insert(
@@ -261,6 +262,7 @@ impl AgentsMdDiscovery {
 
     /// Recursive discovery
     fn discover_recursive(&self, dir: &Path, depth: usize, files: &mut Vec<AgentsMdFile>) {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if depth > self.config.max_depth {
             return;
         }

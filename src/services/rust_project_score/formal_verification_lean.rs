@@ -4,6 +4,7 @@
 impl FormalVerificationScorer {
     /// Check if project is a Lean 4 project (lakefile.lean or lean-toolchain at root or lean/)
     fn is_lean_project(&self, project_path: &Path) -> bool {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         project_path.join("lakefile.lean").exists()
             || project_path.join("lean-toolchain").exists()
             || project_path.join("lean").join("lakefile.lean").exists()
@@ -17,6 +18,7 @@ impl FormalVerificationScorer {
     /// Also gives partial credit to consumer repos that reference Lean theorems
     /// via `lean_theorem:` in their contract YAML files (even without lean/ subdir).
     fn score_lean(&self, project_path: &Path) -> f64 {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         if self.is_lean_project(project_path) {
             let is_rust = project_path.join("Cargo.toml").exists();
             let lean_max = if is_rust {
@@ -62,6 +64,7 @@ impl FormalVerificationScorer {
 
     /// Count theorems and lemmas in .lean files
     fn count_lean_theorems(&self, project_path: &Path) -> usize {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let theorem_pattern = Regex::new(r"^\s*(theorem|lemma|private theorem|private lemma)\s+")
             .expect("internal error");
         let mut count = 0;
@@ -86,6 +89,7 @@ impl FormalVerificationScorer {
     /// Count sorry occurrences in .lean files (incomplete proofs)
     /// Respects block comments (/- ... -/) and line comments (--)
     fn count_lean_sorrys(&self, project_path: &Path) -> usize {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut total = 0;
 
         for entry in walkdir::WalkDir::new(project_path)

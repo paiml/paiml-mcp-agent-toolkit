@@ -14,6 +14,7 @@ impl<T> MemoryVec<T> {
 
     /// Create with pre-allocated capacity
     pub fn with_capacity(pool_type: PoolType, capacity: usize) -> Result<Self> {
+        debug_assert!(capacity > 0, "capacity must be positive");
         let memory_manager = global_memory_manager()?;
         Ok(Self {
             data: Vec::with_capacity(capacity),

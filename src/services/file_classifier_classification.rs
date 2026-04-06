@@ -71,6 +71,7 @@ impl FileClassifier {
     }
 
     fn is_vendor_path(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Check path patterns
@@ -131,6 +132,7 @@ impl FileClassifier {
     }
 
     fn is_build_artifact(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Check against build artifact patterns

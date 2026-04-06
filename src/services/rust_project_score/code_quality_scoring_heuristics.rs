@@ -126,6 +126,7 @@ impl CodeQualityScorer {
     }
 
     fn score_unsafe(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(9.0);
@@ -149,6 +150,7 @@ impl CodeQualityScorer {
     }
 
     fn score_dead_code(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(2.0);

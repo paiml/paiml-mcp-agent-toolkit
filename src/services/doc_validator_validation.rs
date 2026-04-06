@@ -258,6 +258,7 @@ impl DocValidator {
 
     /// Checks if a path should be excluded
     fn should_exclude(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         for pattern in &self.config.exclude_patterns {

@@ -130,6 +130,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Calculate dead code percentage for a specific file
     fn calculate_file_percentage(&self, file_path: &Path, dead_items: &[DeadItem]) -> Result<f64> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let full_path = if file_path.is_absolute() {
             file_path.to_path_buf()
         } else {

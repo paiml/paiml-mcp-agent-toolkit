@@ -38,6 +38,11 @@ impl StatisticalRigorScorer {
     /// - Documented sample size in README (2 points)
     /// - Sample size > 30 (power analysis) (1 point)
     fn score_sample_size_justification(&self, project_path: &Path) -> PopperSubScore {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut earned: f64 = 0.0;
         let max: f64 = 5.0;
         let mut description = Vec::new();
@@ -111,6 +116,11 @@ impl StatisticalRigorScorer {
     /// - Confidence intervals (2 points)
     /// - Error bars in documentation (1 point)
     fn score_error_reporting(&self, project_path: &Path) -> PopperSubScore {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut earned: f64 = 0.0;
         let max: f64 = 5.0;
         let mut description = Vec::new();
@@ -183,6 +193,11 @@ impl StatisticalRigorScorer {
     /// - Comparison baselines (2 points)
     /// - Effect size interpretation (Cohen's d, etc.) (1 point)
     fn score_effect_size_documentation(&self, project_path: &Path) -> PopperSubScore {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut earned: f64 = 0.0;
         let max: f64 = 5.0;
         let mut description = Vec::new();
@@ -259,6 +274,11 @@ impl PopperScorer for StatisticalRigorScorer {
     }
 
     fn score(&self, project_path: &Path) -> PopperScorerResult<PopperCategoryScore> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut category = PopperCategoryScore::new(self.name(), 0.0, self.max_points());
 
         // Score each sub-category

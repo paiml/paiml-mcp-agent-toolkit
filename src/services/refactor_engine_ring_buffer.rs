@@ -22,6 +22,7 @@ impl<T> RingBuffer<T> {
     /// ```
     #[must_use]
     pub fn new(capacity: usize) -> Self {
+        debug_assert!(capacity > 0, "capacity must be positive");
         Self {
             buffer: VecDeque::with_capacity(capacity),
             capacity,

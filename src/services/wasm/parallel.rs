@@ -127,6 +127,7 @@ impl ParallelWasmAnalyzer {
 
     /// Analyze a single file
     fn analyze_file(&self, path: &Path) -> FileAnalysisResult {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let start_time = Instant::now();
         let mut errors = Vec::new();
         let mut size_bytes = 0;
@@ -155,6 +156,7 @@ impl ParallelWasmAnalyzer {
 
     /// Check if file is relevant for analysis
     fn is_relevant_file(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(extension) = path.extension() {
             matches!(extension.to_str(), Some("wasm" | "wat" | "ts"))
         } else {

@@ -233,6 +233,7 @@ impl SATDDetector {
     }
 
     fn scan_directory_for_source_files(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut files = Vec::new();
 
         if dir.is_dir() {

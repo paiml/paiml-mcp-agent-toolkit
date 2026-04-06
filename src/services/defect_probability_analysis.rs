@@ -82,6 +82,7 @@ impl ProjectDefectAnalysis {
 
     #[must_use]
     pub fn get_top_risk_files(&self, limit: usize) -> Vec<(&String, &DefectScore)> {
+        debug_assert!(limit > 0, "limit must be positive");
         let mut all_files: Vec<_> = self.file_scores.iter().collect();
         all_files.sort_by(|a, b| {
             b.1.probability

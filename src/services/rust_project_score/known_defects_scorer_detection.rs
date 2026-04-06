@@ -62,6 +62,7 @@ impl KnownDefectsScorer {
     /// - #99: Excludes doc comments (`///`, `//!`, `//`, `/* */`)
     /// - #100: Properly detects inline `#[cfg(test)]` modules
     fn count_unwraps_in_file(path: &Path, content: &str, unwrap_regex: &Regex) -> (usize, usize) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check if entire file is test code
         if Self::is_test_file(path) {
             let test_count = unwrap_regex.find_iter(content).count();
@@ -185,6 +186,7 @@ impl KnownDefectsScorer {
     /// - It's conservative (better to over-count than miss production unwraps)
     /// - It encourages proper test organization
     fn is_test_file(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Check 1: Directory structure

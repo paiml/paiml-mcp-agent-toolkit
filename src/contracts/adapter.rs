@@ -274,6 +274,7 @@ impl ContractAdapter {
         output: &Option<PathBuf>,
         critical_only: &bool,
     ) -> Result<Box<dyn ContractValidation>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let contract = AnalyzeTdgContract {
             base: BaseAnalysisContract {
                 path: path.to_path_buf(),

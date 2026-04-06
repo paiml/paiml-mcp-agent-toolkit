@@ -209,6 +209,7 @@ impl ParallelGitExecutor {
 
     /// Parse diff stats output
     fn parse_diff_stats(file: &Path, output: &str) -> DiffStats {
+        debug_assert!(file.exists(), "file must exist: {}", file.display());
         let mut additions = 0;
         let mut deletions = 0;
 

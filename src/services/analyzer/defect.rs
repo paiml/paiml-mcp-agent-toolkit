@@ -50,6 +50,7 @@ impl Analyzer for DefectAnalyzer {
 
 impl DefectAnalyzer {
     fn count_analyzed_files(&self, path: &Path) -> Result<usize> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut count = 0;
         if path.is_dir() {
             for entry in std::fs::read_dir(path)? {

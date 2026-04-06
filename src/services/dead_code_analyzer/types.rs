@@ -14,6 +14,7 @@ pub struct HierarchicalBitSet {
 impl HierarchicalBitSet {
     #[must_use]
     pub fn new(capacity: usize) -> Self {
+        debug_assert!(capacity > 0, "capacity must be positive");
         Self {
             levels: vec![roaring::RoaringBitmap::new()],
             total_nodes: capacity,

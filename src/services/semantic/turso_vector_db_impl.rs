@@ -224,6 +224,7 @@ impl TursoVectorDB {
         query: &[f32],
         limit: usize,
     ) -> Result<Vec<SearchResult>, String> {
+        debug_assert!(limit > 0, "limit must be positive");
         let store = self.store.read().map_err(|e| format!("Lock error: {e}"))?;
         let metadata_map = self
             .metadata

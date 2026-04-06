@@ -5,6 +5,7 @@ impl DependencyGraphBuilder {
     /// Resolve dependencies for a file
     /// Complexity: 9 (import parsing + edge creation)
     fn resolve_file_dependencies(&mut self, node_id: NodeId, path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)?;
 
         let imports = match path.extension().and_then(|s| s.to_str()) {

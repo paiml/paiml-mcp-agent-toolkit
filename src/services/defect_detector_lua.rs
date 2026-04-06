@@ -27,6 +27,7 @@ impl LuaDefectDetector {
     }
 
     fn should_exclude_file(&self, file_path: &Path) -> bool {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let path_str = file_path.to_string_lossy();
         let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
         path_str.contains("/tests/")
@@ -90,6 +91,7 @@ impl LuaDefectDetector {
     }
 
     fn detect_nil_unsafe(&self, content: &str, file_path: &Path, defects: &mut Vec<DefectPattern>) {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut instances = Vec::new();
         for (line_num, line) in content.lines().enumerate() {
             let trimmed = line.trim();

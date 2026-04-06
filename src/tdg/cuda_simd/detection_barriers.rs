@@ -4,6 +4,7 @@
 impl CudaSimdAnalyzer {
 
     fn detect_barrier_issues(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let lines: Vec<&str> = content.lines().collect();
 
         for (line_num, line) in lines.iter().enumerate() {
@@ -54,6 +55,7 @@ impl CudaSimdAnalyzer {
 
     /// Report an unsafe barrier issue with defect
     fn report_barrier_issue(&self, line: &str, line_num: usize, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let barrier_type = if line.contains("__syncthreads") {
             "__syncthreads"
         } else if line.contains("__syncwarp") {
@@ -79,6 +81,7 @@ impl CudaSimdAnalyzer {
     }
 
     fn detect_memory_patterns(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let is_ptx = path.extension().is_some_and(|e| e == "ptx");
 
         if is_ptx {

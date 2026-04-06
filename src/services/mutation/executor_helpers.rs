@@ -124,6 +124,7 @@ impl MutantExecutor {
     /// This implements the Toyota Way fix: only run tests relevant to the mutation
     /// instead of the entire test suite.
     fn extract_module_path(&self, file_path: &Path) -> String {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let path_str = file_path.to_str().unwrap_or("");
 
         // Handle external crates (paths starting with ../)

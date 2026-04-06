@@ -150,6 +150,7 @@ where
 
     /// Load a single cache file
     fn load_cache_file(&self, path: &Path) -> Result<bool> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)
             .with_context(|| format!("Failed to read cache file: {}", path.display()))?;
 

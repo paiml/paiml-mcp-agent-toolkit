@@ -4,6 +4,7 @@
 impl DependencyCache {
     /// Check if cache is valid (Cargo.lock unchanged)
     fn is_valid(&self, cargo_lock_path: &Path) -> bool {
+        debug_assert!(cargo_lock_path.exists(), "cargo_lock_path must exist: {}", cargo_lock_path.display());
         if let Ok(metadata) = fs::metadata(cargo_lock_path) {
             if let Ok(modified) = metadata.modified() {
                 let mtime = modified
@@ -18,6 +19,7 @@ impl DependencyCache {
 
     /// Load cache from .pmat/deps-cache.json
     fn load(project_path: &Path) -> Option<Self> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cache_path = project_path.join(".pmat/deps-cache.json");
         fs::read_to_string(&cache_path)
             .ok()
@@ -26,6 +28,7 @@ impl DependencyCache {
 
     /// Save cache to .pmat/deps-cache.json
     fn save(&self, project_path: &Path) {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cache_path = project_path.join(".pmat/deps-cache.json");
         if let Some(parent) = cache_path.parent() {
             let _ = fs::create_dir_all(parent);

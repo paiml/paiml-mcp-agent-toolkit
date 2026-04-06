@@ -1,5 +1,6 @@
 impl RateLimiter {
     pub fn new(capacity: u32, refill_rate: u32) -> Self {
+        debug_assert!(capacity > 0, "capacity must be positive");
         Self {
             capacity,
             tokens: AtomicU32::new(capacity),

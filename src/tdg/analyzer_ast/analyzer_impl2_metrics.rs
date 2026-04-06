@@ -194,12 +194,14 @@ impl TdgAnalyzerAst {
     }
 
     fn discover_files(&self, dir: &Path) -> Result<Vec<PathBuf>> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut files = Vec::new();
         self.discover_files_recursive(dir, &mut files)?;
         Ok(files)
     }
 
     fn discover_files_recursive(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if !dir.is_dir() {
             return Ok(());
         }
@@ -221,6 +223,7 @@ impl TdgAnalyzerAst {
     }
 
     fn should_skip_directory(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
             matches!(
                 name,
@@ -245,6 +248,7 @@ impl TdgAnalyzerAst {
     }
 
     fn should_analyze_file(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             matches!(
                 ext,

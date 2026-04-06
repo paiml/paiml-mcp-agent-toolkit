@@ -177,6 +177,7 @@ impl WorkContract {
         without: &[String],
         iteration: u32,
     ) -> Result<Self, anyhow::Error> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Detect profile (or load from config)
         let config = DbcConfig::load(project_path);
         let profile = config.profile_override.clone()

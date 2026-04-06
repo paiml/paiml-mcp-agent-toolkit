@@ -110,6 +110,16 @@ impl SATDDetector {
     }
 
     fn get_relative_path(&self, file_path: &Path, project_root: &Path) -> Option<PathBuf> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
+        debug_assert!(
+            project_root.exists(),
+            "project_root must exist: {}",
+            project_root.display()
+        );
         file_path
             .strip_prefix(project_root)
             .ok()

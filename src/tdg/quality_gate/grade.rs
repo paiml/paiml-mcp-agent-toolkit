@@ -21,6 +21,7 @@ impl MinimumGradeGate {
 
     /// Get minimum grade for a file based on its language
     fn get_min_grade_for_file(&self, path: &PathBuf) -> Grade {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Detect language from extension
         if let Some(ext) = path.extension() {
             let ext_str = ext.to_string_lossy();

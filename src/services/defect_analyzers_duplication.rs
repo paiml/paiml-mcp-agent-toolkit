@@ -63,6 +63,7 @@ impl DefectAnalyzer for DuplicationDefectAnalyzer {
 
 impl DuplicationDefectAnalyzer {
     fn detect_language(&self, path: &Path) -> crate::services::duplicate_detector::Language {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::duplicate_detector::Language;
 
         match path.extension().and_then(|e| e.to_str()) {

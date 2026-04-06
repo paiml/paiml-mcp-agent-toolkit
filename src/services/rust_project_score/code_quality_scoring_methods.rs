@@ -11,6 +11,7 @@ impl CodeQualityScorer {
 
     /// Score mutation testing (8pts)
     fn score_mutation(&self, project_path: &Path) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let output = Command::new("cargo")
             .arg("mutants")
             .arg("--no-times")
@@ -50,6 +51,7 @@ impl CodeQualityScorer {
 
     /// Score build time (4pts)
     fn score_build_time(&self, project_path: &Path) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let start = Instant::now();
 
         let output = Command::new("cargo")

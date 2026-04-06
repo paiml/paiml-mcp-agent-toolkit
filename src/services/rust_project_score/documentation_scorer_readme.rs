@@ -4,6 +4,7 @@ impl DocumentationScorer {
     ///
     /// **Kaizen Round 4**: Cache-aware - uses FileCache if available for README.md
     fn score_readme(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let readme_path = project_path.join("README.md");
 
         if !readme_path.exists() {

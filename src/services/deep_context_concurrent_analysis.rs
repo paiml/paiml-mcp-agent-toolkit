@@ -212,6 +212,7 @@ impl ConcurrentDeepContextAnalyzer {
 
     /// Parse a single file
     fn parse_single_file(&self, _file: &Path) -> Result<ParsedAst> {
+        debug_assert!(_file.exists(), "_file must exist: {}", _file.display());
         // Actual parsing logic here
         Ok(ParsedAst::default())
     }

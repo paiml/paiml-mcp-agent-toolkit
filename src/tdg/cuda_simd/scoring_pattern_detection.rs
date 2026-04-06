@@ -61,6 +61,7 @@ impl CudaSimdAnalyzer {
     }
 
     fn detect_known_patterns(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.check_flash_attention_tile_size(content, path, analysis);
         self.check_missing_tensor_core(content, path, analysis);
     }
@@ -88,6 +89,7 @@ impl CudaSimdAnalyzer {
 
     /// Check if any .rs file in src/backends contains SAFETY comments
     fn has_safety_comments(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let backends = path.join("src/backends");
         let entries = match std::fs::read_dir(&backends) {
             Ok(e) => e,
@@ -103,6 +105,7 @@ impl CudaSimdAnalyzer {
 
     /// Detect Rust project quality patterns for enhanced scoring
     fn detect_rust_patterns(&self, path: &Path) -> RustProjectPatterns {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut patterns = RustProjectPatterns::default();
 
         patterns.has_cargo_lock = path.join("Cargo.lock").exists();

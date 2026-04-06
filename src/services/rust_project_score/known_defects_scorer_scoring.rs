@@ -55,6 +55,7 @@ impl Scorer for KnownDefectsScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         self.score_internal(project_path, None)
     }
 
@@ -76,6 +77,7 @@ impl Scorer for KnownDefectsScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut recommendations = Vec::new();
 
         if let Ok((production_unwraps, _test_unwraps)) = self.count_unwraps(project_path, None) {

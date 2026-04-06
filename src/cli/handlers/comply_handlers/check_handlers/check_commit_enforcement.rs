@@ -533,6 +533,7 @@ pub(crate) fn check_hook_single_writer(project_path: &Path) -> ComplianceCheck {
     let mut hook_writer_files: Vec<String> = Vec::new();
 
     fn scan_for_hook_writes(dir: &Path, results: &mut Vec<String>) {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let entries = match fs::read_dir(dir) {
             Ok(e) => e,
             Err(_) => return,
@@ -649,6 +650,7 @@ pub(crate) fn check_hook_no_injection(project_path: &Path) -> ComplianceCheck {
     let mut injection_risks: Vec<String> = Vec::new();
 
     fn scan_for_injection(dir: &Path, results: &mut Vec<String>) {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let entries = match fs::read_dir(dir) {
             Ok(e) => e,
             Err(_) => return,
@@ -740,6 +742,7 @@ pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
     let mut non_atomic: Vec<String> = Vec::new();
 
     fn scan_atomicity(dir: &Path, results: &mut Vec<String>) {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let entries = match fs::read_dir(dir) {
             Ok(e) => e,
             Err(_) => return,

@@ -118,6 +118,11 @@ impl Scorer for ReproducibilityScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut recs = Vec::new();
 
         // Check each Popper category for gaps

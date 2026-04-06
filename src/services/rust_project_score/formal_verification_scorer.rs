@@ -67,6 +67,11 @@ impl Scorer for FormalVerificationScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         self.score_internal(project_path, ScoringMode::default(), None)
     }
 
@@ -88,6 +93,11 @@ impl Scorer for FormalVerificationScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut recs = Vec::new();
         self.recommend_miri(project_path, &mut recs);
         self.recommend_kani(project_path, &mut recs);

@@ -171,6 +171,7 @@ impl<T: CacheStrategy> ContentCache<T> {
     /// Get hot entries (most frequently accessed)
     #[must_use]
     pub fn hot_entries(&self, limit: usize) -> Vec<(String, u32)> {
+        debug_assert!(limit > 0, "limit must be positive");
         let cache = self.cache.read();
 
         let mut entries: Vec<(String, u32)> = cache

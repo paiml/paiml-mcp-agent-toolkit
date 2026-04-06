@@ -203,6 +203,11 @@ impl ScoreAggregator {
     }
 
     fn get_git_branch(&self, repo_path: &Path) -> Result<String> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let git_head = repo_path.join(".git/HEAD");
         if git_head.exists() {
             let content = std::fs::read_to_string(git_head)?;
@@ -214,6 +219,11 @@ impl ScoreAggregator {
     }
 
     fn get_git_commit(&self, repo_path: &Path) -> Result<String> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let git_head = repo_path.join(".git/HEAD");
         if git_head.exists() {
             let content = std::fs::read_to_string(git_head)?;
@@ -253,6 +263,11 @@ mod tests {
     }
 
     fn create_file(repo_path: &Path, relative_path: &str, content: &str) {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let file_path = repo_path.join(relative_path);
         if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent).unwrap();

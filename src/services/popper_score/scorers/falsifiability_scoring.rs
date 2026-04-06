@@ -12,6 +12,7 @@ impl FalsifiabilityScorer {
     /// - Defined success criteria with measurable thresholds
     /// - Documented failure conditions (what would falsify claims)
     fn score_hypothesis_documentation(&self, project_path: &Path) -> PopperSubScore {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut earned: f64 = 0.0;
         let max: f64 = 8.0;
         let mut description: Vec<String> = Vec::new();
@@ -96,6 +97,7 @@ impl FalsifiabilityScorer {
     ///
     /// **Workspace-aware**: Checks all workspace members for tests/coverage.
     fn score_test_coverage(&self, project_path: &Path) -> PopperSubScore {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut earned: f64 = 0.0;
         let max: f64 = 10.0;
         let mut description: Vec<String> = Vec::new();
@@ -179,6 +181,7 @@ impl FalsifiabilityScorer {
     ///
     /// **Workspace-aware**: Checks workspace members for benches/ and Cargo.toml.
     fn score_benchmark_reproducibility(&self, project_path: &Path) -> PopperSubScore {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut earned: f64 = 0.0;
         let max: f64 = 7.0;
         let mut description: Vec<String> = Vec::new();
@@ -192,11 +195,13 @@ impl FalsifiabilityScorer {
 
     /// Check if project has test files
     fn has_test_files(&self, project_path: &Path) -> bool {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         dir_contains_test_markers(&project_path.join("src"))
     }
 
     /// Workspace-aware: Check if any workspace member has test files
     fn has_test_files_workspace(&self, project_path: &Path) -> bool {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         for member_path in workspace::get_code_paths(project_path) {
             if self.has_test_files(&member_path) {
                 return true;
@@ -207,6 +212,7 @@ impl FalsifiabilityScorer {
 
     /// Workspace-aware: Read test files from all workspace members
     fn read_test_files_workspace(&self, project_path: &Path) -> String {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut content = String::new();
 
         // Read from tests/ and src/ across all workspace members
@@ -226,6 +232,7 @@ impl FalsifiabilityScorer {
 
     /// Check CI configuration for test commands
     fn check_ci_for_tests(&self, project_path: &Path) -> bool {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let ci_paths = [
             ".github/workflows",
             ".gitlab-ci.yml",

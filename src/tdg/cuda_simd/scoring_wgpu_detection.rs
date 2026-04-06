@@ -28,6 +28,7 @@ impl CudaSimdAnalyzer {
     /// - WGPU_EXCESSIVE_BARRIERS: Too many workgroupBarrier() calls
     /// - WGPU_UNIFORM_DIVERGENCE: Non-uniform control flow in workgroup
     fn detect_wgpu_memory_patterns(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let lines: Vec<&str> = content.lines().collect();
 
         // Parse workgroup size from @workgroup_size(x, y, z)

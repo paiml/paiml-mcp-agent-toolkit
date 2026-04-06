@@ -35,6 +35,7 @@ impl UtilityCommandGroup {
         toolchain: Option<String>,
         limit: usize,
     ) -> Result<()> {
+        debug_assert!(limit > 0, "limit must be positive");
         crate::cli::handlers::utility_handlers::handle_search(server, query, toolchain, limit).await
     }
 

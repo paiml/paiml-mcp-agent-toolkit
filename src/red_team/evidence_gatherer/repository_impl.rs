@@ -84,6 +84,7 @@ impl RepositoryContext {
     /// Get recent commits from git history
     #[cfg(feature = "git-lib")]
     pub fn get_recent_commits(&self, limit: usize) -> Vec<CommitInfo> {
+        debug_assert!(limit > 0, "limit must be positive");
         let Some(ref repo_path) = self.git_repo else {
             return vec![];
         };
@@ -121,6 +122,7 @@ impl RepositoryContext {
     /// Get recent commits from git history (shell git fallback)
     #[cfg(not(feature = "git-lib"))]
     pub fn get_recent_commits(&self, limit: usize) -> Vec<CommitInfo> {
+        debug_assert!(limit > 0, "limit must be positive");
         use std::process::Command;
 
         let Some(ref repo_path) = self.git_repo else {
@@ -200,6 +202,7 @@ impl RepositoryContext {
 
     #[cfg(feature = "git-lib")]
     fn find_git_repo(path: &Path) -> Option<PathBuf> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use git2's discover() to properly handle worktrees, gitlinks, etc.
         match git2::Repository::discover(path) {
             Ok(repo) => {
@@ -212,6 +215,7 @@ impl RepositoryContext {
 
     #[cfg(not(feature = "git-lib"))]
     fn find_git_repo(path: &Path) -> Option<PathBuf> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use std::process::Command;
 
         // Use shell git rev-parse to find repo root
@@ -238,6 +242,7 @@ impl RepositoryContext {
     /// # Returns
     /// `Some(Vec<String>)` if git repository detected, `None` otherwise
     fn fetch_git_history(repo_path: &Path, deep: bool) -> Option<Vec<String>> {
+        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         // PMAT-REDTEAM-001: Default to recent commits (fast), use --deep for full history
         let git_command = if deep {
             // Deep mode: Get all commit messages from entire history
@@ -274,6 +279,7 @@ impl RepositoryContext {
     }
 
     fn scan_test_files(path: &Path) -> Result<Vec<PathBuf>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use walkdir::WalkDir;
 
         let mut test_files = Vec::new();
@@ -301,6 +307,7 @@ impl RepositoryContext {
     }
 
     fn find_coverage_report(path: &Path) -> Option<PathBuf> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Common coverage report locations
         let candidates = vec![
             path.join("target/coverage/lcov.info"),
@@ -313,6 +320,7 @@ impl RepositoryContext {
     }
 
     fn find_test_results(path: &Path) -> Option<PathBuf> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Common test result locations
         let candidates = vec![
             path.join("target/test-results/output.txt"),
@@ -323,6 +331,7 @@ impl RepositoryContext {
     }
 
     fn parse_coverage_report(path: &Path) -> Result<f64> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path).context("Failed to read coverage report")?;
 
         let mut lines_found = 0;
@@ -348,6 +357,7 @@ impl RepositoryContext {
     }
 
     fn parse_test_results(path: &Path) -> Result<TestExecutionInfo> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path).context("Failed to read test results")?;
 
         // Parse format: "test result: ok. 10 passed; 2 failed; 3 ignored"
@@ -391,6 +401,7 @@ impl RepositoryContext {
     }
 
     fn grep_directory(path: &Path, pattern: &str) -> Result<Vec<PathBuf>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use walkdir::WalkDir;
 
         let mut matches = Vec::new();
@@ -440,11 +451,13 @@ impl RepositoryContext {
     }
 
     pub fn with_broken_links(mut self, count: usize) -> Self {
+        debug_assert!(count > 0, "count must be positive");
         self.broken_links_count = Some(count);
         self
     }
 
     pub fn with_vulnerabilities(mut self, count: usize) -> Self {
+        debug_assert!(count > 0, "count must be positive");
         self.vulnerabilities_count = Some(count);
         self
     }
@@ -460,6 +473,7 @@ impl RepositoryContext {
     }
 
     pub fn with_code_grep_results(mut self, search_term: &str, count: usize) -> Self {
+        debug_assert!(count > 0, "count must be positive");
         self.code_grep_results = Some((search_term.to_string(), count));
         self
     }

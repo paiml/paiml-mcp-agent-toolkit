@@ -50,6 +50,7 @@ impl QualityMonitorEngine {
 
     /// Count functions in a file (simple heuristic)
     fn count_functions(content: &str, file_path: &Path) -> usize {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let extension = file_path.extension().and_then(|s| s.to_str()).unwrap_or("");
 
         match extension {

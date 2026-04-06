@@ -1,5 +1,6 @@
 impl GitSafetyNet {
     fn new(work_dir: PathBuf) -> Self {
+        debug_assert!(work_dir.exists(), "work_dir must exist: {}", work_dir.display());
         Self {
             work_dir,
             original_branch: None,

@@ -61,6 +61,11 @@ impl GpuSimdScorer {
 
     /// Check if project has GPU/SIMD code
     fn has_gpu_simd_code(&self, project_path: &Path, cache: Option<&FileCache>) -> bool {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         if let Some(file_cache) = cache {
             if Self::check_cache_for_gpu_simd(file_cache, project_path) {
                 return true;
@@ -70,6 +75,11 @@ impl GpuSimdScorer {
     }
 
     fn check_cache_for_gpu_simd(cache: &FileCache, project_path: &Path) -> bool {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         for (path, content) in cache.get_rust_files_in_dir(&project_path.join("src")) {
             if Self::file_has_gpu_simd_indicators(&path.to_string_lossy(), content) {
                 return true;
@@ -96,6 +106,11 @@ impl GpuSimdScorer {
     }
 
     fn check_directory_for_gpu_files(project_path: &Path) -> bool {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         const GPU_EXTENSIONS: &[&str] = &["cu", "cuh", "ptx", "wgsl"];
         let Ok(walker) = std::fs::read_dir(project_path) else {
             return false;
@@ -249,6 +264,11 @@ impl Scorer for GpuSimdScorer {
     }
 
     fn recommendations(&self, _project_path: &Path) -> Vec<String> {
+        debug_assert!(
+            _project_path.exists(),
+            "_project_path must exist: {}",
+            _project_path.display()
+        );
         self.last_findings
             .lock()
             .map(|f| f.clone())

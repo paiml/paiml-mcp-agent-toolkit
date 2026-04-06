@@ -156,6 +156,7 @@ impl SymbolTable {
 
     /// Infer module path from file system structure
     fn infer_module_from_file_path(&self, file: &Path) -> Vec<String> {
+        debug_assert!(file.exists(), "file must exist: {}", file.display());
         let mut module_path = Vec::new();
 
         // Add file stem if it's a significant module file
@@ -171,6 +172,7 @@ impl SymbolTable {
 
     /// Extract significant file stem (excludes common non-module files)
     fn extract_significant_file_stem(&self, file: &Path) -> Option<String> {
+        debug_assert!(file.exists(), "file must exist: {}", file.display());
         file.file_stem()
             .and_then(|stem| stem.to_str())
             .filter(|&stem_str| !matches!(stem_str, "mod" | "lib" | "main"))
@@ -179,6 +181,7 @@ impl SymbolTable {
 
     /// Add parent directories to module path, stopping at src directory
     fn add_parent_directories_to_module_path(&self, file: &Path, module_path: &mut Vec<String>) {
+        debug_assert!(file.exists(), "file must exist: {}", file.display());
         let mut current = file.parent();
         while let Some(parent) = current {
             if let Some(dir_name) = self.extract_directory_name(parent) {
@@ -193,6 +196,7 @@ impl SymbolTable {
 
     /// Extract directory name as string
     fn extract_directory_name(&self, path: &Path) -> Option<String> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.file_name()
             .and_then(|name| name.to_str())
             .map(std::string::ToString::to_string)

@@ -152,11 +152,21 @@ impl GitContext {
 
     #[cfg(not(feature = "git-lib"))]
     fn from_current_dir_shell(repo_path: &Path) -> Result<Self, GitContextError> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         Self::from_commit_sha_shell(repo_path, "HEAD")
     }
 
     #[cfg(not(feature = "git-lib"))]
     fn from_commit_sha_shell(repo_path: &Path, sha: &str) -> Result<Self, GitContextError> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         // Get commit SHA
         let commit_sha = Self::git_cmd(repo_path, &["rev-parse", sha])?;
         let commit_sha_short = commit_sha.chars().take(7).collect();
@@ -226,6 +236,11 @@ impl GitContext {
 
     #[cfg(not(feature = "git-lib"))]
     fn git_cmd(repo_path: &Path, args: &[&str]) -> Result<String, GitContextError> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let output = Command::new("git")
             .args(args)
             .current_dir(repo_path)
@@ -250,6 +265,11 @@ impl GitContext {
 
     #[cfg(feature = "git-lib")]
     fn from_current_dir_git2(repo_path: &Path) -> Result<Self, GitContextError> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         use git2::Repository;
 
         let repo = Repository::open(repo_path)
@@ -263,6 +283,11 @@ impl GitContext {
 
     #[cfg(feature = "git-lib")]
     fn from_commit_sha_git2(repo_path: &Path, sha: &str) -> Result<Self, GitContextError> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         use git2::{Oid, Repository};
 
         let repo = Repository::open(repo_path)

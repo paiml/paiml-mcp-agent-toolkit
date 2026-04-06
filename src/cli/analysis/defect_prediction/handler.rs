@@ -86,6 +86,7 @@ pub(crate) fn create_defect_prediction_config(
     include: Option<String>,
     exclude: Option<String>,
 ) -> DefectPredictionConfig {
+    debug_assert!(min_lines > 0, "min_lines must be positive");
     DefectPredictionConfig {
         confidence_threshold,
         min_lines,

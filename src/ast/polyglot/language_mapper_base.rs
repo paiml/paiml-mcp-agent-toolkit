@@ -61,6 +61,7 @@ impl LanguageMapper for BaseLanguageMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         items
             .iter()
             .map(|item| UnifiedNode::from_ast_item(item, self.language(), path, None))

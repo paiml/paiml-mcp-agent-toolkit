@@ -11,6 +11,7 @@ impl<S: AgentState> ParallelRecovery<S> {
         snapshot_config: SnapshotConfig,
         base_path: &str,
     ) -> Result<Self, RecoveryError> {
+        debug_assert!(num_partitions > 0, "num_partitions must be positive");
         let mut managers = Vec::with_capacity(num_partitions);
 
         for i in 0..num_partitions {

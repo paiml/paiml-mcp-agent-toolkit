@@ -16,6 +16,7 @@ impl DifferentialTester {
 
     /// Generate test cases for differential testing
     pub fn generate_test_cases(&mut self, _module: &[u8], count: usize) -> Vec<TestCase> {
+        debug_assert!(count > 0, "count must be positive");
         // Generate diverse test inputs
         let mut cases = Vec::new();
 

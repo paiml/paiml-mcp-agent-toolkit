@@ -36,6 +36,7 @@ impl PtxAnalysisState {
 
     /// Check comment line for placeholder patterns
     fn check_placeholder(&self, line_num: usize, trimmed: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let lower = trimmed.to_lowercase();
         let placeholders = [
             "omitted", "simplified", "placeholder", "todo",
@@ -93,6 +94,7 @@ impl PtxAnalysisState {
 
     /// P0: SHARED_U64 - 64-bit register for shared memory
     fn check_shared_u64(&self, line_num: usize, trimmed: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if (trimmed.contains("st.shared") || trimmed.contains("ld.shared"))
             && trimmed.contains("[%rd")
         {
@@ -115,6 +117,7 @@ impl PtxAnalysisState {
 
     /// P0: cvta.shared creates generic address corruption
     fn check_cvta_shared(&self, line_num: usize, trimmed: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if trimmed.contains("cvta.shared") {
             analysis.defects.push(DetectedDefect {
                 defect_class: DefectClass {
@@ -135,6 +138,7 @@ impl PtxAnalysisState {
 
     /// P0: Missing barrier between st.shared and ld.shared + F082 data-dependent addressing
     fn check_shared_memory_ops(&mut self, line_num: usize, trimmed: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if trimmed.contains("st.shared") {
             self.last_st_shared_line = Some(line_num);
         }
@@ -188,6 +192,7 @@ impl PtxAnalysisState {
 
     /// P0: PARITY-114 early exit before barrier
     fn check_early_exit(&self, line_num: usize, trimmed: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let is_exit_branch = trimmed.contains("bra exit")
             || (trimmed.contains("bra ") && trimmed.contains("done"));
         if is_exit_branch && self.in_loop && !self.barrier_seen_in_loop {
@@ -211,6 +216,7 @@ impl PtxAnalysisState {
 
     /// P1: Loop branches to END instead of START
     fn check_loop_branch_end(&self, line_num: usize, trimmed: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if trimmed.starts_with("bra ") && !trimmed.starts_with('@') {
             if let Some(target) = trimmed.strip_prefix("bra ").map(|s| s.trim_end_matches(';').trim()) {
                 if target.contains("_end") || target.ends_with("_done") {
@@ -235,6 +241,7 @@ impl PtxAnalysisState {
 
     /// P2: Dead code after unconditional jump + track unconditional jumps
     fn check_dead_code(&mut self, line_num: usize, trimmed: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.after_unconditional && !trimmed.ends_with(':') && trimmed != "}" {
             analysis.defects.push(DetectedDefect {
                 defect_class: DefectClass {
@@ -261,6 +268,7 @@ impl PtxAnalysisState {
 
     /// P2: Redundant mov chains
     fn check_redundant_mov(&mut self, line_num: usize, trimmed: &str, path: &Path, analysis: &mut FileAnalysis) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mov_pattern = regex::Regex::new(r"^\s*mov\.\w+\s+(%\w+),\s*(%\w+)").ok();
         if let Some(ref re) = mov_pattern {
             if let Some(caps) = re.captures(trimmed) {

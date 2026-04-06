@@ -232,6 +232,11 @@ mod tests {
     }
 
     fn create_pmat_gates(repo_path: &Path, content: &str) {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let gates_path = repo_path.join(".pmat-gates.toml");
         fs::write(gates_path, content).unwrap();
     }

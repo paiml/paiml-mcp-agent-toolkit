@@ -4,6 +4,7 @@
 impl FormalVerificationScorer {
     /// Run Miri tests and return pass/fail status
     fn run_miri_tests(&self, project_path: &Path) -> ScorerResult<MiriResult> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let output = Command::new("cargo")
             .args(["miri", "test", "--", "--test-threads=1"])
             .current_dir(project_path)
@@ -31,6 +32,7 @@ impl FormalVerificationScorer {
 
     /// Run Kani verification and return results
     fn run_kani_verification(&self, project_path: &Path) -> ScorerResult<KaniResult> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let output = Command::new("cargo")
             .args(["kani", "--only-codegen"])
             .current_dir(project_path)
@@ -54,6 +56,7 @@ impl FormalVerificationScorer {
 
     /// Score Miri compliance (3 points)
     fn score_miri(&self, project_path: &Path, mode: ScoringMode, cache: Option<&FileCache>) -> f64 {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let unsafe_count = self.count_unsafe_blocks(project_path, cache);
         if unsafe_count == 0 {
             return MIRI_POINTS; // No unsafe = full credit
@@ -74,6 +77,7 @@ impl FormalVerificationScorer {
 
     /// Score Kani proofs (5 points)
     fn score_kani(&self, project_path: &Path, mode: ScoringMode, cache: Option<&FileCache>) -> f64 {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let kani_proofs = self.count_kani_proofs(project_path, cache);
         if kani_proofs == 0 {
             return 0.0;
@@ -140,6 +144,7 @@ impl FormalVerificationScorer {
     }
 
     fn recommend_miri(&self, project_path: &Path, recs: &mut Vec<String>) {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let unsafe_count = self.count_unsafe_blocks(project_path, None);
         if unsafe_count > 0 {
             if !self.is_miri_available() {
@@ -154,6 +159,7 @@ impl FormalVerificationScorer {
     }
 
     fn recommend_kani(&self, project_path: &Path, recs: &mut Vec<String>) {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let unsafe_count = self.count_unsafe_blocks(project_path, None);
         let kani_proofs = self.count_kani_proofs(project_path, None);
         if kani_proofs == 0 && unsafe_count > 0 {
@@ -167,6 +173,7 @@ impl FormalVerificationScorer {
     }
 
     fn recommend_verus(&self, project_path: &Path, recs: &mut Vec<String>) {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let contract_macros = self.count_contract_macros(project_path, None);
         let has_contracts_dir = project_path.join("contracts").exists();
 
@@ -189,6 +196,7 @@ impl FormalVerificationScorer {
     }
 
     fn recommend_lean(&self, project_path: &Path, recs: &mut Vec<String>) {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         if !self.is_lean_project(project_path) {
             return;
         }

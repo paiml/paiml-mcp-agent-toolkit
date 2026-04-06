@@ -131,6 +131,11 @@ impl PolyglotPathValidator {
         recursive: bool,
         results: &mut Vec<PathBuf>,
     ) -> Result<()> {
+        debug_assert!(
+            directory.exists(),
+            "directory must exist: {}",
+            directory.display()
+        );
         if !directory.is_dir() {
             return Ok(());
         }

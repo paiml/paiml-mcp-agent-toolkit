@@ -12,6 +12,7 @@ impl Scorer for PerformanceScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Backward compatibility: call with no cache
         self.score_internal(project_path, None)
     }
@@ -36,6 +37,7 @@ impl Scorer for PerformanceScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut recommendations = Vec::new();
 
         // Check [[bench]] sections (no cache - backward compatibility)

@@ -122,6 +122,7 @@ impl CoreClass {
     /// Create from actual core count
     #[must_use]
     pub fn from_count(count: usize) -> Self {
+        debug_assert!(count > 0, "count must be positive");
         match count {
             1 => Self::Single,
             2 => Self::Dual,

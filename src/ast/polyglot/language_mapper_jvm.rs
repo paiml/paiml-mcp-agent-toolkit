@@ -76,6 +76,7 @@ impl LanguageMapper for JavaMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], _path: &Path) -> Vec<UnifiedNode> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         self.base.convert_ast_items(items, _path)
     }
 
@@ -143,6 +144,7 @@ impl LanguageMapper for KotlinMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.convert_ast_items(items, path)
     }
 
@@ -225,6 +227,7 @@ impl LanguageMapper for ScalaMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], _path: &Path) -> Vec<UnifiedNode> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         self.base.convert_ast_items(items, _path)
     }
 

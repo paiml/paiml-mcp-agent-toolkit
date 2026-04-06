@@ -5,6 +5,7 @@ impl DependencyGraphBuilder {
     /// Build symbol table for a file
     /// Complexity: 9 (file read + parsing)
     fn build_file_symbols(&mut self, path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)?;
         let module_name = self.path_to_module(path);
 

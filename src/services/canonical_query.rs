@@ -65,6 +65,11 @@ pub trait CanonicalQuery: Send + Sync {
     fn query_id(&self) -> &'static str;
     fn execute(&self, ctx: &AnalysisContext) -> Result<QueryResult>;
     fn cache_key(&self, project_path: &Path) -> String {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         format!("{}:{}", self.query_id(), project_path.display())
     }
 }

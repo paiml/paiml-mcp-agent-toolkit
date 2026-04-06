@@ -139,6 +139,7 @@ impl CargoDeadCodeAnalyzer {
     /// Set maximum directory traversal depth
     #[must_use]
     pub fn with_max_depth(mut self, max_depth: usize) -> Self {
+        debug_assert!(max_depth > 0, "max_depth must be positive");
         self.max_depth = max_depth;
         self
     }

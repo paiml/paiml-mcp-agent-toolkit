@@ -11,6 +11,7 @@ pub fn filter_tdg_hotspots(
     top: usize,
     critical_only: bool,
 ) -> Vec<TDGHotspot> {
+    debug_assert!(top > 0, "top must be positive");
     // Apply threshold filter
     if threshold > 0.0 {
         hotspots.retain(|h| h.tdg_score >= threshold);

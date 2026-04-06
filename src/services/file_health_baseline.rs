@@ -120,6 +120,7 @@ pub fn scan_directory(root: &Path, extensions: &[&str], exclude_patterns: &[&str
         exclude_patterns: &[&str],
         files: &mut Vec<PathBuf>,
     ) {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();

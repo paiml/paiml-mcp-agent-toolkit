@@ -77,6 +77,7 @@ impl Evidence {
         value: serde_json::Value,
         interpretation: String,
     ) -> Self {
+        debug_assert!(file.exists(), "file must exist: {}", file.display());
         Self {
             source,
             file,

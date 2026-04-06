@@ -51,6 +51,7 @@ impl CacheStrategy for AstCacheStrategy {
     type Value = FileContext;
 
     fn cache_key(&self, path: &PathBuf) -> String {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Include file path and mtime for uniqueness
         let mtime = fs::metadata(path)
             .ok()
@@ -62,6 +63,7 @@ impl CacheStrategy for AstCacheStrategy {
     }
 
     fn validate(&self, path: &PathBuf, cached: &FileContext) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check if file still exists and hasn't been modified
         if !path.exists() {
             return false;

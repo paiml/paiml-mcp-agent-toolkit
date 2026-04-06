@@ -23,6 +23,7 @@ impl RustBorrowChecker {
 
     /// Check if a path represents a Rust source file
     fn is_rust_file(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().and_then(|s| s.to_str()) == Some("rs")
     }
 
@@ -55,6 +56,7 @@ impl RustBorrowChecker {
         cache: &Arc<RwLock<ProofCache>>,
         collection_state: &mut CollectionState,
     ) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let cache_guard = cache.read();
         if cache_guard.is_file_cached(path) {
             if let Some(cached_annotations) = cache_guard.get(cache_key) {

@@ -5,6 +5,7 @@ impl TDGCalculator {
     /// Analyze coupling metrics for a file
     #[allow(dead_code)]
     fn analyze_coupling(&self, _file: &Path, ast: &UnifiedAstNode) -> CouplingMetrics {
+        debug_assert!(_file.exists(), "_file must exist: {}", _file.display());
         let mut imports = Vec::new();
         let mut exports = Vec::new();
         self.extract_dependencies(ast, &mut imports, &mut exports);

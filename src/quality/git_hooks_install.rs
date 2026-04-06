@@ -23,6 +23,7 @@ impl GitHookManager {
     }
 
     fn install_pre_commit_hook(&self, hooks_dir: &Path) -> Result<()> {
+        debug_assert!(hooks_dir.exists(), "hooks_dir must exist: {}", hooks_dir.display());
         let hook_path = hooks_dir.join("pre-commit");
 
         let hook_content = r#"#!/usr/bin/env bash
@@ -88,6 +89,7 @@ echo "✅ All quality gates passed!"
     }
 
     fn install_commit_msg_hook(&self, hooks_dir: &Path) -> Result<()> {
+        debug_assert!(hooks_dir.exists(), "hooks_dir must exist: {}", hooks_dir.display());
         let hook_path = hooks_dir.join("commit-msg");
 
         let hook_content = r#"#!/usr/bin/env bash
@@ -133,6 +135,7 @@ echo "✅ Commit message format valid"
     }
 
     fn install_pre_push_hook(&self, hooks_dir: &Path) -> Result<()> {
+        debug_assert!(hooks_dir.exists(), "hooks_dir must exist: {}", hooks_dir.display());
         let hook_path = hooks_dir.join("pre-push");
 
         let hook_content = r#"#!/usr/bin/env bash

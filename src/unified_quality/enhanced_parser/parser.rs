@@ -52,6 +52,7 @@ impl EnhancedParser {
 
     /// Parse and analyze Rust code
     fn parse_and_analyze(&mut self, path: &PathBuf, content: &str) -> Result<Metrics> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Parse using syn
         let syntax: File =
             syn::parse_str(content).map_err(|e| anyhow!("Failed to parse Rust code: {e}"))?;

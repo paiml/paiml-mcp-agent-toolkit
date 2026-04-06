@@ -99,6 +99,11 @@ pub mod workspace {
 
     /// Parse workspace members from Cargo.toml content
     fn parse_workspace_members(content: &str, project_path: &Path) -> Vec<PathBuf> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut members = Vec::new();
 
         // Match members = ["member1", "member2"] or members = [\n  "member1",\n  "member2"\n]
@@ -191,6 +196,7 @@ pub mod workspace {
 
     /// Recursively read files with given extension from directory
     fn read_dir_recursive(dir: &Path, extension: &str, content: &mut String) {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if let Ok(entries) = std::fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -239,6 +245,11 @@ pub trait PopperScorer: Send + Sync {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use super::*;
 
     struct MockScorer {
@@ -261,6 +272,11 @@ mod tests {
         }
 
         fn score(&self, _project_path: &Path) -> PopperScorerResult<PopperCategoryScore> {
+            debug_assert!(
+                _project_path.exists(),
+                "_project_path must exist: {}",
+                _project_path.display()
+            );
             Ok(PopperCategoryScore::new(&self.name, 10.0, self.max))
         }
     }

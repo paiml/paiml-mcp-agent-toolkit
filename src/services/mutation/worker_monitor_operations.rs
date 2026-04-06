@@ -1,6 +1,7 @@
 impl WorkerMonitor {
     /// Create a new worker monitor
     pub fn new(worker_count: usize, stall_timeout: Duration) -> Self {
+        debug_assert!(count > 0, "count must be positive");
         Self {
             workers: RwLock::new(HashMap::new()),
             stall_timeout,

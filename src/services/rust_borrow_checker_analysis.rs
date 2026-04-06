@@ -132,6 +132,7 @@ impl RustBorrowChecker {
     /// Analyze an item and generate proof annotations
     #[cfg(feature = "rust-ast")]
     fn analyze_item(&self, item: &Item, file_path: &Path) -> Vec<(Location, ProofAnnotation)> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut annotations = Vec::new();
 
         match item {

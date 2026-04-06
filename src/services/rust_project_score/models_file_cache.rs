@@ -134,6 +134,7 @@ impl FileCache {
         dir: &Path,
         cache: &mut FxHashMap<PathBuf, String>,
     ) -> std::io::Result<()> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if !dir.is_dir() {
             return Ok(());
         }

@@ -111,6 +111,7 @@ impl PatternExtractor {
 
     /// Check if file should be processed
     fn should_process_file(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         !self.config.exclude_paths.iter().any(|pattern| {
             glob::Pattern::new(pattern)

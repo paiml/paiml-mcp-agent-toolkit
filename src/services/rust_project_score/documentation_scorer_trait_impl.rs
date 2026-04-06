@@ -48,6 +48,7 @@ impl Scorer for DocumentationScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Backward compatibility: call without cache
         self.score_internal(project_path, None)
     }
@@ -72,6 +73,7 @@ impl Scorer for DocumentationScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut recommendations = Vec::new();
 
         // Check rustdoc (no cache - backward compatibility)

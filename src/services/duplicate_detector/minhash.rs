@@ -15,6 +15,7 @@ pub struct MinHashGenerator {
 impl MinHashGenerator {
     #[must_use]
     pub fn new(num_hashes: usize) -> Self {
+        debug_assert!(num_hashes > 0, "num_hashes must be positive");
         let seeds = (0..num_hashes).map(|i| i as u64).collect();
 
         Self { num_hashes, seeds }

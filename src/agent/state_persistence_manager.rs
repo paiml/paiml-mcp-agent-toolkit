@@ -30,6 +30,7 @@ impl StatePersistence {
 
     /// Load state from file
     fn load_from_file(path: &Path) -> Result<AgentState> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let contents = std::fs::read_to_string(path).context("Failed to read state file")?;
 
         serde_json::from_str(&contents).context("Failed to deserialize state")

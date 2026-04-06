@@ -75,6 +75,7 @@ impl<'a> GitHistorySearchEngine<'a> {
         file_path: &str,
         limit: usize,
     ) -> Result<Vec<GitSearchResult>, GitHistoryError> {
+        debug_assert!(limit > 0, "limit must be positive");
         let commits = self.index.get_commits_for_file(file_path, limit)?;
 
         let results: Vec<GitSearchResult> = commits

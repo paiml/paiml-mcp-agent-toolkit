@@ -183,6 +183,7 @@ pub(crate) fn compute_graph_metrics(
     calls: &HashMap<usize, Vec<usize>>,
     called_by: &HashMap<usize, Vec<usize>>,
 ) -> Vec<GraphMetrics> {
+    debug_assert!(num_functions > 0, "num_functions must be positive");
     if num_functions == 0 {
         return Vec::new();
     }

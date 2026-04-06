@@ -21,6 +21,7 @@ impl RrfFusion {
     /// # Returns
     /// Fused results sorted by RRF score
     pub fn fuse(&self, lists: Vec<(&str, Vec<RankedDocument>)>, limit: usize) -> Vec<FusedResult> {
+        debug_assert!(limit > 0, "limit must be positive");
         let mut scores: HashMap<String, FusedResultBuilder> = HashMap::new();
 
         // Process each ranked list

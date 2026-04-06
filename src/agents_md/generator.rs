@@ -418,6 +418,7 @@ impl AgentsMdGenerator {
 
     /// Detect project type from directory
     fn detect_project_type(&self, path: &Path) -> Result<ProjectType> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if path.join("Cargo.toml").exists() {
             Ok(ProjectType::Rust)
         } else if path.join("package.json").exists() {
@@ -435,6 +436,7 @@ impl AgentsMdGenerator {
 
     /// Detect available commands
     fn detect_commands(&self, path: &Path) -> Result<Vec<Command>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut commands = Vec::new();
 
         // Check for Makefile

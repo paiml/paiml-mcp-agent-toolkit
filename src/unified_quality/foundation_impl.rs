@@ -123,6 +123,7 @@ impl QualityMonitor {
         parser: &Arc<std::sync::Mutex<EnhancedParser>>,
         watch_patterns: &[String],
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !Self::should_analyze(&path, watch_patterns) {
             return;
         }
@@ -157,6 +158,7 @@ impl QualityMonitor {
         events: &crossbeam_channel::Sender<QualityEvent>,
         metrics: &Arc<dashmap::DashMap<PathBuf, Metrics>>,
     ) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some((_, last_metrics)) = metrics.remove(&path) {
             let _ = events.try_send(QualityEvent::FileRemoved {
                 path,
@@ -172,6 +174,7 @@ impl QualityMonitor {
         old_metrics: Option<Metrics>,
         new_metrics: Metrics,
     ) -> QualityEvent {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         match old_metrics {
             Some(old) => QualityEvent::MetricsUpdated {
                 path,
@@ -187,6 +190,7 @@ impl QualityMonitor {
 
     /// Check if file should be analyzed
     fn should_analyze(path: &Path, patterns: &[String]) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         patterns.iter().any(|pattern| {
             if pattern.contains("**") {

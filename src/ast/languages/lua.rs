@@ -93,6 +93,7 @@ impl LanguageStrategy for LuaStrategy {
     }
 
     fn can_parse(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| ext == "lua")

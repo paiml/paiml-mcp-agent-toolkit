@@ -279,6 +279,11 @@ mod tests {
     }
 
     fn create_makefile(repo_path: &Path, content: &str) {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let makefile_path = repo_path.join("Makefile");
         fs::write(makefile_path, content).unwrap();
     }

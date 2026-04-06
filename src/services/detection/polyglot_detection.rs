@@ -119,6 +119,7 @@ impl PolyglotDetector {
     }
 
     fn detect_language(&self, file_path: &Path) -> Option<String> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         file_path
             .extension()
             .and_then(|ext| ext.to_str())

@@ -126,6 +126,7 @@ impl TemplateRegistry {
 
     /// Load a custom template from a path.
     fn load_custom_template(&self, path: &Path) -> ScaffoldResult<Arc<dyn TemplateGenerator>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !path.exists() {
             return Err(ScaffoldError::TemplateNotFound(format!(
                 "{}",

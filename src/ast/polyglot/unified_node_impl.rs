@@ -30,6 +30,7 @@ impl UnifiedNode {
         file_path: &Path,
         id_prefix: Option<&str>,
     ) -> Self {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Generate a unique ID
         let prefix = id_prefix.unwrap_or(language.name());
 

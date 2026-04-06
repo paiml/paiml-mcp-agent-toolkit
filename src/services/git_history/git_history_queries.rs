@@ -4,6 +4,7 @@ impl GitHistoryIndex {
         &self,
         limit: usize,
     ) -> Result<Vec<String>, GitHistoryError> {
+        debug_assert!(limit > 0, "limit must be positive");
         let mut stmt = self
             .conn
             .prepare("SELECT commit_hash FROM git_commits WHERE embedding IS NULL LIMIT ?1")?;
@@ -53,6 +54,7 @@ impl GitHistoryIndex {
         file_path: &str,
         limit: usize,
     ) -> Result<Vec<String>, GitHistoryError> {
+        debug_assert!(limit > 0, "limit must be positive");
         let mut stmt = self.conn.prepare(
             r#"
             SELECT DISTINCT gc.commit_hash
@@ -88,6 +90,7 @@ impl GitHistoryIndex {
         timestamp: i64,
         limit: usize,
     ) -> Result<Vec<CommitInfo>, GitHistoryError> {
+        debug_assert!(limit > 0, "limit must be positive");
         let mut stmt = self.conn.prepare(
             r#"
             SELECT commit_hash, message_subject, message_body, author_name, author_email,

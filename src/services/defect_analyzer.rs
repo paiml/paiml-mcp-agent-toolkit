@@ -102,6 +102,7 @@ impl FileRankingEngine {
     /// Rank files by their defect scores
     #[must_use]
     pub fn rank_files(&self, defects: Vec<Defect>, limit: usize) -> Vec<RankedFile> {
+        debug_assert!(limit > 0, "limit must be positive");
         use rayon::prelude::*;
         use std::cmp::Ordering;
         use std::collections::BTreeMap;

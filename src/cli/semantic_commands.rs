@@ -189,6 +189,7 @@ impl SemanticCli {
         num_topics: usize,
         language: Option<String>,
     ) -> Result<String, String> {
+        debug_assert!(num_topics > 0, "num_topics must be positive");
         if num_topics == 0 || num_topics > 20 {
             return Err("num_topics must be between 1 and 20".to_string());
         }

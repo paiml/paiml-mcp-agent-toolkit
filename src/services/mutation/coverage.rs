@@ -137,6 +137,7 @@ impl CoverageCorpus {
 
     /// Get most interesting inputs for mutation
     pub fn get_seeds(&self, count: usize) -> Vec<Vec<u8>> {
+        debug_assert!(count > 0, "count must be positive");
         self.interesting_inputs
             .iter()
             .take(count)

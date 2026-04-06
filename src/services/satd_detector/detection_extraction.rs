@@ -180,6 +180,7 @@ impl SATDDetector {
 
     /// Generate context hash for debt identity tracking
     fn hash_context(&self, file_path: &Path, line_num: u32, content: &str) -> [u8; 16] {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut hasher = Hasher::new();
 
         // Hash structural elements for stability across refactorings
