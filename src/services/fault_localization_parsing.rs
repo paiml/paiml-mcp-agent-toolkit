@@ -13,7 +13,6 @@ impl LcovParser {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(content: &str) -> Result<Vec<(StatementId, usize)>> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut results = Vec::new();
         let mut current_file: Option<PathBuf> = None;
 
@@ -47,7 +46,6 @@ impl LcovParser {
         passed_coverage: &[(StatementId, usize)],
         failed_coverage: &[(StatementId, usize)],
     ) -> Vec<StatementCoverage> {
-        debug_assert!(!passed_coverage.is_empty(), "passed_coverage must not be empty");
         let mut coverage_map: HashMap<StatementId, (usize, usize)> = HashMap::new();
 
         // Count passed test coverage

@@ -11,7 +11,6 @@ impl ClippyFixEngine {
 
     /// Initialize confidence rules (complexity: 3)
     fn init_confidence_rules() -> HashMap<String, ConfidenceLevel> {
-        debug_assert!(true, "contract: init_confidence_rules");
         let mut rules = HashMap::new();
 
         // High confidence fixes
@@ -62,7 +61,6 @@ impl ClippyFixEngine {
         source: &str,
         diagnostic: &ClippyDiagnostic,
     ) -> Result<FixResult> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let start = std::time::Instant::now();
 
         // Check cache first
@@ -88,7 +86,6 @@ impl ClippyFixEngine {
 
     /// Internal fix application (complexity: 6)
     fn apply_fix_internal(&self, source: &str, diagnostic: &ClippyDiagnostic) -> Result<String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simple implementation for needless_return
         if diagnostic.code == "clippy::needless_return" {
             Ok(source.replace("return ", ""))
@@ -107,7 +104,6 @@ impl ClippyFixEngine {
 
     /// Generate cache key (complexity: 2)
     fn generate_cache_key(&self, source: &str, diagnostic: &ClippyDiagnostic) -> String {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         format!(
             "{}:{}:{}",
             diagnostic.code,
@@ -123,7 +119,6 @@ impl ClippyFixEngine {
         source: &str,
         diagnostic: &ClippyDiagnostic,
     ) -> Result<FixResult> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let result = self.apply_fix(source, diagnostic).await?;
 
         // Validate the fix compiles
@@ -140,7 +135,6 @@ impl ClippyFixEngine {
 
     /// Validate that fix compiles (complexity: 3)
     async fn validate_fix(&self, source: &str) -> Result<bool> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Check for obvious syntax errors
         if source.contains("{{") || source.contains("}}") {
             return Ok(false);
@@ -154,7 +148,6 @@ impl ClippyFixEngine {
         &self,
         diagnostics: &[ClippyDiagnostic],
     ) -> Result<Vec<FixResult>> {
-        debug_assert!(!diagnostics.is_empty(), "diagnostics must not be empty");
         let mut results = Vec::new();
 
         for diagnostic in diagnostics {
@@ -171,7 +164,6 @@ impl ClippyFixEngine {
         &self,
         diagnostics: &[ClippyDiagnostic],
     ) -> Result<Vec<FixResult>> {
-        debug_assert!(!diagnostics.is_empty(), "diagnostics must not be empty");
         use futures::future::join_all;
 
         let futures = diagnostics.iter().map(|d| self.apply_fix("", d));
@@ -188,7 +180,6 @@ impl ClippyFixEngine {
         diagnostics: Vec<(ClippyDiagnostic, ConfidenceLevel)>,
         min_confidence: ConfidenceLevel,
     ) -> Vec<(ClippyDiagnostic, ConfidenceLevel)> {
-        debug_assert!(!diagnostics.is_empty(), "diagnostics must not be empty");
         diagnostics
             .into_iter()
             .filter(|(_, conf)| *conf == min_confidence)
@@ -199,7 +190,6 @@ impl ClippyFixEngine {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_report(&self, results: Vec<FixResult>) -> FixReport {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         let total = results.len();
         let successful = results.iter().filter(|r| r.success).count();
         let duration = results.iter().map(|r| r.duration).sum();

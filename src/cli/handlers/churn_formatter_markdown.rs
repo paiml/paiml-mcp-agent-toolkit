@@ -80,7 +80,6 @@ fn write_markdown_file_details(
     output: &mut String,
     files: &[crate::models::churn::FileChurnMetrics],
 ) -> Result<()> {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     if files.is_empty() {
         return Ok(());
     }
@@ -116,7 +115,6 @@ fn write_file_row(
     output: &mut String,
     file: &crate::models::churn::FileChurnMetrics,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_file_row");
     writeln!(
         output,
         "| {} | {} | {} | {} | {} | {:.2} | {} |",
@@ -136,7 +134,6 @@ fn write_author_contributions(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_author_contributions");
     writeln!(output, "\n## Author Contributions\n")?;
     writeln!(output, "| Author | Files Modified |")?;
     writeln!(output, "|--------|----------------|")?;

@@ -9,7 +9,6 @@ impl<T: Clone> ColumnStore<T> {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(capacity: usize) -> Self {
-        debug_assert!(capacity > 0, "capacity must be positive");
         Self {
             data: Vec::with_capacity(capacity),
             capacity,

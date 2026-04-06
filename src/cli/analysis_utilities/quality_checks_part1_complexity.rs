@@ -56,7 +56,6 @@ pub async fn check_complexity(
     project_path: &Path,
     _max_complexity: u32,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::complexity::aggregate_results_with_thresholds;
     use crate::services::configuration_service::configuration;
 
@@ -118,7 +117,6 @@ pub async fn check_complexity(
 
 /// Load exclude_paths globs from `.pmat-metrics.toml`.
 fn load_exclude_paths(project_path: &Path) -> Vec<glob::Pattern> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let config_path = project_path.join(".pmat-metrics.toml");
     let content = match std::fs::read_to_string(&config_path) {
         Ok(c) => c,
@@ -145,7 +143,6 @@ fn is_violation_excluded(
     violation: &crate::services::complexity::Violation,
     exclude_globs: &[glob::Pattern],
 ) -> bool {
-    debug_assert!(true, "contract: is_violation_excluded");
     use crate::services::complexity::Violation;
     let file_path = match violation {
         Violation::Error { file, .. } | Violation::Warning { file, .. } => file,
@@ -160,7 +157,6 @@ fn process_complexity_violation(
     violation: &crate::services::complexity::Violation,
     violations: &mut Vec<QualityViolation>,
 ) {
-    debug_assert!(true, "contract: process_complexity_violation");
     use crate::services::complexity::Violation;
 
     let (file, line, function, rule, message, value, threshold, severity) = match violation {

@@ -22,12 +22,10 @@ impl NewFileGate {
 
 impl QualityGate for NewFileGate {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "NewFileGate"
     }
 
     fn check(&self, baseline: &TdgBaseline, current: &TdgBaseline) -> Result<GateResult> {
-        debug_assert!(true, "contract: check");
         if !self.config.enforce_new_files {
             return Ok(GateResult {
                 passed: true,

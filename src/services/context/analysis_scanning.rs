@@ -8,7 +8,6 @@ async fn scan_rust_files_only(
     cache_manager: Option<Arc<SessionCacheManager>>,
     gitignore: &ignore::gitignore::Gitignore,
 ) -> Vec<FileContext> {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     const MAX_DEPTH: usize = 5; // Shallower search for performance
     const MAX_FILES: usize = 100; // Even lower limit for fast dead code analysis
     const BATCH_SIZE: usize = 20; // Smaller batches for responsiveness
@@ -85,7 +84,6 @@ async fn scan_and_analyze_files(
     cache_manager: Option<Arc<SessionCacheManager>>,
     gitignore: &ignore::gitignore::Gitignore,
 ) -> Vec<FileContext> {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     // FIXED: Add depth limit and file count limit to prevent hanging
     const MAX_DEPTH: usize = 10; // Prevent infinite recursion
     const MAX_FILES: usize = 10000; // Prevent resource exhaustion
@@ -160,7 +158,6 @@ async fn scan_and_analyze_files_persistent(
     cache_manager: Option<Arc<PersistentCacheManager>>,
     gitignore: &ignore::gitignore::Gitignore,
 ) -> Vec<FileContext> {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     // FIXED: Add same depth and file limits as non-persistent version
     const MAX_DEPTH: usize = 10; // Prevent infinite recursion
     const MAX_FILES: usize = 10000; // Prevent resource exhaustion

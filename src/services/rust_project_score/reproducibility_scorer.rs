@@ -60,7 +60,6 @@ impl Default for ReproducibilityScorer {
 
 impl Scorer for ReproducibilityScorer {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "Reproducibility"
     }
 
@@ -73,11 +72,6 @@ impl Scorer for ReproducibilityScorer {
         project_path: &Path,
         _mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         // Run all Popper B-F scorers
         let b = self.popper_b.score(project_path).ok();
         let c = self.popper_c.score(project_path).ok();
@@ -125,11 +119,6 @@ impl Scorer for ReproducibilityScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut recs = Vec::new();
 
         // Check each Popper category for gaps
@@ -172,11 +161,6 @@ impl Scorer for ReproducibilityScorer {
 /// Returns `Some(percentage)` if gateway passes, `None` if it fails.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn check_falsifiability_gateway(project_path: &Path) -> Option<f64> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::services::popper_score::scorers::FalsifiabilityScorer;
 
     let scorer = FalsifiabilityScorer::new();

@@ -10,7 +10,6 @@ impl DeadCodeStrategy for RustDeadCodeStrategy {
     }
 
     fn analyze(&self, path: &Path) -> Result<DeadCodeResult> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         debug!("Running Rust dead code analysis with cargo check");
 
         // Use existing cargo-based dead code detection
@@ -45,7 +44,6 @@ impl DeadCodeStrategy for CDeadCodeStrategy {
     }
 
     fn analyze(&self, path: &Path) -> Result<DeadCodeResult> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         debug!("Running C dead code analysis (AST-based)");
 
         // Find C source files (.c only, not .h headers which are just declarations)
@@ -89,7 +87,6 @@ impl DeadCodeStrategy for CppDeadCodeStrategy {
     }
 
     fn analyze(&self, path: &Path) -> Result<DeadCodeResult> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         debug!("Running C++ dead code analysis (AST-based)");
 
         // Find all C++ source files
@@ -129,7 +126,6 @@ impl DeadCodeStrategy for PythonDeadCodeStrategy {
     }
 
     fn analyze(&self, path: &Path) -> Result<DeadCodeResult> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         debug!("Running Python dead code analysis (AST-based)");
 
         // Find all Python files
@@ -169,7 +165,6 @@ impl DeadCodeStrategy for LuaDeadCodeStrategy {
     }
 
     fn analyze(&self, path: &Path) -> Result<DeadCodeResult> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         debug!("Running Lua dead code analysis (module-export-aware)");
 
         let lua_files = find_files_by_extension(path, &["lua"]);

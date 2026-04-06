@@ -6,8 +6,6 @@ impl QualityProxyService {
         extension: &str,
         config: &QualityConfig,
     ) -> Result<(String, Vec<HashMap<String, serde_json::Value>>)> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         if extension != "rs" {
             return Ok((content.to_string(), Vec::new()));
         }

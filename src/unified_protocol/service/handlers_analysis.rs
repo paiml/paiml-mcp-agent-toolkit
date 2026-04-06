@@ -8,7 +8,6 @@ fn parse_deep_context_params(
     ),
     AppError,
 > {
-    debug_assert!(true, "contract: parse_deep_context_params");
     use crate::services::deep_context::{AnalysisType, DeepContextConfig};
     use std::path::PathBuf;
 

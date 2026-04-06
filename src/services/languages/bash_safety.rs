@@ -16,7 +16,6 @@ impl ShellSafetyAnalyzer {
     /// Analyzes shell script for safety issues (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_safety(&mut self, source: &str) -> Result<Vec<String>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut violations = Vec::new();
 
         for line in source.lines() {
@@ -40,7 +39,6 @@ impl ShellSafetyAnalyzer {
     /// Checks for common security vulnerabilities (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_security_vulnerabilities(&mut self, source: &str) -> Result<Vec<String>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut vulnerabilities = Vec::new();
 
         for line in source.lines() {
@@ -60,7 +58,6 @@ impl ShellSafetyAnalyzer {
     /// Validates best practices compliance (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_best_practices(&mut self, source: &str) -> Result<Vec<String>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut warnings = Vec::new();
 
         let has_shebang = source.lines().next().unwrap_or("").starts_with("#!");
@@ -106,7 +103,6 @@ impl ShellCommandParser {
     /// Parses shell command line into tokens (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_command_line(&mut self, line: &str) -> Result<Vec<String>, String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let tokens: Vec<String> = line
             .split_whitespace()
             .map(std::string::ToString::to_string)
@@ -122,7 +118,6 @@ impl ShellCommandParser {
         &mut self,
         line: &str,
     ) -> Result<Vec<(String, String)>, String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let mut assignments = Vec::new();
 
         if line.contains('=') && !line.trim().starts_with('#') {

@@ -147,7 +147,6 @@ mod tests {
         cyclomatic: u32,
         cognitive: u32,
     ) -> FunctionComplexity {
-        debug_assert!(true, "contract: create_test_function");
         FunctionComplexity {
             name: name.to_string(),
             line_number: line,

@@ -10,7 +10,6 @@ impl CudaSimdAnalyzer {
 
     /// Check if a path should be skipped (in an ignored directory)
     fn should_skip_path(path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         for component in path.components() {
             if let std::path::Component::Normal(name) = component {
                 let name_str = name.to_string_lossy();
@@ -35,7 +34,6 @@ impl CudaSimdAnalyzer {
         barrier_safety: &mut BarrierSafetyResult,
         coalescing: &mut CoalescingResult,
     ) -> anyhow::Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         for entry in walkdir::WalkDir::new(path)
             .follow_links(true)
             .into_iter()
@@ -81,7 +79,6 @@ impl CudaSimdAnalyzer {
     }
 
     fn analyze_file(&self, path: &Path) -> anyhow::Result<FileAnalysis> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
         let ext = path
             .extension()

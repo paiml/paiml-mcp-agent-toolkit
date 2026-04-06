@@ -11,7 +11,6 @@ impl DapServer {
     ///
     /// Format: session-{timestamp}.pmat
     fn generate_recording_path(&self) -> Option<PathBuf> {
-        debug_assert!(true, "contract: generate_recording_path");
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let recording_dir = self.recording_dir.as_ref()?;
@@ -25,7 +24,6 @@ impl DapServer {
     ///
     /// Creates recording directory if needed and sets up ExecutionRecorder
     fn start_recording(&self, program: &str, args: Vec<String>) -> anyhow::Result<()> {
-        debug_assert!(!program.is_empty(), "program must not be empty");
         // Only start recording if recording_dir is configured
         let recording_dir = match &self.recording_dir {
             Some(dir) => dir,
@@ -72,7 +70,6 @@ impl DapServer {
     ///
     /// Called on disconnect or terminate to complete the .pmat file
     fn finalize_recording(&self) -> anyhow::Result<Option<PathBuf>> {
-        debug_assert!(true, "contract: finalize_recording");
         let mut recorder_guard = self
             .execution_recorder
             .lock()
@@ -97,7 +94,6 @@ impl DapServer {
     /// This is called on debug events (breakpoint hits, step commands) to capture
     /// execution state. Silently fails if recording is not active or capture fails.
     fn capture_snapshot_if_recording(&self) {
-        debug_assert!(true, "contract: capture_snapshot_if_recording");
         let mut recorder_guard = match self.execution_recorder.lock() {
             Ok(guard) => guard,
             Err(_) => return, // Lock poisoned, skip capture

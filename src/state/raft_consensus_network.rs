@@ -26,7 +26,6 @@ impl RaftNetwork<ClientRequest> for ConsensusNetwork {
         target: NodeId,
         rpc: async_raft::raft::AppendEntriesRequest<ClientRequest>,
     ) -> Result<async_raft::raft::AppendEntriesResponse, async_raft::error::RaftError> {
-        debug_assert!(true, "contract: append_entries");
         // In production, this would make an actual network call
         // For now, return a mock response
         Ok(async_raft::raft::AppendEntriesResponse {
@@ -41,7 +40,6 @@ impl RaftNetwork<ClientRequest> for ConsensusNetwork {
         target: NodeId,
         rpc: async_raft::raft::InstallSnapshotRequest,
     ) -> Result<async_raft::raft::InstallSnapshotResponse, async_raft::error::RaftError> {
-        debug_assert!(true, "contract: install_snapshot");
         // In production, this would make an actual network call
         Ok(async_raft::raft::InstallSnapshotResponse { term: rpc.term })
     }

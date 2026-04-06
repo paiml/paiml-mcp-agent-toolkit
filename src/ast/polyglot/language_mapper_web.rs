@@ -19,7 +19,6 @@ impl TypeScriptMapper {
 
     /// Process TypeScript-specific nodes
     fn process_typescript_specific(&self, nodes: &mut [UnifiedNode]) {
-        debug_assert!(true, "contract: process_typescript_specific");
         for node in nodes.iter_mut() {
             // Add TypeScript-specific metadata
             match node.kind {
@@ -44,17 +43,14 @@ impl LanguageMapper for TypeScriptMapper {
     }
 
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_file(path).await
     }
 
     async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_directory(path, recursive).await
     }
 
     async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::languages::typescript::TypeScriptAstVisitor;
 
         let visitor = TypeScriptAstVisitor::new(path);
@@ -69,12 +65,10 @@ impl LanguageMapper for TypeScriptMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.convert_ast_items(items, path)
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
-        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 }
@@ -97,7 +91,6 @@ impl JavaScriptMapper {
 
     /// Process JavaScript-specific nodes
     fn process_javascript_specific(&self, nodes: &mut [UnifiedNode]) {
-        debug_assert!(true, "contract: process_javascript_specific");
         for node in nodes.iter_mut() {
             // Add JavaScript-specific metadata
             match node.kind {
@@ -123,17 +116,14 @@ impl LanguageMapper for JavaScriptMapper {
     }
 
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_file(path).await
     }
 
     async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_directory(path, recursive).await
     }
 
     async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::languages::javascript::JavaScriptAstVisitor;
 
         let visitor = JavaScriptAstVisitor::new(path);
@@ -148,12 +138,10 @@ impl LanguageMapper for JavaScriptMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.convert_ast_items(items, path)
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
-        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 }

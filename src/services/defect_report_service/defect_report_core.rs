@@ -14,7 +14,6 @@ impl DefectReportService {
     /// Generate a comprehensive defect report
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn generate_report(&self, project_path: &Path) -> Result<DefectReport> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let start_time = std::time::Instant::now();
         info!(
             "Starting comprehensive defect analysis for: {}",
@@ -62,7 +61,6 @@ impl DefectReportService {
 
     /// Collect defects from all analyzers (with per-analyzer timeout)
     async fn collect_all_defects(&self, project_path: &Path) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         use std::time::Duration;
 
         let semaphore = self.semaphore.clone();
@@ -131,7 +129,6 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing complexity defects");
 
@@ -149,7 +146,6 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing SATD defects");
 
@@ -167,7 +163,6 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing dead code defects");
 
@@ -185,7 +180,6 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing duplication defects");
 
@@ -203,7 +197,6 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing performance defects");
 
@@ -221,7 +214,6 @@ impl DefectReportService {
         project_path: &Path,
         semaphore: &Arc<Semaphore>,
     ) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let _permit = semaphore.acquire().await?;
         debug!("Analyzing architecture defects");
 
@@ -237,7 +229,6 @@ impl DefectReportService {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_summary(&self, defects: &[Defect]) -> DefectSummary {
-        debug_assert!(!defects.is_empty(), "defects must not be empty");
         let mut by_severity = BTreeMap::new();
         let mut by_category = BTreeMap::new();
         let mut file_defect_counts: HashMap<PathBuf, (usize, f64)> = HashMap::new();

@@ -1,6 +1,5 @@
 impl IncrementalCoverageAnalyzer {
     fn load_cached_coverage(&self, file_id: &FileId) -> Result<Option<FileCoverage>> {
-        debug_assert!(true, "contract: load_cached_coverage");
         let key = self.coverage_key(file_id);
 
         match self.coverage_cache.get(&key) {
@@ -13,7 +12,6 @@ impl IncrementalCoverageAnalyzer {
     }
 
     fn store_coverage(&self, file_id: &FileId, coverage: &FileCoverage) -> Result<()> {
-        debug_assert!(true, "contract: store_coverage");
         let key = self.coverage_key(file_id);
         let data = bincode::serialize(coverage)?;
         self.coverage_cache.insert(key, data);
@@ -21,7 +19,6 @@ impl IncrementalCoverageAnalyzer {
     }
 
     fn coverage_key(&self, file_id: &FileId) -> Vec<u8> {
-        debug_assert!(true, "contract: coverage_key");
         let mut key = b"coverage:".to_vec();
         key.extend_from_slice(&file_id.hash);
         key
@@ -31,7 +28,6 @@ impl IncrementalCoverageAnalyzer {
         &self,
         file_coverage: &HashMap<FileId, FileCoverage>,
     ) -> Result<AggregateCoverage> {
-        debug_assert!(true, "contract: calculate_aggregate_coverage");
         let total_files = file_coverage.len();
         let covered_files = file_coverage
             .values()
@@ -68,7 +64,6 @@ impl IncrementalCoverageAnalyzer {
         changeset: &ChangeSet,
         file_coverage: &HashMap<FileId, FileCoverage>,
     ) -> Result<DeltaCoverage> {
-        debug_assert!(true, "contract: calculate_delta_coverage");
         let mut new_lines_total = 0;
         let mut new_lines_covered = 0;
 
@@ -114,7 +109,6 @@ impl CallGraph {
     }
 
     fn get_dependents(&self, module: &str) -> Vec<String> {
-        debug_assert!(!module.is_empty(), "module must not be empty");
         self.reverse_edges
             .get(module)
             .map(|deps| deps.iter().cloned().collect())

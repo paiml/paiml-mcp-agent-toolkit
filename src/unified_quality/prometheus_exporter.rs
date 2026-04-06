@@ -161,7 +161,6 @@ impl QualityMetricsRegistry {
     /// Record file metrics
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn record_file_metrics(&self, _path: &PathBuf, metrics: &Metrics) {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         self.complexity_gauge.set(f64::from(metrics.complexity));
         self.cognitive_gauge.set(f64::from(metrics.cognitive));
         self.satd_counter.inc_by(u64::from(metrics.satd_count));
@@ -338,7 +337,6 @@ impl PrometheusExporter {
 
     /// Collect current metrics from quality monitor
     async fn collect_metrics(metrics: &QualityMetricsRegistry, monitor: &QualityMonitor) {
-        debug_assert!(true, "contract: collect_metrics");
         let all_metrics = monitor.get_all_metrics();
 
         // Aggregate metrics across all files

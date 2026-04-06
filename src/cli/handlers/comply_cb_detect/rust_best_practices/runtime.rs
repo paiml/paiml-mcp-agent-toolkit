@@ -19,11 +19,6 @@ use std::path::Path;
 /// CB-507: Panic Macros - todo!(), unimplemented!() in production code
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb507_panic_macros(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -84,11 +79,6 @@ pub fn detect_cb507_panic_macros(project_path: &Path) -> Vec<CbPatternViolation>
 /// CB-510: include!() Macro Hygiene - non-standalone files included via include!()
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb510_include_macro_hygiene(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -132,11 +122,6 @@ pub fn detect_cb510_include_macro_hygiene(project_path: &Path) -> Vec<CbPatternV
 /// CB-511: Flaky Timing Tests - tests with Instant::now() and tight duration assertions
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb511_flaky_timing_tests(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let src_dir = project_path.join("src");
     let test_dir = project_path.join("tests");
 
@@ -242,11 +227,6 @@ pub fn detect_cb511_flaky_timing_tests(project_path: &Path) -> Vec<CbPatternViol
 /// CB-512: Error Propagation Gap - functions returning Result but using unwrap() internally
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb512_error_propagation_gap(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -329,11 +309,6 @@ pub fn detect_cb512_error_propagation_gap(project_path: &Path) -> Vec<CbPatternV
 /// CB-513: Silent Error Swallowing - discarding error context with |_| closures
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb513_silent_error_swallowing(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -402,11 +377,6 @@ pub fn detect_cb513_silent_error_swallowing(project_path: &Path) -> Vec<CbPatter
 /// CB-514: Debug Eprintln Leaks - debug print statements in production code
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb514_debug_eprintln_leaks(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,

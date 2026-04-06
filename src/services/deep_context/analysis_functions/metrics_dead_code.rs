@@ -5,7 +5,6 @@
 pub async fn analyze_dead_code(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::dead_code::{
         DeadCodeAnalysisConfig, DeadCodeRankingResult, DeadCodeSummary,
     };
@@ -89,7 +88,6 @@ fn analyze_file_for_dead_code(
     file_path: &std::path::Path,
     content: &str,
 ) -> crate::models::dead_code::FileDeadCodeMetrics {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     use crate::models::dead_code::{ConfidenceLevel, FileDeadCodeMetrics};
 
     let lines: Vec<&str> = content.lines().collect();
@@ -165,7 +163,6 @@ fn analyze_rust_dead_code(
     dead_classes: &mut usize,
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     analyze_rust_dead_functions(lines, dead_functions, dead_items);
     analyze_rust_dead_structs(lines, dead_classes, dead_items);
 }
@@ -177,7 +174,6 @@ fn analyze_rust_dead_functions(
     dead_functions: &mut usize,
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
 
     for (line_num, line) in lines.iter().enumerate() {
@@ -204,7 +200,6 @@ fn analyze_rust_dead_structs(
     dead_classes: &mut usize,
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
 
     for (line_num, line) in lines.iter().enumerate() {
@@ -226,8 +221,6 @@ fn analyze_rust_dead_structs(
 
 /// Extract function name if unused
 fn extract_function_name_if_unused(lines: &[&str], trimmed: &str) -> Option<String> {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let function_name = extract_function_name(trimmed);
     if !function_name.is_empty() && !is_function_called_in_file(lines, &function_name) {
         Some(function_name)
@@ -238,8 +231,6 @@ fn extract_function_name_if_unused(lines: &[&str], trimmed: &str) -> Option<Stri
 
 /// Extract struct name if unused
 fn extract_struct_name_if_unused(lines: &[&str], trimmed: &str) -> Option<String> {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let struct_name = extract_struct_name(trimmed);
     if !struct_name.is_empty() && !is_type_used_in_file(lines, &struct_name) {
         Some(struct_name)
@@ -254,7 +245,6 @@ fn analyze_typescript_dead_code(
     dead_classes: &mut usize,
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     analyze_typescript_dead_functions(lines, dead_functions, dead_items);
     analyze_typescript_dead_classes(lines, dead_classes, dead_items);
 }
@@ -266,7 +256,6 @@ fn analyze_typescript_dead_functions(
     dead_functions: &mut usize,
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
 
     for (line_num, line) in lines.iter().enumerate() {
@@ -293,7 +282,6 @@ fn analyze_typescript_dead_classes(
     dead_classes: &mut usize,
     dead_items: &mut Vec<crate::models::dead_code::DeadCodeItem>,
 ) {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     use crate::models::dead_code::{DeadCodeItem, DeadCodeType};
 
     for (line_num, line) in lines.iter().enumerate() {
@@ -315,8 +303,6 @@ fn analyze_typescript_dead_classes(
 
 /// Extract JS function name if unused
 fn extract_js_function_name_if_unused(lines: &[&str], trimmed: &str) -> Option<String> {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let function_name = extract_js_function_name(trimmed);
     if !function_name.is_empty() && !is_function_called_in_file(lines, &function_name) {
         Some(function_name)
@@ -327,8 +313,6 @@ fn extract_js_function_name_if_unused(lines: &[&str], trimmed: &str) -> Option<S
 
 /// Extract class name if unused
 fn extract_class_name_if_unused(lines: &[&str], trimmed: &str) -> Option<String> {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let class_name = extract_class_name(trimmed);
     if !class_name.is_empty() && !is_type_used_in_file(lines, &class_name) {
         Some(class_name)

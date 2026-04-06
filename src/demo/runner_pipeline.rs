@@ -7,7 +7,6 @@ impl DemoRunner {
         response: McpResponse,
         elapsed_ms: u64,
     ) -> DemoStep {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let success = response.error.is_none();
         let output = if success {
             response.result.clone()
@@ -30,7 +29,6 @@ impl DemoRunner {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn execute(&mut self, repo_path: PathBuf) -> Result<DemoReport> {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         self.execute_with_diagram(&repo_path, None).await
     }
 
@@ -40,7 +38,6 @@ impl DemoRunner {
         repo_path: &Path,
         url: Option<&str>,
     ) -> Result<DemoReport> {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let start = Instant::now();
 
         // Clone remote repository if URL provided or if path looks like a GitHub URL
@@ -111,7 +108,6 @@ impl DemoRunner {
     }
 
     async fn demo_context_generation(&mut self, path: &Path) -> Result<DemoStep> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "generate_context",
             json!({
@@ -147,7 +143,6 @@ impl DemoRunner {
     }
 
     async fn demo_complexity_analysis(&mut self, path: &Path) -> Result<DemoStep> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "analyze_complexity",
             json!({
@@ -192,7 +187,6 @@ impl DemoRunner {
     }
 
     async fn demo_dag_generation(&mut self, path: &Path) -> Result<DemoStep> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "analyze_dag",
             json!({
@@ -240,7 +234,6 @@ impl DemoRunner {
     }
 
     async fn demo_churn_analysis(&mut self, path: &Path) -> Result<DemoStep> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "analyze_code_churn",
             json!({
@@ -283,7 +276,6 @@ impl DemoRunner {
     }
 
     async fn demo_system_architecture(&mut self, path: &Path) -> Result<DemoStep> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use the enhanced canonical query system
         let request = self.build_mcp_request(
             "analyze_system_architecture",
@@ -331,7 +323,6 @@ impl DemoRunner {
     }
 
     async fn demo_defect_analysis(&mut self, path: &Path) -> Result<DemoStep> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "analyze_defect_probability",
             json!({
@@ -377,7 +368,6 @@ impl DemoRunner {
     }
 
     async fn demo_template_generation(&mut self, path: &Path) -> Result<DemoStep> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let request = self.build_mcp_request(
             "generate_template",
             json!({
@@ -419,7 +409,6 @@ impl DemoRunner {
     }
 
     fn build_mcp_request(&self, method: &str, arguments: Value) -> McpRequest {
-        debug_assert!(!method.is_empty(), "method must not be empty");
         McpRequest {
             jsonrpc: "2.0".to_string(),
             id: json!(format!("demo-{}", method)),

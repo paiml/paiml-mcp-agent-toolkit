@@ -196,7 +196,6 @@ impl fmt::Display for BridgeError {
 
 impl std::error::Error for BridgeError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        debug_assert!(true, "contract: source");
         self.source
             .as_ref()
             .map(|e| &**e as &(dyn std::error::Error + 'static))

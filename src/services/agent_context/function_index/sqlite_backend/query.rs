@@ -18,7 +18,6 @@ pub(crate) fn fts5_search(
     query: &str,
     limit: usize,
 ) -> Result<Vec<(usize, f32)>, String> {
-    debug_assert!(!query.is_empty(), "query must not be empty");
     // FTS5 match syntax: quote terms for phrase, OR for alternatives
     let fts_query = tokenize_query_for_fts5(query);
     if fts_query.is_empty() {
@@ -66,7 +65,6 @@ pub(crate) fn fts5_search(
 /// Splits into tokens, filters keywords/stop words, joins with implicit AND.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn tokenize_query_for_fts5(query: &str) -> String {
-    debug_assert!(!query.is_empty(), "query must not be empty");
     query
         .split(|c: char| !c.is_alphanumeric() && c != '_')
         .filter(|s| s.len() >= 2 && !is_keyword(s))

@@ -52,7 +52,6 @@ where
     type Error = anyhow::Error;
 
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
-        debug_assert!(true, "contract: process");
         let start = Instant::now();
 
         // Process through first service
@@ -73,17 +72,14 @@ where
     }
 
     fn validate_input(&self, input: &Self::Input) -> Result<(), ValidationError> {
-        debug_assert!(true, "contract: validate_input");
         self.first.validate_input(input)
     }
 
     fn metrics(&self) -> ServiceMetrics {
-        debug_assert!(true, "contract: metrics");
         self.metrics.clone()
     }
 
     fn name(&self) -> &'static str {
-        debug_assert!(true, "contract: name");
         "SimpleCompositeService"
     }
 }
@@ -137,7 +133,6 @@ mod tests {
         type Error = anyhow::Error;
 
         async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
-            debug_assert!(true, "contract: process");
             Ok(input + self.value)
         }
     }
@@ -154,7 +149,6 @@ mod tests {
         type Error = anyhow::Error;
 
         async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
-            debug_assert!(true, "contract: process");
             Ok(input * self.factor)
         }
     }
@@ -201,7 +195,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

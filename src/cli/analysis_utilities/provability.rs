@@ -15,7 +15,6 @@ pub async fn handle_analyze_provability(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
     eprintln!("🔬 Analyzing function provability...");
@@ -53,7 +52,6 @@ async fn get_function_ids(
     project_path: &Path,
     functions: &[String],
 ) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::provability_helpers::{discover_project_functions, parse_function_spec};
 
     if functions.is_empty() {
@@ -69,7 +67,6 @@ async fn get_function_ids(
 
 /// Prepare summaries by filtering and converting
 fn prepare_summaries(summaries: &[ProofSummary], high_confidence_only: bool) -> Vec<ProofSummary> {
-    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     use crate::cli::provability_helpers::filter_summaries;
 
     let filtered_summaries = filter_summaries(summaries, high_confidence_only);
@@ -84,7 +81,6 @@ fn format_provability_output(
     include_evidence: bool,
     top_files: usize,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_provability_output");
     use crate::cli::provability_helpers::{
         format_provability_detailed, format_provability_json, format_provability_sarif,
         format_provability_summary,
@@ -106,7 +102,6 @@ fn format_provability_output(
 
 /// Write provability output to file or stdout
 async fn write_provability_output(output: Option<PathBuf>, content: &str) -> Result<()> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, content).await?;
         eprintln!(
@@ -135,7 +130,6 @@ pub async fn handle_analyze_defect_prediction(
     _perf: bool,
     top_files: usize,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     print_defect_analysis_header(
         &project_path,
         high_risk_only,
@@ -173,7 +167,6 @@ fn print_defect_analysis_header(
     include_low_confidence: bool,
     format: &DefectPredictionOutputFormat,
 ) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🔮 Analyzing defect probability...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🎯 High risk only: {high_risk_only}");
@@ -190,7 +183,6 @@ fn create_defect_config(
     include: Option<String>,
     exclude: Option<String>,
 ) -> crate::cli::defect_prediction_helpers::DefectPredictionConfig {
-    debug_assert!(min_lines > 0, "min_lines must be positive");
     crate::cli::defect_prediction_helpers::DefectPredictionConfig {
         confidence_threshold,
         min_lines,
@@ -207,7 +199,6 @@ async fn compute_defect_predictions(
     config: &crate::cli::defect_prediction_helpers::DefectPredictionConfig,
     confidence_threshold: f32,
 ) -> Result<Vec<(String, crate::services::defect_probability::DefectScore)>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::defect_prediction_helpers::discover_source_files_for_defect_analysis;
     use crate::services::defect_probability::DefectProbabilityCalculator;
 
@@ -236,7 +227,6 @@ fn create_file_metrics(
     file_path: &Path,
     lines: usize,
 ) -> crate::services::defect_probability::FileMetrics {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     crate::services::defect_probability::FileMetrics {
         file_path: file_path.to_string_lossy().to_string(),
         churn_score: 0.5,                 // Would be calculated from git history
@@ -256,7 +246,6 @@ fn should_include_prediction(
     include_low_confidence: bool,
     confidence_threshold: f32,
 ) -> bool {
-    debug_assert!(true, "contract: should_include_prediction");
     use crate::services::defect_probability::RiskLevel;
 
     if high_risk_only && matches!(score.risk_level, RiskLevel::Low | RiskLevel::Medium) {
@@ -274,7 +263,6 @@ fn filter_and_sort_predictions(
     mut predictions: Vec<(String, crate::services::defect_probability::DefectScore)>,
     top_files: usize,
 ) -> Vec<(String, crate::services::defect_probability::DefectScore)> {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     predictions.sort_unstable_by(|a, b| {
         b.1.probability
             .partial_cmp(&a.1.probability)
@@ -288,7 +276,6 @@ fn format_defect_report(
     report: &DefectPredictionReport,
     format: DefectPredictionOutputFormat,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_defect_report");
     use DefectPredictionOutputFormat::{Csv, Detailed, Json, Sarif, Summary};
     match format {
         Summary => format_defect_summary(report, 10),
@@ -300,7 +287,6 @@ fn format_defect_report(
 }
 
 async fn output_defect_result(content: String, output: Option<PathBuf>) -> Result<()> {
-    debug_assert!(true, "contract: output_defect_result");
     eprintln!("✅ Defect prediction complete");
 
     if let Some(output_path) = output {

@@ -48,7 +48,6 @@ impl RecommendationEngine {
     }
 
     fn initialize_framework_signatures(&mut self) {
-        debug_assert!(true, "contract: initialize_framework_signatures");
         let rust_frameworks = vec![
             FrameworkSignature {
                 name: "Actix Web".to_string(),
@@ -132,7 +131,6 @@ impl RecommendationEngine {
     }
 
     fn initialize_curated_repositories(&mut self) {
-        debug_assert!(true, "contract: initialize_curated_repositories");
         let rust_repos = vec![
             RepositoryRecommendation {
                 repository: "tokio-rs/tokio".to_string(),
@@ -232,7 +230,6 @@ impl RecommendationEngine {
         &self,
         path: &str,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         let mut detected_frameworks = Vec::new();
 
         for (language, signatures) in &self.framework_signatures {
@@ -255,7 +252,6 @@ impl RecommendationEngine {
         _path: &str,
         signature: &FrameworkSignature,
     ) -> Result<f64, Box<dyn std::error::Error>> {
-        debug_assert!(!_path.is_empty(), "_path must not be empty");
         let confidence = 0.0;
         let mut total_checks = 0.0;
 
@@ -315,7 +311,6 @@ impl RecommendationEngine {
         &self,
         framework: &str,
     ) -> Vec<RepositoryRecommendation> {
-        debug_assert!(!framework.is_empty(), "framework must not be empty");
         let mut recommendations = Vec::new();
 
         for repos in self.curated_repositories.values() {
@@ -346,7 +341,6 @@ impl RecommendationEngine {
         language: &str,
         detected_frameworks: &[String],
     ) -> Vec<String> {
-        debug_assert!(!language.is_empty(), "language must not be empty");
         let mut learning_path = Vec::new();
 
         learning_path.push(format!("Start with basic {language} syntax and concepts"));
@@ -462,7 +456,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

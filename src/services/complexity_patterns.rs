@@ -137,7 +137,6 @@ impl ComplexityPatternMatcher {
 
     /// Check if AST matches a specific pattern
     fn matches_pattern(&self, ast: &UnifiedAstNode, pattern: &ComplexityPattern) -> bool {
-        debug_assert!(true, "contract: matches_pattern");
         match &pattern.pattern_type {
             PatternType::LinearIteration => self.is_linear_iteration(ast),
             PatternType::NestedLoops { depth } => self.is_nested_loops(ast, *depth),
@@ -152,7 +151,6 @@ impl ComplexityPatternMatcher {
 
     /// Detect single loop pattern
     fn is_linear_iteration(&self, ast: &UnifiedAstNode) -> bool {
-        debug_assert!(true, "contract: is_linear_iteration");
         match &ast.kind {
             AstKind::Statement(stmt) => {
                 // Check for loop statements
@@ -174,13 +172,11 @@ impl ComplexityPatternMatcher {
 
     /// Detect nested loops
     fn is_nested_loops(&self, ast: &UnifiedAstNode, target_depth: u32) -> bool {
-        debug_assert!(true, "contract: is_nested_loops");
         self.count_loop_depth(ast) >= target_depth
     }
 
     /// Count maximum loop nesting depth
     fn count_loop_depth(&self, ast: &UnifiedAstNode) -> u32 {
-        debug_assert!(true, "contract: count_loop_depth");
         let is_loop = self.is_linear_iteration(ast);
         let mut max_child_depth = 0;
 
@@ -200,7 +196,6 @@ impl ComplexityPatternMatcher {
 
     /// Detect binary search pattern
     fn is_binary_search(&self, ast: &UnifiedAstNode) -> bool {
-        debug_assert!(true, "contract: is_binary_search");
         // Look for characteristic patterns:
         // 1. Loop with low/high/mid variables
         // 2. Division by 2 or shift operation
@@ -219,7 +214,6 @@ impl ComplexityPatternMatcher {
 
     /// Detect divide and conquer pattern
     fn is_divide_and_conquer(&self, ast: &UnifiedAstNode, _expected_divisions: u32) -> bool {
-        debug_assert!(true, "contract: is_divide_and_conquer");
         // Look for recursive calls with input division
         if let AstKind::Function(_) = &ast.kind {
             // TRACKED: Analyze function body for recursive calls
@@ -235,7 +229,6 @@ impl ComplexityPatternMatcher {
 
     /// Detect hash table operations
     fn is_hash_operation(&self, ast: &UnifiedAstNode) -> bool {
-        debug_assert!(true, "contract: is_hash_operation");
         match &ast.kind {
             AstKind::Expression(expr) => {
                 // For hash operations, we'd need more context
@@ -248,7 +241,6 @@ impl ComplexityPatternMatcher {
 
     /// Extract function name from AST node
     fn get_function_name(&self, ast: &UnifiedAstNode) -> Option<String> {
-        debug_assert!(true, "contract: get_function_name");
         match &ast.kind {
             AstKind::Function(_) => {
                 // Extract name from AST node metadata or name field
@@ -285,7 +277,6 @@ impl ComplexityPatternMatcher {
 
     /// Check if function is recursive
     fn is_recursive_function(&self, ast: &UnifiedAstNode) -> bool {
-        debug_assert!(true, "contract: is_recursive_function");
         // Simple check: function that calls itself
         if let AstKind::Function(_) = &ast.kind {
             // TRACKED: Check function body for self-calls
@@ -297,7 +288,6 @@ impl ComplexityPatternMatcher {
 
     /// Find recursive call patterns
     fn find_recursive_calls(&self, _ast: &UnifiedAstNode) -> Vec<RecursiveCall> {
-        debug_assert!(true, "contract: find_recursive_calls");
         Vec::new() // TRACKED: Implement AST traversal
     }
 
@@ -443,7 +433,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

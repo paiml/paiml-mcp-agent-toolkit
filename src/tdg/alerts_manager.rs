@@ -30,7 +30,6 @@ impl AlertManager {
     /// Remove an alert rule
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn remove_rule(&self, rule_id: &str) -> Result<()> {
-        debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         let mut rules = self.rules.write().await;
         rules.remove(rule_id);
 
@@ -74,7 +73,6 @@ impl AlertManager {
 
     /// Evaluate all rules for a specific metric
     async fn evaluate_rules_for_metric(&self, metric_name: &str) -> Result<()> {
-        debug_assert!(!metric_name.is_empty(), "metric_name must not be empty");
         let rules = self.rules.read().await;
         let metrics = self.metric_values.read().await;
 
@@ -92,7 +90,6 @@ impl AlertManager {
 
     /// Evaluate a single rule
     async fn evaluate_rule(&self, rule: &AlertRule, metric: &MetricValue) -> Result<()> {
-        debug_assert!(true, "contract: evaluate_rule");
         let should_trigger = match rule.condition {
             AlertCondition::GreaterThan => metric.value > rule.threshold,
             AlertCondition::LessThan => metric.value < rule.threshold,
@@ -121,7 +118,6 @@ impl AlertManager {
 
     /// Trigger a new alert
     async fn trigger_alert(&self, rule: &AlertRule, metric_value: f64) -> Result<()> {
-        debug_assert!(true, "contract: trigger_alert");
         let mut active = self.active_alerts.write().await;
 
         // Check if alert already exists
@@ -195,7 +191,6 @@ impl AlertManager {
 
     /// Auto-resolve alerts when condition is no longer met
     async fn auto_resolve_alert(&self, rule_id: &str) -> Result<()> {
-        debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         let mut active = self.active_alerts.write().await;
 
         let alerts_to_resolve: Vec<String> = active
@@ -244,7 +239,6 @@ impl AlertManager {
         acknowledged_by: String,
         comment: Option<String>,
     ) -> Result<()> {
-        debug_assert!(!alert_id.is_empty(), "alert_id must not be empty");
         let mut active = self.active_alerts.write().await;
 
         if let Some(alert) = active.get_mut(alert_id) {
@@ -280,7 +274,6 @@ impl AlertManager {
     /// Silence an alert
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn silence_alert(&self, alert_id: &str, _duration: Duration) -> Result<()> {
-        debug_assert!(!alert_id.is_empty(), "alert_id must not be empty");
         let mut active = self.active_alerts.write().await;
 
         if let Some(alert) = active.get_mut(alert_id) {
@@ -293,7 +286,6 @@ impl AlertManager {
 
     /// Get last alert for a rule
     async fn get_last_alert_for_rule(&self, rule_id: &str) -> Option<Alert> {
-        debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         let history = self.alert_history.read().await;
         history.iter().rev().find(|a| a.rule_id == rule_id).cloned()
     }

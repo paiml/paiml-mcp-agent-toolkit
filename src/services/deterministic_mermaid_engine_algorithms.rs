@@ -9,7 +9,6 @@ impl DeterministicMermaidEngine {
         damping: f32,
         iterations: usize,
     ) -> BTreeMap<NodeIndex, f32> {
-        debug_assert!(true, "contract: compute_pagerank");
         let node_count = graph.node_count();
         if node_count == 0 {
             return BTreeMap::new();

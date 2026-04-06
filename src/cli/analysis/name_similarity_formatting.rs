@@ -16,13 +16,11 @@ pub fn format_output(
 
 /// Format output as JSON (cognitive complexity ≤2)
 fn format_json_output(result: &NameSimilarityResult) -> Result<String> {
-    debug_assert!(true, "contract: format_json_output");
     Ok(serde_json::to_string_pretty(result)?)
 }
 
 /// Format output for human reading (cognitive complexity ≤8)
 fn format_human_output(result: &NameSimilarityResult) -> Result<String> {
-    debug_assert!(true, "contract: format_human_output");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -52,7 +50,6 @@ fn format_human_output(result: &NameSimilarityResult) -> Result<String> {
 
 /// Format a single match entry for human output (cognitive complexity ≤6)
 fn format_human_match_entry(output: &mut String, index: usize, m: &NameMatch) -> Result<()> {
-    debug_assert!(true, "contract: format_human_match_entry");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -84,7 +81,6 @@ fn format_human_match_entry(output: &mut String, index: usize, m: &NameMatch) ->
 
 /// Format output as CSV (cognitive complexity ≤5)
 fn format_csv_output(result: &NameSimilarityResult) -> Result<String> {
-    debug_assert!(true, "contract: format_csv_output");
     use std::fmt::Write;
 
     let mut output = String::new();
@@ -102,7 +98,6 @@ fn format_csv_output(result: &NameSimilarityResult) -> Result<String> {
 
 /// Format a single match entry for CSV output (cognitive complexity ≤2)
 fn format_csv_match_entry(output: &mut String, m: &NameMatch) -> Result<()> {
-    debug_assert!(true, "contract: format_csv_match_entry");
     use std::fmt::Write;
 
     writeln!(
@@ -116,7 +111,6 @@ fn format_csv_match_entry(output: &mut String, m: &NameMatch) -> Result<()> {
 
 /// Format output as Markdown (cognitive complexity ≤7)
 fn format_markdown_output(result: &NameSimilarityResult) -> Result<String> {
-    debug_assert!(true, "contract: format_markdown_output");
     use std::fmt::Write;
 
     let mut output = String::new();
@@ -135,7 +129,6 @@ fn format_markdown_output(result: &NameSimilarityResult) -> Result<String> {
 
 /// Format Markdown table header (cognitive complexity ≤2)
 fn format_markdown_table_header(output: &mut String) -> Result<()> {
-    debug_assert!(true, "contract: format_markdown_table_header");
     use std::fmt::Write;
 
     writeln!(output, "## Matches\n")?;
@@ -153,7 +146,6 @@ fn format_markdown_table_header(output: &mut String) -> Result<()> {
 
 /// Format a single match entry for Markdown output (cognitive complexity ≤3)
 fn format_markdown_match_entry(output: &mut String, m: &NameMatch) -> Result<()> {
-    debug_assert!(true, "contract: format_markdown_match_entry");
     use std::fmt::Write;
 
     writeln!(

@@ -96,7 +96,6 @@ impl GraphMatrices {
         adjacency: &SimpleSparseMatrix,
         out_degrees: &[f64],
     ) -> SimpleSparseMatrix {
-        debug_assert!(true, "contract: normalize_columns");
         let n = adjacency.nrows;
         let mut result = SimpleSparseMatrix::new(n, n);
 
@@ -114,7 +113,6 @@ impl GraphMatrices {
     /// Compute graph Laplacian
     /// Complexity: 6 (simplified matrix operations)
     fn compute_laplacian(adjacency: &SimpleSparseMatrix) -> SimpleSparseMatrix {
-        debug_assert!(true, "contract: compute_laplacian");
         let n = adjacency.nrows;
         let mut result = SimpleSparseMatrix::new(n, n);
 

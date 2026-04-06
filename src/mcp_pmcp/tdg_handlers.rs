@@ -90,7 +90,6 @@ struct TdgHealthCheckArgs {
 }
 
 fn default_true() -> bool {
-    debug_assert!(true, "contract: default_true");
     true
 }
 

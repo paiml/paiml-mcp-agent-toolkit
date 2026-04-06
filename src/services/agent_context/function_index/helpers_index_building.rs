@@ -4,7 +4,6 @@
 /// Minimal parser — no full TOML dependency needed for one key.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn parse_workspace_siblings(content: &str) -> Vec<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
         let trimmed = line.trim();
         if let Some(rest) = trimmed.strip_prefix("siblings") {
@@ -57,7 +56,6 @@ pub(crate) fn build_corpus_entry(func: &FunctionEntry) -> String {
 /// Build name_index, file_index, and corpus from functions.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn build_indices(functions: &[FunctionEntry]) -> BuildIndicesResult {
-    debug_assert!(!functions.is_empty(), "functions must not be empty");
     build_indices_impl(functions, true)
 }
 
@@ -67,12 +65,10 @@ pub(crate) fn build_indices(functions: &[FunctionEntry]) -> BuildIndicesResult {
 /// of corpus string allocation for 90K functions.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn build_indices_without_corpus(functions: &[FunctionEntry]) -> BuildIndicesResult {
-    debug_assert!(!functions.is_empty(), "functions must not be empty");
     build_indices_impl(functions, false)
 }
 
 fn build_indices_impl(functions: &[FunctionEntry], include_corpus: bool) -> BuildIndicesResult {
-    debug_assert!(!functions.is_empty(), "functions must not be empty");
     // Estimate unique names ~60% of functions, unique files ~20% of functions
     let name_cap = functions.len() * 3 / 5;
     let file_cap = functions.len() / 5;

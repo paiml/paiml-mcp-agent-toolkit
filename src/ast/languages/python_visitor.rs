@@ -19,7 +19,6 @@ impl<'a> PythonTreeSitterVisitor<'a> {
     }
 
     fn add_node(&mut self, kind: AstKind) -> u32 {
-        debug_assert!(true, "contract: add_node");
         let mut node = UnifiedAstNode::new(kind, Language::Python);
 
         if let Some(parent) = self.current_parent {
@@ -30,7 +29,6 @@ impl<'a> PythonTreeSitterVisitor<'a> {
     }
 
     fn visit_node(&mut self, node: &tree_sitter::Node, parent: Option<u32>) {
-        debug_assert!(true, "contract: visit_node");
         let old_parent = self.current_parent;
         self.current_parent = parent;
 

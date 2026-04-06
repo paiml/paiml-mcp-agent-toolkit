@@ -95,7 +95,6 @@ pub trait Visualizable {
     /// Check if graph should use adjacency matrix fallback
     /// (for very dense graphs where force-directed is less effective)
     fn should_use_matrix_fallback(&self) -> bool {
-        debug_assert!(true, "contract: render_terminal");
         self.node_count() > 100
     }
 }

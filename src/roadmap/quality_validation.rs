@@ -5,7 +5,6 @@ impl TaskQualityGate {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(task_id: &str, config: QualityGateConfig) -> Self {
-        debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         let checks = vec![
             QualityCheck::Complexity(config.complexity_max),
             QualityCheck::NoSatd,
@@ -42,7 +41,6 @@ impl TaskQualityGate {
     }
 
     async fn check_complexity(&self, max: u32) -> Result<CheckResult> {
-        debug_assert!(true, "contract: check_complexity");
         // Run complexity analysis
         let output = std::process::Command::new("pmat")
             .args([
@@ -71,7 +69,6 @@ impl TaskQualityGate {
     }
 
     async fn check_coverage(&self, min: u8) -> Result<CheckResult> {
-        debug_assert!(true, "contract: check_coverage");
         // Run coverage check
         let output = std::process::Command::new("cargo")
             .args(["llvm-cov", "report", "--summary-only"])
@@ -97,7 +94,6 @@ impl TaskQualityGate {
     }
 
     async fn check_documentation(&self) -> Result<CheckResult> {
-        debug_assert!(true, "contract: check_documentation");
         // Check if documentation has been updated
         let output = std::process::Command::new("git")
             .args(["diff", "--name-only", "HEAD~1", "HEAD"])
@@ -124,7 +120,6 @@ impl TaskQualityGate {
     }
 
     async fn check_satd(&self) -> Result<CheckResult> {
-        debug_assert!(true, "contract: check_satd");
         // Run SATD check
         let output = std::process::Command::new("pmat")
             .args(["analyze", "satd", "--strict", "--format", "json"])
@@ -146,7 +141,6 @@ impl TaskQualityGate {
     }
 
     async fn check_lint(&self) -> Result<CheckResult> {
-        debug_assert!(true, "contract: check_lint");
         if !self.config.lint_compliance {
             return Ok(CheckResult {
                 check: QualityCheck::LintCompliance,
@@ -175,7 +169,6 @@ impl TaskQualityGate {
     }
 
     async fn check_roadmap_status(&self) -> Result<CheckResult> {
-        debug_assert!(true, "contract: check_roadmap_status");
         // Check if roadmap has been updated
         let output = std::process::Command::new("git")
             .args(["diff", "--name-only", "HEAD~1", "HEAD"])
@@ -201,7 +194,6 @@ impl TaskQualityGate {
 }
 
 fn parse_coverage_percentage(output: &str) -> Option<f64> {
-    debug_assert!(!output.is_empty(), "output must not be empty");
     // Look for pattern like "Coverage: 85.5%"
     for line in output.lines() {
         if line.contains("Coverage:") {

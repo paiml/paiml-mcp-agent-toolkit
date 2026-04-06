@@ -32,22 +32,18 @@ pub struct QualityConfig {
 }
 
 fn default_max_complexity() -> u32 {
-    debug_assert!(true, "contract: default_max_complexity");
     20
 }
 
 fn default_allow_satd() -> bool {
-    debug_assert!(true, "contract: default_allow_satd");
     false
 }
 
 fn default_require_docs() -> bool {
-    debug_assert!(true, "contract: default_require_docs");
     true
 }
 
 fn default_auto_format() -> bool {
-    debug_assert!(true, "contract: default_auto_format");
     true
 }
 

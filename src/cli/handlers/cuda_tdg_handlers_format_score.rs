@@ -1,5 +1,4 @@
 fn format_result(result: &CudaSimdTdgResult, config: &CudaTdgCommandConfig) -> Result<String> {
-    debug_assert!(true, "contract: format_result");
     match config.format {
         CudaTdgOutputFormat::Json => Ok(serde_json::to_string_pretty(result)?),
         CudaTdgOutputFormat::Sarif => Ok(format_sarif(result)?),
@@ -15,7 +14,6 @@ fn format_result(result: &CudaSimdTdgResult, config: &CudaTdgCommandConfig) -> R
 }
 
 fn format_analysis(result: &CudaSimdTdgResult, config: &CudaTdgCommandConfig) -> Result<String> {
-    debug_assert!(true, "contract: format_analysis");
     match config.format {
         CudaTdgOutputFormat::Json => Ok(serde_json::to_string_pretty(result)?),
         _ => {
@@ -58,7 +56,6 @@ fn format_analysis(result: &CudaSimdTdgResult, config: &CudaTdgCommandConfig) ->
 }
 
 fn format_score_summary(score: &PopperScore, config: &CudaTdgCommandConfig) -> Result<String> {
-    debug_assert!(true, "contract: format_score_summary");
     match config.format {
         CudaTdgOutputFormat::Json => Ok(serde_json::to_string_pretty(score)?),
         _ => Ok(format!(
@@ -75,7 +72,6 @@ fn format_score_summary(score: &PopperScore, config: &CudaTdgCommandConfig) -> R
 }
 
 fn format_score_breakdown(score: &PopperScore, config: &CudaTdgCommandConfig) -> Result<String> {
-    debug_assert!(true, "contract: format_score_breakdown");
     match config.format {
         CudaTdgOutputFormat::Json => Ok(serde_json::to_string_pretty(score)?),
         _ => Ok(build_score_breakdown_text(score)),
@@ -83,7 +79,6 @@ fn format_score_breakdown(score: &PopperScore, config: &CudaTdgCommandConfig) ->
 }
 
 fn build_score_breakdown_text(score: &PopperScore) -> String {
-    debug_assert!(true, "contract: build_score_breakdown_text");
     let mut output = String::new();
     output.push_str("100-Point Popper Falsification Score\n");
     output.push_str("====================================\n\n");
@@ -154,7 +149,6 @@ fn format_barrier_safety(
     result: &CudaSimdTdgResult,
     config: &CudaTdgCommandConfig,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_barrier_safety");
     match config.format {
         CudaTdgOutputFormat::Json => Ok(serde_json::to_string_pretty(&result.barrier_safety)?),
         _ => Ok(build_barrier_safety_text(result)),
@@ -162,7 +156,6 @@ fn format_barrier_safety(
 }
 
 fn build_barrier_safety_text(result: &CudaSimdTdgResult) -> String {
-    debug_assert!(true, "contract: build_barrier_safety_text");
     let mut output = String::new();
     output.push_str("Barrier Safety Analysis (PARITY-114)\n");
     output.push_str("====================================\n\n");

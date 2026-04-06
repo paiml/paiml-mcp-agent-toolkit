@@ -42,7 +42,6 @@ impl ProjectFileDiscovery {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn categorize_file(path: &Path) -> FileCategory {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         // Generated deep context reports - MUST EXCLUDE

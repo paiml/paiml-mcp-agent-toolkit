@@ -52,7 +52,6 @@ impl CircuitBreaker {
     }
 
     fn should_attempt_reset(&self) -> bool {
-        debug_assert!(true, "contract: should_attempt_reset");
         let last_failure = self.last_failure_time.load(Ordering::Relaxed);
         if last_failure == 0 {
             return true;
@@ -67,7 +66,6 @@ impl CircuitBreaker {
     }
 
     fn on_success(&self) {
-        debug_assert!(true, "contract: on_success");
         let current_state = *self.state.read();
 
         match current_state {
@@ -91,7 +89,6 @@ impl CircuitBreaker {
     }
 
     fn on_failure(&self) {
-        debug_assert!(true, "contract: on_failure");
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("internal error")
@@ -151,7 +148,6 @@ impl CircuitBreakerManager {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_or_create(&self, name: &str) -> Arc<CircuitBreaker> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.breakers
             .entry(name.to_string())
             .or_insert_with(|| Arc::new(CircuitBreaker::new(self.default_config.clone())))

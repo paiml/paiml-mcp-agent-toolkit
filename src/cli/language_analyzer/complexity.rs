@@ -33,7 +33,6 @@ impl BraceState {
     /// Process one line of source. Returns true when braces reach balance.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn process_line(&mut self, chars: &[char], handle_raw_strings: bool) -> bool {
-        debug_assert!(!chars.is_empty(), "chars must not be empty");
         let len = chars.len();
         let mut j = 0;
         while j < len {
@@ -56,7 +55,6 @@ impl BraceState {
 
     /// Advance through one character inside a literal (string, raw string, block comment).
     fn advance_literal(&mut self, chars: &[char], j: usize) -> usize {
-        debug_assert!(true, "contract: advance_literal");
         let len = chars.len();
         let ch = chars[j];
         if self.in_block_comment {
@@ -87,7 +85,6 @@ impl BraceState {
 
     /// Process one character in normal state. Returns next position.
     fn advance_normal(&mut self, chars: &[char], j: usize, handle_raw_strings: bool) -> usize {
-        debug_assert!(true, "contract: advance_normal");
         let len = chars.len();
         let ch = chars[j];
         // Line comment: skip to end
@@ -142,7 +139,6 @@ pub(crate) fn find_brace_balanced_end(
     start: usize,
     handle_raw_strings: bool,
 ) -> usize {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut state = BraceState::new();
     for (i, line) in lines.iter().enumerate().skip(start) {
         let chars: Vec<char> = line.chars().collect();
@@ -176,7 +172,6 @@ impl ComplexityVisitor {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn analyze_lines(&mut self, lines: &[&str]) {
-        debug_assert!(!lines.is_empty(), "lines must not be empty");
         self.lines = lines.len() as u16;
 
         for line in lines {
@@ -205,7 +200,6 @@ impl ComplexityVisitor {
     }
 
     fn is_control_flow(&self, line: &str) -> bool {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         line.contains("if ")
             || line.contains("while ")
             || line.contains("for ")

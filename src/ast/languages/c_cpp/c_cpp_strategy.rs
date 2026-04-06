@@ -33,7 +33,6 @@ impl CStrategy {
 
     #[cfg(feature = "c-ast")]
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut parser = tree_sitter::Parser::new();
         parser
             .set_language(&tree_sitter_c::LANGUAGE.into())
@@ -47,7 +46,6 @@ impl CStrategy {
     #[cfg(not(feature = "c-ast"))]
     #[allow(dead_code)]
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
-        debug_assert!(!_content.is_empty(), "_content must not be empty");
         Err(anyhow::anyhow!(
             "C AST parsing not available - compile with 'c-ast' feature"
         ))
@@ -55,7 +53,6 @@ impl CStrategy {
 
     #[cfg(feature = "c-ast")]
     fn convert_to_dag(&self, tree: &Tree, content: &str) -> AstDag {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut dag = AstDag::new();
         let root = tree.root_node();
         let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::C);
@@ -71,7 +68,6 @@ impl LanguageStrategy for CStrategy {
     }
 
     fn can_parse(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| matches!(ext, "c" | "h"))
@@ -79,21 +75,18 @@ impl LanguageStrategy for CStrategy {
 
     #[cfg(feature = "c-ast")]
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         let tree = self.parse_with_tree_sitter(content)?;
         Ok(self.convert_to_dag(&tree, content))
     }
 
     #[cfg(not(feature = "c-ast"))]
     async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Err(anyhow::anyhow!(
             "C AST parsing not available - compile with 'c-ast' feature"
         ))
     }
 
     fn extract_imports(&self, ast: &AstDag) -> Vec<String> {
-        debug_assert!(true, "contract: extract_imports");
         let mut imports = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -106,7 +99,6 @@ impl LanguageStrategy for CStrategy {
     }
 
     fn extract_functions(&self, ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_functions");
         let mut functions = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -119,7 +111,6 @@ impl LanguageStrategy for CStrategy {
     }
 
     fn extract_types(&self, ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_types");
         let mut types = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -132,7 +123,6 @@ impl LanguageStrategy for CStrategy {
     }
 
     fn calculate_complexity(&self, ast: &AstDag) -> (u32, u32) {
-        debug_assert!(true, "contract: calculate_complexity");
         let mut cyclomatic = 1;
         let mut cognitive = 0;
 
@@ -167,7 +157,6 @@ impl CppStrategy {
 
     #[cfg(feature = "cpp-ast")]
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut parser = tree_sitter::Parser::new();
         parser
             .set_language(&tree_sitter_cpp::LANGUAGE.into())
@@ -181,7 +170,6 @@ impl CppStrategy {
     #[cfg(not(feature = "cpp-ast"))]
     #[allow(dead_code)]
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
-        debug_assert!(!_content.is_empty(), "_content must not be empty");
         Err(anyhow::anyhow!(
             "C++ AST parsing not available - compile with 'cpp-ast' feature"
         ))
@@ -189,7 +177,6 @@ impl CppStrategy {
 
     #[cfg(feature = "cpp-ast")]
     fn convert_to_dag(&self, tree: &Tree, content: &str) -> AstDag {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut dag = AstDag::new();
         let root = tree.root_node();
         let mut visitor = CTreeSitterVisitor::new(&mut dag, content, Language::Cpp);
@@ -205,7 +192,6 @@ impl LanguageStrategy for CppStrategy {
     }
 
     fn can_parse(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| {
@@ -218,14 +204,12 @@ impl LanguageStrategy for CppStrategy {
 
     #[cfg(feature = "cpp-ast")]
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         let tree = self.parse_with_tree_sitter(content)?;
         Ok(self.convert_to_dag(&tree, content))
     }
 
     #[cfg(not(feature = "cpp-ast"))]
     async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Err(anyhow::anyhow!(
             "C++ AST parsing not available - compile with 'cpp-ast' feature"
         ))
@@ -233,22 +217,18 @@ impl LanguageStrategy for CppStrategy {
 
     // Delegate to C strategy since the AST structure is similar
     fn extract_imports(&self, ast: &AstDag) -> Vec<String> {
-        debug_assert!(true, "contract: extract_imports");
         CStrategy::new().extract_imports(ast)
     }
 
     fn extract_functions(&self, ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_functions");
         CStrategy::new().extract_functions(ast)
     }
 
     fn extract_types(&self, ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_types");
         CStrategy::new().extract_types(ast)
     }
 
     fn calculate_complexity(&self, ast: &AstDag) -> (u32, u32) {
-        debug_assert!(true, "contract: calculate_complexity");
         CStrategy::new().calculate_complexity(ast)
     }
 }

@@ -26,7 +26,6 @@ impl RuchyComplexityAnalyzer {
     /// Infer type from a literal token
     #[allow(dead_code)]
     fn infer_literal_type(&self, lit: &RuchyToken) -> RuchyType {
-        debug_assert!(true, "contract: infer_literal_type");
         match lit {
             RuchyToken::Integer(_) => RuchyType::Integer,
             RuchyToken::Float(_) => RuchyType::Float,
@@ -45,7 +44,6 @@ impl RuchyComplexityAnalyzer {
         left_type: &RuchyType,
         _right_type: &RuchyType,
     ) -> RuchyType {
-        debug_assert!(true, "contract: infer_binary_type");
         match op {
             RuchyToken::Plus | RuchyToken::Minus | RuchyToken::Star | RuchyToken::Slash => {
                 match left_type {
@@ -82,7 +80,6 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze pattern complexity for match expressions
     fn analyze_pattern_complexity(&mut self, pattern: &RuchyAst) {
-        debug_assert!(true, "contract: analyze_pattern_complexity");
         match pattern {
             RuchyAst::Identifier(name) => {
                 self.track_operand(name);
@@ -115,7 +112,6 @@ impl RuchyComplexityAnalyzer {
 
     /// Detect potential deadlocks in actor message flows
     fn detect_potential_deadlocks(&self) -> Vec<DeadlockWarning> {
-        debug_assert!(true, "contract: detect_potential_deadlocks");
         let mut warnings = Vec::new();
 
         // Simple cycle detection in message flows

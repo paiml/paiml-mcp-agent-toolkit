@@ -32,7 +32,6 @@ impl LuaStrategy {
 
     #[cfg(feature = "lua-ast")]
     fn parse_with_tree_sitter(&self, content: &str) -> Result<Tree> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut parser = TsParser::new();
         parser
             .set_language(&tree_sitter_lua::LANGUAGE.into())
@@ -51,14 +50,12 @@ impl LuaStrategy {
 
     #[cfg(feature = "lua-ast")]
     fn has_syntax_errors(tree: &Tree) -> bool {
-        debug_assert!(true, "contract: has_syntax_errors");
         let root = tree.root_node();
         Self::node_has_error(&root)
     }
 
     #[cfg(feature = "lua-ast")]
     fn node_has_error(node: &tree_sitter::Node) -> bool {
-        debug_assert!(true, "contract: node_has_error");
         if node.kind() == "ERROR" || node.is_error() || node.is_missing() {
             return true;
         }
@@ -75,7 +72,6 @@ impl LuaStrategy {
     #[cfg(not(feature = "lua-ast"))]
     #[allow(dead_code)]
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
-        debug_assert!(!_content.is_empty(), "_content must not be empty");
         Err(anyhow::anyhow!(
             "Lua AST parsing not available - compile with 'lua-ast' feature"
         ))
@@ -83,7 +79,6 @@ impl LuaStrategy {
 
     #[cfg(feature = "lua-ast")]
     fn convert_tree_to_dag(&self, tree: &Tree, content: &str) -> AstDag {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut dag = AstDag::new();
         let root = tree.root_node();
         let mut visitor = LuaTreeSitterVisitor::new(&mut dag, content);
@@ -99,7 +94,6 @@ impl LanguageStrategy for LuaStrategy {
     }
 
     fn can_parse(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| ext == "lua")
@@ -107,21 +101,18 @@ impl LanguageStrategy for LuaStrategy {
 
     #[cfg(feature = "lua-ast")]
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         let tree = self.parse_with_tree_sitter(content)?;
         Ok(self.convert_tree_to_dag(&tree, content))
     }
 
     #[cfg(not(feature = "lua-ast"))]
     async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Err(anyhow::anyhow!(
             "Lua AST parsing not available - compile with 'lua-ast' feature"
         ))
     }
 
     fn extract_imports(&self, ast: &AstDag) -> Vec<String> {
-        debug_assert!(true, "contract: extract_imports");
         let mut imports = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -134,7 +125,6 @@ impl LanguageStrategy for LuaStrategy {
     }
 
     fn extract_functions(&self, ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_functions");
         let mut functions = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -147,7 +137,6 @@ impl LanguageStrategy for LuaStrategy {
     }
 
     fn extract_types(&self, ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_types");
         let mut types = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -160,7 +149,6 @@ impl LanguageStrategy for LuaStrategy {
     }
 
     fn calculate_complexity(&self, ast: &AstDag) -> (u32, u32) {
-        debug_assert!(true, "contract: calculate_complexity");
         let mut cyclomatic = 1;
         let mut cognitive = 0;
 

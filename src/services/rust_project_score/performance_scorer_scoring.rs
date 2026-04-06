@@ -2,14 +2,12 @@
 // and custom harness scoring against Cargo.toml and GitHub Actions configurations.
 
 fn is_yaml_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.extension()
         .map(|ext| ext == "yml" || ext == "yaml")
         .unwrap_or(false)
 }
 
 fn has_benchmark_workflow(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !is_yaml_file(path) {
         return false;
     }
@@ -33,7 +31,6 @@ impl PerformanceScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         // Try cache first, fall back to filesystem
@@ -56,7 +53,6 @@ impl PerformanceScorer {
     /// Score CI workflow for benchmark baselines (3pts)
     /// Checks for .github/workflows with benchmark automation
     fn score_benchmark_ci(&self, project_path: &Path) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let workflows_dir = project_path.join(".github/workflows");
         if !workflows_dir.exists() {
             return Ok(0.0);
@@ -83,7 +79,6 @@ impl PerformanceScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         // Try cache first, fall back to filesystem
@@ -112,7 +107,6 @@ impl PerformanceScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(

@@ -335,7 +335,6 @@ impl SimpleContractService {
     }
 
     fn create_metadata(&self, base: &BaseAnalysisContract) -> AnalysisMetadata {
-        debug_assert!(true, "contract: create_metadata");
         AnalysisMetadata {
             path: base.path.display().to_string(),
             format: base.format,

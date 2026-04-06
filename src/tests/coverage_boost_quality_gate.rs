@@ -11,7 +11,6 @@ use crate::services::satd_detector::{DebtCategory, Severity, TechnicalDebt};
 use std::path::PathBuf;
 
 fn create_test_debt(severity: Severity, text: &str) -> TechnicalDebt {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     TechnicalDebt {
         file: PathBuf::from("test.rs"),
         line: 10,

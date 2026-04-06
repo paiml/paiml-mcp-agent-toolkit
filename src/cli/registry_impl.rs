@@ -27,7 +27,6 @@ impl CommandRegistry {
     /// Find a command by path (e.g., "analyze complexity")
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_command(&self, path: &str) -> Option<&CommandMetadata> {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         // First try exact match
         if let Some(cmd) = self.commands.get(path) {
             return Some(cmd);
@@ -65,7 +64,6 @@ impl CommandRegistry {
     /// Find commands by category
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_by_category(&self, category: &str) -> Vec<&CommandMetadata> {
-        debug_assert!(!category.is_empty(), "category must not be empty");
         self.commands
             .values()
             .filter(|cmd| cmd.category == category)
@@ -151,7 +149,6 @@ impl CommandRegistry {
     /// Deserialize from JSON
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
-        debug_assert!(!json.is_empty(), "json must not be empty");
         serde_json::from_str(json)
     }
 }
@@ -166,7 +163,6 @@ impl CommandMetadata {
     /// Find a subcommand by name
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_subcommand(&self, name: &str) -> Option<&CommandMetadata> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.subcommands
             .iter()
             .find(|sub| sub.name == name || sub.aliases.iter().any(|a| a == name))

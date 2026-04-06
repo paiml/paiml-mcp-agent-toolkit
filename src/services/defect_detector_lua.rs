@@ -14,7 +14,6 @@ impl LuaDefectDetector {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect(&self, content: &str, file_path: &Path) -> Vec<DefectPattern> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut defects = Vec::new();
         if self.should_exclude_file(file_path) {
             return defects;
@@ -29,7 +28,6 @@ impl LuaDefectDetector {
     }
 
     fn should_exclude_file(&self, file_path: &Path) -> bool {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let path_str = file_path.to_string_lossy();
         let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
         path_str.contains("/tests/")
@@ -46,8 +44,6 @@ impl LuaDefectDetector {
         file_path: &Path,
         defects: &mut Vec<DefectPattern>,
     ) {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let lua_keywords = [
             "if", "then", "else", "elseif", "end", "do", "while", "repeat", "until", "for", "in",
             "function", "return", "break", "goto", "not", "and", "or",
@@ -95,7 +91,6 @@ impl LuaDefectDetector {
     }
 
     fn detect_nil_unsafe(&self, content: &str, file_path: &Path, defects: &mut Vec<DefectPattern>) {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut instances = Vec::new();
         for (line_num, line) in content.lines().enumerate() {
             let trimmed = line.trim();
@@ -136,8 +131,6 @@ impl LuaDefectDetector {
         file_path: &Path,
         defects: &mut Vec<DefectPattern>,
     ) {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut instances = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
         for (line_num, line) in lines.iter().enumerate() {
@@ -176,8 +169,6 @@ impl LuaDefectDetector {
         file_path: &Path,
         defects: &mut Vec<DefectPattern>,
     ) {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut instances = Vec::new();
         for (line_num, line) in content.lines().enumerate() {
             let trimmed = line.trim();

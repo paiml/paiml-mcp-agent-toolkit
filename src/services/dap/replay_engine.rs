@@ -18,7 +18,6 @@ impl ReplayEngine {
     /// Create a new replay engine from a recording
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_recording(snapshots: Vec<ExecutionSnapshot>) -> Self {
-        debug_assert!(!snapshots.is_empty(), "snapshots must not be empty");
         Self {
             snapshots,
             current_position: 0,

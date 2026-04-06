@@ -7,7 +7,6 @@ impl CAstVisitor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Check if file is a header file
         let is_header = file_path.extension().map(|ext| ext == "h").unwrap_or(false);
 
@@ -22,7 +21,6 @@ impl CAstVisitor {
     /// Analyzes C source code and extracts AST items (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_c_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -38,7 +36,6 @@ impl CAstVisitor {
 
     /// Extracts function declarations (complexity ≤10)
     fn extract_function_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_function = false;
         let mut brace_depth = 0;
         let mut current_function_name = String::new();
@@ -117,7 +114,6 @@ impl CAstVisitor {
 
     /// Extracts struct declarations (complexity ≤10)
     fn extract_struct_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_struct = false;
         let mut brace_depth = 0;
         let mut struct_start_line = 0;
@@ -186,7 +182,6 @@ impl CAstVisitor {
 
     /// Extracts enum declarations (complexity ≤10)
     fn extract_enum_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -206,7 +201,6 @@ impl CAstVisitor {
 
     /// Extracts typedef declarations (complexity ≤10)
     fn extract_typedef_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -228,7 +222,6 @@ impl CAstVisitor {
     /// Extracts global variables (complexity ≤10)
     #[allow(clippy::cast_possible_truncation)]
     fn extract_global_variables(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_function = false;
         let mut brace_depth = 0;
 
@@ -279,7 +272,6 @@ impl CAstVisitor {
 
     /// Checks if a line is a function declaration (complexity ≤10)
     fn is_function_declaration(&self, line: &str) -> bool {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // Basic check: contains parentheses and is not a preprocessing directive
         if !line.contains("(") || line.starts_with("#") {
             return false;
@@ -306,7 +298,6 @@ impl CAstVisitor {
 
     /// Extracts function name from declaration line (complexity ≤10)
     fn extract_function_name(&self, line: &str) -> Result<String, String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // Simplified extraction - get text between return type and opening parenthesis
         let after_type = line
             .split_whitespace()
@@ -327,7 +318,6 @@ impl CAstVisitor {
 
     /// Extracts struct name from declaration line (complexity ≤10)
     fn extract_struct_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let words: Vec<&str> = line.split_whitespace().collect();
 
         // Find the word after "struct"
@@ -346,7 +336,6 @@ impl CAstVisitor {
 
     /// Extracts enum name from declaration line (complexity ≤10)
     fn extract_enum_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let words: Vec<&str> = line.split_whitespace().collect();
 
         // Find the word after "enum"
@@ -365,7 +354,6 @@ impl CAstVisitor {
 
     /// Extracts typedef name from declaration line (complexity ≤10)
     fn extract_typedef_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // For typedef, the name is typically the last token before the semicolon
         let before_semicolon = line.split(';').next().unwrap_or("");
         let words: Vec<&str> = before_semicolon.split_whitespace().collect();
@@ -380,7 +368,6 @@ impl CAstVisitor {
 
     /// Extracts variable name from declaration line (complexity ≤10)
     fn extract_variable_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // Remove type qualifiers
         let clean_line = line
             .trim()

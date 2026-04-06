@@ -7,7 +7,6 @@ pub async fn handle_spec_score(
     output: Option<&Path>,
     verbose: bool,
 ) -> anyhow::Result<()> {
-    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
     let parser = SpecParser::new();
     let spec = parser.parse_file(spec_path)?;
 
@@ -52,7 +51,6 @@ pub async fn handle_spec_comply(
     dry_run: bool,
     _format: SpecOutputFormat,
 ) -> anyhow::Result<()> {
-    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
     let parser = SpecParser::new();
     let spec = parser.parse_file(spec_path)?;
 
@@ -129,7 +127,6 @@ pub async fn handle_spec_create(
     epic: Option<&str>,
     output: Option<&Path>,
 ) -> anyhow::Result<()> {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     let slug = name.to_lowercase().replace(' ', "-");
     let output_dir = output
         .map(|p| p.to_path_buf())
@@ -275,7 +272,6 @@ pub async fn handle_spec_list(
     failing_only: bool,
     format: SpecOutputFormat,
 ) -> anyhow::Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let parser = SpecParser::new();
     let specs = parser.find_specs(path)?;
 
@@ -306,7 +302,6 @@ pub async fn handle_spec_list(
 }
 
 fn spec_display_name<'a>(path: &'a Path, title: &'a str) -> &'a str {
-    debug_assert!(true, "contract: spec_display_name");
     if title.is_empty() {
         path.file_stem()
             .and_then(|s| s.to_str())
@@ -321,7 +316,6 @@ fn print_spec_list(
     dir: &Path,
     format: SpecOutputFormat,
 ) -> anyhow::Result<()> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     match format {
         SpecOutputFormat::Text => {
             use crate::cli::colors as c;

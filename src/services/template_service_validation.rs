@@ -3,7 +3,6 @@
 // validate_parameters, validate_template, and all related helpers.
 
 fn parse_template_uri(uri: &str) -> Result<(&str, &str, &str), TemplateError> {
-    debug_assert!(!uri.is_empty(), "uri must not be empty");
     let parts: Vec<&str> = uri
         .strip_prefix("template://")
         .ok_or_else(|| TemplateError::InvalidUri {
@@ -31,7 +30,6 @@ fn build_template_prefix(category: Option<&str>, toolchain: Option<&str>) -> Str
 }
 
 fn extract_filename(category: &str) -> String {
-    debug_assert!(!category.is_empty(), "category must not be empty");
     match category {
         "makefile" => "Makefile".to_string(),
         "readme" => "README.md".to_string(),
@@ -44,7 +42,6 @@ fn validate_parameters(
     specs: &[crate::models::template::ParameterSpec],
     provided: &Map<String, serde_json::Value>,
 ) -> Result<(), TemplateError> {
-    debug_assert!(!specs.is_empty(), "specs must not be empty");
     // Collect all missing required params for a single helpful error
     let missing: Vec<_> = specs
         .iter()
@@ -90,7 +87,6 @@ fn validate_parameter_value(
     spec: &crate::models::template::ParameterSpec,
     provided: &Map<String, serde_json::Value>,
 ) -> Result<(), TemplateError> {
-    debug_assert!(true, "contract: validate_parameter_value");
     if let Some(value) = provided.get(&spec.name) {
         if let Some(pattern) = &spec.validation_pattern {
             validate_pattern_match(spec, pattern, value)?;
@@ -104,7 +100,6 @@ fn validate_pattern_match(
     pattern: &str,
     value: &serde_json::Value,
 ) -> Result<(), TemplateError> {
-    debug_assert!(true, "contract: validate_pattern_match");
     let regex = regex::Regex::new(pattern).map_err(|_| TemplateError::ValidationError {
         parameter: spec.name.clone(),
         reason: "invalid validation pattern".to_string(),
@@ -127,7 +122,6 @@ pub async fn validate_template<T: TemplateServerTrait>(
     uri: &str,
     parameters: &serde_json::Value,
 ) -> Result<ValidationResult, TemplateError> {
-    debug_assert!(!uri.is_empty(), "uri must not be empty");
     let metadata = get_template_metadata(server, uri).await?;
     let params_map = match extract_params_map(parameters) {
         Ok(map) => map,
@@ -148,7 +142,6 @@ async fn get_template_metadata<T: TemplateServerTrait>(
     server: Arc<T>,
     uri: &str,
 ) -> Result<crate::models::template::TemplateResource, TemplateError> {
-    debug_assert!(!uri.is_empty(), "uri must not be empty");
     server
         .get_template_metadata(uri)
         .await
@@ -161,7 +154,6 @@ async fn get_template_metadata<T: TemplateServerTrait>(
 fn extract_params_map(
     parameters: &serde_json::Value,
 ) -> Result<&Map<String, serde_json::Value>, ValidationResult> {
-    debug_assert!(true, "contract: extract_params_map");
     if let serde_json::Value::Object(map) = parameters {
         Ok(map)
     } else {
@@ -181,7 +173,6 @@ fn validate_required_parameters(
     params_map: &Map<String, serde_json::Value>,
     errors: &mut Vec<ValidationError>,
 ) {
-    debug_assert!(!param_specs.is_empty(), "param_specs must not be empty");
     for param in param_specs {
         if param.required && !params_map.contains_key(&param.name) {
             errors.push(ValidationError {
@@ -197,7 +188,6 @@ fn validate_parameter_values(
     params_map: &Map<String, serde_json::Value>,
     errors: &mut Vec<ValidationError>,
 ) {
-    debug_assert!(!param_specs.is_empty(), "param_specs must not be empty");
     for (key, value) in params_map {
         if let Some(param_spec) = param_specs.iter().find(|p| p.name == *key) {
             validate_parameter_pattern(param_spec, key, value, errors);
@@ -216,7 +206,6 @@ fn validate_parameter_pattern(
     value: &serde_json::Value,
     errors: &mut Vec<ValidationError>,
 ) {
-    debug_assert!(true, "contract: validate_parameter_pattern");
     if let Some(pattern) = &param_spec.validation_pattern {
         if let Ok(regex) = regex::Regex::new(pattern) {
             if let Some(str_val) = value.as_str() {

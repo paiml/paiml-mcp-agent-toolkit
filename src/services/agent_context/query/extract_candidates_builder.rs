@@ -12,7 +12,6 @@ pub(crate) fn build_extraction_groups(
     cluster_groups: &HashMap<String, Vec<usize>>,
     max_module_lines: usize,
 ) -> Vec<ExtractionGroup> {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut groups = Vec::new();
 
     // Process prefix groups
@@ -68,9 +67,6 @@ fn build_group(
     signal: &str,
     max_module_lines: usize,
 ) -> Option<ExtractionGroup> {
-    debug_assert!(!name.is_empty(), "name must not be empty");
-    debug_assert!(!signal.is_empty(), "signal must not be empty");
-    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut candidates: Vec<ExtractionCandidate> = indices
         .iter()
         .filter_map(|&i| results.get(i))

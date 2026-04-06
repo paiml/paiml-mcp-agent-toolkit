@@ -48,7 +48,6 @@ impl ClaimExtractor {
     /// Extract all claims from documentation text
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_claims(&self, documentation: &str) -> Vec<Claim> {
-        debug_assert!(!documentation.is_empty(), "documentation must not be empty");
         let mut claims = Vec::new();
         let mut in_code_block = false;
 
@@ -82,7 +81,6 @@ impl ClaimExtractor {
 
     /// Extract capability claim from a line of text
     fn extract_capability_claim(&self, line: &str, line_number: usize) -> Option<Claim> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // Check for "PMAT can" pattern
         if let Some(caps) = self.capability_patterns[0].captures(line) {
             let verb = caps.get(1)?.as_str();
@@ -141,7 +139,6 @@ impl ClaimExtractor {
 
     /// Extract entities (languages, capabilities) from claim text
     fn extract_entities(&self, text: &str) -> Vec<Entity> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         let mut entities = Vec::new();
 
         // Extract language entities

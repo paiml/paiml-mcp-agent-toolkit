@@ -5,7 +5,6 @@
 /// - `function name()` — global, lower confidence (may be called externally)
 /// - `function M.name()` / `M.name = function()` — exported if `return M` present
 fn analyze_lua_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>, HashSet<String>)> {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     let mut defined_functions = Vec::new();
     let mut called_functions = HashSet::new();
 
@@ -181,7 +180,6 @@ fn analyze_lua_files(files: &[std::path::PathBuf]) -> Result<(Vec<FunctionInfo>,
 
 /// Detect if a Lua file returns a module table (e.g., `return M`)
 fn detect_lua_module_return(content: &str) -> Option<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // Find last non-empty, non-comment line
     for line in content.lines().rev() {
         let trimmed = line.trim();
@@ -199,7 +197,6 @@ fn detect_lua_module_return(content: &str) -> Option<String> {
 
 /// Collect function calls from Lua source
 fn collect_lua_calls(content: &str, keywords: &HashSet<&str>, calls: &mut HashSet<String>) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
         let trimmed = line.trim();
         // Skip comments and function definitions

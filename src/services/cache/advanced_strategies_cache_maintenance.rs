@@ -8,7 +8,6 @@ where
     V: Clone + Send + Sync + 'static,
 {
     fn record_hit(&self, tier: CacheTier, _access_time: Duration) {
-        debug_assert!(true, "contract: record_hit");
         if let Some(tier_stats) = self.stats.read().tier_stats.get(&tier) {
             tier_stats.hits.fetch_add(1, Ordering::Relaxed);
             // Update average access time (simplified)
@@ -16,7 +15,6 @@ where
     }
 
     fn record_miss(&self) {
-        debug_assert!(true, "contract: record_miss");
         // Record miss for all tiers
         for tier_stats in self.stats.read().tier_stats.values() {
             tier_stats.misses.fetch_add(1, Ordering::Relaxed);
@@ -24,12 +22,10 @@ where
     }
 
     fn record_insert_time(&self, _insert_time: Duration) {
-        debug_assert!(true, "contract: record_insert_time");
         // Update insertion statistics
     }
 
     fn update_access_pattern(&self, key: &K) {
-        debug_assert!(true, "contract: update_access_pattern");
         let mut patterns = self.access_patterns.write();
         if let Some(pattern) = patterns.get_mut(key) {
             pattern.access_count += 1;
@@ -40,7 +36,6 @@ where
     }
 
     async fn cleanup_expired_entries(&self) -> Result<()> {
-        debug_assert!(true, "contract: cleanup_expired_entries");
         let now = Utc::now();
 
         // Clean L1
@@ -65,14 +60,12 @@ where
     }
 
     async fn optimize_cache_layout(&self) -> Result<()> {
-        debug_assert!(true, "contract: optimize_cache_layout");
         // Access pattern analysis and tier placement optimization
         // ML-based optimization algorithms execute here
         Ok(())
     }
 
     fn update_global_patterns(&self) {
-        debug_assert!(true, "contract: update_global_patterns");
         // Update global access pattern statistics
         let patterns = self.access_patterns.read();
         let mut stats = self.stats.write();

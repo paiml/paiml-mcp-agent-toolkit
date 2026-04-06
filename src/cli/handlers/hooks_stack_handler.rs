@@ -67,7 +67,6 @@ impl std::fmt::Display for HookState {
 /// Falls back to default list; each entry includes whether the repo
 /// directory (with a `.git` subdirectory) actually exists on disk.
 fn discover_stack_repos() -> Vec<StackRepo> {
-    debug_assert!(true, "contract: discover_stack_repos");
     let home = std::env::var("HOME").unwrap_or_default();
     let src_dir = PathBuf::from(&home).join("src");
 
@@ -87,7 +86,6 @@ fn discover_stack_repos() -> Vec<StackRepo> {
 
 /// Generate the standardized pre-commit hook shell script.
 fn generate_hook_content() -> String {
-    debug_assert!(true, "contract: generate_hook_content");
     format!(
         r#"#!/bin/sh
 {PMAT_STACK_MARKER}
@@ -116,11 +114,6 @@ fi
 
 /// Detect the state of a pre-commit hook in a given repository.
 fn detect_hook_state(repo_path: &PathBuf) -> HookState {
-    debug_assert!(
-        repo_path.exists(),
-        "repo_path must exist: {}",
-        repo_path.display()
-    );
     let hook_path = repo_path.join(".git/hooks/pre-commit");
     if !hook_path.exists() {
         return HookState::Missing;
@@ -273,7 +266,6 @@ pub async fn handle_hooks_status_stack(format: &OutputFormat) -> Result<()> {
 
 /// Print stack hook status as a table.
 fn print_status_table(repos: &[StackRepo]) {
-    debug_assert!(!repos.is_empty(), "repos must not be empty");
     println!("{}", c::header("Stack Hook Status"));
     println!();
     println!(
@@ -331,7 +323,6 @@ fn print_status_table(repos: &[StackRepo]) {
 
 /// Print stack hook status as JSON.
 fn print_status_json(repos: &[StackRepo]) {
-    debug_assert!(!repos.is_empty(), "repos must not be empty");
     let mut entries = Vec::new();
     for repo in repos {
         let (status, path_str) = if !repo.exists {
@@ -358,11 +349,6 @@ fn print_status_json(repos: &[StackRepo]) {
 
 /// Write hook content to disk atomically (temp + rename, CB-1334).
 fn write_hook(hook_path: &PathBuf, content: &str) -> Result<()> {
-    debug_assert!(
-        hook_path.exists(),
-        "hook_path must exist: {}",
-        hook_path.display()
-    );
     // Ensure the hooks directory exists
     if let Some(parent) = hook_path.parent() {
         std::fs::create_dir_all(parent)?;

@@ -99,7 +99,6 @@ lazy_static! {
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_generic_description(desc: &str) -> bool {
-    debug_assert!(!desc.is_empty(), "desc must not be empty");
     // Empty is generic
     if desc.is_empty() {
         return true;
@@ -133,7 +132,6 @@ pub fn is_generic_description(desc: &str) -> bool {
 
 /// Check if description is too short or matches a generic pattern
 fn is_too_short_or_matches_pattern(desc: &str) -> bool {
-    debug_assert!(!desc.is_empty(), "desc must not be empty");
     if desc.len() < 15 {
         return true;
     }
@@ -149,7 +147,6 @@ fn is_too_short_or_matches_pattern(desc: &str) -> bool {
 
 /// Check if more than 50% of words are lazy/generic words
 fn has_too_many_lazy_words(words: &[&str]) -> bool {
-    debug_assert!(!words.is_empty(), "words must not be empty");
     let lazy_count = words
         .iter()
         .filter(|w| LAZY_WORDS.contains(&w.to_lowercase().as_str()))
@@ -160,7 +157,6 @@ fn has_too_many_lazy_words(words: &[&str]) -> bool {
 
 /// Check if description has detail indicators like examples, defaults, constraints
 fn has_detail_indicators(desc: &str) -> bool {
-    debug_assert!(!desc.is_empty(), "desc must not be empty");
     desc.contains("(")      // Examples: "(default: ...)", "(e.g., ...)"
         || desc.contains("[")   // Constraints: "[required]"
         || desc.contains(":")   // Enumerations: "level: standard, high"
@@ -171,7 +167,6 @@ fn has_detail_indicators(desc: &str) -> bool {
 
 /// Check if description has low word uniqueness (repetitive)
 fn has_low_word_uniqueness(words: &[&str]) -> bool {
-    debug_assert!(!words.is_empty(), "words must not be empty");
     let lowercase_words: Vec<String> = words.iter().map(|w| w.to_lowercase()).collect();
     let unique_words: std::collections::HashSet<&String> = lowercase_words.iter().collect();
 
@@ -184,7 +179,6 @@ fn has_low_word_uniqueness(words: &[&str]) -> bool {
 /// Returns suggested improvements if a description is generic.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn suggest_improvements(desc: &str) -> Vec<String> {
-    debug_assert!(!desc.is_empty(), "desc must not be empty");
     let mut suggestions = Vec::new();
 
     if desc.len() < 15 {

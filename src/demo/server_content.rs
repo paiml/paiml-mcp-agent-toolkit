@@ -62,8 +62,6 @@ impl DemoContent {
         project_path: &std::path::Path,
         detected_language: &str,
     ) -> Self {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-        debug_assert!(!detected_language.is_empty(), "detected_language must not be empty");
         let recommendation_engine = RecommendationEngine::new();
 
         if let Ok(_detected_frameworks) =
@@ -82,7 +80,6 @@ impl DemoContent {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn with_polyglot_analysis(mut self, project_path: &std::path::Path) -> Self {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let polyglot_analyzer = PolyglotAnalyzer::new();
 
         if let Ok(analysis) = polyglot_analyzer.analyze_project(project_path).await {

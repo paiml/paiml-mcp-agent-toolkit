@@ -30,7 +30,6 @@ impl Analyzer for DefectAnalyzer {
     type Config = super::ProjectConfig;
 
     async fn analyze(&self, input: Self::Input, _config: Self::Config) -> Result<Self::Output> {
-        debug_assert!(true, "contract: analyze");
         // For now, return a basic defect report
         // In a complete implementation, this would delegate to actual defect analyzers
         let total_files_analyzed = self.count_analyzed_files(&input.project_path)?;
@@ -52,7 +51,6 @@ impl Analyzer for DefectAnalyzer {
 
 impl DefectAnalyzer {
     fn count_analyzed_files(&self, path: &Path) -> Result<usize> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut count = 0;
         if path.is_dir() {
             for entry in std::fs::read_dir(path)? {
@@ -106,7 +104,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

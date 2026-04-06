@@ -404,7 +404,6 @@ main "$@"
 // Helper functions for tests
 
 fn extract_percentage(line: &str) -> Option<f64> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     // Extract percentage value from lines like "Overall Health: 6833.3%"
     if let Some(percent_pos) = line.find('%') {
         let before_percent = &line[..percent_pos];
@@ -422,8 +421,6 @@ fn extract_percentage(line: &str) -> Option<f64> {
 }
 
 fn extract_file_section(output: &str, filename: &str) -> Option<String> {
-    debug_assert!(!output.is_empty(), "output must not be empty");
-    debug_assert!(!filename.is_empty(), "filename must not be empty");
     let lines: Vec<&str> = output.lines().collect();
     let mut start_idx = None;
 

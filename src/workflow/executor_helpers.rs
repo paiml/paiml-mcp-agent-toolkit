@@ -8,7 +8,6 @@ impl DefaultWorkflowExecutor {
         error: &WorkflowError,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
-        debug_assert!(true, "contract: handle_error");
         match handler {
             ErrorHandler::Skip => {
                 Ok(serde_json::json!({ "skipped": true, "error": error.to_string() }))
@@ -27,7 +26,6 @@ impl DefaultWorkflowExecutor {
     }
 
     fn calculate_backoff(&self, strategy: &BackoffStrategy, attempt: usize) -> Duration {
-        debug_assert!(true, "contract: calculate_backoff");
         match strategy {
             BackoffStrategy::Fixed { delay } => *delay,
             BackoffStrategy::Exponential {
@@ -49,7 +47,6 @@ impl DefaultWorkflowExecutor {
         expression: &str,
         context: &WorkflowContext,
     ) -> Result<bool, WorkflowError> {
-        debug_assert!(!expression.is_empty(), "expression must not be empty");
         // Simple expression evaluation
         // In production, would use a proper expression engine
 
@@ -83,7 +80,6 @@ impl DefaultWorkflowExecutor {
         path: &str,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         if path.starts_with("steps.") {
             let parts: Vec<&str> = path.splitn(3, '.').collect();
             if parts.len() >= 3 {

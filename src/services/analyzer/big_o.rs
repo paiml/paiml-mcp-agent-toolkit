@@ -32,7 +32,6 @@ impl Analyzer for BigOAnalyzer {
     type Config = super::ProjectConfig;
 
     async fn analyze(&self, input: Self::Input, _config: Self::Config) -> Result<Self::Output> {
-        debug_assert!(true, "contract: analyze");
         let analysis_config = crate::services::big_o_analyzer::BigOAnalysisConfig {
             project_path: input.project_path,
             include_patterns: vec![
@@ -55,7 +54,6 @@ impl Analyzer for BigOAnalyzer {
     }
 
     fn name(&self) -> &'static str {
-        debug_assert!(true, "contract: name");
         "big_o"
     }
 }
@@ -76,7 +74,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

@@ -33,11 +33,6 @@ macro_rules! try_enrich {
 }
 
 async fn apply_churn(results: &mut Vec<QueryResult>, project_path: &std::path::Path, quiet: bool) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     try_enrich!(
         results,
         quiet,
@@ -51,11 +46,6 @@ async fn apply_duplicates(
     project_path: &std::path::Path,
     quiet: bool,
 ) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     try_enrich!(
         results,
         quiet,
@@ -78,11 +68,6 @@ async fn apply_entropy(
 }
 
 async fn apply_faults(results: &mut Vec<QueryResult>, project_path: &std::path::Path, quiet: bool) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     try_enrich!(
         results,
         quiet,
@@ -98,11 +83,6 @@ async fn apply_coverage_enrichment(
     coverage_file: &Option<PathBuf>,
     uncovered_only: bool,
 ) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let cov_path = coverage_file.as_deref();
     try_enrich!(
         results,
@@ -177,11 +157,6 @@ fn fetch_git_history_results(
     index: &AgentContextIndex,
     quiet: bool,
 ) -> anyhow::Result<Option<(Vec<GitSearchResult>, Vec<CommitInfo>)>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     if !quiet {
         eprintln!("Searching git history...");
     }
@@ -217,11 +192,6 @@ fn search_git_history_profiled(
     _index: &AgentContextIndex,
     _quiet: bool,
 ) -> anyhow::Result<(Vec<GitSearchResult>, GitHistoryProfile, Vec<CommitInfo>)> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let total_start = Instant::now();
 
     // Phase 1: git log

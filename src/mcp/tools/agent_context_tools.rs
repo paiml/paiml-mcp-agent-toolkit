@@ -57,7 +57,6 @@ pub struct IndexStatsTool {
 
 /// Parse function ID in format "file_path::function_name"
 fn parse_function_id(function_id: &str) -> Result<(String, String), String> {
-    debug_assert!(!function_id.is_empty(), "function_id must not be empty");
     // Find the last "::" separator
     if let Some(pos) = function_id.rfind("::") {
         let file_path = function_id.get(..pos).unwrap_or_default();

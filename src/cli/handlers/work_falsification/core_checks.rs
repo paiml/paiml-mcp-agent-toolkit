@@ -11,11 +11,6 @@ pub(crate) fn test_manifest_integrity(
     project_path: &Path,
     manifest: &FileManifest,
 ) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Searching for missing files... ");
 
     let missing = manifest.verify_integrity(project_path);
@@ -35,11 +30,6 @@ pub(crate) fn test_manifest_integrity(
 
 /// Test for coverage gaming patterns
 pub(crate) fn test_coverage_gaming(project_path: &Path) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Scanning for gaming patterns... ");
 
     let detection_result = crate::services::gaming_detector::detect_coverage_gaming(project_path)?;
@@ -64,11 +54,6 @@ pub(crate) async fn test_differential_coverage(
     project_path: &Path,
     baseline_commit: &str,
 ) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Analyzing changed lines... ");
 
     // Get changed files since baseline
@@ -109,11 +94,6 @@ pub(crate) async fn test_absolute_coverage(
     project_path: &Path,
     threshold: f64,
 ) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Checking coverage threshold... ");
 
     // Try to read coverage from cached metrics
@@ -161,11 +141,6 @@ pub(crate) async fn test_tdg_regression(
     project_path: &Path,
     baseline_tdg: f64,
 ) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Checking TDG score... ");
 
     // Read current TDG score from cache
@@ -208,11 +183,6 @@ pub(crate) fn test_complexity_regression(
     project_path: &Path,
     max_complexity: u32,
 ) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Analyzing function complexity... ");
 
     // Run pmat complexity check
@@ -282,11 +252,6 @@ pub(crate) fn test_file_size_regression(
     project_path: &Path,
     max_lines: usize,
 ) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Checking file sizes... ");
 
     let mut large_files = Vec::new();
@@ -341,7 +306,6 @@ pub(crate) fn test_file_size_regression(
 
 /// Parse spec score from pmat output (format: "Score: XX/100")
 fn parse_spec_score(stdout: &str) -> Option<u32> {
-    debug_assert!(!stdout.is_empty(), "stdout must not be empty");
     let score_line = stdout.lines().find(|l| l.contains("Score:"))?;
     let score_str = score_line.split('/').next()?;
     score_str
@@ -354,7 +318,6 @@ fn parse_spec_score(stdout: &str) -> Option<u32> {
 
 /// Evaluate parsed spec score against threshold
 fn evaluate_spec_score(score: u32, min_score: u32) -> FalsificationResult {
-    debug_assert!(true, "contract: evaluate_spec_score");
     if score >= min_score {
         FalsificationResult::passed(format!("{}/100 >= {}/100", score, min_score))
     } else {
@@ -374,11 +337,6 @@ pub(crate) fn test_spec_quality(
     work_item_id: &str,
     min_score: u32,
 ) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Checking spec quality... ");
 
     // Look for spec file
@@ -425,11 +383,6 @@ pub(crate) fn test_roadmap_update(
     project_path: &Path,
     baseline_commit: &str,
 ) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Checking roadmap update... ");
 
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
@@ -475,11 +428,6 @@ pub(crate) fn test_roadmap_update(
 
 /// Test GitHub sync: all commits must be pushed
 pub(crate) fn test_github_sync(project_path: &Path) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Checking git status... ");
 
     // Check for unpushed commits

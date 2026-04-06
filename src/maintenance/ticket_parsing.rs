@@ -7,7 +7,6 @@
 /// - Time: O(1)
 /// - Cyclomatic: 3
 fn parse_header(line: &str) -> Result<(String, String)> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     if !line.starts_with("# TICKET-") {
         return Err(TicketError::ParseError("Invalid header format".into()));
     }
@@ -29,8 +28,6 @@ fn parse_header(line: &str) -> Result<(String, String)> {
 /// - Time: O(n) where n is number of lines
 /// - Cyclomatic: 3
 fn extract_metadata(lines: &[&str], key: &str) -> Result<String> {
-    debug_assert!(!key.is_empty(), "key must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     for line in lines {
         if line.starts_with(key) {
             let value = line
@@ -52,7 +49,6 @@ fn extract_metadata(lines: &[&str], key: &str) -> Result<String> {
 /// - Time: O(n) where n is number of lines
 /// - Cyclomatic: 4
 fn extract_section(lines: &[&str], header: &str) -> Result<String> {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut in_section = false;
     let mut content = String::new();
 
@@ -87,7 +83,6 @@ fn extract_section(lines: &[&str], header: &str) -> Result<String> {
 /// - Time: O(n) where n is number of lines
 /// - Cyclomatic: 4
 fn extract_checklist(lines: &[&str], header: &str) -> Result<Vec<String>> {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut in_section = false;
     let mut items = Vec::new();
 
@@ -126,7 +121,6 @@ fn extract_checklist(lines: &[&str], header: &str) -> Result<Vec<String>> {
 /// Strips non-ASCII characters (emojis) from status values.
 /// Example: "GREEN ✅" → "GREEN"
 fn parse_status(s: &str) -> Result<TicketStatus> {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     // Strip non-ASCII characters (emojis) and trim whitespace
     let clean_status: String = s
         .chars()
@@ -150,7 +144,6 @@ fn parse_status(s: &str) -> Result<TicketStatus> {
 /// - Time: O(1)
 /// - Cyclomatic: 4
 fn parse_priority(s: &str) -> Result<Priority> {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     match s.to_uppercase().as_str() {
         "P0" => Ok(Priority::P0),
         "P1" => Ok(Priority::P1),
@@ -165,7 +158,6 @@ fn parse_priority(s: &str) -> Result<Priority> {
 /// - Time: O(1)
 /// - Cyclomatic: 2
 fn parse_complexity(s: &str) -> Result<u8> {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     s.parse::<u8>()
         .map_err(|_| TicketError::ParseError(format!("Invalid complexity: {}", s)))
 }
@@ -176,7 +168,6 @@ fn parse_complexity(s: &str) -> Result<u8> {
 /// - Time: O(n) where n is number of dependencies
 /// - Cyclomatic: 2
 fn parse_dependencies(s: &str) -> Vec<String> {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     if s.to_lowercase() == "none" {
         return Vec::new();
     }
@@ -194,7 +185,6 @@ fn parse_dependencies(s: &str) -> Vec<String> {
 /// - Cyclomatic: 4
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn list_tickets(dir: &Path) -> Result<Vec<TicketFile>> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut tickets = Vec::new();
 
     for entry in std::fs::read_dir(dir)? {
@@ -223,7 +213,6 @@ pub fn list_tickets(dir: &Path) -> Result<Vec<TicketFile>> {
 /// - Cyclomatic: 1
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn ticket_exists(tickets_dir: &Path, ticket_id: &str) -> bool {
-    debug_assert!(tickets_dir.exists(), "tickets_dir must exist: {}", tickets_dir.display());
     let path = tickets_dir.join(format!("{}.md", ticket_id));
     path.exists()
 }

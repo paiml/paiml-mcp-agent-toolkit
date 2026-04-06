@@ -1,16 +1,13 @@
 impl MakefileRule for ShellInjectionRule {
     fn id(&self) -> &'static str {
-        debug_assert!(true, "contract: id");
         "security/shell-injection"
     }
 
     fn default_severity(&self) -> Severity {
-        debug_assert!(true, "contract: default_severity");
         Severity::Error
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
-        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
 
         // Check all recipe lines for unquoted variables
@@ -37,29 +34,24 @@ impl MakefileRule for ShellInjectionRule {
     }
 
     fn can_fix(&self) -> bool {
-        debug_assert!(true, "contract: can_fix");
         true
     }
 
     fn fix(&self, _ast: &mut MakefileAst, violation: &Violation) -> Option<String> {
-        debug_assert!(true, "contract: fix");
         violation.fix_hint.clone()
     }
 }
 
 impl MakefileRule for SensitiveDataRule {
     fn id(&self) -> &'static str {
-        debug_assert!(true, "contract: id");
         "security/sensitive-data"
     }
 
     fn default_severity(&self) -> Severity {
-        debug_assert!(true, "contract: default_severity");
         Severity::Error
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
-        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
 
         // Check variables for sensitive data
@@ -116,17 +108,14 @@ impl MakefileRule for SensitiveDataRule {
 
 impl MakefileRule for UnsafeCommandRule {
     fn id(&self) -> &'static str {
-        debug_assert!(true, "contract: id");
         "security/unsafe-command"
     }
 
     fn default_severity(&self) -> Severity {
-        debug_assert!(true, "contract: default_severity");
         Severity::Error
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
-        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
 
         for node in &ast.nodes {
@@ -151,17 +140,14 @@ impl MakefileRule for UnsafeCommandRule {
 
 impl MakefileRule for PrivilegeEscalationRule {
     fn id(&self) -> &'static str {
-        debug_assert!(true, "contract: id");
         "security/privilege-escalation"
     }
 
     fn default_severity(&self) -> Severity {
-        debug_assert!(true, "contract: default_severity");
         Severity::Error
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
-        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
 
         for node in &ast.nodes {

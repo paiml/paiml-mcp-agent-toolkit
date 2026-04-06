@@ -27,22 +27,18 @@ pub struct SimilarityAnalysisTool {
 }
 
 fn default_project_path() -> String {
-    debug_assert!(true, "contract: default_project_path");
     ".".to_string()
 }
 
 fn default_detection_type() -> String {
-    debug_assert!(true, "contract: default_detection_type");
     "all".to_string()
 }
 
 fn default_threshold() -> f64 {
-    debug_assert!(true, "contract: default_threshold");
     0.7
 }
 
 fn default_min_lines() -> usize {
-    debug_assert!(true, "contract: default_min_lines");
     6
 }
 
@@ -181,7 +177,6 @@ pub async fn find_refactoring_opportunities(params: Value) -> Result<Value> {
 
 /// Collect files from project directory
 async fn collect_project_files(project_path: &PathBuf) -> Result<Vec<(PathBuf, String)>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use walkdir::WalkDir;
     
     let mut files = Vec::new();
@@ -204,12 +199,10 @@ async fn collect_project_files(project_path: &PathBuf) -> Result<Vec<(PathBuf, S
 }
 
 fn is_source_file(path: &std::path::Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     !has_excluded_directory(path) && has_source_extension(path)
 }
 
 fn has_excluded_directory(path: &std::path::Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     for component in path.components() {
         if let std::path::Component::Normal(name) = component {
             if is_excluded_directory_name(name) {
@@ -221,7 +214,6 @@ fn has_excluded_directory(path: &std::path::Path) -> bool {
 }
 
 fn is_excluded_directory_name(name: &std::ffi::OsStr) -> bool {
-    debug_assert!(true, "contract: is_excluded_directory_name");
     if let Some(name_str) = name.to_str() {
         name_str.starts_with('.') ||
         name_str == "target" ||
@@ -234,7 +226,6 @@ fn is_excluded_directory_name(name: &std::ffi::OsStr) -> bool {
 }
 
 fn has_source_extension(path: &std::path::Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(ext) = path.extension() {
         matches!(
             ext.to_str(),
@@ -286,14 +277,12 @@ mod tests {
         let file = temp_dir.path().join("entropy_test.rs");
         fs::write(&file, r#"
 fn repetitive() {
-    debug_assert!(true, "contract: repetitive");
     if x { y }
     if x { y }
     if x { y }
 }
 
 fn complex() {
-    debug_assert!(true, "contract: complex");
     match x {
         A(a) => process(a)?,
         B { f1, f2 } => handle(f1, f2),
@@ -321,7 +310,6 @@ fn complex() {
         let file1 = temp_dir.path().join("pattern1.rs");
         fs::write(&file1, r#"
 fn validate_email(email: &str) -> bool {
-    debug_assert!(!email.is_empty(), "email must not be empty");
     if email.is_empty() { return false; }
     if !email.contains('@') { return false; }
     true
@@ -331,7 +319,6 @@ fn validate_email(email: &str) -> bool {
         let file2 = temp_dir.path().join("pattern2.rs");
         fs::write(&file2, r#"
 fn validate_phone(phone: &str) -> bool {
-    debug_assert!(!phone.is_empty(), "phone must not be empty");
     if phone.is_empty() { return false; }
     if phone.len() < 10 { return false; }
     true

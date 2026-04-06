@@ -2,7 +2,6 @@
 // Included from file_classifier.rs - do NOT add `use` imports or `#!` attributes here.
 
 fn parse_vmrss_kb_f64(status: &str) -> Option<f64> {
-    debug_assert!(!status.is_empty(), "status must not be empty");
     status
         .lines()
         .find(|line| line.starts_with("VmRSS:"))
@@ -41,7 +40,6 @@ impl DebugReporter {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn record_decision(&mut self, file: &Path, decision: &ParseDecision) {
-        debug_assert!(file.exists(), "file must exist: {}", file.display());
         let event = DebugEvent {
             timestamp_ms: self.start_time.elapsed().as_millis() as u64,
             file: file.to_path_buf(),
@@ -60,7 +58,6 @@ impl DebugReporter {
         parse_time: std::time::Duration,
         error: Option<String>,
     ) {
-        debug_assert!(file.exists(), "file must exist: {}", file.display());
         let memory_usage = self.get_memory_usage_mb();
         if let Some(event) = self.events.iter_mut().rev().find(|e| e.file == file) {
             event.parse_time_ms = Some(parse_time.as_millis() as u64);
@@ -120,7 +117,6 @@ impl DebugReporter {
     }
 
     fn get_memory_usage_mb(&self) -> f64 {
-        debug_assert!(true, "contract: get_memory_usage_mb");
         #[cfg(target_os = "linux")]
         {
             if let Ok(status) = std::fs::read_to_string("/proc/self/status") {

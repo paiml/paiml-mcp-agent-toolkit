@@ -4,7 +4,6 @@
 #[async_trait::async_trait]
 impl OlapAnalytics for TruenoOlapAnalytics {
     async fn store_batch(&self, scores: &[TdgScore]) -> Result<usize> {
-        debug_assert!(!scores.is_empty(), "scores must not be empty");
         if scores.is_empty() {
             return Ok(0);
         }
@@ -23,8 +22,6 @@ impl OlapAnalytics for TruenoOlapAnalytics {
     }
 
     async fn query_top_k(&self, k: usize, order_by: &str) -> Result<Vec<TdgScore>> {
-        debug_assert!(!order_by.is_empty(), "order_by must not be empty");
-        debug_assert!(k > 0, "k must be positive");
         // Use trueno-db SQL Top-K optimization (ORDER BY + LIMIT)
         let query = format!(
             "SELECT * FROM tdg_scores ORDER BY {} DESC LIMIT {}",
@@ -45,7 +42,6 @@ impl OlapAnalytics for TruenoOlapAnalytics {
     }
 
     async fn aggregate(&self, operation: AggOp, column: &str) -> Result<f64> {
-        debug_assert!(!column.is_empty(), "column must not be empty");
         // Use trueno-db SIMD/GPU-accelerated aggregation
         let op_str = match operation {
             AggOp::Sum => "SUM",
@@ -92,7 +88,6 @@ impl OlapAnalytics for TruenoOlapAnalytics {
         language: Language,
         limit: Option<usize>,
     ) -> Result<Vec<TdgScore>> {
-        debug_assert!(true, "contract: query_by_language");
         // Use SQL WHERE filtering
         let lang_str = format!("{:?}", language);
         let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
@@ -113,7 +108,6 @@ impl OlapAnalytics for TruenoOlapAnalytics {
     }
 
     async fn count(&self) -> Result<usize> {
-        debug_assert!(true, "contract: count");
         let storage = self
             .storage
             .lock()
@@ -125,7 +119,6 @@ impl OlapAnalytics for TruenoOlapAnalytics {
     }
 
     async fn clear(&self) -> Result<()> {
-        debug_assert!(true, "contract: clear");
         let mut storage = self
             .storage
             .lock()

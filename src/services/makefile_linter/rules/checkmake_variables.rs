@@ -9,12 +9,10 @@ impl Default for UndefinedVariableRule {
 
 impl MakefileRule for UndefinedVariableRule {
     fn id(&self) -> &'static str {
-        debug_assert!(true, "contract: id");
         "undefinedvariable"
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
-        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
         let mut defined_vars = HashSet::new();
 
@@ -81,7 +79,6 @@ fn check_undefined_in_text(
     violations: &mut Vec<Violation>,
     span: SourceSpan,
 ) {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     let scanner = VariableScanner::new(text);
 
     for var_ref in scanner {
@@ -101,7 +98,6 @@ impl<'a> VariableScanner<'a> {
     }
 
     fn find_next_dollar(&mut self) -> Option<usize> {
-        debug_assert!(true, "contract: find_next_dollar");
         while self.position < self.bytes.len() {
             if self.bytes[self.position] == b'$' {
                 return Some(self.position);
@@ -112,7 +108,6 @@ impl<'a> VariableScanner<'a> {
     }
 
     fn parse_parenthesized_var(&mut self, start: usize) -> Option<VariableRef> {
-        debug_assert!(true, "contract: parse_parenthesized_var");
         let content_start = start + 2;
         if content_start >= self.text.len() {
             return None;
@@ -137,7 +132,6 @@ impl<'a> VariableScanner<'a> {
     }
 
     fn parse_braced_var(&mut self, start: usize) -> Option<VariableRef> {
-        debug_assert!(true, "contract: parse_braced_var");
         let content_start = start + 2;
         if content_start >= self.text.len() {
             return None;
@@ -161,7 +155,6 @@ impl<'a> VariableScanner<'a> {
     }
 
     fn parse_single_char_var(&mut self, start: usize) -> Option<VariableRef> {
-        debug_assert!(true, "contract: parse_single_char_var");
         if start + 1 >= self.bytes.len() {
             return None;
         }
@@ -190,7 +183,6 @@ impl Iterator for VariableScanner<'_> {
     type Item = VariableRef;
 
     fn next(&mut self) -> Option<Self::Item> {
-        debug_assert!(true, "contract: next");
         loop {
             let dollar_pos = self.find_next_dollar()?;
 
@@ -223,7 +215,6 @@ impl Iterator for VariableScanner<'_> {
 
 /// Extracts variable name from default value syntax ${VAR:-default}
 fn extract_from_default_value(var_content: &str) -> Option<String> {
-    debug_assert!(!var_content.is_empty(), "var_content must not be empty");
     if var_content.contains(":-") {
         if let Some(pos) = var_content.find(":-") {
             return Some(
@@ -240,7 +231,6 @@ fn extract_from_default_value(var_content: &str) -> Option<String> {
 
 /// Extracts variable name from alternative value syntax ${VAR:+alt}
 fn extract_from_alternative_value(var_content: &str) -> Option<String> {
-    debug_assert!(!var_content.is_empty(), "var_content must not be empty");
     if var_content.contains(":+") {
         if let Some(pos) = var_content.find(":+") {
             return Some(
@@ -257,7 +247,6 @@ fn extract_from_alternative_value(var_content: &str) -> Option<String> {
 
 /// Extracts variable name from pattern substitution like $(VAR:old=new)
 fn extract_from_pattern_substitution(var_content: &str) -> Option<String> {
-    debug_assert!(!var_content.is_empty(), "var_content must not be empty");
     if let Some(colon_pos) = var_content.find(':') {
         // But not if it's part of a shell command with spaces
         let before_colon = var_content.get(..colon_pos).unwrap_or_default();
@@ -270,19 +259,16 @@ fn extract_from_pattern_substitution(var_content: &str) -> Option<String> {
 
 /// Checks if text contains shell command indicators
 fn contains_shell_indicators(text: &str) -> bool {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     text.contains(' ') || text.contains('|') || text.contains('{')
 }
 
 /// Checks if content contains shell operators that should skip validation
 fn contains_shell_operators(var_content: &str) -> bool {
-    debug_assert!(!var_content.is_empty(), "var_content must not be empty");
     var_content.contains('|') || var_content.contains('>') || var_content.contains('<')
 }
 
 /// Extract variable name from a reference that might contain modifiers
 fn extract_var_name(var_content: &str) -> String {
-    debug_assert!(!var_content.is_empty(), "var_content must not be empty");
     // Handle default value syntax ${VAR:-default}
     if let Some(var_name) = extract_from_default_value(var_content) {
         return var_name;
@@ -308,7 +294,6 @@ fn extract_var_name(var_content: &str) -> String {
 
 /// Check if a variable reference should be validated
 fn should_check_variable(var_ref: &VariableRef) -> bool {
-    debug_assert!(true, "contract: should_check_variable");
     // Skip empty names (likely shell commands)
     if var_ref.name.is_empty() {
         return false;
@@ -338,7 +323,6 @@ fn should_check_variable(var_ref: &VariableRef) -> bool {
 }
 
 fn create_undefined_violation(var_name: &str, span: SourceSpan) -> Violation {
-    debug_assert!(!var_name.is_empty(), "var_name must not be empty");
     Violation {
         rule: "undefinedvariable".to_string(),
         severity: Severity::Warning,
@@ -349,12 +333,10 @@ fn create_undefined_violation(var_name: &str, span: SourceSpan) -> Violation {
 }
 
 fn is_automatic_var(var: &str) -> bool {
-    debug_assert!(!var.is_empty(), "var must not be empty");
     matches!(var, "@" | "<" | "^" | "?" | "*" | "%" | "+" | "|" | "$")
 }
 
 fn is_function_call(text: &str) -> bool {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     const FUNCTION_PREFIXES: &[&str] = &[
         "shell ",
         "wildcard ",

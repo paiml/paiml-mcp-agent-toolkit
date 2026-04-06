@@ -56,7 +56,6 @@ impl DeadCodeAnalyzer {
     #[inline]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&mut self, dag: &AstDag) -> DeadCodeReport {
-        debug_assert!(!dag.nodes.is_empty(), "AST DAG must have at least one node");
         // Phase 1: Build reference graph from AST
         self.build_reference_graph(dag);
 

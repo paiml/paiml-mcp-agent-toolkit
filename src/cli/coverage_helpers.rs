@@ -33,11 +33,6 @@ pub async fn get_changed_files_for_coverage(
     base_branch: &str,
     target_branch: Option<&str>,
 ) -> Result<Vec<(PathBuf, String)>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     eprintln!("🔍 Getting changed files...");
     eprintln!("📍 Project: {}", project_path.display());
     eprintln!("🔄 Base branch: {base_branch}");
@@ -118,7 +113,6 @@ pub async fn analyze_incremental_coverage(
 /// Check coverage threshold
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn check_coverage_threshold(coverage_data: &CoverageUpdate, threshold: f64) -> Result<()> {
-    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let coverage = coverage_data.delta_coverage.percentage;
 
     eprintln!(
@@ -143,7 +137,6 @@ pub fn format_coverage_summary(
     base_branch: &str,
     target_branch: &Option<String>,
 ) -> Result<String> {
-    debug_assert!(!base_branch.is_empty(), "base_branch must not be empty");
     let mut output = String::new();
 
     writeln!(&mut output, "# Incremental Coverage Summary\n")?;
@@ -197,7 +190,6 @@ pub fn format_coverage_markdown(coverage_data: &CoverageUpdate, detailed: bool) 
 
 /// Write coverage summary section
 fn write_coverage_summary(output: &mut String, coverage_data: &CoverageUpdate) -> Result<()> {
-    debug_assert!(true, "contract: write_coverage_summary");
     writeln!(output, "## Summary\n")?;
     writeln!(
         output,
@@ -216,7 +208,6 @@ fn write_coverage_summary(output: &mut String, coverage_data: &CoverageUpdate) -
 
 /// Write detailed file coverage section
 fn write_file_details(output: &mut String, coverage_data: &CoverageUpdate) -> Result<()> {
-    debug_assert!(true, "contract: write_file_details");
     if coverage_data.file_coverage.is_empty() {
         return Ok(());
     }
@@ -236,7 +227,6 @@ fn write_single_file_coverage(
     file_id: &crate::services::incremental_coverage_analyzer::FileId,
     file_cov: &crate::services::incremental_coverage_analyzer::FileCoverage,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_single_file_coverage");
     writeln!(output, "### {}\n", file_id.path.display())?;
     writeln!(output, "- Line Coverage: {:.1}%", file_cov.line_coverage)?;
     writeln!(
@@ -287,7 +277,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

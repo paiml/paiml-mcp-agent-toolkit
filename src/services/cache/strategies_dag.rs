@@ -50,12 +50,10 @@ impl CacheStrategy for DagCacheStrategy {
     type Value = DependencyGraph;
 
     fn cache_key(&self, (path, dag_type): &(PathBuf, DagType)) -> String {
-        debug_assert!(true, "contract: cache_key");
         format!("dag:{}:{:?}", path.display(), dag_type)
     }
 
     fn validate(&self, (path, _): &(PathBuf, DagType), cached: &DependencyGraph) -> bool {
-        debug_assert!(true, "contract: validate");
         if !path.exists() {
             return false;
         }
@@ -79,7 +77,6 @@ impl CacheStrategy for DagCacheStrategy {
 
 /// Check if a file was modified within the last 2 seconds
 fn was_recently_modified(file_path: &PathBuf) -> bool {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     fs::metadata(file_path)
         .ok()
         .and_then(|m| m.modified().ok())

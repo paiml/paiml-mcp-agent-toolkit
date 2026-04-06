@@ -4,7 +4,6 @@
 impl DogfoodingEngine {
     /// Get churn metrics using the existing git analysis service
     fn get_churn_metrics(&self, root: &Path) -> Result<ChurnMetrics, TemplateError> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let churn_analysis = match GitAnalysisService::analyze_code_churn(root, 30) {
             Ok(analysis) => analysis,
             Err(_) => {
@@ -47,8 +46,6 @@ impl DogfoodingEngine {
         root: &Path,
         date: &str,
     ) -> Result<String, TemplateError> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
-        debug_assert!(!date.is_empty(), "date must not be empty");
         let mut analysis = String::new();
 
         analysis.push_str(&format!("# Code Churn Analysis - {date}\n\n"));
@@ -93,7 +90,6 @@ impl DogfoodingEngine {
     /// Generate server info markdown
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_server_info(&self, date: &str) -> Result<String, TemplateError> {
-        debug_assert!(!date.is_empty(), "date must not be empty");
         let mut info = String::new();
 
         info.push_str(&format!("# Server Information - {date}\n\n"));
@@ -126,7 +122,6 @@ impl DogfoodingEngine {
 
     /// Analyze all files in the AST forest
     fn analyze_all_files(&self, forest: &AstForest) -> Result<Vec<FileContext>, TemplateError> {
-        debug_assert!(true, "contract: analyze_all_files");
         let mut contexts = Vec::new();
 
         for (module_path, _module) in forest.files() {
@@ -152,7 +147,6 @@ impl DogfoodingEngine {
         path: &Path,
         ast: &crate::services::unified_ast_engine::FileAst,
     ) -> Result<FileContext, TemplateError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::unified_ast_engine::FileAst;
 
         match ast {
@@ -242,7 +236,6 @@ impl DogfoodingEngine {
 
     /// Compute DAG metrics
     async fn compute_dag_metrics(&self, root: &Path) -> Result<DagMetrics, TemplateError> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let ast_forest = self.ast_engine.parse_project(root).await?;
         let dependency_graph = self.ast_engine.extract_dependencies(&ast_forest)?;
 
@@ -281,7 +274,6 @@ impl DogfoodingEngine {
         churn_metrics: &ChurnMetrics,
         dag_metrics: &DagMetrics,
     ) -> String {
-        debug_assert!(true, "contract: compute_metrics_hash");
         use blake3::Hasher;
 
         let mut hasher = Hasher::new();

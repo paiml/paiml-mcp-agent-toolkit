@@ -12,7 +12,6 @@ async fn handle_migrate(
     no_backup: bool,
     force: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::colors as c;
 
     let target = target_version.unwrap_or(PMAT_VERSION);
@@ -89,7 +88,6 @@ async fn handle_diff(
     to_version: Option<&str>,
     breaking_only: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::colors as c;
 
     let config = load_or_create_project_config(project_path)?;
@@ -142,7 +140,6 @@ async fn handle_update(
     update_config: bool,
     dry_run: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::colors as c;
 
     let update_both = !update_hooks && !update_config;

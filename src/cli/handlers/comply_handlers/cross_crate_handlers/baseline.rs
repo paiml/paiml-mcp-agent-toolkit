@@ -58,11 +58,6 @@ impl CrossCrateBaseline {
     }
 
     pub(super) fn save(&self, workspace_path: &Path) -> Result<()> {
-        debug_assert!(
-            workspace_path.exists(),
-            "workspace_path must exist: {}",
-            workspace_path.display()
-        );
         let pmat_dir = workspace_path.join(".pmat");
         std::fs::create_dir_all(&pmat_dir)?;
         let baseline_path = pmat_dir.join("cross-crate-baseline.json");
@@ -72,11 +67,6 @@ impl CrossCrateBaseline {
     }
 
     pub(super) fn load(workspace_path: &Path) -> Option<Self> {
-        debug_assert!(
-            workspace_path.exists(),
-            "workspace_path must exist: {}",
-            workspace_path.display()
-        );
         let baseline_path = workspace_path
             .join(".pmat")
             .join("cross-crate-baseline.json");

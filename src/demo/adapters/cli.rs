@@ -63,7 +63,6 @@ impl CliDemoAdapter {
     }
 
     async fn execute_context_analysis(&self, path: &str) -> Result<Value, CliDemoError> {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         use crate::services::deep_context::{AnalysisType, DeepContextAnalyzer, DeepContextConfig};
         use std::path::PathBuf;
 
@@ -124,7 +123,6 @@ impl CliDemoAdapter {
     }
 
     fn generate_cache_key(&self, path: &str) -> String {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
@@ -145,7 +143,6 @@ impl CliDemoAdapter {
         _execution_time_ms: u64,
         result: &Value,
     ) -> CliApiTrace {
-        debug_assert!(true, "contract: create_api_trace");
         let command_line = format!(
             "paiml-mcp-agent-toolkit {} {}",
             request.command,
@@ -192,7 +189,6 @@ impl DemoProtocol for CliDemoAdapter {
     type Error = CliDemoError;
 
     async fn decode_request(&self, raw: &[u8]) -> Result<Self::Request, Self::Error> {
-        debug_assert!(!raw.is_empty(), "raw must not be empty");
         let value: Value = serde_json::from_slice(raw)?;
 
         // Extract CLI request from JSON
@@ -216,13 +212,11 @@ impl DemoProtocol for CliDemoAdapter {
     }
 
     async fn encode_response(&self, resp: Self::Response) -> Result<Vec<u8>, Self::Error> {
-        debug_assert!(true, "contract: encode_response");
         let json = serde_json::to_vec_pretty(&resp)?;
         Ok(json)
     }
 
     async fn get_protocol_metadata(&self) -> ProtocolMetadata {
-        debug_assert!(true, "contract: get_protocol_metadata");
         ProtocolMetadata {
             name: "cli",
             version: "1.0.0",
@@ -293,7 +287,6 @@ impl DemoProtocol for CliDemoAdapter {
     }
 
     async fn execute_demo(&self, request: Self::Request) -> Result<Self::Response, Self::Error> {
-        debug_assert!(true, "contract: execute_demo");
         let start_time = std::time::Instant::now();
 
         // Execute the analysis
@@ -422,7 +415,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

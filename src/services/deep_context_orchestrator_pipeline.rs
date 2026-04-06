@@ -88,7 +88,6 @@ impl DeepContextOrchestrator {
 
     /// Discover files based on include/exclude patterns
     async fn discover_files(&self, config: &DeepContextConfig) -> Result<Vec<PathBuf>> {
-        debug_assert!(true, "contract: discover_files");
         use walkdir::WalkDir;
 
         // Default source file extensions
@@ -146,7 +145,6 @@ impl DeepContextOrchestrator {
         file_paths: &[PathBuf],
         config: &DeepContextConfig,
     ) -> Result<Arc<AstDag>> {
-        debug_assert!(!file_paths.is_empty(), "file_paths must not be empty");
         let semaphore = Arc::new(Semaphore::new(self.max_concurrency));
         let dag = Arc::new(AstDag::new());
         let parse_results = Arc::new(DashMap::new());
@@ -212,7 +210,6 @@ impl DeepContextOrchestrator {
 
     /// Perform comprehensive analysis using the orchestration request
     async fn perform_analysis(&self, _request: &OrchestrationRequest) -> Result<()> {
-        debug_assert!(true, "contract: perform_analysis");
         // TRACKED: Integrate with existing CodeIntelligence service
         // For now, just return success
         Ok(())
@@ -225,7 +222,6 @@ impl DeepContextOrchestrator {
         duration: std::time::Duration,
         _analysis_results: (), // TRACKED: Replace with actual analysis results
     ) -> Result<DeepContextReport> {
-        debug_assert!(true, "contract: generate_report");
         // TRACKED: Extract actual metrics from analysis results
         let complexity_summary = ComplexitySummary {
             total_functions: 150, // Placeholder

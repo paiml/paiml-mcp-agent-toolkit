@@ -25,11 +25,6 @@ impl HooksCommand {
 
     /// Check if a hook is PMAT-managed
     pub(super) fn is_pmat_managed(&self, hook_path: &Path) -> Result<bool> {
-        debug_assert!(
-            hook_path.exists(),
-            "hook_path must exist: {}",
-            hook_path.display()
-        );
         if !hook_path.exists() {
             return Ok(false);
         }
@@ -71,7 +66,6 @@ echo "================================"
 
     /// Generate environment variables section
     fn generate_env_vars(&self, config: &PmatConfig) -> String {
-        debug_assert!(true, "contract: generate_env_vars");
         format!(
             r#"# Load current configuration dynamically
 export PMAT_MAX_CYCLOMATIC_COMPLEXITY={}
@@ -88,7 +82,6 @@ export PMAT_TASK_ID_PATTERN="PMAT-[0-9]{{4}}"
 
     /// Generate the cargo fmt --check gate for Rust projects
     fn generate_format_check() -> &'static str {
-        debug_assert!(true, "contract: generate_format_check");
         r#"# 0. Format check (Rust only — cargo fmt --check on staged .rs files)
 STAGED_RS=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' 2>/dev/null)
 if [ -n "$STAGED_RS" ] && command -v cargo &> /dev/null && [ -f Cargo.toml ]; then

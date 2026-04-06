@@ -85,7 +85,6 @@ pub fn capture_snapshot(&mut self) -> Result<ExecutionSnapshot, String> {
 /// Save recording to file (Sprint 72 JSON format - deprecated, use .pmat instead)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
 pub fn save_to_file(&self, path: &str) -> Result<(), String> {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     let json = serde_json::to_string_pretty(&self.snapshots)
         .map_err(|e| format!("Failed to serialize: {}", e))?;
 

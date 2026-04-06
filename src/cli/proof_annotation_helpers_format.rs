@@ -7,7 +7,6 @@ pub fn format_as_json(
     elapsed: std::time::Duration,
     annotator: &ProofAnnotator,
 ) -> Result<String> {
-    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     let cache_stats = annotator.cache_stats();
     let annotations_json: Vec<serde_json::Value> = annotations
         .iter()
@@ -66,7 +65,6 @@ pub async fn collect_and_filter_annotations(
     project_path: &Path,
     filter: &ProofAnnotationFilter,
 ) -> Vec<(Location, ProofAnnotation)> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let proof_map = annotator.collect_proofs(project_path).await;
 
     proof_map
@@ -87,7 +85,6 @@ pub fn format_as_table(
     annotations: &[(Location, ProofAnnotation)],
     _elapsed: std::time::Duration,
 ) -> Result<String> {
-    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     use std::fmt::Write;
     let mut output = String::new();
 
@@ -126,7 +123,6 @@ pub fn format_as_summary(
     annotations: &[(Location, ProofAnnotation)],
     elapsed: std::time::Duration,
 ) -> Result<String> {
-    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     let mut output = String::new();
 
     format_summary_header(&mut output, annotations, elapsed)?;
@@ -141,7 +137,6 @@ fn format_summary_header(
     annotations: &[(Location, ProofAnnotation)],
     elapsed: std::time::Duration,
 ) -> Result<()> {
-    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     use std::fmt::Write;
 
     let total_proofs = annotations.len();
@@ -171,7 +166,6 @@ fn format_summary_property_counts(
     output: &mut String,
     annotations: &[(Location, ProofAnnotation)],
 ) -> Result<()> {
-    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     use std::fmt::Write;
 
     let mut property_counts = std::collections::HashMap::new();
@@ -194,7 +188,6 @@ fn format_summary_top_files(
     output: &mut String,
     annotations: &[(Location, ProofAnnotation)],
 ) -> Result<()> {
-    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     use std::fmt::Write;
 
     if annotations.is_empty() {

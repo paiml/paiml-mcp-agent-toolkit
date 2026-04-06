@@ -12,7 +12,6 @@
 /// ```ignore
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn extract_links(content: &str, source_file: &Path) -> Vec<Link> {
-    debug_assert!(source_file.exists(), "source_file must exist: {}", source_file.display());
     let mut links = Vec::new();
     let regex = Regex::new(r"\[([^\]]+)\]\(([^)]+)\)").expect("Invalid regex");
 
@@ -54,7 +53,6 @@ pub fn extract_links(content: &str, source_file: &Path) -> Vec<Link> {
 /// ```ignore
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn classify_link(target: &str) -> LinkType {
-    debug_assert!(!target.is_empty(), "target must not be empty");
     if target.starts_with("http://") || target.starts_with("https://") {
         LinkType::ExternalHttp
     } else if target.starts_with('#') {
@@ -76,7 +74,6 @@ pub fn classify_link(target: &str) -> LinkType {
 
 /// Normalizes a path by resolving `.` and `..` components
 fn normalize_path(path: &Path) -> PathBuf {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut components = Vec::new();
 
     for component in path.components() {

@@ -5,7 +5,6 @@ async fn handle_gate(
     fail_on_p0: bool,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer_config = CudaSimdConfig {
         min_score,
         fail_on_p0,
@@ -41,7 +40,6 @@ async fn handle_gate(
 }
 
 fn format_gate_text(result: &CudaSimdTdgResult, passes: bool, min_score: f64) -> String {
-    debug_assert!(min_score >= 0.0, "min_score must be non-negative");
     let mut output = String::new();
     output.push_str("CUDA-TDG Quality Gate\n");
     output.push_str("=====================\n\n");
@@ -78,7 +76,6 @@ async fn handle_kaizen(
     _since: Option<&str>,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
@@ -94,7 +91,6 @@ async fn handle_kaizen(
 }
 
 fn format_kaizen_markdown(result: &CudaSimdTdgResult) -> String {
-    debug_assert!(true, "contract: format_kaizen_markdown");
     let mut md = String::new();
     md.push_str("# Kaizen Continuous Improvement Report\n\n");
     md.push_str("## Metrics\n\n");
@@ -129,7 +125,6 @@ fn format_kaizen_markdown(result: &CudaSimdTdgResult) -> String {
 }
 
 fn format_kaizen_text(result: &CudaSimdTdgResult) -> String {
-    debug_assert!(true, "contract: format_kaizen_text");
     let mut output = String::new();
     output.push_str("Kaizen Continuous Improvement Report\n");
     output.push_str("====================================\n\n");
@@ -158,7 +153,6 @@ fn format_kaizen_text(result: &CudaSimdTdgResult) -> String {
 
 /// Handle taxonomy subcommand
 async fn handle_taxonomy(config: &CudaTdgCommandConfig) -> Result<()> {
-    debug_assert!(true, "contract: handle_taxonomy");
     let taxonomy = DefectTaxonomy::with_tauranta_patterns();
 
     let output = match config.format {
@@ -176,7 +170,6 @@ async fn handle_taxonomy(config: &CudaTdgCommandConfig) -> Result<()> {
 }
 
 fn format_taxonomy_markdown(taxonomy: &DefectTaxonomy) -> String {
-    debug_assert!(true, "contract: format_taxonomy_markdown");
     let mut md = String::new();
     md.push_str("# Tauranta Fault Taxonomy\n\n");
     md.push_str("## P0 Critical Defects\n\n");
@@ -230,7 +223,6 @@ fn format_taxonomy_markdown(taxonomy: &DefectTaxonomy) -> String {
 }
 
 fn format_taxonomy_text(taxonomy: &DefectTaxonomy) -> String {
-    debug_assert!(true, "contract: format_taxonomy_text");
     let mut output = String::new();
     output.push_str("Tauranta Fault Taxonomy\n");
     output.push_str("=======================\n\n");

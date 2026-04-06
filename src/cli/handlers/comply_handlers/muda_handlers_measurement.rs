@@ -1,7 +1,6 @@
 /// Overproduction waste: dead code percentage
 /// Uses cached dead-code analysis if available
 fn measure_overproduction(project_path: &Path) -> f64 {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cache_path = project_path.join(".pmat/dead-code-cache.json");
     if let Ok(content) = std::fs::read_to_string(&cache_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -23,7 +22,6 @@ fn measure_overproduction(project_path: &Path) -> f64 {
 /// Waiting waste: slow tests and builds
 /// Checks cached test timing and build metrics
 fn measure_waiting(project_path: &Path) -> f64 {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut score = 0.0;
 
     // Check test timing from hooks cache
@@ -59,7 +57,6 @@ fn measure_waiting(project_path: &Path) -> f64 {
 /// Inventory waste: stale SATD markers (TODO/FIXME/HACK)
 /// Counts SATD markers as inventory that should be processed
 fn measure_inventory(project_path: &Path) -> f64 {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check for SATD count in cached analysis
     let satd_cache = project_path.join(".pmat/satd-cache.json");
     if let Ok(content) = std::fs::read_to_string(&satd_cache) {
@@ -78,7 +75,6 @@ fn measure_inventory(project_path: &Path) -> f64 {
 
 /// Count SATD markers in Rust source files (quick heuristic)
 fn count_satd_markers(project_path: &Path) -> usize {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     if !src_dir.exists() {
         return 0;
@@ -93,7 +89,6 @@ fn count_satd_markers(project_path: &Path) -> usize {
 
 /// Collect .rs files under a directory, excluding test files.
 fn collect_rs_source_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
-    debug_assert!(src_dir.exists(), "src_dir must exist: {}", src_dir.display());
     walkdir::WalkDir::new(src_dir)
         .max_depth(5)
         .into_iter()
@@ -110,7 +105,6 @@ fn collect_rs_source_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
 /// Only counts markers in actual production code comments, not string literals,
 /// doc comments, security annotations, or test modules.
 fn count_satd_in_content(content: &str) -> usize {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut count = 0;
     let mut in_raw_string = false;
     let mut in_test_module = false;
@@ -152,7 +146,6 @@ fn count_satd_in_content(content: &str) -> usize {
 /// Check if a line is a genuine SATD comment (not a string literal,
 /// doc comment, or security annotation).
 fn is_satd_marker(trimmed: &str) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     // Must be a line comment (not doc comment)
     if !trimmed.starts_with("//") || trimmed.starts_with("///") || trimmed.starts_with("//!") {
         return false;
@@ -184,7 +177,6 @@ fn is_satd_marker(trimmed: &str) -> bool {
 
 /// Strip content inside double quotes to avoid matching string literals.
 fn strip_quoted_strings(s: &str) -> String {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     let mut result = String::with_capacity(s.len());
     let mut in_quote = false;
     let mut prev_escape = false;
@@ -202,7 +194,6 @@ fn strip_quoted_strings(s: &str) -> String {
 /// Collect top files with dead code from the dead-code cache.
 /// Returns up to 5 file paths sorted by dead item count descending.
 fn collect_overproduction_files(project_path: &Path) -> Vec<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cache_path = project_path.join(".pmat/dead-code-cache.json");
     if let Ok(content) = std::fs::read_to_string(&cache_path) {
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -253,7 +244,6 @@ fn collect_overproduction_files(project_path: &Path) -> Vec<String> {
 /// Collect top files with stale SATD markers (TODO/FIXME/HACK).
 /// Returns up to 5 file paths sorted by SATD count descending.
 fn collect_inventory_files(project_path: &Path) -> Vec<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     if !src_dir.exists() {
         return Vec::new();

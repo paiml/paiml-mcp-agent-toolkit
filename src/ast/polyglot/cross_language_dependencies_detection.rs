@@ -11,7 +11,6 @@ impl CrossLanguageDependencies {
         node_ids2: &[String],
         lang2: Language,
     ) -> Vec<CrossLanguageDependency> {
-        debug_assert!(true, "contract: detect_between_language_groups");
         let mut dependencies = Vec::new();
 
         for id1 in node_ids1 {
@@ -43,7 +42,6 @@ impl CrossLanguageDependencies {
         lang2: Language,
         dependencies: &mut Vec<CrossLanguageDependency>,
     ) {
-        debug_assert!(true, "contract: find_matching_targets");
         for id2 in node_ids2 {
             let Some(target) = self.nodes.get(id2) else {
                 continue;
@@ -71,7 +69,6 @@ impl CrossLanguageDependencies {
         nodes2: &[&UnifiedNode],
         lang2: Language,
     ) {
-        debug_assert!(true, "contract: detect_between_languages");
         // For each node in first language
         for &source in nodes1 {
             // For each reference in the node
@@ -96,7 +93,6 @@ impl CrossLanguageDependencies {
         source_lang: Language,
         target_lang: Language,
     ) -> bool {
-        debug_assert!(true, "contract: is_reference_match");
         // Direct ID match
         if !reference.target_id.is_empty() && reference.target_id == target.id {
             return true;
@@ -126,7 +122,6 @@ impl CrossLanguageDependencies {
         kind: ReferenceKind,
         confidence: f64,
     ) {
-        debug_assert!(confidence >= 0.0, "confidence must be non-negative");
         let dependency = CrossLanguageDependency {
             source_id: source.id.clone(),
             target_id: target.id.clone(),

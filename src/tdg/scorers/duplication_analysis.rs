@@ -3,7 +3,6 @@
 
 impl DuplicationDetector {
     fn extract_token_sequences(&self, root: Node, source: &str) -> Vec<TokenSequence> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut sequences = Vec::new();
         let mut current_tokens = Vec::new();
         let mut start_byte = 0;
@@ -40,7 +39,6 @@ impl DuplicationDetector {
     }
 
     fn node_to_token(&self, node: Node, source: &str) -> Token {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         Token {
             kind: node.kind().to_string(),
             text: get_node_text(node, source).to_string(),
@@ -49,7 +47,6 @@ impl DuplicationDetector {
     }
 
     fn normalize_token(&self, node: Node, source: &str) -> String {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "identifier" if !self.is_type_name(node, source) => "$VAR".to_string(),
             "string_literal" | "string" | "raw_string_literal" => "$STR".to_string(),
@@ -59,7 +56,6 @@ impl DuplicationDetector {
     }
 
     fn is_type_name(&self, node: Node, source: &str) -> bool {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(parent) = node.parent() {
             matches!(
                 parent.kind(),
@@ -72,7 +68,6 @@ impl DuplicationDetector {
     }
 
     fn find_exact_clones(&self, sequences: &[TokenSequence]) -> CloneSet {
-        debug_assert!(!sequences.is_empty(), "sequences must not be empty");
         let mut clones = CloneSet::new();
         let mut seen = HashMap::new();
 
@@ -93,7 +88,6 @@ impl DuplicationDetector {
     }
 
     fn find_renamed_clones(&self, sequences: &[TokenSequence]) -> CloneSet {
-        debug_assert!(!sequences.is_empty(), "sequences must not be empty");
         let mut clones = CloneSet::new();
         let mut normalized_map = HashMap::new();
 
@@ -117,7 +111,6 @@ impl DuplicationDetector {
     }
 
     fn find_modified_clones(&self, sequences: &[TokenSequence]) -> CloneSet {
-        debug_assert!(!sequences.is_empty(), "sequences must not be empty");
         let mut clones = CloneSet::new();
 
         for i in 0..sequences.len() {
@@ -136,7 +129,6 @@ impl DuplicationDetector {
     }
 
     fn calculate_similarity(&self, seq1: &TokenSequence, seq2: &TokenSequence) -> f32 {
-        debug_assert!(true, "contract: calculate_similarity");
         let normalized1: Vec<String> = seq1.tokens.iter().map(|t| t.normalized.clone()).collect();
         let normalized2: Vec<String> = seq2.tokens.iter().map(|t| t.normalized.clone()).collect();
 
@@ -151,7 +143,6 @@ impl DuplicationDetector {
     }
 
     fn longest_common_subsequence(&self, seq1: &[String], seq2: &[String]) -> usize {
-        debug_assert!(true, "contract: longest_common_subsequence");
         let m = seq1.len();
         let n = seq2.len();
         let mut dp = vec![vec![0; n + 1]; m + 1];
@@ -170,7 +161,6 @@ impl DuplicationDetector {
     }
 
     fn hash_sequence(&self, tokens: &[Token]) -> u64 {
-        debug_assert!(!tokens.is_empty(), "tokens must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
@@ -182,7 +172,6 @@ impl DuplicationDetector {
     }
 
     fn hash_normalized(&self, normalized: &[String]) -> u64 {
-        debug_assert!(true, "contract: hash_normalized");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 

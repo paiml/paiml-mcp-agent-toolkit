@@ -9,13 +9,11 @@ impl SemanticComplexityScorer {
 
     #[allow(clippy::cast_possible_truncation)]
     fn calculate_cognitive_complexity(&self, root: Node) -> u32 {
-        debug_assert!(true, "contract: calculate_cognitive_complexity");
         let mut complexity = 0;
         let mut nesting_stack = Vec::new();
 
         #[allow(clippy::cast_possible_truncation)]
         fn process_node(node: Node, complexity: &mut u32, nesting_stack: &mut Vec<&str>) {
-            debug_assert!(true, "contract: process_node");
             let nesting_level = nesting_stack.len() as u32;
 
             match node.kind() {
@@ -72,7 +70,6 @@ impl SemanticComplexityScorer {
 
     #[allow(clippy::cast_possible_truncation)]
     fn analyze_type_complexity(&self, root: Node) -> f32 {
-        debug_assert!(true, "contract: analyze_type_complexity");
         let mut complexity = 0.0;
 
         walk_tree(root, |node| {
@@ -100,7 +97,6 @@ impl SemanticComplexityScorer {
     }
 
     fn generic_depth(&self, node: Node) -> usize {
-        debug_assert!(true, "contract: generic_depth");
         if !matches!(node.kind(), "generic_type" | "generic_arguments") {
             return 0;
         }
@@ -116,7 +112,6 @@ impl SemanticComplexityScorer {
 
     #[allow(clippy::cast_possible_truncation)]
     fn analyze_expression_complexity(&self, root: Node) -> f32 {
-        debug_assert!(true, "contract: analyze_expression_complexity");
         let mut complexity = 0.0;
 
         walk_tree(root, |node| {
@@ -144,7 +139,6 @@ impl SemanticComplexityScorer {
     }
 
     fn is_nested_ternary(&self, node: Node) -> bool {
-        debug_assert!(true, "contract: is_nested_ternary");
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
             if matches!(child.kind(), "conditional_expression" | "ternary_expression") {
@@ -155,7 +149,6 @@ impl SemanticComplexityScorer {
     }
 
     fn call_chain_length(&self, node: Node) -> usize {
-        debug_assert!(true, "contract: call_chain_length");
         if node.kind() != "call_expression" {
             return 0;
         }
@@ -176,7 +169,6 @@ impl SemanticComplexityScorer {
 impl Scorer for SemanticComplexityScorer {
     #[allow(clippy::cast_possible_truncation)]
     fn score(&self, tree: &Tree, _source: &str, _language: Language, config: &TdgConfig, tracker: &mut PenaltyTracker) -> Result<f32> {
-        debug_assert!(!_source.is_empty(), "_source must not be empty");
         let mut points = config.weights.semantic_complexity;
         let root = tree.root_node();
 
@@ -225,7 +217,6 @@ impl Scorer for SemanticComplexityScorer {
     }
 
     fn category(&self) -> MetricCategory {
-        debug_assert!(true, "contract: category");
         MetricCategory::SemanticComplexity
     }
 }

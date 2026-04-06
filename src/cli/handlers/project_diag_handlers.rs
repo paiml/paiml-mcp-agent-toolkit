@@ -89,11 +89,6 @@ pub struct CategorySummary {
 /// Handle the project-diag command
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_project_diag(config: ProjectDiagConfig) -> Result<()> {
-    debug_assert!(
-        config.path.exists(),
-        "config.path must exist: {}",
-        config.path.display()
-    );
     // Validate path
     if !config.path.exists() {
         anyhow::bail!("Path not found: {}", config.path.display());
@@ -140,11 +135,6 @@ fn run_diagnostics(
     project_path: &Path,
     category_filter: &Option<String>,
 ) -> Result<DiagnosticReport> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let mut checks = Vec::new();
 
     // Cargo Config category (6 checks)
@@ -220,7 +210,6 @@ fn run_diagnostics(
 }
 
 fn should_include_category(category: &str, filter: &Option<String>) -> bool {
-    debug_assert!(!category.is_empty(), "category must not be empty");
     match filter {
         None => true,
         Some(f) => f.to_lowercase() == category,
@@ -228,7 +217,6 @@ fn should_include_category(category: &str, filter: &Option<String>) -> bool {
 }
 
 fn build_category_summaries(checks: &[DiagnosticCheck]) -> Vec<CategorySummary> {
-    debug_assert!(!checks.is_empty(), "checks must not be empty");
     let categories = [
         "Cargo Config",
         "Dependencies",

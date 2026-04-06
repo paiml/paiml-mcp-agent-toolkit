@@ -1,7 +1,6 @@
 impl PatternExtractor {
     /// Calculate variation score for pattern matches
     fn calculate_variation_score(&self, matches: &[regex::Match], content: &str) -> f64 {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         if matches.len() <= 1 {
             return 0.0;
         }
@@ -53,8 +52,6 @@ impl PatternExtractor {
 
     /// Calculate string similarity (simplified Jaccard similarity)
     fn calculate_string_similarity(&self, s1: &str, s2: &str) -> f64 {
-        debug_assert!(!s1.is_empty(), "s1 must not be empty");
-        debug_assert!(!s2.is_empty(), "s2 must not be empty");
         let words1: std::collections::HashSet<&str> = s1.split_whitespace().collect();
         let words2: std::collections::HashSet<&str> = s2.split_whitespace().collect();
 
@@ -78,7 +75,6 @@ impl PatternExtractor {
 
     /// Create a hash for a pattern to identify similar ones
     fn hash_pattern(&self, ast_data: &str) -> String {
-        debug_assert!(!ast_data.is_empty(), "ast_data must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
@@ -92,7 +88,6 @@ impl PatternExtractor {
     /// placeholders so that structurally identical code produces the same hash
     /// regardless of variable naming.
     fn normalize_code_snippet(snippet: &str) -> String {
-        debug_assert!(!snippet.is_empty(), "snippet must not be empty");
         use regex::Regex;
 
         let trimmed = snippet.trim();
@@ -129,7 +124,6 @@ impl PatternExtractor {
 
     /// Extract the current line containing a regex match for structural comparison.
     fn extract_match_context(content: &str, m: &regex::Match) -> String {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let line_start = content[..m.start()].rfind('\n').map_or(0, |p| p + 1);
         let line_end = content[m.end()..]
             .find('\n')
@@ -153,8 +147,6 @@ impl PatternExtractor {
         loc_per_match: usize,
         collection: &mut PatternCollection,
     ) {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut groups: HashMap<String, Vec<(usize, String)>> = HashMap::new();
 
         for m in matches.iter().take(20) {

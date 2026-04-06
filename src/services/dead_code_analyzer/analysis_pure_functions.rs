@@ -55,7 +55,6 @@ fn find_containing_function(
     line_number: usize,
     all_functions: &HashMap<String, (String, u32)>,
 ) -> Option<String> {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let mut current_function = None;
     for (qualified_name, (func_file, func_line)) in all_functions {
         if qualified_name.starts_with(file_path)
@@ -79,8 +78,6 @@ fn find_calls_in_line(
     caller: &str,
     all_functions: &HashMap<String, (String, u32)>,
 ) -> Vec<String> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
-    debug_assert!(!caller.is_empty(), "caller must not be empty");
     let mut calls = Vec::new();
     for callee_qualified in all_functions.keys() {
         let callee_name = callee_qualified.split("::").last().unwrap_or("");
@@ -114,8 +111,6 @@ pub(crate) fn detect_function_calls_in_lines(
     lines: &[&str],
     all_functions: &HashMap<String, (String, u32)>,
 ) -> HashMap<String, HashSet<String>> {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut function_calls: HashMap<String, HashSet<String>> = HashMap::new();
 
     for (i, line) in lines.iter().enumerate() {
@@ -174,7 +169,6 @@ pub(crate) fn classify_dead_functions_pure(
 pub(crate) fn collect_functions_from_context(
     files: &[crate::services::context::FileContext],
 ) -> (HashMap<String, (String, u32)>, HashSet<String>) {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     use crate::services::context::AstItem;
 
     let mut all_functions: HashMap<String, (String, u32)> = HashMap::new();
@@ -202,7 +196,6 @@ pub(crate) fn collect_functions_from_context(
 #[allow(dead_code)] // Pure function tested in pure_function_tests module
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn calculate_dead_percentage(total_functions: usize, dead_count: usize) -> f32 {
-    // Contract: calculate_dead_percentage returns a bounded score
     if total_functions > 0 {
         (dead_count as f32 / total_functions as f32) * 100.0
     } else {

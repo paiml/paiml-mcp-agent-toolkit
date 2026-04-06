@@ -95,7 +95,6 @@ impl DiagnosticTool {
         &self,
         storage: &TieredStore,
     ) -> Result<StorageDiagnostics> {
-        debug_assert!(true, "contract: collect_storage_diagnostics");
         let stats = storage.get_statistics();
 
         Ok(StorageDiagnostics {
@@ -121,7 +120,6 @@ impl DiagnosticTool {
         &self,
         scheduler: &SimpleFairScheduler,
     ) -> Result<SchedulerDiagnostics> {
-        debug_assert!(true, "contract: collect_scheduler_diagnostics");
         let stats = scheduler.get_statistics().await;
 
         Ok(SchedulerDiagnostics {
@@ -145,7 +143,6 @@ impl DiagnosticTool {
         &self,
         adaptive: &AdaptiveThresholdManager,
     ) -> Result<AdaptiveDiagnostics> {
-        debug_assert!(true, "contract: collect_adaptive_diagnostics");
         let thresholds = adaptive.get_current_thresholds().await;
         let stats = adaptive.get_performance_stats().await;
 
@@ -171,7 +168,6 @@ impl DiagnosticTool {
         &self,
         controller: &PlatformResourceController,
     ) -> Result<ResourceDiagnostics> {
-        debug_assert!(true, "contract: collect_resource_diagnostics");
         let usage = controller.get_current_usage().await;
         let stats = controller.get_enforcement_stats().await;
 

@@ -42,14 +42,12 @@ impl FileHealthBaseline {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let json = serde_json::to_string_pretty(self)?;
         fs::write(path, json)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(path: &Path) -> std::io::Result<Self> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)?;
         serde_json::from_str(&content)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
@@ -58,7 +56,6 @@ impl FileHealthBaseline {
     /// Check if a file violates the ratchet (grew larger)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_ratchet(&self, path: &str, current_lines: usize) -> Option<RatchetViolation> {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         if let Some(baseline) = self.files.get(path) {
             if current_lines > baseline.lines {
                 return Some(RatchetViolation {
@@ -96,7 +93,6 @@ pub fn analyze_file(
     avg_complexity: f32,
     churn_30d: usize,
 ) -> Option<FileHealthMetrics> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = fs::read_to_string(path).ok()?;
     let lines = content.lines().count();
 
@@ -112,7 +108,6 @@ pub fn analyze_file(
 /// Count lines in a file
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn count_lines(path: &Path) -> Option<usize> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = fs::read_to_string(path).ok()?;
     Some(content.lines().count())
 }
@@ -120,7 +115,6 @@ pub fn count_lines(path: &Path) -> Option<usize> {
 /// Scan a directory for source files and analyze health
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn scan_directory(root: &Path, extensions: &[&str], exclude_patterns: &[&str]) -> Vec<PathBuf> {
-    debug_assert!(root.exists(), "root must exist: {}", root.display());
     let mut files = Vec::new();
 
     fn visit_dir(
@@ -129,7 +123,6 @@ pub fn scan_directory(root: &Path, extensions: &[&str], exclude_patterns: &[&str
         exclude_patterns: &[&str],
         files: &mut Vec<PathBuf>,
     ) {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
@@ -177,7 +170,6 @@ impl StackHealthReport {
     /// Build a stack health report from individual project reports.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_projects(projects: Vec<(String, FileHealthReport)>) -> Self {
-        debug_assert!(!projects.is_empty(), "projects must not be empty");
         let total_health: u64 = projects.iter().map(|(_, r)| r.average_health as u64).sum();
         let count = projects.len().max(1) as u64;
         let stack_average_health = (total_health / count) as u8;
@@ -231,14 +223,12 @@ impl StackBaseline {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let json = serde_json::to_string_pretty(self)?;
         fs::write(path, json)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(path: &Path) -> std::io::Result<Self> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)?;
         serde_json::from_str(&content)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))

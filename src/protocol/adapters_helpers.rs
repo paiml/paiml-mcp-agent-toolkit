@@ -1,7 +1,6 @@
 // Helper functions for HTTP request parsing and routing
 
 fn parse_http_request(raw: &[u8]) -> Result<HttpRequest, ProtocolError> {
-    debug_assert!(!raw.is_empty(), "raw must not be empty");
     let request_str = String::from_utf8_lossy(raw);
     let lines: Vec<&str> = request_str.lines().collect();
 
@@ -19,7 +18,6 @@ fn parse_http_request(raw: &[u8]) -> Result<HttpRequest, ProtocolError> {
 }
 
 fn validate_request_lines(lines: &[&str]) -> Result<(), ProtocolError> {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     if lines.is_empty() {
         Err(ProtocolError::InvalidParams("Empty request".to_string()))
     } else {
@@ -28,7 +26,6 @@ fn validate_request_lines(lines: &[&str]) -> Result<(), ProtocolError> {
 }
 
 fn parse_request_line(line: &str) -> Result<(String, String), ProtocolError> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let request_line: Vec<&str> = line.split_whitespace().collect();
 
     if request_line.len() < 2 {
@@ -41,7 +38,6 @@ fn parse_request_line(line: &str) -> Result<(String, String), ProtocolError> {
 }
 
 fn parse_headers(lines: &[&str]) -> (HashMap<String, String>, usize) {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut headers = HashMap::new();
     let mut body_start = 0;
 
@@ -60,7 +56,6 @@ fn parse_headers(lines: &[&str]) -> (HashMap<String, String>, usize) {
 }
 
 fn parse_body(lines: &[&str], body_start: usize) -> Value {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     if body_start >= lines.len() {
         return Value::Null;
     }
@@ -70,8 +65,6 @@ fn parse_body(lines: &[&str], body_start: usize) -> Value {
 }
 
 fn route_to_operation(path: &str, method: &str) -> Result<Operation, ProtocolError> {
-    debug_assert!(!path.is_empty(), "path must not be empty");
-    debug_assert!(!method.is_empty(), "method must not be empty");
     match (method, path) {
         ("GET" | "POST", "/analyze/complexity") => {
             Ok(Operation::AnalyzeComplexity(ComplexityParams {

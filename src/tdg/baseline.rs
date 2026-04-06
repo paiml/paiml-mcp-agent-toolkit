@@ -38,7 +38,6 @@ mod tests {
 
     // Helper function to create a test entry with specific language
     fn create_test_entry_with_lang(score: f32, grade: Grade, lang: Language) -> BaselineEntry {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         BaselineEntry {
             content_hash: blake3::hash(format!("test_content_{}_{:?}", score, lang).as_bytes()),
             score: TdgScore {

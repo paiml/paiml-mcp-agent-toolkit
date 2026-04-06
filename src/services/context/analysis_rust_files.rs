@@ -3,7 +3,6 @@
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_rust_file(path: &Path) -> Result<FileContext, TemplateError> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_rust_file_with_cache(path, None).await
 }
 
@@ -12,7 +11,6 @@ pub async fn analyze_rust_file_with_cache(
     path: &Path,
     cache_manager: Option<Arc<SessionCacheManager>>,
 ) -> Result<FileContext, TemplateError> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(cache) = cache_manager {
         cache
             .get_or_compute_ast(path, || async {
@@ -64,7 +62,6 @@ pub async fn analyze_rust_file_with_persistent_cache(
     path: &Path,
     cache_manager: Option<Arc<PersistentCacheManager>>,
 ) -> Result<FileContext, TemplateError> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(cache) = cache_manager {
         cache
             .get_or_compute_ast(path, || async {

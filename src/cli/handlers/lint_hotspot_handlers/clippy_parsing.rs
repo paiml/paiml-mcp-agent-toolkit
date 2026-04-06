@@ -10,8 +10,6 @@ fn parse_clippy_output(
     Vec<ViolationDetail>,
     SeverityDistribution,
 )> {
-    debug_assert!(abs_file_path.exists(), "abs_file_path must exist: {}", abs_file_path.display());
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let reader = BufReader::new(stdout);
     let mut file_violations = Vec::new();
     let mut all_violations = Vec::new();
@@ -34,9 +32,6 @@ fn parse_clippy_line(
     abs_file_path: &Path,
     file_path: &Path,
 ) -> Result<Option<ViolationDetail>> {
-    debug_assert!(abs_file_path.exists(), "abs_file_path must exist: {}", abs_file_path.display());
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let msg = match serde_json::from_str::<ClippyMessage>(line) {
         Ok(msg) => msg,
         Err(_) => return Ok(None),
@@ -65,8 +60,6 @@ fn find_primary_span(diagnostic: &DiagnosticMessage) -> Option<&DiagnosticSpan> 
 }
 
 fn is_target_file(diagnostic_file: &str, abs_file_path: &Path, file_path: &Path) -> bool {
-    debug_assert!(abs_file_path.exists(), "abs_file_path must exist: {}", abs_file_path.display());
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let diagnostic_path = PathBuf::from(diagnostic_file);
     diagnostic_path == *abs_file_path
         || diagnostic_path == *file_path
@@ -78,7 +71,6 @@ fn create_violation_detail(
     span: &DiagnosticSpan,
     diagnostic: &DiagnosticMessage,
 ) -> ViolationDetail {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     ViolationDetail {
         file: file_path.to_path_buf(),
         line: span.line_start,
@@ -94,7 +86,6 @@ fn create_violation_detail(
 }
 
 fn extract_lint_name(diagnostic: &DiagnosticMessage) -> String {
-    debug_assert!(true, "contract: extract_lint_name");
     diagnostic
         .code
         .as_ref()
@@ -109,7 +100,6 @@ fn is_machine_applicable(span: &DiagnosticSpan) -> bool {
 }
 
 fn update_severity_distribution(severity_dist: &mut SeverityDistribution, level: &str) {
-    debug_assert!(!level.is_empty(), "level must not be empty");
     match level {
         "error" => severity_dist.error += 1,
         "warning" => severity_dist.warning += 1,

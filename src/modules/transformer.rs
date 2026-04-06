@@ -55,7 +55,6 @@ impl TransformerCore {
     }
 
     fn apply_transform(&mut self, code: &str) -> TransformResult {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         // Simplified transformation logic
         let transformed = code.replace("fn ", "pub fn ");
 
@@ -110,7 +109,6 @@ impl TransformerImpl {
 #[async_trait]
 impl TransformerModule for TransformerImpl {
     async fn transform(&self, code: &str) -> Result<TransformResult, ModuleError> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         // Can use analyzer if available
         if let Some(analyzer) = &self.analyzer {
             let metrics = analyzer.analyze(code).await?;
@@ -123,7 +121,6 @@ impl TransformerModule for TransformerImpl {
     }
 
     async fn refactor(&self, code: &str, rules: &[RefactorRule]) -> Result<String, ModuleError> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut result = code.to_string();
 
         for rule in rules {

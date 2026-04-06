@@ -87,11 +87,6 @@ pub async fn handle_quality_gate(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     // Delegate to main quality gate implementation for now - will be extracted later
     super::super::analysis_utilities::handle_quality_gate(
         project_path,
@@ -135,7 +130,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

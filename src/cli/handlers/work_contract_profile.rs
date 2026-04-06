@@ -21,7 +21,6 @@ impl ContractProfile {
     /// Evaluated top-down, first match wins.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect(project_path: &Path) -> Self {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Check for explicit config override first
         let config_path = project_path.join(".pmat-work").join("config.toml");
         if config_path.exists() {
@@ -171,7 +170,6 @@ pub struct MissingTool {
 
 /// Check if a tool binary exists in PATH
 fn which_tool(name: &str) -> bool {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     // Handle special cases
     match name {
         "cargo-clippy" => {
@@ -216,7 +214,6 @@ fn which_tool(name: &str) -> bool {
 /// Check toolchain requirements for a profile. Returns list of missing tools.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn check_toolchain(profile: &ContractProfile, _project_path: &Path) -> Vec<MissingTool> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     profile
         .required_tools()
         .into_iter()
@@ -254,7 +251,6 @@ impl DbcConfig {
     /// Load DbC config from .pmat-work/config.toml
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(project_path: &Path) -> Self {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_path = project_path.join(".pmat-work").join("config.toml");
         Self::load_from_path(&config_path).unwrap_or_default()
     }
@@ -262,7 +258,6 @@ impl DbcConfig {
     /// Load from a specific path
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_from_path(path: &Path) -> Result<Self> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read config: {}", path.display()))?;
         Self::parse_toml(&content)
@@ -270,7 +265,6 @@ impl DbcConfig {
 
     /// Parse TOML content into DbcConfig
     fn parse_toml(content: &str) -> Result<Self> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let table: toml::Table = content
             .parse()
             .context("Failed to parse config.toml")?;
@@ -371,7 +365,6 @@ pub fn claims_for_profile(
 pub fn classify_claims(
     clauses: &[ContractClause],
 ) -> (Vec<ContractClause>, Vec<ContractClause>, Vec<ContractClause>) {
-    debug_assert!(!clauses.is_empty(), "clauses must not be empty");
     let mut require = Vec::new();
     let mut ensure = Vec::new();
     let mut invariant = Vec::new();
@@ -393,7 +386,6 @@ pub fn apply_exclusions(
     clauses: Vec<ContractClause>,
     without: &[String],
 ) -> (Vec<ContractClause>, Vec<ExcludedClaim>) {
-    debug_assert!(!clauses.is_empty(), "clauses must not be empty");
     let (excluded_clauses, active): (Vec<_>, Vec<_>) =
         clauses.into_iter().partition(|c| without.contains(&c.id));
 

@@ -27,7 +27,6 @@ impl RustComplexityVisitor {
 impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
     #[allow(clippy::cast_possible_truncation)]
     fn visit_expr_if(&mut self, node: &'ast syn::ExprIf) {
-        debug_assert!(true, "contract: visit_expr_if");
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_depth as u32;
         self.current_depth += 1;
@@ -38,7 +37,6 @@ impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
 
     #[allow(clippy::cast_possible_truncation)]
     fn visit_expr_while(&mut self, node: &'ast syn::ExprWhile) {
-        debug_assert!(true, "contract: visit_expr_while");
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_depth as u32;
         self.current_depth += 1;
@@ -49,7 +47,6 @@ impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
 
     #[allow(clippy::cast_possible_truncation)]
     fn visit_expr_for_loop(&mut self, node: &'ast syn::ExprForLoop) {
-        debug_assert!(true, "contract: visit_expr_for_loop");
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_depth as u32;
         self.current_depth += 1;
@@ -60,7 +57,6 @@ impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
 
     #[allow(clippy::cast_possible_truncation)]
     fn visit_expr_match(&mut self, node: &'ast syn::ExprMatch) {
-        debug_assert!(true, "contract: visit_expr_match");
         self.cyclomatic_complexity += node.arms.len() as u32;
         self.cognitive_complexity += 1 + self.current_depth as u32;
         self.current_depth += 1;
@@ -71,7 +67,6 @@ impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
 
     #[allow(clippy::cast_possible_truncation)]
     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
-        debug_assert!(true, "contract: visit_item_fn");
         let param_count = node.sig.inputs.len();
         self.max_params = self.max_params.max(param_count);
         self.generic_count += node.sig.generics.params.len() as u32;
@@ -93,12 +88,10 @@ impl<'ast> syn::visit::Visit<'ast> for RustComplexityVisitor {
     }
 
     fn visit_use_tree(&mut self, _node: &'ast syn::UseTree) {
-        debug_assert!(true, "contract: visit_use_tree");
         self.import_count += 1;
     }
 
     fn visit_item_impl(&mut self, node: &'ast syn::ItemImpl) {
-        debug_assert!(true, "contract: visit_item_impl");
         if node.trait_.is_some() {
             self.interface_implementations += 1;
         }

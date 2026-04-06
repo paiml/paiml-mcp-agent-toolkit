@@ -66,11 +66,6 @@ pub enum FixStrategy {
 /// Check if file is a markdown file
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn is_markdown_file(file_path: &Path) -> bool {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     file_path.extension().and_then(|s| s.to_str()) == Some("md")
 }
 
@@ -80,11 +75,6 @@ pub async fn handle_markdown_analysis(
     file_path: &Path,
     format: RefactorAutoOutputFormat,
 ) -> Result<()> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     use anyhow::Context;
 
     eprintln!("📝 Detected markdown file - analyzing for quality issues...");
@@ -113,11 +103,6 @@ pub async fn handle_markdown_analysis(
 /// Analyze markdown content for issues
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn analyze_markdown_issues(file_path: &Path, content: &str) -> Result<Vec<&'static str>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     let mut issues = Vec::new();
 
     if !has_proper_headers(content) {
@@ -138,25 +123,18 @@ pub fn analyze_markdown_issues(file_path: &Path, content: &str) -> Result<Vec<&'
 /// Check if content has proper header structure
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn has_proper_headers(content: &str) -> bool {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     content.contains("# ") || content.contains("## ")
 }
 
 /// Check if content has code blocks without language specification
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn has_unspecified_code_blocks(content: &str) -> bool {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     content.contains("```\n") && !content.contains("```rust") && !content.contains("```bash")
 }
 
 /// Check if content has broken relative links
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn has_broken_relative_links(file_path: &Path, content: &str) -> Result<bool> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     for line in content.lines() {
         if line.contains("](../") || line.contains("](./") {
             if let Some(path) = extract_link_path(line) {
@@ -186,11 +164,6 @@ pub fn create_markdown_refactor_request(
     issues: &[&str],
     content: &str,
 ) -> serde_json::Value {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     serde_json::json!({
         "file_path": file_path,
         "file_type": "markdown",

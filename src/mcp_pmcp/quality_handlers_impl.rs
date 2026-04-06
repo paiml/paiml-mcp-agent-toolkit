@@ -5,7 +5,6 @@
 #[async_trait]
 impl ToolHandler for QualityGateTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling quality-gate with args: {}", args);
 
         let params: QualityGateArgs = serde_json::from_value(args)
@@ -35,7 +34,6 @@ impl ToolHandler for QualityGateTool {
 #[async_trait]
 impl ToolHandler for QualityGateSummaryTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling quality-gate.summary with args: {}", args);
 
         let params: QualityGateSummaryArgs = serde_json::from_value(args)
@@ -62,7 +60,6 @@ impl ToolHandler for QualityGateSummaryTool {
 #[async_trait]
 impl ToolHandler for QualityGateBaselineTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling quality-gate.baseline with args: {}", args);
 
         let params: QualityGateBaselineArgs = serde_json::from_value(args)
@@ -82,7 +79,6 @@ impl ToolHandler for QualityGateBaselineTool {
 #[async_trait]
 impl ToolHandler for QualityGateCompareTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling quality-gate.compare with args: {}", args);
 
         let params: QualityGateCompareArgs = serde_json::from_value(args)

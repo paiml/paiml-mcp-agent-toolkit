@@ -23,8 +23,6 @@ impl HooksCacheManager {
     /// Check if a specific gate can be skipped (Level 1 cache)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn check_gate(&self, gate_name: &str, files: &[PathBuf]) -> Result<Option<GateCacheEntry>> {
-        debug_assert!(!gate_name.is_empty(), "gate_name must not be empty");
-        debug_assert!(!files.is_empty(), "files must not be empty");
         let gate_path = self
             .cache_dir
             .join("gates")
@@ -56,8 +54,6 @@ impl HooksCacheManager {
         duration_ms: u64,
         warnings: Vec<String>,
     ) -> Result<()> {
-        debug_assert!(!gate_name.is_empty(), "gate_name must not be empty");
-        debug_assert!(!files.is_empty(), "files must not be empty");
         let entry = GateCacheEntry {
             files_hash: self.hash_files(files)?,
             result,
@@ -79,7 +75,6 @@ impl HooksCacheManager {
     /// Check which gates need to run (partial cache check)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_gates(&self, gates: &[GateDefinition]) -> Result<GateCheckResult> {
-        debug_assert!(!gates.is_empty(), "gates must not be empty");
         let mut cached = Vec::new();
         let mut uncached = Vec::new();
 
@@ -229,7 +224,6 @@ impl HooksCacheManager {
         results: &[(String, GateRunResult)],
         errors: &[(String, String)],
     ) -> CacheResult {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         if !errors.is_empty() {
             CacheResult::Fail
         } else if results.iter().any(|(_, r)| r.result == CacheResult::Fail) {

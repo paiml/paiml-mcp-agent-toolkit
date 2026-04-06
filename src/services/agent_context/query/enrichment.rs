@@ -40,7 +40,6 @@ pub fn enrich_with_churn(results: &mut [QueryResult], file_churn: &HashMap<Strin
 /// for O(1) lookup during result enrichment.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn build_churn_map(metrics: &[FileChurnMetrics]) -> HashMap<String, (u32, f32)> {
-    debug_assert!(!metrics.is_empty(), "metrics must not be empty");
     metrics
         .iter()
         .map(|m| {
@@ -68,11 +67,6 @@ pub async fn enrich_results_with_churn(
     project_root: &Path,
     period_days: u32,
 ) -> Result<(), String> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     use crate::services::incremental_churn::IncrementalChurnAnalyzer;
 
     if results.is_empty() {
@@ -117,7 +111,6 @@ pub async fn enrich_results_with_churn(
 fn detect_language_for_duplication(
     path: &str,
 ) -> Option<crate::services::duplicate_detector::Language> {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     use crate::services::duplicate_detector::Language;
     let ext_langs: &[(&[&str], Language)] = &[
         (&[".rs"], Language::Rust),
@@ -136,11 +129,6 @@ fn detect_language_for_duplication(
 
 /// Collect unique file contents from query results for analysis.
 fn collect_file_contents(results: &[QueryResult], project_root: &Path) -> HashMap<String, String> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     let mut contents: HashMap<String, String> = HashMap::new();
     for result in results {
         if contents.contains_key(&result.file_path) {
@@ -164,11 +152,6 @@ pub async fn enrich_results_with_duplicates(
     results: &mut [QueryResult],
     project_root: &Path,
 ) -> Result<(), String> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     use crate::services::duplicate_detector::{DuplicateDetectionConfig, DuplicateDetectionEngine};
 
     if results.is_empty() {
@@ -236,11 +219,6 @@ pub async fn enrich_results_with_entropy(
     results: &mut [QueryResult],
     project_root: &Path,
 ) -> Result<(), String> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     use crate::entropy::{EntropyAnalyzer, EntropyConfig};
 
     if results.is_empty() {
@@ -296,11 +274,6 @@ pub async fn enrich_results_with_entropy(
 
 /// Run batuta bug-hunter and parse findings into a file->annotations map.
 fn run_batuta_and_parse(project_root: &Path) -> Result<HashMap<String, Vec<String>>, String> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     use std::process::Command;
 
     let output = Command::new("batuta")
@@ -352,7 +325,6 @@ fn run_batuta_and_parse(project_root: &Path) -> Result<HashMap<String, Vec<Strin
 
 /// Filter fault annotations to those within a function's line range.
 fn faults_in_range(faults: &[String], start_line: usize, end_line: usize) -> Vec<String> {
-    debug_assert!(!faults.is_empty(), "faults must not be empty");
     faults
         .iter()
         .filter(|f| {
@@ -375,11 +347,6 @@ pub async fn enrich_results_with_faults(
     results: &mut [QueryResult],
     project_root: &Path,
 ) -> Result<(), String> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     if results.is_empty() {
         return Ok(());
     }

@@ -7,7 +7,6 @@ pub struct FalsificationLedger {
 impl FalsificationLedger {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_path: &Path) -> Self {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self {
             work_dir: project_path.join(".pmat-work"),
         }
@@ -59,7 +58,6 @@ impl FalsificationLedger {
     /// Load the latest receipt for a work item (by sorted directory listing)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn latest_receipt(&self, work_item_id: &str) -> Result<Option<FalsificationReceipt>> {
-        debug_assert!(!work_item_id.is_empty(), "work_item_id must not be empty");
         let falsification_dir = self.work_dir.join(work_item_id).join("falsification");
 
         if !falsification_dir.exists() {
@@ -96,7 +94,6 @@ impl FalsificationLedger {
     /// O(1) freshness check: load latest receipt and verify it matches HEAD
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_fresh_receipt(&self, work_item_id: &str, current_sha: &str) -> Result<bool> {
-        debug_assert!(!work_item_id.is_empty(), "work_item_id must not be empty");
         let receipt = self.latest_receipt(work_item_id)?;
         match receipt {
             Some(r) => {
@@ -109,7 +106,6 @@ impl FalsificationLedger {
     /// Verify integrity of all receipts for a work item
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn verify_integrity(&self, work_item_id: &str) -> Result<IntegrityReport> {
-        debug_assert!(!work_item_id.is_empty(), "work_item_id must not be empty");
         let falsification_dir = self.work_dir.join(work_item_id).join("falsification");
 
         if !falsification_dir.exists() {
@@ -149,7 +145,6 @@ impl FalsificationLedger {
 
     /// Check a single receipt file for integrity (Ok(true) = valid, Ok(false) = tampered)
     fn check_receipt_file(path: &Path) -> Result<bool> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
         let receipt: FalsificationReceipt = serde_json::from_str(&content)?;
         Ok(receipt.verify_integrity())

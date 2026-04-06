@@ -18,7 +18,6 @@ pub async fn handle_perfection_score(
     output: Option<&Path>,
     fast: bool,
 ) -> anyhow::Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let calculator = PerfectionScoreCalculator::new().fast_mode(fast);
     let mut result = calculator.calculate(path).await?;
 
@@ -48,7 +47,6 @@ pub async fn handle_perfection_score(
 }
 
 fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
-    debug_assert!(true, "contract: format_text");
     let mut out = String::new();
 
     out.push_str(&format!("{}\n", c::header("PMAT Perfection Score")));
@@ -115,12 +113,10 @@ fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
 }
 
 fn format_json(result: &PerfectionScoreResult) -> anyhow::Result<String> {
-    debug_assert!(true, "contract: format_json");
     Ok(serde_json::to_string_pretty(result)?)
 }
 
 fn format_markdown(result: &PerfectionScoreResult, breakdown: bool) -> String {
-    debug_assert!(true, "contract: format_markdown");
     let mut out = String::new();
 
     out.push_str("# PMAT Perfection Score Report\n\n");
@@ -166,7 +162,6 @@ fn format_markdown(result: &PerfectionScoreResult, breakdown: bool) -> String {
 }
 
 fn create_progress_bar(current: f64, max: f64, width: usize) -> String {
-    debug_assert!(width > 0, "width must be positive");
     let percentage = (current / max).clamp(0.0, 1.0);
     let filled = (percentage * width as f64) as usize;
     let empty = width - filled;

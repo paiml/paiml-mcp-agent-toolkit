@@ -22,7 +22,6 @@ pub fn format_context_as_markdown(context: &ProjectContext) -> String {
 }
 
 fn format_header(output: &mut String, context: &ProjectContext) {
-    debug_assert!(true, "contract: format_header");
     output.push_str(&format!(
         "# Project Context: {} Project\n\n",
         context.project_type
@@ -34,7 +33,6 @@ fn format_header(output: &mut String, context: &ProjectContext) {
 }
 
 fn format_summary(output: &mut String, summary: &ProjectSummary) {
-    debug_assert!(true, "contract: format_summary");
     output.push_str("## Summary\n\n");
     output.push_str(&format!("- Files analyzed: {}\n", summary.total_files));
     output.push_str(&format!("- Functions: {}\n", summary.total_functions));
@@ -54,7 +52,6 @@ fn format_dependencies(output: &mut String, dependencies: &[String]) {
 }
 
 fn format_files(output: &mut String, files: &[FileContext]) {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     output.push_str("\n## Files\n\n");
 
     for file in files {
@@ -67,7 +64,6 @@ fn format_files(output: &mut String, files: &[FileContext]) {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn group_items_by_type(items: &[AstItem]) -> GroupedItems<'_> {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut grouped = GroupedItems::new();
 
     for item in items {
@@ -99,7 +95,6 @@ fn format_item_group<F>(output: &mut String, title: &str, items: &[&AstItem], fo
 where
     F: Fn(&AstItem) -> String,
 {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     if !items.is_empty() {
         output.push_str(&format!("**{title}:**\n"));
         for item in items {
@@ -110,7 +105,6 @@ where
 }
 
 fn format_module_item(item: &AstItem) -> String {
-    debug_assert!(true, "contract: format_module_item");
     if let AstItem::Module {
         name,
         visibility,
@@ -124,7 +118,6 @@ fn format_module_item(item: &AstItem) -> String {
 }
 
 fn format_struct_item(item: &AstItem) -> String {
-    debug_assert!(true, "contract: format_struct_item");
     if let AstItem::Struct {
         name,
         visibility,
@@ -145,7 +138,6 @@ fn format_struct_item(item: &AstItem) -> String {
 }
 
 fn format_enum_item(item: &AstItem) -> String {
-    debug_assert!(true, "contract: format_enum_item");
     if let AstItem::Enum {
         name,
         visibility,
@@ -160,7 +152,6 @@ fn format_enum_item(item: &AstItem) -> String {
 }
 
 fn format_trait_item(item: &AstItem) -> String {
-    debug_assert!(true, "contract: format_trait_item");
     if let AstItem::Trait {
         name,
         visibility,
@@ -174,7 +165,6 @@ fn format_trait_item(item: &AstItem) -> String {
 }
 
 fn format_function_item(item: &AstItem) -> String {
-    debug_assert!(true, "contract: format_function_item");
     if let AstItem::Function {
         name,
         visibility,
@@ -195,7 +185,6 @@ fn format_function_item(item: &AstItem) -> String {
 }
 
 fn format_impl_item(item: &AstItem) -> String {
-    debug_assert!(true, "contract: format_impl_item");
     if let AstItem::Impl {
         type_name,
         trait_name,
@@ -253,7 +242,6 @@ fn format_quality_scorecard(
     output: &mut String,
     scorecard: &crate::services::deep_context::QualityScorecard,
 ) {
-    debug_assert!(true, "contract: format_quality_scorecard");
     output.push_str("## Quality Scorecard\n\n");
     output.push_str(&format!(
         "- **Overall Health**: {:.1}%\n",
@@ -281,7 +269,6 @@ fn format_quality_scorecard(
 }
 
 fn format_project_summary(output: &mut String, context: &DeepContext) {
-    debug_assert!(true, "contract: format_project_summary");
     output.push_str("## Project Summary\n\n");
     output.push_str(&format!(
         "- **Total Files**: {}\n",
@@ -310,7 +297,6 @@ fn format_analysis_results(
     output: &mut String,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
-    debug_assert!(true, "contract: format_analysis_results");
     output.push_str("## Analysis Results\n\n");
 
     // Complexity Analysis - Combined formatting to reduce complexity
@@ -400,7 +386,6 @@ fn format_ast_summary(
     output: &mut String,
     ast_contexts: &[crate::services::deep_context::EnhancedFileContext],
 ) {
-    debug_assert!(!ast_contexts.is_empty(), "ast_contexts must not be empty");
     if ast_contexts.is_empty() {
         return;
     }
@@ -420,7 +405,6 @@ fn format_ast_summary(
 fn count_ast_items(
     ast_contexts: &[crate::services::deep_context::EnhancedFileContext],
 ) -> (usize, usize, usize, usize, usize) {
-    debug_assert!(!ast_contexts.is_empty(), "ast_contexts must not be empty");
     let mut functions = 0;
     let mut structs = 0;
     let mut enums = 0;

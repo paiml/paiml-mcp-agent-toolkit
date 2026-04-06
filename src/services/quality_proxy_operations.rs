@@ -121,7 +121,6 @@ impl QualityProxyService {
     }
 
     fn get_operation_content(&self, request: &ProxyRequest) -> Result<String> {
-        debug_assert!(true, "contract: get_operation_content");
         match request.operation {
             ProxyOperation::Write => request
                 .content

@@ -5,7 +5,6 @@ impl MutationScore {
     /// Calculate mutation score from results
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_results(results: &[MutationResult]) -> Self {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         let total = results.len();
         let killed = results
             .iter()

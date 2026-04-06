@@ -25,7 +25,6 @@ pub enum Language {
 impl Language {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_extension(path: &Path) -> Self {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         match path.extension().and_then(|s| s.to_str()) {
             Some("rs") => Language::Rust,
             Some("py") => Language::Python,
@@ -92,7 +91,6 @@ pub trait LanguageAdapter: Send + Sync {
 }
 
 pub struct RustAdapter {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
     parser: Parser,
 }
 

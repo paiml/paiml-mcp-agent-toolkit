@@ -13,7 +13,6 @@ pub async fn run_single_project_check(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     match check {
         QualityCheckType::All => {
             run_all_project_checks(
@@ -54,7 +53,6 @@ async fn execute_specific_quality_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use QualityCheckType::{
         All, Complexity, Coverage, DeadCode, Duplicates, Entropy, Provability, Satd, Sections,
         Security,
@@ -86,7 +84,6 @@ where
     Fut: std::future::Future<Output = Result<Vec<QualityViolation>>>,
     S: FnOnce(usize),
 {
-    debug_assert!(true, "contract: execute_quality_check_template");
     let violations_found = check_future.await?;
     set_result(violations_found.len());
     violations.extend(violations_found);
@@ -100,7 +97,6 @@ async fn execute_complexity_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_complexity(project_path, max_complexity_p99),
         |count| results.complexity_violations = count,
@@ -116,7 +112,6 @@ async fn execute_dead_code_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_dead_code(project_path, max_dead_code),
         |count| results.dead_code_violations = count,
@@ -131,7 +126,6 @@ async fn execute_satd_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_satd(project_path),
         |count| results.satd_violations = count,
@@ -147,7 +141,6 @@ async fn execute_entropy_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let gate_config = load_entropy_gate_config(project_path);
     if !gate_config.enabled {
         eprintln!("  ⏭️  Entropy check disabled via .pmat-gates.toml");
@@ -180,7 +173,6 @@ async fn execute_security_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_security(project_path),
         |count| results.security_violations = count,
@@ -195,7 +187,6 @@ async fn execute_duplicates_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_duplicates(project_path),
         |count| results.duplicate_violations = count,
@@ -210,7 +201,6 @@ async fn execute_coverage_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_coverage(project_path, 80.0),
         |count| results.coverage_violations = count,
@@ -225,7 +215,6 @@ async fn execute_sections_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     execute_quality_check_template(
         check_sections(project_path),
         |count| results.section_violations = count,

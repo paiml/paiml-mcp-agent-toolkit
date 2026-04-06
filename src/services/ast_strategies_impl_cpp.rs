@@ -8,7 +8,6 @@ fn cpp_node_to_ast_item(
     content: &str,
     content_lines: &[&str],
 ) -> Option<crate::services::context::AstItem> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let name = CppAstStrategy::extract_name_from_node(node, content);
     let line_number = CppAstStrategy::byte_pos_to_line(node.source_range.start as usize, content_lines);
     match &node.kind {
@@ -33,7 +32,6 @@ fn cpp_type_to_ast_item(
     name: Option<String>,
     line: usize,
 ) -> Option<crate::services::context::AstItem> {
-    debug_assert!(true, "contract: cpp_type_to_ast_item");
     match type_kind {
         crate::models::unified_ast::TypeKind::Struct | crate::models::unified_ast::TypeKind::Class => {
             let default = if matches!(type_kind, crate::models::unified_ast::TypeKind::Class) {
@@ -65,7 +63,6 @@ fn cpp_type_to_ast_item(
 #[async_trait]
 impl AstStrategy for CppAstStrategy {
     async fn analyze(&self, path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::ast_cpp::CppAstParser;
         use tokio::fs;
 
@@ -97,7 +94,6 @@ impl AstStrategy for CppAstStrategy {
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
-        debug_assert!(!ext.is_empty(), "ext must not be empty");
         matches!(ext, "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "cu" | "cuh")
     }
 }
@@ -109,7 +105,6 @@ impl CppAstStrategy {
         node: &crate::models::unified_ast::UnifiedAstNode,
         content: &str,
     ) -> Option<String> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // For now, extract a reasonable segment from the source range
         let start = node.source_range.start as usize;
         let end = node.source_range.end as usize;
@@ -133,7 +128,6 @@ impl CppAstStrategy {
     /// Extract function name from source text (C++ can include templates, operators, etc.)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_function_name(source_text: &str) -> Option<String> {
-        debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for pattern: type name(...) or name(...)
         if let Some(paren_pos) = source_text.find('(') {
             let before_paren = &source_text[..paren_pos];
@@ -159,7 +153,6 @@ impl CppAstStrategy {
     /// Extract type name from source text (struct, class, enum, etc.)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_type_name(source_text: &str) -> Option<String> {
-        debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for patterns like "class name", "struct name", "enum class name"
         let words: Vec<&str> = source_text.split_whitespace().collect();
         if words.len() >= 2 {

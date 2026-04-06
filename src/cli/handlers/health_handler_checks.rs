@@ -1,6 +1,5 @@
 /// Run build health check
 async fn run_build_check(project_dir: &PathBuf) -> Result<HealthCheck> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use crate::cli::progress::ProgressIndicator;
 
     // Check if Cargo.toml exists
@@ -53,7 +52,6 @@ async fn run_build_check(project_dir: &PathBuf) -> Result<HealthCheck> {
 
 /// Run test health check
 async fn run_test_check(project_dir: &PathBuf) -> Result<HealthCheck> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use crate::cli::progress::ProgressIndicator;
 
     let progress = ProgressIndicator::new("Running tests...");
@@ -90,7 +88,6 @@ async fn run_test_check(project_dir: &PathBuf) -> Result<HealthCheck> {
 
 /// Run coverage health check
 async fn run_coverage_check(project_dir: &PathBuf) -> Result<HealthCheck> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use crate::cli::progress::ProgressIndicator;
 
     let progress = ProgressIndicator::new("Running coverage check...");
@@ -148,7 +145,6 @@ async fn run_coverage_check(project_dir: &PathBuf) -> Result<HealthCheck> {
 
 /// Run complexity health check
 async fn run_complexity_check(project_dir: &PathBuf) -> Result<HealthCheck> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use crate::cli::progress::ProgressIndicator;
 
     let progress = ProgressIndicator::new("Running complexity check...");
@@ -222,7 +218,6 @@ async fn run_complexity_check(project_dir: &PathBuf) -> Result<HealthCheck> {
 fn count_complexity_violations(
     file_metrics: &[crate::services::complexity::FileComplexityMetrics],
 ) -> (usize, usize, u16) {
-    debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     let mut total_functions = 0;
     let mut violations = 0;
     let mut max_complexity: u16 = 0;
@@ -244,7 +239,6 @@ fn count_complexity_violations(
 
 /// Run SATD health check
 async fn run_satd_check(project_dir: &PathBuf) -> Result<HealthCheck> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use crate::cli::progress::ProgressIndicator;
     use crate::services::detection::satd::Severity;
     use crate::services::detection::UnifiedDetectionProcessor;
@@ -321,7 +315,6 @@ async fn run_checks_parallel(
     project_dir: &PathBuf,
     check_types: Vec<CheckType>,
 ) -> Result<Vec<HealthCheck>> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     let mut set = JoinSet::new();
 
     // Spawn parallel tasks for each check

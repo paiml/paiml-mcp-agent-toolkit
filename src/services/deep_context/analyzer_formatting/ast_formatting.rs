@@ -87,7 +87,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         ast_contexts: &[EnhancedFileContext],
     ) -> anyhow::Result<()> {
-        debug_assert!(!ast_contexts.is_empty(), "ast_contexts must not be empty");
         use std::fmt::Write;
         writeln!(output, "## Enhanced AST Analysis\n")?;
 
@@ -103,7 +102,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         context: &EnhancedFileContext,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: format_single_file_ast");
         use std::fmt::Write;
 
         writeln!(output, "### {}\n", context.base.path)?;
@@ -129,7 +127,6 @@ impl DeepContextAnalyzer {
         &self,
         items: &[crate::services::context::AstItem],
     ) -> CategorizedAstItems {
-        debug_assert!(!items.is_empty(), "items must not be empty");
         let mut categorized = CategorizedAstItems::new();
 
         for item in items {
@@ -144,7 +141,6 @@ impl DeepContextAnalyzer {
         item: &crate::services::context::AstItem,
         categorized: &mut CategorizedAstItems,
     ) {
-        debug_assert!(true, "contract: categorize_single_ast_item");
         match item {
             crate::services::context::AstItem::Function {
                 name,
@@ -239,8 +235,6 @@ impl DeepContextAnalyzer {
     }
 
     fn format_import_path(&self, module: &str, items: &[String], alias: &Option<String>) -> String {
-        debug_assert!(!module.is_empty(), "module must not be empty");
-        debug_assert!(!items.is_empty(), "items must not be empty");
         if let Some(alias) = alias {
             format!("{module} as {alias}")
         } else if !items.is_empty() {
@@ -255,7 +249,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         items: &CategorizedAstItems,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_ast_summary");
         use std::fmt::Write;
         writeln!(output, "**Functions:** {} | **Structs:** {} | **Enums:** {} | **Traits:** {} | **Impls:** {} | **Modules:** {} | **Imports:** {}",
             items.functions.len(), items.structs.len(), items.enums.len(),
@@ -268,7 +261,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         items: &CategorizedAstItems,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_ast_details");
         self.write_functions_section(output, &items.functions)?;
         self.write_structs_section(output, &items.structs)?;
         self.write_enums_section(output, &items.enums)?;
@@ -284,7 +276,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         functions: &[AstFunction],
     ) -> anyhow::Result<()> {
-        debug_assert!(!functions.is_empty(), "functions must not be empty");
         if functions.is_empty() {
             return Ok(());
         }
@@ -317,7 +308,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         structs: &[AstStruct],
     ) -> anyhow::Result<()> {
-        debug_assert!(!structs.is_empty(), "structs must not be empty");
         if structs.is_empty() {
             return Ok(());
         }
@@ -356,7 +346,6 @@ impl DeepContextAnalyzer {
     }
 
     fn write_enums_section(&self, output: &mut String, enums: &[AstEnum]) -> anyhow::Result<()> {
-        debug_assert!(!enums.is_empty(), "enums must not be empty");
         if enums.is_empty() {
             return Ok(());
         }
@@ -389,7 +378,6 @@ impl DeepContextAnalyzer {
     }
 
     fn write_traits_section(&self, output: &mut String, traits: &[AstTrait]) -> anyhow::Result<()> {
-        debug_assert!(!traits.is_empty(), "traits must not be empty");
         if traits.is_empty() {
             return Ok(());
         }
@@ -413,7 +401,6 @@ impl DeepContextAnalyzer {
     }
 
     fn write_impls_section(&self, output: &mut String, impls: &[AstImpl]) -> anyhow::Result<()> {
-        debug_assert!(!impls.is_empty(), "impls must not be empty");
         if impls.is_empty() {
             return Ok(());
         }
@@ -453,7 +440,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         modules: &[AstModule],
     ) -> anyhow::Result<()> {
-        debug_assert!(!modules.is_empty(), "modules must not be empty");
         if modules.is_empty() {
             return Ok(());
         }
@@ -477,7 +463,6 @@ impl DeepContextAnalyzer {
     }
 
     fn write_imports_section(&self, output: &mut String, uses: &[AstUse]) -> anyhow::Result<()> {
-        debug_assert!(!uses.is_empty(), "uses must not be empty");
         if uses.is_empty() {
             return Ok(());
         }

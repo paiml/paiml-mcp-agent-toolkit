@@ -21,16 +21,6 @@ impl HooksCommand {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(hooks_dir: PathBuf, _config_path: PathBuf) -> Self {
-        debug_assert!(
-            hooks_dir.exists(),
-            "hooks_dir must exist: {}",
-            hooks_dir.display()
-        );
-        debug_assert!(
-            _config_path.exists(),
-            "_config_path must exist: {}",
-            _config_path.display()
-        );
         Self { hooks_dir }
     }
 
@@ -336,7 +326,6 @@ impl HooksCommand {
 
     /// Install pre-push hook (fast local quality gate).
     fn install_pre_push_hook(&self) -> Result<()> {
-        debug_assert!(true, "contract: install_pre_push_hook");
         let hook_path = self.hooks_dir.join("pre-push");
 
         let hook_content = r#"#!/usr/bin/env bash

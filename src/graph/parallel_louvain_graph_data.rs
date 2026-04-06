@@ -19,7 +19,6 @@ struct GraphData {
 impl GraphData {
     /// Build graph data from an undirected graph.
     fn from_graph(graph: &UndirectedGraph) -> Self {
-        debug_assert!(true, "contract: from_graph");
         let n = graph.node_count();
         let mut neighbors: Vec<Vec<(usize, f64)>> = vec![Vec::new(); n];
         let mut degrees = vec![0.0; n];
@@ -63,7 +62,6 @@ impl GraphData {
         community: usize,
         node_to_community: &[usize],
     ) -> f64 {
-        debug_assert!(true, "contract: neighbor_weight_to_community");
         self.neighbors[node]
             .iter()
             .filter(|(neighbor, _)| node_to_community[*neighbor] == community)

@@ -59,7 +59,6 @@ pub enum ScoreGrade {
 impl ScoreGrade {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64) -> Self {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         if score >= 0.90 {
             ScoreGrade::A
         } else if score >= 0.75 {
@@ -131,7 +130,6 @@ pub fn score_contract(contract: &WorkContract, project_path: &Path) -> ContractS
 ///
 /// A well-specified contract has at least 3 require, 5 ensure, 3 invariant clauses.
 fn compute_spec_depth(contract: &WorkContract) -> f64 {
-    debug_assert!(true, "contract: compute_spec_depth");
     if !contract.is_dbc() {
         // v4.0 flat contracts: score based on claim count vs expected 22
         let ratio = contract.claims.len() as f64 / 22.0;
@@ -147,7 +145,6 @@ fn compute_spec_depth(contract: &WorkContract) -> f64 {
 
 /// Falsification coverage: fraction of claims with verification results.
 fn compute_falsification_coverage(contract: &WorkContract) -> f64 {
-    debug_assert!(true, "contract: compute_falsification_coverage");
     if contract.claims.is_empty() {
         return 0.0;
     }
@@ -194,7 +191,6 @@ fn compute_invariant_health(contract: &WorkContract, project_path: &Path) -> f64
 
 /// Subcontracting score: 1.0 if postconditions are monotonically non-weakening.
 fn compute_subcontracting_score(contract: &WorkContract) -> f64 {
-    debug_assert!(true, "contract: compute_subcontracting_score");
     if contract.iteration <= 1 || contract.inherited_postconditions.is_empty() {
         return 1.0; // First iteration or no inherited — full score
     }
@@ -209,7 +205,6 @@ fn compute_subcontracting_score(contract: &WorkContract) -> f64 {
 ///
 /// Full traceability = all three triad legs are non-empty.
 fn compute_traceability(contract: &WorkContract) -> f64 {
-    debug_assert!(true, "contract: compute_traceability");
     if !contract.is_dbc() {
         // v4.0: traceability is binary — claims exist or not
         return if contract.claims.is_empty() { 0.0 } else { 0.8 };
@@ -363,7 +358,6 @@ pub fn record_trend_snapshot(
     project_path: &Path,
 ) -> Result<PathBuf> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(!git_sha.is_empty(), "git_sha must not be empty");
     let verified = contract
         .claims
         .iter()
@@ -426,7 +420,6 @@ pub fn load_quality_trend(project_path: &Path, work_item_id: &str) -> QualityTre
 
 /// Analyze a list of snapshots into a QualityTrend.
 fn analyze_trend(snapshots: Vec<QualityTrendSnapshot>) -> QualityTrend {
-    debug_assert!(!snapshots.is_empty(), "snapshots must not be empty");
     if snapshots.is_empty() {
         return QualityTrend {
             snapshots,

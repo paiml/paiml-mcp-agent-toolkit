@@ -1,12 +1,10 @@
 // RepoScore: NormalizedScore trait impl
 impl NormalizedScore for RepoScore {
     fn raw(&self) -> f64 {
-        debug_assert!(true, "contract: raw");
         self.total_score
     }
 
     fn max_raw(&self) -> f64 {
-        debug_assert!(true, "contract: max_raw");
         REPO_SCORE_MAX_POINTS
     }
 }
@@ -29,7 +27,6 @@ impl fmt::Display for RepoScore {
 impl Grade {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64) -> Self {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         match score {
             s if s >= 95.0 => Grade::APlus,
             s if s >= 90.0 => Grade::A,
@@ -103,7 +100,6 @@ impl CategoryScore {
         subcategories: Vec<SubcategoryScore>,
         findings: Vec<Finding>,
     ) -> Self {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         let percentage = if max_score > 0.0 {
             (score / max_score) * 100.0
         } else {
@@ -201,7 +197,6 @@ impl Ord for Priority {
 impl ScoreMetadata {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(repository_path: PathBuf) -> Self {
-        debug_assert!(repository_path.exists(), "repository_path must exist: {}", repository_path.display());
         Self {
             timestamp: chrono::Utc::now().to_rfc3339(),
             repository_path,

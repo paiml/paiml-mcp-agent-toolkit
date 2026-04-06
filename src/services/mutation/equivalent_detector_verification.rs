@@ -1,6 +1,4 @@
 fn create_test_mutant(original: &str, mutated: &str) -> Mutant {
-    debug_assert!(!original.is_empty(), "original must not be empty");
-    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     Mutant {
         id: "test_mutant".to_string(),
         original_file: std::path::PathBuf::from("test.rs"),
@@ -21,8 +19,6 @@ fn create_training_sample(
     mutated: &str,
     is_equivalent: bool,
 ) -> EquivalenceTrainingData {
-    debug_assert!(!original.is_empty(), "original must not be empty");
-    debug_assert!(!mutated.is_empty(), "mutated must not be empty");
     EquivalenceTrainingData {
         mutant: create_test_mutant(original, mutated),
         original_source: original.to_string(),

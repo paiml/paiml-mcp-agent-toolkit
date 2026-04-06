@@ -55,7 +55,6 @@ pub(crate) fn insert_document_chunks(
     conn: &Connection,
     chunks: &[DocumentChunk],
 ) -> Result<usize, String> {
-    debug_assert!(!chunks.is_empty(), "chunks must not be empty");
     let tx = conn
         .unchecked_transaction()
         .map_err(|e| format!("Failed to begin transaction: {e}"))?;
@@ -126,7 +125,6 @@ pub(crate) fn query_documents(
     query: &str,
     limit: usize,
 ) -> Result<Vec<DocumentResult>, String> {
-    debug_assert!(!query.is_empty(), "query must not be empty");
     if query.trim().is_empty() {
         return Ok(vec![]);
     }
@@ -179,8 +177,6 @@ pub(crate) fn query_documents(
 /// Check if a file has already been indexed with the given checksum.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn file_is_current(conn: &Connection, file_path: &str, checksum: &str) -> bool {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
-    debug_assert!(!checksum.is_empty(), "checksum must not be empty");
     conn.query_row(
         "SELECT COUNT(*) FROM documents WHERE file_path = ?1 AND file_checksum = ?2",
         params![file_path, checksum],
@@ -193,7 +189,6 @@ pub(crate) fn file_is_current(conn: &Connection, file_path: &str, checksum: &str
 /// Remove all document chunks for a given file path.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn remove_file_documents(conn: &Connection, file_path: &str) -> Result<(), String> {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     // Remove FTS entries first (need rowids)
     conn.execute(
         "DELETE FROM documents_fts WHERE rowid IN (SELECT id FROM documents WHERE file_path = ?1)",
@@ -226,7 +221,6 @@ pub(crate) fn document_count(conn: &Connection) -> usize {
 /// FTS5 has special characters (*, ", ^, NEAR, OR, AND, NOT) that need handling.
 /// We tokenize on whitespace and join with implicit AND.
 fn sanitize_fts_query(query: &str) -> String {
-    debug_assert!(!query.is_empty(), "query must not be empty");
     query
         .split_whitespace()
         .filter(|w| !w.is_empty())

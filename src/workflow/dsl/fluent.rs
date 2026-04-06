@@ -23,7 +23,6 @@ impl FluentWorkflow {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parallel(self, steps: Vec<WorkflowStep>) -> Self {
-        debug_assert!(!steps.is_empty(), "steps must not be empty");
         let parallel_step = WorkflowStep {
             id: format!("parallel_{}", uuid::Uuid::new_v4()),
             name: "Parallel Execution".to_string(),

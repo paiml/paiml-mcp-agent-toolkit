@@ -3,7 +3,6 @@
 /// Check for a single dominant struct/enum/trait definition.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn try_dominant_type(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let type_defs: Vec<&FunctionEntry> = entries
         .iter()
         .filter(|e| {
@@ -80,8 +79,6 @@ fn try_existing_suffix(
     file_path: &str,
     entries: &[&FunctionEntry],
 ) -> Option<(String, f32, String)> {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let stem = Path::new(file_path)
         .file_stem()
         .and_then(|s| s.to_str())
@@ -116,7 +113,6 @@ fn try_existing_suffix(
 /// Try to use the original filename base (before `_part_` splitting) as the rename.
 /// Rejects generic bases like "mod", "tests", "lib", and anything in GENERIC_NAMES.
 fn try_original_base(file_path: &str) -> Option<(String, f32, String)> {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let stem = Path::new(file_path)
         .file_stem()
         .and_then(|s| s.to_str())
@@ -147,7 +143,6 @@ fn try_original_base(file_path: &str) -> Option<(String, f32, String)> {
 /// Check if >70% of functions share a keyword theme.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn try_function_theme(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let fn_entries: Vec<&&FunctionEntry> = entries
         .iter()
         .filter(|e| e.definition_type == DefinitionType::Function)
@@ -202,7 +197,6 @@ pub(crate) fn try_function_theme(entries: &[&FunctionEntry]) -> Option<(String, 
 /// Find the longest common prefix across function names (min 4 chars).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn try_common_prefix(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let fn_names: Vec<&str> = entries
         .iter()
         .filter(|e| e.definition_type == DefinitionType::Function)
@@ -233,7 +227,6 @@ pub(crate) fn try_common_prefix(entries: &[&FunctionEntry]) -> Option<(String, f
 pub(crate) fn try_doc_comment_consensus(
     entries: &[&FunctionEntry],
 ) -> Option<(String, f32, String)> {
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let docs: Vec<&str> = entries
         .iter()
         .filter_map(|e| e.doc_comment.as_deref())

@@ -73,7 +73,6 @@ impl Default for MLReproducibilityScorer {
 
 impl PopperScorer for MLReproducibilityScorer {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "ML/AI Reproducibility"
     }
 
@@ -86,11 +85,6 @@ impl PopperScorer for MLReproducibilityScorer {
     }
 
     fn score(&self, project_path: &Path) -> PopperScorerResult<PopperCategoryScore> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let is_ml = self.is_ml_project(project_path);
 
         let mut category = PopperCategoryScore::new(self.name(), 0.0, self.max_points());

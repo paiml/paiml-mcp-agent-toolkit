@@ -116,7 +116,6 @@ pub fn lint_contract(
 
 /// DBC-VAL-001: Missing preconditions (require empty in v5.0 contract)
 fn lint_val_001(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
-    debug_assert!(true, "contract: lint_val_001");
     if contract.is_dbc() && contract.require.is_empty() {
         findings.push(LintFinding {
             rule_id: "DBC-VAL-001".to_string(),
@@ -129,7 +128,6 @@ fn lint_val_001(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
 
 /// DBC-VAL-002: Missing postconditions (ensure empty in v5.0 contract)
 fn lint_val_002(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
-    debug_assert!(true, "contract: lint_val_002");
     if contract.is_dbc() && contract.ensure.is_empty() {
         findings.push(LintFinding {
             rule_id: "DBC-VAL-002".to_string(),
@@ -142,7 +140,6 @@ fn lint_val_002(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
 
 /// DBC-VAL-003: Missing invariants (invariant empty in v5.0 contract)
 fn lint_val_003(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
-    debug_assert!(true, "contract: lint_val_003");
     if contract.is_dbc() && contract.invariant.is_empty() {
         findings.push(LintFinding {
             rule_id: "DBC-VAL-003".to_string(),
@@ -155,7 +152,6 @@ fn lint_val_003(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
 
 /// DBC-VAL-004: Empty claim hypothesis
 fn lint_val_004(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
-    debug_assert!(true, "contract: lint_val_004");
     for (i, claim) in contract.claims.iter().enumerate() {
         if claim.hypothesis.trim().is_empty() {
             findings.push(LintFinding {
@@ -172,7 +168,6 @@ fn lint_val_004(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
 
 /// DBC-AUD-001: Postcondition without falsification test
 fn lint_aud_001(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
-    debug_assert!(true, "contract: lint_aud_001");
     if !contract.is_dbc() {
         return;
     }
@@ -219,7 +214,6 @@ fn lint_aud_002(
 
 /// DBC-AUD-003: Claim defined but never verified
 fn lint_aud_003(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
-    debug_assert!(true, "contract: lint_aud_003");
     let unverified: Vec<_> = contract
         .claims
         .iter()
@@ -249,7 +243,6 @@ fn lint_scr_001(
     findings: &mut Vec<LintFinding>,
 ) {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(min_score >= 0.0, "min_score must be non-negative");
     let score = score_contract(contract, project_path);
     if score.total < min_score {
         findings.push(LintFinding {
@@ -268,7 +261,6 @@ fn lint_scr_001(
 
 /// DBC-PRV-001: Subcontracting violation detected
 fn lint_prv_001(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
-    debug_assert!(true, "contract: lint_prv_001");
     if contract.iteration <= 1 || contract.inherited_postconditions.is_empty() {
         return;
     }
@@ -310,7 +302,6 @@ fn lint_drf_001(
 
 /// DBC-SCR-002: More than 30% of claims excluded via --without (§14.5)
 fn lint_scr_002(contract: &WorkContract, findings: &mut Vec<LintFinding>) {
-    debug_assert!(true, "contract: lint_scr_002");
     if !contract.is_dbc() || contract.excluded_claims.is_empty() {
         return;
     }
@@ -395,7 +386,6 @@ fn lint_trd_002(
 /// VS Code SARIF Viewer, etc.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "lint_valid")]
 pub fn lint_report_to_sarif(report: &LintReport, contract_path: &str) -> serde_json::Value {
-    debug_assert!(!contract_path.is_empty(), "contract_path must not be empty");
     let results: Vec<serde_json::Value> = report
         .findings
         .iter()

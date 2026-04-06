@@ -34,7 +34,6 @@ impl ConvergenceTracker {
 
     /// Check if new metrics are better than best
     fn is_better(&self, metrics: &ProjectMetrics) -> bool {
-        debug_assert!(true, "contract: is_better");
         let Some(best) = &self.best_metrics else {
             return true;
         };
@@ -48,7 +47,6 @@ impl ConvergenceTracker {
 
     /// Calculate a composite quality score
     fn calculate_score(&self, metrics: &ProjectMetrics) -> f32 {
-        debug_assert!(true, "contract: calculate_score");
         let mut score = 0.0;
 
         // Coverage contribution (weight: 0.25)

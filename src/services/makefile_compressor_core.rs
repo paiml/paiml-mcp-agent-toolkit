@@ -51,7 +51,6 @@ impl MakefileCompressor {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn compress(&self, content: &str) -> CompressedMakefile {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut result = CompressedMakefile::default();
 
         // Phase 1: Extract variables
@@ -95,7 +94,6 @@ impl MakefileCompressor {
     }
 
     fn is_critical_target(&self, name: &str) -> bool {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.critical_targets.contains(name)
             || name.starts_with("docker")
             || name.starts_with("test-")

@@ -1,6 +1,5 @@
 /// Print validation result as text
 fn print_validation_text(result: &QaValidationResult) {
-    debug_assert!(true, "contract: print_validation_text");
     use crate::cli::colors as c;
     println!("Validating {}...\n", c::label(&result.task_id));
 
@@ -51,7 +50,6 @@ fn print_validation_text(result: &QaValidationResult) {
 
 /// Print validation result as markdown
 fn print_validation_markdown(result: &QaValidationResult) {
-    debug_assert!(true, "contract: print_validation_markdown");
     println!("# QA Validation Report: {}\n", result.task_id);
     println!(
         "**Date**: {}",
@@ -94,8 +92,6 @@ async fn handle_report(
     output: Option<&Path>,
     format: QaOutputFormat,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
     use crate::cli::colors as c;
     println!("{} {}", c::label("Generating QA report for task:"), task_id);
 
@@ -209,7 +205,6 @@ async fn handle_summary(
     project_path: &Path,
     epic_id: Option<&str>,
 ) -> anyhow::Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::colors as c;
     let qa_dir = project_path.join(".pmat-qa");
 

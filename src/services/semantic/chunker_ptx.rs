@@ -2,7 +2,6 @@
 // Extracts .entry and .func blocks from PTX assembly files
 
 fn chunk_ptx_file(source: &str) -> Result<Vec<CodeChunk>, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut chunks = Vec::new();
     let lines: Vec<&str> = source.lines().collect();
     let mut i = 0;
@@ -66,7 +65,6 @@ fn chunk_ptx_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 
 /// Extract kernel/function name from PTX declaration line
 fn extract_ptx_kernel_name(line: &str) -> String {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     // Patterns:
     //   .entry vector_add(...) {
     //   .visible .entry kernel_name(...)
@@ -107,7 +105,6 @@ fn extract_ptx_kernel_name(line: &str) -> String {
 
 /// Simple hash for PTX content checksums
 fn md5_hash(data: &[u8]) -> u64 {
-    debug_assert!(!data.is_empty(), "data must not be empty");
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     for &byte in data {
         hash ^= u64::from(byte);

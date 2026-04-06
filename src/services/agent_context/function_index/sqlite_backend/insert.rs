@@ -16,7 +16,6 @@ pub(crate) fn insert_functions(
     conn: &Connection,
     functions: &[FunctionEntry],
 ) -> Result<(), String> {
-    debug_assert!(!functions.is_empty(), "functions must not be empty");
     let tx = conn
         .unchecked_transaction()
         .map_err(|e| format!("Failed to begin transaction: {e}"))?;
@@ -133,7 +132,6 @@ pub(crate) fn insert_graph_metrics(
     conn: &Connection,
     metrics: &[GraphMetrics],
 ) -> Result<(), String> {
-    debug_assert!(!metrics.is_empty(), "metrics must not be empty");
     let tx = conn
         .unchecked_transaction()
         .map_err(|e| format!("Failed to begin transaction: {e}"))?;

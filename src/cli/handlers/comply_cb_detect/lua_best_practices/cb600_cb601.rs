@@ -16,11 +16,6 @@ use std::path::Path;
 /// Based on luacheck W111/W113.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -79,11 +74,6 @@ pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolat
 /// Based on Luau type system and LuaTaint taint analysis.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb601_nil_unsafe_access(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 

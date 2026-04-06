@@ -10,7 +10,6 @@ impl KnownDefectsScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<(usize, usize)> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let unwrap_regex =
             Regex::new(r"\.unwrap\(\)").map_err(|e| ScorerError::IoError(e.to_string()))?;
 
@@ -63,7 +62,6 @@ impl KnownDefectsScorer {
     /// - #99: Excludes doc comments (`///`, `//!`, `//`, `/* */`)
     /// - #100: Properly detects inline `#[cfg(test)]` modules
     fn count_unwraps_in_file(path: &Path, content: &str, unwrap_regex: &Regex) -> (usize, usize) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check if entire file is test code
         if Self::is_test_file(path) {
             let test_count = unwrap_regex.find_iter(content).count();
@@ -106,7 +104,6 @@ impl KnownDefectsScorer {
     /// - Line comments: `//` (including doc comments `///` and `//!`)
     /// - Block comments: `/* */` (including doc comments `/** */`)
     fn strip_comments(content: &str) -> String {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut result = String::with_capacity(content.len());
         let mut chars = content.chars().peekable();
         let mut in_block_comment = false;
@@ -188,7 +185,6 @@ impl KnownDefectsScorer {
     /// - It's conservative (better to over-count than miss production unwraps)
     /// - It encourages proper test organization
     fn is_test_file(path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Check 1: Directory structure

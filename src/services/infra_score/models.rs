@@ -121,12 +121,10 @@ pub struct InfraScoreMetadata {
 
 impl NormalizedScore for InfraScore {
     fn raw(&self) -> f64 {
-        debug_assert!(true, "contract: raw");
         self.total_score
     }
 
     fn max_raw(&self) -> f64 {
-        debug_assert!(true, "contract: max_raw");
         INFRA_SCORE_MAX_POINTS
     }
 }
@@ -147,7 +145,6 @@ impl fmt::Display for InfraScore {
 impl InfraGrade {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64) -> Self {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         match score {
             s if s >= 95.0 => InfraGrade::APlus,
             s if s >= 90.0 => InfraGrade::A,
@@ -242,8 +239,6 @@ impl InfraCategoryScore {
 impl InfraCheck {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn pass(id: &str, name: &str, max_score: f64, evidence: Vec<String>) -> Self {
-        debug_assert!(!id.is_empty(), "id must not be empty");
-        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             id: id.to_string(),
             name: name.to_string(),
@@ -256,8 +251,6 @@ impl InfraCheck {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn fail(id: &str, name: &str, max_score: f64, evidence: Vec<String>) -> Self {
-        debug_assert!(!id.is_empty(), "id must not be empty");
-        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             id: id.to_string(),
             name: name.to_string(),
@@ -276,8 +269,6 @@ impl InfraCheck {
         max_score: f64,
         evidence: Vec<String>,
     ) -> Self {
-        debug_assert!(!id.is_empty(), "id must not be empty");
-        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             id: id.to_string(),
             name: name.to_string(),
@@ -292,11 +283,6 @@ impl InfraCheck {
 impl InfraScoreMetadata {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(repository_path: PathBuf) -> Self {
-        debug_assert!(
-            repository_path.exists(),
-            "repository_path must exist: {}",
-            repository_path.display()
-        );
         Self {
             timestamp: chrono::Utc::now().to_rfc3339(),
             repository_path,

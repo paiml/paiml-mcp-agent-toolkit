@@ -26,7 +26,6 @@ pub enum GraphMetricType {
 impl GraphMetricType {
     /// Get the string representation of the graph metric type
     fn as_str(&self) -> &'static str {
-        debug_assert!(true, "contract: as_str");
         match self {
             GraphMetricType::Centrality => "centrality",
             GraphMetricType::Betweenness => "betweenness",

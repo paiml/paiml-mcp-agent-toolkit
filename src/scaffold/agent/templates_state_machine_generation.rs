@@ -5,7 +5,6 @@
 #[async_trait]
 impl TemplateGenerator for StateMachineTemplate {
     fn generate(&self, ctx: &AgentContext) -> Result<GeneratedFiles> {
-        debug_assert!(true, "contract: generate");
         let mut files = GeneratedFiles::new();
 
         // Generate Cargo.toml
@@ -28,7 +27,6 @@ impl TemplateGenerator for StateMachineTemplate {
     }
 
     fn validate_context(&self, ctx: &AgentContext) -> Result<()> {
-        debug_assert!(true, "contract: validate_context");
         if ctx.name.is_empty() {
             bail!("Agent name is required");
         }
@@ -36,18 +34,15 @@ impl TemplateGenerator for StateMachineTemplate {
     }
 
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         &self.name
     }
 
     fn description(&self) -> &str {
-        debug_assert!(true, "contract: description");
         &self.description
     }
 }
 
 fn generate_state_machine_cargo_toml(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_state_machine_cargo_toml");
     format!(
         r#"[package]
 name = "{}"
@@ -70,7 +65,6 @@ tokio-test = "0.4"
 }
 
 fn generate_state_machine_main(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_state_machine_main");
     format!(
         r#"//! {} - State Machine Agent
 
@@ -90,7 +84,6 @@ async fn main() -> Result<()> {{
 }
 
 fn generate_state_machine_mod() -> String {
-    debug_assert!(true, "contract: generate_state_machine_mod");
     r"//! State machine implementation.
 
 pub mod state;
@@ -101,7 +94,6 @@ pub mod invariants;
 }
 
 fn generate_state_definitions(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_state_definitions");
     format!(
         r"//! State definitions for {}.
 
@@ -128,7 +120,6 @@ pub enum Event {{
 }
 
 fn generate_transitions() -> String {
-    debug_assert!(true, "contract: generate_transitions");
     r"//! State transition logic.
 
 use anyhow::Result;
@@ -148,7 +139,6 @@ pub fn transition(state: &State, event: &Event) -> Result<State> {
 }
 
 fn generate_state_invariants() -> String {
-    debug_assert!(true, "contract: generate_state_invariants");
     r#"//! State invariants.
 
 use anyhow::Result;
@@ -168,7 +158,6 @@ pub fn check_invariants(state: &State) -> Result<()> {
 }
 
 fn generate_state_tests() -> String {
-    debug_assert!(true, "contract: generate_state_tests");
     r"//! State transition tests.
 
 #[test]
@@ -185,7 +174,6 @@ fn test_invalid_transitions() {
 }
 
 fn generate_invariant_tests() -> String {
-    debug_assert!(true, "contract: generate_invariant_tests");
     r"//! Invariant tests.
 
 #[test]

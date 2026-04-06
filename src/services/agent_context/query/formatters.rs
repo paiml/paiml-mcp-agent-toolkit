@@ -5,7 +5,6 @@ use super::types::QueryResult;
 /// Format results as JSON
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_json(results: &[QueryResult]) -> Result<String, String> {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     serde_json::to_string_pretty(results).map_err(|e| format!("JSON serialization failed: {e}"))
 }
 

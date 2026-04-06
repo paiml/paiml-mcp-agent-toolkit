@@ -12,7 +12,6 @@ use std::path::{Path, PathBuf};
 ///
 /// Checks first 5 lines for the annotation (it's always at the top).
 fn has_coverage_off(content: &str) -> bool {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // Module-level inner attributes (#![...]) can appear anywhere before the first
     // code item, often after long doc comments (line 6-200+). Scan all #! lines.
     content.lines().any(|line| {
@@ -25,7 +24,6 @@ fn has_coverage_off(content: &str) -> bool {
 
 /// Load cached coverage_off_files from SQLite metadata.
 fn load_coverage_off_files(conn: &rusqlite::Connection) -> HashSet<String> {
-    debug_assert!(true, "contract: load_coverage_off_files");
     let json: String = conn
         .query_row(
             "SELECT value FROM metadata WHERE key = 'coverage_off_files'",
@@ -46,11 +44,6 @@ impl AgentContextIndex {
     /// Built index ready for queries
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn build(project_path: &Path) -> Result<Self, String> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let project_root = project_path
             .canonicalize()
             .map_err(|e| format!("Invalid project path: {e}"))?;
@@ -283,7 +276,6 @@ impl AgentContextIndex {
     /// Get function by exact name
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_by_name(&self, name: &str) -> Vec<&FunctionEntry> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.name_index
             .get(name)
             .map(|indices| indices.iter().map(|&i| &self.functions[i]).collect())
@@ -293,7 +285,6 @@ impl AgentContextIndex {
     /// Get functions in a file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_by_file(&self, file_path: &str) -> Vec<&FunctionEntry> {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.file_index
             .get(file_path)
             .map(|indices| indices.iter().map(|&i| &self.functions[i]).collect())

@@ -1,7 +1,6 @@
 #[async_trait]
 impl McpTool for ValidateDocumentationTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "validate_documentation".to_string(),
             description: "Validate documentation claims against codebase to detect hallucinations, broken references, and 404 errors using semantic entropy analysis".to_string(),
@@ -33,7 +32,6 @@ impl McpTool for ValidateDocumentationTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         // Extract parameters
         let doc_path = params["documentation_path"]
             .as_str()

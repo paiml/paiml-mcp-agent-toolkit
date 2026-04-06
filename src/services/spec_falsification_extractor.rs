@@ -60,7 +60,6 @@ impl SpecClaimExtractor {
     /// Extract all falsifiable claims from a specification document
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn extract(&self, content: &str, source_file: &Path) -> Vec<SpecClaim> {
-        debug_assert!(source_file.exists(), "source_file must exist: {}", source_file.display());
         let mut claims = Vec::new();
         let mut in_code_block = false;
         let mut claim_counter = 0usize;
@@ -112,9 +111,6 @@ impl SpecClaimExtractor {
         _section: &str,
         _source: &Path,
     ) -> Option<SpecClaim> {
-        debug_assert!(_source.exists(), "_source must exist: {}", _source.display());
-        debug_assert!(!line.is_empty(), "line must not be empty");
-        debug_assert!(!_section.is_empty(), "_section must not be empty");
         let priority = self.classify_priority(line);
         let is_absolute = self.absolute_pattern.is_match(&line.to_lowercase());
         let signals = self.extract_signals(line);
@@ -136,7 +132,6 @@ impl SpecClaimExtractor {
     }
 
     fn classify_priority(&self, line: &str) -> ClaimPriority {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if self.rfc2119_must.is_match(line) {
             ClaimPriority::P0Critical
         } else if self.rfc2119_should.is_match(line) {
@@ -149,7 +144,6 @@ impl SpecClaimExtractor {
     }
 
     fn extract_signals(&self, line: &str) -> LineSignals {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let path_refs: Vec<String> = self
             .path_pattern
             .captures_iter(line)
@@ -188,7 +182,6 @@ impl SpecClaimExtractor {
         priority: ClaimPriority,
         is_absolute: bool,
     ) -> Option<SpecClaimCategory> {
-        debug_assert!(true, "contract: categorize");
         if signals.has_absence {
             return Some(SpecClaimCategory::AbsenceClaim);
         }

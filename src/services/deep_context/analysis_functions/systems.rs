@@ -20,11 +20,6 @@ use super::metrics::WASM_UNIFIED_CACHE;
 pub async fn analyze_go_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     #[cfg(feature = "go-ast")]
     {
         // Use unified analyzer for single parse pass
@@ -51,11 +46,6 @@ pub async fn analyze_go_language(
 pub async fn analyze_c_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     #[cfg(feature = "c-ast")]
     {
         // Use the new comprehensive C language analyzer
@@ -78,11 +68,6 @@ pub async fn analyze_c_language(
 pub async fn analyze_cpp_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     #[cfg(feature = "cpp-ast")]
     {
         // Use the comprehensive C++ language analyzer
@@ -104,11 +89,6 @@ pub async fn analyze_cpp_language(
 pub async fn analyze_kotlin_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     tracing::debug!("Analyzing Kotlin file: {}", file_path.display());
     let items = analyze_kotlin_file(file_path).await?;
     tracing::debug!("Kotlin analysis returned {} items", items.len());
@@ -120,11 +100,6 @@ pub async fn analyze_kotlin_language(
 pub async fn analyze_java_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     analyze_java_file(file_path).await
 }
 
@@ -133,11 +108,6 @@ pub async fn analyze_java_language(
 pub async fn analyze_csharp_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     analyze_csharp_file(file_path).await
 }
 
@@ -146,11 +116,6 @@ pub async fn analyze_csharp_language(
 pub async fn analyze_swift_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     analyze_swift_file(file_path).await
 }
 
@@ -161,11 +126,6 @@ pub async fn analyze_swift_language(
 pub async fn analyze_wasm_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     #[cfg(feature = "wasm-ast")]
     {
         // Use unified analyzer for single parse pass
@@ -192,11 +152,6 @@ pub async fn analyze_wasm_language(
 pub async fn analyze_lean_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     #[cfg(feature = "lean-ast")]
     {
         use crate::services::languages::lean;
@@ -216,11 +171,6 @@ pub async fn analyze_lean_language(
 async fn analyze_go_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     #[cfg(feature = "go-ast")]
     {
         use crate::services::languages::go;
@@ -240,11 +190,6 @@ async fn analyze_go_file(
 async fn analyze_c_file(
     #[allow(unused_variables)] file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     #[cfg(feature = "c-ast")]
     {
         // Direct delegation to the new implementation
@@ -263,11 +208,6 @@ async fn analyze_c_file(
 async fn analyze_kotlin_file(
     #[allow(unused_variables)] file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     // kotlin-ast feature is disabled
     Ok(Vec::new())
 }
@@ -277,11 +217,6 @@ async fn analyze_kotlin_file(
 pub async fn analyze_java_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     #[cfg(feature = "java-ast")]
     {
         use crate::services::languages::java::JavaAstVisitor;
@@ -307,11 +242,6 @@ pub async fn analyze_java_file(
 pub async fn analyze_csharp_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     #[cfg(feature = "csharp-ast")]
     {
         use crate::services::languages::csharp::CSharpAstVisitor;
@@ -337,11 +267,6 @@ pub async fn analyze_csharp_file(
 pub async fn analyze_swift_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     #[cfg(feature = "swift-ast")]
     {
         // Swift tree-sitter analyzer not yet available
@@ -356,11 +281,6 @@ pub async fn analyze_swift_file(
 async fn analyze_wasm_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     #[cfg(feature = "wasm-ast")]
     {
         use crate::services::languages::wasm::WasmModuleAnalyzer;

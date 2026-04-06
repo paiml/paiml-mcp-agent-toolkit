@@ -23,7 +23,6 @@ impl SatdDetectorWithItems {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect(&self, source: &str) -> Vec<SatdItem> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut items = Vec::new();
 
         for (line_num, line) in source.lines().enumerate() {
@@ -134,7 +133,6 @@ mod coverage_tests {
         let detector = SatdDetectorWithItems::new();
         let source = r#"
             fn clean_code() {
-                debug_assert!(true, "contract: clean_code");
                 let x = 1;
                 let y = 2;
                 x + y
@@ -183,7 +181,6 @@ mod coverage_tests {
         let source = r#"
 // TODO: first task
 fn foo() {}
-    debug_assert!(true, "contract: foo");
 // TODO: second task
         "#;
         let items = detector.detect(source);

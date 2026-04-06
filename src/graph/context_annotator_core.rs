@@ -56,7 +56,6 @@ impl GraphContextAnnotator {
     /// Convert directed graph to undirected for community detection
     /// Complexity: 5
     fn convert_to_undirected(&self, graph: &DependencyGraph) -> UndirectedGraph {
-        debug_assert!(true, "contract: convert_to_undirected");
         let mut undirected = UndirectedGraph::new();
         let mut node_map = HashMap::new();
 
@@ -84,7 +83,6 @@ impl GraphContextAnnotator {
     /// Find related files through graph connections
     /// Complexity: 6
     fn find_related_files(&self, graph: &DependencyGraph, node: NodeId) -> Vec<String> {
-        debug_assert!(true, "contract: find_related_files");
         let mut related = Vec::new();
 
         // Get neighbors (outgoing)

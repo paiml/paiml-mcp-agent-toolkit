@@ -87,7 +87,6 @@ impl ValidateDocsCmd {
     }
 
     fn build_config(&self) -> ValidatorConfig {
-        debug_assert!(true, "contract: build_config");
         // Start with default excludes, then add CLI-provided ones
         let mut exclude_patterns = vec![
             "archive".to_string(),
@@ -110,7 +109,6 @@ impl ValidateDocsCmd {
     }
 
     fn load_config(&self, path: &PathBuf) -> Result<ValidatorConfig> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Load from TOML config file
         let content = std::fs::read_to_string(path)?;
         let config: ValidatorConfig = toml::from_str(&content)?;
@@ -118,7 +116,6 @@ impl ValidateDocsCmd {
     }
 
     fn print_text_summary(&self, summary: &crate::services::doc_validator::ValidationSummary) {
-        debug_assert!(true, "contract: print_text_summary");
         use crate::cli::colors as c;
         println!();
         println!("{}", c::header("Documentation Link Validation Summary"));
@@ -232,7 +229,6 @@ impl ValidateDocsCmd {
         &self,
         summary: &crate::services::doc_validator::ValidationSummary,
     ) -> Result<()> {
-        debug_assert!(true, "contract: print_json_summary");
         use serde_json::json;
 
         let results_json: Vec<_> = summary
@@ -271,7 +267,6 @@ impl ValidateDocsCmd {
         &self,
         summary: &crate::services::doc_validator::ValidationSummary,
     ) -> Result<()> {
-        debug_assert!(true, "contract: print_junit_summary");
         println!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         println!(
             "<testsuites name=\"Documentation Link Validation\" tests=\"{}\" failures=\"{}\" time=\"{:.3}\">",
@@ -325,7 +320,6 @@ impl ValidateDocsCmd {
 }
 
 fn xml_escape(s: &str) -> String {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")

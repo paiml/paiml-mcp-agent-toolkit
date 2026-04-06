@@ -33,7 +33,6 @@ impl ComplexityRanker {
         &self,
         metrics: &FileComplexityMetrics,
     ) -> CompositeComplexityScore {
-        debug_assert!(true, "contract: calculate_composite_score");
         // Extract metrics from functions and classes
         let all_functions: Vec<_> = metrics
             .functions
@@ -99,7 +98,6 @@ fn language_score_params(ext: &str) -> Option<(f64, f64, f64, f64, f64, f64)> {
 }
 
 fn score_from_file_size(file_path: &Path, params: (f64, f64, f64, f64, f64, f64)) -> CompositeComplexityScore {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let (size_div, weight, func_div, cyc_div, cog_div, halstead_mul) = params;
     let Ok(metadata) = std::fs::metadata(file_path) else {
         return CompositeComplexityScore::default();
@@ -118,7 +116,6 @@ impl FileRanker for ComplexityRanker {
     type Metric = CompositeComplexityScore;
 
     fn compute_score(&self, file_path: &Path) -> Self::Metric {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let ext = file_path.extension().and_then(|s| s.to_str());
         match ext.and_then(language_score_params) {
             Some(params) => score_from_file_size(file_path, params),
@@ -127,7 +124,6 @@ impl FileRanker for ComplexityRanker {
     }
 
     fn format_ranking_entry(&self, file: &str, metric: &Self::Metric, rank: usize) -> String {
-        debug_assert!(!file.is_empty(), "file must not be empty");
         format!(
             "| {:>4} | {:<50} | {:>9} | {:>14} | {:>13.1} | {:>11.1} | {:>11.1} |",
             rank,
@@ -153,7 +149,6 @@ pub fn rank_files_by_complexity(
     limit: usize,
     ranker: &ComplexityRanker,
 ) -> Vec<(String, CompositeComplexityScore)> {
-    debug_assert!(limit > 0, "limit must be positive");
     let mut rankings: Vec<_> = file_metrics
         .iter()
         .map(|metrics| {

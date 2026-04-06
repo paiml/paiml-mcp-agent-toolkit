@@ -15,7 +15,6 @@ const PLACEHOLDER_PRECONDITIONS: &[&str] = &[
 /// without accompanying domain constraints.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -220,7 +219,6 @@ fn check_equation_preconditions(
     equations_with_pre: &mut usize,
     placeholder_only_equations: &mut usize,
 ) {
-    debug_assert!(!pres.is_empty(), "pres must not be empty");
     if pres.is_empty() {
         return;
     }
@@ -240,7 +238,6 @@ fn check_equation_preconditions(
 /// to checking for known placeholder patterns in any generated_contracts.rs file.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -441,7 +438,6 @@ pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
 
 /// Find a generated_contracts.rs file in the project.
 fn find_generated_contracts(project_path: &Path) -> Option<std::path::PathBuf> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     for candidate in &[
         "src/generated_contracts.rs",
         "generated_contracts.rs",
@@ -461,7 +457,6 @@ fn find_generated_contracts(project_path: &Path) -> Option<std::path::PathBuf> {
 /// the enforcement score (penetration × quality). E0=0.1, E1=0.5, E2=1.0.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_enforcement_quality(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if resolve_contracts_dir(project_path).is_none() {
         return ComplianceCheck {
             name: "CB-1214: Enforcement Quality".into(),
@@ -564,7 +559,6 @@ pub(crate) fn check_enforcement_quality(project_path: &Path) -> ComplianceCheck 
 /// Find binding.yaml for a project — checks sibling provable-contracts repo.
 /// Tries directory name, then Cargo.toml package name.
 fn find_binding_yaml(project_path: &Path) -> Option<std::path::PathBuf> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Use resolve_contracts_dir which handles dir name + Cargo.toml name
     let contracts_dir = resolve_contracts_dir(project_path)?;
     let binding = contracts_dir.join("binding.yaml");
@@ -576,7 +570,6 @@ fn find_binding_yaml(project_path: &Path) -> Option<std::path::PathBuf> {
 
 /// Parse an integer metric from pv coverage output (e.g., "E0 (generic !is_empty):  3")
 fn parse_metric(output: &str, label: &str) -> usize {
-    debug_assert!(!output.is_empty(), "output must not be empty");
     output
         .lines()
         .find(|l| l.contains(label))
@@ -587,7 +580,6 @@ fn parse_metric(output: &str, label: &str) -> usize {
 
 /// Parse a float metric from pv coverage output (e.g., "Quality score:  0.55 ...")
 fn parse_float_metric(output: &str, label: &str) -> f64 {
-    debug_assert!(!output.is_empty(), "output must not be empty");
     output
         .lines()
         .find(|l| l.contains(label))

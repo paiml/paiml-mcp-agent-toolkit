@@ -68,7 +68,6 @@ impl PdmtQualityEnforcer {
         todo: &PdmtTodo,
         todo_list: &PdmtTodoList,
     ) -> Result<QualityValidationResult> {
-        debug_assert!(true, "contract: validate_single_todo");
         debug!("Validating todo: {}", todo.content);
 
         // Phase 1: Structure validation
@@ -123,7 +122,6 @@ impl PdmtQualityEnforcer {
 
     /// Validate todo structure and content
     fn validate_todo_structure(&self, todo: &PdmtTodo) -> Result<ValidationOutcome> {
-        debug_assert!(true, "contract: validate_todo_structure");
         let mut violations = Vec::new();
 
         // Check content length
@@ -173,7 +171,6 @@ impl PdmtQualityEnforcer {
 
     /// Validate coverage requirements
     fn validate_coverage_requirements(&self, todo: &PdmtTodo) -> Result<ValidationOutcome> {
-        debug_assert!(true, "contract: validate_coverage_requirements");
         let coverage_req = todo.quality_gates.coverage_requirement;
 
         if coverage_req < 80.0 {
@@ -193,7 +190,6 @@ impl PdmtQualityEnforcer {
 
     /// Validate doctest requirements
     fn validate_doctest_requirements(&self, todo: &PdmtTodo) -> Result<ValidationOutcome> {
-        debug_assert!(true, "contract: validate_doctest_requirements");
         if todo.quality_gates.doctest_requirement {
             Ok(ValidationOutcome::success(
                 "Doctest requirement enabled".to_string(),
@@ -208,7 +204,6 @@ impl PdmtQualityEnforcer {
 
     /// Validate property test requirements
     fn validate_property_test_requirements(&self, todo: &PdmtTodo) -> Result<ValidationOutcome> {
-        debug_assert!(true, "contract: validate_property_test_requirements");
         if !todo.quality_gates.property_test_requirement {
             warn!("Property tests not required for todo: {}", todo.content);
         }
@@ -219,7 +214,6 @@ impl PdmtQualityEnforcer {
 
     /// Validate example requirements
     fn validate_example_requirements(&self, todo: &PdmtTodo) -> Result<ValidationOutcome> {
-        debug_assert!(true, "contract: validate_example_requirements");
         if !todo.quality_gates.example_requirement {
             warn!("Examples not required for todo: {}", todo.content);
         }
@@ -230,7 +224,6 @@ impl PdmtQualityEnforcer {
 
     /// Validate SATD compliance (zero tolerance)
     fn validate_satd_compliance(&self, todo: &PdmtTodo) -> Result<ValidationOutcome> {
-        debug_assert!(true, "contract: validate_satd_compliance");
         if todo.quality_gates.satd_tolerance {
             Ok(ValidationOutcome::failure(
                 "SATD tolerance must be zero".to_string(),
@@ -249,7 +242,6 @@ impl PdmtQualityEnforcer {
         todo: &PdmtTodo,
         enforcement_mode: &EnforcementMode,
     ) -> Result<ValidationOutcome> {
-        debug_assert!(true, "contract: run_quality_proxy_validation");
         // For now, we simulate proxy validation since we don't have actual generated code
         // In a real implementation, this would validate actual generated code
         let proxy_mode = match enforcement_mode {
@@ -287,7 +279,6 @@ impl PdmtQualityEnforcer {
 
     /// Generate improvement recommendations
     fn generate_recommendations(&self, todo: &PdmtTodo, passed: bool) -> Vec<String> {
-        debug_assert!(true, "contract: generate_recommendations");
         let mut recommendations = Vec::new();
 
         if !passed {
@@ -310,7 +301,6 @@ impl PdmtQualityEnforcer {
 
     /// Aggregate results from multiple todos
     fn aggregate_results(&self, results: &[QualityValidationResult]) -> QualityResults {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         // For simplicity, take the first result's detailed results
         // In a real implementation, this would properly aggregate all results
         if let Some(first) = results.first() {
@@ -343,7 +333,6 @@ pub async fn validate_generated_code_with_proxy(
     file_path: &str,
     todo: &PdmtTodo,
 ) -> Result<ProxyResponse> {
-    debug_assert!(!code.is_empty(), "code must not be empty");
     let request = ProxyRequest {
         operation: ProxyOperation::Write,
         file_path: file_path.to_string(),
@@ -419,7 +408,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

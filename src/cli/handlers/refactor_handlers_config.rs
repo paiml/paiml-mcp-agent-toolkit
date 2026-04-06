@@ -3,14 +3,12 @@
 // git auto-commit creation, and ExplainLevel conversion.
 
 async fn load_refactor_config(config_path: &Path) -> anyhow::Result<RefactorConfig> {
-    debug_assert!(config_path.exists(), "config_path must exist: {}", config_path.display());
     // Placeholder implementation - would load from TOML file
     println!("📝 Loading config from: {}", config_path.display());
     Ok(RefactorConfig::default())
 }
 
 async fn load_refactor_config_json(config_path: &Path) -> anyhow::Result<RefactorConfig> {
-    debug_assert!(config_path.exists(), "config_path must exist: {}", config_path.display());
     println!("📝 Loading JSON config from: {}", config_path.display());
 
     let config_data = tokio::fs::read_to_string(config_path).await?;
@@ -73,7 +71,6 @@ async fn sort_targets_by_priority(
     mut targets: Vec<PathBuf>,
     _priority_expr: &str,
 ) -> anyhow::Result<Vec<PathBuf>> {
-    debug_assert!(!_priority_expr.is_empty(), "_priority_expr must not be empty");
     // In a real implementation, this would:
     // 1. Analyze each file to get metrics (complexity, defect_probability, etc.)
     // 2. Evaluate the priority expression for each file
@@ -88,7 +85,6 @@ async fn create_auto_commit(
     template: &str,
     summary: &crate::models::refactor::Summary,
 ) -> anyhow::Result<()> {
-    debug_assert!(true, "contract: create_auto_commit");
     use std::process::Command;
 
     // Stage all changes
@@ -123,7 +119,6 @@ async fn create_auto_commit(
 }
 
 async fn discover_refactor_targets(project_path: &PathBuf) -> anyhow::Result<Vec<PathBuf>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Placeholder implementation - would discover files that need refactoring
     let mut targets = Vec::new();
 

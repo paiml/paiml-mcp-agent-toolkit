@@ -6,8 +6,6 @@ pub async fn handle_spec_sync(
     dry_run: bool,
     direction: crate::cli::commands::SpecSyncDirection,
 ) -> anyhow::Result<()> {
-    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     use crate::cli::commands::SpecSyncDirection;
     use crate::services::roadmap_service::RoadmapService;
     use regex::Regex;
@@ -46,7 +44,6 @@ fn sync_spec_to_roadmap(
     dry_run: bool,
     updates: &mut Vec<String>,
 ) -> anyhow::Result<()> {
-    debug_assert!(true, "contract: sync_spec_to_roadmap");
     for spec_file in specs {
         let content = std::fs::read_to_string(spec_file)?;
         let ticket_id = match ticket_re.captures(&content).and_then(|c| c.get(1)) {
@@ -68,8 +65,6 @@ fn update_roadmap_item(
     dry_run: bool,
     updates: &mut Vec<String>,
 ) {
-    debug_assert!(rel_spec_path.exists(), "rel_spec_path must exist: {}", rel_spec_path.display());
-    debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
     for item in items.iter_mut() {
         if !item.id.eq_ignore_ascii_case(ticket_id) {
             continue;
@@ -90,7 +85,6 @@ fn sync_roadmap_to_spec(
     roadmap: &crate::models::roadmap::Roadmap,
     updates: &mut Vec<String>,
 ) -> anyhow::Result<()> {
-    debug_assert!(true, "contract: sync_roadmap_to_spec");
     for item in &roadmap.roadmap {
         let spec_file = match &item.spec {
             Some(s) => s,
@@ -122,7 +116,6 @@ fn print_sync_results(
     roadmap: &crate::models::roadmap::Roadmap,
     roadmap_path: &Path,
 ) -> anyhow::Result<()> {
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     use crate::cli::colors as c;
     if updates.is_empty() {
         println!("{}", c::pass("Specs and roadmap are in sync. No updates needed."));
@@ -163,8 +156,6 @@ pub async fn handle_spec_drift(
     roadmap_path: &Path,
     format: SpecOutputFormat,
 ) -> anyhow::Result<()> {
-    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     use crate::services::roadmap_service::RoadmapService;
     use regex::Regex;
     use std::collections::HashSet;
@@ -195,7 +186,6 @@ fn collect_drift_orphans(
     ticket_re: &regex::Regex,
     linked_specs: &std::collections::HashSet<std::path::PathBuf>,
 ) -> anyhow::Result<Vec<DriftInfo>> {
-    debug_assert!(true, "contract: collect_drift_orphans");
     let mut orphans = Vec::new();
     for spec_file in specs {
         let rel_path = spec_file
@@ -221,7 +211,6 @@ fn collect_drift_orphans(
 }
 
 fn print_drift_report(orphans: &[DriftInfo], format: SpecOutputFormat) -> anyhow::Result<()> {
-    debug_assert!(!orphans.is_empty(), "orphans must not be empty");
     match format {
         SpecOutputFormat::Text => print_drift_text(orphans),
         SpecOutputFormat::Json => print_drift_json(orphans)?,
@@ -231,7 +220,6 @@ fn print_drift_report(orphans: &[DriftInfo], format: SpecOutputFormat) -> anyhow
 }
 
 fn print_drift_json(orphans: &[DriftInfo]) -> anyhow::Result<()> {
-    debug_assert!(!orphans.is_empty(), "orphans must not be empty");
     let json: Vec<_> = orphans
         .iter()
         .map(|o| {
@@ -249,7 +237,6 @@ fn print_drift_json(orphans: &[DriftInfo]) -> anyhow::Result<()> {
 }
 
 fn print_drift_markdown(orphans: &[DriftInfo]) {
-    debug_assert!(!orphans.is_empty(), "orphans must not be empty");
     println!("# Spec Drift Report\n");
     if orphans.is_empty() {
         println!("✅ No drift detected.");
@@ -265,7 +252,6 @@ fn print_drift_markdown(orphans: &[DriftInfo]) {
 }
 
 fn print_drift_text(orphans: &[DriftInfo]) {
-    debug_assert!(!orphans.is_empty(), "orphans must not be empty");
     use crate::cli::colors as c;
     if orphans.is_empty() {
         println!("{}", c::pass("No drift detected. All specs are properly linked."));

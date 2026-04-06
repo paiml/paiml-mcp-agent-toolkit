@@ -91,7 +91,6 @@ impl PopperGrade {
     /// Calculate grade from normalized score (0-100)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_normalized_score(score: f64) -> Self {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         GRADE_THRESHOLDS
             .iter()
             .find(|(threshold, _)| score >= *threshold)
@@ -202,7 +201,6 @@ impl PopperCategoryScore {
     /// Create a new category score
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(name: &str, earned: f64, max: f64) -> Self {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             name: name.to_string(),
             earned,
@@ -217,7 +215,6 @@ impl PopperCategoryScore {
     /// Create a N/A category score
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_na(name: &str, max: f64) -> Self {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             name: name.to_string(),
             earned: 0.0,
@@ -275,8 +272,6 @@ impl PopperSubScore {
     /// Create a new sub-score
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(id: &str, name: &str, earned: f64, max: f64, description: &str) -> Self {
-        debug_assert!(!id.is_empty(), "id must not be empty");
-        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             id: id.to_string(),
             name: name.to_string(),

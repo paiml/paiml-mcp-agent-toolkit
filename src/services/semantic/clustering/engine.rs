@@ -50,7 +50,6 @@ impl ClusteringEngine {
     /// Helper for Phase 2 migration to aprender
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn vectors_to_matrix(vectors: &[Vec<f32>]) -> Result<Matrix<f32>, String> {
-        debug_assert!(!vectors.is_empty(), "vectors must not be empty");
         if vectors.is_empty() {
             return Err("Cannot convert empty vector set".to_string());
         }
@@ -80,8 +79,6 @@ impl ClusteringEngine {
         k: usize,
         max_iterations: usize,
     ) -> Result<Vec<usize>, String> {
-        debug_assert!(k > 0, "k must be positive");
-        debug_assert!(!vectors.is_empty(), "vectors must not be empty");
         // Phase 2: Use aprender for KMeans clustering (replaced custom implementation)
         if vectors.is_empty() {
             return Err("Cannot cluster empty vector set".to_string());
@@ -124,8 +121,6 @@ impl ClusteringEngine {
         max_iterations: usize,
         seed: u64,
     ) -> Result<Vec<usize>, String> {
-        debug_assert!(k > 0, "k must be positive");
-        debug_assert!(!vectors.is_empty(), "vectors must not be empty");
         // Phase 2: Use aprender with seed for deterministic results
         if vectors.is_empty() {
             return Err("Cannot cluster empty vector set".to_string());
@@ -172,7 +167,6 @@ impl ClusteringEngine {
         vectors: &[Vec<f32>],
         linkage: Linkage,
     ) -> Result<Dendrogram, String> {
-        debug_assert!(!vectors.is_empty(), "vectors must not be empty");
         if vectors.is_empty() {
             return Err("Cannot cluster empty vector set".to_string());
         }
@@ -297,7 +291,6 @@ impl ClusteringEngine {
         epsilon: f64,
         min_samples: usize,
     ) -> Result<Vec<i32>, String> {
-        debug_assert!(!vectors.is_empty(), "vectors must not be empty");
         // Phase 2: Use aprender for DBSCAN clustering (replaced custom implementation)
         if vectors.is_empty() {
             return Err("Cannot cluster empty vector set".to_string());
@@ -321,9 +314,6 @@ impl ClusteringEngine {
     /// Compute silhouette score for clustering quality
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_silhouette_score(&self, vectors: &[Vec<f32>], labels: &[usize]) -> f64 {
-        debug_assert!(!vectors.is_empty(), "vectors must not be empty");
-        debug_assert!(!labels.is_empty(), "labels must not be empty");
-        // Contract: compute_silhouette_score returns a bounded score
         if vectors.is_empty() || labels.is_empty() {
             return 0.0;
         }
@@ -357,8 +347,6 @@ impl ClusteringEngine {
         labels: &[usize],
         point_idx: usize,
     ) -> f64 {
-        debug_assert!(!vectors.is_empty(), "vectors must not be empty");
-        debug_assert!(!labels.is_empty(), "labels must not be empty");
         let cluster_label = labels[point_idx];
         let mut sum = 0.0;
         let mut count = 0;
@@ -385,8 +373,6 @@ impl ClusteringEngine {
         labels: &[usize],
         point_idx: usize,
     ) -> f64 {
-        debug_assert!(!vectors.is_empty(), "vectors must not be empty");
-        debug_assert!(!labels.is_empty(), "labels must not be empty");
         let current_cluster = labels[point_idx];
         let mut min_avg_dist = f64::MAX;
 

@@ -110,7 +110,6 @@ impl QualityGateService {
     }
 
     async fn check_complexity(&self, path: &Path, max: u32) -> Result<QualityCheckResult> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let input = AnalysisInput {
             operation: AnalysisOperation::Complexity,
             path: path.to_path_buf(),
@@ -139,7 +138,6 @@ impl QualityGateService {
     }
 
     async fn check_satd(&self, path: &Path, tolerance: u32) -> Result<QualityCheckResult> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let input = AnalysisInput {
             operation: AnalysisOperation::Satd,
             path: path.to_path_buf(),
@@ -172,7 +170,6 @@ impl QualityGateService {
         path: &Path,
         max_percentage: f64,
     ) -> Result<QualityCheckResult> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let input = AnalysisInput {
             operation: AnalysisOperation::DeadCode,
             path: path.to_path_buf(),
@@ -198,7 +195,6 @@ impl QualityGateService {
     }
 
     async fn check_coverage(&self, _path: &Path, min: f64) -> Result<QualityCheckResult> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Placeholder for coverage check
         Ok(QualityCheckResult {
             check: format!("Coverage (min: {min}%)"),
@@ -209,7 +205,6 @@ impl QualityGateService {
     }
 
     async fn check_lint(&self, _path: &Path) -> Result<QualityCheckResult> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Placeholder for lint check
         Ok(QualityCheckResult {
             check: "Lint".to_string(),
@@ -220,7 +215,6 @@ impl QualityGateService {
     }
 
     async fn check_documentation(&self, _path: &Path) -> Result<QualityCheckResult> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Placeholder for documentation check
         Ok(QualityCheckResult {
             check: "Documentation".to_string(),
@@ -237,7 +231,6 @@ impl QualityGateService {
         check_cli: bool,
         check_mcp: bool,
     ) -> Result<QualityCheckResult> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         use crate::docs_enforcement::mcp_checker::load_mcp_tool_definitions;
         use crate::docs_enforcement::mcp_checker::validate_mcp_documentation;
 
@@ -329,7 +322,6 @@ impl Service for QualityGateService {
     type Error = anyhow::Error;
 
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
-        debug_assert!(true, "contract: process");
         let start = std::time::Instant::now();
         let mut results = Vec::new();
 
@@ -400,7 +392,6 @@ impl Service for QualityGateService {
     }
 
     fn validate_input(&self, input: &Self::Input) -> Result<(), ValidationError> {
-        debug_assert!(true, "contract: validate_input");
         if !input.path.exists() {
             return Err(ValidationError::InvalidValue {
                 field: "path".to_string(),
@@ -418,12 +409,10 @@ impl Service for QualityGateService {
     }
 
     fn metrics(&self) -> ServiceMetrics {
-        debug_assert!(true, "contract: metrics");
         self.metrics.blocking_read().clone()
     }
 
     fn name(&self) -> &'static str {
-        debug_assert!(true, "contract: name");
         "QualityGateService"
     }
 }
@@ -448,7 +437,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

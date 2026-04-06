@@ -37,11 +37,6 @@ impl InfraScorer for QualityPipelineScorer {
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let workflows = read_workflow_files(repo_path);
         let all_content: String = workflows
             .iter()
@@ -163,7 +158,6 @@ impl InfraScorer for QualityPipelineScorer {
 
 /// QP-01: Test job exists (cargo test, npm test, pytest, etc.)
 fn check_test_job(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let test_patterns = [
         "cargo test",
         "cargo nextest",
@@ -195,7 +189,6 @@ fn check_test_job(content: &str) -> InfraCheck {
 
 /// QP-02: Lint job (cargo clippy -- -D warnings)
 fn check_lint_job(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let lint_patterns = [
         "cargo clippy",
         "clippy -- -D warnings",
@@ -232,7 +225,6 @@ fn check_lint_job(content: &str) -> InfraCheck {
 
 /// QP-03: Coverage reporting (llvm-cov, codecov, coveralls)
 fn check_coverage(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let coverage_patterns = [
         "llvm-cov",
         "codecov",
@@ -264,11 +256,6 @@ fn check_coverage(content: &str) -> InfraCheck {
 
 /// QP-04: Security audit (cargo audit, dependabot, CodeQL)
 fn check_security_audit(content: &str, repo_path: &Path) -> InfraCheck {
-    debug_assert!(
-        repo_path.exists(),
-        "repo_path must exist: {}",
-        repo_path.display()
-    );
     let audit_patterns = [
         "cargo audit",
         "cargo-deny",
@@ -323,7 +310,6 @@ fn check_security_audit(content: &str, repo_path: &Path) -> InfraCheck {
 
 /// QP-05: Format check (cargo fmt -- --check)
 fn check_format(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let fmt_patterns = [
         "cargo fmt",
         "rustfmt",

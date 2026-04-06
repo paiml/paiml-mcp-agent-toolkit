@@ -65,14 +65,12 @@ impl BoxDrawer {
     /// Draw a horizontal line
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn horizontal(&self, width: usize) -> String {
-        debug_assert!(width > 0, "width must be positive");
         self.h.to_string().repeat(width)
     }
 
     /// Draw a box around content
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn draw_box(&self, content: &[&str], width: usize) -> String {
-        debug_assert!(width > 0, "width must be positive");
         let mut lines = Vec::new();
 
         // Top border
@@ -99,7 +97,6 @@ impl BoxDrawer {
     /// Draw a section header
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn section_header(&self, title: &str, width: usize) -> String {
-        debug_assert!(width > 0, "width must be positive");
         let dash_count = width.saturating_sub(title.len() + 2);
         format!(
             "{} {} {}",
@@ -125,7 +122,6 @@ impl TableRenderer {
     /// Create a new table renderer with column widths
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(widths: Vec<usize>) -> Self {
-        debug_assert!(!widths.is_empty(), "widths must not be empty");
         let alignments = vec![false; widths.len()];
         TableRenderer {
             widths,
@@ -137,7 +133,6 @@ impl TableRenderer {
     /// Set column alignment (true = right, false = left)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_alignments(mut self, alignments: Vec<bool>) -> Self {
-        debug_assert!(!alignments.is_empty(), "alignments must not be empty");
         self.alignments = alignments;
         self
     }
@@ -145,7 +140,6 @@ impl TableRenderer {
     /// Render a header row
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_header(&self, headers: &[&str]) -> String {
-        debug_assert!(!headers.is_empty(), "headers must not be empty");
         let box_drawer = BoxDrawer::default();
         let mut lines = Vec::new();
 
@@ -189,7 +183,6 @@ impl TableRenderer {
     /// Render a data row
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_row(&self, cells: &[&str]) -> String {
-        debug_assert!(!cells.is_empty(), "cells must not be empty");
         let box_drawer = BoxDrawer::default();
 
         let cell_strings: String = cells
@@ -234,28 +227,24 @@ impl TreeRenderer {
     /// Render a tree item (not last in group)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn branch(text: &str) -> String {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         format!("├── {}", text)
     }
 
     /// Render a tree item (last in group)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn last_branch(text: &str) -> String {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         format!("└── {}", text)
     }
 
     /// Render a continuation line
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn continuation(text: &str) -> String {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         format!("│   {}", text)
     }
 
     /// Render empty continuation
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn empty_continuation(text: &str) -> String {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         format!("    {}", text)
     }
 }

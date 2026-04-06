@@ -16,7 +16,6 @@ pub(crate) fn format_history_output(
     records: &[crate::tdg::storage::FullTdgRecord],
     format: TdgOutputFormat,
 ) -> Result<String> {
-    debug_assert!(!records.is_empty(), "records must not be empty");
     use chrono::{DateTime, Utc};
 
     if format == TdgOutputFormat::Table {
@@ -127,7 +126,6 @@ fn format_explain_output_table(
     explained: &crate::tdg::explain::ExplainedTDGScore,
     config: &TdgCommandConfig,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_explain_output_table");
     let mut output = String::new();
 
     // Header
@@ -300,7 +298,6 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_grade_distribution(
 
 /// Display F-grade warning if any files have F grades
 fn display_f_grade_warning(f_grade_files: &[String]) {
-    debug_assert!(!f_grade_files.is_empty(), "f_grade_files must not be empty");
     if f_grade_files.is_empty() {
         return;
     }
@@ -331,7 +328,6 @@ pub(in crate::cli::handlers::tdg_handlers) fn display_baseline_table(
     path: &std::path::Path,
     baseline: &crate::tdg::TdgBaseline,
 ) {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("{}", c::path(&path.display().to_string()));
     println!("   {} {}", c::label("Version:"), baseline.version);
     println!(

@@ -5,8 +5,6 @@ fn process_changed_file(
     functions: &mut Vec<FunctionEntry>,
     languages_seen: &mut HashMap<String, usize>,
 ) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!relative_path.is_empty(), "relative_path must not be empty");
     let chunks = match chunk_code(content, language) {
         Ok(c) => c,
         Err(_) => return,
@@ -57,7 +55,6 @@ fn process_changed_file(
 }
 
 fn reuse_existing_functions(existing: &AgentContextIndex, relative_path: &str, functions: &mut Vec<FunctionEntry>) {
-    debug_assert!(!relative_path.is_empty(), "relative_path must not be empty");
     if let Some(indices) = existing.file_index.get(relative_path) {
         for &idx in indices {
             functions.push(existing.functions[idx].clone());
@@ -74,7 +71,6 @@ fn finalize_incremental_index(
     file_checksums: HashMap<String, String>,
     coverage_off_files: HashSet<String>,
 ) -> AgentContextIndex {
-    debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
     let indices = build_indices(&functions);
     let (calls, called_by) = build_call_graph(&functions, &indices.name_index);
     let graph_metrics = compute_graph_metrics(functions.len(), &calls, &called_by);
@@ -128,7 +124,6 @@ impl AgentContextIndex {
     /// 2. **SHA256 fallback**: For files with newer mtime, read and compare checksums
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn build_incremental(project_path: &Path, existing: &Self) -> Result<Self, String> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let project_root = project_path
             .canonicalize()
             .map_err(|e| format!("Invalid project path: {e}"))?;

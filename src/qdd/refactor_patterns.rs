@@ -26,7 +26,6 @@ impl PatternEngine {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn apply_pattern(&self, code: &str, pattern_name: &str) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         match pattern_name {
             "single_responsibility" => self.apply_single_responsibility(code),
             "dependency_injection" => self.apply_dependency_injection(code),
@@ -35,7 +34,6 @@ impl PatternEngine {
     }
 
     fn apply_single_responsibility(&self, code: &str) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         // Simple implementation of SRP pattern
         let mut result = code.to_string();
         result.push_str("\n// Single Responsibility Pattern applied\n");
@@ -43,7 +41,6 @@ impl PatternEngine {
     }
 
     fn apply_dependency_injection(&self, code: &str) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         // Simple implementation of DI pattern
         let mut result = code.to_string();
         result.push_str("\n// Dependency Injection Pattern applied\n");

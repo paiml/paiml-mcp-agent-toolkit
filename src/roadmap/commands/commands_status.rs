@@ -7,7 +7,6 @@ async fn show_status(
     task_id: Option<&str>,
     format: OutputFormat,
 ) -> Result<()> {
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     let roadmap = Roadmap::from_file(roadmap_path)?;
 
     if let Some(task_id) = task_id {
@@ -20,7 +19,6 @@ async fn show_status(
 }
 
 fn show_task_status(roadmap: &Roadmap, task_id: &str, format: OutputFormat) -> Result<()> {
-    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
     let task = roadmap
         .get_task(task_id)
         .context(format!("Task {task_id} not found"))?;
@@ -38,7 +36,6 @@ fn show_task_status(roadmap: &Roadmap, task_id: &str, format: OutputFormat) -> R
 }
 
 fn display_task_details(task: &Task) {
-    debug_assert!(true, "contract: display_task_details");
     println!("Task {}: {}", task.id, task.status.to_emoji());
     println!("  Description: {}", task.description);
     println!("  Complexity: {:?}", task.complexity);
@@ -58,7 +55,6 @@ async fn show_sprint_status(
     sprint_id: Option<&str>,
     format: OutputFormat,
 ) -> Result<()> {
-    debug_assert!(true, "contract: show_sprint_status");
     let sprint_id = sprint_id
         .or(roadmap.current_sprint.as_deref())
         .context("No sprint specified and no current sprint found")?;
@@ -80,7 +76,6 @@ async fn show_sprint_status(
 }
 
 fn display_sprint_details(sprint: &Sprint) {
-    debug_assert!(true, "contract: display_sprint_details");
     let (completed, in_progress, total) = calculate_sprint_progress(sprint);
 
     println!("Sprint {}: {}", sprint.version, sprint.title);
@@ -95,7 +90,6 @@ fn display_sprint_details(sprint: &Sprint) {
 }
 
 fn calculate_sprint_progress(sprint: &Sprint) -> (usize, usize, usize) {
-    debug_assert!(true, "contract: calculate_sprint_progress");
     let completed = sprint
         .tasks
         .iter()
@@ -114,7 +108,6 @@ fn calculate_sprint_progress(sprint: &Sprint) -> (usize, usize, usize) {
 }
 
 fn display_sprint_tasks(sprint: &Sprint) {
-    debug_assert!(true, "contract: display_sprint_tasks");
     println!("\n  Tasks:");
     for task in &sprint.tasks {
         println!(

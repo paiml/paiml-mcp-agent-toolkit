@@ -33,7 +33,6 @@ fn format_quality_scorecard(
     output: &mut String,
     scorecard: &crate::services::deep_context::QualityScorecard,
 ) {
-    debug_assert!(true, "contract: format_quality_scorecard");
     output.push_str("## Quality Scorecard\n\n");
     output.push_str(&format!(
         "- **Overall Health**: {:.1}%\n",
@@ -61,7 +60,6 @@ fn format_quality_scorecard(
 }
 
 fn format_project_summary(output: &mut String, context: &DeepContext) {
-    debug_assert!(true, "contract: format_project_summary");
     output.push_str("## Project Summary\n\n");
     output.push_str(&format!(
         "- **Total Files**: {}\n",
@@ -90,7 +88,6 @@ fn format_analysis_results(
     output: &mut String,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
-    debug_assert!(true, "contract: format_analysis_results");
     output.push_str("## Analysis Results\n\n");
 
     // Complexity Analysis - Combined formatting to reduce complexity
@@ -180,7 +177,6 @@ fn format_ast_summary(
     output: &mut String,
     ast_contexts: &[crate::services::deep_context::EnhancedFileContext],
 ) {
-    debug_assert!(!ast_contexts.is_empty(), "ast_contexts must not be empty");
     if ast_contexts.is_empty() {
         return;
     }
@@ -200,7 +196,6 @@ fn format_ast_summary(
 fn count_ast_items(
     ast_contexts: &[crate::services::deep_context::EnhancedFileContext],
 ) -> (usize, usize, usize, usize, usize) {
-    debug_assert!(!ast_contexts.is_empty(), "ast_contexts must not be empty");
     let mut functions = 0;
     let mut structs = 0;
     let mut enums = 0;

@@ -4,7 +4,6 @@ pub fn format_provability_sarif(
     function_ids: &[FunctionId],
     summaries: &[ProofSummary],
 ) -> Result<String> {
-    debug_assert!(!function_ids.is_empty(), "function_ids must not be empty");
     let mut results = Vec::new();
 
     for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
@@ -68,7 +67,6 @@ pub fn format_provability_sarif(
 
 /// Generate SARIF rules for provability analysis
 fn generate_provability_rules() -> Vec<serde_json::Value> {
-    debug_assert!(true, "contract: generate_provability_rules");
     vec![
         serde_json::json!({
             "id": "low-provability",

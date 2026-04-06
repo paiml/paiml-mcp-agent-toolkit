@@ -22,11 +22,6 @@ impl BonusDetector {
 
     /// Detect property-based testing with proptest (+3 points)
     async fn detect_property_tests(&self, repo_path: &Path) -> Result<BonusItem> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let mut evidence = vec![];
         let mut detected = false;
 
@@ -69,11 +64,6 @@ impl BonusDetector {
 
     /// Detect fuzzing with cargo-fuzz (+2 points)
     async fn detect_fuzzing(&self, repo_path: &Path) -> Result<BonusItem> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let mut evidence = vec![];
         let mut detected = false;
 
@@ -110,11 +100,6 @@ impl BonusDetector {
 
     /// Detect mutation testing with cargo-mutants (+2 points)
     async fn detect_mutation_testing(&self, repo_path: &Path) -> Result<BonusItem> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let mut evidence = vec![];
         let mut detected = false;
 
@@ -181,11 +166,6 @@ impl BonusDetector {
 
     /// Detect living documentation with mdBook (+3 points)
     async fn detect_living_docs(&self, repo_path: &Path) -> Result<BonusItem> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let mut evidence = vec![];
         let mut detected = false;
 
@@ -245,11 +225,6 @@ impl BonusDetector {
     /// Detect all bonus features
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn detect(&self, repo_path: &Path) -> Result<BonusScores> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let property_tests = self.detect_property_tests(repo_path).await?;
         let fuzzing = self.detect_fuzzing(repo_path).await?;
         let mutation_testing = self.detect_mutation_testing(repo_path).await?;
@@ -282,11 +257,6 @@ mod tests {
     }
 
     fn create_file(repo_path: &Path, relative_path: &str, content: &str) {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let file_path = repo_path.join(relative_path);
         if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent).expect("internal error");

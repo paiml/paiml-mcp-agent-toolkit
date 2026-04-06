@@ -22,11 +22,6 @@ pub async fn handle_analyzing_state(
     _dry_run: bool,
     specific_file: Option<&PathBuf>,
 ) -> Result<EnforcementResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let mut violations = Vec::new();
 
     // Run all analyses in sequence
@@ -164,11 +159,6 @@ pub async fn handle_violating_enforcement_state_proxy(
     specific_file: Option<&PathBuf>,
     apply_suggestions: bool,
 ) -> Result<EnforcementResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     // Get violations from previous analyzing state
     let analyzing_result = handle_analyzing_state(
         project_path,
@@ -207,11 +197,6 @@ pub async fn handle_validating_enforcement_state(
     _include_pattern: Option<&String>,
     _exclude_pattern: Option<&String>,
 ) -> Result<EnforcementResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     // Re-run analysis to validate improvements
     let mut result = handle_analyzing_state(
         project_path,
@@ -241,11 +226,6 @@ pub async fn handle_analyzing_enforcement_state(
     dry_run: bool,
     specific_file: Option<&PathBuf>,
 ) -> Result<EnforcementResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     handle_analyzing_state(
         project_path,
         profile,

@@ -20,7 +20,6 @@ impl DefectAnalyzer for DeadCodeDefectAnalyzer {
     type Config = DeadCodeConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut defects = Vec::new();
 
         // Build dependency graph
@@ -52,19 +51,16 @@ impl DefectAnalyzer for DeadCodeDefectAnalyzer {
     }
 
     fn category(&self) -> DefectCategory {
-        debug_assert!(true, "contract: category");
         DefectCategory::DeadCode
     }
 
     fn supports_incremental(&self) -> bool {
-        debug_assert!(true, "contract: supports_incremental");
         false // Requires full graph analysis
     }
 }
 
 impl DeadCodeDefectAnalyzer {
     fn dead_code_item_to_defect(&self, item: &DeadCodeItem, prefix: &str, index: usize) -> Defect {
-        debug_assert!(true, "contract: dead_code_item_to_defect");
         let severity = if item.confidence > 0.9 {
             Severity::High
         } else if item.confidence > 0.7 {
@@ -102,7 +98,6 @@ impl DeadCodeDefectAnalyzer {
     }
 
     fn unreachable_block_to_defect(&self, block: &UnreachableBlock, index: usize) -> Defect {
-        debug_assert!(true, "contract: unreachable_block_to_defect");
         let mut metrics = HashMap::new();
         metrics.insert(
             "lines".to_string(),

@@ -32,7 +32,6 @@ impl BridgeSandbox {
     /// Spawn bridge process with security layers
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn spawn_isolated(&self, bridge_path: &str) -> io::Result<Child> {
-        debug_assert!(!bridge_path.is_empty(), "bridge_path must not be empty");
         // Create sandbox directory if it doesn't exist
         std::fs::create_dir_all(&self.sandbox_dir)?;
 
@@ -61,7 +60,6 @@ impl BridgeSandbox {
 
     #[cfg(target_os = "linux")]
     fn apply_linux_security(&self, cmd: &mut Command) -> io::Result<()> {
-        debug_assert!(true, "contract: apply_linux_security");
         use std::os::unix::process::CommandExt;
 
         // SAFETY: pre_exec is unsafe because it runs in the child process before exec.

@@ -3,7 +3,6 @@
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn build_gitignore(root_path: &Path) -> Result<ignore::gitignore::Gitignore, TemplateError> {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let mut gitignore = GitignoreBuilder::new(root_path);
 
     // Add default ignores
@@ -27,9 +26,6 @@ pub(crate) async fn build_project_summary(
     root_path: &Path,
     toolchain: &str,
 ) -> ProjectSummary {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
-    debug_assert!(!files.is_empty(), "files must not be empty");
     let mut summary = ProjectSummary {
         total_files: files.len(),
         total_functions: 0,
@@ -56,7 +52,6 @@ pub(crate) async fn build_project_summary(
 fn build_context_graph(
     files: &[FileContext],
 ) -> Result<crate::services::context_graph::ProjectContextGraph, TemplateError> {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     use crate::services::context_graph::ProjectContextGraph;
 
     let mut graph = ProjectContextGraph::new();
@@ -89,7 +84,6 @@ fn build_context_graph(
 }
 
 fn calculate_item_counts(summary: &mut ProjectSummary, files: &[FileContext]) {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     for file in files {
         for item in &file.items {
             match item {

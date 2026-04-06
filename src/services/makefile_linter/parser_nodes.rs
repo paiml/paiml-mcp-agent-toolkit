@@ -8,7 +8,6 @@ impl<'src> MakefileParser<'src> {
         colon_pos: usize,
         is_double: bool,
     ) -> Result<(), ParseError> {
-        debug_assert!(true, "contract: parse_rule");
         let _start_pos = self.cursor;
         let _start_line = self.line;
         let _start_col = self.column;
@@ -76,7 +75,6 @@ impl<'src> MakefileParser<'src> {
         op_pos: usize,
         op: AssignmentOp,
     ) -> Result<(), ParseError> {
-        debug_assert!(true, "contract: parse_variable");
         let _start_pos = self.cursor;
         let _start_line = self.line;
         let _start_col = self.column;
@@ -126,7 +124,6 @@ impl<'src> MakefileParser<'src> {
         ast: &mut MakefileAst,
         rule_idx: usize,
     ) -> Result<(), ParseError> {
-        debug_assert!(true, "contract: parse_recipe_line");
         let _start_pos = self.cursor;
         let _start_line = self.line;
         let _start_col = self.column;
@@ -197,7 +194,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn parse_targets(&self, input: &str) -> Result<Vec<String>, ParseError> {
-        debug_assert!(!input.is_empty(), "input must not be empty");
         input
             .split_whitespace()
             .map(std::string::ToString::to_string)
@@ -208,7 +204,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn parse_prerequisites(&mut self) -> Result<Vec<String>, ParseError> {
-        debug_assert!(true, "contract: parse_prerequisites");
         let mut prereqs = Vec::new();
 
         self.skip_spaces();
@@ -231,7 +226,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn parse_comment(&mut self, ast: &mut MakefileAst) {
-        debug_assert!(true, "contract: parse_comment");
         let _start_pos = self.cursor;
         let _start_line = self.line;
         let _start_col = self.column;
@@ -249,7 +243,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn parse_include(&mut self, ast: &mut MakefileAst) -> Result<(), ParseError> {
-        debug_assert!(true, "contract: parse_include");
         let _start_pos = self.cursor;
         let _start_line = self.line;
         let _start_col = self.column;
@@ -281,7 +274,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn parse_conditional(&mut self, _ast: &mut MakefileAst) -> Result<(), ParseError> {
-        debug_assert!(true, "contract: parse_conditional");
         // For now, just skip conditional blocks
         self.skip_to_next_line();
         Ok(())

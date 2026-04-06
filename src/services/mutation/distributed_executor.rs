@@ -4,7 +4,6 @@
 async fn initialize_worker_monitoring(
     monitor: Arc<super::worker_monitor::WorkerMonitor>,
 ) {
-    debug_assert!(true, "contract: initialize_worker_monitoring");
     monitor.initialize_workers().await;
     let monitor_clone = Arc::clone(&monitor);
     let monitoring_interval = std::time::Duration::from_secs(10);
@@ -22,7 +21,6 @@ async fn initialize_worker_monitoring(
 }
 
 fn compute_worker_id(mutant_id: &str, worker_count: usize) -> usize {
-    debug_assert!(!mutant_id.is_empty(), "mutant_id must not be empty");
     let numeric_id = mutant_id.parse::<usize>().unwrap_or_else(|_| {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
@@ -38,7 +36,6 @@ async fn record_result_metrics(
     result: &MutationResult,
     worker_count: usize,
 ) {
-    debug_assert!(true, "contract: record_result_metrics");
     let worker_id = compute_worker_id(&result.mutant.id, worker_count);
     if result.status == MutantStatus::CompileError || result.status == MutantStatus::Timeout {
         let error_msg = result.error_message.as_deref().unwrap_or("Unknown error");
@@ -51,7 +48,6 @@ async fn record_result_metrics(
 }
 
 fn update_progress(progress: &Arc<RwLock<MutationProgress>>, result: &MutationResult) {
-    debug_assert!(true, "contract: update_progress");
     let mut progress = progress.write();
     progress.completed += 1;
     match result.status {
@@ -63,7 +59,6 @@ fn update_progress(progress: &Arc<RwLock<MutationProgress>>, result: &MutationRe
 }
 
 fn check_shutdown_signal(shutdown_rx: &mut mpsc::Receiver<()>) -> bool {
-    debug_assert!(true, "contract: check_shutdown_signal");
     if shutdown_rx.try_recv().is_ok() {
         eprintln!("🛑 Graceful shutdown in progress, waiting for current tasks...");
         return true;
@@ -72,7 +67,6 @@ fn check_shutdown_signal(shutdown_rx: &mut mpsc::Receiver<()>) -> bool {
 }
 
 fn setup_shutdown_channel() -> (mpsc::Sender<()>, mpsc::Receiver<()>) {
-    debug_assert!(true, "contract: setup_shutdown_channel");
     let (shutdown_tx, shutdown_rx) = mpsc::channel::<()>(1);
 
     #[cfg(unix)]
@@ -92,7 +86,6 @@ fn setup_shutdown_channel() -> (mpsc::Sender<()>, mpsc::Receiver<()>) {
 }
 
 async fn print_worker_statistics(monitor: &super::worker_monitor::WorkerMonitor) {
-    debug_assert!(true, "contract: print_worker_statistics");
     let health_score = monitor.calculate_health_score().await;
     let _state_counts = monitor.get_state_counts().await;
     eprintln!("\n📊 Worker health: {:.1}%", health_score);
@@ -147,7 +140,6 @@ impl DistributedExecutor {
     /// Execute mutants in parallel across worker pool
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_parallel(&self, mutants: Vec<Mutant>) -> Result<Vec<MutationResult>> {
-        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         // Initialize progress
         {
             let mut progress = self.progress.write();
@@ -213,7 +205,6 @@ impl DistributedExecutor {
         result_rx: &mut mpsc::Receiver<MutationResult>,
         shutdown_rx: &mut mpsc::Receiver<()>,
     ) -> Vec<MutationResult> {
-        debug_assert!(true, "contract: collect_results");
         let total = { self.progress.read().total };
         let mut results = Vec::with_capacity(total);
         let mut shutdown_requested = false;
@@ -246,7 +237,6 @@ impl DistributedExecutor {
 
     /// Wait for all worker tasks to terminate
     async fn await_workers(workers: Vec<tokio::task::JoinHandle<()>>) {
-        debug_assert!(!workers.is_empty(), "workers must not be empty");
         for worker in workers {
             let _ = worker.await;
         }
@@ -260,7 +250,6 @@ impl DistributedExecutor {
         semaphore: Arc<Semaphore>,
         completed_count: Arc<AtomicUsize>,
     ) -> Vec<tokio::task::JoinHandle<()>> {
-        debug_assert!(true, "contract: spawn_workers");
         let mut workers = Vec::new();
 
         // Shared receiver using Arc<Mutex>
@@ -388,7 +377,6 @@ impl DistributedExecutor {
         mutant: &Mutant,
         worker_id: usize,
     ) -> MutationResult {
-        debug_assert!(true, "contract: execute_mutant_worker");
         let start = std::time::Instant::now();
 
         // Create scratch file with RAII-based cleanup

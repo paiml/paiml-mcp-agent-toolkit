@@ -2,7 +2,6 @@ impl AnalysisResultBuilder {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: PathBuf) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let absolute_path = file_path.clone();
         Self {
             file_path,

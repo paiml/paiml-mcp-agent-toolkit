@@ -94,7 +94,6 @@ impl ProjectFileDiscovery {
 
     /// Create the `WalkBuilder` with appropriate configuration
     fn create_walk_builder(&self) -> Result<WalkBuilder> {
-        debug_assert!(true, "contract: create_walk_builder");
         let mut builder = WalkBuilder::new(&self.root);
 
         // Configure ripgrep-style filtering

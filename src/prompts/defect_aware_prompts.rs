@@ -87,7 +87,6 @@ impl DefectAwarePromptGenerator {
     /// Generate context-aware prompt for a specific task
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_prompt(&self, task: &str, context: &str) -> String {
-        debug_assert!(!task.is_empty(), "task must not be empty");
         let mut prompt = String::new();
 
         // Task section

@@ -22,7 +22,6 @@ impl ChangeCategory {
     /// Infer category from GitHub labels
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_labels(labels: &[String]) -> Option<Self> {
-        debug_assert!(!labels.is_empty(), "labels must not be empty");
         for label in labels {
             let lower = label.to_lowercase();
             if lower.contains("feature") || lower.contains("enhancement") {
@@ -94,11 +93,6 @@ impl ChangelogEntry {
 /// Add entry to CHANGELOG.md
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn add_to_changelog(project_path: &PathBuf, entry: ChangelogEntry) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let changelog_path = project_path.join("CHANGELOG.md");
 
     // Create CHANGELOG.md if it doesn't exist
@@ -118,7 +112,6 @@ pub fn add_to_changelog(project_path: &PathBuf, entry: ChangelogEntry) -> Result
 
 /// Create new CHANGELOG.md with standard structure
 fn create_changelog(path: &PathBuf) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let template = r#"# Changelog
 
 All notable changes to this project will be documented in this file.
@@ -147,25 +140,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 /// Check if a line is the Unreleased section header
 fn is_unreleased_header(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     line.starts_with("## [Unreleased]")
 }
 
 /// Check if a line is a versioned section header (e.g., "## [1.0.0]")
 fn is_version_header(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     line.starts_with("## [") && !is_unreleased_header(line)
 }
 
 /// Check if a line is a section boundary (subsection or version header)
 fn is_section_boundary(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     line.starts_with("### ") || line.starts_with("## ")
 }
 
 /// Insert entry into changelog content
 fn insert_entry(content: &str, entry: &ChangelogEntry) -> Result<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let lines: Vec<&str> = content.lines().collect();
     let mut result = Vec::new();
     let mut in_unreleased = false;

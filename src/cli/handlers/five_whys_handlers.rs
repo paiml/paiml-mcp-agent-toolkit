@@ -20,7 +20,6 @@ pub async fn handle_debug(
     context: Option<&Path>,
     auto_analyze: bool,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // GH-46: --context and --auto-analyze not yet implemented
     if context.is_some() {
         eprintln!("Warning: --context is not yet implemented. Flag ignored.");

@@ -72,7 +72,6 @@ impl SurvivabilityPredictor {
     #[allow(clippy::cast_possible_truncation)]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn train(&mut self, training_data: &[TrainingData]) -> Result<()> {
-        debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         if training_data.is_empty() {
             anyhow::bail!("Training data cannot be empty");
         }
@@ -156,7 +155,6 @@ impl SurvivabilityPredictor {
     /// Returns average accuracy across folds
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cross_validate(&self, training_data: &[TrainingData], k_folds: usize) -> Result<f64> {
-        debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         if training_data.is_empty() {
             anyhow::bail!("Training data cannot be empty");
         }
@@ -264,7 +262,6 @@ impl SurvivabilityPredictor {
     /// Update model with new data (incremental learning)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update(&mut self, new_data: &[TrainingData]) -> Result<()> {
-        debug_assert!(!new_data.is_empty(), "new_data must not be empty");
         if !self.trained {
             return self.train(new_data);
         }
@@ -389,7 +386,6 @@ impl SurvivabilityPredictor {
         &self,
         mutants: &[Mutant],
     ) -> Result<Vec<(Mutant, PredictionResult)>> {
-        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         let mut results = Vec::new();
 
         for mutant in mutants {
@@ -429,7 +425,6 @@ impl SurvivabilityPredictor {
     /// For consistent ML predictions, retrain the model after loading.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: &Path) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let serialized = bincode::serialize(self)?;
         std::fs::write(path, serialized)?;
         Ok(())
@@ -438,7 +433,6 @@ impl SurvivabilityPredictor {
     /// Load model from file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(path: &Path) -> Result<Self> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let data = std::fs::read(path)?;
         let predictor = bincode::deserialize(&data)?;
         Ok(predictor)

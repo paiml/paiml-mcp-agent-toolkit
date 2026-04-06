@@ -1,6 +1,5 @@
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Value> {
-    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::tdg::analyzer_simple::TdgAnalyzer;
 
     if paths.is_empty() {
@@ -65,7 +64,6 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<Value> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     use crate::tdg::analyzer_simple::TdgAnalyzer;
 
     if !file_path.exists() {
@@ -129,7 +127,6 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
-    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::tdg::analyzer_simple::TdgAnalyzer;
 
     if paths.is_empty() {
@@ -191,7 +188,6 @@ pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> Result<Value> {
-    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::models::git_context::GitContext;
     use crate::tdg::analyzer_simple::TdgAnalyzer;
     use crate::tdg::baseline::{BaselineEntry, TdgBaseline};
@@ -305,7 +301,6 @@ pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> 
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn quality_gate_compare(baseline: &Path, paths: &[PathBuf]) -> Result<Value> {
-    debug_assert!(baseline.exists(), "baseline must exist: {}", baseline.display());
     use crate::tdg::baseline::TdgBaseline;
 
     if paths.is_empty() {

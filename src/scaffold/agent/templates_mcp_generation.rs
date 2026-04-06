@@ -5,7 +5,6 @@
 #[async_trait]
 impl TemplateGenerator for MCPServerTemplate {
     fn generate(&self, ctx: &AgentContext) -> Result<GeneratedFiles> {
-        debug_assert!(true, "contract: generate");
         let mut files = GeneratedFiles::new();
 
         // Generate Cargo.toml
@@ -47,7 +46,6 @@ impl TemplateGenerator for MCPServerTemplate {
     }
 
     fn validate_context(&self, ctx: &AgentContext) -> Result<()> {
-        debug_assert!(true, "contract: validate_context");
         if ctx.name.is_empty() {
             bail!("Agent name is required");
         }
@@ -55,18 +53,15 @@ impl TemplateGenerator for MCPServerTemplate {
     }
 
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         &self.name
     }
 
     fn description(&self) -> &str {
-        debug_assert!(true, "contract: description");
         &self.description
     }
 }
 
 fn generate_mcp_cargo_toml(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_mcp_cargo_toml");
     format!(
         r#"[package]
 name = "{}"
@@ -97,7 +92,6 @@ harness = false
 }
 
 fn generate_mcp_main(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_mcp_main");
     format!(
         r#"//! {} - MCP Agent Server
 
@@ -133,7 +127,6 @@ async fn main() -> Result<()> {{
 }
 
 fn generate_mcp_mod() -> String {
-    debug_assert!(true, "contract: generate_mcp_mod");
     r"//! MCP server implementation.
 
 pub mod server;
@@ -144,7 +137,6 @@ pub mod transport;
 }
 
 fn generate_mcp_server(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_mcp_server");
     format!(
         r#"//! MCP server implementation for {}.
 
@@ -179,7 +171,6 @@ pub async fn run() -> Result<()> {{
 }
 
 fn generate_mcp_tools() -> String {
-    debug_assert!(true, "contract: generate_mcp_tools");
     r#"//! Tool definitions for MCP server.
 
 use anyhow::Result;
@@ -219,7 +210,6 @@ pub fn register_tools(server: &Server, agent: AgentCore) -> Result<()> {
 }
 
 fn generate_mcp_transport() -> String {
-    debug_assert!(true, "contract: generate_mcp_transport");
     r"//! Transport layer for MCP server.
 
 use anyhow::Result;
@@ -234,7 +224,6 @@ pub async fn create_transport() -> Result<Box<dyn Transport>> {
 }
 
 fn generate_agent_mod() -> String {
-    debug_assert!(true, "contract: generate_agent_mod");
     r"//! Agent implementation.
 
 pub mod core;
@@ -244,7 +233,6 @@ pub mod handlers;
 }
 
 fn generate_agent_core(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_agent_core");
     format!(
         r#"//! Core agent implementation for {}.
 
@@ -288,7 +276,6 @@ impl AgentCore {{
 }
 
 fn generate_agent_handlers() -> String {
-    debug_assert!(true, "contract: generate_agent_handlers");
     r#"//! Request handlers for the agent.
 
 use anyhow::Result;
@@ -306,7 +293,6 @@ pub async fn handle_request(request: Value) -> Result<Value> {
 }
 
 fn generate_quality_mod() -> String {
-    debug_assert!(true, "contract: generate_quality_mod");
     r"//! Quality enforcement module.
 
 pub mod invariants;
@@ -316,7 +302,6 @@ pub mod validators;
 }
 
 fn generate_invariants() -> String {
-    debug_assert!(true, "contract: generate_invariants");
     r"//! Runtime invariants for quality enforcement.
 
 use anyhow::Result;
@@ -331,7 +316,6 @@ pub fn check_invariants() -> Result<()> {
 }
 
 fn generate_validators() -> String {
-    debug_assert!(true, "contract: generate_validators");
     r"//! Input and output validators.
 
 use anyhow::Result;
@@ -353,7 +337,6 @@ pub fn validate_output(output: &Value) -> Result<()> {
 }
 
 fn generate_integration_tests(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_integration_tests");
     format!(
         r"//! Integration tests for {}.
 
@@ -372,7 +355,6 @@ async fn test_tool_invocation() {{
 }
 
 fn generate_deterministic_tests() -> String {
-    debug_assert!(true, "contract: generate_deterministic_tests");
     r"//! Determinism verification tests.
 
 use proptest::prelude::*;
@@ -388,7 +370,6 @@ proptest! {
 }
 
 fn generate_agent_config(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_agent_config");
     format!(
         r#"# Agent configuration
 [agent]
@@ -404,7 +385,6 @@ level = "{:?}"
 }
 
 fn generate_quality_gates(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_quality_gates");
     let level = &ctx.quality_level;
     format!(
         r#"# Quality gate configuration
@@ -436,7 +416,6 @@ scan_comments = true
 }
 
 fn generate_readme(ctx: &AgentContext) -> String {
-    debug_assert!(true, "contract: generate_readme");
     format!(
         r"# {}
 

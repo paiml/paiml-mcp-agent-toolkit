@@ -50,7 +50,6 @@ impl DeepContextAnalyzer {
         rules: &mut Vec<serde_json::Value>,
         results: &mut Vec<serde_json::Value>,
     ) {
-        debug_assert!(true, "contract: add_complexity_sarif_items_from_analyses");
         use serde_json::json;
 
         if let Some(ref complexity) = analyses.complexity_report {
@@ -88,7 +87,6 @@ impl DeepContextAnalyzer {
         func: &crate::services::complexity::FunctionComplexity,
         results: &mut Vec<serde_json::Value>,
     ) {
-        debug_assert!(true, "contract: add_complexity_violation");
         use serde_json::json;
 
         if func.metrics.cyclomatic > 10 {
@@ -125,7 +123,6 @@ impl DeepContextAnalyzer {
         rules: &mut Vec<serde_json::Value>,
         results: &mut Vec<serde_json::Value>,
     ) {
-        debug_assert!(true, "contract: add_satd_sarif_items_from_analyses");
         use serde_json::json;
 
         if let Some(ref satd) = analyses.satd_results {
@@ -161,7 +158,6 @@ impl DeepContextAnalyzer {
         rules: &mut Vec<serde_json::Value>,
         results: &mut Vec<serde_json::Value>,
     ) {
-        debug_assert!(true, "contract: add_dead_code_sarif_items_from_analyses");
         use serde_json::json;
 
         if let Some(ref dead_code) = analyses.dead_code_results {
@@ -195,7 +191,6 @@ impl DeepContextAnalyzer {
 
     /// Helper to create location objects
     fn create_location(&self, uri: &str, start_line: usize, end_line: usize) -> serde_json::Value {
-        debug_assert!(!uri.is_empty(), "uri must not be empty");
         serde_json::json!({
             "physicalLocation": {
                 "artifactLocation": {"uri": uri},
@@ -213,7 +208,6 @@ impl DeepContextAnalyzer {
         &self,
         severity: &crate::services::satd_detector::Severity,
     ) -> &'static str {
-        debug_assert!(true, "contract: satd_severity_to_level");
         match severity {
             crate::services::satd_detector::Severity::Critical => "error",
             crate::services::satd_detector::Severity::High => "warning",

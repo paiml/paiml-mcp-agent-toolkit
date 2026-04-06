@@ -9,7 +9,6 @@ impl ProjectFileDiscovery {
         filter_external: bool,
         _classifier: &FileClassifier,
     ) -> bool {
-        debug_assert!(true, "contract: should_include_entry");
         // Skip directories
         if entry.file_type().map_or(true, |ft| !ft.is_file()) {
             return false;
@@ -37,14 +36,12 @@ impl ProjectFileDiscovery {
 
     /// Check if a path is part of an external repository
     fn is_external_repository(path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         EXTERNAL_REPO_PATTERNS.is_match(&path_str)
     }
 
     /// Check if a path is a build artifact
     fn is_build_artifact(path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Check common build directories
@@ -74,7 +71,6 @@ impl ProjectFileDiscovery {
     /// Check if a file is analyzable based on extension or special name
     /// Apply Kaizen - Include important project files for complete analysis
     fn is_analyzable_file(path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check for special project files without extensions (Jidoka - build quality in)
         if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
             if matches!(

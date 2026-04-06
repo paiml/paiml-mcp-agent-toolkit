@@ -74,7 +74,6 @@ impl Analyzer for SATDAnalyzer {
     type Config = ProjectConfig;
 
     async fn analyze(&self, input: Self::Input, config: Self::Config) -> Result<Self::Output> {
-        debug_assert!(true, "contract: analyze");
         // Delegate to the original analyzer's project analysis method
         // Convert TemplateError to anyhow::Error
         self.inner
@@ -91,11 +90,6 @@ impl Analyzer for SATDAnalyzer {
 #[async_trait]
 impl ProjectAnalyzer for SATDAnalyzer {
     async fn analyze_project(&self, project_path: &Path) -> Result<Self::Output> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let input = ProjectInput {
             project_path: project_path.to_path_buf(),
         };
@@ -106,12 +100,10 @@ impl ProjectAnalyzer for SATDAnalyzer {
 
 impl AnalyzerInfo for SATDAnalyzer {
     fn name(&self) -> &'static str {
-        debug_assert!(true, "contract: name");
         "satd"
     }
 
     fn version(&self) -> &'static str {
-        debug_assert!(true, "contract: version");
         env!("CARGO_PKG_VERSION")
     }
 
@@ -333,12 +325,10 @@ mod tests {
             &test_file,
             r#"
             fn good_function() -> i32 {
-                debug_assert!(true, "contract: good_function");
                 42
             }
 
             fn bad_function() -> i32 {
-                debug_assert!(true, "contract: bad_function");
                 // TODO: This needs to be fixed eventually
                 // FIXME: Memory leak possible here
                 // HACK: Quick workaround for now
@@ -485,7 +475,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

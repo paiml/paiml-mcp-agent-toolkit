@@ -2,7 +2,6 @@
 // Churn-related code moved to tdg_calculator_factors_churn.rs
 
 fn is_function_start(trimmed: &str) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.starts_with("fn ")
         || trimmed.starts_with("def ")
         || trimmed.starts_with("function ")
@@ -10,7 +9,6 @@ fn is_function_start(trimmed: &str) -> bool {
 }
 
 fn is_control_flow(trimmed: &str) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.starts_with("if ")
         || trimmed.starts_with("elif ")
         || trimmed.starts_with("while ")
@@ -20,7 +18,6 @@ fn is_control_flow(trimmed: &str) -> bool {
 }
 
 fn score_from_complexities(function_complexities: &[usize], line_count: usize) -> f64 {
-    debug_assert!(true, "contract: score_from_complexities");
     let mean = function_complexities.iter().sum::<usize>() as f64
         / function_complexities.len() as f64;
     let variance = function_complexities
@@ -44,7 +41,6 @@ impl TDGCalculator {
     /// Compute complexity gradient with variance analysis
     #[allow(dead_code)]
     fn compute_complexity_gradient(&self, ast: &UnifiedAstNode) -> ComplexityVariance {
-        debug_assert!(true, "contract: compute_complexity_gradient");
         let mut analyzer = VerifiedComplexityAnalyzer::new();
         let complexities: Vec<u32> = if matches!(ast.kind, AstKind::Function(_)) {
             vec![analyzer.analyze_function(ast).cyclomatic]
@@ -96,7 +92,6 @@ impl TDGCalculator {
 
     /// Calculate complexity factor (normalized 0-5)
     async fn calculate_complexity_factor(&self, path: &Path) -> Result<f64> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read_to_string(path).await?;
         let lines: Vec<&str> = content.lines().collect();
 

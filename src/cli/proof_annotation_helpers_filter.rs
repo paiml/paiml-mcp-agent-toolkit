@@ -11,7 +11,6 @@ pub fn filter_annotation(annotation: &ProofAnnotation, filter: &ProofAnnotationF
 
 /// Filter annotations by confidence level
 fn filter_by_confidence(annotation: &ProofAnnotation, high_confidence_only: bool) -> bool {
-    debug_assert!(true, "contract: filter_by_confidence");
     if high_confidence_only {
         matches!(annotation.confidence_level, ConfidenceLevel::High)
     } else {
@@ -24,7 +23,6 @@ fn filter_by_property_type(
     annotation: &ProofAnnotation,
     property_filter: &Option<PropertyTypeFilter>,
 ) -> bool {
-    debug_assert!(true, "contract: filter_by_property_type");
     match property_filter {
         Some(PropertyTypeFilter::MemorySafety) => {
             matches!(annotation.property_proven, PropertyType::MemorySafety)
@@ -59,7 +57,6 @@ fn filter_by_verification_method(
     annotation: &ProofAnnotation,
     method_filter: &Option<VerificationMethodFilter>,
 ) -> bool {
-    debug_assert!(true, "contract: filter_by_verification_method");
     match method_filter {
         Some(VerificationMethodFilter::FormalProof) => {
             matches!(annotation.method, VerificationMethod::FormalProof { .. })

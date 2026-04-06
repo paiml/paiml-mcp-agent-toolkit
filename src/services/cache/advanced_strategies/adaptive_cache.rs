@@ -194,7 +194,6 @@ where
     /// Warm cache based on configuration
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn warm_cache(&self, warm_keys: Vec<K>) -> Result<usize> {
-        debug_assert!(!warm_keys.is_empty(), "warm_keys must not be empty");
         let start = Instant::now();
         let mut warmed_count = 0;
 
@@ -263,7 +262,6 @@ where
     }
 
     async fn promote_to_l1(&self, key: &K, entry: &AdaptiveCacheEntry<V>) -> Result<()> {
-        debug_assert!(true, "contract: promote_to_l1");
         let mut promoted_entry = entry.clone();
         promoted_entry.tier = CacheTier::L1;
         self.insert_l1(key.clone(), promoted_entry).await
@@ -277,7 +275,6 @@ where
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn determine_initial_tier(&self, _key: &K, size: usize) -> CacheTier {
-        debug_assert!(size > 0, "size must be positive");
         // Simple heuristic - could be more sophisticated
         if size < 64 * 1024 {
             // < 64KB
@@ -408,7 +405,6 @@ where
     }
 
     async fn cleanup_expired_entries(&self) -> Result<()> {
-        debug_assert!(true, "contract: cleanup_expired_entries");
         let now = Utc::now();
 
         // Clean L1
@@ -433,14 +429,12 @@ where
     }
 
     async fn optimize_cache_layout(&self) -> Result<()> {
-        debug_assert!(true, "contract: optimize_cache_layout");
         // Access pattern analysis and tier placement optimization
         // ML-based optimization algorithms execute here
         Ok(())
     }
 
     fn update_global_patterns(&self) {
-        debug_assert!(true, "contract: update_global_patterns");
         // Update global access pattern statistics
         let patterns = self.access_patterns.read();
         let mut stats = self.stats.write();

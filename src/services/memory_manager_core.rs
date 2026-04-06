@@ -55,7 +55,6 @@ impl MemoryManager {
         pool_type: PoolType,
         size: usize,
     ) -> Result<PooledBuffer> {
-        debug_assert!(size > 0, "size must be positive");
         let strategy = self.determine_strategy(size);
 
         match strategy {
@@ -86,7 +85,6 @@ impl MemoryManager {
     /// Intern a string for memory efficiency
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn intern_string(&self, s: &str) -> Result<Arc<str>> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         self.string_interner.intern(s)
     }
 
@@ -164,7 +162,6 @@ impl MemoryManager {
 
     /// Determine allocation strategy based on size
     fn determine_strategy(&self, size: usize) -> AllocationStrategy {
-        debug_assert!(size > 0, "size must be positive");
         if size < self.config.small_allocation_threshold {
             AllocationStrategy::Pooled
         } else if size > self.config.large_allocation_threshold {
@@ -176,7 +173,6 @@ impl MemoryManager {
 
     /// Track memory allocation for statistics
     fn track_allocation(&self, size: usize) {
-        debug_assert!(size > 0, "size must be positive");
         let mut total = self.total_allocated.lock();
         *total += size;
 
@@ -198,7 +194,6 @@ impl MemoryManager {
 
     /// Return buffer to pool (internal use)
     fn return_buffer(&self, pool_type: PoolType, buffer: Vec<u8>) {
-        debug_assert!(!buffer.is_empty(), "buffer must not be empty");
         if let Some(pool) = self.pools.get(&pool_type) {
             let capacity = buffer.capacity();
             pool.return_buffer(buffer);

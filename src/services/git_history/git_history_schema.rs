@@ -2,7 +2,6 @@ impl GitHistoryIndex {
     /// Create or open git history index at the given path
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn open(path: &Path) -> Result<Self, GitHistoryError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let conn = Connection::open(path)?;
         // Enable WAL mode for concurrent access (#161)
         conn.execute_batch(
@@ -27,7 +26,6 @@ impl GitHistoryIndex {
     /// Initialize database schema
     /// Toyota Way: Poka-Yoke - Constraints prevent invalid data
     fn init_schema(&self) -> Result<(), GitHistoryError> {
-        debug_assert!(true, "contract: init_schema");
         self.conn.execute_batch(
             r#"
             -- Metadata table for tracking sync state

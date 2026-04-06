@@ -4,7 +4,6 @@
 impl IndexManager {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_path: PathBuf) -> Self {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self {
             index: RwLock::new(None),
             project_path,

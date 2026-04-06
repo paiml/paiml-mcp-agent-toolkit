@@ -7,7 +7,6 @@ pub(crate) fn extract_markdown(
     relative_path: &str,
     checksum: &str,
 ) -> Result<Vec<DocumentChunk>, String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = std::fs::read_to_string(path)
         .map_err(|e| format!("Failed to read markdown {}: {e}", path.display()))?;
 
@@ -74,9 +73,6 @@ fn flush_markdown_section(
     text: &str,
     checksum: &str,
 ) {
-    debug_assert!(!relative_path.is_empty(), "relative_path must not be empty");
-    debug_assert!(!text.is_empty(), "text must not be empty");
-    debug_assert!(!checksum.is_empty(), "checksum must not be empty");
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return;

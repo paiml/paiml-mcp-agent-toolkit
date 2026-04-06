@@ -63,7 +63,6 @@ impl DefectTaxonomy {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, ticket_id: &str) -> Option<&DefectClass> {
-        debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
         self.patterns.get(ticket_id)
     }
 

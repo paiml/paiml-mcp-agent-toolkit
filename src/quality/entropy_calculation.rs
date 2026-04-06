@@ -6,7 +6,6 @@ impl EntropyCalculator {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate(&self, source: &str) -> f64 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.is_empty() {
             return 0.0;
         }
@@ -33,7 +32,6 @@ impl EntropyCalculator {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_token_entropy(&self, source: &str) -> f64 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Tokenize source code and calculate entropy based on tokens
         let tokens = self.tokenize(source);
         if tokens.is_empty() {
@@ -59,7 +57,6 @@ impl EntropyCalculator {
     }
 
     fn tokenize(&self, source: &str) -> Vec<String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simple tokenization based on whitespace and common delimiters
         let mut tokens = Vec::new();
         let mut current_token = String::new();
@@ -87,7 +84,6 @@ impl EntropyCalculator {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_ast_diversity(&self, ast: &syn::File) -> f64 {
-        // Contract: calculate_ast_diversity returns a bounded score
         // Calculate diversity based on AST node types
         let mut node_types = HashMap::new();
         let mut total = 0;

@@ -3,7 +3,6 @@
 
 /// Scan for PMAT compliance violations
 fn scan_comply(path: &Path) -> Result<Vec<KaizenFinding>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let output = Command::new("pmat")
         .args([
             "comply",
@@ -66,7 +65,6 @@ fn scan_comply(path: &Path) -> Result<Vec<KaizenFinding>> {
 
 /// Scan for known defect patterns (batuta bug-hunt: unwrap, panic, unsafe, etc.)
 fn scan_defects(path: &Path) -> Result<Vec<KaizenFinding>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let output = Command::new("pmat")
         .args([
             "analyze",
@@ -158,7 +156,6 @@ fn scan_defects(path: &Path) -> Result<Vec<KaizenFinding>> {
 
 /// Scan for open GitHub issues
 fn scan_github_issues(path: &Path) -> Result<Vec<KaizenFinding>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let output = Command::new("gh")
         .args([
             "issue",
@@ -240,7 +237,6 @@ fn scan_github_issues(path: &Path) -> Result<Vec<KaizenFinding>> {
 
 /// Scan custom project scores from .pmat.yaml scoring plugins
 fn scan_custom_scores(path: &Path) -> Vec<KaizenFinding> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let config = match crate::models::comply_config::PmatYamlConfig::load(path) {
         Ok(c) => c,
         Err(_) => return Vec::new(),

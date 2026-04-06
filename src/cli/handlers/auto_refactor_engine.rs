@@ -26,7 +26,6 @@ impl RefactoringRegistry {
     }
     
     fn register_refactorings(&mut self) {
-        debug_assert!(true, "contract: register_refactorings");
         // Register complexity refactorings
         self.register(
             "handle_analyze_dead_code",
@@ -55,7 +54,6 @@ impl RefactoringRegistry {
     /// Returns an error if the operation fails
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn apply_refactoring(&self, function_name: &str, file_path: &Path) -> Result<bool> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         if let Some(refactoring) = self.refactorings.get(function_name) {
             refactoring.apply(file_path).await
         } else {
@@ -77,13 +75,11 @@ trait Refactoring: Send + Sync {
 struct DeadCodeAnalysisRefactoring;
 
 impl Refactoring for DeadCodeAnalysisRefactoring {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     /// Apply dead code analysis refactoring
     /// 
     /// # Errors
     /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Box::pin(async move {
             if !file_path.ends_with("complexity_handlers.rs") {
                 return Ok(false);
@@ -135,7 +131,6 @@ impl Refactoring for FormatOutputRefactoring {
     ///
     /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Box::pin(async move {
             if !file_path.ends_with("lint_hotspot_handlers.rs") {
                 return Ok(false);
@@ -169,7 +164,6 @@ impl Refactoring for RefactorAutoRefactoring {
     /// # Errors
     /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Box::pin(async move {
             if !file_path.ends_with("refactor_auto_handlers.rs") {
                 return Ok(false);
@@ -202,7 +196,6 @@ impl Refactoring for DefectMarkdownRefactoring {
     ///
     /// Returns an error if the operation fails
     fn apply(&self, file_path: &Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool>> + Send + '_>> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Box::pin(async move {
             if !file_path.ends_with("defect_helpers.rs") {
                 return Ok(false);
@@ -234,10 +227,6 @@ fn replace_function(
     refactored_content: &str,
     function_name: &str,
 ) -> Result<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!function_signature.is_empty(), "function_signature must not be empty");
-    debug_assert!(!refactored_content.is_empty(), "refactored_content must not be empty");
-    debug_assert!(!function_name.is_empty(), "function_name must not be empty");
     // Find the start of the function
     let start_pos = content
         .find(function_signature)
@@ -264,7 +253,6 @@ fn replace_function(
     ///
     /// Returns an error if the operation fails
 fn find_function_end(content: &str, start: usize) -> Result<usize> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let content_after = content.get(start..).unwrap_or_default();
     let mut brace_count = 0;
     let mut in_function = false;
@@ -296,8 +284,6 @@ fn find_function_end(content: &str, start: usize) -> Result<usize> {
     ///
     /// Returns an error if the operation fails
 fn extract_function(content: &str, function_name: &str) -> Result<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!function_name.is_empty(), "function_name must not be empty");
     let signature = format!("pub async fn {}", function_name);
     let start = content
         .find(&signature)
@@ -314,7 +300,6 @@ fn extract_function(content: &str, function_name: &str) -> Result<String> {
     ///
     /// Returns an error if the operation fails
 fn apply_format_output_refactoring(content: &str) -> Result<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // This would contain the actual refactoring logic
     // For now, we'll use a simplified version
     let refactored = r#"
@@ -325,7 +310,6 @@ fn format_output(
     perf: bool,
     elapsed: std::time::Duration,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_output");
     let formatter = OutputFormatter::new(result, perf, elapsed);
     
     match format {
@@ -352,7 +336,6 @@ impl<'a> OutputFormatter<'a> {
     /// Returns an error if the operation fails
     
     fn format_summary(&self) -> Result<String> {
-        debug_assert!(true, "contract: format_summary");
         // Implementation details...
         Ok(String::new())
     }
@@ -361,7 +344,6 @@ impl<'a> OutputFormatter<'a> {
     /// Returns an error if the operation fails
     
     fn format_detailed(&self) -> Result<String> {
-        debug_assert!(true, "contract: format_detailed");
         // Implementation details...
         Ok(String::new())
     }
@@ -370,7 +352,6 @@ impl<'a> OutputFormatter<'a> {
     /// Returns an error if the operation fails
     
     fn format_json(&self, enforcement: bool) -> Result<String> {
-        debug_assert!(true, "contract: format_json");
         // Implementation details...
         Ok(String::new())
     }
@@ -379,7 +360,6 @@ impl<'a> OutputFormatter<'a> {
     /// Returns an error if the operation fails
     
     fn format_sarif(&self) -> Result<String> {
-        debug_assert!(true, "contract: format_sarif");
         // Implementation details...
         Ok(String::new())
     }
@@ -395,7 +375,6 @@ impl<'a> OutputFormatter<'a> {
     ///
     /// Returns an error if the operation fails
 fn apply_refactor_auto_refactoring(content: &str) -> Result<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // Implementation would go here
     // For brevity, returning the original content
     Ok(content.to_string())
@@ -407,7 +386,6 @@ fn apply_refactor_auto_refactoring(content: &str) -> Result<String> {
 ///
 /// Returns an error if the operation fails
 fn apply_defect_markdown_refactoring(content: &str) -> Result<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // Implementation would go here
     // For brevity, returning the original content
     Ok(content.to_string())
@@ -420,7 +398,6 @@ fn apply_defect_markdown_refactoring(content: &str) -> Result<String> {
 /// Returns an error if the operation fails
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn apply_automated_refactorings(project_path: &Path) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🤖 Starting fully automated refactoring...");
     
     let registry = RefactoringRegistry::new();
@@ -454,7 +431,6 @@ pub async fn apply_automated_refactorings(project_path: &Path) -> Result<()> {
     ///
     /// Returns an error if the operation fails
 async fn find_high_complexity_functions(project_path: &Path) -> Result<Vec<(PathBuf, String, u32)>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::complexity::analyze_file_complexity;
     use walkdir::WalkDir;
     
@@ -500,7 +476,6 @@ mod property_tests {
 
         #[test] 
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

@@ -8,7 +8,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         score.confidence *= 0.8;
 
         let lines: Vec<&str> = source.lines().collect();

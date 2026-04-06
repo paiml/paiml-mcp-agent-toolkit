@@ -3,7 +3,6 @@ fn format_comprehensive_report(
     format: ComprehensiveOutputFormat,
     executive_summary: bool,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_comprehensive_report");
     match format {
         ComprehensiveOutputFormat::Json => format_comp_as_json(report),
         ComprehensiveOutputFormat::Markdown => format_comp_as_markdown(report, executive_summary),
@@ -13,7 +12,6 @@ fn format_comprehensive_report(
 
 // Helper: Format comprehensive report as JSON
 fn format_comp_as_json(report: &ComprehensiveReport) -> Result<String> {
-    debug_assert!(true, "contract: format_comp_as_json");
     Ok(serde_json::to_string_pretty(report)?)
 }
 
@@ -22,7 +20,6 @@ fn format_comp_as_markdown(
     report: &ComprehensiveReport,
     executive_summary: bool,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_comp_as_markdown");
     use std::fmt::Write;
     let mut output = String::new();
 
@@ -39,7 +36,6 @@ fn format_comp_as_markdown(
 
 // Helper: Write executive summary
 fn write_comp_executive_summary(output: &mut String) -> Result<()> {
-    debug_assert!(true, "contract: write_comp_executive_summary");
     use std::fmt::Write;
     writeln!(output, "## Executive Summary\n")?;
     writeln!(
@@ -51,7 +47,6 @@ fn write_comp_executive_summary(output: &mut String) -> Result<()> {
 
 // Helper: Write all analysis sections
 fn write_comp_analysis_sections(output: &mut String, report: &ComprehensiveReport) -> Result<()> {
-    debug_assert!(true, "contract: write_comp_analysis_sections");
     if let Some(complexity) = &report.complexity {
         write_comp_complexity_section(output, complexity)?;
     }
@@ -81,7 +76,6 @@ fn write_comp_analysis_sections(output: &mut String, report: &ComprehensiveRepor
 
 // Helper: Write complexity section
 fn write_comp_complexity_section(output: &mut String, complexity: &ComplexityReport) -> Result<()> {
-    debug_assert!(true, "contract: write_comp_complexity_section");
     use std::fmt::Write;
     writeln!(output, "## Complexity Analysis\n")?;
     writeln!(output, "- Total functions: {}", complexity.total_functions)?;
@@ -101,7 +95,6 @@ fn write_comp_complexity_section(output: &mut String, complexity: &ComplexityRep
 
 // Helper: Write SATD section
 fn write_comp_satd_section(output: &mut String, satd: &SatdReport) -> Result<()> {
-    debug_assert!(true, "contract: write_comp_satd_section");
     use std::fmt::Write;
     writeln!(output, "## Technical Debt (SATD)\n")?;
     writeln!(output, "- Total items: {}", satd.total_items)?;
@@ -115,7 +108,6 @@ fn write_comp_satd_section(output: &mut String, satd: &SatdReport) -> Result<()>
 
 // Helper: Write TDG section
 fn write_comp_tdg_section(output: &mut String, tdg: &TdgReport) -> Result<()> {
-    debug_assert!(true, "contract: write_comp_tdg_section");
     use std::fmt::Write;
     writeln!(output, "## Technical Debt Gradient\n")?;
     writeln!(output, "- Average TDG: {:.2}", tdg.average_tdg)?;
@@ -126,7 +118,6 @@ fn write_comp_tdg_section(output: &mut String, tdg: &TdgReport) -> Result<()> {
 
 // Helper: Write dead code section
 fn write_comp_dead_code_section(output: &mut String, dead_code: &DeadCodeReport) -> Result<()> {
-    debug_assert!(true, "contract: write_comp_dead_code_section");
     use std::fmt::Write;
     writeln!(output, "## Dead Code\n")?;
     writeln!(output, "- Total items: {}", dead_code.total_items)?;
@@ -140,7 +131,6 @@ fn write_comp_dead_code_section(output: &mut String, dead_code: &DeadCodeReport)
 
 // Helper: Write defects section
 fn write_comp_defects_section(output: &mut String, defects: &DefectReport) -> Result<()> {
-    debug_assert!(true, "contract: write_comp_defects_section");
     use std::fmt::Write;
     writeln!(output, "## Defect Prediction\n")?;
     writeln!(output, "- Total analyzed: {}", defects.total_analyzed)?;
@@ -150,7 +140,6 @@ fn write_comp_defects_section(output: &mut String, defects: &DefectReport) -> Re
 
 // Helper: Write duplicates section
 fn write_comp_duplicates_section(output: &mut String, duplicates: &DuplicateReport) -> Result<()> {
-    debug_assert!(true, "contract: write_comp_duplicates_section");
     use std::fmt::Write;
     writeln!(output, "## Code Duplication\n")?;
     writeln!(

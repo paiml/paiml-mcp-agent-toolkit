@@ -5,7 +5,6 @@ impl CacheOrchestrator {
         &self,
         workload: &WorkloadProfile,
     ) -> Result<StrategyRecommendation> {
-        debug_assert!(true, "contract: analyze_workload_and_recommend");
         let eviction_policy = self.select_eviction_policy(workload);
         let tier_config = self.configure_tiers(workload);
         let expected_improvement = self
@@ -22,7 +21,6 @@ impl CacheOrchestrator {
     }
 
     fn select_eviction_policy(&self, workload: &WorkloadProfile) -> EvictionPolicy {
-        debug_assert!(true, "contract: select_eviction_policy");
         // Strategy selection logic based on workload characteristics
         if workload.temporal_locality > 0.8 {
             EvictionPolicy::LRU
@@ -39,7 +37,6 @@ impl CacheOrchestrator {
     }
 
     fn configure_tiers(&self, workload: &WorkloadProfile) -> TierConfiguration {
-        debug_assert!(true, "contract: configure_tiers");
         let mut tier_allocations = FxHashMap::default();
         let mut enabled_tiers = FxHashMap::default();
         let mut promotion_thresholds = FxHashMap::default();
@@ -78,7 +75,6 @@ impl CacheOrchestrator {
         _workload: &WorkloadProfile,
         _policy: &EvictionPolicy,
     ) -> Result<f64> {
-        debug_assert!(true, "contract: estimate_improvement");
         // Simplified improvement estimation
         // In practice, this would use ML models or historical data
         let current_metrics = self.get_performance_metrics();
@@ -95,7 +91,6 @@ impl CacheOrchestrator {
     }
 
     fn calculate_confidence(&self, workload: &WorkloadProfile) -> f64 {
-        debug_assert!(true, "contract: calculate_confidence");
         // Calculate confidence based on workload characteristics and historical data
         let evaluation_count = self.evaluation_history.read().len() as f64;
         let base_confidence = 0.5;
@@ -113,7 +108,6 @@ impl CacheOrchestrator {
         &self,
         recommendation: StrategyRecommendation,
     ) -> Result<()> {
-        debug_assert!(true, "contract: switch_to_recommended_strategy");
         // Implementation would switch to the recommended strategy
         // For now, just log the switch
         info!(
@@ -125,7 +119,6 @@ impl CacheOrchestrator {
     }
 
     async fn perform_optimization_cycle(&self) -> Result<()> {
-        debug_assert!(true, "contract: perform_optimization_cycle");
         // Collect current metrics
         let current_metrics = self.collect_current_metrics().await?;
         *self.metrics.write() = current_metrics.clone();
@@ -150,7 +143,6 @@ impl CacheOrchestrator {
     }
 
     async fn collect_current_metrics(&self) -> Result<PerformanceMetrics> {
-        debug_assert!(true, "contract: collect_current_metrics");
         // Collect metrics from active strategies
         let strategies = self.strategies.read();
 
@@ -186,7 +178,6 @@ impl CacheOrchestrator {
     }
 
     async fn update_workload_from_metrics(&self, metrics: &PerformanceMetrics) -> Result<()> {
-        debug_assert!(true, "contract: update_workload_from_metrics");
         let mut workload = self.workload_profile.write();
 
         // Update workload based on observed metrics
@@ -201,7 +192,6 @@ impl CacheOrchestrator {
     }
 
     async fn record_evaluation(&self, metrics: &PerformanceMetrics) -> Result<()> {
-        debug_assert!(true, "contract: record_evaluation");
         let evaluation = StrategyEvaluation {
             performance: metrics.clone(),
             timestamp: Instant::now(),

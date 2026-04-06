@@ -36,7 +36,6 @@ impl StateManager {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_temp_dir(temp_dir: &Path) -> Self {
-        debug_assert!(temp_dir.exists(), "temp_dir must exist: {}", temp_dir.display());
         Self {
             state: None,
             snapshot_manager: SnapshotManager::with_path(temp_dir),
@@ -117,7 +116,6 @@ impl StateManager {
         targets: Vec<PathBuf>,
         config: RefactorConfig,
     ) -> Result<(), String> {
-        debug_assert!(!targets.is_empty(), "targets must not be empty");
         if self.state.is_some() {
             return Err(
                 "Session already active. Stop current session before starting a new one."
@@ -249,7 +247,6 @@ impl StateManager {
     }
 
     fn save_snapshot(&self) -> Result<(), String> {
-        debug_assert!(true, "contract: save_snapshot");
         if let Some(state) = &self.state {
             self.snapshot_manager.save_snapshot(state)?;
         }
@@ -258,7 +255,6 @@ impl StateManager {
 
     #[allow(dead_code)]
     fn load_from_snapshot(&mut self) -> Result<(), String> {
-        debug_assert!(true, "contract: load_from_snapshot");
         match self.snapshot_manager.load_snapshot() {
             Ok(state) => {
                 self.state = Some(state);
@@ -273,7 +269,6 @@ impl StateManager {
     }
 
     fn generate_session_id() -> String {
-        debug_assert!(true, "contract: generate_session_id");
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let timestamp = SystemTime::now()

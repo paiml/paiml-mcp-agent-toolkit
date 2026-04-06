@@ -134,7 +134,6 @@ pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> Depend
 
 /// Shared PageRank computation used by both `add_pagerank_scores` and `prune_graph_pagerank`
 fn compute_pagerank_scores(graph: &DependencyGraph) -> Vec<f32> {
-    debug_assert!(true, "contract: compute_pagerank_scores");
     let node_ids: Vec<&String> = graph.nodes.keys().collect();
     let mut scores = vec![1.0f32; node_ids.len()];
     let node_idx: FxHashMap<&String, usize> = node_ids

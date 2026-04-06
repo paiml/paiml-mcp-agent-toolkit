@@ -3,18 +3,15 @@
 
 impl TreeSitterMutationOperator for TypeScriptBinaryOpMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "AOR/ROR"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         // GREEN PHASE: Detect binary expressions
         node.kind() == "binary_expression"
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         // GREEN PHASE: Generate mutations for binary operators
         if node.kind() != "binary_expression" {
             return vec![];
@@ -101,19 +98,16 @@ impl TreeSitterMutationOperator for TypeScriptBinaryOpMutation {
     }
 
     fn kill_probability(&self) -> f64 {
-        debug_assert!(true, "contract: kill_probability");
         0.85
     }
 }
 
 impl TreeSitterMutationOperator for TypeScriptStrictEqualityMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "Strict Equality"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         // GREEN PHASE: Detect strict equality operators
         if node.kind() != "binary_expression" {
             return false;
@@ -130,7 +124,6 @@ impl TreeSitterMutationOperator for TypeScriptStrictEqualityMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         // GREEN PHASE: Mutate strict equality operators
         if node.kind() != "binary_expression" {
             return vec![];
@@ -183,12 +176,10 @@ impl TreeSitterMutationOperator for TypeScriptStrictEqualityMutation {
 
 impl TreeSitterMutationOperator for TypeScriptOptionalChainingMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "Optional Chaining"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         // GREEN PHASE: Detect optional chaining expressions
         // Tree-sitter represents optional chaining as specific node types
         matches!(node.kind(), "optional_chain" | "member_expression")
@@ -196,7 +187,6 @@ impl TreeSitterMutationOperator for TypeScriptOptionalChainingMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         // GREEN PHASE: Remove optional chaining operator
         let source_text = std::str::from_utf8(source).unwrap_or("");
         let node_text = &source_text[node.byte_range()];
@@ -225,12 +215,10 @@ impl TreeSitterMutationOperator for TypeScriptOptionalChainingMutation {
 
 impl TreeSitterMutationOperator for TypeScriptNullishCoalescingMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "Nullish Coalescing"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         // GREEN PHASE: Detect nullish coalescing operator
         if node.kind() != "binary_expression" {
             return false;
@@ -246,7 +234,6 @@ impl TreeSitterMutationOperator for TypeScriptNullishCoalescingMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         // GREEN PHASE: Mutate nullish coalescing operator
         if node.kind() != "binary_expression" {
             return vec![];
@@ -287,12 +274,10 @@ impl TreeSitterMutationOperator for TypeScriptNullishCoalescingMutation {
 
 impl TreeSitterMutationOperator for TypeScriptAsyncAwaitMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "Async/Await"
     }
 
     fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         // GREEN PHASE: Detect async/await keywords
         let kind = node.kind();
         if kind == "function_declaration" || kind == "arrow_function" || kind == "method_definition"
@@ -310,7 +295,6 @@ impl TreeSitterMutationOperator for TypeScriptAsyncAwaitMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         // GREEN PHASE: Remove async or await keywords
         let source_text = std::str::from_utf8(source).unwrap_or("");
         let node_text = &source_text[node.byte_range()];

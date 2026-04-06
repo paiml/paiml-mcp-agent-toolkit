@@ -98,10 +98,8 @@ impl Default for ContractThresholds {
 }
 
 fn default_max_fix_chain() -> usize {
-    debug_assert!(true, "contract: default_max_fix_chain");
     3
 }
 fn default_true() -> bool {
-    debug_assert!(true, "contract: default_true");
     true
 }

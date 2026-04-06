@@ -51,7 +51,6 @@ pub(super) fn handle_watch_mode(
     format: ComplexityOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     print_watch_mode_intro(path);
     let (mut watcher, rx) = create_file_watcher(path)?;
 
@@ -77,7 +76,6 @@ pub(super) fn handle_watch_mode(
 #[cfg(feature = "watch")]
 /// Print watch mode introduction messages
 fn print_watch_mode_intro(path: &Path) {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     eprintln!("👁️  Starting watch mode for complexity analysis...");
     eprintln!("📁 Watching: {}", path.display());
     eprintln!("🔄 Press Ctrl+C to stop watching\n");
@@ -88,7 +86,6 @@ fn print_watch_mode_intro(path: &Path) {
 fn create_file_watcher(
     path: &Path,
 ) -> Result<(RecommendedWatcher, std::sync::mpsc::Receiver<Event>)> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let (tx, rx) = channel();
 
     let mut watcher = RecommendedWatcher::new(
@@ -120,7 +117,6 @@ fn create_sync_config<'a>(
     format: ComplexityOutputFormat,
     output: Option<&'a Path>,
 ) -> SyncAnalysisConfig<'a> {
-    debug_assert!(true, "contract: create_sync_config");
     SyncAnalysisConfig {
         path,
         toolchain,
@@ -137,7 +133,6 @@ fn create_sync_config<'a>(
 #[cfg(feature = "watch")]
 /// Run initial complexity analysis
 fn run_initial_analysis(config: &SyncAnalysisConfig) -> Result<()> {
-    debug_assert!(true, "contract: run_initial_analysis");
     eprintln!("📊 Running initial complexity analysis...\n");
     run_complexity_analysis_sync(config.clone())
 }
@@ -150,7 +145,6 @@ fn watch_for_file_changes(
     include: &[String],
     _watcher: &mut RecommendedWatcher,
 ) -> Result<()> {
-    debug_assert!(true, "contract: watch_for_file_changes");
     loop {
         match rx.recv() {
             Ok(event) => {
@@ -170,7 +164,6 @@ fn watch_for_file_changes(
 #[cfg(feature = "watch")]
 /// Handle a file change event by reanalyzing
 fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Result<()> {
-    debug_assert!(true, "contract: handle_file_change_event");
     eprintln!("\n🔄 File change detected, reanalyzing...");
 
     if let Some(paths) = get_changed_paths(event) {
@@ -190,7 +183,6 @@ fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Resul
 #[cfg(feature = "watch")]
 /// Check if we should reanalyze based on the event type
 fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
-    debug_assert!(true, "contract: should_reanalyze");
     match event.kind {
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => event
             .paths
@@ -203,7 +195,6 @@ fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
 #[cfg(feature = "watch")]
 /// Check if a specific path should be analyzed
 fn should_analyze_path(path: &std::path::Path, include_patterns: &[String]) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let Some(path_str) = path.to_str() else {
         return false;
     };
@@ -218,7 +209,6 @@ fn should_analyze_path(path: &std::path::Path, include_patterns: &[String]) -> b
 #[cfg(feature = "watch")]
 /// Check if file is a source code file
 fn is_source_code_file(path_str: &str) -> bool {
-    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     path_str.ends_with(".rs")
         || path_str.ends_with(".ts")
         || path_str.ends_with(".tsx")
@@ -236,7 +226,6 @@ fn is_source_code_file(path_str: &str) -> bool {
 #[cfg(feature = "watch")]
 /// Check if file should be included based on patterns
 fn should_include_file(path_str: &str, include_patterns: &[String]) -> bool {
-    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     if include_patterns.is_empty() {
         return true;
     }
@@ -249,7 +238,6 @@ fn should_include_file(path_str: &str, include_patterns: &[String]) -> bool {
 #[cfg(feature = "watch")]
 /// Get the paths that changed from an event
 fn get_changed_paths(event: &Event) -> Option<&Vec<PathBuf>> {
-    debug_assert!(true, "contract: get_changed_paths");
     if event.paths.is_empty() {
         None
     } else {
@@ -265,7 +253,6 @@ async fn format_and_output_watch_results(
     format: ComplexityOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    debug_assert!(true, "contract: format_and_output_watch_results");
     use crate::services::complexity::format_complexity_summary;
 
     // For watch mode, we'll use summary format for simplicity
@@ -297,7 +284,6 @@ async fn format_and_output_watch_results(
 #[cfg(feature = "watch")]
 /// Synchronous wrapper for complexity analysis in watch mode
 fn run_complexity_analysis_sync(config: SyncAnalysisConfig) -> Result<()> {
-    debug_assert!(true, "contract: run_complexity_analysis_sync");
     // Create a runtime for the async operation
     let runtime = tokio::runtime::Runtime::new()?;
 

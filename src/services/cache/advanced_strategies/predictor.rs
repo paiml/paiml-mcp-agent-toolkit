@@ -77,7 +77,6 @@ where
     }
 
     fn update_patterns(&self, history: &VecDeque<K>) {
-        debug_assert!(true, "contract: update_patterns");
         let mut patterns = self.patterns.write();
 
         // Extract subsequences and update their frequencies

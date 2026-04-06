@@ -4,7 +4,6 @@ impl AccurateComplexityAnalyzer {
     /// Analyze a single Rust file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_file(&self, path: &Path) -> Result<FileComplexityResult> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read_to_string(path).await?;
         let ast = syn::parse_file(&content)?;
 
@@ -31,7 +30,6 @@ impl AccurateComplexityAnalyzer {
     /// Analyze an entire project
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_project(&self, path: &Path) -> Result<ProjectComplexityResult> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut file_metrics = Vec::new();
         let mut files_analyzed = 0;
 
@@ -61,7 +59,6 @@ impl AccurateComplexityAnalyzer {
 
     /// Analyze a single function
     fn analyze_function(&self, func: &ItemFn, line_start: u32) -> FunctionMetrics {
-        debug_assert!(true, "contract: analyze_function");
         let name = func.sig.ident.to_string();
         let suppressed = self.respect_annotations && self.has_suppress_annotation(&func.attrs);
 
@@ -79,7 +76,6 @@ impl AccurateComplexityAnalyzer {
 
     /// Check if file is a test file
     fn is_test_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         path_str.contains("/tests/")
             || path_str.contains("/test/")
@@ -91,7 +87,6 @@ impl AccurateComplexityAnalyzer {
 
     /// Check if function has suppression annotation
     fn has_suppress_annotation(&self, attrs: &[Attribute]) -> bool {
-        debug_assert!(!attrs.is_empty(), "attrs must not be empty");
         attrs.iter().any(|attr| {
             // Check if it's an allow attribute
             if attr.path().is_ident("allow") {

@@ -6,7 +6,6 @@ pub struct ConditionEvaluator;
 impl ConditionEvaluator {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn evaluate(_expression: &str, _context: &WorkflowContext) -> Result<bool, WorkflowError> {
-        debug_assert!(!_expression.is_empty(), "_expression must not be empty");
         // Simple expression evaluation
         Ok(true)
     }

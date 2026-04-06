@@ -103,7 +103,6 @@ impl QualityRefactoringEngine {
 
     /// Check if analysis meets quality standards
     fn meets_quality_standards(&self, analysis: &CodeAnalysis) -> Result<bool> {
-        debug_assert!(true, "contract: meets_quality_standards");
         Ok(
             analysis.complexity <= self.profile.thresholds.max_complexity
                 && analysis.coverage >= f64::from(self.profile.thresholds.min_coverage)
@@ -114,7 +113,6 @@ impl QualityRefactoringEngine {
 
     /// Identify the most important refactoring target
     fn identify_target(&self, analysis: &CodeAnalysis) -> Result<RefactoringTarget> {
-        debug_assert!(true, "contract: identify_target");
         // Prioritize by impact on quality
         if analysis.complexity > self.profile.thresholds.max_complexity {
             Ok(RefactoringTarget::Complexity("main_function".to_string()))
@@ -131,8 +129,6 @@ impl QualityRefactoringEngine {
 
     /// Reduce function complexity through decomposition
     fn reduce_function_complexity(&self, code: &str, _function_name: &str) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
-        debug_assert!(!_function_name.is_empty(), "_function_name must not be empty");
         // Simple complexity reduction: extract method pattern
         let mut result = code.to_string();
 
@@ -151,7 +147,6 @@ impl QualityRefactoringEngine {
 
     /// Extract conditional logic to reduce complexity
     fn extract_conditional_logic(&self, code: String) -> Result<String> {
-        debug_assert!(true, "contract: extract_conditional_logic");
         // Simple implementation: add a helper function comment
         let mut result = code;
         result.push_str("\n\n// Helper function extracted to reduce complexity\n");
@@ -171,16 +166,12 @@ impl QualityRefactoringEngine {
 
     /// Implement TODO comments
     fn implement_todo(&self, code: &str, _todo: &str) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
-        debug_assert!(!_todo.is_empty(), "_todo must not be empty");
         let result = code.replace("todo!(", "Ok(Default::default()) // ");
         Ok(result)
     }
 
     /// Remove dead code
     fn remove_dead_code(&self, code: &str, _dead_code: &str) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
-        debug_assert!(!_dead_code.is_empty(), "_dead_code must not be empty");
         // Simple dead code removal (would be more sophisticated)
         let result = code.replace("// Dead code", "");
         Ok(result)
@@ -188,8 +179,6 @@ impl QualityRefactoringEngine {
 
     /// Reduce technical debt
     fn reduce_technical_debt(&self, code: &str, _debt: &str) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
-        debug_assert!(!_debt.is_empty(), "_debt must not be empty");
         // Apply debt reduction patterns
         let mut result = code.to_string();
         result = result.replace("unwrap()", "?");
@@ -199,8 +188,6 @@ impl QualityRefactoringEngine {
 
     /// Add test coverage
     fn add_test_coverage(&self, code: &str, _uncovered: &str) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
-        debug_assert!(!_uncovered.is_empty(), "_uncovered must not be empty");
         // Add basic test coverage
         let mut result = code.to_string();
         result.push_str("\n\n#[cfg(test)]\nmod tests {\n    use super::*;\n\n");
@@ -226,7 +213,6 @@ impl QualityRefactoringEngine {
         from_pattern: &str,
         to_pattern: &str,
     ) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut result = code.to_string();
 
         // Simple pattern migrations

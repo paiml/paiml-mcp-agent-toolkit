@@ -59,7 +59,6 @@ impl MetricTrendStore {
     /// Falls back to scalar if SIMD not available.
     #[allow(dead_code)] // Will be used when SIMD is fully integrated
     fn simd_linear_regression(&self, observations: &[MetricObservation]) -> (f64, f64) {
-        debug_assert!(!observations.is_empty(), "observations must not be empty");
         // Delegates to scalar version; SIMD variant deferred
         self.compute_trend(observations)
     }
@@ -84,8 +83,6 @@ impl MetricTrendStore {
         threshold: f64,
         forecast_days: usize,
     ) -> Result<PredictionResult> {
-        debug_assert!(!metric.is_empty(), "metric must not be empty");
-        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         // Load historical data
         if !self.cache.contains_key(metric) {
             self.load(metric)?;
@@ -154,7 +151,6 @@ impl MetricTrendStore {
 
     /// Train linear regression model on historical data (Phase 4)
     fn train_linear_model(&self, observations: &[MetricObservation]) -> Result<LinearModel> {
-        debug_assert!(!observations.is_empty(), "observations must not be empty");
         // Normalize timestamps to days since first observation
         let first_ts = observations[0].timestamp;
 
@@ -225,7 +221,6 @@ impl MetricTrendStore {
         training_data: &[MetricObservation],
         forecast_days: usize,
     ) -> Result<Vec<ForecastPoint>> {
-        debug_assert!(true, "contract: generate_forecast");
         let first_ts = training_data[0].timestamp;
         let last_day = (model.last_timestamp - first_ts) as f64 / 86400.0;
 

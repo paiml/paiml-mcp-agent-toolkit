@@ -48,7 +48,6 @@ impl Language {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_extension(path: &Path) -> Self {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         match path.extension().and_then(|e| e.to_str()) {
             Some("rs") => Language::Rust,
             Some("py") => Language::Python,

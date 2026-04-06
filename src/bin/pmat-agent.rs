@@ -160,7 +160,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn initialize_agents(
     registry: &Arc<AgentRegistry>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: initialize_agents");
     use pmat::agents::orchestrator_actor::OrchestratorActor;
 
     // Register core agents
@@ -192,7 +191,6 @@ async fn serve_mcp(
     stdio: bool,
     max_connections: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: serve_mcp");
     let config = ServerConfig {
         name: "PMAT Agent Server".to_string(),
         bind_address: bind.clone(),
@@ -227,7 +225,6 @@ async fn execute_workflow(
     params: Option<String>,
     timeout: Option<u64>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: execute_workflow");
     println!("📋 Loading workflow: {}", file);
 
     let content = fs::read_to_string(&file).await?;
@@ -269,7 +266,6 @@ async fn execute_workflow(
 }
 
 async fn validate_workflow(file: String) -> Result<(), Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: validate_workflow");
     println!("🔍 Validating workflow: {}", file);
 
     let content = fs::read_to_string(&file).await?;
@@ -299,7 +295,6 @@ async fn analyze_code(
     language: String,
     output: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: analyze_code");
     use pmat::quality::complexity::ComplexityAnalyzer;
     use pmat::quality::entropy::EntropyCalculator;
     use pmat::quality::satd_item::SatdDetectorWithItems;
@@ -367,7 +362,6 @@ async fn run_quality_gate(
     max_satd: usize,
     fail_on_violation: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: run_quality_gate");
     use pmat::quality::complexity::ComplexityAnalyzer;
     use pmat::quality::gate_runner::{QualityGateRunner, QualityThresholds};
     use pmat::quality::satd_item::SatdDetectorWithItems;
@@ -414,7 +408,6 @@ async fn run_quality_gate(
 }
 
 async fn show_info() -> Result<(), Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: show_info");
     println!("PMAT Agent System v{}", env!("CARGO_PKG_VERSION"));
     println!("═══════════════════════════════════════");
     println!("MCP Protocol: {}", pmat::mcp_integration::MCP_VERSION);

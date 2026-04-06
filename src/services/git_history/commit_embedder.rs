@@ -23,7 +23,6 @@ impl SimpleVectorizer {
     }
 
     fn fit(&mut self, documents: &[String]) {
-        debug_assert!(!documents.is_empty(), "documents must not be empty");
         let n_docs = documents.len() as f32;
         let mut doc_freq: HashMap<String, usize> = HashMap::new();
 
@@ -56,7 +55,6 @@ impl SimpleVectorizer {
     }
 
     fn transform(&self, text: &str) -> Vec<f32> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         let mut vec = vec![0.0f32; self.dimension];
         let terms = Self::tokenize(text);
         let n_terms = terms.len() as f32;
@@ -92,7 +90,6 @@ impl SimpleVectorizer {
     }
 
     fn tokenize(text: &str) -> Vec<String> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         text.to_lowercase()
             .split(|c: char| !c.is_alphanumeric())
             .filter(|s| s.len() > 2) // Skip very short tokens
@@ -102,7 +99,6 @@ impl SimpleVectorizer {
 
     #[allow(dead_code)]
     fn vocabulary_size(&self) -> usize {
-        debug_assert!(true, "contract: vocabulary_size");
         self.vocabulary.len().max(self.dimension)
     }
 }
@@ -140,7 +136,6 @@ impl CommitEmbedder {
     /// Embed multiple commit messages (batched for efficiency)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn embed_batch(&mut self, messages: &[String]) -> Vec<Vec<f32>> {
-        debug_assert!(!messages.is_empty(), "messages must not be empty");
         if messages.is_empty() {
             return vec![];
         }
@@ -163,7 +158,6 @@ impl CommitEmbedder {
 
     /// Preprocess commit message for embedding
     fn preprocess_message(message: &str) -> String {
-        debug_assert!(true, "contract: preprocess_message");
         // Normalize whitespace
         let normalized = message
             .lines()
@@ -358,7 +352,6 @@ mod tests {
 
         // Helper to compute cosine similarity
         fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
-            debug_assert!(true, "contract: cosine_similarity");
             let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
             let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
             let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();

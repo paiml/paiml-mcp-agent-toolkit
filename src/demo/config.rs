@@ -137,7 +137,6 @@ impl ConfigManager {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_from_file(path: &Path) -> Result<DisplayConfig> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read config file: {}", path.display()))?;
 
@@ -149,7 +148,6 @@ impl ConfigManager {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn load(&mut self, path: &Path) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let config = Self::load_from_file(path)?;
         *self.config.write().await = config.clone();
         let _ = self.update_tx.send(config);
@@ -159,7 +157,6 @@ impl ConfigManager {
     #[cfg(feature = "watch")]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn watch(&mut self, path: PathBuf) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let config = self.config.clone();
         let tx = self.update_tx.clone();
         let watch_path = path.clone();
@@ -352,7 +349,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

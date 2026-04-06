@@ -13,7 +13,6 @@ pub(super) struct CompileCommands {
 /// Load compile_commands.json from project root or common build directories.
 #[cfg_attr(coverage_nightly, coverage(off))]
 pub(super) fn load_compile_commands(project_root: &std::path::Path) -> CompileCommands {
-    debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
     let candidates = [
         project_root.join("compile_commands.json"),
         project_root.join("build/compile_commands.json"),
@@ -42,7 +41,6 @@ pub(super) fn load_compile_commands(project_root: &std::path::Path) -> CompileCo
 ///
 /// Format: [{"directory": "...", "command": "... -I/path ...", "file": "..."}]
 fn parse_compile_commands(content: &str) -> Option<CompileCommands> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let entries: Vec<serde_json::Value> = serde_json::from_str(content).ok()?;
     let mut include_dirs = std::collections::HashSet::new();
     let entry_count = entries.len();
@@ -74,7 +72,6 @@ fn parse_compile_commands(content: &str) -> Option<CompileCommands> {
 
 /// Extract -I and -isystem include paths from a compiler command string.
 fn extract_include_dirs(command: &str, dirs: &mut std::collections::HashSet<String>) {
-    debug_assert!(!command.is_empty(), "command must not be empty");
     let parts: Vec<&str> = command.split_whitespace().collect();
     let mut iter = parts.iter().peekable();
     while let Some(&part) = iter.next() {

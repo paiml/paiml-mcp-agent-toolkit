@@ -5,7 +5,6 @@ impl TDGCalculator {
     /// Analyze coupling metrics for a file
     #[allow(dead_code)]
     fn analyze_coupling(&self, _file: &Path, ast: &UnifiedAstNode) -> CouplingMetrics {
-        debug_assert!(_file.exists(), "_file must exist: {}", _file.display());
         let mut imports = Vec::new();
         let mut exports = Vec::new();
         self.extract_dependencies(ast, &mut imports, &mut exports);
@@ -42,7 +41,6 @@ impl TDGCalculator {
     }
 
     async fn calculate_coupling_factor(&self, path: &Path) -> Result<f64> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read_to_string(path).await?;
         let import_count = self.count_imports(&content);
 
@@ -74,7 +72,6 @@ impl TDGCalculator {
     }
 
     async fn calculate_duplication_factor(&self, path: &Path) -> Result<f64> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read_to_string(path).await?;
         let lines: Vec<&str> = content
             .lines()
@@ -104,7 +101,6 @@ impl TDGCalculator {
     }
 
     async fn calculate_domain_risk(&self, path: &Path) -> Result<f64> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         let mut risk: f64 = 0.0;
 
@@ -122,7 +118,6 @@ impl TDGCalculator {
     }
 
     async fn calculate_provability_factor(&self, path: &Path) -> Result<f64> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let file_name = path
             .file_name()
             .and_then(|n| n.to_str())
@@ -147,7 +142,6 @@ impl TDGCalculator {
     }
 
     fn count_imports(&self, content: &str) -> usize {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         use std::sync::OnceLock;
 
         static IMPORT_PATTERNS: OnceLock<[regex::Regex; 4]> = OnceLock::new();

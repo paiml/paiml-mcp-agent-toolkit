@@ -39,11 +39,6 @@ impl InfraScorer for BuildReliabilityScorer {
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let workflows = read_workflow_files(repo_path);
         let all_content: String = workflows
             .iter()
@@ -205,11 +200,6 @@ impl InfraScorer for BuildReliabilityScorer {
 
 /// BR-01: Check last 10 CI runs success rate via gh CLI
 async fn check_ci_success_rate(repo_path: &Path) -> InfraCheck {
-    debug_assert!(
-        repo_path.exists(),
-        "repo_path must exist: {}",
-        repo_path.display()
-    );
     // Try to run gh run list — skip gracefully if gh is not available
     let output = tokio::process::Command::new("gh")
         .args(["run", "list", "--limit", "10", "--json", "conclusion"])
@@ -285,7 +275,6 @@ async fn check_ci_success_rate(repo_path: &Path) -> InfraCheck {
 
 /// BR-02: No continue-on-error on test/lint jobs
 fn check_no_continue_on_error(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // Simple heuristic: if continue-on-error: true appears near test/lint context, fail
     let has_continue_on_error = content.lines().any(|l| {
         let t = l.trim();
@@ -311,7 +300,6 @@ fn check_no_continue_on_error(content: &str) -> InfraCheck {
 
 /// BR-03: Deterministic builds (--locked, CARGO_INCREMENTAL=0)
 fn check_deterministic_builds(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let has_locked = content.contains("--locked");
     let has_incremental_zero = content.contains("CARGO_INCREMENTAL=0")
         || content.contains("CARGO_INCREMENTAL: \"0\"")
@@ -338,7 +326,6 @@ fn check_deterministic_builds(content: &str) -> InfraCheck {
 
 /// BR-04: Build caching (actions/cache, sccache)
 fn check_build_caching(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let has_cache = content.contains("actions/cache")
         || content.contains("sccache")
         || content.contains("Swatinem/rust-cache")
@@ -363,7 +350,6 @@ fn check_build_caching(content: &str) -> InfraCheck {
 
 /// Returns true if a `uses:` value references an unpinned branch (main/master/HEAD).
 fn is_unpinned_action(uses_value: &str) -> bool {
-    debug_assert!(!uses_value.is_empty(), "uses_value must not be empty");
     if let Some(at_pos) = uses_value.rfind('@') {
         let ref_part = &uses_value[at_pos + 1..];
         matches!(ref_part, "main" | "master" | "HEAD")
@@ -380,8 +366,6 @@ fn collect_pin_stats(
     unpinned: &mut u32,
     examples: &mut Vec<String>,
 ) {
-    debug_assert!(!name.is_empty(), "name must not be empty");
-    debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
         let Some(uses_value) = extract_uses_value(line.trim()) else {
             continue;
@@ -398,7 +382,6 @@ fn collect_pin_stats(
 
 /// BR-05: Pinned action versions (SHA or tag, not @master/@main branch)
 fn check_pinned_actions(workflows: &[(String, String)]) -> InfraCheck {
-    debug_assert!(!workflows.is_empty(), "workflows must not be empty");
     let mut total_uses = 0u32;
     let mut unpinned = 0u32;
     let mut unpinned_examples = Vec::new();
@@ -436,7 +419,6 @@ fn check_pinned_actions(workflows: &[(String, String)]) -> InfraCheck {
 
 /// Extract the value after `uses:` from a YAML line
 fn extract_uses_value(line: &str) -> Option<&str> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim().trim_start_matches("- ");
     if trimmed.starts_with("uses:") {
         Some(trimmed.trim_start_matches("uses:").trim())
@@ -447,7 +429,6 @@ fn extract_uses_value(line: &str) -> Option<&str> {
 
 /// BR-06: No `|| true` in test/lint steps
 fn check_no_or_true(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let has_or_true = content.lines().any(|l| {
         let t = l.trim();
         t.contains("|| true")
@@ -476,7 +457,6 @@ fn check_no_or_true(content: &str) -> InfraCheck {
 
 /// BR-07: Timeout configured on jobs
 fn check_timeout(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let has_timeout = content
         .lines()
         .any(|l| l.trim().starts_with("timeout-minutes:"));

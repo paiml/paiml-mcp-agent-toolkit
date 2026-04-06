@@ -67,7 +67,6 @@ pub(super) fn handle_score_diagnosis_mode(
 }
 
 fn diagnose_rps(categories: &std::collections::HashMap<String, f64>, limit: usize) {
-    debug_assert!(limit > 0, "limit must be positive");
     let mut cats: Vec<_> = categories.iter().collect();
     cats.sort_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal));
     for (name, pct) in cats.iter().take(limit) {
@@ -84,7 +83,6 @@ fn diagnose_comply(errors: usize, warnings: usize) {
 }
 
 fn diagnose_muda(project_path: &std::path::Path, limit: usize) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::handlers::comply_handlers::muda_handlers;
     let report = muda_handlers::calculate_muda_score(project_path);
     let categories = [
@@ -111,7 +109,6 @@ fn diagnose_muda(project_path: &std::path::Path, limit: usize) {
 }
 
 fn diagnose_file_health(project_path: &std::path::Path, limit: usize) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let check = crate::cli::handlers::comply_handlers::check_file_health(project_path);
     // Parse message for file count
     if let Some(pos) = check.message.find("files >") {
@@ -149,7 +146,6 @@ fn diagnose_coverage(
     index: &crate::services::agent_context::AgentContextIndex,
     limit: usize,
 ) {
-    debug_assert!(limit > 0, "limit must be positive");
     // Show functions with lowest coverage from the index
     let funcs = &index.functions;
     let mut uncovered: Vec<_> = funcs
@@ -177,7 +173,6 @@ fn diagnose_coverage(
 }
 
 fn get_head_sha(path: &std::path::Path) -> String {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     std::process::Command::new("git")
         .args(["rev-parse", "--short", "HEAD"])
         .current_dir(path)

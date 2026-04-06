@@ -35,17 +35,14 @@ struct EdgeRef<'a, E> {
 
 impl<'a, E> EdgeRef<'a, E> {
     fn source(&self) -> NodeIndex {
-        debug_assert!(true, "contract: source");
         self.source
     }
 
     fn target(&self) -> NodeIndex {
-        debug_assert!(true, "contract: target");
         self.target
     }
 
     fn weight(&self) -> &E {
-        debug_assert!(true, "contract: weight");
         self.weight
     }
 }

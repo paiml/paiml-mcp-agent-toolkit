@@ -2,7 +2,6 @@
 impl MessageBatch {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(max_size: usize) -> Self {
-        debug_assert!(max_size > 0, "max_size must be positive");
         Self {
             messages: Vec::new(),
             total_size: 0,

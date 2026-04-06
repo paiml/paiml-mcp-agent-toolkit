@@ -2,7 +2,6 @@
 ///
 /// These tools handle template generation, project scaffolding, and template search.
 fn core_tool_definitions() -> Vec<serde_json::Value> {
-    debug_assert!(true, "contract: core_tool_definitions");
     vec![
         json!({
             "name": "get_server_info",

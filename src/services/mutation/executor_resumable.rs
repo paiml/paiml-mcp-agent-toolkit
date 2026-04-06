@@ -6,7 +6,6 @@ async fn load_or_create_state(
     mutants: &[Mutant],
     state_path: &Path,
 ) -> Result<super::state::MutationState> {
-    debug_assert!(state_path.exists(), "state_path must exist: {}", state_path.display());
     if state_path.exists() {
         println!("  📋 Found existing state at {}", state_path.display());
         super::state::MutationState::load(state_path).await
@@ -40,7 +39,6 @@ fn format_mutant_status(result: &MutationResult) -> &'static str {
 }
 
 fn print_final_stats(results: &[MutationResult]) {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     println!(
         "  ✅ Mutation testing complete! Processed {} mutants",
         results.len()
@@ -65,7 +63,6 @@ impl MutantExecutor {
         state_path: &Path,
         save_interval: Duration,
     ) -> Result<Vec<MutationResult>> {
-        debug_assert!(state_path.exists(), "state_path must exist: {}", state_path.display());
         let mut state = load_or_create_state(self, mutants, state_path).await?;
 
         // Handle case where everything is already done

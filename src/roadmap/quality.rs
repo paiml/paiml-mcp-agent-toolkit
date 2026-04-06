@@ -38,7 +38,6 @@ impl QualityReport {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(task_id: &str) -> Self {
-        debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         Self {
             task_id: task_id.to_string(),
             timestamp: Utc::now(),

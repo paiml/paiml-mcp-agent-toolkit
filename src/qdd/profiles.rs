@@ -28,7 +28,6 @@ impl QualityProfiles {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn by_name(name: &str) -> Option<QualityProfile> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         match name {
             "extreme" => Some(QualityProfile::extreme()),
             "standard" => Some(QualityProfile::standard()),
@@ -223,7 +222,6 @@ impl ProfileValidator {
 
     /// Recommend appropriate profile based on codebase metrics
     fn recommend_profile(metrics: &QualityMetrics) -> String {
-        debug_assert!(true, "contract: recommend_profile");
         if metrics.complexity > 20 || metrics.coverage < 50 {
             "legacy".to_string()
         } else if metrics.complexity > 15 || metrics.coverage < 75 {
@@ -290,7 +288,6 @@ impl ProfileComparator {
     }
 
     fn is_stricter(profile1: &QualityProfile, profile2: &QualityProfile) -> Option<String> {
-        debug_assert!(true, "contract: is_stricter");
         let t1 = &profile1.thresholds;
         let t2 = &profile2.thresholds;
 
@@ -307,7 +304,6 @@ impl ProfileComparator {
     }
 
     fn calculate_strictness_score(thresholds: &QualityThresholds) -> i32 {
-        debug_assert!(true, "contract: calculate_strictness_score");
         let mut score = 0;
 
         score += (20 - thresholds.max_complexity as i32).max(0);
@@ -491,7 +487,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

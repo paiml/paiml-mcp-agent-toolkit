@@ -12,7 +12,6 @@ impl QualityGateEnforcer {
     /// Run all quality checks for a task
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn run_quality_checks(&mut self, task_id: &str) -> Result<QualityReport> {
-        debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         let mut report = QualityReport::new(task_id);
 
         // Run all checks
@@ -156,7 +155,6 @@ impl QualityCheck {
 /// Extract coverage percentage from output
 #[allow(dead_code)]
 fn extract_coverage_from_output(output: &str) -> Option<u8> {
-    debug_assert!(!output.is_empty(), "output must not be empty");
     // Try "Coverage: 85%" pattern first
     extract_coverage_with_prefix(output, "Coverage:", 9)
         // Fall back to "Coverage 85%" pattern
@@ -165,7 +163,6 @@ fn extract_coverage_from_output(output: &str) -> Option<u8> {
 
 /// Extracts coverage percentage from text with a given prefix
 fn extract_coverage_with_prefix(text: &str, prefix: &str, skip_len: usize) -> Option<u8> {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     let idx = text.find(prefix)?;
     let rest = text.get(idx + skip_len..).unwrap_or_default().trim();
     extract_percentage_value(rest)
@@ -173,7 +170,6 @@ fn extract_coverage_with_prefix(text: &str, prefix: &str, skip_len: usize) -> Op
 
 /// Extracts percentage value from text ending with '%'
 fn extract_percentage_value(text: &str) -> Option<u8> {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     let percent_pos = text.find('%')?;
     let num_str = text.get(..percent_pos).unwrap_or_default().trim();
     // Parse as f64 first to handle decimals, then truncate to u8

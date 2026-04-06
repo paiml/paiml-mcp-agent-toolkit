@@ -1,7 +1,6 @@
 /// Quality-Driven Development (QDD) tool for creating and refactoring code with guaranteed quality
 // Helper function to select quality profile
 fn select_quality_profile(profile_name: Option<&str>) -> QualityProfile {
-    debug_assert!(true, "contract: select_quality_profile");
     match profile_name.unwrap_or("standard") {
         "extreme" => QualityProfile::extreme(),
         "standard" => QualityProfile::standard(),
@@ -12,7 +11,6 @@ fn select_quality_profile(profile_name: Option<&str>) -> QualityProfile {
 
 // Helper function to parse code type
 fn parse_code_type(code_type: Option<&str>) -> CodeType {
-    debug_assert!(true, "contract: parse_code_type");
     match code_type.unwrap_or("function") {
         "function" => CodeType::Function,
         "module" => CodeType::Module,
@@ -32,7 +30,6 @@ async fn handle_qdd_create(
     inputs: Option<Vec<(String, String)>>,
     output_type: Option<&str>,
 ) -> Result<Value> {
-    debug_assert!(true, "contract: handle_qdd_create");
     let code_type_enum = parse_code_type(code_type);
 
     let parameters = inputs
@@ -102,7 +99,6 @@ async fn handle_qdd_refactor(
     name: Option<&str>,
     file_path: Option<&PathBuf>,
 ) -> Result<Value> {
-    debug_assert!(true, "contract: handle_qdd_refactor");
     if let Some(path) = file_path {
         let refactor_spec = RefactorSpec {
             file_path: path.clone(),
@@ -160,7 +156,6 @@ pub async fn quality_driven_development(
     inputs: Option<Vec<(String, String)>>,
     output_type: Option<&str>,
 ) -> Result<Value> {
-    debug_assert!(!operation_type.is_empty(), "operation_type must not be empty");
     let profile = select_quality_profile(quality_profile);
     let qdd_tool = QddTool::with_profile(profile.clone());
 
@@ -209,7 +204,6 @@ pub async fn generate_defect_aware_prompt(
     context: String,
     summary_path: PathBuf,
 ) -> Result<Value> {
-    debug_assert!(summary_path.exists(), "summary_path must exist: {}", summary_path.display());
     use crate::prompts::DefectAwarePromptGenerator;
 
     // Validate summary file exists

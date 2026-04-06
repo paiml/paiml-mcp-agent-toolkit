@@ -1,7 +1,6 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Complex functions with high cyclomatic complexity
 fn complex_function(items: &[i32]) -> i32 {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut sum = 0;
     for i in 0..items.len() {
         if items[i] > 0 {

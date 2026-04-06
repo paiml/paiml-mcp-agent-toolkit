@@ -3,7 +3,6 @@
 
 impl TdgExporter {
     fn score_to_json(score: &TdgScore, options: &ExportOptions) -> Result<String> {
-        debug_assert!(true, "contract: score_to_json");
         let output = if options.include_metadata {
             json!({
                 "score": score,
@@ -28,7 +27,6 @@ impl TdgExporter {
     }
 
     fn project_to_json(project: &ProjectScore, options: &ExportOptions) -> Result<String> {
-        debug_assert!(true, "contract: project_to_json");
         let output = json!({
             "project": {
                 "total_files": project.total_files,
@@ -55,7 +53,6 @@ impl TdgExporter {
     }
 
     fn comparison_to_json(comparison: &Comparison, options: &ExportOptions) -> Result<String> {
-        debug_assert!(true, "contract: comparison_to_json");
         let output = json!({
             "comparison": {
                 "delta": comparison.delta,

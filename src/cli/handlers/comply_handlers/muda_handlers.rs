@@ -73,7 +73,6 @@ impl std::fmt::Display for MudaGrade {
 
 impl MudaGrade {
     fn from_score(score: f64) -> Self {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         match score as u32 {
             0..=20 => MudaGrade::Lean,
             21..=40 => MudaGrade::Efficient,
@@ -93,11 +92,6 @@ impl MudaGrade {
 /// is a primary signal of unmaintained code and must not be masked.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let overproduction = measure_overproduction(project_path);
     let waiting = measure_waiting(project_path);
     let inventory = measure_inventory(project_path);

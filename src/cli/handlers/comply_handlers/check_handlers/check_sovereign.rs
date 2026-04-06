@@ -16,11 +16,6 @@ use crate::services::file_health::FileHealthMetrics;
 /// Check Sovereign AI Stack compliance patterns (CB-040 complexity refactor)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() {
         return skip_check("Sovereign Stack Patterns", "No Cargo.toml found");
@@ -41,7 +36,6 @@ pub(crate) fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceC
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_sovereign_stack_project(content: &str) -> bool {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     const SOVEREIGN_DEPS: &[&str] = &["trueno", "aprender", "realizar", "batuta", "renacer"];
     SOVEREIGN_DEPS.iter().any(|dep| content.contains(dep))
 }
@@ -52,11 +46,6 @@ pub(crate) fn check_five_whys_patterns(
     issues: &mut Vec<String>,
     good_patterns: &mut Vec<String>,
 ) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use std::process::Command;
     let git_log = Command::new("git")
         .args(["log", "--oneline", "-20", "--grep=fix"])
@@ -83,11 +72,6 @@ pub(crate) fn check_five_whys_patterns(
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_falsification_tests(project_path: &Path, good_patterns: &mut Vec<String>) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let tests_dir = project_path.join("tests");
     if !tests_dir.exists() {
         return;
@@ -109,11 +93,6 @@ pub(crate) fn check_falsification_tests(project_path: &Path, good_patterns: &mut
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_apr_models(project_path: &Path, good_patterns: &mut Vec<String>) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let models_dir = project_path.join("models");
     if !models_dir.exists() {
         return;
@@ -135,11 +114,6 @@ pub(crate) fn check_ticket_refs(
     issues: &mut Vec<String>,
     good_patterns: &mut Vec<String>,
 ) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use std::process::Command;
     let ticket_refs = Command::new("git")
         .args(["log", "-50", "--oneline"])
@@ -166,11 +140,6 @@ pub(crate) fn check_ticket_refs(
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_ml_commit_classification(project_path: &Path, good_patterns: &mut Vec<String>) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use std::process::Command;
     let classifier = match CommitClassifier::load_sovereign_stack() {
         Ok(c) => c,
@@ -223,7 +192,6 @@ pub(crate) fn build_sovereign_result(
     issues: &[String],
     good_patterns: &[String],
 ) -> ComplianceCheck {
-    debug_assert!(!issues.is_empty(), "issues must not be empty");
     if issues.is_empty() && !good_patterns.is_empty() {
         ComplianceCheck {
             name: "Sovereign Stack Patterns".into(),
@@ -258,11 +226,6 @@ fn make_paiml_check(status: CheckStatus, message: String, severity: Severity) ->
 }
 
 fn classify_local_deps(src_dir: &Path, paiml_deps: &[&str]) -> (Vec<String>, Vec<String>) {
-    debug_assert!(
-        src_dir.exists(),
-        "src_dir must exist: {}",
-        src_dir.display()
-    );
     use std::process::Command;
     let mut dirty = Vec::new();
     let mut clean = Vec::new();
@@ -290,11 +253,6 @@ fn classify_local_deps(src_dir: &Path, paiml_deps: &[&str]) -> (Vec<String>, Vec
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     const PAIML_PACKAGES: &[&str] = &[
         "trueno",
         "trueno-graph",
@@ -403,11 +361,6 @@ pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck
 /// Generate file health baseline for ratchet enforcement.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn generate_file_health_baseline(project_path: &Path, dry_run: bool) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::services::file_health::{FileHealthBaseline, FileHealthMetrics};
     let files = match discover_source_files(project_path) {
         Ok(f) => f,
@@ -463,11 +416,6 @@ pub(crate) fn check_file_health_multi(
     primary_path: &Path,
     include_projects: &[std::path::PathBuf],
 ) -> Result<()> {
-    debug_assert!(
-        primary_path.exists(),
-        "primary_path must exist: {}",
-        primary_path.display()
-    );
     use crate::services::file_health::{FileHealthReport, StackHealthReport};
     let mut project_reports: Vec<(String, FileHealthReport)> = Vec::new();
     let primary_name: String = primary_path
@@ -544,11 +492,6 @@ pub(crate) fn check_file_health_multi(
 fn analyze_project_health(
     project_path: &Path,
 ) -> Result<crate::services::file_health::FileHealthReport> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::services::file_health::FileHealthReport;
     let files = discover_source_files(project_path)
         .map_err(|e| anyhow::anyhow!("Failed to discover source files: {}", e))?;

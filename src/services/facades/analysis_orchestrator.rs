@@ -99,7 +99,6 @@ impl AnalysisOrchestrator {
         &self,
         request: ComprehensiveAnalysisRequest,
     ) -> Result<ComprehensiveAnalysisResult> {
-        debug_assert!(true, "contract: analyze_parallel");
         use tokio::task::JoinHandle;
         let mut tasks: Vec<JoinHandle<(&str, Result<AnalysisTaskResult>)>> = Vec::new();
 
@@ -185,7 +184,6 @@ impl AnalysisOrchestrator {
         &self,
         request: ComprehensiveAnalysisRequest,
     ) -> Result<ComprehensiveAnalysisResult> {
-        debug_assert!(true, "contract: analyze_sequential");
         let mut complexity_result = None;
         let mut dead_code_result = None;
         let mut satd_result = None;
@@ -246,7 +244,6 @@ impl AnalysisOrchestrator {
         dead_code: Option<super::dead_code_facade::DeadCodeAnalysisResult>,
         satd: Option<super::satd_facade::SatdAnalysisResult>,
     ) -> Result<ComprehensiveAnalysisResult> {
-        debug_assert!(true, "contract: build_result");
         // Calculate summary statistics
         let total_files = [
             complexity.as_ref().map_or(0, |r| r.total_files),
@@ -379,7 +376,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

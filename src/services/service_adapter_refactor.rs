@@ -43,7 +43,6 @@ pub mod refactor_adapter {
     }
 
     async fn process_refactor(_inner: &(), _input: RefactorInput) -> Result<RefactorOutput> {
-        debug_assert!(true, "contract: process_refactor");
         // Would call actual refactor engine here
         Ok(RefactorOutput {
             success: true,

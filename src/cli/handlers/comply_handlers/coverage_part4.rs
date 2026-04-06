@@ -49,7 +49,6 @@
             &rs_file,
             r#"
 fn bad_unsafe() {
-    debug_assert!(true, "contract: bad_unsafe");
     unsafe {
         std::ptr::null::<i32>().read();
     }
@@ -76,7 +75,6 @@ fn bad_unsafe() {
             &rs_file,
             r#"
 fn good_unsafe() {
-    debug_assert!(true, "contract: good_unsafe");
     // SAFETY: null pointer read is UB, but this is just a test
     unsafe {
         std::ptr::null::<i32>().read();
@@ -103,7 +101,6 @@ fn good_unsafe() {
             &rs_file,
             r#"
 fn bad_simd() {
-    debug_assert!(true, "contract: bad_simd");
     let a = _mm256_set1_ps(1.0);
 }
 "#,
@@ -129,7 +126,6 @@ fn bad_simd() {
             r#"
 #[target_feature(enable = "avx2")]
 fn good_simd() {
-    debug_assert!(true, "contract: good_simd");
     let a = _mm256_set1_ps(1.0);
 }
 "#,
@@ -193,7 +189,6 @@ pub fn verify_f32x4_operations() -> bool {
 use std::simd::f32x4;
 
 fn use_portable_simd() {
-    debug_assert!(true, "contract: use_portable_simd");
     let a = f32x4::splat(1.0);
     let b = f32x4::from_array([1.0, 2.0, 3.0, 4.0]);
 }
@@ -320,7 +315,6 @@ fn main(@builtin(local_invocation_id) local_id: vec3<u32>) {
             // No leading newline - content starts immediately
             concat!("impl Compute", "Brick for MyBrick {\n\
                 fn execute(&self) {\n\
-                    debug_assert!(true, "contract: execute");
                     self.do_work();\n\
                 }\n\
             }\n"),

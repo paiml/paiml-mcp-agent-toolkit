@@ -9,7 +9,6 @@ pub async fn handle_refactor_status(
     checkpoint: PathBuf,
     format: RefactorOutputFormat,
 ) -> anyhow::Result<()> {
-    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
     println!("📊 Reading refactor status from: {}", checkpoint.display());
 
     // Delegate file validation to extracted function
@@ -29,7 +28,6 @@ pub async fn handle_refactor_status(
 /// Validate checkpoint file existence - EXTRACTED FUNCTION
 /// Complexity: 2 (A+ standard)
 fn validate_checkpoint_file(checkpoint: &Path) -> anyhow::Result<()> {
-    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
     if !checkpoint.exists() {
         return Err(anyhow::anyhow!(
             "Checkpoint file not found: {}",
@@ -42,7 +40,6 @@ fn validate_checkpoint_file(checkpoint: &Path) -> anyhow::Result<()> {
 /// Read checkpoint data from file - EXTRACTED FUNCTION
 /// Complexity: 2 (A+ standard)
 async fn read_checkpoint_data(checkpoint: &PathBuf) -> anyhow::Result<String> {
-    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
     tokio::fs::read_to_string(checkpoint)
         .await
         .map_err(Into::into)
@@ -55,8 +52,6 @@ fn format_refactor_status(
     format: RefactorOutputFormat,
     checkpoint: &PathBuf,
 ) -> anyhow::Result<()> {
-    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
-    debug_assert!(!checkpoint_data.is_empty(), "checkpoint_data must not be empty");
     match format {
         RefactorOutputFormat::Json => format_as_json(checkpoint_data),
         RefactorOutputFormat::Table => format_as_table(checkpoint_data),
@@ -67,7 +62,6 @@ fn format_refactor_status(
 /// Format status as JSON - EXTRACTED FUNCTION
 /// Complexity: 3 (A+ standard)
 fn format_as_json(checkpoint_data: &str) -> anyhow::Result<()> {
-    debug_assert!(!checkpoint_data.is_empty(), "checkpoint_data must not be empty");
     let parsed: serde_json::Value = serde_json::from_str(checkpoint_data)?;
     println!("{}", serde_json::to_string_pretty(&parsed)?);
     Ok(())
@@ -76,7 +70,6 @@ fn format_as_json(checkpoint_data: &str) -> anyhow::Result<()> {
 /// Format status as table - EXTRACTED FUNCTION
 /// Complexity: 8 (A+ standard)
 fn format_as_table(checkpoint_data: &str) -> anyhow::Result<()> {
-    debug_assert!(!checkpoint_data.is_empty(), "checkpoint_data must not be empty");
     let state: serde_json::Value = serde_json::from_str(checkpoint_data)?;
 
     // Print table header
@@ -94,7 +87,6 @@ fn format_as_table(checkpoint_data: &str) -> anyhow::Result<()> {
 /// Print table header - EXTRACTED FUNCTION
 /// Complexity: 2 (A+ standard)
 fn print_table_header() {
-    debug_assert!(true, "contract: print_table_header");
     println!("┌─────────────────┬──────────────────────────────────────┐");
     println!("│ Property        │ Value                                │");
     println!("├─────────────────┼──────────────────────────────────────┤");
@@ -103,7 +95,6 @@ fn print_table_header() {
 /// Print table data rows - EXTRACTED FUNCTION
 /// Complexity: 8 (A+ standard)
 fn print_table_data(state: &serde_json::Value) {
-    debug_assert!(true, "contract: print_table_data");
     if let Some(current) = state.get("current") {
         println!(
             "│ Current State   │ {:36} │",
@@ -131,7 +122,6 @@ fn print_table_footer() {
 /// Format status as summary - EXTRACTED FUNCTION
 /// Complexity: 6 (A+ standard)
 fn format_as_summary(checkpoint_data: &str, checkpoint: &Path) -> anyhow::Result<()> {
-    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
     let state: serde_json::Value = serde_json::from_str(checkpoint_data)?;
     println!("🔧 Refactor Status Summary");
     println!("   Checkpoint: {}", checkpoint.display());

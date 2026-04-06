@@ -119,7 +119,6 @@ impl MutantFeatures {
     }
 
     fn operator_type_as_numeric(&self) -> f64 {
-        debug_assert!(true, "contract: operator_type_as_numeric");
         match self.operator_type {
             MutationOperatorType::ArithmeticReplacement => 1.0,
             MutationOperatorType::RelationalReplacement => 2.0,

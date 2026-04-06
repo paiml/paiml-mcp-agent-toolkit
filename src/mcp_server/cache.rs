@@ -97,7 +97,6 @@ impl McpCache {
     /// Get a value from the cache
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get(&self, key: &str) -> Option<Value> {
-        debug_assert!(!key.is_empty(), "key must not be empty");
         let mut metrics = self.metrics.write().await;
         metrics.total_requests += 1;
 
@@ -170,7 +169,6 @@ impl McpCache {
 
     /// Evict expired entries
     async fn evict_expired(&self, entries: &mut HashMap<String, CacheEntry>) {
-        debug_assert!(true, "contract: evict_expired");
         let now = Instant::now();
         let expired_keys: Vec<String> = entries
             .iter()
@@ -189,7 +187,6 @@ impl McpCache {
 
     /// Find the oldest entry in the cache
     fn find_oldest(&self, entries: &HashMap<String, CacheEntry>) -> Option<String> {
-        debug_assert!(true, "contract: find_oldest");
         entries
             .iter()
             .min_by_key(|(_, entry)| entry.expires_at)
@@ -205,7 +202,6 @@ impl CacheKeyBuilder {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analysis_key(file_path: &str, version: &str) -> String {
-        debug_assert!(!version.is_empty(), "version must not be empty");
         format!("analysis:{file_path}:{version}")
     }
 
@@ -213,7 +209,6 @@ impl CacheKeyBuilder {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn refactor_plan_key(file_path: &str, config_hash: u64) -> String {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         format!("refactor_plan:{file_path}:{config_hash}")
     }
 
@@ -221,7 +216,6 @@ impl CacheKeyBuilder {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn complexity_key(file_path: &str) -> String {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         format!("complexity:{file_path}")
     }
 
@@ -229,7 +223,6 @@ impl CacheKeyBuilder {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn method_result_key(method: &str, params_hash: u64) -> String {
-        debug_assert!(!method.is_empty(), "method must not be empty");
         format!("method:{method}:{params_hash}")
     }
 }
@@ -356,7 +349,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

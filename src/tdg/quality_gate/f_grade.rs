@@ -36,12 +36,10 @@ impl FGradeGate {
 
 impl QualityGate for FGradeGate {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "FGradeGate"
     }
 
     fn check(&self, _baseline: &TdgBaseline, current: &TdgBaseline) -> Result<GateResult> {
-        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
         let mut f_grade_count = 0;
 

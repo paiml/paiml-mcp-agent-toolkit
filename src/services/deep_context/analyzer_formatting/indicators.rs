@@ -58,7 +58,6 @@ impl DeepContextAnalyzer {
 
     /// Add defect score indicator
     fn add_defect_indicator(&self, result: &mut Vec<String>, score: f32) {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         if score > 0.7 {
             result.push(format!("\u{1f534}{score:.1}"));
         } else if score > 0.4 {
@@ -68,7 +67,6 @@ impl DeepContextAnalyzer {
 
     /// Add cognitive complexity indicator
     fn add_cognitive_complexity_indicator(&self, result: &mut Vec<String>, complexity: u16) {
-        debug_assert!(true, "contract: add_cognitive_complexity_indicator");
         if complexity > 30 {
             result.push(format!("\u{1f9e0}{complexity}"));
         } else if complexity > 15 {
@@ -78,7 +76,6 @@ impl DeepContextAnalyzer {
 
     /// Add test coverage indicator
     fn add_coverage_indicator(&self, result: &mut Vec<String>, coverage: f32) {
-        debug_assert!(true, "contract: add_coverage_indicator");
         if coverage < 0.5 {
             result.push(format!("\u{1f6a8}{:.0}%", coverage * 100.0));
         } else if coverage < 0.8 {
@@ -90,7 +87,6 @@ impl DeepContextAnalyzer {
 
     /// Add churn indicator
     fn add_churn_indicator(&self, result: &mut Vec<String>, churn: f32) {
-        debug_assert!(true, "contract: add_churn_indicator");
         if churn > 0.8 {
             result.push(format!("\u{1f525}{churn:.1}")); // High churn - hot file
         } else if churn > 0.5 {
@@ -128,7 +124,6 @@ impl DeepContextAnalyzer {
 
     /// Get emoji for Big-O complexity notation
     fn get_big_o_emoji(&self, big_o: &str) -> &'static str {
-        debug_assert!(!big_o.is_empty(), "big_o must not be empty");
         match big_o {
             "O(1)" => "\u{1f3af}",                   // Constant - excellent
             "O(log n)" => "\u{26a1}",                // Logarithmic - very good

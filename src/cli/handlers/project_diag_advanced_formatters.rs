@@ -2,7 +2,6 @@
 // ============================================================================
 
 fn check_msrv_defined(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
     let content = std::fs::read_to_string(&cargo_toml).unwrap_or_default();
 
@@ -31,7 +30,6 @@ fn check_msrv_defined(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_benchmarks(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let benches_dir = project_path.join("benches");
     let cargo_toml = project_path.join("Cargo.toml");
     let content = std::fs::read_to_string(&cargo_toml).unwrap_or_default();
@@ -70,7 +68,6 @@ fn check_benchmarks(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn score_github_workflows(workflows_dir: &Path) -> (HealthStatus, f64, String) {
-    debug_assert!(workflows_dir.exists(), "workflows_dir must exist: {}", workflows_dir.display());
     let workflow_count = std::fs::read_dir(workflows_dir)
         .map(|entries| entries.filter_map(|e| e.ok()).count())
         .unwrap_or(0);
@@ -82,7 +79,6 @@ fn score_github_workflows(workflows_dir: &Path) -> (HealthStatus, f64, String) {
 }
 
 fn detect_ci_system(project_path: &Path) -> (HealthStatus, f64, String) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let github_workflows = project_path.join(".github").join("workflows");
     if github_workflows.exists() && github_workflows.is_dir() {
         return score_github_workflows(&github_workflows);
@@ -97,7 +93,6 @@ fn detect_ci_system(project_path: &Path) -> (HealthStatus, f64, String) {
 }
 
 fn check_ci_configured(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let (status, score, message) = detect_ci_system(project_path);
     DiagnosticCheck {
         name: "CI Configured".to_string(),
@@ -114,7 +109,6 @@ fn check_ci_configured(project_path: &Path) -> DiagnosticCheck {
 // ============================================================================
 
 fn dir_size(path: &Path) -> std::io::Result<u64> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut total = 0u64;
     if path.is_dir() {
         for entry in std::fs::read_dir(path)? {
@@ -131,7 +125,6 @@ fn dir_size(path: &Path) -> std::io::Result<u64> {
 }
 
 fn file_has_test_markers(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let is_rs = path.extension().map(|e| e == "rs").unwrap_or(false);
     if !is_rs {
         return false;
@@ -142,7 +135,6 @@ fn file_has_test_markers(path: &Path) -> bool {
 }
 
 fn has_test_annotations(dir: &Path) -> bool {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return false,
@@ -164,7 +156,6 @@ fn has_test_annotations(dir: &Path) -> bool {
 // ============================================================================
 
 fn format_summary(report: &DiagnosticReport, failures_only: bool) -> String {
-    debug_assert!(true, "contract: format_summary");
     let mut output = String::new();
 
     // Header
@@ -224,12 +215,10 @@ fn format_summary(report: &DiagnosticReport, failures_only: bool) -> String {
 }
 
 fn format_json(report: &DiagnosticReport) -> Result<String> {
-    debug_assert!(true, "contract: format_json");
     serde_json::to_string_pretty(report).map_err(|e| anyhow::anyhow!(e))
 }
 
 fn format_markdown(report: &DiagnosticReport, failures_only: bool) -> String {
-    debug_assert!(true, "contract: format_markdown");
     let mut output = String::new();
 
     output.push_str(&format!(
@@ -286,7 +275,6 @@ fn format_markdown(report: &DiagnosticReport, failures_only: bool) -> String {
 }
 
 fn format_andon(report: &DiagnosticReport) -> String {
-    debug_assert!(true, "contract: format_andon");
     let mut output = String::new();
 
     // Andon-style visualization (Toyota Way)

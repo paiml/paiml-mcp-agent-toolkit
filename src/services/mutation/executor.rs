@@ -29,11 +29,6 @@ impl MutantExecutor {
     /// Create new executor with default settings
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(work_dir: PathBuf) -> Self {
-        debug_assert!(
-            work_dir.exists(),
-            "work_dir must exist: {}",
-            work_dir.display()
-        );
         Self {
             timeout: Duration::from_secs(DEFAULT_TIMEOUT_SECS),
             work_dir,

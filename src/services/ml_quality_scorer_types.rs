@@ -23,7 +23,6 @@ impl ComplexityFeatures {
     /// Extract features from source code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_source(source: &str, language: &str) -> Self {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         let loc = lines.len() as f64;
 

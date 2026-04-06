@@ -95,7 +95,6 @@ impl DwarfParser {
         debug_abbrev: &DebugAbbrev<R>,
         entries: &mut Vec<DwarfDebugEntry>,
     ) -> DeepWasmResult<()> {
-        debug_assert!(true, "contract: extract_entries_from_header");
         // Parse abbreviations for this unit
         // For synthetic test data without proper abbreviations, handle gracefully
         let abbreviations = match header.abbreviations(debug_abbrev) {
@@ -147,7 +146,6 @@ impl DwarfParser {
         entry: &gimli::DebuggingInformationEntry<R>,
         debug_str: &DebugStr<R>,
     ) -> DeepWasmResult<Option<String>> {
-        debug_assert!(true, "contract: extract_name");
         if let Some(attr) = entry
             .attr(gimli::DW_AT_name)
             .map_err(|e| DeepWasmError::Analysis(format!("Failed to read DW_AT_name: {}", e)))?
@@ -180,7 +178,6 @@ impl DwarfParser {
     #[cfg(feature = "deep-wasm")]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_line_program(&self, debug_line: &[u8]) -> DeepWasmResult<Vec<(u64, Location)>> {
-        debug_assert!(!debug_line.is_empty(), "debug_line must not be empty");
         // Early return for empty input
         if debug_line.is_empty() {
             return Ok(Vec::new());
@@ -235,7 +232,6 @@ impl DwarfParser {
     #[cfg(not(feature = "deep-wasm"))]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_line_program(&self, _debug_line: &[u8]) -> DeepWasmResult<Vec<(u64, Location)>> {
-        debug_assert!(!_debug_line.is_empty(), "_debug_line must not be empty");
         Err(DeepWasmError::MissingDebugInfo)
     }
 }

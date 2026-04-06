@@ -77,7 +77,6 @@ impl SemanticNamer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_semantic_name(&self, id: &str, node: &NodeInfo) -> String {
-        debug_assert!(!id.is_empty(), "id must not be empty");
         // Priority 1: Use label if not empty and meaningful
         if !node.label.is_empty() && node.label != id {
             return node.label.clone();
@@ -99,8 +98,6 @@ impl SemanticNamer {
 
     /// Convert a file path to module notation based on language
     fn path_to_module(&self, path: &str, language: &str) -> String {
-        debug_assert!(!path.is_empty(), "path must not be empty");
-        debug_assert!(!language.is_empty(), "language must not be empty");
         let separator = self.patterns.get(language).copied().unwrap_or("::");
 
         // Strip common prefixes using string manipulation for simplicity
@@ -140,7 +137,6 @@ impl SemanticNamer {
 
     /// Clean a raw ID to make it more readable
     fn clean_id(&self, id: &str) -> String {
-        debug_assert!(!id.is_empty(), "id must not be empty");
         // Remove common prefixes
         let cleaned = id
             .trim_start_matches("node_")
@@ -255,7 +251,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

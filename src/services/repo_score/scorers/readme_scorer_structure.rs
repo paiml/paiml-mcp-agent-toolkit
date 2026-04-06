@@ -5,7 +5,6 @@
 impl ReadmeScorer {
     /// Score README comprehensiveness (A2: 5 points)
     async fn score_comprehensiveness(&self, repo_path: &Path) -> Result<SubcategoryScore> {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let readme_path = repo_path.join("README.md");
 
         if !readme_path.exists() {
@@ -90,7 +89,6 @@ impl ReadmeScorer {
     /// Score professional structure (A3: 5 points)
     /// Detects professional README patterns vs bot-generated/stream-of-consciousness
     async fn score_professional_structure(&self, repo_path: &Path) -> Result<SubcategoryScore> {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let readme_path = repo_path.join("README.md");
 
         if !readme_path.exists() {
@@ -242,7 +240,6 @@ impl ReadmeScorer {
 
     /// Check if a hero image is present and valid
     async fn check_hero_image(&self, repo_path: &Path, content: &str) -> bool {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         // Check for hero.svg in standard locations
         let hero_paths = [
             "docs/hero.svg",

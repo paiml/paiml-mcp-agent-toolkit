@@ -17,7 +17,6 @@ impl FileManifest {
     /// Build manifest from project directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn build(project_path: &Path) -> Result<Self> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut files = HashMap::new();
         let mut coverage_required = Vec::new();
 
@@ -70,7 +69,6 @@ impl FileManifest {
 
     /// Check if path should be excluded from manifest
     fn is_excluded(path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Exclude common non-source directories
@@ -84,7 +82,6 @@ impl FileManifest {
     /// Verify manifest integrity (find missing files)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn verify_integrity(&self, project_path: &Path) -> Vec<PathBuf> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut missing = Vec::new();
 
         for rel_path in self.files.keys() {
@@ -121,7 +118,6 @@ impl FileEntry {
     /// Create file entry from path
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_path(path: &Path) -> Result<Option<Self>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let extension = path.extension().and_then(|e| e.to_str());
 
         // Only process source files
@@ -158,7 +154,6 @@ impl FileEntry {
 
     /// Categorize Rust file (detect SIMD, tests, etc.)
     fn categorize_rust_file(path: &Path) -> Result<FileCategory> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
 
         // Check for test files
@@ -185,7 +180,6 @@ impl FileEntry {
 
     /// Check if content contains SIMD patterns
     fn contains_simd_patterns(content: &str) -> bool {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Use concat! to avoid CB-021 self-detection when scanning this file
         let patterns = [
             "#[target_feature(enable",
@@ -204,7 +198,6 @@ impl FileEntry {
 
     /// Simple function count heuristic
     fn count_functions(content: &str, category: &FileCategory) -> usize {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         match category {
             FileCategory::RustSource | FileCategory::SimdAvx => {
                 // Count `fn ` occurrences (simple heuristic)

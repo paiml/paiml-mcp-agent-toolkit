@@ -11,7 +11,6 @@ impl CodeAnalyzer {
     /// Analyze code quality
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&self, code: &str) -> Result<CodeAnalysis> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         Ok(CodeAnalysis {
             complexity: self.calculate_complexity(code),
             coverage: self.estimate_coverage(code),
@@ -23,7 +22,6 @@ impl CodeAnalyzer {
     }
 
     fn calculate_complexity(&self, code: &str) -> u32 {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         let if_count = code.matches("if ").count() as u32;
         let match_count = code.matches("match ").count() as u32;
         let loop_count =
@@ -33,33 +31,28 @@ impl CodeAnalyzer {
     }
 
     fn estimate_coverage(&self, code: &str) -> f64 {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         let test_lines = code.matches("#[test]").count() * 10; // Rough estimate
         let total_lines = code.lines().count().max(1);
         (test_lines as f64 / total_lines as f64 * 100.0).min(100.0)
     }
 
     fn calculate_tdg(&self, code: &str) -> u32 {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         let todo_count = code.matches("todo!").count() as u32;
         let unwrap_count = code.matches("unwrap").count() as u32;
         todo_count + unwrap_count
     }
 
     fn count_satd(&self, code: &str) -> u32 {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         (code.matches("TODO").count()
             + code.matches("FIXME").count()
             + code.matches("HACK").count()) as u32
     }
 
     fn count_functions(&self, code: &str) -> usize {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         code.matches("fn ").count()
     }
 
     fn calculate_quality_score(&self, code: &str) -> f64 {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         let complexity = f64::from(self.calculate_complexity(code));
         let coverage = self.estimate_coverage(code);
         let tdg = f64::from(self.calculate_tdg(code));

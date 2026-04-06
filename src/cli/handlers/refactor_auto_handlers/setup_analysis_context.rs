@@ -21,7 +21,6 @@ async fn setup_refactoring_context(
     github_issue_url: Option<String>,
     bug_report_path: Option<PathBuf>,
 ) -> Result<RefactorContext> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let start_time = std::time::Instant::now();
 
     // Determine refactoring mode
@@ -78,7 +77,6 @@ async fn setup_refactoring_context(
 /// Loads and consolidates ignore patterns from command line and ignore files.
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn load_ignore_patterns(config: &PatternConfig) -> Result<Vec<String>> {
-    debug_assert!(true, "contract: load_ignore_patterns");
     let mut all_patterns = config.exclude_patterns.clone();
 
     if let Some(ignore_path) = &config.ignore_file_path {
@@ -111,7 +109,6 @@ async fn discover_source_files(
     patterns: &PatternConfig,
     ignore_patterns: &[String],
 ) -> Result<Vec<PathBuf>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut source_files = Vec::new();
 
     for entry in WalkDir::new(project_path)

@@ -32,8 +32,6 @@ pub fn extract_file_details(
     _source: &str,
     language: Language,
 ) -> Result<FileExtract, String> {
-    debug_assert!(!path.is_empty(), "path must not be empty");
-    debug_assert!(!_source.is_empty(), "_source must not be empty");
     Ok(FileExtract {
         file: path.to_string(),
         language: language.as_str().to_string(),

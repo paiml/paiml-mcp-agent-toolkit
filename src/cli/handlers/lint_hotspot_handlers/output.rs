@@ -281,7 +281,6 @@ pub(crate) fn format_detailed(
 ///
 /// Returns an error if the operation fails
 fn format_json(result: &LintHotspotResult, enforcement: bool) -> Result<String> {
-    debug_assert!(true, "contract: format_json");
     if enforcement {
         // Full enforcement-ready JSON
         serde_json::to_string_pretty(result).context("Failed to serialize to JSON")
@@ -308,7 +307,6 @@ fn format_json(result: &LintHotspotResult, enforcement: bool) -> Result<String> 
 ///
 /// Returns an error if the operation fails
 fn format_sarif(result: &LintHotspotResult) -> Result<String> {
-    debug_assert!(true, "contract: format_sarif");
     let sarif = serde_json::json!({
         "version": "2.1.0",
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",

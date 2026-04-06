@@ -16,7 +16,6 @@ use std::time::SystemTime;
 use tokio::sync::mpsc;
 
 fn event_to_change_type(kind: &EventKind) -> Option<FileChangeType> {
-    debug_assert!(true, "contract: event_to_change_type");
     match kind {
         EventKind::Create(_) => Some(FileChangeType::Created),
         EventKind::Modify(_) => Some(FileChangeType::Modified),
@@ -30,7 +29,6 @@ fn update_cache_for_change(
     path: &Path,
     change: &FileChangeType,
 ) {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if matches!(change, FileChangeType::Removed) {
         cache.remove(path);
         return;
@@ -58,7 +56,6 @@ fn process_watch_event(
     cache: &DashMap<PathBuf, AgentsMdFile>,
     tx: &mpsc::Sender<FileChange>,
 ) {
-    debug_assert!(!file_name.is_empty(), "file_name must not be empty");
     let Some(change) = event_to_change_type(&event.kind) else {
         return;
     };
@@ -76,7 +73,6 @@ fn process_watch_event(
 }
 
 fn should_ignore_dir(dir: &Path, ignore_patterns: &[String]) -> bool {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     dir.file_name()
         .and_then(|n| n.to_str())
         .is_some_and(|name| ignore_patterns.iter().any(|p| name == p))
@@ -88,7 +84,6 @@ fn try_discover_agents_file(
     depth: usize,
     cache: &DashMap<PathBuf, AgentsMdFile>,
 ) -> Option<AgentsMdFile> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let agents_path = dir.join(file_name);
     if PathValidator::ensure_file(&agents_path).is_err() {
         return None;
@@ -136,7 +131,6 @@ impl AgentsMdDiscovery {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn find_nearest(&self, path: &Path) -> Option<PathBuf> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check cache first
         if let Some(cached) = self.get_from_cache(path) {
             return Some(cached.path);
@@ -173,7 +167,6 @@ impl AgentsMdDiscovery {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn discover_all(&self, root: &Path) -> Vec<AgentsMdFile> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let mut files = Vec::new();
         self.discover_recursive(root, 0, &mut files);
 
@@ -187,7 +180,6 @@ impl AgentsMdDiscovery {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn build_hierarchy(&self, files: Vec<AgentsMdFile>) -> AgentsMdHierarchy {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         if files.is_empty() {
             return AgentsMdHierarchy {
                 root: PathBuf::new(),
@@ -251,13 +243,11 @@ impl AgentsMdDiscovery {
 
     /// Get from cache if valid
     pub(super) fn get_from_cache(&self, path: &Path) -> Option<AgentsMdFile> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.cache.get(path).map(|entry| entry.clone())
     }
 
     /// Cache a discovered file
     fn cache_file(&self, path: &Path, depth: usize) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Ok(metadata) = std::fs::metadata(path) {
             if let Ok(modified) = metadata.modified() {
                 self.cache.insert(
@@ -277,7 +267,6 @@ impl AgentsMdDiscovery {
 
     /// Recursive discovery
     fn discover_recursive(&self, dir: &Path, depth: usize, files: &mut Vec<AgentsMdFile>) {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if depth > self.config.max_depth {
             return;
         }
@@ -302,7 +291,6 @@ impl AgentsMdDiscovery {
 
     /// Find common root of files
     fn find_common_root(&self, files: &[AgentsMdFile]) -> PathBuf {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         if files.is_empty() {
             return PathBuf::new();
         }
@@ -325,7 +313,6 @@ impl AgentsMdDiscovery {
     /// Insert file into hierarchy tree
     #[allow(clippy::only_used_in_recursion)]
     fn insert_into_tree(&self, node: &mut HierarchyNode, file: &AgentsMdFile) {
-        debug_assert!(true, "contract: insert_into_tree");
         if file.parent == node.path {
             node.agents_file = Some(file.clone());
             return;

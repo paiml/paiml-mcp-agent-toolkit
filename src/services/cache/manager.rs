@@ -62,7 +62,6 @@ impl SessionCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<FileContext>>,
     {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_buf = path.to_path_buf();
 
         // Try cache first
@@ -87,7 +86,6 @@ impl SessionCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<TemplateResource>>,
     {
-        debug_assert!(!uri.is_empty(), "uri must not be empty");
         let uri_string = uri.to_string();
 
         // Try cache first
@@ -115,7 +113,6 @@ impl SessionCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<DependencyGraph>>,
     {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let key = (path.to_path_buf(), dag_type);
 
         // Try cache first
@@ -141,7 +138,6 @@ impl SessionCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<CodeChurnAnalysis>>,
     {
-        debug_assert!(repo.exists(), "repo must exist: {}", repo.display());
         let key = (repo.to_path_buf(), period_days);
 
         // Try cache first
@@ -166,7 +162,6 @@ impl SessionCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<GitStats>>,
     {
-        debug_assert!(repo.exists(), "repo must exist: {}", repo.display());
         let path_buf = repo.to_path_buf();
 
         // Try cache first
@@ -234,7 +229,6 @@ impl SessionCacheManager {
     /// Invalidate entries for a specific file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn invalidate_file(&self, path: &Path) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Invalidate AST cache for this file
@@ -251,7 +245,6 @@ impl SessionCacheManager {
     /// Invalidate entries for a directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn invalidate_directory(&self, dir: &Path) {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let dir_str = dir.to_string_lossy();
 
         // Invalidate all caches that might reference this directory
@@ -321,7 +314,6 @@ impl SessionCacheManager {
         &self,
         cache_stats: &[(String, CacheStatsSnapshot)],
     ) -> CacheEffectiveness {
-        debug_assert!(!cache_stats.is_empty(), "cache_stats must not be empty");
         let total_hits: u64 = cache_stats.iter().map(|(_, s)| s.hits).sum();
         let total_misses: u64 = cache_stats.iter().map(|(_, s)| s.misses).sum();
         let total_requests = total_hits + total_misses;
@@ -441,7 +433,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

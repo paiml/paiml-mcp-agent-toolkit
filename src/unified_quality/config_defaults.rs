@@ -59,7 +59,6 @@ impl UnifiedConfig {
     /// Load configuration from file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_file(path: &PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let contents = std::fs::read_to_string(path)?;
         let config: Self = toml::from_str(&contents)?;
         Ok(config)
@@ -68,7 +67,6 @@ impl UnifiedConfig {
     /// Save configuration to file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn to_file(&self, path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let contents = toml::to_string_pretty(self)?;
         std::fs::write(path, contents)?;
         Ok(())

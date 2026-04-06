@@ -3,7 +3,6 @@
 #[async_trait]
 impl McpTool for AnalyzeTechnicalDebtTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "analyze_technical_debt".to_string(),
             description: "Analyze technical debt gradient (TDG) for a file or project, returning quality scores and metrics".to_string(),
@@ -32,7 +31,6 @@ impl McpTool for AnalyzeTechnicalDebtTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         let path_str = params["path"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing path parameter".to_string(),
@@ -140,7 +138,6 @@ impl McpTool for AnalyzeTechnicalDebtTool {
 #[async_trait]
 impl McpTool for GetQualityRecommendationsTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "get_quality_recommendations".to_string(),
             description: "Get actionable quality improvement recommendations based on TDG analysis"
@@ -170,7 +167,6 @@ impl McpTool for GetQualityRecommendationsTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         let path_str = params["path"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing path parameter".to_string(),

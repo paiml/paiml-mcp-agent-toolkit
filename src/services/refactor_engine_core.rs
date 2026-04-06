@@ -160,7 +160,6 @@ impl UnifiedEngine {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn save_checkpoint_to(&self, dir: &Path) -> Result<(), EngineError> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let state_machine = self.state_machine.read().await;
         let checkpoint_data = serde_json::to_string_pretty(&*state_machine)?;
         let checkpoint_path = dir.join("checkpoint.json");
@@ -170,7 +169,6 @@ impl UnifiedEngine {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn load_checkpoint(&mut self, dir: &Path) -> Result<(), EngineError> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let checkpoint_path = dir.join("checkpoint.json");
         if checkpoint_path.exists() {
             let checkpoint_data = tokio::fs::read_to_string(&checkpoint_path).await?;
@@ -185,7 +183,6 @@ impl UnifiedEngine {
         &self,
         path: &Path,
     ) -> Result<ComplexityInfo, EngineError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
 
         let (cyclomatic, cognitive, satd_count) = match extension {
@@ -268,7 +265,6 @@ impl UnifiedEngine {
         _path: &Path,
         metrics: ComplexityInfo,
     ) -> DefectPayload {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         DefectPayload {
             file_hash: 0,
             tdg_score: metrics.tdg,

@@ -6,7 +6,6 @@
 
 /// Quick check if a directory contains any contract YAML files (not just binding.yaml).
 fn has_contract_yamls(dir: &Path) -> bool {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     std::fs::read_dir(dir)
         .into_iter()
         .flatten()
@@ -27,11 +26,6 @@ fn has_contract_yamls(dir: &Path) -> bool {
 /// YAMLs. Local contracts/ may contain pmat work contracts (different schema) that pv lint
 /// cannot parse.
 fn resolve_contracts_dir(project_path: &Path) -> Option<std::path::PathBuf> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let abs = std::fs::canonicalize(project_path).ok()?;
     let parent = abs.parent()?;
     let pv_contracts = parent.join("provable-contracts").join("contracts");
@@ -86,11 +80,6 @@ use super::types::*;
 /// - Any validation errors or warnings
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_provable_contracts(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     // Phase 1: Detect if this project uses provable-contracts
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
@@ -145,11 +134,6 @@ pub(crate) fn check_provable_contracts(project_path: &Path) -> ComplianceCheck {
 
 /// Find YAML files that are provable-contracts schema files
 fn find_contract_files(contracts_dir: &Path) -> Vec<String> {
-    debug_assert!(
-        contracts_dir.exists(),
-        "contracts_dir must exist: {}",
-        contracts_dir.display()
-    );
     let mut files = Vec::new();
 
     for entry in walkdir::WalkDir::new(contracts_dir)
@@ -181,18 +165,12 @@ fn find_contract_files(contracts_dir: &Path) -> Vec<String> {
 
 /// Check if a YAML file is a binding registry (not a contract)
 fn is_binding_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.file_name()
         .is_some_and(|n| n.to_string_lossy().contains("binding"))
 }
 
 /// Run `pv lint` and parse the result
 fn run_pv_lint(project_path: &Path) -> PvLintResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let contracts_dir =
         resolve_contracts_dir(project_path).unwrap_or_else(|| project_path.join("contracts"));
 
@@ -236,11 +214,6 @@ fn run_pv_lint(project_path: &Path) -> PvLintResult {
 
 /// Run `pv score` and extract the grade
 fn run_pv_score(contracts_dir: &Path) -> PvScoreResult {
-    debug_assert!(
-        contracts_dir.exists(),
-        "contracts_dir must exist: {}",
-        contracts_dir.display()
-    );
     let output = std::process::Command::new("pv")
         .args([
             "score",
@@ -275,11 +248,6 @@ fn run_pv_score(contracts_dir: &Path) -> PvScoreResult {
 
 /// Check binding.yaml coverage for the project
 fn check_binding_coverage(project_path: &Path) -> BindingResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let contracts_dir =
         resolve_contracts_dir(project_path).unwrap_or_else(|| project_path.join("contracts"));
 
@@ -365,7 +333,6 @@ struct BindingResult {
 // --- JSON parsing ---
 
 fn parse_pv_lint_json(json_str: &str) -> PvLintResult {
-    debug_assert!(!json_str.is_empty(), "json_str must not be empty");
     // Try to parse as JSON; fall back to text analysis
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(json_str) {
         let errors = value
@@ -422,7 +389,6 @@ fn parse_pv_lint_json(json_str: &str) -> PvLintResult {
 }
 
 fn parse_pv_score_json(json_str: &str) -> PvScoreResult {
-    debug_assert!(!json_str.is_empty(), "json_str must not be empty");
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(json_str) {
         let score = value
             .get("overall_score")
@@ -468,7 +434,6 @@ fn build_provable_contracts_result(
     score: PvScoreResult,
     binding: BindingResult,
 ) -> ComplianceCheck {
-    debug_assert!(true, "contract: build_provable_contracts_result");
     use crate::cli::colors as c;
 
     let mut parts = Vec::new();

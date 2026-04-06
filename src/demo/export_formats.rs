@@ -3,7 +3,6 @@
 
 impl Exporter for MarkdownExporter {
     fn export(&self, report: &ExportReport) -> Result<String> {
-        debug_assert!(true, "contract: export");
         let mut output = String::with_capacity(1024);
 
         // Header
@@ -97,7 +96,6 @@ impl JsonExporter {
 
 impl Exporter for JsonExporter {
     fn export(&self, report: &ExportReport) -> Result<String> {
-        debug_assert!(true, "contract: export");
         if self.pretty {
             Ok(serde_json::to_string_pretty(report)?)
         } else {
@@ -106,14 +104,12 @@ impl Exporter for JsonExporter {
     }
 
     fn file_extension(&self) -> &'static str {
-        debug_assert!(true, "contract: file_extension");
         "json"
     }
 }
 
 impl Exporter for SarifExporter {
     fn export(&self, report: &ExportReport) -> Result<String> {
-        debug_assert!(true, "contract: export");
         let sarif = serde_json::json!({
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
             "version": "2.1.0",
@@ -175,7 +171,6 @@ impl Exporter for SarifExporter {
     }
 
     fn file_extension(&self) -> &'static str {
-        debug_assert!(true, "contract: file_extension");
         "sarif"
     }
 }

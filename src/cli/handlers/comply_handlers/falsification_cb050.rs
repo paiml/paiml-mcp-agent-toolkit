@@ -26,7 +26,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_002_todo_with_message() {
-        debug_assert!(true, "contract: tp_002_todo_with_message");
         // Falsification: Does message content break detection?
         let code = r#"fn foo() { todo!("implement later") }"#;
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -38,7 +37,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_003_unimplemented_macro() {
-        debug_assert!(true, "contract: tp_003_unimplemented_macro");
         let code = "fn bar() { unimplemented!() }";
         let violations = detect_cb050_code_stubs_in_str(code);
         assert!(
@@ -50,7 +48,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_004_panic_not_implemented() {
-        debug_assert!(true, "contract: tp_004_panic_not_implemented");
         let code = r#"fn baz() { panic!("not implemented") }"#;
         let violations = detect_cb050_code_stubs_in_str(code);
         assert!(
@@ -62,7 +59,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_005_empty_function_body() {
-        debug_assert!(true, "contract: tp_005_empty_function_body");
         // Adversarial: Minimal whitespace
         let code = "fn empty() {}";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -75,7 +71,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_006_empty_function_with_whitespace() {
-        debug_assert!(true, "contract: tp_006_empty_function_with_whitespace");
         // Adversarial: Extra whitespace inside braces
         let code = "fn empty() {   }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -87,7 +82,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_007_empty_function_multiline() {
-        debug_assert!(true, "contract: tp_007_empty_function_multiline");
         // Adversarial: Multiline empty body
         let code = "fn empty() {\n\n}";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -99,7 +93,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_008_python_not_implemented_error() {
-        debug_assert!(true, "contract: tp_008_python_not_implemented_error");
         let code = "def foo():\n    raise NotImplementedError()";
         let violations = detect_cb050_code_stubs_in_str(code);
         assert!(
@@ -111,7 +104,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_009_python_not_implemented_with_message() {
-        debug_assert!(true, "contract: tp_009_python_not_implemented_with_message");
         let code = r#"def foo():
     raise NotImplementedError("not done yet")"#;
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -123,7 +115,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_010_python_pass_stub_comment() {
-        debug_assert!(true, "contract: tp_010_python_pass_stub_comment");
         let code = "def foo():\n    pass  # stub";
         let violations = detect_cb050_code_stubs_in_str(code);
         assert!(
@@ -135,7 +126,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_011_todo_in_match_arm() {
-        debug_assert!(true, "contract: tp_011_todo_in_match_arm");
         // Adversarial: Nested context
         let code = "match x { Some(_) => todo!(), None => 0 }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -147,7 +137,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_012_todo_in_closure() {
-        debug_assert!(true, "contract: tp_012_todo_in_closure");
         let code = "let f = || todo!();";
         let violations = detect_cb050_code_stubs_in_str(code);
         assert!(
@@ -158,7 +147,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_013_unimplemented_with_formatting() {
-        debug_assert!(true, "contract: tp_013_unimplemented_with_formatting");
         // Adversarial: Complex format string
         let code = r#"fn x() { unimplemented!("{} not done: {}", "feature", 42) }"#;
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -170,7 +158,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_014_todo_weird_spacing() {
-        debug_assert!(true, "contract: tp_014_todo_weird_spacing");
         // Adversarial: Unusual whitespace that might break regex
         let code = "fn f() { todo ! () }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -182,7 +169,6 @@ mod cb050_falsification {
 
     #[test]
     fn tp_015_multiple_stubs_one_file() {
-        debug_assert!(true, "contract: tp_015_multiple_stubs_one_file");
         // Adversarial: Multiple stubs - must catch all
         let code = "fn a() { todo!() }\nfn b() { unimplemented!() }\nfn c() {}";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -201,7 +187,6 @@ mod cb050_falsification {
 
     #[test]
     fn tn_016_todo_in_string_literal() {
-        debug_assert!(true, "contract: tn_016_todo_in_string_literal");
         // Adversarial: String containing "todo!" should NOT trigger
         let code = r#"let s = "todo!() is a macro";"#;
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -213,7 +198,6 @@ mod cb050_falsification {
 
     #[test]
     fn tn_017_todo_in_comment() {
-        debug_assert!(true, "contract: tn_017_todo_in_comment");
         // Comments are handled by SATD detector, not stub detector
         let code = "// TODO: implement this\nfn foo() { return 42; }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -225,7 +209,6 @@ mod cb050_falsification {
 
     #[test]
     fn tn_018_function_with_body() {
-        debug_assert!(true, "contract: tn_018_function_with_body");
         let code = "fn not_empty() { println!(\"hello\"); }";
         let violations = detect_cb050_code_stubs_in_str(code);
         assert!(
@@ -236,7 +219,6 @@ mod cb050_falsification {
 
     #[test]
     fn tn_019_trait_default_impl() {
-        debug_assert!(true, "contract: tn_019_trait_default_impl");
         // Empty body in trait default is INTENTIONAL
         let code = "trait Foo { fn default_impl() {} }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -248,7 +230,6 @@ mod cb050_falsification {
 
     #[test]
     fn tn_020_test_function_with_todo() {
-        debug_assert!(true, "contract: tn_020_test_function_with_todo");
         // Stubs in test code are acceptable
         let code = "#[test]\nfn test_future_feature() { todo!() }";
         let violations = detect_cb050_code_stubs_in_str_with_path(code, "src/tests/mod.rs");
@@ -260,7 +241,6 @@ mod cb050_falsification {
 
     #[test]
     fn tn_021_doc_comment_with_todo() {
-        debug_assert!(true, "contract: tn_021_doc_comment_with_todo");
         let code = "/// TODO: document this\nfn foo() { 42 }";
         let violations = detect_cb050_code_stubs_in_str(code);
         assert!(
@@ -271,7 +251,6 @@ mod cb050_falsification {
 
     #[test]
     fn tn_022_raw_string_with_todo() {
-        debug_assert!(true, "contract: tn_022_raw_string_with_todo");
         let code = r##"let s = r#"todo!() in raw string"#;"##;
         let violations = detect_cb050_code_stubs_in_str(code);
         assert!(
@@ -282,7 +261,6 @@ mod cb050_falsification {
 
     #[test]
     fn tn_023_macro_definition_with_todo_pattern() {
-        debug_assert!(true, "contract: tn_023_macro_definition_with_todo_pattern");
         // Pattern definition in macro should not trigger
         let code = r#"macro_rules! my_macro { (todo) => { /* ... */ }; }"#;
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -294,7 +272,6 @@ mod cb050_falsification {
 
     #[test]
     fn tn_024_variable_named_todo() {
-        debug_assert!(true, "contract: tn_024_variable_named_todo");
         let code = "let todo = 42;";
         let violations = detect_cb050_code_stubs_in_str(code);
         assert!(
@@ -305,7 +282,6 @@ mod cb050_falsification {
 
     #[test]
     fn tn_025_function_named_todo() {
-        debug_assert!(true, "contract: tn_025_function_named_todo");
         // Function NAMED todo with a real body
         let code = "fn todo() -> i32 { 42 }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -322,7 +298,6 @@ mod cb050_falsification {
 
     #[test]
     fn edge_026_nested_braces_empty_inner() {
-        debug_assert!(true, "contract: edge_026_nested_braces_empty_inner");
         // Adversarial: Nested braces - only inner is empty
         let code = "fn outer() { { } let x = 1; }";
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -335,7 +310,6 @@ mod cb050_falsification {
 
     #[test]
     fn edge_027_async_fn_with_todo() {
-        debug_assert!(true, "contract: edge_027_async_fn_with_todo");
         let code = "async fn foo() { todo!() }";
         let violations = detect_cb050_code_stubs_in_str(code);
         assert!(!violations.is_empty(), "FALSIFIED: Missed todo in async fn");
@@ -343,7 +317,6 @@ mod cb050_falsification {
 
     #[test]
     fn edge_028_const_fn_empty() {
-        debug_assert!(true, "contract: edge_028_const_fn_empty");
         // const fn empty might be intentional for type-level programming
         let code = "const fn marker() {}";
         let _violations = detect_cb050_code_stubs_in_str(code);
@@ -353,7 +326,6 @@ mod cb050_falsification {
 
     #[test]
     fn edge_029_unicode_in_todo_message() {
-        debug_assert!(true, "contract: edge_029_unicode_in_todo_message");
         // Adversarial: Unicode that might break regex
         let code = r#"fn f() { todo!("实现这个功能 🚧") }"#;
         let violations = detect_cb050_code_stubs_in_str(code);
@@ -365,7 +337,6 @@ mod cb050_falsification {
 
     #[test]
     fn edge_030_todo_in_doc_test() {
-        debug_assert!(true, "contract: edge_030_todo_in_doc_test");
         // Doc test stubs are examples, not production code
         let code = "/// ```\n/// fn example() { todo!() }\n/// ```\nfn real_fn() { 42 }";
         let violations = detect_cb050_code_stubs_in_str(code);

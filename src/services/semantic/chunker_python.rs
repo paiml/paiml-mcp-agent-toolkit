@@ -1,6 +1,5 @@
 /// Extract chunks from Python code
 fn chunk_python_file(source: &str) -> Result<Vec<CodeChunk>, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let tree = parse_python(source)?;
     let root = tree.root_node();
     let mut chunks = Vec::new();
@@ -13,7 +12,6 @@ fn chunk_python_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 /// Parse Python source code
 #[cfg(feature = "python-ast")]
 fn parse_python(source: &str) -> Result<Tree, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut parser = Parser::new();
     parser
         .set_language(&tree_sitter_python::LANGUAGE.into())
@@ -25,13 +23,11 @@ fn parse_python(source: &str) -> Result<Tree, String> {
 
 #[cfg(not(feature = "python-ast"))]
 fn parse_python(_source: &str) -> Result<Tree, String> {
-    debug_assert!(!_source.is_empty(), "_source must not be empty");
     Err("python-ast feature is disabled".to_string())
 }
 
 /// Extract items from Python AST
 fn extract_python_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     // Check for class definition
     if node.kind() == "class_definition" {
         if let Some(name_node) = node.child_by_field_name("name") {

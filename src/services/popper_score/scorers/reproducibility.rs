@@ -38,11 +38,6 @@ impl ReproducibilityScorer {
     /// - DOI or archival reference (3 points)
     /// - Release artifacts (2 points)
     fn score_artifact_availability(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut earned: f64 = 0.0;
         let max: f64 = 10.0;
         let mut description = Vec::new();
@@ -117,11 +112,6 @@ impl ReproducibilityScorer {
     /// - Docker/Containerfile (3 points)
     /// - Dev container config (2 points)
     fn score_environment_reproducibility(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut earned: f64 = 0.0;
         let max: f64 = 8.0;
         let mut description: Vec<String> = Vec::new();
@@ -191,11 +181,6 @@ impl ReproducibilityScorer {
     /// - Makefile/justfile with documented targets (2 points)
     /// - Documented reproduction steps (1 point)
     fn score_result_reproduction(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut earned: f64 = 0.0;
         let max: f64 = 7.0;
         let mut description = Vec::new();
@@ -269,7 +254,6 @@ impl Default for ReproducibilityScorer {
 
 impl PopperScorer for ReproducibilityScorer {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "Reproducibility Infrastructure"
     }
 
@@ -282,11 +266,6 @@ impl PopperScorer for ReproducibilityScorer {
     }
 
     fn score(&self, project_path: &Path) -> PopperScorerResult<PopperCategoryScore> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut category = PopperCategoryScore::new(self.name(), 0.0, self.max_points());
 
         // Score each sub-category

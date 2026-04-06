@@ -6,7 +6,6 @@ pub async fn analyze_project(
     root_path: &Path,
     toolchain: &str,
 ) -> Result<ProjectContext, TemplateError> {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     analyze_project_with_cache(root_path, toolchain, None).await
 }
 
@@ -16,7 +15,6 @@ pub async fn analyze_project_for_dead_code(
     root_path: &Path,
     toolchain: &str,
 ) -> Result<ProjectContext, TemplateError> {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let gitignore = build_gitignore(root_path)?;
     let files = scan_rust_files_only(root_path, toolchain, None, &gitignore).await;
     let summary = build_project_summary(&files, root_path, toolchain).await;
@@ -35,7 +33,6 @@ pub async fn analyze_project_with_cache(
     toolchain: &str,
     cache_manager: Option<Arc<SessionCacheManager>>,
 ) -> Result<ProjectContext, TemplateError> {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let gitignore = build_gitignore(root_path)?;
     let files = scan_and_analyze_files(root_path, toolchain, cache_manager, &gitignore).await;
     let summary = build_project_summary(&files, root_path, toolchain).await;
@@ -57,7 +54,6 @@ pub async fn analyze_project_with_persistent_cache(
     toolchain: &str,
     cache_manager: Option<Arc<PersistentCacheManager>>,
 ) -> Result<ProjectContext, TemplateError> {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let gitignore = build_gitignore(root_path)?;
     let files =
         scan_and_analyze_files_persistent(root_path, toolchain, cache_manager, &gitignore).await;
@@ -76,7 +72,6 @@ async fn analyze_file_by_toolchain(
     _toolchain: &str,
     cache_manager: Option<Arc<SessionCacheManager>>,
 ) -> Option<FileContext> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // FIXED: Analyze files by extension, not by toolchain
     // This enables multi-language project analysis for ALL supported languages
     let ext = path.extension().and_then(|s| s.to_str())?;
@@ -175,7 +170,6 @@ async fn analyze_file_by_toolchain(
 
 #[allow(dead_code)]
 async fn analyze_deno_file(path: &Path) -> Option<FileContext> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension().and_then(|s| s.to_str());
     match ext {
         #[cfg(feature = "typescript-ast")]
@@ -191,7 +185,6 @@ async fn analyze_file_by_toolchain_persistent(
     _toolchain: &str,
     cache_manager: Option<Arc<PersistentCacheManager>>,
 ) -> Option<FileContext> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // FIXED: Analyze files by extension, not by toolchain
     let ext = path.extension().and_then(|s| s.to_str())?;
 

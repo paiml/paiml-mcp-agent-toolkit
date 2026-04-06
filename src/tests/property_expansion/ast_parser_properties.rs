@@ -276,7 +276,6 @@ mod typescript_properties {
         module_type: &str,
         features: JsFeatures,
     ) -> String {
-        debug_assert!(!module_type.is_empty(), "module_type must not be empty");
         let mut source = String::new();
         
         if use_strict {

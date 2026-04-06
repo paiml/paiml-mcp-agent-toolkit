@@ -19,7 +19,6 @@ impl FeedbackCollector {
     /// Record feedback
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record(&mut self, pattern_id: &str, accepted: bool, outcome: Option<String>) {
-        debug_assert!(!pattern_id.is_empty(), "pattern_id must not be empty");
         use std::time::SystemTime;
 
         self.metrics.total_suggestions += 1;

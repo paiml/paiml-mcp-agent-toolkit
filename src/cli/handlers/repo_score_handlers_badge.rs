@@ -3,7 +3,6 @@
 
 /// Update README.md with repository health badge
 fn update_readme_badge(repo_path: &Path, score: &RepoScore) -> Result<()> {
-    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     let readme_path = repo_path.join("README.md");
 
     if !readme_path.exists() {
@@ -36,7 +35,6 @@ fn update_readme_badge(repo_path: &Path, score: &RepoScore) -> Result<()> {
 
 /// Generate shields.io badge URL from repository score
 fn generate_badge_url(score: &RepoScore) -> String {
-    debug_assert!(true, "contract: generate_badge_url");
     let final_score = score.total_score.round() as u8;
     let max_score = 100;
 
@@ -60,8 +58,6 @@ fn generate_badge_url(score: &RepoScore) -> String {
 
 /// Replace existing badge section in README
 fn replace_badge_section(content: &str, new_badge: &str) -> String {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!new_badge.is_empty(), "new_badge must not be empty");
     let start_marker = "<!-- PMAT-REPO-SCORE:START -->";
     let end_marker = "<!-- PMAT-REPO-SCORE:END -->";
 
@@ -82,8 +78,6 @@ fn replace_badge_section(content: &str, new_badge: &str) -> String {
 
 /// Insert badge after main title (first # heading)
 fn insert_badge_after_title(content: &str, badge: &str) -> String {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!badge.is_empty(), "badge must not be empty");
     let lines: Vec<&str> = content.lines().collect();
 
     // Find first heading line

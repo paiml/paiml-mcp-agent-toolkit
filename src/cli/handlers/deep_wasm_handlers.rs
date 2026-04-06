@@ -84,11 +84,6 @@ fn create_analysis_request(
     language: Option<DeepWasmLanguage>,
     focus: DeepWasmFocus,
 ) -> DeepWasmAnalysisRequest {
-    debug_assert!(
-        source_path.exists(),
-        "source_path must exist: {}",
-        source_path.display()
-    );
     let source_language = detect_source_language(&source_path, language);
     let analysis_focus = convert_analysis_focus(focus);
 
@@ -108,11 +103,6 @@ fn detect_source_language(
     source_path: &PathBuf,
     language: Option<DeepWasmLanguage>,
 ) -> SourceLanguage {
-    debug_assert!(
-        source_path.exists(),
-        "source_path must exist: {}",
-        source_path.display()
-    );
     match language {
         Some(DeepWasmLanguage::Rust) => SourceLanguage::Rust,
         Some(DeepWasmLanguage::Ruchy) => SourceLanguage::Ruchy,
@@ -123,11 +113,6 @@ fn detect_source_language(
 /// Auto-detects language from file extension
 #[cfg(feature = "deep-wasm")]
 fn auto_detect_language(source_path: &PathBuf) -> SourceLanguage {
-    debug_assert!(
-        source_path.exists(),
-        "source_path must exist: {}",
-        source_path.display()
-    );
     source_path
         .extension()
         .and_then(|ext| ext.to_str())
@@ -142,7 +127,6 @@ fn auto_detect_language(source_path: &PathBuf) -> SourceLanguage {
 /// Converts CLI focus enum to service focus enum
 #[cfg(feature = "deep-wasm")]
 fn convert_analysis_focus(focus: DeepWasmFocus) -> AnalysisFocus {
-    debug_assert!(true, "contract: convert_analysis_focus");
     match focus {
         DeepWasmFocus::Full => AnalysisFocus::Full,
         DeepWasmFocus::Source => AnalysisFocus::Source,
@@ -155,7 +139,6 @@ fn convert_analysis_focus(focus: DeepWasmFocus) -> AnalysisFocus {
 /// Creates service with quality gates based on strict mode
 #[cfg(feature = "deep-wasm")]
 fn create_configured_service(strict: bool) -> DeepWasmService {
-    debug_assert!(true, "contract: create_configured_service");
     let gates = if strict {
         create_strict_quality_gates()
     } else {
@@ -168,7 +151,6 @@ fn create_configured_service(strict: bool) -> DeepWasmService {
 /// Creates strict quality gates
 #[cfg(feature = "deep-wasm")]
 fn create_strict_quality_gates() -> crate::services::deep_wasm::WasmQualityGates {
-    debug_assert!(true, "contract: create_strict_quality_gates");
     use crate::services::deep_wasm::WasmQualityGates;
     WasmQualityGates {
         max_module_size: 5_242_880,    // Stricter 5MB limit
@@ -181,7 +163,6 @@ fn create_strict_quality_gates() -> crate::services::deep_wasm::WasmQualityGates
 /// Creates relaxed quality gates
 #[cfg(feature = "deep-wasm")]
 fn create_relaxed_quality_gates() -> crate::services::deep_wasm::WasmQualityGates {
-    debug_assert!(true, "contract: create_relaxed_quality_gates");
     use crate::services::deep_wasm::WasmQualityGates;
     WasmQualityGates {
         max_module_size: 20_971_520,  // Relaxed 20MB limit
@@ -198,7 +179,6 @@ fn write_analysis_output(
     format: DeepWasmOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_analysis_output");
     let output_content = generate_output_content(report, format)?;
 
     if let Some(output_path) = output {
@@ -216,7 +196,6 @@ fn generate_output_content(
     report: &crate::services::deep_wasm::DeepWasmReport,
     format: DeepWasmOutputFormat,
 ) -> Result<String> {
-    debug_assert!(true, "contract: generate_output_content");
     match format {
         DeepWasmOutputFormat::Markdown => {
             use crate::services::deep_wasm::ReportGenerator;
@@ -234,7 +213,6 @@ fn validate_quality_gates(
     report: &crate::services::deep_wasm::DeepWasmReport,
     strict: bool,
 ) -> Result<()> {
-    debug_assert!(true, "contract: validate_quality_gates");
     if !report.quality_gate_results.passed {
         print_quality_violations(&report.quality_gate_results.violations);
 
@@ -252,7 +230,6 @@ fn validate_quality_gates(
 /// Prints quality gate violations to stderr
 #[cfg(feature = "deep-wasm")]
 fn print_quality_violations(violations: &[crate::services::deep_wasm::QualityViolation]) {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     eprintln!("\n❌ Quality gate violations detected:");
     for violation in violations {
         eprintln!("  - {}: {}", violation.rule, violation.message);
@@ -277,11 +254,6 @@ pub async fn handle_deep_wasm(
     _track_memory: bool,
     _detect_deadlocks: bool,
 ) -> Result<()> {
-    debug_assert!(
-        _source_path.exists(),
-        "_source_path must exist: {}",
-        _source_path.display()
-    );
     Err(anyhow::anyhow!(
         "Deep WASM feature not enabled. Recompile with --features deep-wasm"
     ))

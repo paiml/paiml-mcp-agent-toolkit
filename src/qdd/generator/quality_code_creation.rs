@@ -11,7 +11,6 @@ impl QualityCodeGenerator {
 
     /// Create a function with quality guarantees
     async fn create_function(&self, spec: &CreateSpec) -> Result<QddResult> {
-        debug_assert!(true, "contract: create_function");
         let mut rollback_plan = RollbackPlan {
             original: String::new(),
             checkpoints: Vec::new(),
@@ -63,7 +62,6 @@ impl QualityCodeGenerator {
     }
 
     async fn create_module(&self, spec: &CreateSpec) -> Result<QddResult> {
-        debug_assert!(true, "contract: create_module");
         // Module creation: generate a complete module with documentation
         let code = format!(
             r"//! {}
@@ -105,7 +103,6 @@ pub mod {} {{
     }
 
     async fn create_service(&self, spec: &CreateSpec) -> Result<QddResult> {
-        debug_assert!(true, "contract: create_service");
         // Service creation: generate service with proper structure
         let code = format!(
             r"//! {}
@@ -159,7 +156,6 @@ impl {}Service {{
     }
 
     async fn create_test(&self, spec: &CreateSpec) -> Result<QddResult> {
-        debug_assert!(true, "contract: create_test");
         // Test creation: generate comprehensive test suite
         let code = format!(
             r#"#[cfg(test)]

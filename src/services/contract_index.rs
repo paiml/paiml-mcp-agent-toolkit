@@ -29,11 +29,6 @@ impl ContractIndex {
     /// Load from .pmat/binding-index.json. Returns None if file doesn't exist.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(project_path: &Path) -> Option<Self> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let idx_path = Self::find_index_path(project_path)?;
         let content = std::fs::read_to_string(&idx_path).ok()?;
         let parsed: serde_json::Value = serde_json::from_str(&content).ok()?;
@@ -69,11 +64,6 @@ impl ContractIndex {
 
     /// Find the binding-index.json path (checks .pmat/ and contracts/).
     fn find_index_path(project_path: &Path) -> Option<PathBuf> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let primary = project_path.join(".pmat/binding-index.json");
         if primary.exists() {
             return Some(primary);
@@ -88,14 +78,12 @@ impl ContractIndex {
     /// Check if a file has contract bindings.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_bindings(&self, file_path: &str) -> bool {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.file_bindings.contains_key(file_path)
     }
 
     /// Get bindings for a file. Returns empty slice if none.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_bindings(&self, file_path: &str) -> &[String] {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.file_bindings
             .get(file_path)
             .map(|v| v.as_slice())

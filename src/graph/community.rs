@@ -76,7 +76,6 @@ impl LouvainDetector {
     /// Complexity: 9 (edge iteration + community mapping)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_modularity(&self, graph: &UndirectedGraph, communities: &[usize]) -> f64 {
-        // Contract: calculate_modularity returns a bounded score
         if graph.node_count() == 0 {
             return 0.0;
         }

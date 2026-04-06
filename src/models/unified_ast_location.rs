@@ -52,7 +52,6 @@ impl Location {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: PathBuf, start: u32, end: u32) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             file_path,
             span: Span {
@@ -208,7 +207,6 @@ impl QualifiedName {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(module_path: Vec<String>, name: String) -> Self {
-        debug_assert!(!module_path.is_empty(), "module_path must not be empty");
         Self {
             module_path,
             name,
@@ -248,7 +246,6 @@ impl QualifiedName {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_string(qualified_str: &str) -> Result<Self, &'static str> {
-        debug_assert!(!qualified_str.is_empty(), "qualified_str must not be empty");
         if qualified_str.is_empty() {
             return Err("Empty qualified name");
         }
@@ -314,7 +311,6 @@ impl std::str::FromStr for QualifiedName {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         Self::from_string(s)
     }
 }

@@ -59,11 +59,6 @@ impl UnifiedWasmAnalyzer {
     /// Create new analyzer for a file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: PathBuf) -> Self {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         Self {
             file_path,
             #[cfg(test)]
@@ -121,7 +116,6 @@ impl UnifiedWasmAnalyzer {
     /// This will be enhanced in REFACTOR phase with proper WASM instruction analysis.
     #[allow(clippy::cast_possible_truncation)]
     fn extract_complexity_metrics(&self, content: &str) -> FileComplexityMetrics {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let lines = content.lines().count();
 
@@ -203,7 +197,6 @@ impl UnifiedWasmAnalyzer {
 
     /// Extract function name from WAT line
     fn extract_function_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // Pattern: (func $name ...
         if let Some(start) = line.find("$") {
             let rest = line.get(start + 1..).unwrap_or_default();

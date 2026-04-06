@@ -59,7 +59,6 @@ impl FeatureFlags {
     /// Check if feature should be enabled for a given identifier
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn should_use_claude(&self, identifier: &str) -> bool {
-        debug_assert!(!identifier.is_empty(), "identifier must not be empty");
         // Kill switch check
         if !self.enabled.load(Ordering::Relaxed) {
             return false;
@@ -120,7 +119,6 @@ impl FeatureFlags {
     /// Remove identifier from allowlist
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn remove_from_allowlist(&self, identifier: &str) {
-        debug_assert!(!identifier.is_empty(), "identifier must not be empty");
         self.allowlist.write().remove(identifier);
     }
 
@@ -168,7 +166,6 @@ impl FeatureFlags {
 
     /// Hash identifier for consistent routing
     fn hash_identifier(&self, identifier: &str) -> u64 {
-        debug_assert!(!identifier.is_empty(), "identifier must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 

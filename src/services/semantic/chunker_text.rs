@@ -15,7 +15,6 @@
 /// Vector of text chunks with overlap applied
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn chunk_text_with_overlap(text: &str, chunk_size: usize, overlap: usize) -> Vec<String> {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     if text.is_empty() {
         return Vec::new();
     }
@@ -57,7 +56,6 @@ pub fn chunk_text_with_overlap(text: &str, chunk_size: usize, overlap: usize) ->
 /// Vector of text chunks respecting semantic boundaries
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn chunk_text_recursive(text: &str, chunk_size: usize, overlap: usize) -> Vec<String> {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     if text.is_empty() {
         return Vec::new();
     }
@@ -103,7 +101,6 @@ pub fn chunk_text_recursive(text: &str, chunk_size: usize, overlap: usize) -> Ve
 /// Vector of text chunks with overlap applied
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn chunk_text_fixed(text: &str, chunk_size: usize, overlap: usize) -> Vec<String> {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     if text.is_empty() {
         return Vec::new();
     }

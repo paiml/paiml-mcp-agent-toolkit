@@ -8,7 +8,6 @@ impl MutantExecutor {
     #[deprecated(since = "2.171.0", note = "Use MutantGuard instead")]
     #[allow(dead_code)]
     async fn create_backup(&self, original_path: &Path) -> Result<PathBuf> {
-        debug_assert!(original_path.exists(), "original_path must exist: {}", original_path.display());
         let backup_path = original_path.with_extension("pmat_backup");
         fs::copy(original_path, &backup_path)
             .await
@@ -20,7 +19,6 @@ impl MutantExecutor {
     #[deprecated(since = "2.171.0", note = "Use MutantGuard instead")]
     #[allow(dead_code)]
     async fn restore_backup(&self, original_path: &Path, backup_path: &Path) -> Result<()> {
-        debug_assert!(original_path.exists(), "original_path must exist: {}", original_path.display());
         fs::copy(backup_path, original_path)
             .await
             .context("Failed to restore backup")?;
@@ -32,7 +30,6 @@ impl MutantExecutor {
 
     /// Run cargo test in working directory with smart test filtering
     async fn run_cargo_test_for_mutant(&self, mutant: &Mutant) -> Result<String> {
-        debug_assert!(true, "contract: run_cargo_test_for_mutant");
         // Extract module path for test filtering
         let module_filter = self.extract_module_path(&mutant.original_file);
 
@@ -85,7 +82,6 @@ impl MutantExecutor {
     ///
     /// Never partially written (which causes "491 lines -> 5 lines" bug)
     async fn atomic_write(&self, path: &Path, content: &str) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use tokio::io::AsyncWriteExt;
 
         // Create scratch file in same directory as target
@@ -128,7 +124,6 @@ impl MutantExecutor {
     /// This implements the Toyota Way fix: only run tests relevant to the mutation
     /// instead of the entire test suite.
     fn extract_module_path(&self, file_path: &Path) -> String {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let path_str = file_path.to_str().unwrap_or("");
 
         // Handle external crates (paths starting with ../)
@@ -192,7 +187,6 @@ impl MutantExecutor {
 
     /// Parse test output to determine mutant status
     fn parse_test_output(&self, output: &str) -> (MutantStatus, Vec<String>, Option<String>) {
-        debug_assert!(!output.is_empty(), "output must not be empty");
         // Check for compilation errors
         if output.contains("error: could not compile") || output.contains("error[E") {
             return (
@@ -222,7 +216,6 @@ impl MutantExecutor {
 
     /// Extract failed test names from output
     fn extract_test_failures(&self, output: &str) -> Vec<String> {
-        debug_assert!(!output.is_empty(), "output must not be empty");
         let mut failures = Vec::new();
 
         for line in output.lines() {

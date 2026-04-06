@@ -18,7 +18,6 @@
 /// assert_eq!(lang, Some("rust".to_string()));
 /// ```
 fn has_ruchy_files(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use walkdir::WalkDir;
     WalkDir::new(path)
         .max_depth(3)
@@ -33,7 +32,6 @@ fn has_ruchy_files(path: &Path) -> bool {
 }
 
 fn detect_by_project_files(path: &Path) -> Option<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Project marker files in priority order
     const MARKERS: &[(&str, &str)] = &[
         ("Cargo.toml", "rust"),
@@ -62,7 +60,6 @@ fn detect_by_project_files(path: &Path) -> Option<String> {
 }
 
 fn should_exclude_dir(name: &str) -> bool {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     name.starts_with('.')
         || matches!(
             name,
@@ -71,7 +68,6 @@ fn should_exclude_dir(name: &str) -> bool {
 }
 
 fn count_extension(ext: &str, lang_counts: &mut std::collections::HashMap<&'static str, usize>) {
-    debug_assert!(!ext.is_empty(), "ext must not be empty");
     match ext {
         "rs" => *lang_counts.entry("rust").or_insert(0) += 1,
         "ts" | "tsx" => *lang_counts.entry("typescript").or_insert(0) += 1,
@@ -87,7 +83,6 @@ fn count_extension(ext: &str, lang_counts: &mut std::collections::HashMap<&'stat
 }
 
 fn detect_by_file_extensions(path: &Path) -> Option<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use walkdir::WalkDir;
     let mut lang_counts = std::collections::HashMap::new();
 
@@ -120,7 +115,6 @@ fn detect_by_file_extensions(path: &Path) -> Option<String> {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_primary_language(path: &Path) -> Option<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Check for Ruchy files first
     if has_ruchy_files(path) {
         return Some("ruchy".to_string());
@@ -137,7 +131,6 @@ pub fn detect_primary_language(path: &Path) -> Option<String> {
 
 /// Detect primary language with confidence score
 fn detect_with_confidence_by_markers(path: &Path) -> Option<(String, f64)> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Project markers with 100% confidence
     const CONFIDENT_MARKERS: &[(&str, &str)] = &[
         ("Cargo.toml", "rust"),
@@ -168,7 +161,6 @@ fn detect_with_confidence_by_markers(path: &Path) -> Option<(String, f64)> {
 }
 
 fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use walkdir::WalkDir;
     let mut lang_counts = std::collections::HashMap::new();
     let mut total_files = 0;
@@ -223,7 +215,6 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f64)> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Try project markers first
     if let Some(result) = detect_with_confidence_by_markers(path) {
         return Some(result);

@@ -16,11 +16,6 @@ use std::path::Path;
 /// CB-500: Publish Hygiene - missing `exclude` in Cargo.toml
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb500_publish_hygiene(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let cargo_toml = project_path.join("Cargo.toml");
     let content = match fs::read_to_string(&cargo_toml) {
         Ok(c) => c,
@@ -87,11 +82,6 @@ pub fn detect_cb500_publish_hygiene(project_path: &Path) -> Vec<CbPatternViolati
 /// CB-503: Clippy Configuration - missing .clippy.toml
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb503_clippy_config(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let clippy_toml = project_path.join(".clippy.toml");
     let clippy_toml_alt = project_path.join("clippy.toml");
     let mut violations = Vec::new();
@@ -133,11 +123,6 @@ pub fn detect_cb503_clippy_config(project_path: &Path) -> Vec<CbPatternViolation
 /// CB-504: Deny Configuration - missing deny.toml for supply chain security
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb504_deny_config(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let deny_toml = project_path.join("deny.toml");
     if deny_toml.exists() {
         return Vec::new();
@@ -154,11 +139,6 @@ pub fn detect_cb504_deny_config(project_path: &Path) -> Vec<CbPatternViolation> 
 /// CB-505: Workspace Lint Hygiene - missing [lints] or [workspace.lints]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb505_workspace_lint_hygiene(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let cargo_toml = project_path.join("Cargo.toml");
     let content = match fs::read_to_string(&cargo_toml) {
         Ok(c) => c,
@@ -185,11 +165,6 @@ pub fn detect_cb505_workspace_lint_hygiene(project_path: &Path) -> Vec<CbPattern
 /// CB-509: Feature Gate Coverage - features defined but never tested
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb509_feature_gate_coverage(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let cargo_toml = project_path.join("Cargo.toml");
     let content = match fs::read_to_string(&cargo_toml) {
         Ok(c) => c,
@@ -251,11 +226,6 @@ pub fn detect_cb509_feature_gate_coverage(project_path: &Path) -> Vec<CbPatternV
 /// that bloat published crates and leak local development state.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb529_pmat_tracked_in_git(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let output = match std::process::Command::new("git")
         .args(["ls-files", "--cached"])
         .current_dir(project_path)
@@ -295,7 +265,6 @@ pub fn detect_cb529_pmat_tracked_in_git(project_path: &Path) -> Vec<CbPatternVio
 /// Check if a path contains a `.pmat/` directory segment (not just a prefix).
 /// Matches: `.pmat/foo`, `crates/bar/.pmat/baz`, but NOT `some.pmat_file`.
 fn contains_pmat_segment(path: &str) -> bool {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     // At start of path
     if path.starts_with(".pmat/") {
         return true;

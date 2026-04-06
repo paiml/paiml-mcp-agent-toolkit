@@ -15,7 +15,6 @@ impl CorrelationEngine {
         dwarf_entries: &[DwarfDebugEntry],
         source_map_entries: &[SourceMapEntry],
     ) -> DeepWasmResult<Vec<SourceToWasmMapping>> {
-        debug_assert!(!dwarf_entries.is_empty(), "dwarf_entries must not be empty");
         let mut mappings = Vec::new();
 
         // Build DWARF function map (name -> entry)
@@ -81,7 +80,6 @@ fn correlate_dwarf_entry(
     source_map_by_file: &HashMap<String, Vec<&SourceMapEntry>>,
     mappings: &mut Vec<SourceToWasmMapping>,
 ) {
-    debug_assert!(!func_name.is_empty(), "func_name must not be empty");
     let confidence = if let Some(source_entries) = source_map_by_file
         .values()
         .find(|entries| entries.iter().any(|e| e.name.as_deref() == Some(func_name)))
@@ -128,7 +126,6 @@ impl CorrelationEngine {
         dwarf_entry: &DwarfDebugEntry,
         confidence: f64,
     ) -> SourceToWasmMapping {
-        debug_assert!(confidence >= 0.0, "confidence must be non-negative");
         SourceToWasmMapping {
             source_file: PathBuf::from("unknown"),
             source_location: Location { line: 0, column: 0 },

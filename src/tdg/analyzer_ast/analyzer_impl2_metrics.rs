@@ -7,14 +7,12 @@ impl TdgAnalyzerAst {
         _language: Language,
         tracker: &mut PenaltyTracker,
     ) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let raw_score = self.compute_entropy_score(source, tracker);
         raw_score.clamp(0.0, 10.0)
     }
 
     #[allow(clippy::cast_possible_truncation)]
     fn compute_entropy_score(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut pattern_score = 10.0f32;
         let mut line_counts = std::collections::HashMap::new();
         for line in source.lines() {
@@ -41,11 +39,9 @@ impl TdgAnalyzerAst {
 
     #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
     fn calculate_cognitive_complexity(&self, node: &tree_sitter::Node) -> u32 {
-        debug_assert!(true, "contract: calculate_cognitive_complexity");
         let mut cognitive_score = 0u32;
 
         fn traverse_cognitive(node: tree_sitter::Node, nesting_level: u32, score: &mut u32) {
-            debug_assert!(true, "contract: traverse_cognitive");
             match node.kind() {
                 // Base cognitive load patterns (+1)
                 "if_statement" | "while_statement" | "for_statement" | "do_statement" => {
@@ -93,7 +89,6 @@ impl TdgAnalyzerAst {
     #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
     #[allow(dead_code)]
     fn calculate_cognitive_complexity(&self, _node: &str) -> u32 {
-        debug_assert!(!_node.is_empty(), "_node must not be empty");
         // Simplified implementation for rust-only builds
         // Estimate based on source patterns
         5 // Default approximation
@@ -105,7 +100,6 @@ impl TdgAnalyzerAst {
         let _current_depth = 0;
 
         fn traverse(node: tree_sitter::Node, depth: usize, max: &mut usize) {
-            debug_assert!(depth > 0, "depth must be positive");
             *max = (*max).max(depth);
 
             for child in node.children(&mut node.walk()) {
@@ -128,18 +122,15 @@ impl TdgAnalyzerAst {
     #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
     #[allow(dead_code)]
     fn calculate_max_nesting(&self, _node: &str) -> usize {
-        debug_assert!(!_node.is_empty(), "_node must not be empty");
         // Simplified implementation for rust-only builds
         5 // Default approximation
     }
 
     #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
     fn calculate_max_function_length(&self, node: &tree_sitter::Node, source: &str) -> usize {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut max_length = 0;
 
         fn find_functions(node: tree_sitter::Node, source: &str, max: &mut usize) {
-            debug_assert!(!source.is_empty(), "source must not be empty");
             if node.kind() == "function_definition" {
                 let start_line = node.start_position().row;
                 let end_line = node.end_position().row;
@@ -165,7 +156,6 @@ impl TdgAnalyzerAst {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let files = self.discover_files(dir)?;
         let mut scores = Vec::new();
 
@@ -187,8 +177,6 @@ impl TdgAnalyzerAst {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn compare(&self, path1: &Path, path2: &Path) -> Result<crate::tdg::Comparison> {
-        debug_assert!(path1.exists(), "path1 must exist: {}", path1.display());
-        debug_assert!(path2.exists(), "path2 must exist: {}", path2.display());
         let score1 = if path1.is_dir() {
             self.analyze_project(path1).await?.average()
         } else {
@@ -205,14 +193,12 @@ impl TdgAnalyzerAst {
     }
 
     fn discover_files(&self, dir: &Path) -> Result<Vec<PathBuf>> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut files = Vec::new();
         self.discover_files_recursive(dir, &mut files)?;
         Ok(files)
     }
 
     fn discover_files_recursive(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if !dir.is_dir() {
             return Ok(());
         }
@@ -234,7 +220,6 @@ impl TdgAnalyzerAst {
     }
 
     fn should_skip_directory(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
             matches!(
                 name,
@@ -259,7 +244,6 @@ impl TdgAnalyzerAst {
     }
 
     fn should_analyze_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             matches!(
                 ext,

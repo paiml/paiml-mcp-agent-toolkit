@@ -6,7 +6,6 @@ impl CommitParser {
     /// Open a repository at the given path
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn open(path: &Path) -> Result<Self> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let repo = Repository::discover(path)
             .with_context(|| format!("Failed to open git repository at {:?}", path))?;
         Ok(Self { repo })
@@ -54,7 +53,6 @@ impl CommitParser {
 
     /// Parse a single commit into CommitInfo
     fn parse_commit(&self, commit: &Commit) -> Result<Option<CommitInfo>> {
-        debug_assert!(true, "contract: parse_commit");
         let hash = commit.id().to_string();
 
         // Parse message
@@ -97,7 +95,6 @@ impl CommitParser {
 
     /// Split commit message into subject and body
     fn split_message(message: &str) -> (String, Option<String>) {
-        debug_assert!(true, "contract: split_message");
         let lines: Vec<&str> = message.lines().collect();
 
         if lines.is_empty() {
@@ -125,7 +122,6 @@ impl CommitParser {
 
     /// Check if commit is a fix (conventional commit or keyword)
     fn is_fix_commit(subject: &str) -> bool {
-        debug_assert!(!subject.is_empty(), "subject must not be empty");
         let lower = subject.to_lowercase();
         lower.starts_with("fix:")
             || lower.starts_with("fix(")
@@ -138,15 +134,12 @@ impl CommitParser {
 
     /// Check if commit is a feature (conventional commit)
     fn is_feat_commit(subject: &str) -> bool {
-        debug_assert!(!subject.is_empty(), "subject must not be empty");
         let lower = subject.to_lowercase();
         lower.starts_with("feat:") || lower.starts_with("feat(") || lower.starts_with("feature:")
     }
 
     /// Extract issue references from commit message
     fn extract_issue_refs(subject: &str, body: &str) -> Vec<String> {
-        debug_assert!(!subject.is_empty(), "subject must not be empty");
-        debug_assert!(!body.is_empty(), "body must not be empty");
         let mut refs = Vec::new();
         let full_text = format!("{} {}", subject, body);
 
@@ -170,7 +163,6 @@ impl CommitParser {
 
     /// Get files changed in a commit with diff stats
     fn get_file_changes(&self, commit: &Commit) -> Result<Vec<FileChange>> {
-        debug_assert!(true, "contract: get_file_changes");
         let mut changes = Vec::new();
 
         let tree = commit.tree()?;

@@ -11,7 +11,6 @@ pub async fn handle_work_score(
     path: Option<PathBuf>,
     format: String,
 ) -> Result<()> {
-    debug_assert!(min_score >= 0.0, "min_score must be non-negative");
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
 
     let contract = wc::WorkContract::load(&project_path, &id).with_context(|| {
@@ -52,7 +51,6 @@ fn print_score_json(
     trend: &wc::QualityTrend,
     lint_config: &wc::LintConfig,
 ) -> Result<()> {
-    debug_assert!(!id.is_empty(), "id must not be empty");
     let output = serde_json::json!({
         "work_item_id": id,
         "score": {
@@ -103,7 +101,6 @@ fn print_score_text(
     trend: &wc::QualityTrend,
     lint_config: &wc::LintConfig,
 ) {
-    debug_assert!(!id.is_empty(), "id must not be empty");
     use crate::cli::colors as c;
     println!("{}", c::header(&format!("Contract Score: {} ({})", id, contract.version)));
     println!();
@@ -132,7 +129,6 @@ fn print_score_text(
 }
 
 fn print_drift_text(drift: &wc::DriftMetrics) {
-    debug_assert!(true, "contract: print_drift_text");
     use crate::cli::colors as c;
     println!("  {}", c::subheader("Drift Metrics (ABC Theorem)"));
     println!("  {}", c::separator());
@@ -149,7 +145,6 @@ fn print_drift_text(drift: &wc::DriftMetrics) {
 }
 
 fn print_lint_text(lint_report: &wc::LintReport, lint_config: &wc::LintConfig) {
-    debug_assert!(true, "contract: print_lint_text");
     use crate::cli::colors as c;
     if lint_report.findings.is_empty() {
         return;
@@ -174,7 +169,6 @@ fn print_lint_text(lint_report: &wc::LintReport, lint_config: &wc::LintConfig) {
 }
 
 fn print_trend_text(trend: &wc::QualityTrend) {
-    debug_assert!(true, "contract: print_trend_text");
     use crate::cli::colors as c;
     if trend.snapshots.is_empty() {
         return;

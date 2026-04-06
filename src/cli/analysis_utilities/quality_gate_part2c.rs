@@ -4,8 +4,6 @@ async fn check_single_file_complexity(
     file_path: &Path,
     max_complexity_p99: u32,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let abs_file_path = resolve_absolute_file_path(project_path, file_path);
     validate_file_exists(&abs_file_path)?;
 
@@ -23,8 +21,6 @@ async fn check_single_file_complexity(
 
 /// Resolve file path to absolute path
 fn resolve_absolute_file_path(project_path: &Path, file_path: &Path) -> PathBuf {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     if file_path.is_absolute() {
         file_path.to_path_buf()
     } else {
@@ -34,7 +30,6 @@ fn resolve_absolute_file_path(project_path: &Path, file_path: &Path) -> PathBuf 
 
 /// Validate that file exists
 fn validate_file_exists(abs_file_path: &Path) -> Result<()> {
-    debug_assert!(abs_file_path.exists(), "abs_file_path must exist: {}", abs_file_path.display());
     if !abs_file_path.exists() {
         return Err(anyhow::anyhow!(
             "File not found: {}",
@@ -51,8 +46,6 @@ async fn analyze_file_complexity(
     max_complexity: u32,
     violations: &mut Vec<QualityViolation>,
 ) -> Result<()> {
-    debug_assert!(abs_file_path.exists(), "abs_file_path must exist: {}", abs_file_path.display());
-    debug_assert!(original_path.exists(), "original_path must exist: {}", original_path.display());
     if let Some(ext) = abs_file_path.extension() {
         if ext == "rs" {
             analyze_rust_file_complexity(abs_file_path, original_path, max_complexity, violations)
@@ -70,8 +63,6 @@ async fn analyze_rust_file_complexity(
     max_complexity: u32,
     violations: &mut Vec<QualityViolation>,
 ) -> Result<()> {
-    debug_assert!(abs_file_path.exists(), "abs_file_path must exist: {}", abs_file_path.display());
-    debug_assert!(original_path.exists(), "original_path must exist: {}", original_path.display());
     use crate::services::ast_rust::analyze_rust_file_with_complexity;
 
     let metrics = analyze_rust_file_with_complexity(abs_file_path).await?;
@@ -103,7 +94,6 @@ fn create_complexity_violation(
     file_path: &Path,
     max_complexity: u32,
 ) -> QualityViolation {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     QualityViolation {
         check_type: "complexity".to_string(),
         severity: "error".to_string(),
@@ -121,8 +111,6 @@ async fn check_single_file_dead_code(
     project_path: &Path,
     file_path: &Path,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     use regex::Regex;
 
     let mut violations = Vec::new();
@@ -172,8 +160,6 @@ async fn check_single_file_satd(
     project_path: &Path,
     file_path: &Path,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     use regex::Regex;
 
     let mut violations = Vec::new();
@@ -221,8 +207,6 @@ async fn check_single_file_security(
     project_path: &Path,
     file_path: &Path,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     use regex::Regex;
 
     let mut violations = Vec::new();

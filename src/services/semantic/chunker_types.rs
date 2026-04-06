@@ -97,7 +97,6 @@ pub struct CodeChunk {
 /// Vector of code chunks (functions, classes, modules)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn chunk_code(source: &str, language: Language) -> Result<Vec<CodeChunk>, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     // Handle empty input
     if source.trim().is_empty() {
         return Ok(Vec::new());

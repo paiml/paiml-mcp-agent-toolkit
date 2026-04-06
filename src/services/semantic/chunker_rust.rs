@@ -1,6 +1,5 @@
 /// Extract chunks from Rust code
 fn chunk_rust_file(source: &str) -> Result<Vec<CodeChunk>, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let tree = parse_rust(source)?;
     let root = tree.root_node();
     // Pre-allocate: typical Rust file has ~10-20 top-level items
@@ -13,7 +12,6 @@ fn chunk_rust_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 
 /// Parse Rust source code
 fn parse_rust(source: &str) -> Result<Tree, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut parser = Parser::new();
     parser
         .set_language(&tree_sitter_rust::LANGUAGE.into())
@@ -25,7 +23,6 @@ fn parse_rust(source: &str) -> Result<Tree, String> {
 
 /// Extract items (functions, impl blocks, modules) from Rust AST
 fn extract_rust_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let is_container = matches!(node.kind(), "impl_item" | "mod_item" | "trait_item");
 
     if let Some((chunk_type, name_field, include_docs)) = rust_node_to_chunk(node.kind()) {

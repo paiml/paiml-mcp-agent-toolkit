@@ -10,7 +10,6 @@ impl ShadowStack {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
-        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         let mut frames = Vec::new();
 
         // Parse stack frames from bytes (simplified)
@@ -85,7 +84,6 @@ enum InstructionCategory {
 
 /// Categorize instruction for profiling
 fn categorize_for_profiling(op: &Operator) -> InstructionCategory {
-    debug_assert!(true, "contract: categorize_for_profiling");
     use Operator::{
         Block, Br, BrIf, BrTable, Call, CallIndirect, Else, End, F32Add, F32Div, F32Load, F32Max,
         F32Min, F32Mul, F32Store, F32Sub, F64Add, F64Div, F64Load, F64Max, F64Min, F64Mul,

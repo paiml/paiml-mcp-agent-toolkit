@@ -11,11 +11,6 @@ pub async fn run_complexity_analysis(
     project_path: &Path,
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::complexity_handlers::handle_analyze_complexity;
     use crate::cli::ComplexityOutputFormat;
 
@@ -64,11 +59,6 @@ pub async fn run_satd_analysis(
     project_path: &Path,
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::complexity_handlers::handle_analyze_satd;
     use crate::cli::SatdOutputFormat;
 
@@ -109,11 +99,6 @@ pub async fn run_tdg_analysis(
     project_path: &Path,
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::advanced_analysis_handlers::handle_analyze_tdg;
     use crate::cli::TdgOutputFormat;
 
@@ -156,11 +141,6 @@ pub async fn run_dead_code_analysis(
     project_path: &Path,
     _profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::dead_code_handlers::handle_analyze_dead_code;
     use crate::cli::DeadCodeOutputFormat;
 
@@ -206,11 +186,6 @@ pub async fn run_duplication_analysis(
     project_path: &Path,
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::duplication_analysis::{
         handle_analyze_duplicates, DuplicateAnalysisConfig,
     };
@@ -257,11 +232,6 @@ pub async fn run_coverage_analysis(
     _project_path: &Path,
     profile: &QualityProfile,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(
-        _project_path.exists(),
-        "_project_path must exist: {}",
-        _project_path.display()
-    );
     let mut violations = Vec::new();
 
     // NOTE: Would use external tool like cargo llvm-cov

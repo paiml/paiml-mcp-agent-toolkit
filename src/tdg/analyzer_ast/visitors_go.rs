@@ -31,13 +31,11 @@ impl<'a> GoComplexityVisitor<'a> {
     }
 
     fn analyze_tree(&mut self, tree: &tree_sitter::Tree) {
-        debug_assert!(true, "contract: analyze_tree");
         let root = tree.root_node();
         self.visit_node(&root);
     }
 
     fn visit_node(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_node");
         match node.kind() {
             "function_declaration" | "method_declaration" | "func_literal" => {
                 self.visit_function_decl(node);
@@ -62,7 +60,6 @@ impl<'a> GoComplexityVisitor<'a> {
 
     #[allow(clippy::cast_possible_truncation)]
     fn visit_function_decl(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_function_decl");
         self.total_functions += 1;
         self.current_nesting_depth += 1;
         self.max_nesting_depth = self.max_nesting_depth.max(self.current_nesting_depth);
@@ -83,7 +80,6 @@ impl<'a> GoComplexityVisitor<'a> {
     }
 
     fn visit_nesting_branch(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_nesting_branch");
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
         self.current_nesting_depth += 1;
@@ -93,14 +89,12 @@ impl<'a> GoComplexityVisitor<'a> {
     }
 
     fn visit_flat_branch(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_flat_branch");
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1;
         self.visit_children_go(node);
     }
 
     fn visit_binary_expr(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_binary_expr");
         if let Some(op) = node.child_by_field_name("operator") {
             let op_text = &self.source[op.byte_range()];
             if op_text == "&&" || op_text == "||" {
@@ -111,7 +105,6 @@ impl<'a> GoComplexityVisitor<'a> {
     }
 
     fn visit_import_decl(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_import_decl");
         // Count each import spec inside the declaration
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
@@ -125,7 +118,6 @@ impl<'a> GoComplexityVisitor<'a> {
     }
 
     fn visit_type_decl(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_type_decl");
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
             if child.kind() == "type_spec" {
@@ -141,7 +133,6 @@ impl<'a> GoComplexityVisitor<'a> {
     }
 
     fn visit_children_go(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_children_go");
         for child in node.children(&mut node.walk()) {
             self.visit_node(&child);
         }

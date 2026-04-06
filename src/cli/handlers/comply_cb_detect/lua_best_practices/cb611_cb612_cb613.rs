@@ -18,11 +18,6 @@ use std::path::{Path, PathBuf};
 /// Reference: Kong, AwesomeWM, KOReader weak table usage.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb611_weak_table_misuse(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -49,7 +44,6 @@ pub fn detect_cb611_weak_table_misuse(project_path: &Path) -> Vec<CbPatternViola
 
 /// Check if a line declares a weak-key-only table (`__mode = "k"`, not "v" or "kv").
 fn is_weak_key_only_declaration(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     line.contains("__mode")
         && (line.contains("\"k\"") || line.contains("'k'"))
         && !line.contains("\"v\"")
@@ -60,7 +54,6 @@ fn is_weak_key_only_declaration(line: &str) -> bool {
 
 /// Classify the key type after `var[...` -- returns "string", "numeric", or None.
 fn classify_bracket_key(after_bracket: &str) -> Option<&'static str> {
-    debug_assert!(!after_bracket.is_empty(), "after_bracket must not be empty");
     if after_bracket.starts_with('"') || after_bracket.starts_with('\'') {
         Some("string")
     } else if after_bracket.starts_with(|c: char| c.is_ascii_digit()) {
@@ -76,7 +69,6 @@ fn detect_weak_key_with_value_types(
     rel: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     // Phase 1: Find variables assigned weak-key tables
     let weak_key_vars: std::collections::HashSet<String> = prod_lines
         .iter()
@@ -116,7 +108,6 @@ fn detect_weak_key_with_value_types(
 /// Extract variable name from weak table assignment.
 /// E.g. `local cache = setmetatable({}, { __mode = "k" })` -> Some("cache")
 fn extract_weak_table_var(line: &str) -> Option<String> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let eq_pos = line.find('=')?;
     let lhs = line[..eq_pos].trim();
     let lhs = lhs.strip_prefix("local ").unwrap_or(lhs).trim();
@@ -165,11 +156,6 @@ impl std::fmt::Display for LuaTestFramework {
 /// Reference: Kong, APISIX, xmake, KOReader framework patterns.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb612_test_framework(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let frameworks = detect_lua_test_frameworks(project_path);
     let mut violations = Vec::new();
 
@@ -212,11 +198,6 @@ fn has_require_pattern(content: &str, module: &str) -> bool {
 /// Detect which Lua test frameworks are in use based on file patterns and require statements.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_lua_test_frameworks(project_path: &Path) -> Vec<LuaTestFramework> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let mut frameworks = Vec::new();
 
     if has_busted_indicators(project_path) {
@@ -243,11 +224,6 @@ pub fn detect_lua_test_frameworks(project_path: &Path) -> Vec<LuaTestFramework> 
 
 /// Scan Lua test files for require('luaunit'), require('telescope'), or custom test patterns.
 fn scan_test_file_requires(project_path: &Path) -> (bool, bool, bool) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let lua_files = walkdir_lua_files(project_path);
     let mut luaunit = false;
     let mut telescope = false;
@@ -280,11 +256,6 @@ fn scan_test_file_requires(project_path: &Path) -> (bool, bool, bool) {
 
 /// Check for busted test framework indicators.
 fn has_busted_indicators(project_path: &Path) -> bool {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     // Check for .busted config file
     if project_path.join(".busted").exists() {
         return true;
@@ -300,11 +271,6 @@ fn has_busted_indicators(project_path: &Path) -> bool {
 
 /// Check for Test::Nginx indicators.
 fn has_test_nginx_indicators(project_path: &Path) -> bool {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let t_dir = project_path.join("t");
     if !t_dir.is_dir() {
         return false;
@@ -327,11 +293,6 @@ fn has_test_nginx_indicators(project_path: &Path) -> bool {
 /// Function-scoped requires are excluded (they're safe -- deferred loading).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb613_require_cycles(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     if files.len() < 2 {
         return Vec::new();
@@ -369,11 +330,6 @@ fn build_require_graph(
     project_path: &Path,
     files: &[PathBuf],
 ) -> std::collections::HashMap<String, Vec<String>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let mut graph: std::collections::HashMap<String, Vec<String>> =
         std::collections::HashMap::new();
 
@@ -404,7 +360,6 @@ fn build_require_graph(
 
 /// Extract module names from top-level require() calls (not inside functions).
 fn extract_top_level_requires(content: &str) -> Vec<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut requires = Vec::new();
     let mut func_depth: i32 = 0;
 
@@ -436,7 +391,6 @@ fn extract_top_level_requires(content: &str) -> Vec<String> {
 /// Extract module name from a require() call.
 /// Matches: require("foo"), require('foo'), require "foo", require 'foo'
 fn extract_require_module(line: &str) -> Option<String> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let req_idx = line.find("require")?;
     let after = line[req_idx + 7..].trim();
     // Skip if require is part of a larger word
@@ -465,7 +419,6 @@ fn extract_require_module(line: &str) -> Option<String> {
 
 /// Find cycles in the require graph using DFS.
 fn find_require_cycles(graph: &std::collections::HashMap<String, Vec<String>>) -> Vec<Vec<String>> {
-    debug_assert!(true, "contract: find_require_cycles");
     use std::collections::HashSet;
     let mut cycles = Vec::new();
     let mut visited = HashSet::new();
@@ -488,7 +441,6 @@ fn dfs_find_cycle(
     rec_stack: &mut Vec<String>,
     cycles: &mut Vec<Vec<String>>,
 ) {
-    debug_assert!(!node.is_empty(), "node must not be empty");
     visited.insert(node.to_string());
     rec_stack.push(node.to_string());
 

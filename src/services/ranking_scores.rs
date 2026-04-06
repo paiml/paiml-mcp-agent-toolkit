@@ -120,7 +120,6 @@ impl PartialOrd for DuplicationScore {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn rank_files_vectorized(scores: &[f32], limit: usize) -> Vec<usize> {
-    debug_assert!(limit > 0, "limit must be positive");
     let mut indices: Vec<usize> = (0..scores.len()).collect();
 
     // For large datasets, use parallel sorting

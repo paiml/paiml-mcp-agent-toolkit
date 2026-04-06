@@ -6,9 +6,6 @@ fn extract_blocks(
     max_tokens: usize,
     detection_type: crate::cli::DuplicateType,
 ) -> Vec<(String, String, usize, usize, String)> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
-    debug_assert!(min_lines > 0, "min_lines must be positive");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut blocks = Vec::new();
     let file_str = path.to_string_lossy().to_string();
 
@@ -33,9 +30,6 @@ fn extract_exact_blocks(
     min_lines: usize,
     max_tokens: usize,
 ) {
-    debug_assert!(!file_str.is_empty(), "file_str must not be empty");
-    debug_assert!(min_lines > 0, "min_lines must be positive");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
@@ -62,9 +56,6 @@ fn extract_fuzzy_blocks(
     min_lines: usize,
     max_tokens: usize,
 ) {
-    debug_assert!(!file_str.is_empty(), "file_str must not be empty");
-    debug_assert!(min_lines > 0, "min_lines must be positive");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
@@ -93,7 +84,6 @@ fn extract_fuzzy_blocks(
 
 /// Normalize code block (remove whitespace variations)
 fn normalize_block(lines: &[&str]) -> String {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     lines
         .iter()
         .map(|line| line.trim())
@@ -104,13 +94,11 @@ fn normalize_block(lines: &[&str]) -> String {
 
 /// Count tokens in content
 fn count_tokens(content: &str) -> usize {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     content.split_whitespace().count()
 }
 
 /// Check if line starts a code block - refactored to reduce complexity
 fn is_block_start(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim();
 
     // Check for function/method declarations
@@ -133,25 +121,21 @@ fn is_block_start(line: &str) -> bool {
 
 /// Check if line is a function declaration
 fn is_function_declaration(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     line.contains("fn ") || line.contains("function") || line.contains("def ")
 }
 
 /// Check if line is a type declaration
 fn is_type_declaration(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     line.contains("class ") || line.contains("struct ") || line.contains("impl ")
 }
 
 /// Check if line is a block opening
 fn is_block_opening(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     line.ends_with('{') && !line.starts_with('{')
 }
 
 /// Find end of code block
 fn find_block_end(lines: &[&str]) -> Option<usize> {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut brace_count = 0;
     let mut in_block = false;
 
@@ -181,7 +165,6 @@ fn find_duplicate_blocks(
     all_blocks: Vec<(String, String, usize, usize, String)>,
     _threshold: f32,
 ) -> Vec<DuplicateBlock> {
-    debug_assert!(!all_blocks.is_empty(), "all_blocks must not be empty");
     let mut hash_groups: HashMap<String, Vec<(String, usize, usize, String)>> = HashMap::new();
 
     // Group by hash
@@ -234,7 +217,6 @@ fn find_duplicate_blocks(
 
 /// Check if file should be processed
 fn should_process_file(path: &Path, include: &Option<String>, exclude: &Option<String>) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
 
     if let Some(excl) = exclude {
@@ -252,7 +234,6 @@ fn should_process_file(path: &Path, include: &Option<String>, exclude: &Option<S
 
 /// Check if file is source code
 fn is_source_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     matches!(
         path.extension().and_then(|s| s.to_str()),
         Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "kt" | "kts")

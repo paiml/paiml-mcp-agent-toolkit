@@ -7,7 +7,6 @@ const DEFAULT_PROVABILITY_THRESHOLD: f64 = 0.70;
 /// Falls back to `DEFAULT_PROVABILITY_THRESHOLD` (0.70) if the file
 /// is missing, unreadable, or does not contain the key.
 fn load_provability_threshold(project_path: &Path) -> f64 {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let config_path = project_path.join(".pmat-metrics.toml");
     let content = match std::fs::read_to_string(&config_path) {
         Ok(c) => c,
@@ -35,7 +34,6 @@ fn load_provability_threshold(project_path: &Path) -> f64 {
 /// to avoid false positives (#248). Small codebases naturally have lower pattern
 /// diversity because there are fewer files to establish diverse patterns.
 fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut result = cli_value;
 
     // Load from pmat.toml [quality] (lowest config priority, #227)
@@ -73,7 +71,6 @@ fn load_entropy_threshold(project_path: &Path, cli_value: f64) -> f64 {
 /// - <50 files: threshold * 0.85
 /// - >=50 files: no scaling (full threshold)
 fn scale_entropy_for_project_size(project_path: &Path, threshold: f64) -> f64 {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let file_count = count_source_files(project_path);
 
     let scale = if file_count < 10 {
@@ -92,7 +89,6 @@ fn scale_entropy_for_project_size(project_path: &Path, threshold: f64) -> f64 {
 /// Count source files in the project (quick heuristic, not a full walk).
 /// Only counts files in common source directories with code extensions.
 fn count_source_files(project_path: &Path) -> usize {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let source_dirs = ["src", "lib", "app", "pkg", "crates"];
     let extensions = ["rs", "py", "js", "ts", "go", "java", "c", "cpp", "rb"];
 
@@ -112,7 +108,6 @@ fn count_source_files(project_path: &Path) -> usize {
 
 /// Check if a file has one of the given extensions.
 fn has_matching_extension(path: &Path, extensions: &[&str]) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|ext| extensions.contains(&ext))
@@ -120,7 +115,6 @@ fn has_matching_extension(path: &Path, extensions: &[&str]) -> bool {
 
 /// Check if a directory should be traversed (skip hidden, target, node_modules).
 fn is_traversable_dir(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.file_name()
         .and_then(|n| n.to_str())
         .is_some_and(|name| !name.starts_with('.') && name != "target" && name != "node_modules")
@@ -128,7 +122,6 @@ fn is_traversable_dir(path: &Path) -> bool {
 
 /// Recursively count files with given extensions (max depth 10).
 fn count_files_recursive(dir: &Path, extensions: &[&str], depth: usize) -> usize {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     if depth > 10 {
         return 0;
     }
@@ -150,7 +143,6 @@ fn count_files_recursive(dir: &Path, extensions: &[&str], depth: usize) -> usize
 
 /// Read entropy threshold from `pmat.toml [quality] min_pattern_diversity` (#227).
 fn read_entropy_threshold_from_pmat_toml(project_path: &Path) -> Option<f64> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let content = std::fs::read_to_string(project_path.join("pmat.toml")).ok()?;
     let table: toml::Table = content.parse().ok()?;
     table
@@ -162,7 +154,6 @@ fn read_entropy_threshold_from_pmat_toml(project_path: &Path) -> Option<f64> {
 /// Read entropy threshold from a single TOML file.
 /// Checks `[entropy] min_pattern_diversity` and `[thresholds] entropy_min_diversity`.
 fn read_entropy_threshold_from_file(path: &Path) -> Option<f64> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = std::fs::read_to_string(path).ok()?;
     let table: toml::Table = content.parse().ok()?;
 
@@ -194,7 +185,6 @@ struct EntropyGateConfig {
 /// Priority: `.pmat-gates.toml [entropy]` > `pmat.toml [quality]` > defaults.
 /// Reads `enabled`, `max_violations`, `exclude` from `[entropy]` section.
 fn load_entropy_gate_config(project_path: &Path) -> EntropyGateConfig {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Start with pmat.toml [quality] max_entropy_violations as lowest priority (#227)
     let mut max_violations_fallback: Option<usize> = None;
     if let Ok(content) = std::fs::read_to_string(project_path.join("pmat.toml")) {
@@ -267,7 +257,6 @@ fn load_entropy_gate_config(project_path: &Path) -> EntropyGateConfig {
 /// - `exclude_paths = [...]`
 /// - `[quality-gates] exclude = [...]`
 fn extract_excludes_from_table(table: &toml::Table) -> Vec<String> {
-    debug_assert!(true, "contract: extract_excludes_from_table");
     let arr = table
         .get("exclude")
         .and_then(|t| t.get("paths"))
@@ -292,7 +281,6 @@ fn extract_excludes_from_table(table: &toml::Table) -> Vec<String> {
 /// Checks both config files and merges exclude patterns.
 /// Returns an empty vec if neither file exists or no exclude config exists.
 fn load_entropy_exclude_paths(project_path: &Path) -> Vec<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut excludes = Vec::new();
 
     // Load from .pmat-metrics.toml
@@ -321,7 +309,6 @@ fn load_entropy_exclude_paths(project_path: &Path) -> Vec<String> {
 /// Matches both exact prefix and glob patterns. Violations with `file = "project"`
 /// or other non-path values are kept (project-level metrics).
 fn filter_violations_by_exclude(violations: &mut Vec<QualityViolation>, exclude_paths: &[String]) {
-    debug_assert!(true, "contract: filter_violations_by_exclude");
     violations.retain(|v| {
         // Keep project-level violations (no file path)
         if v.file == "project" || v.file.is_empty() {

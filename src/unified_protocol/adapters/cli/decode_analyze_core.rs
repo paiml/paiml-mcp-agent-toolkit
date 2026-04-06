@@ -20,7 +20,6 @@ impl CliAdapter {
         watch: bool,
         top_files: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Handle parameter migration: use new 'path' or deprecated 'project_path'
         let analysis_path = if let Some(deprecated_path) = project_path {
             deprecated_path.as_ref()
@@ -49,7 +48,6 @@ impl CliAdapter {
         output: &Option<std::path::PathBuf>,
         top_files: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let body = json!({
             "project_path": project_path.to_string_lossy(),
             "period_days": &days,
@@ -79,7 +77,6 @@ impl CliAdapter {
         watch: bool,
         top_files: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let body = json!({
             "project_path": project_path.to_string_lossy(),
             "file": file.as_ref().map(|f| f.to_string_lossy()),
@@ -114,7 +111,6 @@ impl CliAdapter {
         include_dead_code: bool,
         enhanced: bool,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let body = json!({
             "project_path": project_path.to_string_lossy(),
             "dag_type": dag_type_to_string(dag_type),
@@ -145,7 +141,6 @@ impl CliAdapter {
         include_tests: bool,
         output: &Option<std::path::PathBuf>,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let body = json!({
             "project_path": path.to_string_lossy(),
             "format": dead_code_format_to_string(format),
@@ -177,7 +172,6 @@ impl CliAdapter {
         output: &Option<std::path::PathBuf>,
         top_files: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let body = json!({
             "project_path": path.to_string_lossy(),
             "format": satd_format_to_string(format),
@@ -216,7 +210,6 @@ impl CliAdapter {
         parallel: &Option<usize>,
         verbose: bool,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let body = json!({
             "project_path": project_path.to_string_lossy(),
             "output_path": output,
@@ -252,7 +245,6 @@ impl CliAdapter {
         include_components: bool,
         verbose: bool,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let body = json!({
             "project_path": path.to_string_lossy(),
             "output_path": output,
@@ -282,7 +274,6 @@ impl CliAdapter {
         output: &Option<std::path::PathBuf>,
         top_files: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let body = json!({
             "project_path": project_path.to_string_lossy(),
             "functions": if functions.is_empty() { None } else { Some(functions) },

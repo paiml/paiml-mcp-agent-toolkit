@@ -10,11 +10,6 @@ pub(super) fn load_query_index(
     include_project: &[PathBuf],
     quiet: bool,
 ) -> anyhow::Result<AgentContextIndex> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let index_path = project_path.join(".pmat/context.idx");
     let workspace_idx = project_path.join(".pmat/workspace.idx");
     let mut siblings = AgentContextIndex::discover_sibling_indexes(project_path);
@@ -94,11 +89,6 @@ pub(super) fn collect_siblings(
     project_path: &std::path::Path,
     include_project: &[PathBuf],
 ) -> Vec<(PathBuf, String)> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let mut siblings = AgentContextIndex::discover_sibling_indexes(project_path);
     for project in include_project {
         let idx_path = project.join(".pmat/context.idx");
@@ -154,11 +144,6 @@ fn try_incremental_update(
     existing: AgentContextIndex,
     quiet: bool,
 ) -> AgentContextIndex {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     if existing.manifest().file_checksums.is_empty() {
         return existing;
     }
@@ -177,7 +162,6 @@ fn try_incremental_update(
 /// Save the index only when changes exceed 50 files or 5% of index size.
 /// Avoids rewriting 660MB SQLite for a handful of changes (#212).
 fn maybe_save_incremental(index: &AgentContextIndex, index_path: &PathBuf, quiet: bool) {
-    debug_assert!(true, "contract: maybe_save_incremental");
     let changes = index.manifest().last_incremental_changes;
     if changes == 0 {
         return;
@@ -204,11 +188,6 @@ fn load_or_build_index(
     rebuild_index: bool,
     quiet: bool,
 ) -> anyhow::Result<AgentContextIndex> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     // Check for either SQLite (.db) or blob (.idx/) index
     let db_path = index_path.with_extension("db");
 
@@ -255,16 +234,6 @@ fn load_and_merge_index(
     rebuild_index: bool,
     quiet: bool,
 ) -> anyhow::Result<AgentContextIndex> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
-    debug_assert!(
-        workspace_idx.exists(),
-        "workspace_idx must exist: {}",
-        workspace_idx.display()
-    );
     let mut index = load_or_build_index(project_path, index_path, rebuild_index, quiet)?;
     if !siblings.is_empty() {
         merge_and_cache_workspace(&mut index, siblings, workspace_idx, quiet);
@@ -278,16 +247,6 @@ fn is_workspace_cache_fresh(
     siblings: &[(PathBuf, String)],
     local_idx: &std::path::Path,
 ) -> bool {
-    debug_assert!(
-        workspace_idx.exists(),
-        "workspace_idx must exist: {}",
-        workspace_idx.display()
-    );
-    debug_assert!(
-        local_idx.exists(),
-        "local_idx must exist: {}",
-        local_idx.display()
-    );
     // Prefer workspace.db mtime, fall back to workspace.idx/manifest.json
     let cache_mtime = newest_index_mtime(workspace_idx);
     let cache_mtime = match cache_mtime {
@@ -313,11 +272,6 @@ fn is_workspace_cache_fresh(
 
 /// Get the newest mtime for an index (checks context.db and context.idx/manifest.json).
 fn newest_index_mtime(idx_path: &std::path::Path) -> Option<std::time::SystemTime> {
-    debug_assert!(
-        idx_path.exists(),
-        "idx_path must exist: {}",
-        idx_path.display()
-    );
     let db_path = idx_path.with_extension("db");
     let manifest_path = idx_path.join("manifest.json");
 
@@ -341,11 +295,6 @@ fn merge_and_cache_workspace(
     workspace_idx: &std::path::Path,
     quiet: bool,
 ) {
-    debug_assert!(
-        workspace_idx.exists(),
-        "workspace_idx must exist: {}",
-        workspace_idx.display()
-    );
     if !quiet {
         eprintln!("Merging {} sibling project(s):", siblings.len());
     }
@@ -375,11 +324,6 @@ fn build_and_save_index(
     project_path: &PathBuf,
     index_path: &PathBuf,
 ) -> anyhow::Result<AgentContextIndex> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let start = std::time::Instant::now();
     let index = AgentContextIndex::build(project_path)
         .map_err(|e| anyhow::anyhow!("Failed to build index: {}", e))?;

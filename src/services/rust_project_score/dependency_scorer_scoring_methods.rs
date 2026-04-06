@@ -17,7 +17,6 @@ impl DependencyScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         // Try cache first, fall back to filesystem
@@ -73,7 +72,6 @@ impl DependencyScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         // Try cache first, fall back to filesystem
@@ -135,7 +133,6 @@ impl DependencyScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         // Try cache first, fall back to filesystem
@@ -184,7 +181,6 @@ impl DependencyScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -221,7 +217,6 @@ impl DependencyScorer {
 /// #242: Relaxed thresholds — previous >30=0 was too harsh for large projects.
 /// Large feature-rich libraries (ML, web frameworks) legitimately need 30-50 deps.
 fn score_dependency_count_tier(dependency_count: usize) -> ScorerResult<f64> {
-    debug_assert!(true, "contract: score_dependency_count_tier");
     if dependency_count <= 15 {
         Ok(5.0) // Lean dependencies - excellent
     } else if dependency_count <= 30 {
@@ -235,7 +230,6 @@ fn score_dependency_count_tier(dependency_count: usize) -> ScorerResult<f64> {
 
 /// Helper: Map feature count to score tier (extracted for complexity reduction)
 fn score_feature_count_tier(feature_count: usize) -> ScorerResult<f64> {
-    debug_assert!(true, "contract: score_feature_count_tier");
     if feature_count >= 3 {
         Ok(4.0) // Comprehensive feature flags
     } else if feature_count >= 1 {

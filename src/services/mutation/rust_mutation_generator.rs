@@ -37,7 +37,6 @@ impl RustMutationGenerator {
     /// Generate all mutants from Rust source code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_mutants(&self, source: &str, file_path: &str) -> Result<Vec<Mutant>> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let tree = self.parse_rust(source)?;
         let mut mutants = Vec::new();
 
@@ -50,7 +49,6 @@ impl RustMutationGenerator {
 
     /// Parse Rust source using tree-sitter
     fn parse_rust(&self, source: &str) -> Result<Tree> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_rust::LANGUAGE.into())
@@ -63,7 +61,6 @@ impl RustMutationGenerator {
 
     /// Recursively visit AST nodes and apply mutation operators
     fn visit_node(&self, node: &Node, source: &[u8], mutants: &mut Vec<Mutant>, file_path: &str) {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         // Try to apply each operator to this node
         for operator in &self.operators {
             if operator.can_mutate(node, source) {
@@ -107,7 +104,6 @@ impl RustMutationGenerator {
 
 /// Helper to map operator name to MutationOperatorType enum
 fn map_operator_name_to_type(name: &str) -> MutationOperatorType {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     match name {
         "RustBinaryOp" => MutationOperatorType::ArithmeticReplacement,
         "RustRelationalOp" => MutationOperatorType::RelationalReplacement,
@@ -158,7 +154,6 @@ fn add(a: i32, b: i32) -> i32 {
     fn test_rust_generator_multiple_operators() {
         let source = r#"
 fn compare(a: i32, b: i32) -> bool {
-    debug_assert!(true, "contract: compare");
     a > b && a > 0
 }
 "#;
@@ -186,7 +181,6 @@ fn compare(a: i32, b: i32) -> bool {
     fn test_rust_generator_range_operators() {
         let source = r#"
 fn range_sum(start: i32, end: i32) -> i32 {
-    debug_assert!(true, "contract: range_sum");
     (start..end).sum()
 }
 "#;
@@ -206,7 +200,6 @@ fn range_sum(start: i32, end: i32) -> i32 {
     fn test_rust_generator_pattern_matching() {
         let source = r#"
 fn unwrap(value: Option<i32>) -> i32 {
-    debug_assert!(true, "contract: unwrap");
     match value {
         Some(x) => x,
         None => 0,
@@ -228,7 +221,6 @@ fn unwrap(value: Option<i32>) -> i32 {
     fn test_rust_generator_method_chains() {
         let source = r#"
 fn process(values: Vec<i32>) -> Vec<i32> {
-    debug_assert!(!values.is_empty(), "values must not be empty");
     values.iter().map(|x| x * 2).collect()
 }
 "#;

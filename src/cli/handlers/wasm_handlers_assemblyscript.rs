@@ -11,7 +11,6 @@ pub async fn handle_analyze_assemblyscript(
     _timeout: u64,
     perf: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🔍 Analyzing AssemblyScript code...");
     let start = std::time::Instant::now();
 
@@ -31,7 +30,6 @@ async fn process_assemblyscript_files(
     wasm_complexity: bool,
     security: bool,
 ) -> Result<Vec<(PathBuf, WasmComplexity)>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let detector = WasmLanguageDetector::new();
     let mut parser = AssemblyScriptParser::new()?;
     let mut results = Vec::new();
@@ -63,7 +61,6 @@ async fn analyze_single_file(
     wasm_complexity: bool,
     security: bool,
 ) -> Result<Option<(PathBuf, WasmComplexity)>> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let content = match tokio::fs::read_to_string(file_path).await {
         Ok(content) => content,
         Err(_) => return Ok(None),
@@ -93,7 +90,6 @@ fn process_parsed_ast(
     wasm_complexity: bool,
     security: bool,
 ) -> Result<Option<(PathBuf, WasmComplexity)>> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let mut result = None;
 
     if wasm_complexity {
@@ -110,7 +106,6 @@ fn process_parsed_ast(
 }
 
 fn validate_ast_security(ast: &AstDag, file_path: &Path) {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let security_validator = WasmSecurityValidator::new();
     if let Err(e) = security_validator.validate_ast(ast) {
         eprintln!("⚠️  Security issue in {}: {}", file_path.display(), e);
@@ -118,7 +113,6 @@ fn validate_ast_security(ast: &AstDag, file_path: &Path) {
 }
 
 async fn write_analysis_output(output_text: String, output_path: Option<PathBuf>) -> Result<()> {
-    debug_assert!(true, "contract: write_analysis_output");
     if let Some(output_path) = output_path {
         tokio::fs::write(&output_path, &output_text).await?;
         eprintln!("📝 Results written to: {}", output_path.display());

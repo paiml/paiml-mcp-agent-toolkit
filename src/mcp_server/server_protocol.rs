@@ -294,7 +294,6 @@ impl McpServer {
     /// }
     /// ```
     async fn handle_request(&self, line: &str) -> Result<McpResponse, Box<dyn std::error::Error>> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let request: McpRequest = serde_json::from_str(line)?;
 
         // Validate JSON-RPC version

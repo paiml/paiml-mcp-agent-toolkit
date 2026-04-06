@@ -9,7 +9,6 @@ impl std::fmt::Display for BoxedError {
 
 impl std::error::Error for BoxedError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        debug_assert!(true, "contract: source");
         self.0.source()
     }
 }
@@ -65,23 +64,19 @@ where
     type Error = BoxedError;
 
     async fn decode_request(&self, raw: &[u8]) -> Result<Self::Request, Self::Error> {
-        debug_assert!(!raw.is_empty(), "raw must not be empty");
         let value: Value = serde_json::from_slice(raw)?;
         Ok(value)
     }
 
     async fn encode_response(&self, resp: Self::Response) -> Result<Vec<u8>, Self::Error> {
-        debug_assert!(true, "contract: encode_response");
         Ok(serde_json::to_vec(&resp)?)
     }
 
     async fn get_protocol_metadata(&self) -> ProtocolMetadata {
-        debug_assert!(true, "contract: get_protocol_metadata");
         self.inner.get_protocol_metadata().await
     }
 
     async fn execute_demo(&self, request: Self::Request) -> Result<Self::Response, Self::Error> {
-        debug_assert!(true, "contract: execute_demo");
         let typed_request = P::Request::from(request);
         let response = self.inner.execute_demo(typed_request).await.map_err(|e| {
             BoxedError::from_box(Box::new(e) as Box<dyn std::error::Error + Send + Sync>)

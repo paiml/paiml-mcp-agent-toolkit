@@ -17,11 +17,6 @@ impl HygieneScorer {
         repo_path: &Path,
         config: &ScorerConfig,
     ) -> Result<SubcategoryScore> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         tracing::debug!("HygieneScorer::score_large_files START");
         let mut large_files_found = vec![];
         let mut deductions: f64 = 0.0;

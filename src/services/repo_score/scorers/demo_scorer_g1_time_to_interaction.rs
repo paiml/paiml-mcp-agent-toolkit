@@ -12,7 +12,6 @@ fn check_readme_patterns(content: &str, patterns: &[&str]) -> bool {
 impl DemoScorer {
     /// Score Time-to-Interaction (G1: 3 points)
     async fn score_time_to_interaction(&self, repo_path: &Path) -> Result<SubcategoryScore> {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let mut score: f64 = 0.0;
         let mut findings = vec![];
 

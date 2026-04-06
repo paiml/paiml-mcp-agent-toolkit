@@ -29,7 +29,6 @@ impl Language {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_extension(path: &Path) -> Self {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         match path.extension().and_then(|s| s.to_str()) {
             Some("rs") => Language::Rust,
             Some("py") => Language::Python,
@@ -119,7 +118,6 @@ impl NamingStyle {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn matches(&self, name: &str) -> bool {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         match self {
             NamingStyle::SnakeCase => name
                 .chars()

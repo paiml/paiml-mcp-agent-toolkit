@@ -4,7 +4,6 @@ impl CliAdapter {
     fn dispatch_basic_analysis(
         analyze_cmd: &AnalyzeCommands,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(true, "contract: dispatch_basic_analysis");
         match analyze_cmd {
             AnalyzeCommands::Churn {
                 path,
@@ -166,7 +165,6 @@ impl CliAdapter {
     fn dispatch_advanced_analysis(
         analyze_cmd: &AnalyzeCommands,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(true, "contract: dispatch_advanced_analysis");
         match analyze_cmd {
             AnalyzeCommands::DeepContext {
                 path,

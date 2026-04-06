@@ -3,7 +3,6 @@ impl CudaSimdAnalyzer {
     /// Extract destination register from PTX instruction
     /// Example: "ld.shared.u32 %r1, [%rd1]" -> Some("%r1")
     fn extract_ptx_dest_register(line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
             let dest = parts[1].trim_end_matches(',');
@@ -29,7 +28,6 @@ impl CudaSimdAnalyzer {
     /// - WGPU_EXCESSIVE_BARRIERS: Too many workgroupBarrier() calls
     /// - WGPU_UNIFORM_DIVERGENCE: Non-uniform control flow in workgroup
     fn detect_wgpu_memory_patterns(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let lines: Vec<&str> = content.lines().collect();
 
         // Parse workgroup size from @workgroup_size(x, y, z)

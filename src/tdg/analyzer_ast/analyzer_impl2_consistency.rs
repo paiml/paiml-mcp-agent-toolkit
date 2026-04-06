@@ -10,7 +10,6 @@ impl TdgAnalyzerAst {
     #[allow(dead_code)]
     #[allow(clippy::cast_possible_truncation)]
     fn score_consistency_python(&self, source: &str, _tracker: &mut PenaltyTracker) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Check PEP 8 compliance
         let mut points = self.config.weights.consistency;
 
@@ -43,7 +42,6 @@ impl TdgAnalyzerAst {
 
     #[allow(clippy::cast_possible_truncation)]
     fn score_consistency_javascript(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Check JavaScript/TypeScript style consistency
         let mut score = 100.0f32;
 
@@ -106,7 +104,6 @@ impl TdgAnalyzerAst {
 
     #[allow(clippy::cast_possible_truncation)]
     fn score_consistency_lua(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut points = self.config.weights.consistency;
         points -= self.check_lua_indentation_consistency(source, tracker);
         points -= self.check_lua_naming_consistency(source, tracker);
@@ -114,7 +111,6 @@ impl TdgAnalyzerAst {
     }
 
     fn check_lua_indentation_consistency(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut tab_count = 0u32;
         let mut space_count = 0u32;
         for line in source.lines() {
@@ -144,7 +140,6 @@ impl TdgAnalyzerAst {
     }
 
     fn check_lua_naming_consistency(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut snake_count = 0u32;
         let mut camel_count = 0u32;
         for line in source.lines() {

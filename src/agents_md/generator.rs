@@ -184,7 +184,6 @@ impl AgentsMdGenerator {
 
     /// Load default templates
     fn load_default_templates(&mut self) {
-        debug_assert!(true, "contract: load_default_templates");
         // Rust template
         self.templates.insert(ProjectType::Rust, Template {
             sections: vec![
@@ -303,7 +302,6 @@ impl AgentsMdGenerator {
     /// Update existing AGENTS.md
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update_existing(&self, current: &str, updates: Updates) -> Result<String> {
-        debug_assert!(!current.is_empty(), "current must not be empty");
         let parser = super::parser::AgentsMdParser::new();
         let mut doc = parser.parse(current)?;
 
@@ -332,7 +330,6 @@ impl AgentsMdGenerator {
 
     /// Format document back to markdown
     fn format_document(&self, doc: &AgentsMdDocument) -> Result<String> {
-        debug_assert!(true, "contract: format_document");
         let mut output = String::new();
         writeln!(output, "# AGENTS.md")?;
         writeln!(output)?;
@@ -347,7 +344,6 @@ impl AgentsMdGenerator {
     /// Format a section
     #[allow(clippy::only_used_in_recursion)]
     fn format_section(&self, output: &mut String, section: &Section, level: usize) -> Result<()> {
-        debug_assert!(true, "contract: format_section");
         let heading = "#".repeat(level);
         writeln!(output, "{} {}", heading, section.title)?;
         writeln!(output, "{}", section.content)?;
@@ -362,7 +358,6 @@ impl AgentsMdGenerator {
 
     /// Generate development setup section
     fn generate_dev_setup(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
-        debug_assert!(true, "contract: generate_dev_setup");
         writeln!(output, "## Development Setup")?;
         writeln!(output, "```bash")?;
 
@@ -380,7 +375,6 @@ impl AgentsMdGenerator {
 
     /// Generate testing section
     fn generate_testing(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
-        debug_assert!(true, "contract: generate_testing");
         writeln!(output, "## Testing Instructions")?;
         writeln!(output, "- Run tests before committing")?;
         writeln!(
@@ -395,7 +389,6 @@ impl AgentsMdGenerator {
 
     /// Generate code style section
     fn generate_code_style(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
-        debug_assert!(true, "contract: generate_code_style");
         writeln!(output, "## Code Style")?;
         writeln!(output, "- Follow project coding standards")?;
         writeln!(
@@ -410,7 +403,6 @@ impl AgentsMdGenerator {
 
     /// Generate PR guidelines
     fn generate_pr_guidelines(&self, output: &mut String) -> Result<()> {
-        debug_assert!(true, "contract: generate_pr_guidelines");
         writeln!(output, "## PR Guidelines")?;
         writeln!(output, "- Squash commits with conventional format")?;
         writeln!(output, "- Must pass all quality gates")?;
@@ -431,7 +423,6 @@ impl AgentsMdGenerator {
 
     /// Detect project type from directory
     fn detect_project_type(&self, path: &Path) -> Result<ProjectType> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if path.join("Cargo.toml").exists() {
             Ok(ProjectType::Rust)
         } else if path.join("package.json").exists() {
@@ -449,7 +440,6 @@ impl AgentsMdGenerator {
 
     /// Detect available commands
     fn detect_commands(&self, path: &Path) -> Result<Vec<Command>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut commands = Vec::new();
 
         // Check for Makefile

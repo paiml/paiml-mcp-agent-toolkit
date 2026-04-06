@@ -46,7 +46,6 @@ pub(super) fn handle_suggest_rename_mode(
 }
 
 fn print_suggest_rename_text(suggestions: &[RenameSuggestion]) {
-    debug_assert!(!suggestions.is_empty(), "suggestions must not be empty");
     println!(
         "\n{BOLD}Rename Suggestions{RESET} ({} _part_ files found)\n",
         suggestions.len()
@@ -87,7 +86,6 @@ fn print_suggest_rename_text(suggestions: &[RenameSuggestion]) {
 }
 
 fn print_suggest_rename_json(suggestions: &[RenameSuggestion]) {
-    debug_assert!(!suggestions.is_empty(), "suggestions must not be empty");
     match serde_json::to_string_pretty(suggestions) {
         Ok(json) => println!("{json}"),
         Err(e) => eprintln!("JSON serialization error: {e}"),
@@ -95,7 +93,6 @@ fn print_suggest_rename_json(suggestions: &[RenameSuggestion]) {
 }
 
 fn print_suggest_rename_markdown(suggestions: &[RenameSuggestion]) {
-    debug_assert!(!suggestions.is_empty(), "suggestions must not be empty");
     println!("# Rename Suggestions\n");
     println!("| # | Confidence | Current Path | Suggested Name | Signal | Definitions |");
     println!("|---|-----------|-------------|----------------|--------|-------------|");
@@ -116,7 +113,6 @@ fn execute_renames(
     suggestions: &[RenameSuggestion],
     project_path: &std::path::Path,
 ) -> anyhow::Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let applicable: Vec<&RenameSuggestion> = suggestions
         .iter()
         .filter(|s| s.confidence >= 0.70 && s.signal != RenameSignal::NoSignal)

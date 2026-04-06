@@ -10,7 +10,6 @@ async fn execute_refactoring_iteration(
     context: &RefactorContext,
     iteration_number: u32,
 ) -> Result<IterationResult> {
-    debug_assert!(!requests.is_empty(), "requests must not be empty");
     eprintln!("🔄 Executing refactoring iteration #{iteration_number}");
 
     let mut successful_requests = Vec::new();
@@ -67,7 +66,6 @@ async fn validate_refactoring_results(
     iteration_result: &IterationResult,
     context: &RefactorContext,
 ) -> Result<ValidationResult> {
-    debug_assert!(true, "contract: validate_refactoring_results");
     eprintln!(
         "🔍 Validating refactoring results for iteration #{}",
         iteration_result.iteration_number
@@ -147,7 +145,6 @@ async fn apply_refactoring_request(
     request: &RefactoringRequest,
     _context: &RefactorContext,
 ) -> Result<RefactoringSuccess> {
-    debug_assert!(true, "contract: apply_refactoring_request");
     let start_time = std::time::Instant::now();
 
     // Simulate applying the refactoring based on type
@@ -183,7 +180,6 @@ async fn apply_refactoring_request(
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn validate_project_compilation(project_path: &Path) -> Result<CompilationResult> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let output = tokio::process::Command::new("cargo")
         .args(["check", "--all-targets"])
         .current_dir(project_path)
@@ -208,7 +204,6 @@ async fn validate_project_compilation(project_path: &Path) -> Result<Compilation
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn validate_test_suite(project_path: &Path) -> Result<TestResult> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let output = tokio::process::Command::new("cargo")
         .args(["test", "--all-targets"])
         .current_dir(project_path)
@@ -236,7 +231,6 @@ async fn validate_test_suite(project_path: &Path) -> Result<TestResult> {
 async fn calculate_quality_improvement(
     successful_requests: &[RefactoringSuccess],
 ) -> Result<QualityImprovement> {
-    debug_assert!(!successful_requests.is_empty(), "successful_requests must not be empty");
     let mut complexity_reduced = 0;
     let mut violations_fixed = 0;
     let mut satd_resolved = 0;
@@ -274,7 +268,6 @@ fn should_retry_refactoring(error: &anyhow::Error) -> bool {
 
 /// Apply complexity reduction to a file
 async fn apply_complexity_reduction(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
-    debug_assert!(_file.exists(), "_file must exist: {}", _file.display());
     Ok(vec![
         "Extracted helper function".to_string(),
         "Reduced conditional logic complexity".to_string(),
@@ -283,7 +276,6 @@ async fn apply_complexity_reduction(_file: &Path, _instructions: &str) -> Result
 
 /// Apply lint fixes to a file
 async fn apply_lint_fixes(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
-    debug_assert!(_file.exists(), "_file must exist: {}", _file.display());
     Ok(vec![
         "Fixed clippy warnings".to_string(),
         "Formatted code".to_string(),
@@ -292,7 +284,6 @@ async fn apply_lint_fixes(_file: &Path, _instructions: &str) -> Result<Vec<Strin
 
 /// Apply SATD cleanup to a file
 async fn apply_satd_cleanup(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
-    debug_assert!(_file.exists(), "_file must exist: {}", _file.display());
     Ok(vec![
         "Removed TODO comments".to_string(),
         "Implemented missing functionality".to_string(),
@@ -301,7 +292,6 @@ async fn apply_satd_cleanup(_file: &Path, _instructions: &str) -> Result<Vec<Str
 
 /// Apply coverage improvements to a file
 async fn apply_coverage_improvements(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
-    debug_assert!(_file.exists(), "_file must exist: {}", _file.display());
     Ok(vec![
         "Added unit tests".to_string(),
         "Added integration tests".to_string(),
@@ -310,7 +300,6 @@ async fn apply_coverage_improvements(_file: &Path, _instructions: &str) -> Resul
 
 /// Apply security fixes to a file
 async fn apply_security_fixes(_file: &Path, _instructions: &str) -> Result<Vec<String>> {
-    debug_assert!(_file.exists(), "_file must exist: {}", _file.display());
     Ok(vec![
         "Fixed security vulnerability".to_string(),
         "Added input validation".to_string(),

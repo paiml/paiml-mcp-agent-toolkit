@@ -109,7 +109,6 @@ impl TieredStore {
 
     /// Check if record should be archived to cold storage
     fn should_archive(&self, record: &FullTdgRecord) -> bool {
-        debug_assert!(true, "contract: should_archive");
         let age_days = record
             .metadata
             .analysis_timestamp
@@ -123,7 +122,6 @@ impl TieredStore {
 
     /// Archive record to cold storage and remove from warm
     async fn archive_to_cold(&self, record: FullTdgRecord) -> Result<()> {
-        debug_assert!(true, "contract: archive_to_cold");
         let hash = record.identity.content_hash;
 
         // Store in cold storage (uncompressed for long-term access)

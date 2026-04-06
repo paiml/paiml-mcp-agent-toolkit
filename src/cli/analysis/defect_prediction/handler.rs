@@ -28,11 +28,6 @@ pub async fn handle_analyze_defect_prediction(
     perf: bool,
     top_files: usize,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let start_time = Instant::now();
     print_analysis_header(&project_path, confidence_threshold, high_risk_only);
 
@@ -71,11 +66,6 @@ pub async fn handle_analyze_defect_prediction(
 /// Format predictions as summary
 /// Toyota Way: Extract Method - Print analysis header information
 fn print_analysis_header(project_path: &Path, confidence_threshold: f32, high_risk_only: bool) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     eprintln!("🔮 Analyzing defect probability using ML-based analysis...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🎯 Confidence threshold: {confidence_threshold}");
@@ -93,7 +83,6 @@ pub(crate) fn create_defect_prediction_config(
     include: Option<String>,
     exclude: Option<String>,
 ) -> DefectPredictionConfig {
-    debug_assert!(min_lines > 0, "min_lines must be positive");
     DefectPredictionConfig {
         confidence_threshold,
         min_lines,
@@ -110,11 +99,6 @@ async fn discover_and_validate_files(
     project_path: &Path,
     config: &DefectPredictionConfig,
 ) -> Result<Vec<(std::path::PathBuf, String, usize)>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = discover_files_for_defect_analysis(project_path, config).await?;
     eprintln!("📂 Found {} files matching criteria", files.len());
 
@@ -130,7 +114,6 @@ async fn discover_and_validate_files(
 fn calculate_defect_predictions(
     files: &[(std::path::PathBuf, String, usize)],
 ) -> Result<Vec<(String, DefectScore)>> {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     let file_metrics = collect_file_metrics(files);
     let calculator = DefectProbabilityCalculator::new();
 

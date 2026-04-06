@@ -283,7 +283,6 @@ async fn route_complexity_command(
     fail_on_violation: bool,
     timeout: u64,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Handle parameter migration: use new 'path' or deprecated 'project_path'
     // Silently accept both for backwards compatibility
     let analysis_path = project_path.unwrap_or(path);

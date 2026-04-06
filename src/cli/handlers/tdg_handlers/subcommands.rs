@@ -89,16 +89,6 @@ async fn handle_compare_command(
     source2: &Path,
     config: &TdgCommandConfig,
 ) -> Result<()> {
-    debug_assert!(
-        source1.exists(),
-        "source1 must exist: {}",
-        source1.display()
-    );
-    debug_assert!(
-        source2.exists(),
-        "source2 must exist: {}",
-        source2.display()
-    );
     let comparison = analyzer.compare(source1, source2).await?;
     let output_str = format_comparison(comparison, config.format.clone())?;
 

@@ -5,7 +5,6 @@ async fn check_provability(
     project_path: &Path,
     min_provability: f64,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     let (current_provability, details) =
@@ -81,7 +80,6 @@ async fn check_provability(
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn calculate_provability_score(project_path: &Path) -> Result<f64> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
     let analyzer = LightweightProvabilityAnalyzer::new();
@@ -107,7 +105,6 @@ pub async fn calculate_provability_score(project_path: &Path) -> Result<f64> {
 async fn calculate_provability_with_details(
     project_path: &Path,
 ) -> Result<(f64, ViolationDetails)> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
     let analyzer = LightweightProvabilityAnalyzer::new();
@@ -179,7 +176,6 @@ fn collect_project_functions(
     project_path: &Path,
     max_count: usize,
 ) -> Vec<crate::services::lightweight_provability_analyzer::FunctionId> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     let scan_root = if src_dir.exists() { &src_dir } else { project_path };
 
@@ -201,7 +197,6 @@ fn collect_project_functions(
 
 /// Collect .rs source files excluding test files.
 fn collect_source_files(root: &Path) -> Vec<std::path::PathBuf> {
-    debug_assert!(root.exists(), "root must exist: {}", root.display());
     walkdir::WalkDir::new(root)
         .max_depth(10)
         .into_iter()
@@ -224,8 +219,6 @@ fn extract_functions_from_source(
     max_count: usize,
     functions: &mut Vec<crate::services::lightweight_provability_analyzer::FunctionId>,
 ) {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
-    debug_assert!(!content.is_empty(), "content must not be empty");
     use crate::services::lightweight_provability_analyzer::FunctionId;
 
     let mut in_test_block = false;
@@ -255,7 +248,6 @@ fn extract_functions_from_source(
 
 /// Parse a function declaration line and return the function name if it matches.
 fn parse_fn_declaration(trimmed: &str) -> Option<String> {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let prefixes = [
         "pub fn ", "pub async fn ", "fn ", "async fn ",
         "pub(crate) fn ", "pub(crate) async fn ",
@@ -326,7 +318,6 @@ pub fn format_quality_gate_output(
     violations: &[QualityViolation],
     format: QualityGateOutputFormat,
 ) -> Result<String> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     match format {
         QualityGateOutputFormat::Json => format_qg_as_json(results, violations),
         QualityGateOutputFormat::Human => format_qg_as_human(results, violations),

@@ -64,7 +64,6 @@ impl MutantExecutor {
     /// Execute tests on multiple mutants sequentially
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_mutants(&self, mutants: &[Mutant]) -> Result<Vec<MutationResult>> {
-        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         let mut results = Vec::new();
 
         for (i, mutant) in mutants.iter().enumerate() {

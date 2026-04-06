@@ -895,7 +895,6 @@ fn test_should_analyze_path_with_include_pattern() {
 // =============================================================================
 
 fn create_debt_item(file: &str, line: u32) -> TechnicalDebt {
-    debug_assert!(!file.is_empty(), "file must not be empty");
     TechnicalDebt {
         category: DebtCategory::Defect,
         severity: Severity::Medium,
@@ -908,8 +907,6 @@ fn create_debt_item(file: &str, line: u32) -> TechnicalDebt {
 }
 
 fn create_critical_debt_item(file: &str, line: u32, text: &str) -> TechnicalDebt {
-    debug_assert!(!file.is_empty(), "file must not be empty");
-    debug_assert!(!text.is_empty(), "text must not be empty");
     TechnicalDebt {
         category: DebtCategory::Security,
         severity: Severity::Critical,
@@ -922,7 +919,6 @@ fn create_critical_debt_item(file: &str, line: u32, text: &str) -> TechnicalDebt
 }
 
 fn create_debt_item_with_severity(file: &str, line: u32, severity: Severity) -> TechnicalDebt {
-    debug_assert!(!file.is_empty(), "file must not be empty");
     TechnicalDebt {
         category: DebtCategory::Defect,
         severity,
@@ -935,7 +931,6 @@ fn create_debt_item_with_severity(file: &str, line: u32, severity: Severity) -> 
 }
 
 fn create_sample_debt_items(count: usize) -> Vec<TechnicalDebt> {
-    debug_assert!(count > 0, "count must be positive");
     (0..count)
         .map(|i| create_debt_item(&format!("file{}.rs", i), (i * 10) as u32))
         .collect()
@@ -1000,14 +995,12 @@ fn create_satd_result_with_multiple_files(files: usize, items_per_file: usize) -
 }
 
 fn create_file_metrics_list(count: usize) -> Vec<FileComplexityMetrics> {
-    debug_assert!(count > 0, "count must be positive");
     (0..count)
         .map(|i| create_file_metrics_with_complexity(&format!("file{}.rs", i), (i * 5) as u16 + 1, (i * 3) as u16 + 1))
         .collect()
 }
 
 fn create_file_metrics_with_complexity(name: &str, cyclomatic: u16, cognitive: u16) -> FileComplexityMetrics {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     FileComplexityMetrics {
         path: PathBuf::from(name),
         language: Some("rust".to_string()),

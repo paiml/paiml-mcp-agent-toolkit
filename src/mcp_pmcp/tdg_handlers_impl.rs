@@ -20,7 +20,6 @@ impl Default for TdgSystemDiagnosticsTool {
 #[async_trait]
 impl ToolHandler for TdgSystemDiagnosticsTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling tdg_system_diagnostics with args: {}", args);
 
         let params: TdgSystemDiagnosticsArgs = serde_json::from_value(args)
@@ -53,7 +52,6 @@ impl Default for TdgStorageManagementTool {
 #[async_trait]
 impl ToolHandler for TdgStorageManagementTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling tdg_storage_management with args: {}", args);
 
         let params: TdgStorageManagementArgs = serde_json::from_value(args)
@@ -86,7 +84,6 @@ impl Default for TdgAnalyzeWithStorageTool {
 #[async_trait]
 impl ToolHandler for TdgAnalyzeWithStorageTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling tdg_analyze_with_storage with args: {}", args);
 
         let params: TdgAnalyzeWithStorageArgs = serde_json::from_value(args)
@@ -127,7 +124,6 @@ impl Default for TdgPerformanceMetricsTool {
 #[async_trait]
 impl ToolHandler for TdgPerformanceMetricsTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling tdg_performance_metrics with args: {}", args);
 
         let _params: TdgPerformanceMetricsArgs = serde_json::from_value(args)
@@ -160,7 +156,6 @@ impl Default for TdgConfigureStorageTool {
 #[async_trait]
 impl ToolHandler for TdgConfigureStorageTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling tdg_configure_storage with args: {}", args);
 
         let params: TdgConfigureStorageArgs = serde_json::from_value(args)
@@ -198,7 +193,6 @@ impl Default for TdgHealthCheckTool {
 #[async_trait]
 impl ToolHandler for TdgHealthCheckTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling tdg_health_check with args: {}", args);
 
         let _params: TdgHealthCheckArgs = serde_json::from_value(args)

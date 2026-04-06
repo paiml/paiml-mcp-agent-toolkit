@@ -104,12 +104,10 @@ pub struct AnalyzeDeadCodeContract {
 }
 
 fn default_min_dead_lines() -> usize {
-    debug_assert!(true, "contract: default_min_dead_lines");
     10
 }
 
 fn default_max_percentage() -> f64 {
-    debug_assert!(true, "contract: default_max_percentage");
     15.0
 }
 
@@ -134,7 +132,6 @@ pub struct AnalyzeTdgContract {
 }
 
 fn default_tdg_threshold() -> f64 {
-    debug_assert!(true, "contract: default_tdg_threshold");
     1.5
 }
 
@@ -167,12 +164,10 @@ pub struct AnalyzeLintHotspotContract {
 }
 
 fn default_max_density() -> f64 {
-    debug_assert!(true, "contract: default_max_density");
     5.0
 }
 
 fn default_min_confidence() -> f64 {
-    debug_assert!(true, "contract: default_min_confidence");
     0.8
 }
 
@@ -258,11 +253,9 @@ pub struct RefactorAutoContract {
 }
 
 fn default_target_complexity() -> u32 {
-    debug_assert!(true, "contract: default_target_complexity");
     10
 }
 
 fn default_timeout() -> u64 {
-    debug_assert!(true, "contract: default_timeout");
     60
 }

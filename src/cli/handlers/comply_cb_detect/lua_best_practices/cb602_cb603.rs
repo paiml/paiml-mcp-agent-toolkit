@@ -15,11 +15,6 @@ use std::path::Path;
 /// Based on FLuaScan progressive taint analysis.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb602_pcall_error_handling(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -81,11 +76,6 @@ pub fn detect_cb602_pcall_error_handling(project_path: &Path) -> Vec<CbPatternVi
 /// Distinguishes safe usage (hardcoded string arg) from dangerous (concatenation/variable).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb603_deprecated_dangerous_api(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -125,8 +115,6 @@ fn check_deprecated_apis(
     line_num: usize,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     for api in LUA_DEPRECATED_APIS {
         if trimmed.contains(api) && !is_in_lua_string(trimmed, api) {
             violations.push(CbPatternViolation {
@@ -149,8 +137,6 @@ fn check_dangerous_apis(
     line_num: usize,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     for api in LUA_DANGEROUS_APIS {
         if !trimmed.contains(api) || is_in_lua_string(trimmed, api) {
             continue;
@@ -183,8 +169,6 @@ fn check_dangerous_apis(
 /// `os.execute("make clean")` -> true (safe)
 /// `os.execute(cmd)` or `os.execute("rm " .. x)` -> false (dangerous)
 fn has_hardcoded_string_arg(line: &str, api: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
-    debug_assert!(!api.is_empty(), "api must not be empty");
     let Some(api_pos) = line.find(api) else {
         return false;
     };

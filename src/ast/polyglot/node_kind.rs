@@ -70,7 +70,6 @@ impl NodeKind {
     /// Convert from a string item kind
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_ast_item_kind(kind: &str) -> Self {
-        debug_assert!(!kind.is_empty(), "kind must not be empty");
         match kind.to_lowercase().as_str() {
             "package" => NodeKind::Package,
             "import" => NodeKind::Import,

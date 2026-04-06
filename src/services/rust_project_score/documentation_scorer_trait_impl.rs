@@ -7,7 +7,6 @@ impl DocumentationScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -49,7 +48,6 @@ impl Scorer for DocumentationScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Backward compatibility: call without cache
         self.score_internal(project_path, None)
     }
@@ -59,7 +57,6 @@ impl Scorer for DocumentationScorer {
         project_path: &Path,
         _mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // This scorer doesn't have expensive operations, so mode doesn't affect it
         self.score(project_path)
     }
@@ -75,7 +72,6 @@ impl Scorer for DocumentationScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut recommendations = Vec::new();
 
         // Check rustdoc (no cache - backward compatibility)

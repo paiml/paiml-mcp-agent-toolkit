@@ -6,7 +6,6 @@ impl WasmModuleAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
@@ -24,7 +23,6 @@ impl WasmModuleAnalyzer {
     /// Analyzes WASM binary and extracts AST items (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_wasm_binary(mut self, wasm_bytes: &[u8]) -> Result<Vec<AstItem>, String> {
-        debug_assert!(!wasm_bytes.is_empty(), "wasm_bytes must not be empty");
         if wasm_bytes.len() < 8 {
             return Err("Invalid WASM binary: too short".to_string());
         }
@@ -55,7 +53,6 @@ impl WasmModuleAnalyzer {
     /// Analyzes WASM text format (.wat) (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_wat_text(mut self, wat_source: &str) -> Result<Vec<AstItem>, String> {
-        debug_assert!(!wat_source.is_empty(), "wat_source must not be empty");
         let mut function_count = 0;
 
         for line in wat_source.lines() {
@@ -83,14 +80,12 @@ impl WasmModuleAnalyzer {
 
     /// Extracts function information from WASM (complexity ≤10)
     fn _extract_wasm_functions(&mut self, _parser: &Parser) -> Result<(), String> {
-        debug_assert!(true, "contract: _extract_wasm_functions");
         // Not yet implemented - WASM function extraction requires wasmparser iteration
         Err("WASM function extraction not yet implemented".to_string())
     }
 
     /// Extracts import/export information (complexity ≤10)
     fn _extract_imports_exports(&mut self, _parser: &Parser) -> Result<(), String> {
-        debug_assert!(true, "contract: _extract_imports_exports");
         // Not yet implemented - WASM import/export extraction requires section parsing
         Err("WASM import/export extraction not yet implemented".to_string())
     }
@@ -103,7 +98,6 @@ impl WasmModuleAnalyzer {
 
     /// Extracts function name from WAT line (complexity ≤10)
     fn extract_wat_function_name(&self, line: &str) -> String {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if let Some(start) = line.find('$') {
             if let Some(end) = line[start..].find(' ') {
                 line[start + 1..start + end].to_string()
@@ -117,7 +111,6 @@ impl WasmModuleAnalyzer {
 
     /// Gets qualified name for WASM symbol (complexity ≤10)
     fn get_qualified_name(&self, symbol_name: &str) -> String {
-        debug_assert!(!symbol_name.is_empty(), "symbol_name must not be empty");
         if self.module_name.is_empty() {
             symbol_name.to_string()
         } else {
@@ -141,7 +134,6 @@ impl WasmStackAnalyzer {
     /// Analyzes stack depth complexity (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_stack_complexity(&mut self, function_body: &[u8]) -> Result<u32, String> {
-        debug_assert!(!function_body.is_empty(), "function_body must not be empty");
         self.current_depth = 0;
         self.max_stack_depth = 0;
 
@@ -173,7 +165,6 @@ impl WasmStackAnalyzer {
     /// Analyzes control flow complexity (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_control_flow_complexity(&mut self, function_body: &[u8]) -> Result<u32, String> {
-        debug_assert!(!function_body.is_empty(), "function_body must not be empty");
         self.branch_count = 1; // Base complexity
 
         for &byte in function_body {

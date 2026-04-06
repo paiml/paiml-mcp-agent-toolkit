@@ -8,7 +8,6 @@
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_heavily_cfg_gated(content: &str) -> bool {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let cfg_count = content.matches("#[cfg(target").count()
         + content.matches("#[target_feature").count()
         + content.matches("#[cfg(feature").count();
@@ -21,7 +20,6 @@ pub fn is_heavily_cfg_gated(content: &str) -> bool {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_excluded_from_analysis(path_str: &str) -> bool {
-    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     path_str.ends_with("_tests.rs")
         || path_str.contains("/tests/")
         || path_str.contains("/falsification/")
@@ -36,7 +34,6 @@ pub fn is_excluded_from_analysis(path_str: &str) -> bool {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_test_module_marker(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim();
     trimmed == "#[cfg(test)]" || trimmed.starts_with("#[cfg(test)]")
 }
@@ -45,7 +42,6 @@ pub fn is_test_module_marker(line: &str) -> bool {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_dead_code_annotation(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim();
     trimmed.starts_with("#[allow(dead_code)]") || trimmed.starts_with("#[allow(unused")
 }
@@ -54,7 +50,6 @@ pub fn is_dead_code_annotation(line: &str) -> bool {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_code_item_declaration(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim();
     trimmed.starts_with("pub fn ")
         || trimmed.starts_with("fn ")

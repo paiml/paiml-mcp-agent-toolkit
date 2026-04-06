@@ -9,18 +9,15 @@ impl RustAdapter {
 
 impl LanguageAdapter for RustAdapter {
     fn detect(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "rs")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse Rust source"))
     }
 
     fn confidence(&self) -> f32 {
-        debug_assert!(true, "contract: confidence");
         1.0
     }
 
@@ -44,18 +41,15 @@ impl PythonAdapter {
 
 impl LanguageAdapter for PythonAdapter {
     fn detect(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "py")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse Python source"))
     }
 
     fn confidence(&self) -> f32 {
-        debug_assert!(true, "contract: confidence");
         0.95
     }
 
@@ -79,18 +73,15 @@ impl JavaScriptAdapter {
 
 impl LanguageAdapter for JavaScriptAdapter {
     fn detect(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "js" || ext == "jsx")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse JavaScript source"))
     }
 
     fn confidence(&self) -> f32 {
-        debug_assert!(true, "contract: confidence");
         0.90
     }
 
@@ -114,18 +105,15 @@ impl TypeScriptAdapter {
 
 impl LanguageAdapter for TypeScriptAdapter {
     fn detect(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "ts" || ext == "tsx")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse TypeScript source"))
     }
 
     fn confidence(&self) -> f32 {
-        debug_assert!(true, "contract: confidence");
         0.90
     }
 
@@ -149,18 +137,15 @@ impl GoAdapter {
 
 impl LanguageAdapter for GoAdapter {
     fn detect(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "go")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse Go source"))
     }
 
     fn confidence(&self) -> f32 {
-        debug_assert!(true, "contract: confidence");
         0.95
     }
 
@@ -184,18 +169,15 @@ impl LuaAdapter {
 
 impl LanguageAdapter for LuaAdapter {
     fn detect(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().is_some_and(|ext| ext == "lua")
     }
 
     fn parse(&self, source: &str) -> Result<Tree> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         self.parser.parse(source, None)
             .ok_or_else(|| anyhow::anyhow!("Failed to parse Lua source"))
     }
 
     fn confidence(&self) -> f32 {
-        debug_assert!(true, "contract: confidence");
         0.90
     }
 
@@ -241,7 +223,6 @@ impl LanguageRegistry {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect_and_get(&self, path: &Path) -> Result<&dyn LanguageAdapter> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let language = Language::from_extension(path);
         if language == Language::Unknown {
             return Err(anyhow::anyhow!("Unknown language for file: {}", path.display()));

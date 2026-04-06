@@ -22,7 +22,6 @@ struct LineClassification {
 }
 
 fn classify_line(trimmed: &str) -> LineClassification {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let is_if_stmt = trimmed.starts_with("if ") || trimmed.starts_with("if(");
     let is_else_if = trimmed.starts_with("else if") || trimmed.contains("} else if");
     let is_switch = trimmed.starts_with("switch ");
@@ -63,7 +62,6 @@ fn classify_line(trimmed: &str) -> LineClassification {
 }
 
 fn is_skippable_line(trimmed: &str, in_comment: &mut bool) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     if trimmed.starts_with('#') {
         return true;
     }
@@ -80,7 +78,6 @@ fn is_skippable_line(trimmed: &str, in_comment: &mut bool) -> bool {
 }
 
 fn is_function_start(trimmed: &str) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.contains("{") && (trimmed.contains("(") || trimmed.contains(")"))
 }
 
@@ -98,7 +95,6 @@ impl CppComplexityAnalyzer {
     /// Analyzes complexity of C++ source code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
         self.cognitive_complexity = 0;
 
@@ -133,7 +129,6 @@ impl CppComplexityAnalyzer {
     }
 
     fn update_complexity(&mut self, cl: &LineClassification, nesting_depth: &mut u32) {
-        debug_assert!(true, "contract: update_complexity");
         if cl.is_decision_point {
             self.cyclomatic_complexity += 1;
         }

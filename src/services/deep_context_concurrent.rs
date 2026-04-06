@@ -53,12 +53,10 @@ impl AstCache {
     }
 
     fn insert(&mut self, path: std::path::PathBuf, ast: ParsedAst) {
-        debug_assert!(true, "contract: insert");
         self.data.insert(path, ast);
     }
 
     fn files(&self) -> &std::collections::HashMap<std::path::PathBuf, ParsedAst> {
-        debug_assert!(true, "contract: files");
         &self.data
     }
 }
@@ -80,7 +78,6 @@ pub struct ComplexityResults {
 
 impl ComplexityResults {
     fn combine(_results: Vec<ComplexityResult>) -> Self {
-        debug_assert!(!_results.is_empty(), "_results must not be empty");
         Self::default()
     }
 }

@@ -4,7 +4,6 @@
 /// CB-400: Check git hooks with bashrs
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb400_git_hooks_quality(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let hooks_dir = project_path.join(".git/hooks");
     if !hooks_dir.exists() {
         return Vec::new();
@@ -16,7 +15,6 @@ pub fn detect_cb400_git_hooks_quality(project_path: &Path) -> Vec<CbPatternViola
 }
 
 fn lint_single_hook(hooks_dir: &Path, hook_name: &str) -> Vec<CbPatternViolation> {
-    debug_assert!(hooks_dir.exists(), "hooks_dir must exist: {}", hooks_dir.display());
     let hook_path = hooks_dir.join(hook_name);
     if !hook_path.exists() || hook_path.to_string_lossy().ends_with(".sample") {
         return Vec::new();
@@ -51,7 +49,6 @@ fn lint_single_hook(hooks_dir: &Path, hook_name: &str) -> Vec<CbPatternViolation
 /// CB-401: Check Makefile with bashrs
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb401_makefile_quality(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
     let makefile_path = project_path.join("Makefile");
 
@@ -96,7 +93,6 @@ pub fn detect_cb401_makefile_quality(project_path: &Path) -> Vec<CbPatternViolat
 /// CB-402: Check shell scripts with bashrs
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     // Find all .sh files (limit to reasonable depth)
@@ -144,7 +140,6 @@ pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternVi
 
 /// Run bashrs lint on a file and parse results
 pub(super) fn run_bashrs_lint(path: &Path) -> Result<Vec<BashrsIssue>, String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::process::Command;
 
     let output = Command::new("bashrs")
@@ -165,7 +160,6 @@ pub(super) fn run_bashrs_lint(path: &Path) -> Result<Vec<BashrsIssue>, String> {
 
 /// Run bashrs make lint on Makefile
 pub(super) fn run_bashrs_make_lint(path: &Path) -> Result<Vec<BashrsIssue>, String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::process::Command;
 
     let output = Command::new("bashrs")

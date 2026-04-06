@@ -2,8 +2,6 @@
 
 // Helper function to determine if severity should be included
 fn should_include_severity(severity: &str, min_severity: &str) -> bool {
-    debug_assert!(!severity.is_empty(), "severity must not be empty");
-    debug_assert!(!min_severity.is_empty(), "min_severity must not be empty");
     let severity_levels = ["low", "medium", "high", "critical"];
     let min_index = severity_levels
         .iter()
@@ -18,7 +16,6 @@ fn should_include_severity(severity: &str, min_severity: &str) -> bool {
 
 // Helper function to generate actionable suggestions
 fn generate_suggestion(reason: &str, category: &str) -> String {
-    debug_assert!(!category.is_empty(), "category must not be empty");
     let reason_lower = reason.to_lowercase();
 
     if reason_lower.contains("cyclomatic complexity") || reason_lower.contains("complexity") {

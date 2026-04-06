@@ -85,7 +85,6 @@ pub async fn handle_bug_report(
 
 /// Create GitHub issue using gh CLI
 fn create_github_issue(title: &str, body: &str) -> Result<()> {
-    debug_assert!(!body.is_empty(), "body must not be empty");
     use crate::cli::colors as c;
 
     // Check if gh is available
@@ -131,7 +130,6 @@ fn create_github_issue(title: &str, body: &str) -> Result<()> {
 /// Called when a pmat command fails
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn capture_command_error(command: &str, args: &[String], error: &str) {
-    debug_assert!(!command.is_empty(), "command must not be empty");
     let captured = CapturedError::new(command, args, error);
 
     if let Err(e) = crate::services::error_capture::save_error(&captured) {
@@ -142,7 +140,6 @@ pub fn capture_command_error(command: &str, args: &[String], error: &str) {
 /// Capture an error with exit code
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn capture_command_error_with_code(command: &str, args: &[String], error: &str, code: i32) {
-    debug_assert!(!command.is_empty(), "command must not be empty");
     let captured = CapturedError::new(command, args, error).with_exit_code(code);
 
     if let Err(e) = crate::services::error_capture::save_error(&captured) {

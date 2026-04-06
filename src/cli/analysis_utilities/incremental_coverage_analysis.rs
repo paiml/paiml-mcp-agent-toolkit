@@ -6,7 +6,6 @@ fn convert_coverage_update_to_report(
     coverage_threshold: f64,
     changed_files: Vec<(PathBuf, String)>,
 ) -> Result<IncrementalCoverageReport> {
-    debug_assert!(true, "contract: convert_coverage_update_to_report");
     let mut files = Vec::new();
 
     // Convert real coverage data to report format

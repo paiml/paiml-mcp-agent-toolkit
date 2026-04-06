@@ -9,7 +9,6 @@ impl RustBorrowChecker {
         rustc_version: &str,
         collection_state: &mut CollectionState,
     ) {
-        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         for entry in WalkDir::new(project_root)
             .follow_links(true)
             .into_iter()
@@ -24,7 +23,6 @@ impl RustBorrowChecker {
 
     /// Check if a path represents a Rust source file
     fn is_rust_file(path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension().and_then(|s| s.to_str()) == Some("rs")
     }
 
@@ -35,7 +33,6 @@ impl RustBorrowChecker {
         rustc_version: &str,
         collection_state: &mut CollectionState,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let cache_key = format!(
             "rust_borrow_checker:{}:{}",
             rustc_version,
@@ -58,7 +55,6 @@ impl RustBorrowChecker {
         cache: &Arc<RwLock<ProofCache>>,
         collection_state: &mut CollectionState,
     ) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let cache_guard = cache.read();
         if cache_guard.is_file_cached(path) {
             if let Some(cached_annotations) = cache_guard.get(cache_key) {
@@ -81,7 +77,6 @@ impl RustBorrowChecker {
         cache: &Arc<RwLock<ProofCache>>,
         collection_state: &mut CollectionState,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         #[cfg(feature = "rust-ast")]
         let file_result = RustBorrowChecker::default().analyze_rust_file(path);
 
@@ -113,8 +108,6 @@ impl RustBorrowChecker {
         path: &Path,
         cache: &Arc<RwLock<ProofCache>>,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!cache_key.is_empty(), "cache_key must not be empty");
         let cache_annotations: Vec<ProofAnnotation> = file_annotations
             .iter()
             .map(|(_, annotation)| annotation.clone())
@@ -130,7 +123,6 @@ impl RustBorrowChecker {
         start: std::time::Instant,
         collection_state: CollectionState,
     ) -> Result<ProofCollectionResult, ProofCollectionError> {
-        debug_assert!(true, "contract: finalize_collection");
         let duration = start.elapsed();
         let annotations_count = collection_state.annotations.len();
 
@@ -156,7 +148,6 @@ impl RustBorrowChecker {
 
 impl ProofSource for RustBorrowChecker {
     fn clone_box(&self) -> Box<dyn ProofSource> {
-        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 
@@ -168,7 +159,6 @@ impl ProofSource for RustBorrowChecker {
     ) -> Pin<
         Box<dyn Future<Output = Result<ProofCollectionResult, ProofCollectionError>> + Send + '_>,
     > {
-        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let project_root = project_root.to_owned();
         let cache = cache.clone();
         let rustc_version = self.rustc_version.clone();

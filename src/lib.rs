@@ -444,7 +444,6 @@ impl TemplateServerTrait for TemplateServer {
     }
 
     async fn list_templates(&self, _prefix: &str) -> Result<Vec<Arc<TemplateResource>>> {
-        debug_assert!(!_prefix.is_empty(), "_prefix must not be empty");
         // Dummy implementation - use StatelessTemplateServer instead
         Err(anyhow::anyhow!(
             "TemplateServer with S3 is deprecated. Use StatelessTemplateServer instead."
@@ -452,27 +451,22 @@ impl TemplateServerTrait for TemplateServer {
     }
 
     fn get_renderer(&self) -> &TemplateRenderer {
-        debug_assert!(true, "contract: get_renderer");
         &self.renderer
     }
 
     fn get_metadata_cache(&self) -> Option<&MetadataCache> {
-        debug_assert!(true, "contract: get_metadata_cache");
         Some(&self.metadata_cache)
     }
 
     fn get_content_cache(&self) -> Option<&ContentCache> {
-        debug_assert!(true, "contract: get_content_cache");
         Some(&self.content_cache)
     }
 
     fn get_s3_client(&self) -> Option<&S3Client> {
-        debug_assert!(true, "contract: get_s3_client");
         Some(&self.s3_client)
     }
 
     fn get_bucket_name(&self) -> Option<&str> {
-        debug_assert!(true, "contract: get_bucket_name");
         Some(&self.bucket_name)
     }
 }
@@ -512,7 +506,6 @@ pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) ->
 /// Check if line should be skipped (cognitive complexity ≤2)
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn should_skip_line(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     line.trim().is_empty()
 }
 
@@ -522,7 +515,6 @@ async fn process_mcp_line<T: TemplateServerTrait + 'static, W: std::io::Write>(
     server: Arc<T>,
     stdout: &mut W,
 ) -> Result<()> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     match parse_mcp_request(line) {
         Ok(request) => handle_valid_request(request, server, stdout).await,
         Err(e) => handle_parse_error(&e, stdout),
@@ -532,7 +524,6 @@ async fn process_mcp_line<T: TemplateServerTrait + 'static, W: std::io::Write>(
 /// Parse MCP request from line (cognitive complexity ≤2)
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_mcp_request(line: &str) -> Result<crate::models::mcp::McpRequest> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     serde_json::from_str(line).map_err(anyhow::Error::from)
 }
 
@@ -542,7 +533,6 @@ async fn handle_valid_request<T: TemplateServerTrait + 'static, W: std::io::Writ
     server: Arc<T>,
     stdout: &mut W,
 ) -> Result<()> {
-    debug_assert!(true, "contract: handle_valid_request");
     use tracing::info;
 
     info!(
@@ -557,7 +547,6 @@ async fn handle_valid_request<T: TemplateServerTrait + 'static, W: std::io::Writ
 /// Handle JSON parse error (cognitive complexity ≤4)
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn handle_parse_error<W: std::io::Write>(error: &anyhow::Error, stdout: &mut W) -> Result<()> {
-    debug_assert!(true, "contract: handle_parse_error");
     use crate::models::mcp::McpResponse;
     use tracing::error;
 
@@ -578,7 +567,6 @@ fn write_response_to_stdout<W: std::io::Write>(
     response: &crate::models::mcp::McpResponse,
     stdout: &mut W,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_response_to_stdout");
     let response_json = serde_json::to_string(response)?;
     writeln!(stdout, "{response_json}")?;
     stdout.flush()?;
@@ -603,7 +591,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

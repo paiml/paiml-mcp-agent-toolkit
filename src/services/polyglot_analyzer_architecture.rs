@@ -4,7 +4,6 @@ impl PolyglotAnalyzer {
         project_path: &Path,
         language_info: &HashMap<String, LanguageInfo>,
     ) -> Result<Option<ArchitecturePattern>, Box<dyn std::error::Error>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let language_count = language_info.len();
 
         // Analyze project structure for architecture indicators
@@ -50,7 +49,6 @@ impl PolyglotAnalyzer {
         &self,
         project_path: &Path,
     ) -> Result<ArchitectureIndicators, Box<dyn std::error::Error>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Analyze directory structure
         let directory_structure = self.analyze_directory_structure(project_path).await?;
 
@@ -89,7 +87,6 @@ impl PolyglotAnalyzer {
     }
 
     fn check_layered_architecture(&self, directories: &[String]) -> bool {
-        debug_assert!(!directories.is_empty(), "directories must not be empty");
         let has_controller = Self::has_directory_pattern(directories, &["controller"]);
         let has_service = Self::has_directory_pattern(directories, &["service"]);
         let has_repository = Self::has_directory_pattern(directories, &["repository", "dao"]);
@@ -102,7 +99,6 @@ impl PolyglotAnalyzer {
         &self,
         project_path: &Path,
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut directories = Vec::new();
         self.collect_directories_recursive(project_path, &mut directories, 0)?;
         Ok(directories)
@@ -115,8 +111,6 @@ impl PolyglotAnalyzer {
         directories: &mut Vec<String>,
         depth: usize,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(dir_path.exists(), "dir_path must exist: {}", dir_path.display());
-        debug_assert!(depth > 0, "depth must be positive");
         if depth > 3 {
             // Limit recursion depth
             return Ok(());
@@ -156,7 +150,6 @@ impl PolyglotAnalyzer {
         language_info: &HashMap<String, LanguageInfo>,
         indicators: &ArchitectureIndicators,
     ) -> f64 {
-        debug_assert!(true, "contract: calculate_architecture_confidence");
         let mut confidence: f64 = 0.0;
 
         match signature.pattern {
@@ -212,7 +205,6 @@ impl PolyglotAnalyzer {
         _project_path: &Path,
         cross_deps: &[CrossLanguageDependency],
     ) -> Result<Vec<IntegrationPoint>, Box<dyn std::error::Error>> {
-        debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
         let mut integration_points = Vec::new();
 
         for dep in cross_deps {
@@ -232,7 +224,6 @@ impl PolyglotAnalyzer {
     }
 
     fn map_dependency_to_integration(&self, dep_type: &DependencyType) -> IntegrationType {
-        debug_assert!(true, "contract: map_dependency_to_integration");
         match dep_type {
             DependencyType::FFI => IntegrationType::Memory,
             DependencyType::ProcessCommunication => IntegrationType::Network,
@@ -244,7 +235,6 @@ impl PolyglotAnalyzer {
     }
 
     fn assess_risk_level(&self, coupling_strength: f64) -> RiskLevel {
-        debug_assert!(true, "contract: assess_risk_level");
         if coupling_strength >= 0.8 {
             RiskLevel::Critical
         } else if coupling_strength >= 0.6 {
@@ -262,7 +252,6 @@ impl PolyglotAnalyzer {
         cross_deps: &[CrossLanguageDependency],
         architecture: &Option<ArchitecturePattern>,
     ) -> f64 {
-        debug_assert!(true, "contract: calculate_recommendation_score");
         let mut score: f64 = 0.0;
 
         let total_lines: usize = language_stats.iter().map(|s| s.line_count).sum();

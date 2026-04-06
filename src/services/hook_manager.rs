@@ -51,11 +51,6 @@ exit 0
 /// Install commit-msg hook in git repository
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn install_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let git_dir = project_path.join(".git");
     if !git_dir.exists() {
         anyhow::bail!("Not a git repository");
@@ -99,11 +94,6 @@ pub fn install_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
 /// Uninstall commit-msg hook
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn uninstall_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let hook_path = project_path.join(".git/hooks/commit-msg");
 
     if !hook_path.exists() {

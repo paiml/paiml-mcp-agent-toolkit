@@ -3,7 +3,6 @@
 impl BytecodeAnalyzer {
     /// Convert ExternalKind to string
     fn external_kind_str(kind: wasmparser::ExternalKind) -> &'static str {
-        debug_assert!(true, "contract: external_kind_str");
         match kind {
             wasmparser::ExternalKind::Func => "function",
             wasmparser::ExternalKind::Memory => "memory",
@@ -15,7 +14,6 @@ impl BytecodeAnalyzer {
 
     /// Convert TypeRef to kind string
     fn type_ref_kind_str(ty: &TypeRef) -> &'static str {
-        debug_assert!(true, "contract: type_ref_kind_str");
         match ty {
             TypeRef::Func(_) => "function",
             TypeRef::Memory(_) => "memory",
@@ -27,7 +25,6 @@ impl BytecodeAnalyzer {
 
     /// Parse a single import into ImportAnalysis
     fn parse_import(import: wasmparser::Import, type_section: &[FuncType]) -> ImportAnalysis {
-        debug_assert!(!type_section.is_empty(), "type_section must not be empty");
         let kind = Self::type_ref_kind_str(&import.ty);
         let signature = if let TypeRef::Func(type_idx) = import.ty {
             type_section
@@ -50,7 +47,6 @@ impl BytecodeAnalyzer {
 
     /// Parse name section for function name mappings
     fn parse_name_section(data: &[u8], name_map: &mut HashMap<u32, String>) {
-        debug_assert!(!data.is_empty(), "data must not be empty");
         let name_reader =
             wasmparser::NameSectionReader::new(wasmparser::BinaryReader::new(data, 0));
         for section in name_reader {
@@ -72,7 +68,6 @@ impl BytecodeAnalyzer {
         name_map: &HashMap<u32, String>,
         export_section: &[(String, u32, String)],
     ) -> DeepWasmResult<Option<FunctionAnalysis>> {
-        debug_assert!(true, "contract: analyze_single_function");
         let func_type = match type_section.get(type_idx as usize) {
             Some(ft) => ft,
             None => return Ok(None),
@@ -113,7 +108,6 @@ impl BytecodeAnalyzer {
 
     /// First pass: parse all WASM sections
     fn parse_sections<'a>(parser: Parser, bytes: &'a [u8]) -> WasmSections<'a> {
-        debug_assert!(true, "contract: parse_sections");
         let mut sections = WasmSections {
             type_section: Vec::new(),
             function_section: Vec::new(),
@@ -176,7 +170,6 @@ impl BytecodeAnalyzer {
         functions: Vec<FunctionAnalysis>,
         sections: WasmSections<'_>,
     ) -> ModuleBytecodeAnalysis {
-        debug_assert!(!functions.is_empty(), "functions must not be empty");
         let total_instructions: u32 = functions.iter().map(|f| f.instruction_stats.total).sum();
         let max_complexity = functions
             .iter()
@@ -217,7 +210,6 @@ impl BytecodeAnalyzer {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&self, bytes: &[u8]) -> DeepWasmResult<ModuleBytecodeAnalysis> {
-        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         let parser = Parser::new(0);
         let mut sections = Self::parse_sections(parser, bytes);
 

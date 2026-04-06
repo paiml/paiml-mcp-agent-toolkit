@@ -58,7 +58,6 @@ impl HooksCommand {
 
     /// Prompt user for a number with default
     fn prompt_number(&self, prompt: &str, default: u32) -> Result<u32> {
-        debug_assert!(!prompt.is_empty(), "prompt must not be empty");
         use std::io::{self, Write};
 
         print!("  {prompt}: ");
@@ -110,7 +109,6 @@ impl HooksCommand {
         min_coverage: u32,
         _max_satd: u32,
     ) -> String {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Simple string replacement preserves comments and formatting.
         // Full TOML parsing would lose comments - acceptable tradeoff for config updates.
         let old_complexity = self.extract_current_value(content, "max_complexity");
@@ -135,8 +133,6 @@ impl HooksCommand {
     /// Extract current value from TOML content
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_current_value(&self, content: &str, key: &str) -> String {
-        debug_assert!(!content.is_empty(), "content must not be empty");
-        debug_assert!(!key.is_empty(), "key must not be empty");
         content
             .lines()
             .find(|line| line.contains(key))

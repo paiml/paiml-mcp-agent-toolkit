@@ -24,7 +24,6 @@ pub struct PdmtInput {
 }
 
 fn default_granularity() -> String {
-    debug_assert!(true, "contract: default_granularity");
     "high".to_string()
 }
 
@@ -61,37 +60,30 @@ impl Default for QualityConfigInput {
 }
 
 fn default_enforcement_mode() -> String {
-    debug_assert!(true, "contract: default_enforcement_mode");
     "strict".to_string()
 }
 
 fn default_coverage_threshold() -> f32 {
-    debug_assert!(true, "contract: default_coverage_threshold");
     80.0
 }
 
 fn default_max_complexity() -> u32 {
-    debug_assert!(true, "contract: default_max_complexity");
     8
 }
 
 fn default_require_doctests() -> bool {
-    debug_assert!(true, "contract: default_require_doctests");
     true
 }
 
 fn default_require_property_tests() -> bool {
-    debug_assert!(true, "contract: default_require_property_tests");
     true
 }
 
 fn default_require_examples() -> bool {
-    debug_assert!(true, "contract: default_require_examples");
     true
 }
 
 fn default_zero_satd_tolerance() -> bool {
-    debug_assert!(true, "contract: default_zero_satd_tolerance");
     true
 }
 

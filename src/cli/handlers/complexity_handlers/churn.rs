@@ -15,11 +15,6 @@ pub async fn handle_analyze_churn(
     include: Vec<String>,
     exclude: Vec<String>,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::services::git_analysis::GitAnalysisService;
 
     eprintln!("📊 Analyzing code churn for the last {days} days...");
@@ -45,7 +40,6 @@ fn create_and_report_file_filter(
     include: Vec<String>,
     exclude: Vec<String>,
 ) -> Result<crate::utils::file_filter::FileFilter> {
-    debug_assert!(!include.is_empty(), "include must not be empty");
     if !include.is_empty() || !exclude.is_empty() {
         eprintln!("🔍 Applying file filters...");
         if !include.is_empty() {
@@ -65,7 +59,6 @@ fn apply_churn_filters(
     filter: &crate::utils::file_filter::FileFilter,
     top_files: usize,
 ) {
-    debug_assert!(true, "contract: apply_churn_filters");
     // Apply file filter if filters are active
     if filter.has_filters() {
         analysis
@@ -92,7 +85,6 @@ async fn format_and_write_churn_output(
     format: crate::models::churn::ChurnOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(true, "contract: format_and_write_churn_output");
     use crate::models::churn::ChurnOutputFormat;
 
     let content = match format {

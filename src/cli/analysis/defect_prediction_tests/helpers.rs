@@ -6,8 +6,6 @@ fn create_mock_defect_score(
     confidence: f32,
     risk_level: RiskLevel,
 ) -> DefectScore {
-    debug_assert!(probability >= 0.0, "probability must be non-negative");
-    debug_assert!(confidence >= 0.0, "confidence must be non-negative");
     DefectScore {
         probability,
         confidence,

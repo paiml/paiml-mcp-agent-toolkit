@@ -7,7 +7,6 @@
 // - Pmat: 25 claims (full batuta stack)
 
 fn universal_claims(max_file_lines: f64) -> Vec<ContractClause> {
-    debug_assert!(true, "contract: universal_claims");
     vec![
         // Require (2)
         ContractClause {
@@ -74,7 +73,6 @@ fn universal_claims(max_file_lines: f64) -> Vec<ContractClause> {
 }
 
 fn rust_claims(max_complexity: f64, max_file_lines: f64, coverage_pct: f64) -> Vec<ContractClause> {
-    debug_assert!(true, "contract: rust_claims");
     let mut claims = universal_claims(max_file_lines);
 
     // Additional Invariant (2 more = 4 total)
@@ -173,7 +171,6 @@ fn rust_claims(max_complexity: f64, max_file_lines: f64, coverage_pct: f64) -> V
 }
 
 fn pmat_claims(max_complexity: f64, max_file_lines: f64, coverage_pct: f64) -> Vec<ContractClause> {
-    debug_assert!(true, "contract: pmat_claims");
     let mut claims = rust_claims(max_complexity, max_file_lines, coverage_pct);
 
     // Additional Require (2 more = 4 total)

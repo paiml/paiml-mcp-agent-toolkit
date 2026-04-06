@@ -115,11 +115,6 @@ impl ProjectMetaDetector {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn detect(&self, project_root: &Path) -> Vec<MetaFile> {
-        debug_assert!(
-            project_root.exists(),
-            "project_root must exist: {}",
-            project_root.display()
-        );
         let mut tasks = JoinSet::new();
         let mut found_files = Vec::new();
 
@@ -455,7 +450,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

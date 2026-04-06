@@ -89,11 +89,6 @@ async fn handle_enforce_extreme(
     cache_dir: Option<PathBuf>,
     clear_cache: bool,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print_enforcement_header(&project_path);
 
     let profile =

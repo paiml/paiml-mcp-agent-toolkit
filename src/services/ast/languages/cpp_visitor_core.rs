@@ -4,7 +4,6 @@ impl CppAstVisitor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Check if file is a header file
         let is_header = file_path
             .extension()
@@ -23,7 +22,6 @@ impl CppAstVisitor {
     /// Analyzes C++ source code and extracts AST items (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_cpp_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -42,7 +40,6 @@ impl CppAstVisitor {
     /// Extracts namespace declarations (complexity ≤10)
     #[allow(clippy::cast_possible_truncation)]
     fn extract_namespace_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_namespace = false;
         let mut brace_depth = 0;
         let mut _current_namespace = String::new();
@@ -77,7 +74,6 @@ impl CppAstVisitor {
     /// Extracts class declarations (complexity ≤10)
     #[allow(clippy::cast_possible_truncation)]
     fn extract_class_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_class = false;
         let mut brace_depth = 0;
         let mut current_class_name = String::new();

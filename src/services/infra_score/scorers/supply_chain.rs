@@ -37,11 +37,6 @@ impl InfraScorer for SupplyChainScorer {
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let workflows = read_workflow_files(repo_path);
         let all_content: String = workflows
             .iter()
@@ -146,11 +141,6 @@ impl InfraScorer for SupplyChainScorer {
 
 /// SC-01: Branch protection (CODEOWNERS, rulesets, PR requirements)
 fn check_branch_protection(repo_path: &Path, workflows: &[(String, String)]) -> InfraCheck {
-    debug_assert!(
-        repo_path.exists(),
-        "repo_path must exist: {}",
-        repo_path.display()
-    );
     let github_dir = repo_path.join(".github");
 
     // Check for CODEOWNERS
@@ -198,7 +188,6 @@ fn check_branch_protection(repo_path: &Path, workflows: &[(String, String)]) -> 
 
 /// SC-02: No hardcoded secrets in workflow files
 fn check_no_hardcoded_secrets(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let secret_patterns = [
         // API keys and tokens
         "AKIA",           // AWS access key prefix
@@ -238,11 +227,6 @@ fn check_no_hardcoded_secrets(content: &str) -> InfraCheck {
 
 /// SC-03: Dependency review (cargo-deny, dependabot, etc.)
 fn check_dependency_review(content: &str, repo_path: &Path) -> InfraCheck {
-    debug_assert!(
-        repo_path.exists(),
-        "repo_path must exist: {}",
-        repo_path.display()
-    );
     // Check workflow content for dependency review tools
     let dep_review_patterns = [
         "cargo-deny",
@@ -294,7 +278,6 @@ fn check_dependency_review(content: &str, repo_path: &Path) -> InfraCheck {
 
 /// SC-04: SLSA provenance / attestation
 fn check_provenance(content: &str) -> InfraCheck {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let provenance_patterns = [
         "slsa-framework",
         "slsa-verifier",
@@ -327,11 +310,6 @@ fn check_provenance(content: &str) -> InfraCheck {
 
 /// SC-05: Signed commits configuration
 fn check_signed_commits(repo_path: &Path, content: &str) -> InfraCheck {
-    debug_assert!(
-        repo_path.exists(),
-        "repo_path must exist: {}",
-        repo_path.display()
-    );
     // Check for GPG/SSH signing indicators
     if content.contains("verify-signatures")
         || content.contains("gpg")
@@ -563,13 +541,11 @@ const DANGEROUS_PATTERNS: &[&str] = &[
 
 /// Returns true if this line starts a `run:` block.
 fn is_run_block_start(trimmed: &str) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.starts_with("run:") || trimmed.starts_with("- run:")
 }
 
 /// Returns true if this line exits a `run:` block (a non-continuation, non-indented line).
 fn is_run_block_end(trimmed: &str, raw: &str) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     !trimmed.starts_with('-')
         && !trimmed.starts_with('#')
         && !raw.starts_with(' ')
@@ -578,7 +554,6 @@ fn is_run_block_end(trimmed: &str, raw: &str) -> bool {
 
 /// Collect dangerous pattern violations from a single workflow file.
 fn collect_dangerous_violations(name: &str, content: &str, violations: &mut Vec<String>) {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     let mut in_run_block = false;
     for (line_no, line) in content.lines().enumerate() {
         let trimmed = line.trim();
@@ -600,7 +575,6 @@ fn collect_dangerous_violations(name: &str, content: &str, violations: &mut Vec<
 
 /// HD-01: Check for untrusted context interpolation in run: blocks
 fn check_dangerous_workflow(workflows: &[(String, String)]) -> InfraCheck {
-    debug_assert!(!workflows.is_empty(), "workflows must not be empty");
     let mut violations = Vec::new();
 
     for (name, content) in workflows {

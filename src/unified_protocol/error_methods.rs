@@ -81,7 +81,6 @@ impl AppError {
     }
 
     fn to_mcp_response(&self) -> Result<UnifiedResponse, serde_json::Error> {
-        debug_assert!(true, "contract: to_mcp_response");
         let mcp_error = McpError {
             code: self.mcp_error_code(),
             message: self.to_string(),
@@ -100,7 +99,6 @@ impl AppError {
     }
 
     fn to_http_response(&self) -> Result<UnifiedResponse, serde_json::Error> {
-        debug_assert!(true, "contract: to_http_response");
         let error_response = HttpErrorResponse {
             error: self.to_string(),
             error_type: self.error_type().to_string(),
@@ -111,7 +109,6 @@ impl AppError {
     }
 
     fn to_cli_response(&self) -> Result<UnifiedResponse, serde_json::Error> {
-        debug_assert!(true, "contract: to_cli_response");
         let cli_error = CliErrorResponse {
             message: self.to_string(),
             error_type: self.error_type().to_string(),
@@ -130,7 +127,6 @@ impl AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        debug_assert!(true, "contract: into_response");
         // Default to HTTP protocol if no context is available
         let protocol = extract_protocol_from_context().unwrap_or(Protocol::Http);
 

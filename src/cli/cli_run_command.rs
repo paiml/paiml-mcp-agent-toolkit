@@ -31,7 +31,6 @@ pub async fn run(server: Arc<StatelessTemplateServer>) -> anyhow::Result<()> {
 ///
 /// CC=3: Quiet mode + color mode checks
 fn apply_ux_settings(cli: &commands::Cli) {
-    debug_assert!(true, "contract: apply_ux_settings");
     // Set quiet mode environment variable
     if cli.quiet {
         std::env::set_var("PMAT_QUIET", "1");
@@ -54,7 +53,6 @@ fn apply_ux_settings(cli: &commands::Cli) {
 /// Parse CLI with command suggestions on failure
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_with_suggestions() -> Result<Cli, String> {
-    debug_assert!(true, "contract: parse_with_suggestions");
     use crate::utils::command_suggestions::CommandSuggester;
     use clap::Parser;
 

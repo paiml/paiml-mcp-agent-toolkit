@@ -8,7 +8,6 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
         workflow: &Workflow,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
-        debug_assert!(true, "contract: execute");
         context.set_state(WorkflowState::Running);
 
         if let Some(monitor) = &self.monitor {
@@ -55,7 +54,6 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
         step: &WorkflowStep,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
-        debug_assert!(true, "contract: execute_step");
         if let Some(monitor) = &self.monitor {
             monitor
                 .on_step_started(context.execution_id, &step.id)
@@ -111,7 +109,6 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
     }
 
     async fn pause(&self, execution_id: Uuid) -> Result<(), WorkflowError> {
-        debug_assert!(true, "contract: pause");
         let mut states = self.execution_states.write();
         if let Some(state) = states.get_mut(&execution_id) {
             state.control = ExecutionControl::Paused;
@@ -122,7 +119,6 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
     }
 
     async fn resume(&self, execution_id: Uuid) -> Result<(), WorkflowError> {
-        debug_assert!(true, "contract: resume");
         let mut states = self.execution_states.write();
         if let Some(state) = states.get_mut(&execution_id) {
             if state.control == ExecutionControl::Paused {
@@ -139,7 +135,6 @@ impl WorkflowExecutor for DefaultWorkflowExecutor {
     }
 
     async fn cancel(&self, execution_id: Uuid) -> Result<(), WorkflowError> {
-        debug_assert!(true, "contract: cancel");
         let mut states = self.execution_states.write();
         if let Some(state) = states.get_mut(&execution_id) {
             state.control = ExecutionControl::Cancelled;
@@ -156,7 +151,6 @@ impl DefaultWorkflowExecutor {
         workflow: &Workflow,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
-        debug_assert!(true, "contract: execute_workflow_internal");
         // Build DAG for optimal execution ordering
         let dag_engine = super::dag::DagEngine::from_workflow(workflow)?;
         let analysis = dag_engine.analyze()?;
@@ -237,7 +231,6 @@ impl DefaultWorkflowExecutor {
         &self,
         execution_id: Uuid,
     ) -> Result<ExecutionControl, WorkflowError> {
-        debug_assert!(true, "contract: check_execution_control");
         Ok(self
             .execution_states
             .read()
@@ -252,7 +245,6 @@ impl DefaultWorkflowExecutor {
         current_level: usize,
         execution_order: &[Vec<String>],
     ) -> Result<(), WorkflowError> {
-        debug_assert!(true, "contract: save_checkpoint");
         let completed_steps: Vec<String> = execution_order[..current_level]
             .iter()
             .flatten()
@@ -275,7 +267,6 @@ impl DefaultWorkflowExecutor {
         strategy: &ErrorStrategy,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
-        debug_assert!(true, "contract: handle_workflow_error");
         match strategy {
             ErrorStrategy::FailFast => Err(error),
             ErrorStrategy::Continue => Ok(serde_json::json!({ "continued_after_error": true })),

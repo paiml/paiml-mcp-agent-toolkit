@@ -2,7 +2,6 @@ impl QualityCodeGenerator {
     /// Check if function needs decomposition based on complexity
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn needs_decomposition(&self, code: &str) -> Result<bool> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         let complexity = self.estimate_complexity(code);
         Ok(complexity > self.profile.thresholds.max_complexity)
     }
@@ -18,7 +17,6 @@ impl QualityCodeGenerator {
     /// Estimate cyclomatic complexity (simple heuristic for now)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn estimate_complexity(&self, code: &str) -> u32 {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         let if_count = code.matches("if ").count() as u32;
         let match_count = code.matches("match ").count() as u32;
         let loop_count =
@@ -30,7 +28,6 @@ impl QualityCodeGenerator {
     /// Calculate quality score for generated code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_quality_score(&self, code: &str) -> Result<QualityScore> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         let complexity = self.estimate_complexity(code);
         let coverage = 100.0; // Generated code will have full coverage
         let tdg = if complexity <= 5 { 1 } else { complexity / 2 };
@@ -46,7 +43,6 @@ impl QualityCodeGenerator {
     /// Calculate detailed metrics
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_metrics(&self, code: &str, tests: &str) -> Result<QualityMetrics> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         Ok(QualityMetrics {
             complexity: self.estimate_complexity(code),
             cognitive_complexity: self.estimate_complexity(code), // Same for now
@@ -62,8 +58,6 @@ impl QualityCodeGenerator {
     /// Enhance existing code with new features
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn enhance_with_features(&self, base_code: &str, features: &[String]) -> Result<String> {
-        debug_assert!(!base_code.is_empty(), "base_code must not be empty");
-        debug_assert!(!features.is_empty(), "features must not be empty");
         let mut enhanced = base_code.to_string();
 
         for feature in features {
@@ -77,20 +71,17 @@ impl QualityCodeGenerator {
     /// Generate tests for given code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_tests(&self, code: &str) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         self.test_generator.generate_tests(code)
     }
 
     /// Generate documentation for code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_documentation(&self, code: &str) -> Result<String> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         self.doc_generator.generate_documentation(code)
     }
 
     /// Generate code for a specific feature
     fn generate_feature_code(&self, feature: &str) -> Result<String> {
-        debug_assert!(!feature.is_empty(), "feature must not be empty");
         Ok(format!(
             r"
 pub fn {}(&self) -> Result<()> {{

@@ -26,7 +26,6 @@ pub mod complexity_adapter {
     }
 
     async fn process_complexity(_inner: &(), _input: ComplexityInput) -> Result<ComplexityOutput> {
-        debug_assert!(true, "contract: process_complexity");
         // Would call actual complexity analysis here
         Ok(ComplexityOutput {
             metrics: ComplexityMetrics::default(),

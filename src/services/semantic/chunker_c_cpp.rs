@@ -1,6 +1,5 @@
 /// Extract chunks from C code
 fn chunk_c_file(source: &str) -> Result<Vec<CodeChunk>, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let tree = parse_c(source)?;
     let root = tree.root_node();
     let mut chunks = Vec::new();
@@ -13,7 +12,6 @@ fn chunk_c_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 /// Parse C source code
 #[cfg(feature = "c-ast")]
 fn parse_c(source: &str) -> Result<Tree, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut parser = Parser::new();
     parser
         .set_language(&tree_sitter_c::LANGUAGE.into())
@@ -25,13 +23,11 @@ fn parse_c(source: &str) -> Result<Tree, String> {
 
 #[cfg(not(feature = "c-ast"))]
 fn parse_c(_source: &str) -> Result<Tree, String> {
-    debug_assert!(!_source.is_empty(), "_source must not be empty");
     Err("c-ast feature is disabled".to_string())
 }
 
 /// Extract items from C AST
 fn extract_c_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     // Check for function definition
     if node.kind() == "function_definition" {
         if let Some(declarator) = node.child_by_field_name("declarator") {
@@ -95,7 +91,6 @@ fn extract_c_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
 
 /// Extract function name from a C declaration node (prototype)
 fn extract_c_declaration_name(node: Node, source: &str) -> Option<String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let declarator = node.child_by_field_name("declarator")?;
     // declaration -> declarator -> function_declarator -> declarator -> identifier
     find_function_declarator_name(declarator, source)
@@ -104,7 +99,6 @@ fn extract_c_declaration_name(node: Node, source: &str) -> Option<String> {
 
 /// Extract chunks from C++ code
 fn chunk_cpp_file(source: &str) -> Result<Vec<CodeChunk>, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let tree = parse_cpp(source)?;
     let root = tree.root_node();
     let mut chunks = Vec::new();
@@ -117,7 +111,6 @@ fn chunk_cpp_file(source: &str) -> Result<Vec<CodeChunk>, String> {
 /// Parse C++ source code
 #[cfg(feature = "cpp-ast")]
 fn parse_cpp(source: &str) -> Result<Tree, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut parser = Parser::new();
     parser
         .set_language(&tree_sitter_cpp::LANGUAGE.into())
@@ -129,13 +122,11 @@ fn parse_cpp(source: &str) -> Result<Tree, String> {
 
 #[cfg(not(feature = "cpp-ast"))]
 fn parse_cpp(_source: &str) -> Result<Tree, String> {
-    debug_assert!(!_source.is_empty(), "_source must not be empty");
     Err("cpp-ast feature is disabled".to_string())
 }
 
 /// Extract C++ function name from a declarator node
 fn extract_cpp_function_name<'a>(node: Node<'a>, source: &str) -> Option<String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let declarator = node.child_by_field_name("declarator")?;
     let name_node = find_function_declarator_name(declarator, source)?;
     Some(source[name_node.byte_range()].to_string())
@@ -143,7 +134,6 @@ fn extract_cpp_function_name<'a>(node: Node<'a>, source: &str) -> Option<String>
 
 /// Extract items from C++ AST with namespace/class qualification
 fn extract_cpp_items(node: Node, source: &str, chunks: &mut Vec<CodeChunk>) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     extract_cpp_items_qualified(node, source, chunks, &[]);
 }
 
@@ -154,7 +144,6 @@ fn extract_cpp_items_qualified(
     chunks: &mut Vec<CodeChunk>,
     scope: &[String],
 ) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     match node.kind() {
         "namespace_definition" => {
             extract_cpp_namespace(node, source, chunks, scope);
@@ -201,7 +190,6 @@ fn extract_cpp_items_qualified(
 }
 
 fn extract_cpp_namespace(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let ns_name = node
         .child_by_field_name("name")
         .map(|n| source[n.byte_range()].to_string());
@@ -214,7 +202,6 @@ fn extract_cpp_namespace(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, 
 }
 
 fn extract_cpp_class(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let Some(name_node) = node.child_by_field_name("name") else { return };
     let bare_name = source[name_node.byte_range()].to_string();
     let qualified = qualify_name(scope, &bare_name);
@@ -229,7 +216,6 @@ fn extract_cpp_class(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scop
 }
 
 fn extract_cpp_func_def(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let Some(bare_name) = extract_cpp_function_name(node, source) else { return };
     let qualified = qualify_name(scope, &bare_name);
     let start_byte = find_doc_comment_start(node, source);
@@ -241,7 +227,6 @@ fn extract_cpp_func_def(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, s
 }
 
 fn extract_cpp_template(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     // Extract template parameter list for tracking (e.g., "<typename T, int N>")
     let template_params = extract_template_params(node, source);
 
@@ -275,7 +260,6 @@ fn extract_cpp_template(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, s
 /// Extract template parameter names from a template_declaration node.
 /// Returns e.g., "T, N" from "template<typename T, int N>".
 fn extract_template_params(node: Node, source: &str) -> String {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "template_parameter_list" {
@@ -299,7 +283,6 @@ fn extract_template_params(node: Node, source: &str) -> String {
 }
 
 fn recurse_children(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope: &[String]) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         extract_cpp_items_qualified(child, source, chunks, scope);
@@ -308,7 +291,6 @@ fn recurse_children(node: Node, source: &str, chunks: &mut Vec<CodeChunk>, scope
 
 /// Build a qualified name from scope segments
 fn qualify_name(scope: &[String], name: &str) -> String {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     if scope.is_empty() {
         name.to_string()
     } else {
@@ -318,7 +300,6 @@ fn qualify_name(scope: &[String], name: &str) -> String {
 
 /// Extract function name from a C++ declaration node (prototype) with scope qualification
 fn extract_cpp_declaration_name(node: Node, source: &str, scope: &[String]) -> Option<String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let declarator = node.child_by_field_name("declarator")?;
     let name_node = find_function_declarator_name(declarator, source)?;
     let bare_name = source[name_node.byte_range()].to_string();

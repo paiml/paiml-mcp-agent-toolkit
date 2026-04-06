@@ -46,7 +46,6 @@ enum PanelId {
 #[cfg(feature = "tui")]
 impl PanelId {
     fn next(self) -> Self {
-        debug_assert!(true, "contract: next");
         match self {
             Self::FileTree => Self::Analysis,
             Self::Analysis => Self::Dag,
@@ -69,7 +68,6 @@ struct TuiState {
 #[cfg(feature = "tui")]
 impl TuiState {
     fn cycle_panel(&mut self) {
-        debug_assert!(true, "contract: cycle_panel");
         self.selected_panel = self.selected_panel.next();
     }
 }
@@ -301,17 +299,14 @@ impl DemoProtocol for TuiDemoAdapter {
     type Error = TuiDemoError;
 
     async fn decode_request(&self, raw: &[u8]) -> Result<Self::Request, Self::Error> {
-        debug_assert!(!raw.is_empty(), "raw must not be empty");
         serde_json::from_slice(raw).map_err(|e| TuiDemoError::Init(e.to_string()))
     }
 
     async fn encode_response(&self, resp: Self::Response) -> Result<Vec<u8>, Self::Error> {
-        debug_assert!(true, "contract: encode_response");
         serde_json::to_vec(&resp).map_err(|e| TuiDemoError::Render(e.to_string()))
     }
 
     async fn get_protocol_metadata(&self) -> ProtocolMetadata {
-        debug_assert!(true, "contract: get_protocol_metadata");
         ProtocolMetadata {
             name: "tui",
             version: "2.0.0",
@@ -329,7 +324,6 @@ impl DemoProtocol for TuiDemoAdapter {
     }
 
     async fn execute_demo(&self, request: Self::Request) -> Result<Self::Response, Self::Error> {
-        debug_assert!(true, "contract: execute_demo");
         Ok(TuiResponse {
             success: true,
             message: format!("Executed demo action: {}", request.action),

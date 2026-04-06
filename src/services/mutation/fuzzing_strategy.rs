@@ -32,7 +32,6 @@ impl FuzzMutationStrategy {
     /// Generate random inputs
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_inputs(&self, count: usize) -> Vec<Vec<u8>> {
-        debug_assert!(count > 0, "count must be positive");
         use rand::Rng;
         let mut rng = rand::rng();
 
@@ -47,7 +46,6 @@ impl FuzzMutationStrategy {
     /// Generate grammar-based inputs for specific format
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_grammar_based_inputs(&self, count: usize, _format: &str) -> Vec<Vec<u8>> {
-        debug_assert!(count > 0, "count must be positive");
         // Minimal implementation: generate simple JSON structures
         (0..count)
             .map(|i| {
@@ -187,7 +185,6 @@ impl FuzzMutationStrategy {
     /// Execute fuzzing from source code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_from_source(&self, source: &str) -> Result<FuzzMutationReport> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         use std::time::Instant;
 
         let start = Instant::now();
@@ -235,7 +232,6 @@ impl FuzzMutationStrategy {
         source: &str,
         workers: usize,
     ) -> Result<FuzzMutationReport> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         use std::sync::Arc;
         use std::time::Instant;
         use tokio::sync::Semaphore;

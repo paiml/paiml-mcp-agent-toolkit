@@ -4,7 +4,6 @@ pub async fn analyze_project_with_persistent_cache(
     toolchain: &str,
     cache_manager: Option<Arc<PersistentCacheManager>>,
 ) -> Result<ProjectContext, TemplateError> {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let gitignore = build_gitignore(root_path)?;
     let files =
         scan_and_analyze_files_persistent(root_path, toolchain, cache_manager, &gitignore).await;
@@ -24,7 +23,6 @@ async fn scan_and_analyze_files_persistent(
     cache_manager: Option<Arc<PersistentCacheManager>>,
     gitignore: &ignore::gitignore::Gitignore,
 ) -> Vec<FileContext> {
-    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     // FIXED: Add same depth and file limits as non-persistent version
     const MAX_DEPTH: usize = 10; // Prevent infinite recursion
     const MAX_FILES: usize = 10000; // Prevent resource exhaustion
@@ -76,7 +74,6 @@ async fn analyze_file_by_toolchain_persistent(
     _toolchain: &str,
     cache_manager: Option<Arc<PersistentCacheManager>>,
 ) -> Option<FileContext> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // FIXED: Analyze files by extension, not by toolchain
     // This enables multi-language project analysis for ALL 20+ supported languages
     let ext = path.extension().and_then(|s| s.to_str())?;

@@ -12,7 +12,6 @@ struct AnalyzeComplexityArgs {
 }
 
 fn parse_complexity_args(arguments: serde_json::Value) -> Result<AnalyzeComplexityArgs, String> {
-    debug_assert!(true, "contract: parse_complexity_args");
     serde_json::from_value(arguments)
         .map_err(|e| format!("Invalid analyze_complexity arguments: {e}"))
 }
@@ -24,7 +23,6 @@ struct ComplexityAnalysisContext {
 }
 
 fn prepare_complexity_analysis(args: &AnalyzeComplexityArgs) -> ComplexityAnalysisContext {
-    debug_assert!(true, "contract: prepare_complexity_analysis");
     let project_path = resolve_project_path_complexity(args.project_path.clone());
     let toolchain = detect_toolchain(&args.toolchain, &project_path);
     let thresholds = build_complexity_thresholds(args);
@@ -41,7 +39,6 @@ async fn perform_complexity_analysis(
     context: &ComplexityAnalysisContext,
     args: &AnalyzeComplexityArgs,
 ) -> (crate::services::complexity::ComplexityReport, usize) {
-    debug_assert!(true, "contract: perform_complexity_analysis");
     use crate::services::complexity::aggregate_results;
 
     let (file_metrics, file_count) =
@@ -56,7 +53,6 @@ fn generate_complexity_content(
     file_metrics: &[crate::services::complexity::FileComplexityMetrics],
     args: &AnalyzeComplexityArgs,
 ) -> String {
-    debug_assert!(true, "contract: generate_complexity_content");
     if let Some(top_files_count) = args.top_files {
         if top_files_count > 0 {
             generate_ranked_content(file_metrics, top_files_count, args)
@@ -73,7 +69,6 @@ fn generate_ranked_content(
     top_files_count: usize,
     args: &AnalyzeComplexityArgs,
 ) -> String {
-    debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     use crate::services::ranking::{rank_files_by_complexity, ComplexityRanker};
 
     let ranker = ComplexityRanker::default();
@@ -89,7 +84,6 @@ fn build_complexity_response(
     file_count: usize,
     args: &AnalyzeComplexityArgs,
 ) -> McpResponse {
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     let result = json!({
         "content": [{
             "type": "text",
@@ -109,7 +103,6 @@ async fn handle_analyze_complexity(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_analyze_complexity");
     let args = match parse_complexity_args(arguments) {
         Ok(args) => args,
         Err(e) => return McpResponse::error(request_id, -32602, e),
@@ -146,7 +139,6 @@ fn resolve_project_path_complexity(project_path_arg: Option<String>) -> PathBuf 
 }
 
 fn detect_toolchain(toolchain_arg: &Option<String>, project_path: &Path) -> String {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if let Some(t) = toolchain_arg {
         t.clone()
     } else if project_path.join("Cargo.toml").exists() {
@@ -166,7 +158,6 @@ fn detect_toolchain(toolchain_arg: &Option<String>, project_path: &Path) -> Stri
 fn build_complexity_thresholds(
     args: &AnalyzeComplexityArgs,
 ) -> crate::services::complexity::ComplexityThresholds {
-    debug_assert!(true, "contract: build_complexity_thresholds");
     use crate::services::complexity::ComplexityThresholds;
 
     let mut thresholds = ComplexityThresholds::default();
@@ -189,7 +180,6 @@ async fn analyze_project_files(
     Vec<crate::services::complexity::FileComplexityMetrics>,
     usize,
 ) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::file_discovery::ProjectFileDiscovery;
 
     let mut file_metrics = Vec::with_capacity(256);
@@ -225,7 +215,6 @@ async fn analyze_project_files(
 }
 
 fn should_analyze_file(path: &Path, toolchain: &str) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     match toolchain {
         "rust" => path.extension().and_then(|s| s.to_str()) == Some("rs"),
         "deno" => matches!(
@@ -238,7 +227,6 @@ fn should_analyze_file(path: &Path, toolchain: &str) -> bool {
 }
 
 fn matches_include_filters(path: &Path, include_patterns: &Option<Vec<String>>) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let Some(ref patterns) = include_patterns else {
         return true;
     };
@@ -254,7 +242,6 @@ fn matches_include_filters(path: &Path, include_patterns: &Option<Vec<String>>) 
 }
 
 fn matches_pattern(path_str: &str, pattern: &str) -> bool {
-    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     if pattern.contains("**") {
         // Match any path containing the pattern after **
         let parts: Vec<&str> = pattern.split("**").collect();
@@ -276,7 +263,6 @@ async fn analyze_file_complexity(
     path: &Path,
     toolchain: &str,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     match toolchain {
         "rust" => {
             use crate::services::ast_rust;
@@ -312,7 +298,6 @@ fn format_complexity_output(
     report: &crate::services::complexity::ComplexityReport,
     args: &AnalyzeComplexityArgs,
 ) -> String {
-    debug_assert!(true, "contract: format_complexity_output");
     use crate::services::complexity::{
         format_as_sarif, format_complexity_report, format_complexity_summary,
     };
@@ -333,7 +318,6 @@ fn format_complexity_rankings(
     rankings: &[(String, crate::services::ranking::CompositeComplexityScore)],
     args: &AnalyzeComplexityArgs,
 ) -> String {
-    debug_assert!(!rankings.is_empty(), "rankings must not be empty");
     use crate::services::ranking::{ComplexityRanker, FileRanker};
 
     let format = args.format.as_deref().unwrap_or("summary");

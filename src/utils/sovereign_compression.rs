@@ -38,7 +38,6 @@ struct CompressionHeader {
 #[cfg(feature = "sovereign-compression")]
 impl CompressionHeader {
     fn encode(&self) -> Vec<u8> {
-        debug_assert!(true, "contract: encode");
         let mut result = Vec::with_capacity(12 + self.page_sizes.len() * 4);
         result.extend_from_slice(&MAGIC);
         result.extend_from_slice(&self.original_len.to_le_bytes());
@@ -50,7 +49,6 @@ impl CompressionHeader {
     }
 
     fn decode(data: &[u8]) -> io::Result<(Self, usize)> {
-        debug_assert!(!data.is_empty(), "data must not be empty");
         if data.len() < 12 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -111,7 +109,6 @@ impl CompressionHeader {
 #[cfg(feature = "sovereign-compression")]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
-    debug_assert!(!input.is_empty(), "input must not be empty");
     use trueno_zram_core::lz4;
 
     if input.is_empty() {
@@ -163,7 +160,6 @@ pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
 #[cfg(feature = "sovereign-compression")]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn decompress(input: &[u8]) -> io::Result<Vec<u8>> {
-    debug_assert!(!input.is_empty(), "input must not be empty");
     use trueno_zram_core::lz4;
 
     let (header, header_size) = CompressionHeader::decode(input)?;
@@ -209,7 +205,6 @@ pub fn decompress(input: &[u8]) -> io::Result<Vec<u8>> {
 #[cfg(not(feature = "sovereign-compression"))]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
-    debug_assert!(!input.is_empty(), "input must not be empty");
     Ok(lz4_flex::compress_prepend_size(input))
 }
 
@@ -217,7 +212,6 @@ pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
 #[cfg(not(feature = "sovereign-compression"))]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn decompress(input: &[u8]) -> io::Result<Vec<u8>> {
-    debug_assert!(!input.is_empty(), "input must not be empty");
     lz4_flex::decompress_size_prepended(input)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))
 }

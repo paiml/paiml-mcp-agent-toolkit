@@ -6,7 +6,6 @@ fn format_text(
     recommendations: &[String],
     verbose: bool,
 ) -> String {
-    debug_assert!(!recommendations.is_empty(), "recommendations must not be empty");
     // GH-46: --verbose not yet implemented for project score text output
     if verbose {
         eprintln!("Warning: --verbose is not yet implemented for project score text output. Flag ignored.");
@@ -107,7 +106,6 @@ fn format_markdown(
     recommendations: &[String],
     verbose: bool,
 ) -> String {
-    debug_assert!(!recommendations.is_empty(), "recommendations must not be empty");
     // GH-46: --verbose not yet implemented for project score markdown output
     if verbose {
         eprintln!("Warning: --verbose is not yet implemented for project score markdown output. Flag ignored.");

@@ -1,6 +1,5 @@
 /// Linear interpolation for empirical CDF lookup
 fn interpolate_cdf(percentiles: &[(f32, f32)], value: f32) -> f32 {
-    debug_assert!(true, "contract: interpolate_cdf");
     if value <= percentiles[0].0 {
         return percentiles[0].1;
     }
@@ -36,7 +35,6 @@ impl ProjectDefectAnalysis {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_scores(scores: Vec<(String, DefectScore)>) -> Self {
-        debug_assert!(!scores.is_empty(), "scores must not be empty");
         let mut file_scores = HashMap::new();
         let mut high_risk_files = Vec::new();
         let mut medium_risk_files = Vec::new();
@@ -86,7 +84,6 @@ impl ProjectDefectAnalysis {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_top_risk_files(&self, limit: usize) -> Vec<(&String, &DefectScore)> {
-        debug_assert!(limit > 0, "limit must be positive");
         let mut all_files: Vec<_> = self.file_scores.iter().collect();
         all_files.sort_by(|a, b| {
             b.1.probability

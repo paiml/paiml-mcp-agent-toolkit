@@ -32,7 +32,6 @@ impl SpecParser {
     /// Parse a specification file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn parse_file(&self, path: &Path) -> Result<ParsedSpec> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read specification: {}", path.display()))?;
 
@@ -46,8 +45,6 @@ impl SpecParser {
         code_start_line: usize,
         spec: &mut ParsedSpec,
     ) {
-        debug_assert!(!code_lang.is_empty(), "code_lang must not be empty");
-        debug_assert!(!code_content.is_empty(), "code_content must not be empty");
         let is_executable = matches!(
             code_lang,
             "bash" | "sh" | "shell" | "rust" | "python" | "typescript" | "javascript"
@@ -78,8 +75,6 @@ impl SpecParser {
 
     /// Extract checkbox items as acceptance criteria and claims
     fn extract_checkbox(&self, line: &str, line_num: usize, section: &str, spec: &mut ParsedSpec) {
-        debug_assert!(!line.is_empty(), "line must not be empty");
-        debug_assert!(!section.is_empty(), "section must not be empty");
         if let Some(caps) = self.checkbox_regex.captures(line) {
             let checked = caps.get(1).map(|m| m.as_str()) == Some("x")
                 || caps.get(1).map(|m| m.as_str()) == Some("X");
@@ -110,7 +105,6 @@ impl SpecParser {
 
     /// Extract falsification condition claims from bullet points
     fn extract_falsification(line: &str, line_num: usize, spec: &mut ParsedSpec) {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.starts_with("- ") && line.to_lowercase().contains("falsified") {
             let claim_text = line.trim_start_matches("- ").trim().to_string();
             spec.claims.push(ValidationClaim {
@@ -127,8 +121,6 @@ impl SpecParser {
 
     /// Extract documentation requirement claims from doc sections
     fn extract_doc_requirement(line: &str, line_num: usize, section: &str, spec: &mut ParsedSpec) {
-        debug_assert!(!line.is_empty(), "line must not be empty");
-        debug_assert!(!section.is_empty(), "section must not be empty");
         let section_lower = section.to_lowercase();
         let is_doc_section =
             section_lower.contains("documentation") || section_lower.contains("open science");
@@ -150,7 +142,6 @@ impl SpecParser {
 
     /// Check if a claim text is automatable
     fn is_automatable(claim_text: &str) -> bool {
-        debug_assert!(!claim_text.is_empty(), "claim_text must not be empty");
         let lower = claim_text.to_lowercase();
         lower.contains("pmat ")
             || lower.contains("cargo ")
@@ -175,8 +166,6 @@ impl SpecParser {
         section: &str,
         spec: &mut ParsedSpec,
     ) {
-        debug_assert!(!line.is_empty(), "line must not be empty");
-        debug_assert!(!section.is_empty(), "section must not be empty");
         if let Some(caps) = self.claim_regex.captures(line) {
             let verb = caps
                 .get(1)
@@ -209,7 +198,6 @@ impl SpecParser {
 
     /// Classify test type from line content
     fn classify_test_type(lower: &str) -> &'static str {
-        debug_assert!(!lower.is_empty(), "lower must not be empty");
         if lower.contains("unit") {
             "unit"
         } else if lower.contains("integration") {
@@ -225,7 +213,6 @@ impl SpecParser {
 
     /// Extract test requirements from a line
     fn extract_test_req(&self, line: &str, spec: &mut ParsedSpec) {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let lower = line.to_lowercase();
         let has_test = lower.contains("test");
         let has_obligation =
@@ -242,7 +229,6 @@ impl SpecParser {
     /// Parse specification content
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn parse_content(&self, content: &str, path: &Path) -> Result<ParsedSpec> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut spec = ParsedSpec {
             path: path.to_path_buf(),
             title: String::new(),
@@ -339,7 +325,6 @@ impl SpecParser {
 
     /// Parse YAML frontmatter
     fn parse_frontmatter(&self, frontmatter: &str, spec: &mut ParsedSpec) {
-        debug_assert!(!frontmatter.is_empty(), "frontmatter must not be empty");
         // Simple key: value parsing (not full YAML)
         for line in frontmatter.lines() {
             if let Some((key, value)) = line.split_once(':') {
@@ -374,7 +359,6 @@ impl SpecParser {
 
     /// Extract a validation command from claim text
     fn extract_validation_command(&self, text: &str) -> Option<String> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         // Look for `command` patterns
         let cmd_regex = Regex::new(r"`([^`]+)`").ok()?;
         for caps in cmd_regex.captures_iter(text) {
@@ -401,7 +385,6 @@ impl SpecParser {
 
     /// Extract code path from text
     fn extract_code_path(&self, text: &str) -> Option<String> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         let path_regex = Regex::new(r"(?:`([^`]+\.[a-z]+)`|(\S+\.[a-z]+))").ok()?;
         for caps in path_regex.captures_iter(text) {
             let path = caps.get(1).or_else(|| caps.get(2))?.as_str();
@@ -414,8 +397,6 @@ impl SpecParser {
 
     /// Content-based claim categorization (more accurate than section-based)
     fn categorize_claim(claim_text: &str, section: &str) -> ClaimCategory {
-        debug_assert!(!claim_text.is_empty(), "claim_text must not be empty");
-        debug_assert!(!section.is_empty(), "section must not be empty");
         let lower = claim_text.to_lowercase();
         let section_lower = section.to_lowercase();
 
@@ -481,7 +462,6 @@ impl SpecParser {
     /// Find all specifications in a directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn find_specs(&self, dir: &Path) -> Result<Vec<PathBuf>> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut specs = Vec::new();
 
         if dir.is_file() {

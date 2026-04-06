@@ -21,7 +21,6 @@ pub trait MutationOperator: Send + Sync {
 
     /// Estimated kill probability (0.0 - 1.0)
     fn kill_probability(&self) -> f64 {
-        debug_assert!(true, "contract: name");
         0.5 // Default 50%
     }
 }

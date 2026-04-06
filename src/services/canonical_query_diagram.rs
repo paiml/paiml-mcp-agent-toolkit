@@ -6,7 +6,6 @@ fn generate_styled_architecture_diagram(
     edges: &[ComponentEdge],
     metrics: &FxHashMap<String, ComponentMetrics>,
 ) -> Result<String> {
-    debug_assert!(!edges.is_empty(), "edges must not be empty");
     let mut diagram = String::from("graph TD\n");
 
     render_component_nodes(&mut diagram, components, metrics);
@@ -29,7 +28,6 @@ fn render_component_nodes(
     components: &[Component],
     metrics: &FxHashMap<String, ComponentMetrics>,
 ) {
-    debug_assert!(true, "contract: render_component_nodes");
     for component in components {
         let complexity_class = if let Some(m) = metrics.get(&component.id) {
             match m.avg_complexity {
@@ -50,7 +48,6 @@ fn render_component_nodes(
 }
 
 fn render_component_edges(diagram: &mut String, edges: &[ComponentEdge]) {
-    debug_assert!(!edges.is_empty(), "edges must not be empty");
     for edge in edges {
         let edge_class = match edge.weight {
             w if w > 10 => "strong-coupling",
@@ -81,7 +78,6 @@ fn render_component_edges(diagram: &mut String, edges: &[ComponentEdge]) {
 // Helper functions
 
 fn sanitize_component_id(name: &str) -> String {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     name.chars()
         .map(|c| if c.is_alphanumeric() { c } else { '_' })
         .collect::<String>()
@@ -90,7 +86,6 @@ fn sanitize_component_id(name: &str) -> String {
 }
 
 fn humanize_component_name(name: &str) -> String {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     name.split('_')
         .map(|part| {
             let mut chars = part.chars();
@@ -107,7 +102,6 @@ fn collect_component_nodes(
     dag: &crate::models::dag::DependencyGraph,
     module_name: &str,
 ) -> Vec<String> {
-    debug_assert!(!module_name.is_empty(), "module_name must not be empty");
     dag.nodes
         .iter()
         .filter(|(node_id, _)| node_id.starts_with(module_name))
@@ -119,13 +113,11 @@ fn merge_coupled_components(
     _components: &mut [Component],
     _dag: &crate::models::dag::DependencyGraph,
 ) {
-    debug_assert!(true, "contract: merge_coupled_components");
     // TRACKED: Implement coupling analysis and merge highly coupled components
     // For now, this is a placeholder
 }
 
 fn calculate_graph_diameter(_components: &[Component], _edges: &[ComponentEdge]) -> usize {
-    debug_assert!(true, "contract: calculate_graph_diameter");
     // TRACKED: Implement graph diameter calculation
     // For now, return a placeholder value
     5

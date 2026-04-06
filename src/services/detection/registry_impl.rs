@@ -37,7 +37,6 @@ impl DetectionRegistry {
             >,
         >,
     ) {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.detectors.insert(name.to_string(), detector);
     }
 
@@ -55,7 +54,6 @@ impl DetectionRegistry {
             >,
         >,
     > {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.detectors.get(name).cloned()
     }
 
@@ -76,7 +74,6 @@ impl DetectionRegistry {
         input: DetectionInput,
         config: DetectionConfig,
     ) -> Result<DetectionOutput> {
-        debug_assert!(!detector_name.is_empty(), "detector_name must not be empty");
         if let Some(detector) = self.get_detector(detector_name) {
             detector.detect(input, config).await
         } else {

@@ -32,7 +32,6 @@ impl Default for GitCloneTool {
 #[async_trait]
 impl ToolHandler for GitCloneTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling git.clone with args: {}", args);
 
         let params: GitCloneArgs = serde_json::from_value(args)
@@ -82,7 +81,6 @@ impl Default for GitStatusTool {
 #[async_trait]
 impl ToolHandler for GitStatusTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling git.status with args: {}", args);
 
         let params: GitStatusArgs = serde_json::from_value(args)

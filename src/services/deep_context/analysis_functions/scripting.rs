@@ -22,11 +22,6 @@ use super::metrics::TYPESCRIPT_UNIFIED_CACHE;
 pub async fn analyze_typescript_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     // Use unified analyzer for single-pass parsing
     let analyzer = UnifiedTypeScriptAnalyzer::new(file_path.to_path_buf());
     let analysis = analyzer
@@ -47,11 +42,6 @@ pub async fn analyze_typescript_language(
 pub async fn analyze_python_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     // Use unified analyzer for single-pass parsing
     let analyzer = UnifiedPythonAnalyzer::new(file_path.to_path_buf());
     let analysis = analyzer
@@ -70,11 +60,6 @@ pub async fn analyze_python_language(
 pub async fn analyze_python_language(
     _file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     // python-ast feature is disabled
     Ok(Vec::new())
 }
@@ -86,11 +71,6 @@ pub async fn analyze_python_language(
 pub async fn analyze_bash_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     tracing::debug!("Analyzing Bash script file: {}", file_path.display());
 
     // Use unified analyzer for single parse pass
@@ -116,11 +96,6 @@ pub async fn analyze_bash_language(
 pub async fn analyze_bash_language(
     _file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     // shell-ast feature is disabled
     Ok(Vec::new())
 }
@@ -130,11 +105,6 @@ pub async fn analyze_bash_language(
 pub async fn analyze_ruby_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     analyze_ruby_file(file_path).await
 }
 
@@ -144,11 +114,6 @@ pub async fn analyze_ruby_language(
 pub async fn analyze_lua_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     use crate::services::context::AstItem;
 
     let content = tokio::fs::read_to_string(file_path).await?;
@@ -207,11 +172,6 @@ pub async fn analyze_lua_language(
 pub async fn analyze_lua_language(
     _file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     Ok(Vec::new())
 }
 
@@ -220,11 +180,6 @@ pub async fn analyze_lua_language(
 pub async fn analyze_elixir_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     analyze_elixir_file(file_path).await
 }
 
@@ -233,11 +188,6 @@ pub async fn analyze_elixir_language(
 pub async fn analyze_erlang_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     analyze_erlang_file(file_path).await
 }
 
@@ -246,11 +196,6 @@ pub async fn analyze_erlang_language(
 pub async fn analyze_haskell_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     analyze_haskell_file(file_path).await
 }
 
@@ -259,11 +204,6 @@ pub async fn analyze_haskell_language(
 pub async fn analyze_ocaml_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     analyze_ocaml_file(file_path).await
 }
 
@@ -274,11 +214,6 @@ pub async fn analyze_ocaml_language(
 async fn analyze_typescript_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     #[cfg(feature = "typescript-ast")]
     {
         use crate::services::ast_typescript::analyze_typescript_file as analyze_ts;
@@ -297,11 +232,6 @@ async fn analyze_typescript_file(
 async fn analyze_python_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     #[cfg(feature = "python-ast")]
     {
         use crate::services::ast_python::analyze_python_file_with_classifier;
@@ -320,11 +250,6 @@ async fn analyze_python_file(
 async fn analyze_bash_file(
     file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     use crate::services::languages::bash::BashScriptAnalyzer;
     use std::fs;
 
@@ -345,11 +270,6 @@ async fn analyze_bash_file(
 async fn analyze_bash_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     // shell-ast feature is disabled
     Ok(Vec::new())
 }
@@ -358,11 +278,6 @@ async fn analyze_bash_file(
 async fn analyze_ruby_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     #[cfg(feature = "ruby-ast")]
     {
         // Tree-sitter Ruby analyzer not yet available; falls back to ruchy
@@ -387,11 +302,6 @@ async fn analyze_ruby_file(
 async fn analyze_elixir_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     // Feature removed - was unimplemented stub
     Ok(Vec::new())
 }
@@ -401,11 +311,6 @@ async fn analyze_elixir_file(
 async fn analyze_erlang_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     // Feature removed - was unimplemented stub
     Ok(Vec::new())
 }
@@ -415,11 +320,6 @@ async fn analyze_erlang_file(
 async fn analyze_haskell_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     // Feature removed - was unimplemented stub
     Ok(Vec::new())
 }
@@ -429,11 +329,6 @@ async fn analyze_haskell_file(
 async fn analyze_ocaml_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
-    debug_assert!(
-        _file_path.exists(),
-        "_file_path must exist: {}",
-        _file_path.display()
-    );
     // Feature removed - was unimplemented stub
     Ok(Vec::new())
 }

@@ -28,11 +28,6 @@ impl EnhancedPythonVisitor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path, source: &str) -> Self {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
@@ -53,7 +48,6 @@ impl EnhancedPythonVisitor {
 
     /// Gets the current qualified name for a symbol
     fn get_qualified_name(&self, name: &str) -> String {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let mut parts = Vec::new();
 
         // Add module path
@@ -69,13 +63,11 @@ impl EnhancedPythonVisitor {
 
     /// Gets line number from tree-sitter node
     fn get_line(&self, node: &Node) -> usize {
-        debug_assert!(true, "contract: get_line");
         node.start_position().row + 1
     }
 
     /// Visits a tree-sitter node
     fn visit_node(&mut self, node: &Node) {
-        debug_assert!(true, "contract: visit_node");
         match node.kind() {
             "function_definition" => self.visit_function_def(node),
             "class_definition" => self.visit_class_def(node),
@@ -91,7 +83,6 @@ impl EnhancedPythonVisitor {
 
     /// Visits function definition
     fn visit_function_def(&mut self, node: &Node) {
-        debug_assert!(true, "contract: visit_function_def");
         // Extract function name
         if let Some(name_node) = node.child_by_field_name("name") {
             let name = &self.source[name_node.byte_range()];
@@ -120,7 +111,6 @@ impl EnhancedPythonVisitor {
 
     /// Visits class definition
     fn visit_class_def(&mut self, node: &Node) {
-        debug_assert!(true, "contract: visit_class_def");
         // Extract class name
         if let Some(name_node) = node.child_by_field_name("name") {
             let name = &self.source[name_node.byte_range()];

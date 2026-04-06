@@ -328,7 +328,6 @@ pub(super) fn apply_result_filters_coverage(
 
 /// Check if a file path belongs to a test fixture directory (not real project code).
 fn is_test_fixture_path(path: &str) -> bool {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     path.contains("comprehensive_language_test/")
         || path.contains("fixtures/")
         || path.contains("test_fixtures/")

@@ -29,7 +29,6 @@ impl QueryCodeToolAdapter {
 #[async_trait]
 impl McpTool for QueryCodeToolAdapter {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -49,7 +48,6 @@ impl McpTool for QueryCodeToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -80,7 +78,6 @@ impl GetFunctionToolAdapter {
 #[async_trait]
 impl McpTool for GetFunctionToolAdapter {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -100,7 +97,6 @@ impl McpTool for GetFunctionToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -131,7 +127,6 @@ impl FindSimilarToolAdapter {
 #[async_trait]
 impl McpTool for FindSimilarToolAdapter {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -151,7 +146,6 @@ impl McpTool for FindSimilarToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -182,7 +176,6 @@ impl IndexStatsToolAdapter {
 #[async_trait]
 impl McpTool for IndexStatsToolAdapter {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -202,7 +195,6 @@ impl McpTool for IndexStatsToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
 
         self.inner

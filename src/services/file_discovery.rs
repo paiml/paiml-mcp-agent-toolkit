@@ -115,7 +115,6 @@ impl ProjectFileDiscovery {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(root: PathBuf) -> Self {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         Self {
             root,
             config: FileDiscoveryConfig::default(),

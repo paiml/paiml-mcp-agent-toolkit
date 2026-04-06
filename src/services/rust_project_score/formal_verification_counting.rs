@@ -4,7 +4,6 @@
 impl FormalVerificationScorer {
     /// Check if Miri is available
     fn is_miri_available(&self) -> bool {
-        debug_assert!(true, "contract: is_miri_available");
         Command::new("cargo")
             .args(["miri", "--version"])
             .output()
@@ -14,7 +13,6 @@ impl FormalVerificationScorer {
 
     /// Check if Kani is available
     fn is_kani_available(&self) -> bool {
-        debug_assert!(true, "contract: is_kani_available");
         Command::new("cargo")
             .args(["kani", "--version"])
             .output()
@@ -34,7 +32,6 @@ impl FormalVerificationScorer {
 
     /// Count unsafe blocks in the project
     fn count_unsafe_blocks(&self, project_path: &Path, cache: Option<&FileCache>) -> usize {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let unsafe_pattern = Regex::new(r"\bunsafe\s*\{").expect("internal error");
         let mut count = 0;
         let src_path = project_path.join("src");
@@ -63,7 +60,6 @@ impl FormalVerificationScorer {
 
     /// Check for Kani proofs in the project
     fn count_kani_proofs(&self, project_path: &Path, cache: Option<&FileCache>) -> usize {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Look for #[kani::proof] attributes
         let proof_pattern = Regex::new(r"#\[kani::proof\]").expect("internal error");
         let mut count = 0;
@@ -95,7 +91,6 @@ impl FormalVerificationScorer {
     /// `spec fn`). Does NOT count `#[requires]`/`#[ensures]` — those are
     /// provable-contracts macros, scored separately under contract coverage.
     fn count_verus_specs(&self, project_path: &Path, cache: Option<&FileCache>) -> usize {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Only count Verus-specific constructs, NOT provable-contracts macros
         let spec_pattern = Regex::new(r"#\[(decreases|recommends)\s*\(|(?:proof|spec)\s+fn\s")
             .expect("internal error");
@@ -126,7 +121,6 @@ impl FormalVerificationScorer {
     /// These represent provable-contracts enforcement — YAML-driven
     /// assertions backed by Lean proofs and Kani harnesses.
     fn count_contract_macros(&self, project_path: &Path, cache: Option<&FileCache>) -> usize {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let pattern = Regex::new(r#"#\[(?:provable_contracts_macros::)?contract\("#)
             .expect("internal error");
         let mut count = 0;
@@ -155,7 +149,6 @@ impl FormalVerificationScorer {
     /// Check for vstd dependency in Cargo.toml (indicates Verus project)
     #[allow(dead_code)]
     fn has_vstd_dependency(&self, project_path: &Path) -> bool {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml = project_path.join("Cargo.toml");
         if let Ok(content) = std::fs::read_to_string(cargo_toml) {
             // Check for vstd or builtin dependencies (Verus standard library)

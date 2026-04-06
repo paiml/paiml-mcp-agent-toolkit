@@ -43,7 +43,6 @@ impl InMemoryWorkflowRepository {
 #[async_trait]
 impl WorkflowRepository for InMemoryWorkflowRepository {
     async fn save(&self, workflow: &Workflow) -> Result<(), WorkflowError> {
-        debug_assert!(true, "contract: save");
         self.workflows.write().insert(workflow.id, workflow.clone());
         self.name_index
             .write()
@@ -52,12 +51,10 @@ impl WorkflowRepository for InMemoryWorkflowRepository {
     }
 
     async fn get(&self, id: Uuid) -> Result<Option<Workflow>, WorkflowError> {
-        debug_assert!(true, "contract: get");
         Ok(self.workflows.read().get(&id).cloned())
     }
 
     async fn list(&self) -> Result<Vec<Workflow>, WorkflowError> {
-        debug_assert!(true, "contract: list");
         Ok(self.workflows.read().values().cloned().collect())
     }
 
@@ -69,7 +66,6 @@ impl WorkflowRepository for InMemoryWorkflowRepository {
     }
 
     async fn get_by_name(&self, name: &str) -> Result<Option<Workflow>, WorkflowError> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = self.name_index.read().get(name).copied();
         if let Some(id) = id {
             self.get(id).await

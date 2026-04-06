@@ -17,7 +17,6 @@ impl QualityMonitor {
     #[cfg(feature = "watch")]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         info!("Starting quality monitoring for: {:?}", path);
 
         // Create file system watcher
@@ -54,7 +53,6 @@ impl QualityMonitor {
     #[cfg(not(feature = "watch"))]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         info!(
             "Starting quality monitoring for: {:?} (watch disabled)",
             path
@@ -75,7 +73,6 @@ impl QualityMonitor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_metrics(&self, path: &Path) -> Option<Metrics> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.metrics.get(path).map(|entry| entry.clone())
     }
 
@@ -106,7 +103,6 @@ impl QualityMonitor {
         parser: &Arc<std::sync::Mutex<EnhancedParser>>,
         config: &MonitorConfig,
     ) {
-        debug_assert!(true, "contract: handle_fs_event");
         match event.kind {
             EventKind::Create(_) | EventKind::Modify(_) => {
                 for path in event.paths {
@@ -131,7 +127,6 @@ impl QualityMonitor {
         parser: &Arc<std::sync::Mutex<EnhancedParser>>,
         watch_patterns: &[String],
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !Self::should_analyze(&path, watch_patterns) {
             return;
         }
@@ -166,7 +161,6 @@ impl QualityMonitor {
         events: &crossbeam_channel::Sender<QualityEvent>,
         metrics: &Arc<dashmap::DashMap<PathBuf, Metrics>>,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some((_, last_metrics)) = metrics.remove(&path) {
             let _ = events.try_send(QualityEvent::FileRemoved {
                 path,
@@ -182,7 +176,6 @@ impl QualityMonitor {
         old_metrics: Option<Metrics>,
         new_metrics: Metrics,
     ) -> QualityEvent {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         match old_metrics {
             Some(old) => QualityEvent::MetricsUpdated {
                 path,
@@ -198,7 +191,6 @@ impl QualityMonitor {
 
     /// Check if file should be analyzed
     fn should_analyze(path: &Path, patterns: &[String]) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         patterns.iter().any(|pattern| {
             if pattern.contains("**") {
@@ -212,7 +204,6 @@ impl QualityMonitor {
 
     /// Analyze entire directory
     async fn analyze_directory(&self, path: &Path) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use walkdir::WalkDir;
 
         let mut batch = Vec::new();
@@ -242,7 +233,6 @@ impl QualityMonitor {
 
     /// Analyze a batch of files
     async fn analyze_batch(&self, paths: &[PathBuf]) -> Result<()> {
-        debug_assert!(!paths.is_empty(), "paths must not be empty");
         // use rayon::prelude::*; // Currently unused
 
         let results: Vec<_> = paths

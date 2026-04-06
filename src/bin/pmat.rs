@@ -45,7 +45,6 @@ impl From<ExitCode> for i32 {
 }
 
 fn detect_execution_mode() -> ExecutionMode {
-    debug_assert!(true, "contract: detect_execution_mode");
     let is_mcp = !std::io::stdin().is_terminal() && std::env::args().len() == 1
         || std::env::var("MCP_VERSION").is_ok();
 
@@ -60,7 +59,6 @@ fn detect_execution_mode() -> ExecutionMode {
 
 /// Initialize the enhanced tracing system based on CLI flags
 fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
-    debug_assert!(true, "contract: init_tracing");
     let filter = create_env_filter(cli)?;
 
     tracing_subscriber::registry()
@@ -81,7 +79,6 @@ fn init_tracing(cli: &cli::EarlyCliArgs) -> Result<()> {
 
 /// Create environment filter based on CLI flags
 fn create_env_filter(cli: &cli::EarlyCliArgs) -> Result<EnvFilter> {
-    debug_assert!(true, "contract: create_env_filter");
     if cli.is_mcp_server {
         Ok(create_mcp_filter(cli.debug))
     } else {
@@ -91,7 +88,6 @@ fn create_env_filter(cli: &cli::EarlyCliArgs) -> Result<EnvFilter> {
 
 /// Create filter for MCP server mode
 fn create_mcp_filter(debug: bool) -> EnvFilter {
-    debug_assert!(true, "contract: create_mcp_filter");
     if debug {
         EnvFilter::new("warn,pmat=debug")
     } else {
@@ -101,7 +97,6 @@ fn create_mcp_filter(debug: bool) -> EnvFilter {
 
 /// Create filter for CLI mode
 fn create_cli_filter(cli: &cli::EarlyCliArgs) -> Result<EnvFilter> {
-    debug_assert!(true, "contract: create_cli_filter");
     if let Some(ref custom) = cli.trace_filter {
         return Ok(EnvFilter::try_new(custom)?);
     }
@@ -118,7 +113,6 @@ fn create_cli_filter(cli: &cli::EarlyCliArgs) -> Result<EnvFilter> {
 
 /// Get default production filter
 fn get_default_filter() -> EnvFilter {
-    debug_assert!(true, "contract: get_default_filter");
     EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn"))
 }
 
@@ -138,7 +132,6 @@ async fn main() {
 }
 
 fn categorize_error(error: &anyhow::Error) -> ExitCode {
-    debug_assert!(true, "contract: categorize_error");
     let error_str = error.to_string().to_lowercase();
 
     match () {
@@ -151,27 +144,22 @@ fn categorize_error(error: &anyhow::Error) -> ExitCode {
 }
 
 fn is_quality_gate_error(error_str: &str) -> bool {
-    debug_assert!(!error_str.is_empty(), "error_str must not be empty");
     error_str.contains("quality gate") || error_str.contains("violation")
 }
 
 fn is_configuration_error(error_str: &str) -> bool {
-    debug_assert!(!error_str.is_empty(), "error_str must not be empty");
     error_str.contains("config") || error_str.contains("parse")
 }
 
 fn is_analysis_error(error_str: &str) -> bool {
-    debug_assert!(!error_str.is_empty(), "error_str must not be empty");
     error_str.contains("analysis") || error_str.contains("complexity")
 }
 
 fn is_permission_error(error_str: &str) -> bool {
-    debug_assert!(!error_str.is_empty(), "error_str must not be empty");
     error_str.contains("permission") || error_str.contains("access")
 }
 
 async fn run_main() -> Result<()> {
-    debug_assert!(true, "contract: run_main");
     // Parse CLI to get tracing configuration early
     let cli = cli::parse_early_for_tracing();
 
@@ -230,7 +218,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

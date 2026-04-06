@@ -10,7 +10,6 @@ pub struct PythonAnalyzer;
 
 impl LanguageAnalyzer for PythonAnalyzer {
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
 
@@ -33,7 +32,6 @@ impl LanguageAnalyzer for PythonAnalyzer {
     }
 
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let function_lines = &lines[function.line_start..=function.line_end];
 
@@ -45,7 +43,6 @@ impl LanguageAnalyzer for PythonAnalyzer {
 
 impl PythonAnalyzer {
     fn extract_function_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let line = line.trim();
         if let Some(pos) = line.find("def ") {
             let after = line.get(pos + 4..).unwrap_or_default();
@@ -58,7 +55,6 @@ impl PythonAnalyzer {
     }
 
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
-        debug_assert!(!lines.is_empty(), "lines must not be empty");
         if lines.is_empty() || start >= lines.len() {
             return start;
         }

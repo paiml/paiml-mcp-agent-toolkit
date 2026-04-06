@@ -13,7 +13,6 @@ pub fn analyze_dependency_graph(
     all_packages: &[String],
     edges: &[DepEdge],
 ) -> GraphAnalysis {
-    debug_assert!(!edges.is_empty(), "edges must not be empty");
     let mut name_to_id: HashMap<String, NodeId> = HashMap::new();
     let mut id_to_name: HashMap<NodeId, String> = HashMap::new();
 
@@ -102,8 +101,6 @@ pub fn count_transitive_deps(
     name_to_id: &HashMap<String, NodeId>,
     _id_to_name: &HashMap<NodeId, String>,
 ) -> usize {
-    debug_assert!(!start.is_empty(), "start must not be empty");
-    debug_assert!(!edges.is_empty(), "edges must not be empty");
     let Some(&start_id) = name_to_id.get(start) else {
         return 0;
     };

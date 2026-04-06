@@ -1,6 +1,5 @@
 impl MakefileCompressor {
     fn parse_targets(&self, content: &str) -> HashMap<String, ParsedTarget> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut targets = HashMap::new();
         let mut current_target: Option<String> = None;
         let mut in_recipe = false;
@@ -58,7 +57,6 @@ impl MakefileCompressor {
     }
 
     fn summarize_recipe(&self, recipe_lines: &[String]) -> String {
-        debug_assert!(!recipe_lines.is_empty(), "recipe_lines must not be empty");
         // Find first meaningful command
         for line in recipe_lines {
             let trimmed = line.trim_start_matches('\t').trim_start_matches(' ');
@@ -83,7 +81,6 @@ impl MakefileCompressor {
     }
 
     fn detect_toolchain(&self, content: &str, targets: &[MakeTarget]) -> Option<String> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Check for common toolchain indicators
         let content_lower = content.to_lowercase();
 
@@ -141,7 +138,6 @@ impl MakefileCompressor {
     }
 
     fn extract_dependencies(&self, content: &str) -> Vec<String> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut deps = HashSet::new();
 
         // Look for common dependency patterns

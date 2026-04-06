@@ -335,7 +335,6 @@ impl ErrorBudgetEnforcer {
 
     /// Calculate consumption as a percentage
     fn calculate_consumption(&self, budget: &QualityBudget, diff: &DiffAnalysis) -> f64 {
-        debug_assert!(true, "contract: calculate_consumption");
         let complexity_ratio =
             f64::from(budget.current_consumption.complexity_used + diff.complexity_change)
                 / f64::from(budget.complexity_budget);
@@ -355,7 +354,6 @@ impl ErrorBudgetEnforcer {
 
     /// Calculate consumption percentage for current state
     fn calculate_consumption_percentage(&self, budget: &QualityBudget) -> f64 {
-        debug_assert!(true, "contract: calculate_consumption_percentage");
         let complexity_ratio = f64::from(budget.current_consumption.complexity_used)
             / f64::from(budget.complexity_budget);
         let satd_ratio =
@@ -368,7 +366,6 @@ impl ErrorBudgetEnforcer {
 
     /// Calculate days until next regeneration
     fn days_until_regeneration(&self, budget: &QualityBudget) -> u32 {
-        debug_assert!(true, "contract: days_until_regeneration");
         if let Some(last_updated) = budget.current_consumption.last_updated {
             if let Ok(elapsed) = SystemTime::now().duration_since(last_updated) {
                 let remaining = self.config.regeneration_interval.as_secs() - elapsed.as_secs();
@@ -380,7 +377,6 @@ impl ErrorBudgetEnforcer {
 
     /// Suggest refactoring targets
     fn suggest_refactor_targets(&self, _team: &TeamId) -> Vec<RefactorTarget> {
-        debug_assert!(true, "contract: suggest_refactor_targets");
         // Would integrate with complexity analysis
         vec![
             RefactorTarget {
@@ -463,7 +459,6 @@ impl TimeSeriesDB {
 
 impl EnforcementRules {
     fn approvers_for(&self, team: &TeamId) -> Vec<String> {
-        debug_assert!(true, "contract: approvers_for");
         self.approvers
             .get(team)
             .cloned()

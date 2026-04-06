@@ -11,7 +11,6 @@ use std::path::{Path, PathBuf};
 
 /// Collect all Rust files from path, excluding target directory
 fn collect_rust_files(path: &Path) -> Vec<PathBuf> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use walkdir::WalkDir;
     if path.is_file() {
         return vec![path.to_path_buf()];
@@ -29,7 +28,6 @@ fn collect_rust_files(path: &Path) -> Vec<PathBuf> {
 
 /// Parse visualization theme from string
 fn parse_viz_theme(theme_str: &str) -> crate::viz::terminal::TerminalTheme {
-    debug_assert!(!theme_str.is_empty(), "theme_str must not be empty");
     use crate::viz::terminal::TerminalTheme;
     match theme_str.to_lowercase().as_str() {
         "high-contrast" | "highcontrast" => TerminalTheme::HighContrast,
@@ -44,7 +42,6 @@ fn print_viz_legend(
     tdg_graph: &crate::tdg::tdg_graph::TdgGraph,
     theme: crate::viz::terminal::TerminalTheme,
 ) {
-    debug_assert!(true, "contract: print_viz_legend");
     println!("\n--- TDG Dependency Graph ---");
     println!("Theme: {:?}", theme);
     println!("Nodes: {} functions", tdg_graph.num_nodes());

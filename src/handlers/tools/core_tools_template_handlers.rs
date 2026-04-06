@@ -3,7 +3,6 @@ async fn handle_generate_template<T: TemplateServerTrait>(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_generate_template");
     let args: GenerateTemplateArgs = match serde_json::from_value(arguments) {
         Ok(a) => a,
         Err(e) => {
@@ -46,7 +45,6 @@ async fn handle_list_templates<T: TemplateServerTrait>(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_list_templates");
     let args: ListTemplatesArgs = match serde_json::from_value(arguments) {
         Ok(a) => a,
         Err(e) => {
@@ -101,7 +99,6 @@ async fn handle_validate_template<T: TemplateServerTrait>(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_validate_template");
     let args = match parse_validate_template_args(arguments) {
         Ok(args) => args,
         Err(e) => {
@@ -130,7 +127,6 @@ async fn handle_validate_template<T: TemplateServerTrait>(
 fn parse_validate_template_args(
     arguments: serde_json::Value,
 ) -> Result<ValidateTemplateArgs, serde_json::Error> {
-    debug_assert!(true, "contract: parse_validate_template_args");
     serde_json::from_value(arguments)
 }
 
@@ -143,7 +139,6 @@ fn validate_template_parameters(
     parameters: &serde_json::Map<String, serde_json::Value>,
     template_resource: &TemplateResource,
 ) -> ValidationResult {
-    debug_assert!(true, "contract: validate_template_parameters");
     let missing_required =
         find_missing_required_parameters(parameters, &template_resource.parameters);
     let validation_errors = validate_parameter_values(parameters, &template_resource.parameters);
@@ -158,7 +153,6 @@ fn find_missing_required_parameters(
     parameters: &serde_json::Map<String, serde_json::Value>,
     parameter_specs: &[ParameterSpec],
 ) -> Vec<String> {
-    debug_assert!(true, "contract: find_missing_required_parameters");
     parameter_specs
         .iter()
         .filter(|param| param.required && !parameters.contains_key(&param.name))
@@ -170,7 +164,6 @@ fn validate_parameter_values(
     parameters: &serde_json::Map<String, serde_json::Value>,
     parameter_specs: &[ParameterSpec],
 ) -> Vec<String> {
-    debug_assert!(true, "contract: validate_parameter_values");
     let mut validation_errors = Vec::with_capacity(256);
 
     for (key, value) in parameters {
@@ -191,7 +184,6 @@ fn validate_single_parameter(
     value: &serde_json::Value,
     param_spec: &ParameterSpec,
 ) -> Option<String> {
-    debug_assert!(!key.is_empty(), "key must not be empty");
     if let Some(pattern) = &param_spec.validation_pattern {
         if let Ok(regex) = regex::Regex::new(pattern) {
             if let Some(str_val) = value.as_str() {
@@ -211,7 +203,6 @@ fn create_validation_response(
     validation_result: ValidationResult,
     resource_uri: &str,
 ) -> McpResponse {
-    debug_assert!(!resource_uri.is_empty(), "resource_uri must not be empty");
     let is_valid = validation_result.missing_required.is_empty()
         && validation_result.validation_errors.is_empty();
 
@@ -236,8 +227,6 @@ fn create_validation_response(
 
 // Helper to determine template variant
 fn get_template_variant(template_type: &str, toolchain: &str) -> Option<&'static str> {
-    debug_assert!(!template_type.is_empty(), "template_type must not be empty");
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     match template_type {
         "makefile" | "readme" | "gitignore" => match toolchain {
             "rust" | "deno" | "python-uv" => Some("cli"),
@@ -254,8 +243,6 @@ async fn generate_single_template<T: TemplateServerTrait>(
     toolchain: &str,
     parameters: serde_json::Map<String, serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
-    debug_assert!(!template_type.is_empty(), "template_type must not be empty");
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     let variant = get_template_variant(template_type, toolchain)
         .ok_or_else(|| format!("No variant for {template_type} with {toolchain}"))?;
 
@@ -277,7 +264,6 @@ async fn handle_scaffold_project<T: TemplateServerTrait>(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_scaffold_project");
     let args: ScaffoldProjectArgs = match serde_json::from_value(arguments) {
         Ok(a) => a,
         Err(e) => {
@@ -332,7 +318,6 @@ async fn handle_search_templates<T: TemplateServerTrait>(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_search_templates");
     let args: SearchTemplatesArgs = match serde_json::from_value(arguments) {
         Ok(a) => a,
         Err(e) => {
@@ -391,7 +376,6 @@ async fn handle_search_templates<T: TemplateServerTrait>(
 }
 
 async fn handle_get_server_info(request_id: serde_json::Value) -> McpResponse {
-    debug_assert!(true, "contract: handle_get_server_info");
     let result = json!({
         "content": [{
             "type": "text",

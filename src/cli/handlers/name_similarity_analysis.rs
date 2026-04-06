@@ -24,11 +24,6 @@ pub async fn handle_analyze_name_similarity(
     fuzzy: bool,
     case_sensitive: bool,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     // Temporarily delegate to the original implementation
     // This will be refactored once the module structure is in place
     crate::cli::handle_analyze_name_similarity(
@@ -181,7 +176,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

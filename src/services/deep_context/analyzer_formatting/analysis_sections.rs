@@ -59,7 +59,6 @@ impl DeepContextAnalyzer {
     }
 
     fn write_churn_header(&self, output: &mut String) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_churn_header");
         use std::fmt::Write;
         writeln!(output, "## Code Churn Analysis\n")?;
         Ok(())
@@ -70,7 +69,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         churn: &CodeChurnAnalysis,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_churn_summary");
         use std::fmt::Write;
         writeln!(output, "**Summary:**")?;
         writeln!(output, "- Total Commits: {}", churn.summary.total_commits)?;
@@ -83,7 +81,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         files: &[crate::models::churn::FileChurnMetrics],
     ) -> anyhow::Result<()> {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         use std::fmt::Write;
 
         // Sort files by commit count
@@ -128,7 +125,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         satd: &crate::services::satd_detector::SATDAnalysisResult,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_satd_severity_summary");
         use std::fmt::Write;
         let by_severity = self.group_satd_by_severity(satd);
         writeln!(output, "**SATD Summary:**")?;
@@ -142,7 +138,6 @@ impl DeepContextAnalyzer {
         &self,
         satd: &'a crate::services::satd_detector::SATDAnalysisResult,
     ) -> FxHashMap<&'a crate::services::satd_detector::Severity, i32> {
-        debug_assert!(true, "contract: group_satd_by_severity");
         let mut by_severity = FxHashMap::default();
         for item in &satd.items {
             *by_severity.entry(&item.severity).or_insert(0) += 1;
@@ -155,7 +150,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         satd: &crate::services::satd_detector::SATDAnalysisResult,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_critical_items");
         let critical_items = self.get_critical_satd_items(satd);
         if critical_items.is_empty() {
             return Ok(());
@@ -180,7 +174,6 @@ impl DeepContextAnalyzer {
         &self,
         satd: &'a crate::services::satd_detector::SATDAnalysisResult,
     ) -> Vec<&'a crate::services::satd_detector::TechnicalDebt> {
-        debug_assert!(true, "contract: get_critical_satd_items");
         satd.items
             .iter()
             .filter(|item| {
@@ -208,7 +201,6 @@ impl DeepContextAnalyzer {
     }
 
     fn write_dead_code_header(&self, output: &mut String) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_dead_code_header");
         use std::fmt::Write;
         writeln!(output, "## Dead Code Analysis\n")?;
         Ok(())
@@ -219,7 +211,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         summary: &crate::models::dead_code::DeadCodeSummary,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_dead_code_summary");
         use std::fmt::Write;
         writeln!(output, "**Summary:**")?;
         writeln!(output, "- Dead Functions: {}", summary.dead_functions)?;
@@ -232,7 +223,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         files: &[crate::models::dead_code::FileDeadCodeMetrics],
     ) -> anyhow::Result<()> {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         use std::fmt::Write;
         if !files.is_empty() {
             writeln!(output, "\n**Top Files with Dead Code:**")?;
@@ -257,7 +247,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         cross_refs: &[CrossLangReference],
     ) -> anyhow::Result<()> {
-        debug_assert!(!cross_refs.is_empty(), "cross_refs must not be empty");
         use std::fmt::Write;
         if !cross_refs.is_empty() {
             writeln!(output, "## Cross-Language References\n")?;
@@ -294,7 +283,6 @@ impl DeepContextAnalyzer {
     }
 
     fn write_defect_header(&self, output: &mut String) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_defect_header");
         use std::fmt::Write;
         writeln!(output, "## Defect Probability Analysis\n")?;
         Ok(())
@@ -305,7 +293,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         summary: &DefectSummary,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_defect_summary");
         use std::fmt::Write;
         writeln!(output, "**Risk Assessment:**")?;
         writeln!(
@@ -326,7 +313,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         hotspots: &[DefectHotspot],
     ) -> anyhow::Result<()> {
-        debug_assert!(!hotspots.is_empty(), "hotspots must not be empty");
         use std::fmt::Write;
         if !hotspots.is_empty() {
             writeln!(output, "\n**High-Risk Hotspots:**")?;
@@ -372,7 +358,6 @@ impl DeepContextAnalyzer {
     }
 
     fn write_recommendations_header(&self, output: &mut String) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_recommendations_header");
         use std::fmt::Write;
         writeln!(output, "## Prioritized Recommendations\n")?;
         Ok(())
@@ -384,7 +369,6 @@ impl DeepContextAnalyzer {
         index: usize,
         rec: &PrioritizedRecommendation,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_single_recommendation");
         let priority_emoji = self.get_priority_emoji(&rec.priority);
         self.write_recommendation_title(output, priority_emoji, index + 1, &rec.title)?;
         self.write_recommendation_details(output, rec)?;
@@ -393,7 +377,6 @@ impl DeepContextAnalyzer {
     }
 
     fn get_priority_emoji(&self, priority: &Priority) -> &'static str {
-        debug_assert!(true, "contract: get_priority_emoji");
         match priority {
             Priority::Critical => "\u{1f534}",
             Priority::High => "\u{1f7e1}",
@@ -409,7 +392,6 @@ impl DeepContextAnalyzer {
         number: usize,
         title: &str,
     ) -> anyhow::Result<()> {
-        debug_assert!(!emoji.is_empty(), "emoji must not be empty");
         use std::fmt::Write;
         writeln!(output, "### {emoji} {number} {title}")?;
         Ok(())
@@ -420,7 +402,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         rec: &PrioritizedRecommendation,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_recommendation_details");
         use std::fmt::Write;
         writeln!(output, "**Description:** {}", rec.description)?;
         writeln!(output, "**Effort:** {:?}", rec.estimated_effort)?;
@@ -433,7 +414,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         prerequisites: &[String],
     ) -> anyhow::Result<()> {
-        debug_assert!(!prerequisites.is_empty(), "prerequisites must not be empty");
         use std::fmt::Write;
         if !prerequisites.is_empty() {
             writeln!(output, "**Prerequisites:**")?;

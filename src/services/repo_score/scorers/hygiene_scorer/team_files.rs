@@ -14,11 +14,6 @@ impl HygieneScorer {
     /// Score absence of team-specific files (C2: 5 points)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn score_team_files(&self, repo_path: &Path) -> Result<SubcategoryScore> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         tracing::debug!("HygieneScorer::score_team_files START");
         let team_patterns = vec![
             ".idea/",

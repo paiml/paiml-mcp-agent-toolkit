@@ -26,7 +26,6 @@ impl<'de> Deserialize<'de> for AgentMessage {
             type Value = AgentMessage;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                debug_assert!(true, "contract: expecting");
                 formatter.write_str("struct AgentMessage")
             }
 
@@ -34,7 +33,6 @@ impl<'de> Deserialize<'de> for AgentMessage {
             where
                 V: MapAccess<'de>,
             {
-                debug_assert!(true, "contract: visit_map");
                 let mut header = None;
                 let mut payload = None;
 

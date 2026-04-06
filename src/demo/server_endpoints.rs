@@ -47,7 +47,6 @@ pub(crate) fn serve_dashboard(state: &Arc<RwLock<DemoState>>) -> Response<Bytes>
 #[cfg(feature = "demo")]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_static_asset(path: &str) -> Response<Bytes> {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     if let Some(asset) = get_asset(path) {
         let content = decompress_asset(asset);
         Response::builder()
@@ -68,7 +67,6 @@ pub(crate) fn serve_static_asset(path: &str) -> Response<Bytes> {
 #[allow(dead_code)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_static_asset(_path: &str) -> Response<Bytes> {
-    debug_assert!(!_path.is_empty(), "_path must not be empty");
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Bytes::from_static(b"Demo mode disabled"))
@@ -175,7 +173,6 @@ pub(crate) fn serve_showcase_gallery(
 #[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
 fn calculate_graph_density(_graph: &DependencyGraph) -> f64 {
-    debug_assert!(true, "contract: calculate_graph_density");
     0.0
 }
 

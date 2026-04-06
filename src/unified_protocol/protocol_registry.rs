@@ -55,20 +55,17 @@ where
     type Output = Value;
 
     async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
-        debug_assert!(true, "contract: decode");
         let typed_input: A::Input =
             serde_json::from_value(input).map_err(|e| ProtocolError::DecodeError(e.to_string()))?;
         self.inner.decode(typed_input).await
     }
 
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
-        debug_assert!(true, "contract: encode");
         let output = self.inner.encode(response).await?;
         serde_json::to_value(output).map_err(|e| ProtocolError::EncodeError(e.to_string()))
     }
 
     fn protocol(&self) -> Protocol {
-        debug_assert!(true, "contract: protocol");
         self.inner.protocol()
     }
 }

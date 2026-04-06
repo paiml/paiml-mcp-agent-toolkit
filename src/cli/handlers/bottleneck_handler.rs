@@ -49,7 +49,6 @@ pub async fn handle_bottleneck(
     threshold: usize,
     output: Option<&Path>,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::cli::colors as c;
 
     eprintln!(
@@ -80,7 +79,6 @@ pub async fn handle_bottleneck(
 
 /// Main analysis function
 fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<BottleneckAnalysis> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Get per-file touch counts from git log
     let (file_touches, commit_files, total_commits) = get_git_churn(path, period)?;
 
@@ -137,7 +135,6 @@ fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<Bot
 
 /// Get file touch counts from git log
 fn get_git_churn(path: &Path, period: u32) -> Result<GitChurnData> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let output = std::process::Command::new("git")
         .args([
             "log",
@@ -176,7 +173,6 @@ fn get_git_churn(path: &Path, period: u32) -> Result<GitChurnData> {
 
 /// Get file line counts
 fn get_file_sizes(path: &Path, files: &HashMap<String, usize>) -> Result<HashMap<String, usize>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut sizes = HashMap::new();
     for file_path in files.keys() {
         let full_path = path.join(file_path);
@@ -195,7 +191,6 @@ fn get_file_authors(
     period: u32,
     files: &HashMap<String, usize>,
 ) -> Result<HashMap<String, usize>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut author_map: HashMap<String, std::collections::HashSet<String>> = HashMap::new();
 
     let output = std::process::Command::new("git")
@@ -232,7 +227,6 @@ fn get_file_authors(
 
 /// Check if a file is auto-generated
 fn is_generated_file(path: &str) -> bool {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     path.contains(".pmat/")
         || path.ends_with("Cargo.lock")
         || path.ends_with(".pmat/baseline.json")
@@ -242,7 +236,6 @@ fn is_generated_file(path: &str) -> bool {
 
 /// Classify the churn pattern
 fn classify_pattern(path: &str, touches: usize, lines: usize) -> String {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     let filename = path.rsplit('/').next().unwrap_or(path);
 
     if filename == "mod.rs" || filename.contains("registry") || filename.contains("dispatch") {
@@ -272,7 +265,6 @@ fn classify_pattern(path: &str, touches: usize, lines: usize) -> String {
 
 /// Get recommendation based on pattern
 fn get_recommendation(pattern: &str) -> String {
-    debug_assert!(true, "contract: get_recommendation");
     match pattern {
         "Registry/Dispatch" => {
             "Consider proc-macro auto-discovery (inventory/linkme) to avoid touching this file for every new feature".to_string()
@@ -296,7 +288,6 @@ fn get_recommendation(pattern: &str) -> String {
 
 /// Detect file co-change coupling
 fn detect_coupling(commit_files: &[Vec<String>], min_co_changes: usize) -> Vec<CouplingPair> {
-    debug_assert!(!commit_files.is_empty(), "commit_files must not be empty");
     let mut co_changes: HashMap<(String, String), usize> = HashMap::new();
 
     for files in commit_files {
@@ -339,7 +330,6 @@ fn detect_coupling(commit_files: &[Vec<String>], min_co_changes: usize) -> Vec<C
 
 /// Format results as colorized text
 fn format_text(analysis: &BottleneckAnalysis) -> String {
-    debug_assert!(true, "contract: format_text");
     use crate::cli::colors as c;
     use std::fmt::Write;
 

@@ -25,7 +25,6 @@ pub async fn handle_analyze_satd(
     fail_on_violation: bool,
     timeout: u64,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Print analysis info
     print_satd_analysis_info(strict, timeout);
 
@@ -53,7 +52,6 @@ pub async fn handle_analyze_satd(
 
 /// Toyota Way Helper: Print SATD analysis info
 fn print_satd_analysis_info(strict: bool, timeout: u64) {
-    debug_assert!(true, "contract: print_satd_analysis_info");
     eprintln!("🔍 Analyzing self-admitted technical debt...");
     eprintln!("⏰ Analysis timeout set to {timeout} seconds");
     if strict {
@@ -68,7 +66,6 @@ async fn run_satd_analysis(
     strict: bool,
     timeout: u64,
 ) -> Result<crate::services::satd_detector::SATDAnalysisResult> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::satd_detector::SATDDetector;
 
     // Create detector
@@ -96,7 +93,6 @@ fn apply_satd_filters(
     critical_only: bool,
     top_files: usize,
 ) {
-    debug_assert!(true, "contract: apply_satd_filters");
     use crate::services::satd_detector::Severity as DetectorSeverity;
 
     // Filter by severity
@@ -130,7 +126,6 @@ fn check_satd_violations(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     fail_on_violation: bool,
 ) -> Result<()> {
-    debug_assert!(true, "contract: check_satd_violations");
     if fail_on_violation && !result.items.is_empty() {
         eprintln!(
             "\n❌ SATD violations found: {} technical debt items",
@@ -146,7 +141,6 @@ fn filter_top_files(
     result: &mut crate::services::satd_detector::SATDAnalysisResult,
     top_files: usize,
 ) {
-    debug_assert!(true, "contract: filter_top_files");
     use std::collections::HashMap;
 
     // Count items per file

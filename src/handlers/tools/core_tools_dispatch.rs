@@ -15,7 +15,6 @@ fn parse_tool_call_params(
     params: Option<serde_json::Value>,
     request_id: &serde_json::Value,
 ) -> Result<ToolCallParams, Box<McpResponse>> {
-    debug_assert!(true, "contract: parse_tool_call_params");
     let params = match params {
         Some(p) => p,
         None => {
@@ -42,7 +41,6 @@ async fn dispatch_tool_call<T: TemplateServerTrait>(
     request_id: serde_json::Value,
     tool_params: ToolCallParams,
 ) -> McpResponse {
-    debug_assert!(true, "contract: dispatch_tool_call");
     match tool_params.name.as_str() {
         "get_server_info" => handle_get_server_info(request_id).await,
         tool_name if is_template_tool(tool_name) => {
@@ -65,7 +63,6 @@ async fn dispatch_tool_call<T: TemplateServerTrait>(
 /// Check if a tool name is a template tool
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_template_tool(tool_name: &str) -> bool {
-    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     matches!(
         tool_name,
         "generate_template"
@@ -79,7 +76,6 @@ pub fn is_template_tool(tool_name: &str) -> bool {
 /// Check if a tool name is an analysis tool
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_analysis_tool(tool_name: &str) -> bool {
-    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     matches!(
         tool_name,
         "analyze_code_churn"
@@ -104,7 +100,6 @@ async fn handle_template_tools<T: TemplateServerTrait>(
     request_id: serde_json::Value,
     tool_params: ToolCallParams,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_template_tools");
     match tool_params.name.as_str() {
         "generate_template" => {
             handle_generate_template(server, request_id, tool_params.arguments).await
@@ -140,7 +135,6 @@ async fn dispatch_analysis_tool(
     tool_name: &str,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     // Group 1: Core analysis tools
     if let Some(response) =
         handle_core_analysis_tools(request_id.clone(), tool_name, arguments.clone()).await
@@ -176,7 +170,6 @@ async fn handle_core_analysis_tools(
     tool_name: &str,
     arguments: serde_json::Value,
 ) -> Option<McpResponse> {
-    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     match tool_name {
         "analyze_complexity" => Some(handle_analyze_complexity(request_id, arguments).await),
         "analyze_dead_code" => Some(handle_analyze_dead_code(request_id, arguments).await),
@@ -192,7 +185,6 @@ async fn handle_advanced_analysis_tools(
     tool_name: &str,
     arguments: serde_json::Value,
 ) -> Option<McpResponse> {
-    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     match tool_name {
         "analyze_code_churn" => Some(handle_analyze_code_churn(request_id, arguments).await),
         "analyze_dag" => Some(handle_analyze_dag(request_id, arguments).await),
@@ -212,7 +204,6 @@ async fn handle_specialized_analysis_tools(
     tool_name: &str,
     arguments: serde_json::Value,
 ) -> Option<McpResponse> {
-    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     match tool_name {
         "analyze_system_architecture" => {
             Some(handle_analyze_system_architecture(request_id, arguments).await)

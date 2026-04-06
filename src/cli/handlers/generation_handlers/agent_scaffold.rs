@@ -186,7 +186,6 @@ async fn execute_scaffold_operation(
     dry_run: bool,
     force: bool,
 ) -> Result<()> {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     use crate::cli::progress::ProgressIndicator;
     use crate::scaffold::agent::scaffold_agent;
 
@@ -249,7 +248,6 @@ pub async fn handle_list_agent_templates() -> Result<()> {
 /// Handle validating an agent template
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_validate_agent_template(path: PathBuf) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::scaffold::agent::TemplateRegistry;
 
     let registry = TemplateRegistry::new();

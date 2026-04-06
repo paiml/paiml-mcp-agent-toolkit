@@ -29,7 +29,6 @@ impl VariableInspectorView {
     /// Create inspector from variable list
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_variables(variables: Vec<(String, String)>) -> Self {
-        debug_assert!(!variables.is_empty(), "variables must not be empty");
         Self {
             variables,
             scroll_offset: 0,
@@ -89,7 +88,6 @@ impl VariableInspectorView {
     /// Set viewport height
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_viewport_height(&mut self, height: usize) {
-        debug_assert!(height > 0, "height must be positive");
         self.viewport_height = height;
     }
 

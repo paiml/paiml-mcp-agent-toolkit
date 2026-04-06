@@ -199,7 +199,6 @@ pub(crate) fn build_lint_hotspot_result(
 fn collect_project_violations(
     file_metrics: &HashMap<PathBuf, FileMetrics>,
 ) -> (Vec<ViolationDetail>, HashMap<PathBuf, FileSummary>, usize) {
-    debug_assert!(true, "contract: collect_project_violations");
     let mut all_violations = Vec::new();
     let mut summary_by_file = HashMap::new();
     let mut total_project_violations = 0;
@@ -238,7 +237,6 @@ pub(crate) fn calculate_total_violations(metrics: &FileMetrics) -> usize {
 /// Calculate defect density (cognitive complexity <=2)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn calculate_defect_density(violations: usize, sloc: usize) -> f64 {
-    // Contract: calculate_defect_density returns a bounded score
     if sloc > 0 {
         violations as f64 / sloc as f64
     } else {

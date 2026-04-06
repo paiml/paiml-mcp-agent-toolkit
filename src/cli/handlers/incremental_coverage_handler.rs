@@ -37,11 +37,6 @@ pub struct IncrementalCoverageConfig {
 /// This reduces complexity from 26 to ~8 by delegating to the facade service.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_incremental_coverage(config: IncrementalCoverageConfig) -> Result<()> {
-    debug_assert!(
-        config.project_path.exists(),
-        "config.project_path must exist: {}",
-        config.project_path.display()
-    );
     // Print analysis header
     print_analysis_header(
         &config.project_path,
@@ -84,11 +79,6 @@ fn print_analysis_header(
     target_branch: &Option<String>,
     coverage_threshold: f64,
 ) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     eprintln!("📊 Analyzing incremental coverage...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🌿 Base branch: {base_branch}");
@@ -106,7 +96,6 @@ async fn output_results(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
-    debug_assert!(true, "contract: output_results");
     let content = format_result(result, format, top_files)?;
 
     if let Some(output_path) = output {
@@ -125,7 +114,6 @@ fn format_result(
     format: IncrementalCoverageOutputFormat,
     top_files: usize,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_result");
     match format {
         IncrementalCoverageOutputFormat::Summary => Ok(format_summary(&result, top_files)),
         IncrementalCoverageOutputFormat::Detailed => Ok(format_detailed(&result, top_files)),

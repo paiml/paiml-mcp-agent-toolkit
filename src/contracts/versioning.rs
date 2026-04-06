@@ -69,7 +69,6 @@ pub struct ContractMetadata {
 impl ContractMetadata {
     #[must_use]
     pub fn new(created_by: &str) -> Self {
-        debug_assert!(!created_by.is_empty(), "created_by must not be empty");
         Self {
             created_at: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -130,7 +129,6 @@ impl ContractRegistry {
     where
         T: Serialize,
     {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let json_contract = VersionedContract {
             version: contract.version,
             contract: serde_json::to_value(contract.contract)
@@ -149,7 +147,6 @@ impl ContractRegistry {
     /// Get the latest version of a contract
     #[must_use]
     pub fn get_latest(&self, name: &str) -> Option<&VersionedContract<serde_json::Value>> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.contracts
             .get(name)?
             .iter()
@@ -163,7 +160,6 @@ impl ContractRegistry {
         name: &str,
         version: &ContractVersion,
     ) -> Option<&VersionedContract<serde_json::Value>> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.contracts
             .get(name)?
             .iter()
@@ -176,7 +172,6 @@ impl ContractRegistry {
         &self,
         name: &str,
     ) -> Option<&Vec<VersionedContract<serde_json::Value>>> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.contracts.get(name)
     }
 
@@ -198,7 +193,6 @@ impl ContractRegistry {
         to_version: &ContractVersion,
         contract: serde_json::Value,
     ) -> Result<serde_json::Value, ContractError> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(migration) = self
             .migrations
             .get(&(from_version.clone(), to_version.clone()))
@@ -214,7 +208,6 @@ impl ContractRegistry {
     /// Check if a contract version is deprecated
     #[must_use]
     pub fn is_deprecated(&self, name: &str, version: &ContractVersion) -> bool {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(contract) = self.get_version(name, version) {
             contract.metadata.deprecated
         } else {
@@ -225,7 +218,6 @@ impl ContractRegistry {
     /// Get deprecation info for a contract version
     #[must_use]
     pub fn get_deprecation_info(&self, name: &str, version: &ContractVersion) -> Option<String> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(contract) = self.get_version(name, version) {
             if contract.metadata.deprecated {
                 contract.metadata.migration_notes.clone()
@@ -282,8 +274,6 @@ impl ParameterRenameMapping {
 
     #[must_use]
     pub fn add_mapping(mut self, old_name: &str, new_name: &str) -> Self {
-        debug_assert!(!old_name.is_empty(), "old_name must not be empty");
-        debug_assert!(!new_name.is_empty(), "new_name must not be empty");
         self.mappings
             .insert(old_name.to_string(), new_name.to_string());
         self
@@ -327,7 +317,6 @@ pub struct ContractBuilder<T> {
 
 impl<T> ContractBuilder<T> {
     pub fn new(contract: T, created_by: &str) -> Self {
-        debug_assert!(!created_by.is_empty(), "created_by must not be empty");
         Self {
             version: ContractVersion::current(),
             contract,

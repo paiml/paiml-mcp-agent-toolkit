@@ -180,11 +180,6 @@ impl DeepContextAnalyzer {
         Option<crate::models::project_meta::BuildInfo>,
         Option<crate::models::project_meta::ProjectOverview>,
     )> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         use crate::services::{
             makefile_compressor::MakefileCompressor, project_meta_detector::ProjectMetaDetector,
             readme_compressor::ReadmeCompressor,
@@ -317,12 +312,6 @@ impl DeepContextAnalyzer {
         path_str: &str,
         project_root: &std::path::Path,
     ) -> Option<FileComplexityMetricsForQA> {
-        debug_assert!(
-            project_root.exists(),
-            "project_root must exist: {}",
-            project_root.display()
-        );
-        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         let full_path = if std::path::Path::new(path_str).is_absolute() {
             std::path::PathBuf::from(path_str)
         } else {

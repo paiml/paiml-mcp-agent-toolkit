@@ -41,7 +41,6 @@ impl ComplexityVisitor {
 
     /// Count SATD comments in content
     fn count_satd_in_content(content: &str) -> u32 {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let patterns = ["TODO", "FIXME", "HACK", "XXX", "BUG"];
         patterns
             .iter()
@@ -52,7 +51,6 @@ impl ComplexityVisitor {
 
 impl<'ast> Visit<'ast> for ComplexityVisitor {
     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
-        debug_assert!(true, "contract: visit_item_fn");
         self.function_count += 1;
 
         // Reset for function-level metrics
@@ -77,7 +75,6 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     }
 
     fn visit_expr_if(&mut self, node: &'ast syn::ExprIf) {
-        debug_assert!(true, "contract: visit_expr_if");
         // Increase complexity and cognitive complexity
         self.complexity += 1;
         self.cognitive += 1 + self.nesting_level;
@@ -89,7 +86,6 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     }
 
     fn visit_expr_while(&mut self, node: &'ast syn::ExprWhile) {
-        debug_assert!(true, "contract: visit_expr_while");
         self.complexity += 1;
         self.cognitive += 1 + self.nesting_level;
 
@@ -99,7 +95,6 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     }
 
     fn visit_expr_for_loop(&mut self, node: &'ast syn::ExprForLoop) {
-        debug_assert!(true, "contract: visit_expr_for_loop");
         self.complexity += 1;
         self.cognitive += 1 + self.nesting_level;
 
@@ -109,7 +104,6 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     }
 
     fn visit_expr_loop(&mut self, node: &'ast syn::ExprLoop) {
-        debug_assert!(true, "contract: visit_expr_loop");
         self.complexity += 1;
         self.cognitive += 1 + self.nesting_level;
 
@@ -119,7 +113,6 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     }
 
     fn visit_expr_match(&mut self, node: &'ast syn::ExprMatch) {
-        debug_assert!(true, "contract: visit_expr_match");
         // Match adds complexity for each arm
         self.complexity += node.arms.len() as u32;
         self.cognitive += 1 + self.nesting_level;
@@ -130,7 +123,6 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     }
 
     fn visit_expr_binary(&mut self, node: &'ast syn::ExprBinary) {
-        debug_assert!(true, "contract: visit_expr_binary");
         // Check for logical operators
         match node.op {
             syn::BinOp::And(_) | syn::BinOp::Or(_) => {
@@ -143,7 +135,6 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     }
 
     fn visit_arm(&mut self, node: &'ast syn::Arm) {
-        debug_assert!(true, "contract: visit_arm");
         // Each match arm adds cognitive complexity based on nesting
         if self.nesting_level > 0 {
             self.cognitive += self.nesting_level;

@@ -260,7 +260,6 @@ impl CudaTdgGrade {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64, gateway_passed: bool) -> Self {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         if !gateway_passed {
             return Self::GatewayFail;
         }

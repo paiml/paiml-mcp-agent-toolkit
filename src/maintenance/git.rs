@@ -111,7 +111,6 @@ pub fn get_current_commit() -> Result<CommitInfo> {
 /// - Cyclomatic: 2
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn ticket_file_updated(commit: &CommitInfo, ticket_id: &str) -> bool {
-    debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
     let ticket_file = format!("docs/tickets/{}.md", ticket_id);
     commit.files.iter().any(|f| f.contains(&ticket_file))
 }
@@ -216,7 +215,6 @@ mod tests {
     // Integration test - only runs if we're in a git repo
     #[test]
     fn integration_get_current_commit() {
-        debug_assert!(true, "contract: integration_get_current_commit");
         // This test requires being in a git repo with at least one commit
         match get_current_commit() {
             Ok(commit) => {

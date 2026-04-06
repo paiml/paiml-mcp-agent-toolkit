@@ -5,7 +5,6 @@
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn format_display_path(path: &std::path::Path, max_len: usize) -> String {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
     if path_str.len() <= max_len {
         path_str.to_string()
@@ -23,7 +22,6 @@ pub fn format_display_path(path: &std::path::Path, max_len: usize) -> String {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn normalize_output_format(format: &str) -> &'static str {
-    debug_assert!(!format.is_empty(), "format must not be empty");
     match format.to_lowercase().as_str() {
         "json" | "j" => "json",
         "markdown" | "md" | "m" => "markdown",
@@ -39,7 +37,6 @@ pub fn normalize_output_format(format: &str) -> &'static str {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn score_to_severity(score: f64) -> &'static str {
-    debug_assert!(score >= 0.0, "score must be non-negative");
     match score {
         s if s >= 0.9 => "critical",
         s if s >= 0.7 => "high",
@@ -52,7 +49,6 @@ pub fn score_to_severity(score: f64) -> &'static str {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_top_n<T: Clone>(items: &[T], limit: usize) -> Vec<T> {
-    debug_assert!(limit > 0, "limit must be positive");
     if limit == 0 {
         items.to_vec()
     } else {
@@ -70,7 +66,6 @@ pub fn output_to_file_or_stdout(
     output: Option<&std::path::Path>,
     content: &str,
 ) -> std::io::Result<()> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     if let Some(path) = output {
         std::fs::write(path, content)
     } else {
@@ -83,7 +78,6 @@ pub fn output_to_file_or_stdout(
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn pluralize(count: usize, singular: &str, plural: &str) -> String {
-    debug_assert!(count > 0, "count must be positive");
     if count == 1 {
         format!("{count} {singular}")
     } else {
@@ -113,7 +107,6 @@ pub fn format_duration(duration: std::time::Duration) -> String {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn calculate_percentage(numerator: usize, denominator: usize) -> f64 {
-    // Contract: calculate_percentage returns a bounded score
     if denominator == 0 {
         0.0
     } else {

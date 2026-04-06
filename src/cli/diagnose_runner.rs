@@ -95,7 +95,6 @@ impl SelfDiagnostic {
     }
 
     fn compute_summary(&self, features: &BTreeMap<String, FeatureResult>) -> DiagnosticSummary {
-        debug_assert!(true, "contract: compute_summary");
         let total = features.len();
         let mut passed = 0;
         let mut failed = 0;
@@ -130,7 +129,6 @@ impl SelfDiagnostic {
         &self,
         features: &BTreeMap<String, FeatureResult>,
     ) -> Option<CompactErrorContext> {
-        debug_assert!(true, "contract: extract_error_context");
         let failed: Vec<_> = features
             .iter()
             .filter(|(_, r)| matches!(r.status, FeatureStatus::Failed))
@@ -161,7 +159,6 @@ impl SelfDiagnostic {
     }
 
     fn classify_error(&self, error: &str) -> String {
-        debug_assert!(!error.is_empty(), "error must not be empty");
         if error.contains("Permission denied") {
             "permission_denied".into()
         } else if error.contains("not found") {
@@ -176,7 +173,6 @@ impl SelfDiagnostic {
     }
 
     fn generate_fixes(&self, error_patterns: &BTreeMap<String, Vec<String>>) -> Vec<SuggestedFix> {
-        debug_assert!(true, "contract: generate_fixes");
         let mut fixes = Vec::new();
 
         for (pattern, features) in error_patterns {
@@ -235,7 +231,6 @@ pub async fn handle_diagnose(args: DiagnoseArgs) -> Result<()> {
 }
 
 fn print_pretty_report(report: &DiagnosticReport) {
-    debug_assert!(true, "contract: print_pretty_report");
     use crate::cli::colors as c;
     println!("{}", c::header("PMAT Self-Diagnostic Report"));
     println!(

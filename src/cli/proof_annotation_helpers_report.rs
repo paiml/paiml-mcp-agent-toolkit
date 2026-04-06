@@ -7,7 +7,6 @@ pub fn format_as_full(
     project_path: &Path,
     include_evidence: bool,
 ) -> Result<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut output = String::new();
 
     write_report_header(&mut output, project_path, annotations.len())?;
@@ -27,7 +26,6 @@ fn write_report_header(
     project_path: &Path,
     total_proofs: usize,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::fmt::Write;
 
     writeln!(output, "# Full Proof Annotations Report\n")?;
@@ -46,7 +44,6 @@ fn write_report_header(
 fn group_proofs_by_file(
     annotations: &[(Location, ProofAnnotation)],
 ) -> std::collections::HashMap<std::path::PathBuf, Vec<(Location, ProofAnnotation)>> {
-    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     let mut proofs_by_file: std::collections::HashMap<
         std::path::PathBuf,
         Vec<(Location, ProofAnnotation)>,
@@ -69,7 +66,6 @@ fn write_file_section(
     mut proofs: Vec<(Location, ProofAnnotation)>,
     include_evidence: bool,
 ) -> Result<()> {
-    debug_assert!(file.exists(), "file must exist: {}", file.display());
     use std::fmt::Write;
 
     writeln!(output, "## File: {}\n", file.display())?;
@@ -91,7 +87,6 @@ fn write_proof_annotation(
     ann: &ProofAnnotation,
     include_evidence: bool,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_proof_annotation");
     use std::fmt::Write;
 
     write_annotation_header(output, loc)?;
@@ -108,7 +103,6 @@ fn write_proof_annotation(
 
 /// Write annotation position header
 fn write_annotation_header(output: &mut String, loc: &Location) -> Result<()> {
-    debug_assert!(true, "contract: write_annotation_header");
     use std::fmt::Write;
     writeln!(
         output,
@@ -120,7 +114,6 @@ fn write_annotation_header(output: &mut String, loc: &Location) -> Result<()> {
 
 /// Write basic annotation information
 fn write_annotation_basic_info(output: &mut String, ann: &ProofAnnotation) -> Result<()> {
-    debug_assert!(true, "contract: write_annotation_basic_info");
     use std::fmt::Write;
 
     writeln!(output, "**Property**: {:?}", ann.property_proven)?;
@@ -138,7 +131,6 @@ fn write_annotation_basic_info(output: &mut String, ann: &ProofAnnotation) -> Re
 
 /// Write annotation assumptions
 fn write_annotation_assumptions(output: &mut String, ann: &ProofAnnotation) -> Result<()> {
-    debug_assert!(true, "contract: write_annotation_assumptions");
     use std::fmt::Write;
 
     if !ann.assumptions.is_empty() {
@@ -153,7 +145,6 @@ fn write_annotation_assumptions(output: &mut String, ann: &ProofAnnotation) -> R
 
 /// Write annotation evidence information
 fn write_annotation_evidence(output: &mut String, ann: &ProofAnnotation) -> Result<()> {
-    debug_assert!(true, "contract: write_annotation_evidence");
     use std::fmt::Write;
 
     writeln!(output, "\n**Evidence**: {:?}", ann.evidence_type)?;
@@ -171,7 +162,6 @@ pub fn format_as_markdown(
     project_path: &Path,
     include_evidence: bool,
 ) -> Result<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut output = String::new();
 
     write_markdown_header(&mut output, project_path, annotations.len())?;
@@ -190,7 +180,6 @@ fn write_markdown_header(
     project_path: &Path,
     total_proofs: usize,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::fmt::Write;
 
     writeln!(output, "# Proof Annotations Analysis\n")?;
@@ -212,7 +201,6 @@ fn write_summary_statistics(
     output: &mut String,
     annotations: &[(Location, ProofAnnotation)],
 ) -> Result<()> {
-    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     use std::fmt::Write;
 
     writeln!(output, "## Summary Statistics\n")?;
@@ -232,7 +220,6 @@ fn write_summary_statistics(
 fn count_by_confidence(
     annotations: &[(Location, ProofAnnotation)],
 ) -> std::collections::HashMap<String, usize> {
-    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     let mut confidence_counts = std::collections::HashMap::new();
 
     for (_, ann) in annotations {
@@ -249,7 +236,6 @@ fn write_detailed_proofs(
     annotations: &[(Location, ProofAnnotation)],
     include_evidence: bool,
 ) -> Result<()> {
-    debug_assert!(!annotations.is_empty(), "annotations must not be empty");
     use std::fmt::Write;
 
     writeln!(output, "\n## Detailed Proofs\n")?;
@@ -270,7 +256,6 @@ fn write_file_proofs_section(
     proofs: &[(Location, ProofAnnotation)],
     include_evidence: bool,
 ) -> Result<()> {
-    debug_assert!(file.exists(), "file must exist: {}", file.display());
     use std::fmt::Write;
 
     writeln!(output, "### {}\n", file.display())?;
@@ -290,7 +275,6 @@ fn write_proof_summary_item(
     ann: &ProofAnnotation,
     include_evidence: bool,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_proof_summary_item");
     use std::fmt::Write;
 
     writeln!(
@@ -314,7 +298,6 @@ pub fn format_as_sarif(
     annotations: &[(Location, ProofAnnotation)],
     _project_path: &Path,
 ) -> Result<String> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     let mut results = Vec::new();
 
     for (location, annotation) in annotations {

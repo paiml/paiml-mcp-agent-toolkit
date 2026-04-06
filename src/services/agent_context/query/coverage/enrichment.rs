@@ -12,7 +12,6 @@ fn find_coverage_for_file<'a>(
     file_path: &str,
     file_coverage: &'a HashMap<String, HashMap<usize, u64>>,
 ) -> Option<&'a HashMap<usize, u64>> {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     // Try exact match first
     if let Some(hits) = file_coverage.get(file_path) {
         return Some(hits);
@@ -28,7 +27,6 @@ fn find_coverage_for_file<'a>(
 ///
 /// Returns one of: `"no_data"`, `"uncovered"`, `"full"`, or `"partial"`.
 fn determine_coverage_status(total: u32, covered: u32) -> &'static str {
-    debug_assert!(true, "contract: determine_coverage_status");
     if total == 0 {
         "no_data"
     } else if covered == 0 {
@@ -47,7 +45,6 @@ fn determine_coverage_status(total: u32, covered: u32) -> &'static str {
 /// composes naturally with `--faults` to show "fix the defect AND write
 /// the test" opportunities in a single view.
 fn annotate_coverage_faults(result: &mut QueryResult) {
-    debug_assert!(true, "contract: annotate_coverage_faults");
     match result.coverage_status.as_str() {
         "uncovered" => {
             result.fault_annotations.push(format!(
@@ -172,7 +169,6 @@ pub fn enrich_with_coverage_diff(
 /// Returns None if no results have coverage data.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_coverage_summary(results: &[QueryResult]) -> Option<String> {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     let with_data: Vec<_> = results
         .iter()
         .filter(|r| r.coverage_status != "no_data" && !r.coverage_status.is_empty())
@@ -227,7 +223,6 @@ fn format_coverage_header(
     total_pct: f64,
     with_data: &[&QueryResult],
 ) -> String {
-    debug_assert!(true, "contract: format_coverage_header");
     let pct_color = if total_pct >= 80.0 {
         "\x1b[32m"
     } else if total_pct >= 50.0 {
@@ -247,7 +242,6 @@ fn format_coverage_header(
 
 /// Append uncovered/partial counters to summary string.
 fn append_coverage_counters(summary: &mut String, uncovered_count: usize, partial_count: usize) {
-    debug_assert!(true, "contract: append_coverage_counters");
     if uncovered_count > 0 {
         summary.push_str(&format!(
             " | \x1b[1;31m{} uncovered\x1b[0m",
@@ -278,6 +272,5 @@ pub fn compute_impact_score(missed_lines: u32, pagerank: f32, complexity: u32) -
     let pr_factor = (pagerank * 10000.0).max(0.1);
     let complexity_factor = (complexity as f32).max(1.0);
     let score = missed_lines as f32 * pr_factor / complexity_factor;
-    debug_assert!(score >= 0.0, "impact score must be non-negative: {}", score);
     score
 }

@@ -80,7 +80,6 @@ fn format_summary_output(
     analysis_time: std::time::Duration,
     analyzed_files_len: usize,
 ) -> String {
-    debug_assert!(!query.is_empty(), "query must not be empty");
     let mut output = String::new();
     output.push_str("Name Similarity Analysis\n");
     output.push_str("======================\n");
@@ -118,7 +117,6 @@ fn format_summary_output(
 }
 
 fn format_detailed_output(similarities: &[NameSimilarityResult]) -> String {
-    debug_assert!(!similarities.is_empty(), "similarities must not be empty");
     let mut output = String::new();
     output.push_str("Name Similarity Analysis Report\n");
     output.push_str("==============================\n");
@@ -137,7 +135,6 @@ fn format_detailed_output(similarities: &[NameSimilarityResult]) -> String {
 }
 
 fn format_csv_output(similarities: &[NameSimilarityResult]) -> String {
-    debug_assert!(!similarities.is_empty(), "similarities must not be empty");
     let mut output = String::new();
     output.push_str("name,similarity,type,file,line,context\n");
     for sim in similarities {
@@ -159,7 +156,6 @@ fn format_markdown_output(
     all_names_len: usize,
     similarities: &[NameSimilarityResult],
 ) -> String {
-    debug_assert!(!query.is_empty(), "query must not be empty");
     let mut output = String::new();
     output.push_str("# Name Similarity Analysis\n\n");
     output.push_str(&format!("**Query**: `{query}`\n\n"));

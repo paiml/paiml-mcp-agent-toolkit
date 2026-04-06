@@ -64,7 +64,6 @@ impl SymbolTable {
     /// Complexity: 4 (lookup + visibility check)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn resolve(&self, name: &str, from_module: &str) -> Option<&SymbolEntry> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.symbols.get(name).and_then(|entries| {
             entries.iter().find(|entry| {
                 // Check visibility rules
@@ -76,7 +75,6 @@ impl SymbolTable {
     /// Check if symbol is visible from a module
     /// Complexity: 5 (path comparison)
     fn is_visible(&self, entry: &SymbolEntry, from_module: &str) -> bool {
-        debug_assert!(!from_module.is_empty(), "from_module must not be empty");
         match entry.symbol.visibility {
             Visibility::Public => true,
             Visibility::Private => {
@@ -94,7 +92,6 @@ impl SymbolTable {
     /// Complexity: 2
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_file_symbols(&self, path: &Path) -> Vec<&SymbolEntry> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.file_symbols
             .get(path)
             .map(|names| {
@@ -114,7 +111,6 @@ impl SymbolTable {
     /// Complexity: 3
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn increment_usage(&mut self, name: &str, from_module: &str) {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(entries) = self.symbols.get_mut(name) {
             for entry in entries.iter_mut() {
                 // Check visibility without borrowing self

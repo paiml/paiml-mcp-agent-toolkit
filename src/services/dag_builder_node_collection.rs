@@ -2,7 +2,6 @@
 
 impl DagBuilder {
     fn collect_nodes(&mut self, file: &FileContext) {
-        debug_assert!(true, "contract: collect_nodes");
         // Build complexity lookup maps for O(1) access
         let function_complexity: FxHashMap<&str, u32> = file
             .complexity_metrics
@@ -38,7 +37,6 @@ impl DagBuilder {
         function_complexity: &FxHashMap<&str, u32>,
         class_complexity: &FxHashMap<&str, u32>,
     ) {
-        debug_assert!(true, "contract: collect_single_node");
         match item {
             AstItem::Function {
                 name,
@@ -82,7 +80,6 @@ impl DagBuilder {
         file: &FileContext,
         function_complexity: &FxHashMap<&str, u32>,
     ) {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}::{}", self.normalize_path(&file.path), name);
         let node = NodeInfo {
             id: id.clone(),
@@ -108,7 +105,6 @@ impl DagBuilder {
         file: &FileContext,
         class_complexity: &FxHashMap<&str, u32>,
     ) {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}::{}", self.normalize_path(&file.path), name);
         let node = NodeInfo {
             id: id.clone(),
@@ -132,7 +128,6 @@ impl DagBuilder {
         line: usize,
         file: &FileContext,
     ) {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}::{}", self.normalize_path(&file.path), name);
         let node = NodeInfo {
             id: id.clone(),
@@ -153,7 +148,6 @@ impl DagBuilder {
         line: usize,
         file: &FileContext,
     ) {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}::{}", self.normalize_path(&file.path), name);
         let node = NodeInfo {
             id: id.clone(),

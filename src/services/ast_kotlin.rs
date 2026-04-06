@@ -41,7 +41,6 @@ impl KotlinAstParser {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_limits(max_depth: usize, timeout: Duration) -> Self {
-        debug_assert!(max_depth > 0, "max_depth must be positive");
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_kotlin_ng::LANGUAGE.into())
@@ -56,7 +55,6 @@ impl KotlinAstParser {
     /// Parse a Kotlin file into an AST DAG with memory safety guarantees
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn parse_file(&mut self, path: &Path, content: &str) -> Result<AstDag> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Input validation
         if content.len() > MAX_STRING_LENGTH {
             return Err(anyhow::anyhow!(
@@ -97,7 +95,6 @@ impl KotlinAstParser {
     }
 
     fn visit_node(&self, ctx: &mut ParseContext, node: Node) -> Result<Option<usize>> {
-        debug_assert!(true, "contract: visit_node");
         // Safety checks first
         if ctx.current_depth >= ctx.max_depth {
             return Err(anyhow::anyhow!(
@@ -213,7 +210,6 @@ impl KotlinAstParser {
     }
 
     fn process_class(&self, ctx: &mut ParseContext, node: Node) -> Result<Option<usize>> {
-        debug_assert!(true, "contract: process_class");
         // Check if this is actually an enum class by looking at the source
         let source_start = node.start_byte();
         let source_end = (source_start + 20)
@@ -266,7 +262,6 @@ impl KotlinAstParser {
     }
 
     fn process_object(&self, ctx: &mut ParseContext, node: Node) -> Result<Option<usize>> {
-        debug_assert!(true, "contract: process_object");
         let name = self
             .extract_identifier(ctx, node, "simple_identifier")
             .unwrap_or_else(|| String::from("AnonymousObject"));
@@ -280,7 +275,6 @@ impl KotlinAstParser {
     }
 
     fn process_enum(&self, ctx: &mut ParseContext, node: Node) -> Result<Option<usize>> {
-        debug_assert!(true, "contract: process_enum");
         let name = self
             .extract_identifier(ctx, node, "simple_identifier")
             .unwrap_or_else(|| String::from("AnonymousEnum"));
@@ -294,7 +288,6 @@ impl KotlinAstParser {
     }
 
     fn process_function(&self, ctx: &mut ParseContext, node: Node) -> Result<Option<usize>> {
-        debug_assert!(true, "contract: process_function");
         let name = self
             .extract_identifier(ctx, node, "simple_identifier")
             .unwrap_or_else(|| String::from("anonymousFunction"));
@@ -309,7 +302,6 @@ impl KotlinAstParser {
     }
 
     fn process_node_simple(&self, ctx: &mut ParseContext, node: Node) -> Result<Option<usize>> {
-        debug_assert!(true, "contract: process_node_simple");
         let kind = node.kind();
         if kind == "class_declaration" {
             self.process_class(ctx, node)
@@ -325,13 +317,11 @@ impl KotlinAstParser {
     }
 
     fn set_name_vector(&self, _node: &mut UnifiedAstNode, _name: &str) {
-        debug_assert!(!_name.is_empty(), "_name must not be empty");
         // Simplified implementation for now
     }
 
     /// Extract enum name from enum class declaration
     fn extract_enum_name(&self, ctx: &mut ParseContext, node: Node) -> Option<String> {
-        debug_assert!(true, "contract: extract_enum_name");
         // Extract the enum name from source like "enum class Status {"
         let source_text = ctx
             .content
@@ -437,7 +427,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

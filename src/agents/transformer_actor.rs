@@ -17,7 +17,6 @@ impl Handler<TransformMessage> for TransformerActor {
     type Result = ResponseActFuture<Self, Result<AgentResponse, AgentError>>;
 
     fn handle(&mut self, msg: TransformMessage, _ctx: &mut Context<Self>) -> Self::Result {
-        debug_assert!(true, "contract: handle");
         let transformer = self.transformer.clone();
         let code = msg.code;
 

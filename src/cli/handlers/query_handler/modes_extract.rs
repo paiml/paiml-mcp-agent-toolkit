@@ -84,7 +84,6 @@ pub(super) async fn handle_extract_candidates_mode(
 fn print_extract_candidates_text(
     groups: &[crate::services::agent_context::query::extract_candidates::ExtractionGroup],
 ) {
-    debug_assert!(!groups.is_empty(), "groups must not be empty");
     println!(
         "\n{BOLD}{UNDERLINE}Extract Candidates{RESET} ({} groups)\n",
         groups.len()
@@ -133,7 +132,6 @@ fn print_extract_candidates_text(
 fn print_extract_candidates_markdown(
     groups: &[crate::services::agent_context::query::extract_candidates::ExtractionGroup],
 ) {
-    debug_assert!(!groups.is_empty(), "groups must not be empty");
     println!("# Extract Candidates\n");
     for (i, g) in groups.iter().enumerate() {
         let pure_pct = if g.functions.is_empty() {

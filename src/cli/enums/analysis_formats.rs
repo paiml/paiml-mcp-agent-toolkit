@@ -108,7 +108,6 @@ pub enum GraphMetricsOutputFormat {
 impl GraphMetricsOutputFormat {
     /// Get the string representation of the output format
     fn as_str(&self) -> &'static str {
-        debug_assert!(true, "contract: as_str");
         match self {
             GraphMetricsOutputFormat::Summary => "summary",
             GraphMetricsOutputFormat::Detailed => "detailed",
@@ -357,7 +356,6 @@ pub enum IncrementalCoverageOutputFormat {
 impl IncrementalCoverageOutputFormat {
     /// Get the string representation of the output format
     fn as_str(&self) -> &'static str {
-        debug_assert!(true, "contract: as_str");
         match self {
             IncrementalCoverageOutputFormat::Summary => "summary",
             IncrementalCoverageOutputFormat::Detailed => "detailed",

@@ -208,7 +208,6 @@ impl ContractAdapter {
     }
 
     fn map_complexity_command(params: ComplexityMapParams) -> Result<Box<dyn ContractValidation>> {
-        debug_assert!(true, "contract: map_complexity_command");
         let path = params.project_path;
 
         let contract = AnalyzeComplexityContract {
@@ -230,7 +229,6 @@ impl ContractAdapter {
     }
 
     fn map_satd_command(params: SatdMapParams) -> Result<Box<dyn ContractValidation>> {
-        debug_assert!(true, "contract: map_satd_command");
         let contract = AnalyzeSatdContract {
             base: BaseAnalysisContract {
                 path: params.path.to_path_buf(),
@@ -251,7 +249,6 @@ impl ContractAdapter {
     }
 
     fn map_dead_code_command(params: DeadCodeMapParams) -> Result<Box<dyn ContractValidation>> {
-        debug_assert!(true, "contract: map_dead_code_command");
         let contract = AnalyzeDeadCodeContract {
             base: BaseAnalysisContract {
                 path: params.path.to_path_buf(),
@@ -279,7 +276,6 @@ impl ContractAdapter {
         output: &Option<PathBuf>,
         critical_only: &bool,
     ) -> Result<Box<dyn ContractValidation>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let contract = AnalyzeTdgContract {
             base: BaseAnalysisContract {
                 path: path.to_path_buf(),
@@ -301,7 +297,6 @@ impl ContractAdapter {
     fn map_lint_hotspot_command(
         params: LintHotspotMapParams,
     ) -> Result<Box<dyn ContractValidation>> {
-        debug_assert!(true, "contract: map_lint_hotspot_command");
         let contract = AnalyzeLintHotspotContract {
             base: BaseAnalysisContract {
                 path: params.project_path.to_path_buf(),
@@ -354,7 +349,6 @@ impl BackwardCompatibility {
     }
 
     fn map_project_path_to_path(obj: &mut serde_json::Map<String, serde_json::Value>) {
-        debug_assert!(true, "contract: map_project_path_to_path");
         if let Some(project_path) = obj.remove("project_path") {
             // Only set path if it's not already present
             if !obj.contains_key("path") {
@@ -364,7 +358,6 @@ impl BackwardCompatibility {
     }
 
     fn map_file_to_files(obj: &mut serde_json::Map<String, serde_json::Value>) {
-        debug_assert!(true, "contract: map_file_to_files");
         if let Some(file) = obj.remove("file") {
             if !obj.contains_key("files") {
                 obj.insert("files".to_string(), serde_json::json!([file]));
@@ -382,7 +375,6 @@ impl BackwardCompatibility {
     }
 
     fn normalize_format_string(fmt_str: &str) -> &'static str {
-        debug_assert!(!fmt_str.is_empty(), "fmt_str must not be empty");
         match fmt_str {
             "human" | "pretty" | "summary" => "summary",
             "json" | "machine" => "json",

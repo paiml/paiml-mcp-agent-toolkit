@@ -150,7 +150,6 @@ impl ValidatorModule for ValidatorImpl {
     }
 
     async fn validate_code(&self, code: &str, thresholds: &Thresholds) -> ValidationResult {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         if let Some(analyzer) = &self.analyzer {
             match analyzer.analyze(code).await {
                 Ok(metrics) => self.validate(&metrics, thresholds).await,

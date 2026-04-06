@@ -144,7 +144,6 @@ impl CargoDeadCodeAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_max_depth(mut self, max_depth: usize) -> Self {
-        debug_assert!(max_depth > 0, "max_depth must be positive");
         self.max_depth = max_depth;
         self
     }

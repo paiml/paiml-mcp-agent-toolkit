@@ -1,6 +1,5 @@
 impl IntentClassifier {
     fn analyze_commit_message(&self, message: &str) -> SignalResult {
-        debug_assert!(true, "contract: analyze_commit_message");
         let message_lower = message.to_lowercase();
 
         let hallucination_count = self
@@ -44,7 +43,6 @@ impl IntentClassifier {
         original_commit: &CommitInfo,
         followup_commit: &CommitInfo,
     ) -> SignalResult {
-        debug_assert!(true, "contract: analyze_issue_linkage");
         if let (Some(issue_num), Some(issue_created)) = (
             followup_commit.issue_number,
             followup_commit.issue_created_timestamp,
@@ -79,7 +77,6 @@ impl IntentClassifier {
         original_commit: &CommitInfo,
         followup_commit: &CommitInfo,
     ) -> SignalResult {
-        debug_assert!(true, "contract: analyze_code_churn");
         let original_files: HashSet<_> = original_commit.modified_files.iter().collect();
         let followup_files: HashSet<_> = followup_commit.modified_files.iter().collect();
 
@@ -125,7 +122,6 @@ impl IntentClassifier {
     }
 
     fn analyze_test_changes(&self, test_changes: &TestChanges) -> SignalResult {
-        debug_assert!(true, "contract: analyze_test_changes");
         if test_changes.added_tests > test_changes.fixed_tests {
             SignalResult {
                 signal_name: "test_changes".to_string(),
@@ -161,7 +157,6 @@ impl IntentClassifier {
         original_commit: &CommitInfo,
         followup_commit: &CommitInfo,
     ) -> SignalResult {
-        debug_assert!(true, "contract: analyze_temporal_context");
         let time_diff_hours =
             (followup_commit.timestamp_seconds - original_commit.timestamp_seconds) / 3600;
 

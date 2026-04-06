@@ -64,7 +64,6 @@ impl PmatYamlConfig {
     /// Returns error if file exists but is malformed.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(project_path: &Path) -> Result<Self, ConfigError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_path = project_path.join(".pmat.yaml");
 
         if !config_path.exists() {
@@ -82,7 +81,6 @@ impl PmatYamlConfig {
     /// Load configuration from a specific file path
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_from_path(path: &Path) -> Result<Self, ConfigError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content =
             std::fs::read_to_string(path).map_err(|e| ConfigError::IoError(e.to_string()))?;
 
@@ -92,7 +90,6 @@ impl PmatYamlConfig {
     /// Save configuration to .pmat.yaml in the given directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, project_path: &Path) -> Result<(), ConfigError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_path = project_path.join(".pmat.yaml");
         let content =
             serde_yaml_ng::to_string(self).map_err(|e| ConfigError::SerializeError(e.to_string()))?;
@@ -105,14 +102,12 @@ impl ComplyConfig {
     /// Check if a specific check is enabled
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_check_enabled(&self, check_id: &str) -> bool {
-        debug_assert!(!check_id.is_empty(), "check_id must not be empty");
         self.checks.get(check_id).map(|c| c.enabled).unwrap_or(true) // Default to enabled for unknown checks
     }
 
     /// Get the severity for a check
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_severity(&self, check_id: &str) -> CheckSeverity {
-        debug_assert!(!check_id.is_empty(), "check_id must not be empty");
         self.checks
             .get(check_id)
             .map(|c| c.severity)
@@ -122,7 +117,6 @@ impl ComplyConfig {
     /// Get the threshold for a check
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_threshold(&self, check_id: &str) -> Option<f64> {
-        debug_assert!(!check_id.is_empty(), "check_id must not be empty");
         self.checks.get(check_id).and_then(|c| c.threshold)
     }
 
@@ -142,8 +136,6 @@ impl ComplyConfig {
     /// Returns `Some(reason)` if suppressed, `None` if not.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_suppressed(&self, check_id: &str, file_path: &str) -> Option<String> {
-        debug_assert!(!check_id.is_empty(), "check_id must not be empty");
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let today = current_date_iso();
         for rule in &self.suppressions {
             // Check rule ID match (case-insensitive)
@@ -187,7 +179,6 @@ impl ComplyConfig {
 
 /// Get current date in ISO 8601 format for expiry comparison
 fn current_date_iso() -> String {
-    debug_assert!(true, "contract: current_date_iso");
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

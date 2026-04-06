@@ -69,7 +69,6 @@ impl IncrementalChecker {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn should_check(&self, file_path: &Path) -> Result<bool> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let metadata = fs::metadata(file_path)?;
         let modified = metadata.modified()?;
 
@@ -82,7 +81,6 @@ impl IncrementalChecker {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn update_cache(&mut self, file_path: &Path, passed: bool) -> Result<()> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         use sha2::{Digest, Sha256};
 
         let content = fs::read_to_string(file_path)?;

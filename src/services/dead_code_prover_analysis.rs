@@ -53,7 +53,6 @@ impl DeadCodeProver {
     /// Analyze file for dead code with FFI awareness
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze_file(&mut self, file_path: &Path, content: &str) -> Vec<DeadCodeProof> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let file_path_str = file_path.to_string_lossy().to_string();
         self.ffi_tracker.scan_for_ffi_exports(content, &file_path_str);
 
@@ -76,7 +75,6 @@ impl DeadCodeProver {
     }
 
     fn classify_symbol(&self, symbol: SymbolId, file_path_str: &str, line_num: usize) -> DeadCodeProof {
-        debug_assert!(!file_path_str.is_empty(), "file_path_str must not be empty");
         if self.is_ffi_visible(&symbol, file_path_str, line_num) {
             return DeadCodeProof {
                 item: symbol,
@@ -114,7 +112,6 @@ impl DeadCodeProver {
     }
 
     fn is_ffi_visible(&self, symbol: &SymbolId, file_path_str: &str, line_num: usize) -> bool {
-        debug_assert!(!file_path_str.is_empty(), "file_path_str must not be empty");
         if self.ffi_tracker.is_externally_visible(symbol) {
             return true;
         }
@@ -132,7 +129,6 @@ impl DeadCodeProver {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_report(&self, proofs: &[DeadCodeProof]) -> DeadCodeReport {
-        debug_assert!(!proofs.is_empty(), "proofs must not be empty");
         let mut dead_functions = Vec::new();
 
         for proof in proofs {

@@ -10,7 +10,6 @@ async fn scan_for_cruft(
     max_size_bytes: u64,
     recursive: bool,
 ) -> Result<RefactorDocsResult> {
-    debug_assert!(true, "contract: scan_for_cruft");
     let mut cruft_files = Vec::new();
     let mut preserved_files = Vec::new();
     let mut errors = Vec::new();
@@ -57,7 +56,6 @@ async fn process_directory(
     recursive: bool,
     now: &SystemTime,
 ) -> Result<DirectoryResult> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     if !dir.exists() {
         return Ok(DirectoryResult {
             cruft_files: Vec::new(),
@@ -95,7 +93,6 @@ async fn process_directory(
 
 /// Collect files from directory based on recursive setting
 async fn collect_directory_files(dir: &Path, recursive: bool) -> Result<Vec<PathBuf>> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     if recursive {
         collect_files_recursive(dir).await
     } else {
@@ -113,7 +110,6 @@ async fn process_file(
     now: &SystemTime,
     result: &mut DirectoryResult,
 ) {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     if should_preserve(file_path, preserve_patterns) {
         result.preserved_files.push(file_path.to_path_buf());
         return;
@@ -140,7 +136,6 @@ async fn process_file(
 
 /// Get file metadata with error handling
 fn get_file_metadata(file_path: &Path) -> Result<fs::Metadata, String> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     fs::metadata(file_path)
         .map_err(|e| format!("Failed to read metadata for {}: {}", file_path.display(), e))
 }
@@ -152,7 +147,6 @@ fn passes_file_filters(
     max_size_bytes: u64,
     now: &SystemTime,
 ) -> bool {
-    debug_assert!(true, "contract: passes_file_filters");
     if metadata.len() > max_size_bytes {
         return false;
     }
@@ -163,7 +157,6 @@ fn passes_file_filters(
 
 /// Calculate file age in days
 fn calculate_age_days(metadata: &fs::Metadata, now: &SystemTime) -> u32 {
-    debug_assert!(true, "contract: calculate_age_days");
     match metadata.modified() {
         Ok(modified) => {
             let duration = now.duration_since(modified).unwrap_or_default();
@@ -181,7 +174,6 @@ fn create_cruft_file(
     pattern: &str,
     now: &SystemTime,
 ) -> CruftFile {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let age_days = calculate_age_days(metadata, now);
     CruftFile {
         path: file_path.to_path_buf(),
@@ -196,7 +188,6 @@ fn create_cruft_file(
 
 /// Update summary statistics for a cruft file
 fn update_summary_for_cruft(summary: &mut CleanupSummary, cruft: &CruftFile) {
-    debug_assert!(true, "contract: update_summary_for_cruft");
     let category_str = cruft.category.to_string();
     *summary
         .files_by_category
@@ -213,7 +204,6 @@ fn update_summary_for_cruft(summary: &mut CleanupSummary, cruft: &CruftFile) {
 
 /// Merge directory summary into main summary
 fn merge_summary(main: &mut CleanupSummary, dir: &CleanupSummary) {
-    debug_assert!(true, "contract: merge_summary");
     for (category, count) in &dir.files_by_category {
         *main.files_by_category.entry(category.clone()).or_default() += count;
     }
@@ -241,7 +231,6 @@ fn finalize_summary(
 
 /// Collect files recursively
 async fn collect_files_recursive(dir: &Path) -> Result<Vec<PathBuf>> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     let mut dirs_to_process = vec![dir.to_path_buf()];
 
@@ -264,7 +253,6 @@ async fn collect_files_recursive(dir: &Path) -> Result<Vec<PathBuf>> {
 
 /// Collect files in a single directory (non-recursive)
 async fn collect_files_flat(dir: &Path) -> Result<Vec<PathBuf>> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     let mut entries = tokio::fs::read_dir(dir).await?;
 
@@ -280,7 +268,6 @@ async fn collect_files_flat(dir: &Path) -> Result<Vec<PathBuf>> {
 
 /// Check if a file should be preserved
 fn should_preserve(path: &Path, preserve_patterns: &[String]) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
     for pattern in preserve_patterns {
@@ -299,7 +286,6 @@ fn matches_pattern(
     path: &Path,
     patterns: &[(String, FileCategory)],
 ) -> Option<(String, FileCategory)> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
     for (pattern, category) in patterns {

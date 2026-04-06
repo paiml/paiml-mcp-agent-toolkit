@@ -6,14 +6,12 @@ impl Service for TelemetryService {
 
     #[instrument(skip(self, input))]
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
-        debug_assert!(true, "contract: process");
         span!(Level::INFO, "telemetry_process", service = %input.service_name)
             .in_scope(|| async { self.record_operation(input).await })
             .await
     }
 
     fn validate_input(&self, input: &Self::Input) -> Result<(), ValidationError> {
-        debug_assert!(true, "contract: validate_input");
         if input.event_type.is_empty() {
             return Err(ValidationError::MissingField {
                 field: "event_type".to_string(),
@@ -36,7 +34,6 @@ impl Service for TelemetryService {
     }
 
     fn metrics(&self) -> ServiceMetrics {
-        debug_assert!(true, "contract: metrics");
         self.system_metrics
             .read()
             .map(|m| m.clone())

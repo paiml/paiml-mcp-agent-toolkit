@@ -4,7 +4,6 @@
 
 /// Validate configuration
 async fn validate_configuration(config_service: &ConfigurationService) -> Result<()> {
-    debug_assert!(true, "contract: validate_configuration");
     info!("Validating configuration");
 
     println!("PMAT Configuration Validation");
@@ -21,7 +20,6 @@ async fn validate_configuration(config_service: &ConfigurationService) -> Result
 }
 
 fn validate_all_sections(config: &PmatConfig, issues: &mut Vec<&'static str>) {
-    debug_assert!(true, "contract: validate_all_sections");
     validate_system_config(&config.system, issues);
     validate_quality_config(&config.quality, issues);
     validate_analysis_config(&config.analysis, issues);
@@ -33,7 +31,6 @@ fn validate_system_config(
     system_config: &crate::services::configuration_service::SystemConfig,
     issues: &mut Vec<&'static str>,
 ) {
-    debug_assert!(true, "contract: validate_system_config");
     if system_config.project_name.is_empty() {
         issues.push("System: project_name cannot be empty");
     }
@@ -47,7 +44,6 @@ fn validate_quality_config(
     quality_config: &crate::services::configuration_service::QualityConfig,
     issues: &mut Vec<&'static str>,
 ) {
-    debug_assert!(true, "contract: validate_quality_config");
     if quality_config.max_complexity == 0 {
         issues.push("Quality: max_complexity must be > 0");
     }
@@ -61,7 +57,6 @@ fn validate_analysis_config(
     analysis_config: &crate::services::configuration_service::AnalysisConfig,
     issues: &mut Vec<&'static str>,
 ) {
-    debug_assert!(true, "contract: validate_analysis_config");
     if analysis_config.max_file_size == 0 {
         issues.push("Analysis: max_file_size must be > 0");
     }
@@ -75,7 +70,6 @@ fn validate_performance_config(
     performance_config: &crate::services::configuration_service::PerformanceConfig,
     issues: &mut Vec<&'static str>,
 ) {
-    debug_assert!(true, "contract: validate_performance_config");
     if performance_config.test_iterations == 0 {
         issues.push("Performance: test_iterations must be > 0");
     }
@@ -85,7 +79,6 @@ fn validate_mcp_config(
     mcp_config: &crate::services::configuration_service::McpConfig,
     issues: &mut Vec<&'static str>,
 ) {
-    debug_assert!(true, "contract: validate_mcp_config");
     if mcp_config.server_name.is_empty() {
         issues.push("MCP: server_name cannot be empty");
     }
@@ -96,7 +89,6 @@ fn validate_mcp_config(
 }
 
 fn report_validation_results(config: &PmatConfig, issues: &[&str]) -> Result<()> {
-    debug_assert!(true, "contract: report_validation_results");
     if issues.is_empty() {
         report_validation_success();
     } else {
@@ -114,7 +106,6 @@ fn report_validation_success() {
 }
 
 fn report_validation_failure(issues: &[&str]) -> Result<()> {
-    debug_assert!(!issues.is_empty(), "issues must not be empty");
     println!("Configuration validation failed");
     println!("   Found {} issues:", issues.len());
     for issue in issues {
@@ -124,7 +115,6 @@ fn report_validation_failure(issues: &[&str]) -> Result<()> {
 }
 
 fn print_configuration_statistics(config: &PmatConfig) {
-    debug_assert!(true, "contract: print_configuration_statistics");
     println!();
     println!("Configuration Statistics:");
     println!("   Sections: 7");

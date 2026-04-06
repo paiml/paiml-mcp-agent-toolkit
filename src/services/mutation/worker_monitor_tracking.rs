@@ -31,7 +31,6 @@ impl WorkerMetrics {
     /// Record a task failure
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_failure(&mut self, error: &str) {
-        debug_assert!(!error.is_empty(), "error must not be empty");
         self.failed_count += 1;
         self.state = WorkerState::Idle;
 
@@ -69,7 +68,6 @@ impl WorkerMetrics {
     /// Add or update a custom metric
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_custom_metric(&mut self, key: &str, value: &str) {
-        debug_assert!(!key.is_empty(), "key must not be empty");
         self.custom_metrics
             .insert(key.to_string(), value.to_string());
     }

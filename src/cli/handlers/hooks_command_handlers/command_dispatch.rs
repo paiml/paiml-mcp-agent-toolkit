@@ -68,7 +68,6 @@ async fn handle_install(
     interactive: bool,
     tdg_enforcement: bool,
 ) -> Result<()> {
-    debug_assert!(true, "contract: handle_install");
     // Handle TDG enforcement installation (Sprint 66 Phase 3)
     if tdg_enforcement {
         println!(
@@ -108,7 +107,6 @@ async fn handle_install(
 
 /// Handle hooks uninstall command
 async fn handle_uninstall(hooks_cmd: &HooksCommand, restore_backup: bool) -> Result<()> {
-    debug_assert!(true, "contract: handle_uninstall");
     println!("{}", c::label("Uninstalling pre-commit hooks..."));
     if restore_backup {
         println!("  {}", c::dim("Restoring backup enabled"));
@@ -131,7 +129,6 @@ async fn handle_uninstall(hooks_cmd: &HooksCommand, restore_backup: bool) -> Res
 
 /// Handle hooks status command
 async fn handle_status(hooks_cmd: &HooksCommand) -> Result<()> {
-    debug_assert!(true, "contract: handle_status");
     let status = hooks_cmd.status().await?;
 
     println!("{}", c::header("Pre-commit Hook Status:"));
@@ -188,7 +185,6 @@ pub(crate) fn print_installed_status(status: &HookStatus) {
 
 /// Handle hooks verify command
 async fn handle_verify(hooks_cmd: &HooksCommand, fix: bool) -> Result<()> {
-    debug_assert!(true, "contract: handle_verify");
     println!("{}", c::label("Verifying pre-commit hooks..."));
 
     if fix {
@@ -240,7 +236,6 @@ pub(crate) fn print_verification_fixes(result: &HookVerificationResult) {
 
 /// Handle hooks refresh command
 async fn handle_refresh(hooks_cmd: &HooksCommand) -> Result<()> {
-    debug_assert!(true, "contract: handle_refresh");
     println!(
         "{}",
         c::label("Refreshing pre-commit hooks from configuration...")
@@ -271,7 +266,6 @@ async fn handle_run(
     verbose: bool,
     use_cache: bool,
 ) -> Result<()> {
-    debug_assert!(true, "contract: handle_run");
     let start_time = std::time::Instant::now();
 
     // O(1) cache check if enabled

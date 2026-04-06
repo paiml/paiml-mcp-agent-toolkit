@@ -83,7 +83,6 @@ fn print_raw_search_output(
     format: &QueryOutputFormat,
     quiet: bool,
 ) -> anyhow::Result<()> {
-    debug_assert!(true, "contract: print_raw_search_output");
     match output {
         RawSearchOutput::Files(files) => {
             for f in files {
@@ -107,7 +106,6 @@ fn print_raw_lines(
     format: &QueryOutputFormat,
     quiet: bool,
 ) -> anyhow::Result<()> {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     if matches!(format, QueryOutputFormat::Json) {
         let json = serde_json::to_string_pretty(lines).map_err(|e| anyhow::anyhow!("{}", e))?;
         println!("{}", json);

@@ -8,7 +8,6 @@ pub fn apply_satd_filters(
     severity: Option<SatdSeverity>,
     critical_only: bool,
 ) -> Vec<crate::models::tdg::SatdItem> {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     items
         .into_iter()
         .filter(|item| {
@@ -72,7 +71,6 @@ pub fn build_deep_context_config(
     _parallel: Option<usize>,
     _verbose: bool,
 ) -> anyhow::Result<crate::models::deep_context_config::DeepContextConfig> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Create DeepContextConfig with default values
     Ok(crate::models::deep_context_config::DeepContextConfig {
         entry_points: vec![],
@@ -132,7 +130,6 @@ pub fn parse_analysis_filters(
     include: Vec<String>,
     exclude: Vec<String>,
 ) -> anyhow::Result<(Vec<AnalysisType>, Vec<AnalysisType>)> {
-    debug_assert!(!include.is_empty(), "include must not be empty");
     let include_analysis = include
         .into_iter()
         .map(|s| parse_analysis_type(&s))
@@ -160,7 +157,6 @@ pub fn parse_analysis_filters(
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_analysis_type(s: &str) -> anyhow::Result<AnalysisType> {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     match s.to_lowercase().as_str() {
         "complexity" => Ok(AnalysisType::Complexity),
         "dead-code" | "deadcode" => Ok(AnalysisType::DeadCode),

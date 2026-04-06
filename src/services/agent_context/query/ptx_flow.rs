@@ -90,7 +90,6 @@ fn source_matches_any(source: &str, keywords: &[&str]) -> bool {
 /// Classify a function's PTX role based on source content and file extension.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn classify_ptx_role(source: &str, file_path: &str) -> Option<PtxRole> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let is_ptx_file =
         file_path.ends_with(".ptx") || file_path.ends_with(".cu") || file_path.ends_with(".cuh");
     if is_ptx_file || source_matches_any(source, EMITTER_KEYWORDS) {
@@ -110,7 +109,6 @@ fn make_node(
     idx: usize,
     role: PtxRole,
 ) -> PtxFlowNode {
-    debug_assert!(true, "contract: make_node");
     PtxFlowNode {
         project: func
             .file_path
@@ -127,7 +125,6 @@ fn make_node(
 
 /// Phase 1: classify all functions with a PTX role
 fn classify_ptx_nodes(index: &AgentContextIndex) -> (Vec<PtxFlowNode>, Vec<usize>) {
-    debug_assert!(true, "contract: classify_ptx_nodes");
     let mut nodes = Vec::new();
     let mut node_func_idx = Vec::new();
     for (i, func) in index.all_functions().iter().enumerate() {
@@ -145,7 +142,6 @@ fn find_consumer_nodes(
     nodes: &mut Vec<PtxFlowNode>,
     node_func_idx: &[usize],
 ) {
-    debug_assert!(true, "contract: find_consumer_nodes");
     let ptx_indices: std::collections::HashSet<usize> = node_func_idx.iter().copied().collect();
     let mut seen = std::collections::HashSet::new();
     for &ptx_idx in node_func_idx {
@@ -166,7 +162,6 @@ fn find_consumer_nodes(
 
 /// Phase 3: build edges between PTX nodes using the call graph
 fn build_flow_edges(index: &AgentContextIndex, nodes: &[PtxFlowNode]) -> Vec<PtxFlowEdge> {
-    debug_assert!(!nodes.is_empty(), "nodes must not be empty");
     let func_idx_to_node: std::collections::HashMap<usize, usize> = nodes
         .iter()
         .enumerate()

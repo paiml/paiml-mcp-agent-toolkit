@@ -68,7 +68,6 @@ impl ServiceSupervisor {
 
     /// Start monitoring loop for all services
     async fn start_monitoring(&self) {
-        debug_assert!(true, "contract: start_monitoring");
         let services = self.services.clone();
         let running = self.running.clone();
 

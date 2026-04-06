@@ -138,7 +138,6 @@ pub fn compare_thresholds(
 }
 
 fn compare_threshold_values(parent: &ClauseThreshold, child: &ClauseThreshold) -> ThresholdComparison {
-    debug_assert!(true, "contract: compare_threshold_values");
     match (parent, child) {
         (
             ClauseThreshold::Numeric {
@@ -186,7 +185,6 @@ fn compare_numeric(
     c_op: ThresholdOp,
     c_val: f64,
 ) -> ThresholdComparison {
-    debug_assert!(true, "contract: compare_numeric");
     if p_op != c_op {
         return ThresholdComparison::Incompatible;
     }
@@ -203,7 +201,6 @@ fn compare_numeric(
 }
 
 fn compare_ordered(child: f64, parent: f64, higher_is_stronger: bool) -> ThresholdComparison {
-    debug_assert!(true, "contract: compare_ordered");
     #[allow(clippy::float_cmp)]
     if child == parent {
         return ThresholdComparison::Equal;
@@ -253,7 +250,6 @@ impl ContractQuality {
     }
 
     fn rate(score: f64) -> String {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         if score >= 1.0 { "Full" }
         else if score >= 0.8 { "Strong" }
         else if score >= 0.5 { "Partial" }
@@ -355,7 +351,6 @@ impl CheckpointRecord {
     /// Save checkpoint to .pmat-work/{item-id}/checkpoints/
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, project_path: &Path) -> Result<PathBuf> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let checkpoint_dir = project_path
             .join(".pmat-work")
             .join(&self.work_item_id)
@@ -372,7 +367,6 @@ impl CheckpointRecord {
     /// Load all checkpoints for a work item, sorted by timestamp
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_all(project_path: &Path, work_item_id: &str) -> Vec<Self> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let checkpoint_dir = project_path
             .join(".pmat-work")
             .join(work_item_id)
@@ -400,7 +394,6 @@ pub fn validate_subcontracting(
     parent_ensure: &[ContractClause],
     child_ensure: &[ContractClause],
 ) -> Result<(), SubcontractingViolation> {
-    debug_assert!(!parent_ensure.is_empty(), "parent_ensure must not be empty");
     for parent_clause in parent_ensure {
         let child_clause = child_ensure.iter().find(|c| c.id == parent_clause.id);
         match child_clause {

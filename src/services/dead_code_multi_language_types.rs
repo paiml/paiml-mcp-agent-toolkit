@@ -27,7 +27,6 @@ pub trait DeadCodeStrategy {
 /// Analyze dead code using appropriate strategy for the project language
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn analyze_dead_code_multi_language(path: &Path) -> Result<DeadCodeResult> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     info!("Starting multi-language dead code analysis at: {:?}", path);
 
     // Step 1: Detect language using enhanced detection from BUG-011

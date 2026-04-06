@@ -30,7 +30,6 @@ pub fn normalize_patterns(
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn expand_patterns(patterns: &[String]) -> Vec<String> {
-    debug_assert!(!patterns.is_empty(), "patterns must not be empty");
     patterns
         .iter()
         .flat_map(|pattern| {
@@ -47,7 +46,6 @@ pub fn expand_patterns(patterns: &[String]) -> Vec<String> {
 /// Validate that glob patterns are syntactically correct
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn validate_patterns(patterns: &[String]) -> Result<()> {
-    debug_assert!(!patterns.is_empty(), "patterns must not be empty");
     use globset::Glob;
 
     for pattern in patterns {
@@ -145,7 +143,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

@@ -58,11 +58,6 @@ impl TransparencyScorer {
     /// - LICENSE file exists (2 points)
     /// - OSI-approved license (3 points)
     fn score_license_clarity(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut earned: f64 = 0.0;
         let max: f64 = 5.0;
         let mut description: Vec<String> = Vec::new();
@@ -135,11 +130,6 @@ impl TransparencyScorer {
     /// - Code comments present (2 points)
     /// - Changelog exists (1 point)
     fn score_documentation_accuracy(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut earned: f64 = 0.0;
         let max: f64 = 8.0;
         let mut description: Vec<String> = Vec::new();
@@ -201,11 +191,6 @@ impl TransparencyScorer {
     /// - Design documents (2 points)
     /// - Contributing guidelines (1 point)
     fn score_design_rationale(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut earned: f64 = 0.0;
         let max: f64 = 7.0;
         let mut description: Vec<String> = Vec::new();
@@ -269,11 +254,6 @@ impl TransparencyScorer {
 
     /// Check if project has API documentation
     fn has_api_docs(&self, project_path: &Path) -> bool {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         // Check for docs directory
         if project_path.join("docs").exists() {
             return true;
@@ -316,11 +296,6 @@ impl TransparencyScorer {
 
     /// Check if project has meaningful code comments
     fn has_code_comments(&self, project_path: &Path) -> bool {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let src_dir = project_path.join("src");
         if !src_dir.exists() {
             return false;
@@ -364,7 +339,6 @@ impl Default for TransparencyScorer {
 
 impl PopperScorer for TransparencyScorer {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "Transparency & Openness"
     }
 
@@ -377,11 +351,6 @@ impl PopperScorer for TransparencyScorer {
     }
 
     fn score(&self, project_path: &Path) -> PopperScorerResult<PopperCategoryScore> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut category = PopperCategoryScore::new(self.name(), 0.0, self.max_points());
 
         // Score each sub-category

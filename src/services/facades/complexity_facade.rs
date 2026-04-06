@@ -112,7 +112,6 @@ impl ComplexityFacade {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_language_thresholds(&self, language: &str) -> ComplexityThresholds {
-        debug_assert!(!language.is_empty(), "language must not be empty");
         match language {
             "rust" => ComplexityThresholds {
                 warning: 15,
@@ -145,7 +144,6 @@ impl ComplexityFacade {
         result: &ComplexityAnalysisResult,
         language: &str,
     ) -> ValidationResult {
-        debug_assert!(!language.is_empty(), "language must not be empty");
         let thresholds = self.get_language_thresholds(language);
 
         let warnings = result
@@ -245,7 +243,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

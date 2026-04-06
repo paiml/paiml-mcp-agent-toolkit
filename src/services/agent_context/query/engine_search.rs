@@ -7,7 +7,6 @@ impl AgentContextIndex {
         candidates: Option<&[usize]>,
         options: &QueryOptions,
     ) -> Result<Vec<(usize, f32)>, String> {
-        debug_assert!(true, "contract: calculate_regex_scores");
         let case_insensitive = match options.case_sensitivity {
             CaseSensitivity::Insensitive => true,
             CaseSensitivity::Sensitive => false,
@@ -66,7 +65,6 @@ impl AgentContextIndex {
         candidates: Option<&[usize]>,
         options: &QueryOptions,
     ) -> Result<Vec<(usize, f32)>, String> {
-        debug_assert!(!needle.is_empty(), "needle must not be empty");
         let case_insensitive = match options.case_sensitivity {
             CaseSensitivity::Insensitive => true,
             CaseSensitivity::Sensitive => false,

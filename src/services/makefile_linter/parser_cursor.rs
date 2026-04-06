@@ -3,12 +3,10 @@
 
 impl<'src> MakefileParser<'src> {
     fn at_end(&self) -> bool {
-        debug_assert!(true, "contract: at_end");
         self.cursor >= self.input.len()
     }
 
     fn peek(&self) -> Option<char> {
-        debug_assert!(true, "contract: peek");
         if self.cursor >= self.input.len() {
             return None;
         }
@@ -21,7 +19,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn advance(&mut self) {
-        debug_assert!(true, "contract: advance");
         // Check if we're at the end first
         if self.cursor >= self.input.len() {
             return;
@@ -41,7 +38,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn skip_spaces(&mut self) {
-        debug_assert!(true, "contract: skip_spaces");
         while let Some(ch) = self.peek() {
             if ch == ' ' || ch == '\r' {
                 self.advance();
@@ -52,7 +48,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn skip_whitespace_and_blank_lines(&mut self) {
-        debug_assert!(true, "contract: skip_whitespace_and_blank_lines");
         while let Some(ch) = self.peek() {
             if ch.is_whitespace() {
                 self.advance();
@@ -73,7 +68,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn starts_with(&self, s: &str) -> bool {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         if self.cursor >= self.input.len() {
             return false;
         }

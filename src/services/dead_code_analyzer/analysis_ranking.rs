@@ -36,7 +36,6 @@ impl DeadCodeAnalyzer {
         project_path: &Path,
         config: crate::models::dead_code::DeadCodeAnalysisConfig,
     ) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         use crate::services::context::analyze_project_for_dead_code;
         use chrono::Utc;
 
@@ -89,7 +88,6 @@ impl DeadCodeAnalyzer {
         project_context: &crate::services::context::ProjectContext,
         config: &crate::models::dead_code::DeadCodeAnalysisConfig,
     ) -> anyhow::Result<Vec<crate::models::dead_code::FileDeadCodeMetrics>> {
-        debug_assert!(true, "contract: aggregate_by_file");
         use std::collections::HashMap;
 
         let mut file_map: HashMap<String, crate::models::dead_code::FileDeadCodeMetrics> =

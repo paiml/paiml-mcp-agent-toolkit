@@ -287,7 +287,6 @@ impl VariableDiff {
 
     /// Get type name of a JSON value
     fn value_type_name(value: &serde_json::Value) -> &'static str {
-        debug_assert!(true, "contract: value_type_name");
         match value {
             serde_json::Value::Null => "null",
             serde_json::Value::Bool(_) => "boolean",

@@ -141,7 +141,6 @@ impl AgentDaemon {
 
     /// Initialize daemon components
     async fn initialize_components(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: initialize_components");
         info!("Initializing daemon components");
 
         // Create quality monitor

@@ -3,7 +3,6 @@
 // ============================================================================
 
 fn default_applicable() -> bool {
-    debug_assert!(true, "contract: default_applicable");
     true
 }
 

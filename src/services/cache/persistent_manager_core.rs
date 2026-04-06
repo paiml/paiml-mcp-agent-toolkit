@@ -1,7 +1,6 @@
 impl PersistentCacheManager {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(config: CacheConfig, cache_dir: PathBuf) -> Result<Self> {
-        debug_assert!(cache_dir.exists(), "cache_dir must exist: {}", cache_dir.display());
         // Create individual cache directories
         let ast_cache_dir = cache_dir.join("ast");
 
@@ -45,7 +44,6 @@ impl PersistentCacheManager {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<FileContext>>,
     {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_buf = path.to_path_buf();
 
         // Try cache first

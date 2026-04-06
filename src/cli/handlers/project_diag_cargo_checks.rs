@@ -3,7 +3,6 @@
 // ============================================================================
 
 fn check_edition_2021(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
     let content = std::fs::read_to_string(&cargo_toml).unwrap_or_default();
 
@@ -44,7 +43,6 @@ fn check_edition_2021(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_resolver_v2(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
     let content = std::fs::read_to_string(&cargo_toml).unwrap_or_default();
 
@@ -80,7 +78,6 @@ fn check_resolver_v2(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_dependency_count(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
     let content = std::fs::read_to_string(&cargo_toml).unwrap_or_default();
 
@@ -135,7 +132,6 @@ fn check_dependency_count(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_lto_enabled(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
     let content = std::fs::read_to_string(&cargo_toml).unwrap_or_default();
 
@@ -168,7 +164,6 @@ fn check_lto_enabled(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_workspace_lints(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
     let content = std::fs::read_to_string(&cargo_toml).unwrap_or_default();
 
@@ -199,7 +194,6 @@ fn check_workspace_lints(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_workspace_deps(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
     let content = std::fs::read_to_string(&cargo_toml).unwrap_or_default();
 
@@ -240,7 +234,6 @@ fn check_workspace_deps(project_path: &Path) -> DiagnosticCheck {
 // ============================================================================
 
 fn check_target_dir_size(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let target_path = project_path.join("target");
 
     if !target_path.exists() {
@@ -295,7 +288,6 @@ fn check_target_dir_size(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_cargo_lock(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_lock = project_path.join("Cargo.lock");
 
     let (status, score, message) = if cargo_lock.exists() {
@@ -323,7 +315,6 @@ fn check_cargo_lock(project_path: &Path) -> DiagnosticCheck {
 }
 
 fn check_audit_config(project_path: &Path) -> DiagnosticCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let deny_toml = project_path.join("deny.toml");
     let audit_toml = project_path.join(".cargo").join("audit.toml");
 

@@ -47,7 +47,6 @@ impl CrossLanguageDependencies {
 
     /// Get color for a language in DOT format
     fn language_color(&self, language: Language) -> &'static str {
-        debug_assert!(true, "contract: language_color");
         match language {
             Language::Java => "\"#b07219\"",       // Java brown
             Language::Kotlin => "\"#A97BFF\"",     // Kotlin purple

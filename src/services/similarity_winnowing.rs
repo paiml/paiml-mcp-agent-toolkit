@@ -6,7 +6,6 @@ impl Winnowing {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(window_size: usize, k_gram_size: usize) -> Self {
-        debug_assert!(window_size > 0, "window_size must be positive");
         Self {
             window_size,
             k_gram_size,
@@ -16,7 +15,6 @@ impl Winnowing {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn fingerprint(&self, text: &str) -> Vec<u64> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         let k_grams = self.extract_k_grams(text);
         self.select_fingerprints(&k_grams)
     }
@@ -40,7 +38,6 @@ impl Winnowing {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_matches(&self, text_fp: &[u64], sub_fp: &[u64]) -> Vec<usize> {
-        debug_assert!(!text_fp.is_empty(), "text_fp must not be empty");
         let mut matches = Vec::new();
         let sub_set: HashSet<_> = sub_fp.iter().collect();
 
@@ -54,7 +51,6 @@ impl Winnowing {
     }
 
     fn extract_k_grams(&self, text: &str) -> Vec<u64> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         let chars: Vec<char> = text.chars().collect();
         let mut k_grams = Vec::new();
 
@@ -67,7 +63,6 @@ impl Winnowing {
     }
 
     fn select_fingerprints(&self, k_grams: &[u64]) -> Vec<u64> {
-        debug_assert!(!k_grams.is_empty(), "k_grams must not be empty");
         let mut fingerprints = Vec::new();
 
         for window in k_grams.windows(self.window_size) {
@@ -82,7 +77,6 @@ impl Winnowing {
     }
 
     fn hash_k_gram(&self, gram: &str) -> u64 {
-        debug_assert!(!gram.is_empty(), "gram must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 

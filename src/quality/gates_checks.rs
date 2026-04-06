@@ -9,7 +9,6 @@
 /// - Cyclomatic: 4
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_clippy(config: &GateConfig, project_dir: &Path) -> Result<GateResult> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
 
     let start = Instant::now();
@@ -60,7 +59,6 @@ pub fn execute_clippy(config: &GateConfig, project_dir: &Path) -> Result<GateRes
 /// - Cyclomatic: 3
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResult> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
 
     let start = Instant::now();
@@ -125,7 +123,6 @@ pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResu
 /// - Cyclomatic: 5
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateResult> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
 
     let start = Instant::now();
@@ -192,7 +189,6 @@ pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateR
 /// - Time: O(n) where n is number of files to clean
 /// - Cyclomatic: 3
 fn cleanup_coverage_artifacts(project_dir: &Path) {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     // Clean llvm-cov-target in project dir
     let llvm_cov_target = project_dir.join("target").join("llvm-cov-target");
     if llvm_cov_target.exists() {
@@ -214,7 +210,6 @@ fn cleanup_coverage_artifacts(project_dir: &Path) {
 
 /// Remove files older than max_age_secs from a directory
 fn clean_old_files(dir: &Path, max_age_secs: u64) {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     use std::time::{Duration, SystemTime};
 
     let max_age = Duration::from_secs(max_age_secs);
@@ -248,7 +243,6 @@ fn clean_old_files(dir: &Path, max_age_secs: u64) {
 /// - Time: O(n) where n is output length
 /// - Cyclomatic: 4
 fn parse_coverage_from_output(output: &str) -> f64 {
-    debug_assert!(!output.is_empty(), "output must not be empty");
     // Look for "TOTAL.*X.XX%"
     for line in output.lines() {
         if line.contains("TOTAL") {
@@ -271,7 +265,6 @@ fn parse_coverage_from_output(output: &str) -> f64 {
 /// - Cyclomatic: 2
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_complexity(config: &GateConfig, _project_dir: &Path) -> Result<GateResult> {
-    debug_assert!(_project_dir.exists(), "_project_dir must exist: {}", _project_dir.display());
     use std::time::Instant;
 
     let start = Instant::now();

@@ -8,7 +8,6 @@ impl CouplingAnalyzer {
     }
 
     fn calculate_afferent_coupling(&self, root: Node, source: &str) -> usize {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut incoming = HashSet::new();
 
         walk_tree(root, |node| {
@@ -29,7 +28,6 @@ impl CouplingAnalyzer {
     }
 
     fn calculate_efferent_coupling(&self, root: Node, source: &str) -> usize {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut outgoing = HashSet::new();
 
         walk_tree(root, |node| {
@@ -61,7 +59,6 @@ impl CouplingAnalyzer {
     }
 
     fn is_public(&self, node: Node, source: &str) -> bool {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(visibility) = node.child_by_field_name("visibility_modifier") {
             let vis_text = get_node_text(visibility, source);
             vis_text.contains("pub")
@@ -71,7 +68,6 @@ impl CouplingAnalyzer {
     }
 
     fn extract_import_path(&self, node: Node, source: &str) -> Option<String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(path) = node.child_by_field_name("path") {
             Some(get_node_text(path, source).to_string())
         } else if let Some(argument) = node.child_by_field_name("argument") {
@@ -88,7 +84,6 @@ impl CouplingAnalyzer {
     }
 
     fn is_builtin_type(&self, type_name: &str) -> bool {
-        debug_assert!(!type_name.is_empty(), "type_name must not be empty");
         matches!(
             type_name,
             "i8" | "i16" | "i32" | "i64" | "i128" | "isize" |
@@ -101,7 +96,6 @@ impl CouplingAnalyzer {
     }
 
     fn calculate_abstractness(&self, root: Node, source: &str) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut abstract_count = 0;
         let mut total_count = 0;
 
@@ -132,7 +126,6 @@ impl CouplingAnalyzer {
     }
 
     fn build_dependency_graph(&self, root: Node, source: &str) -> DependencyGraph {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut graph = DependencyGraph::new();
         let mut current_module = None;
 

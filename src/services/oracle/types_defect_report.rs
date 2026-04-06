@@ -39,7 +39,6 @@ impl DefectReport {
     /// Uses multiplicative combination: category_confidence * max_signal_weight
     /// This ensures low-weight signals properly reduce overall confidence.
     fn recalculate_confidence(&mut self) {
-        debug_assert!(true, "contract: recalculate_confidence");
         if self.signals.is_empty() {
             self.confidence = 0.0;
             return;

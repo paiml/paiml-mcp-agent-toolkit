@@ -74,7 +74,6 @@ pub trait MemoryAware {
 
     /// Check if service is under memory pressure
     fn memory_pressure(&self) -> f64 {
-        debug_assert!(true, "contract: memory_usage");
         0.0 // Default implementation
     }
 }

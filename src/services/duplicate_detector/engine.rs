@@ -43,7 +43,6 @@ impl DuplicateDetectionEngine {
     /// Detect duplicates in a set of files
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect_duplicates(&self, files: &[(PathBuf, String, Language)]) -> Result<CloneReport> {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         // Phase 1: Extract fragments from all files
         let mut all_fragments = Vec::new();
         for (path, content, lang) in files {
@@ -76,7 +75,6 @@ impl DuplicateDetectionEngine {
         content: &str,
         lang: Language,
     ) -> Result<Vec<CodeFragment>> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let tokens = self.feature_extractor.extract_features(content, lang);
         let lines: Vec<&str> = content.lines().collect();
         let mut fragments = self.extract_function_fragments(path, &lines, lang)?;
@@ -97,8 +95,6 @@ impl DuplicateDetectionEngine {
         lines: &[&str],
         lang: Language,
     ) -> Result<Vec<CodeFragment>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!lines.is_empty(), "lines must not be empty");
         let mut fragments = Vec::new();
         let mut current_function_start = None;
 
@@ -127,8 +123,6 @@ impl DuplicateDetectionEngine {
         lang: Language,
         fragments: &mut Vec<CodeFragment>,
     ) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!lines.is_empty(), "lines must not be empty");
         let fragment_content = lines[start_line..=end_line].join("\n");
         let fragment_tokens = self
             .feature_extractor
@@ -157,8 +151,6 @@ impl DuplicateDetectionEngine {
         end_line: usize,
         lang: Language,
     ) -> Result<CodeFragment> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let id = self
             .next_fragment_id
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -202,7 +194,6 @@ impl DuplicateDetectionEngine {
     /// Check if line starts a function
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn is_function_start(&self, line: &str, lang: Language) -> bool {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         match lang {
             Language::Rust => line.contains("fn ") && line.contains('('),
             Language::TypeScript | Language::JavaScript => {
@@ -222,7 +213,6 @@ impl DuplicateDetectionEngine {
     /// Check if line ends a function
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn is_function_end(&self, line: &str, lang: Language) -> bool {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         match lang {
             Language::Rust
             | Language::TypeScript
@@ -247,7 +237,6 @@ impl DuplicateDetectionEngine {
         &self,
         fragments: &[CodeFragment],
     ) -> Result<Vec<(FragmentId, FragmentId, f64)>> {
-        debug_assert!(!fragments.is_empty(), "fragments must not be empty");
         let lsh_buckets = self.build_lsh_buckets(fragments);
         let candidate_pairs = Self::collect_candidate_pairs(&lsh_buckets);
 
@@ -268,7 +257,6 @@ impl DuplicateDetectionEngine {
 
     /// Build LSH buckets by hashing each fragment's signature bands
     fn build_lsh_buckets(&self, fragments: &[CodeFragment]) -> Vec<HashMap<u64, Vec<usize>>> {
-        debug_assert!(!fragments.is_empty(), "fragments must not be empty");
         let bands = self.config.num_bands;
         let rows_per_band = self.config.rows_per_band;
         let mut lsh_buckets: Vec<HashMap<u64, Vec<usize>>> = vec![HashMap::new(); bands];
@@ -291,7 +279,6 @@ impl DuplicateDetectionEngine {
     fn collect_candidate_pairs(
         lsh_buckets: &[HashMap<u64, Vec<usize>>],
     ) -> HashSet<(usize, usize)> {
-        debug_assert!(!lsh_buckets.is_empty(), "lsh_buckets must not be empty");
         let mut candidate_pairs = HashSet::new();
         for band_buckets in lsh_buckets {
             for bucket in band_buckets.values().filter(|b| b.len() >= 2) {
@@ -316,7 +303,6 @@ impl DuplicateDetectionEngine {
         &self,
         clone_pairs: Vec<(FragmentId, FragmentId, f64)>,
     ) -> Result<Vec<CloneGroup>> {
-        debug_assert!(!clone_pairs.is_empty(), "clone_pairs must not be empty");
         // Use Union-Find for grouping
         let mut groups: HashMap<FragmentId, Vec<FragmentId>> = HashMap::new();
         let mut representative: HashMap<FragmentId, FragmentId> = HashMap::new();
@@ -451,7 +437,6 @@ impl DuplicateDetectionEngine {
     /// Compute duplication hotspots
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn compute_hotspots(&self, groups: &[CloneGroup]) -> Vec<DuplicationHotspot> {
-        debug_assert!(!groups.is_empty(), "groups must not be empty");
         let mut file_stats: HashMap<PathBuf, (usize, HashSet<usize>)> = HashMap::new();
 
         for group in groups {

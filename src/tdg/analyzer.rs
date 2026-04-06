@@ -38,14 +38,12 @@ impl TdgAnalyzer {
     
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_config_file(path: &Path) -> Result<Self> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let config = TdgConfig::from_file(path)?;
         Self::with_config(config)
     }
     
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let file_hash = self.hash_file(path)?;
         if let Some(cached) = self.cache.get(path) {
             if cached.hash == file_hash {
@@ -85,7 +83,6 @@ impl TdgAnalyzer {
     
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_str(&self, source: &str, language: Language) -> Result<TdgScore> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let adapter = self.registry.get_adapter(language)?;
         let tree = adapter.parse(source)?;
         
@@ -110,7 +107,6 @@ impl TdgAnalyzer {
     
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let files = self.discover_files(dir)?;
         
         let results: Result<Vec<_>> = files
@@ -124,8 +120,6 @@ impl TdgAnalyzer {
     
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn compare(&self, path1: &Path, path2: &Path) -> Result<Comparison> {
-        debug_assert!(path1.exists(), "path1 must exist: {}", path1.display());
-        debug_assert!(path2.exists(), "path2 must exist: {}", path2.display());
         let score1 = if path1.is_dir() {
             self.analyze_project(path1)?.average()
         } else {
@@ -152,14 +146,12 @@ impl TdgAnalyzer {
     }
     
     fn discover_files(&self, dir: &Path) -> Result<Vec<PathBuf>> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut files = Vec::new();
         self.discover_files_recursive(dir, &mut files)?;
         Ok(files)
     }
     
     fn discover_files_recursive(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if !dir.is_dir() {
             return Ok(());
         }
@@ -181,7 +173,6 @@ impl TdgAnalyzer {
     }
     
     fn should_skip_directory(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
             matches!(
                 name,
@@ -195,7 +186,6 @@ impl TdgAnalyzer {
     }
     
     fn should_analyze_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             matches!(
                 ext,
@@ -209,7 +199,6 @@ impl TdgAnalyzer {
     }
     
     fn hash_file(&self, path: &Path) -> Result<String> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let metadata = fs::metadata(path)?;
         let modified = metadata.modified()?.duration_since(std::time::UNIX_EPOCH)?.as_secs();
         let size = metadata.len();
@@ -360,7 +349,6 @@ mod tests {
         
         let source = r#"
             fn complex_function() {
-                debug_assert!(true, "contract: complex_function");
                 if true {
                     if true {
                         if true {
@@ -399,7 +387,6 @@ mod property_tests {
 
         #[test] 
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

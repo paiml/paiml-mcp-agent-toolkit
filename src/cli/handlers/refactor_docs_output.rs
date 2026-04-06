@@ -3,7 +3,6 @@
 
 /// Handle interactive mode
 async fn handle_interactive_mode(mut result: RefactorDocsResult) -> Result<RefactorDocsResult> {
-    debug_assert!(true, "contract: handle_interactive_mode");
     let mut stdin = BufReader::new(io::stdin());
     let mut stdout = io::stdout();
     let mut to_remove = Vec::new();
@@ -59,7 +58,6 @@ async fn handle_interactive_mode(mut result: RefactorDocsResult) -> Result<Refac
 
 /// Create backup of files
 async fn create_backup(files: &[CruftFile], backup_dir: &Path) -> Result<()> {
-    debug_assert!(backup_dir.exists(), "backup_dir must exist: {}", backup_dir.display());
     // Create backup directory with timestamp
     let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
     let backup_path = backup_dir.join(format!("refactor_docs_{timestamp}"));
@@ -87,7 +85,6 @@ async fn create_backup(files: &[CruftFile], backup_dir: &Path) -> Result<()> {
 
 /// Remove files
 async fn remove_files(files: &[CruftFile]) -> Result<()> {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     let mut removed = 0;
     let mut errors = Vec::new();
 
@@ -121,7 +118,6 @@ fn format_output(
     perf: bool,
     elapsed: std::time::Duration,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_output");
     match format {
         RefactorDocsOutputFormat::Summary => format_summary(result, dry_run, perf, elapsed),
         RefactorDocsOutputFormat::Detailed => format_detailed(result, dry_run, perf, elapsed),
@@ -137,7 +133,6 @@ fn format_summary(
     perf: bool,
     elapsed: std::time::Duration,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_summary");
     let mut output = String::new();
 
     output.push_str("# Documentation Refactoring Report\n\n");
@@ -169,7 +164,6 @@ fn format_summary(
 
 /// Append summary statistics to output string
 fn append_summary_stats(output: &mut String, result: &RefactorDocsResult) {
-    debug_assert!(true, "contract: append_summary_stats");
     output.push_str(&format!(
         "- **Files Scanned**: {}\n",
         result.summary.total_files_scanned
@@ -194,7 +188,6 @@ fn append_summary_stats(output: &mut String, result: &RefactorDocsResult) {
 
 /// Append category breakdown to output string
 fn append_category_breakdown(output: &mut String, result: &RefactorDocsResult) {
-    debug_assert!(true, "contract: append_category_breakdown");
     output.push_str("## Files by Category\n\n");
     for (category, count) in &result.summary.files_by_category {
         let size = result.summary.size_by_category.get(category).unwrap_or(&0);
@@ -210,7 +203,6 @@ fn append_category_breakdown(output: &mut String, result: &RefactorDocsResult) {
 
 /// Append error section to output string
 fn append_errors(output: &mut String, result: &RefactorDocsResult) {
-    debug_assert!(true, "contract: append_errors");
     output.push_str("## \u{26a0}\u{fe0f} Errors\n\n");
     for error in &result.errors {
         output.push_str(&format!("- {error}\n"));
@@ -225,7 +217,6 @@ fn format_detailed(
     perf: bool,
     elapsed: std::time::Duration,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_detailed");
     let mut output = format_summary(result, dry_run, perf, elapsed)?;
 
     if !result.cruft_files.is_empty() {
@@ -241,7 +232,6 @@ fn format_detailed(
 
 /// Append detailed cruft file information to output string
 fn append_cruft_file_details(output: &mut String, result: &RefactorDocsResult) {
-    debug_assert!(true, "contract: append_cruft_file_details");
     output.push_str("## Cruft Files Details\n\n");
 
     for file in &result.cruft_files {
@@ -261,7 +251,6 @@ fn append_cruft_file_details(output: &mut String, result: &RefactorDocsResult) {
 
 /// Append preserved files list to output string
 fn append_preserved_files(output: &mut String, result: &RefactorDocsResult) {
-    debug_assert!(true, "contract: append_preserved_files");
     output.push_str("## Preserved Files\n\n");
     for file in &result.preserved_files {
         output.push_str(&format!("- {}\n", file.display()));
@@ -271,6 +260,5 @@ fn append_preserved_files(output: &mut String, result: &RefactorDocsResult) {
 
 /// Format JSON output
 fn format_json(result: &RefactorDocsResult) -> Result<String> {
-    debug_assert!(true, "contract: format_json");
     serde_json::to_string_pretty(result).context("Failed to serialize to JSON")
 }

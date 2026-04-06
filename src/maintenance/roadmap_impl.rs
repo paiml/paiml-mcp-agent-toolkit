@@ -6,7 +6,6 @@ impl Roadmap {
     /// - Cyclomatic: 2
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_file(path: &Path) -> Result<Self> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
         Self::parse_content(&content)
     }
@@ -18,7 +17,6 @@ impl Roadmap {
     /// - Cyclomatic: 9
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_content(content: &str) -> Result<Self> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut state = ParseState {
             sprints: Vec::new(),
             current_sprint: None,
@@ -111,7 +109,6 @@ struct ParseState {
 
 /// Process a single line during roadmap parsing
 fn process_roadmap_line(state: &mut ParseState, line: &str) {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     if let Some(sprint_info) = parse_sprint_header(line) {
         if let Some(sprint) = state.current_sprint.take() {
             state.sprints.push(sprint);

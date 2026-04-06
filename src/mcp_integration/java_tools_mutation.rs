@@ -1,7 +1,6 @@
 #[async_trait]
 impl McpTool for JavaMutationTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "mutation_test_java".to_string(),
             description: "Performs mutation testing on Java code to assess test suite quality."
@@ -39,7 +38,6 @@ impl McpTool for JavaMutationTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         let project_path = params["project_path"].as_str().ok_or_else(|| McpError {
             code: crate::mcp_integration::error_codes::INVALID_PARAMS,
             message: "Missing project_path parameter".to_string(),

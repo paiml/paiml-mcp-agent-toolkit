@@ -4,7 +4,6 @@
 #[async_trait]
 impl ToolHandler for PdmtTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling pdmt_deterministic_todos with args: {}", args);
 
         let input: PdmtInput = serde_json::from_value(args)

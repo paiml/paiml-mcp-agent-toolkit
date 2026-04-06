@@ -1,5 +1,4 @@
 fn contains_shell_injection(command: &str) -> bool {
-    debug_assert!(!command.is_empty(), "command must not be empty");
     static UNQUOTED_VAR_REGEX: OnceLock<Regex> = OnceLock::new();
     let regex = UNQUOTED_VAR_REGEX.get_or_init(|| {
         // Match $(VAR) or ${VAR} not inside quotes
@@ -29,7 +28,6 @@ fn contains_shell_injection(command: &str) -> bool {
 }
 
 fn quote_variables(command: &str) -> String {
-    debug_assert!(!command.is_empty(), "command must not be empty");
     static VAR_REGEX: OnceLock<Regex> = OnceLock::new();
     let regex = VAR_REGEX.get_or_init(|| Regex::new(r#"\$\(([^)]+)\)"#).expect("internal error"));
 
@@ -37,8 +35,6 @@ fn quote_variables(command: &str) -> String {
 }
 
 fn detect_secret(name: &str, value: &str) -> Option<String> {
-    debug_assert!(!name.is_empty(), "name must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     let value_trimmed = value.trim();
 
     check_secret_var_name(name, value_trimmed)
@@ -49,8 +45,6 @@ fn detect_secret(name: &str, value: &str) -> Option<String> {
 }
 
 fn check_secret_var_name(name: &str, value: &str) -> Option<String> {
-    debug_assert!(!name.is_empty(), "name must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     let name_lower = name.to_lowercase();
     let is_secret_name = name_lower.contains("password")
         || name_lower.contains("secret")
@@ -66,7 +60,6 @@ fn check_secret_var_name(name: &str, value: &str) -> Option<String> {
 }
 
 fn check_aws_credential(value: &str) -> Option<String> {
-    debug_assert!(!value.is_empty(), "value must not be empty");
     if value.starts_with("AKIA") && value.len() == 20 {
         Some("AWS access key".to_string())
     } else {
@@ -75,7 +68,6 @@ fn check_aws_credential(value: &str) -> Option<String> {
 }
 
 fn check_github_token(value: &str) -> Option<String> {
-    debug_assert!(!value.is_empty(), "value must not be empty");
     if value.starts_with("ghp_") || value.starts_with("github_pat_") {
         Some("GitHub token".to_string())
     } else {
@@ -84,7 +76,6 @@ fn check_github_token(value: &str) -> Option<String> {
 }
 
 fn check_jwt_token(value: &str) -> Option<String> {
-    debug_assert!(!value.is_empty(), "value must not be empty");
     if value.starts_with("eyJ") {
         Some("JWT token".to_string())
     } else {
@@ -93,7 +84,6 @@ fn check_jwt_token(value: &str) -> Option<String> {
 }
 
 fn check_api_key(value: &str) -> Option<String> {
-    debug_assert!(!value.is_empty(), "value must not be empty");
     if value.starts_with("sk-") || value.starts_with("pk-") {
         Some("API key".to_string())
     } else {
@@ -102,7 +92,6 @@ fn check_api_key(value: &str) -> Option<String> {
 }
 
 fn detect_secret_in_command(command: &str) -> Option<String> {
-    debug_assert!(!command.is_empty(), "command must not be empty");
     // Check for Bearer tokens
     if command.contains("Bearer ") {
         if let Some(pos) = command.find("Bearer ") {
@@ -122,7 +111,6 @@ fn detect_secret_in_command(command: &str) -> Option<String> {
 }
 
 fn detect_unsafe_command(command: &str) -> Option<(&'static str, Severity)> {
-    debug_assert!(!command.is_empty(), "command must not be empty");
     let cmd_trimmed = command.trim();
 
     // Critical: rm -rf /
@@ -154,7 +142,6 @@ fn detect_unsafe_command(command: &str) -> Option<(&'static str, Severity)> {
 }
 
 fn detect_privilege_escalation(command: &str) -> Option<String> {
-    debug_assert!(!command.is_empty(), "command must not be empty");
     let cmd_trimmed = command.trim();
 
     // Check for sudo with variables
@@ -181,7 +168,6 @@ fn detect_privilege_escalation(command: &str) -> Option<String> {
 }
 
 fn truncate_command(command: &str) -> &str {
-    debug_assert!(!command.is_empty(), "command must not be empty");
     if command.len() > 50 {
         &command[..50]
     } else {
@@ -190,7 +176,6 @@ fn truncate_command(command: &str) -> &str {
 }
 
 fn suggest_safe_alternative(pattern: &str) -> String {
-    debug_assert!(true, "contract: suggest_safe_alternative");
     match pattern {
         "rm -rf / - extremely dangerous" => "Use specific paths and add safety checks".to_string(),
         "downloading and piping to shell" => {

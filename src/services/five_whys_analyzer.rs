@@ -37,7 +37,6 @@ impl FiveWhysAnalyzer {
     /// Complete debug analysis with root cause and recommendations
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze(&self, issue: &str, path: &Path, depth: u8) -> Result<DebugAnalysis> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Validation
         if issue.is_empty() {
             bail!("Issue description cannot be empty");
@@ -87,8 +86,6 @@ impl FiveWhysAnalyzer {
         depth: u8,
         previous_whys: &[WhyIteration],
     ) -> Result<WhyIteration> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!issue.is_empty(), "issue must not be empty");
         // Formulate question
         let question = self.formulate_question(issue, depth, previous_whys)?;
 
@@ -115,7 +112,6 @@ impl FiveWhysAnalyzer {
         depth: u8,
         previous_whys: &[WhyIteration],
     ) -> Result<String> {
-        debug_assert!(!issue.is_empty(), "issue must not be empty");
         let question = if depth == 1 {
             format!("Why did this occur: {}?", issue)
         } else if let Some(prev) = previous_whys.last() {
@@ -133,7 +129,6 @@ impl FiveWhysAnalyzer {
     /// EvoScore trajectory (15%), Coverage delta (15%), Dead code (10%).
     /// TDG removed (redundant with complexity+churn).
     async fn gather_evidence(&self, path: &Path) -> Result<Vec<Evidence>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut evidence = Vec::new();
 
         // Real SATD evidence: count TODO/FIXME/HACK/WORKAROUND in source
@@ -166,7 +161,6 @@ impl FiveWhysAnalyzer {
 
     /// Count SATD markers (TODO, FIXME, HACK, WORKAROUND, XXX) in source files.
     fn gather_satd_evidence(path: &Path) -> Option<Evidence> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let src_dir = path.join("src");
         let dir = if src_dir.is_dir() { &src_dir } else { path };
         let count = Self::count_satd_markers(dir);
@@ -192,7 +186,6 @@ impl FiveWhysAnalyzer {
     const SATD_MARKERS: &'static [&'static str] = &["TODO", "FIXME", "HACK", "WORKAROUND", "XXX"];
 
     fn count_satd_markers(dir: &Path) -> usize {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let entries = match std::fs::read_dir(dir) {
             Ok(e) => e,
             Err(_) => return 0,
@@ -222,7 +215,6 @@ impl FiveWhysAnalyzer {
 
     /// Count git commits in last 30 days.
     fn gather_git_churn_evidence(path: &Path) -> Option<Evidence> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let output = std::process::Command::new("git")
             .args(["rev-list", "--count", "--since=30.days", "HEAD"])
             .current_dir(path)
@@ -260,7 +252,6 @@ impl FiveWhysAnalyzer {
 
     /// Estimate complexity by counting Rust source lines and deeply-nested functions.
     fn gather_complexity_evidence(path: &Path) -> Option<Evidence> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let src_dir = path.join("src");
         if !src_dir.is_dir() {
             return None;
@@ -290,7 +281,6 @@ impl FiveWhysAnalyzer {
     /// Uses the same gamma-weighted computation as `check_swe_ci_evoscore`.
     /// Returns None (neutral) if insufficient data (<3 commits).
     fn gather_evoscore_evidence(path: &Path) -> Option<Evidence> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let metrics_dir = path.join(".pmat-metrics");
         if !metrics_dir.exists() {
             return None;
@@ -393,7 +383,6 @@ impl FiveWhysAnalyzer {
     /// Reads cached coverage data and computes a simple coverage ratio.
     /// Returns None if no coverage data is available.
     fn gather_coverage_delta_evidence(path: &Path) -> Option<Evidence> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let cache_path = path.join(".pmat/coverage-cache.json");
         let content = std::fs::read_to_string(&cache_path).ok()?;
         let data: serde_json::Value = serde_json::from_str(&content).ok()?;
@@ -450,7 +439,6 @@ impl FiveWhysAnalyzer {
     }
 
     fn count_lines_and_nesting(dir: &Path) -> (usize, usize) {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let entries = match std::fs::read_dir(dir) {
             Ok(e) => e,
             Err(_) => return (0, 0),
@@ -473,7 +461,6 @@ impl FiveWhysAnalyzer {
     }
 
     fn count_file_nesting(path: &Path) -> (usize, usize) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = match std::fs::read_to_string(path) {
             Ok(c) => c,
             Err(_) => return (0, 0),
@@ -499,7 +486,6 @@ impl FiveWhysAnalyzer {
         evidence: &[Evidence],
         depth: u8,
     ) -> Result<String> {
-        debug_assert!(!_question.is_empty(), "_question must not be empty");
         let signals = EvidenceSignals::from_evidence(evidence);
         Ok(signals.hypothesis_for_depth(depth))
     }
@@ -516,7 +502,6 @@ struct EvidenceSignals {
 
 impl EvidenceSignals {
     fn from_evidence(evidence: &[Evidence]) -> Self {
-        debug_assert!(!evidence.is_empty(), "evidence must not be empty");
         Self {
             high_complexity: evidence.iter().any(|e| {
                 e.source == EvidenceSource::Complexity
@@ -552,7 +537,6 @@ impl EvidenceSignals {
     }
 
     fn hypothesis_for_depth(&self, depth: u8) -> String {
-        debug_assert!(true, "contract: hypothesis_for_depth");
         match depth {
             1 => self.depth_1_hypothesis(),
             2 => self.depth_2_hypothesis(),
@@ -563,7 +547,6 @@ impl EvidenceSignals {
     }
 
     fn depth_1_hypothesis(&self) -> String {
-        debug_assert!(true, "contract: depth_1_hypothesis");
         if self.high_complexity {
             "Code complexity exceeds acceptable thresholds".to_string()
         } else if self.satd_present {
@@ -574,7 +557,6 @@ impl EvidenceSignals {
     }
 
     fn depth_2_hypothesis(&self) -> String {
-        debug_assert!(true, "contract: depth_2_hypothesis");
         if self.low_coverage {
             "Insufficient test coverage allowed defect to slip through".to_string()
         } else if self.high_complexity {
@@ -585,7 +567,6 @@ impl EvidenceSignals {
     }
 
     fn depth_3_hypothesis(&self) -> String {
-        debug_assert!(true, "contract: depth_3_hypothesis");
         if self.regressing_evoscore {
             "Quality trajectory is declining — area has been getting worse over time".to_string()
         } else if self.high_churn {
@@ -606,7 +587,6 @@ impl FiveWhysAnalyzer {
     /// TDG weight removed (0%) — redundant with complexity+churn.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_confidence(&self, evidence: &[Evidence]) -> Result<f64> {
-        debug_assert!(!evidence.is_empty(), "evidence must not be empty");
         if evidence.is_empty() {
             return Ok(0.3); // Low confidence with no evidence
         }
@@ -701,7 +681,6 @@ impl FiveWhysAnalyzer {
 
     /// Extract root cause from Why iterations
     fn extract_root_cause(&self, whys: &[WhyIteration]) -> Result<Option<String>> {
-        debug_assert!(!whys.is_empty(), "whys must not be empty");
         if whys.is_empty() {
             return Ok(None);
         }
@@ -718,7 +697,6 @@ impl FiveWhysAnalyzer {
         whys: &[WhyIteration],
         root_cause: &str,
     ) -> Result<Vec<Recommendation>> {
-        debug_assert!(!root_cause.is_empty(), "root_cause must not be empty");
         let mut recommendations = Vec::new();
 
         // Analyze evidence across all whys to generate recommendations

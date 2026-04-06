@@ -13,7 +13,6 @@ fn format_markdown_category_row(
     category: &crate::services::popper_score::PopperCategoryScore,
     is_gateway: bool,
 ) {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     if category.is_not_applicable {
         output.push_str(&format!("| {} | N/A | N/A | ⚪ N/A |\n", name));
         return;
@@ -36,7 +35,6 @@ fn format_markdown_category_row(
 
 /// Append verbose detailed breakdown section for markdown
 fn format_markdown_detailed_breakdown(output: &mut String, score: &PopperScore) {
-    debug_assert!(true, "contract: format_markdown_detailed_breakdown");
     output.push_str("## 📊 Detailed Breakdown\n\n");
     for (name, category, _) in popper_category_entries(score) {
         if category.is_not_applicable {
@@ -55,7 +53,6 @@ fn format_markdown_detailed_breakdown(output: &mut String, score: &PopperScore) 
 
 /// Append markdown-formatted recommendations to the output
 fn format_markdown_recommendations(output: &mut String, score: &PopperScore) {
-    debug_assert!(true, "contract: format_markdown_recommendations");
     if score.recommendations.is_empty() {
         return;
     }
@@ -75,7 +72,6 @@ fn format_markdown_recommendations(output: &mut String, score: &PopperScore) {
 
 /// Format score as Markdown
 fn format_markdown(score: &PopperScore, verbose: bool, _failures_only: bool) -> String {
-    debug_assert!(true, "contract: format_markdown");
     let mut output = String::new();
 
     // Header
@@ -131,6 +127,5 @@ fn format_markdown(score: &PopperScore, verbose: bool, _failures_only: bool) -> 
 
 /// Format score as YAML
 fn format_yaml(score: &PopperScore) -> Result<String> {
-    debug_assert!(true, "contract: format_yaml");
     serde_yaml_ng::to_string(score).context("Failed to serialize to YAML")
 }

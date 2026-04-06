@@ -4,7 +4,6 @@
 impl ExclusionSummary {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_results(excluded: &[&QueryResult]) -> Self {
-        debug_assert!(!excluded.is_empty(), "excluded must not be empty");
         let mut summary = Self::default();
         let mut cov_off_files: HashSet<&str> = HashSet::new();
         let mut dead_files: HashSet<&str> = HashSet::new();

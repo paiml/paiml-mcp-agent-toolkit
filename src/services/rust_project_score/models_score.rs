@@ -49,12 +49,10 @@ impl Default for RustProjectScore {
 
 impl NormalizedScore for RustProjectScore {
     fn raw(&self) -> f64 {
-        debug_assert!(true, "contract: raw");
         self.total_score
     }
 
     fn max_raw(&self) -> f64 {
-        debug_assert!(true, "contract: max_raw");
         RUST_PROJECT_MAX_POINTS
     }
 }
@@ -107,7 +105,6 @@ impl Grade {
     /// PMAT-454: Now properly normalizes to 0-100 before grading
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64, max: f64) -> Self {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         // Normalize to 0-100 percentage
         let normalized = if max > 0.0 {
             (score / max * 100.0).clamp(0.0, 100.0)

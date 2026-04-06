@@ -22,12 +22,10 @@ impl RegressionGate {
 
 impl QualityGate for RegressionGate {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "RegressionGate"
     }
 
     fn check(&self, baseline: &TdgBaseline, current: &TdgBaseline) -> Result<GateResult> {
-        debug_assert!(true, "contract: check");
         let comparison = baseline.compare(current);
         let mut violations = Vec::new();
 

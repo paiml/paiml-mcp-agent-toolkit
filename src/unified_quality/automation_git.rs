@@ -1,6 +1,5 @@
 impl GitSafetyNet {
     fn new(work_dir: PathBuf) -> Self {
-        debug_assert!(work_dir.exists(), "work_dir must exist: {}", work_dir.display());
         Self {
             work_dir,
             original_branch: None,
@@ -8,7 +7,6 @@ impl GitSafetyNet {
     }
 
     fn create_branch(&self, name: &str) -> Result<()> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         Command::new("git")
             .current_dir(&self.work_dir)
             .args(["checkout", "-b", name])
@@ -21,7 +19,6 @@ impl GitSafetyNet {
     }
 
     fn commit_fixes(&self, fixes: &[AppliedFix]) -> Result<()> {
-        debug_assert!(!fixes.is_empty(), "fixes must not be empty");
         let message = format!("Auto-fix: {} violations", fixes.len());
         Command::new("git")
             .current_dir(&self.work_dir)
@@ -41,7 +38,6 @@ impl RollbackManager {
 
     #[allow(dead_code)]
     fn add_rollback_point(&mut self, branch: String, commit: String, files: Vec<PathBuf>) {
-        debug_assert!(true, "contract: add_rollback_point");
         let point = RollbackPoint {
             timestamp: std::time::SystemTime::now(),
             branch,
@@ -58,7 +54,6 @@ impl RollbackManager {
     }
 
     fn rollback_last(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: rollback_last");
         if let Some(point) = self.rollback_points.pop() {
             Command::new("git")
                 .args(["checkout", &point.branch])

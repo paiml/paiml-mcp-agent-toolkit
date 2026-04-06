@@ -1,6 +1,5 @@
 #[cfg(feature = "python-ast")]
 fn build_qualified_name(class_stack: &[String], name: &str) -> String {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     if class_stack.is_empty() {
         name.to_string()
     } else {
@@ -15,7 +14,6 @@ fn visit_function_def(
     items: &mut Vec<AstItem>,
     class_stack: &[String],
 ) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     if let Some(name_node) = node.child_by_field_name("name") {
         let name = &source[name_node.byte_range()];
         items.push(AstItem::Function {
@@ -34,7 +32,6 @@ fn visit_class_def(
     items: &mut Vec<AstItem>,
     class_stack: &mut Vec<String>,
 ) -> bool {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let name_node = match node.child_by_field_name("name") {
         Some(n) => n,
         None => return false,
@@ -54,7 +51,6 @@ fn visit_class_def(
 impl UnifiedPythonAnalyzer {
     #[cfg(feature = "python-ast")]
     fn extract_ast_items(&self, tree: &Tree, source: &str) -> Vec<AstItem> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut items = Vec::new();
         let root = tree.root_node();
         self.visit_node_for_items(&root, source, &mut items, &mut Vec::new());
@@ -69,7 +65,6 @@ impl UnifiedPythonAnalyzer {
         items: &mut Vec<AstItem>,
         class_stack: &mut Vec<String>,
     ) {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "function_definition" => {
                 visit_function_def(node, source, items, class_stack);

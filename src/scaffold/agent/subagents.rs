@@ -174,7 +174,6 @@ impl std::str::FromStr for PmatSubAgent {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         match s {
             "complexity-analyst" => Ok(Self::ComplexityAnalyst),
             "mutation-tester" => Ok(Self::MutationTester),
@@ -216,11 +215,6 @@ impl SubAgentGenerator {
     /// Create a generator with custom template directory.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_template_dir(template_dir: PathBuf) -> Self {
-        debug_assert!(
-            template_dir.exists(),
-            "template_dir must exist: {}",
-            template_dir.display()
-        );
         Self {
             _template_dir: template_dir,
         }
@@ -253,11 +247,6 @@ impl SubAgentGenerator {
         agent: PmatSubAgent,
         output_dir: &Path,
     ) -> Result<PathBuf> {
-        debug_assert!(
-            output_dir.exists(),
-            "output_dir must exist: {}",
-            output_dir.display()
-        );
         let content = self.generate_subagent(agent)?;
         let filename = format!("{}.md", agent.name());
         let output_path = output_dir.join(filename);
@@ -274,11 +263,6 @@ impl SubAgentGenerator {
     /// Export all MVP sub-agents.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn export_all_mvp(&self, output_dir: &Path) -> Result<Vec<PathBuf>> {
-        debug_assert!(
-            output_dir.exists(),
-            "output_dir must exist: {}",
-            output_dir.display()
-        );
         let mut paths = Vec::new();
         for agent in PmatSubAgent::all_mvp() {
             let path = self.export_for_claude_code(agent, output_dir)?;
@@ -299,27 +283,22 @@ impl SubAgentGenerator {
 
     // Template generation methods (to be implemented)
     fn generate_complexity_analyst(&self) -> Result<String> {
-        debug_assert!(true, "contract: generate_complexity_analyst");
         Ok(include_str!("subagent_templates/complexity_analyst.md.tmpl").to_string())
     }
 
     fn generate_mutation_tester(&self) -> Result<String> {
-        debug_assert!(true, "contract: generate_mutation_tester");
         Ok(include_str!("subagent_templates/mutation_tester.md.tmpl").to_string())
     }
 
     fn generate_satd_detector(&self) -> Result<String> {
-        debug_assert!(true, "contract: generate_satd_detector");
         Ok(include_str!("subagent_templates/satd_detector.md.tmpl").to_string())
     }
 
     fn generate_dead_code_eliminator(&self) -> Result<String> {
-        debug_assert!(true, "contract: generate_dead_code_eliminator");
         Ok(include_str!("subagent_templates/dead_code_eliminator.md.tmpl").to_string())
     }
 
     fn generate_documentation_enforcer(&self) -> Result<String> {
-        debug_assert!(true, "contract: generate_documentation_enforcer");
         Ok(include_str!("subagent_templates/documentation_enforcer.md.tmpl").to_string())
     }
 }

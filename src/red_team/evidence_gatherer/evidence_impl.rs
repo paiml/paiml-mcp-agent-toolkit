@@ -50,7 +50,6 @@ impl EvidenceGatherer {
         claim: &Claim,
         context: &RepositoryContext,
     ) -> Vec<EvidenceResult> {
-        debug_assert!(true, "contract: gather_test_status_evidence");
         let mut evidence = Vec::new();
 
         // Evidence 1: Git history - check for subsequent test fixes
@@ -111,7 +110,6 @@ impl EvidenceGatherer {
         _claim: &Claim,
         context: &RepositoryContext,
     ) -> Vec<EvidenceResult> {
-        debug_assert!(true, "contract: gather_documentation_evidence");
         let mut evidence = Vec::new();
 
         // Evidence 1: Git history - check for subsequent doc fixes
@@ -164,7 +162,6 @@ impl EvidenceGatherer {
         claim: &Claim,
         context: &RepositoryContext,
     ) -> Vec<EvidenceResult> {
-        debug_assert!(true, "contract: gather_coverage_evidence");
         let mut evidence = Vec::new();
 
         // Evidence 1: Git history - check for subsequent coverage fixes
@@ -229,7 +226,6 @@ impl EvidenceGatherer {
         _claim: &Claim,
         context: &RepositoryContext,
     ) -> Vec<EvidenceResult> {
-        debug_assert!(true, "contract: gather_feature_completion_evidence");
         let mut evidence = Vec::new();
 
         // Evidence 1: Git history - check for subsequent fixes/reverts
@@ -265,7 +261,6 @@ impl EvidenceGatherer {
         _claim: &Claim,
         context: &RepositoryContext,
     ) -> Vec<EvidenceResult> {
-        debug_assert!(true, "contract: gather_migration_evidence");
         let mut evidence = Vec::new();
 
         // Evidence 1: Git history - check for rollbacks
@@ -318,7 +313,6 @@ impl EvidenceGatherer {
         claim: &Claim,
         context: &RepositoryContext,
     ) -> Vec<EvidenceResult> {
-        debug_assert!(true, "contract: gather_bugfix_evidence");
         let mut evidence = Vec::new();
 
         // Evidence 1: Issue tracker status
@@ -376,7 +370,6 @@ impl EvidenceGatherer {
         claim: &Claim,
         context: &RepositoryContext,
     ) -> Vec<EvidenceResult> {
-        debug_assert!(true, "contract: gather_performance_evidence");
         let mut evidence = Vec::new();
 
         // Evidence 1: Benchmark results
@@ -439,7 +432,6 @@ impl EvidenceGatherer {
         _claim: &Claim,
         context: &RepositoryContext,
     ) -> Vec<EvidenceResult> {
-        debug_assert!(true, "contract: gather_security_evidence");
         let mut evidence = Vec::new();
 
         // Evidence 1: Cargo audit results

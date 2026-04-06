@@ -5,8 +5,6 @@ async fn handle_generate_prompt(
     summary_path: &PathBuf,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(summary_path.exists(), "summary_path must exist: {}", summary_path.display());
-    debug_assert!(!task.is_empty(), "task must not be empty");
     let generator = DefectAwarePromptGenerator::from_file(summary_path)
         .context("Failed to load organizational intelligence summary")?;
 
@@ -29,7 +27,6 @@ async fn handle_ticket_prompt(
     summary_path: Option<&PathBuf>,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(!ticket.is_empty(), "ticket must not be empty");
     let mut prompt = format!(
         "# EXTREME TDD: Fix Ticket\n\n\
          ## Ticket\n{}\n\n\
@@ -61,7 +58,6 @@ fn enrich_ticket_prompt_with_intelligence(
     prompt: &mut String,
     summary: &PathBuf,
 ) -> Result<()> {
-    debug_assert!(summary.exists(), "summary must exist: {}", summary.display());
     if summary.exists() {
         let generator = DefectAwarePromptGenerator::from_file(summary)?;
         prompt.push_str(&format!(
@@ -93,7 +89,6 @@ async fn handle_implement_prompt(
     summary_path: Option<&PathBuf>,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
     let spec_content = std::fs::read_to_string(spec_path).context(format!(
         "Failed to read specification file: {:?}",
         spec_path
@@ -129,7 +124,6 @@ fn enrich_implement_prompt_with_intelligence(
     prompt: &mut String,
     summary: &PathBuf,
 ) -> Result<()> {
-    debug_assert!(summary.exists(), "summary must exist: {}", summary.display());
     if summary.exists() {
         let generator = DefectAwarePromptGenerator::from_file(summary)?;
         prompt.push_str(&format!(
@@ -159,7 +153,6 @@ async fn handle_scaffold_repo_prompt(
     include_roadmap: bool,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
     let spec_content = std::fs::read_to_string(spec_path).context(format!(
         "Failed to read specification file: {:?}",
         spec_path
@@ -184,7 +177,6 @@ fn append_scaffold_sections(
     include_bashrs: bool,
     include_roadmap: bool,
 ) {
-    debug_assert!(true, "contract: append_scaffold_sections");
     if include_pmat {
         prompt.push_str(
             "### PMAT Tools Integration\n\
@@ -246,7 +238,6 @@ fn write_prompt_output(
     output: &Option<PathBuf>,
     label: &str,
 ) -> Result<()> {
-    debug_assert!(!prompt.is_empty(), "prompt must not be empty");
     if let Some(output_path) = output {
         std::fs::write(output_path, prompt)?;
         println!("✅ {} prompt written to {:?}", label, output_path);

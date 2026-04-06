@@ -16,7 +16,6 @@ async fn handle_generate_context(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_generate_context");
     // Parse and validate arguments
     let (args, project_path) = match parse_generate_context_args(arguments) {
         Ok(result) => result,
@@ -52,7 +51,6 @@ async fn handle_generate_context(
 fn parse_generate_context_args(
     arguments: serde_json::Value,
 ) -> Result<(GenerateContextArgs, PathBuf), Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: parse_generate_context_args");
     let args: GenerateContextArgs = serde_json::from_value(arguments)?;
 
     let project_path = args.project_path.as_ref().map_or_else(
@@ -67,7 +65,6 @@ fn parse_generate_context_args(
 fn build_context_generation_config(
     args: &GenerateContextArgs,
 ) -> crate::services::deep_context::DeepContextConfig {
-    debug_assert!(true, "contract: build_context_generation_config");
     use crate::services::deep_context::DeepContextConfig;
     use crate::services::file_classifier::FileClassifierConfig;
 
@@ -98,7 +95,6 @@ async fn run_deep_context_analysis_with_config(
     project_path: &Path,
     config: crate::services::deep_context::DeepContextConfig,
 ) -> Result<crate::services::deep_context::DeepContext, Box<dyn std::error::Error>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::deep_context::DeepContextAnalyzer;
 
     let analyzer = DeepContextAnalyzer::new(config);
@@ -113,7 +109,6 @@ async fn format_and_respond_context(
     args: GenerateContextArgs,
     deep_context: crate::services::deep_context::DeepContext,
 ) -> McpResponse {
-    debug_assert!(true, "contract: format_and_respond_context");
     let format = args.format.as_deref().unwrap_or("markdown");
     let content = format_context_content(format, &deep_context).await;
 
@@ -126,7 +121,6 @@ async fn format_context_content(
     format: &str,
     deep_context: &crate::services::deep_context::DeepContext,
 ) -> String {
-    debug_assert!(!format.is_empty(), "format must not be empty");
     if format == "json" {
         serde_json::to_string_pretty(deep_context).unwrap_or_default()
     } else {
@@ -146,7 +140,6 @@ fn build_context_response(
     content: String,
     deep_context: &crate::services::deep_context::DeepContext,
 ) -> serde_json::Value {
-    debug_assert!(!format.is_empty(), "format must not be empty");
     json!({
         "content": [{
             "type": "text",

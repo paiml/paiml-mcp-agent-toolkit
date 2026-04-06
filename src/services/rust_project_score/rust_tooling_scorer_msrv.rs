@@ -3,7 +3,6 @@
 
 /// Extract the MSRV version string from Cargo.toml content
 fn extract_msrv(content: &str) -> Option<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .find(|line| line.contains("rust-version"))
@@ -21,7 +20,6 @@ fn extract_msrv(content: &str) -> Option<String> {
 
 /// Check if any CI workflow tests against a given MSRV version
 fn ci_tests_msrv(project_path: &Path, msrv: &str) -> bool {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let workflows_dir = project_path.join(".github/workflows");
     let entries = match std::fs::read_dir(&workflows_dir) {
         Ok(e) => e,
@@ -36,7 +34,6 @@ fn ci_tests_msrv(project_path: &Path, msrv: &str) -> bool {
 
 /// Extract a named profile section from Cargo.toml content
 fn extract_profile_section<'a>(content: &'a str, header: &str) -> Option<&'a str> {
-    debug_assert!(true, "contract: extract_profile_section");
     let start = content.find(header)?;
     let section = &content[start..];
     let end = section[1..]
@@ -48,7 +45,6 @@ fn extract_profile_section<'a>(content: &'a str, header: &str) -> Option<&'a str
 
 /// Score release profile settings
 fn score_release_section(section: &str) -> f64 {
-    debug_assert!(!section.is_empty(), "section must not be empty");
     let mut score = 0.0;
     let has_lto = section.contains("lto = true")
         || section.contains("lto = \"thin\"")
@@ -69,7 +65,6 @@ fn score_release_section(section: &str) -> f64 {
 
 /// Check if a profile section has LTO enabled (penalty for dev/test)
 fn profile_has_lto(section: &str) -> bool {
-    debug_assert!(!section.is_empty(), "section must not be empty");
     section.contains("lto = true")
         || section.contains("lto = \"")
         || section.contains("lto = '")

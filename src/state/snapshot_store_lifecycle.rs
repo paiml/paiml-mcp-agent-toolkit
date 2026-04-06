@@ -65,7 +65,6 @@ impl SnapshotStore {
         snapshot_id: &SnapshotId,
         expected_checksum: &str,
     ) -> Result<(), SnapshotError> {
-        debug_assert!(!expected_checksum.is_empty(), "expected_checksum must not be empty");
         // Read and decompress
         let file_path = self.snapshot_path(snapshot_id);
         let mut file = tokio::fs::File::open(&file_path)

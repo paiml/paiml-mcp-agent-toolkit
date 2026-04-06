@@ -67,7 +67,6 @@ impl TDGCalculator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_project_root(mut self, root: PathBuf) -> Self {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         self.project_root = root;
         self
     }
@@ -75,7 +74,6 @@ impl TDGCalculator {
     /// Calculate TDG score for a single file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn calculate_file(&self, path: &Path) -> Result<TDGScore> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check cache first
         if let Some(cached) = self.cache.get(&path.to_path_buf()) {
             return Ok(cached.clone());
@@ -88,7 +86,6 @@ impl TDGCalculator {
 
     /// Calculate TDG score without caching
     async fn calculate_file_uncached(&self, path: &Path) -> Result<TDGScore> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Gather all metrics in parallel
         let (complexity, churn, coupling, duplication, provability) = tokio::try_join!(
             self.calculate_complexity_factor(path),
@@ -127,7 +124,6 @@ impl TDGCalculator {
     /// Calculate TDG scores for multiple files with parallelization
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn calculate_batch(&self, files: Vec<PathBuf>) -> Result<Vec<TDGScore>> {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         let tasks: Vec<_> = files
             .into_iter()
             .map(|file| {
@@ -152,7 +148,6 @@ impl TDGCalculator {
 
     /// Calculate weighted TDG value from components
     fn calculate_weighted_tdg(&self, components: &TDGComponents, provability_factor: f64) -> f64 {
-        debug_assert!(true, "contract: calculate_weighted_tdg");
         let base_weighted = components.complexity * self.config.complexity_weight
             + components.churn * self.config.churn_weight
             + components.coupling * self.config.coupling_weight
@@ -168,7 +163,6 @@ impl TDGCalculator {
 
     /// Calculate confidence level based on data availability
     fn calculate_confidence(&self, components: &TDGComponents) -> f64 {
-        debug_assert!(true, "contract: calculate_confidence");
         let mut confidence = 1.0;
 
         // Reduce confidence for zero values (likely missing data)
@@ -187,7 +181,6 @@ impl TDGCalculator {
 
     /// Calculate percentiles for a batch of scores
     fn calculate_percentiles(&self, scores: &mut [TDGScore]) {
-        debug_assert!(true, "contract: calculate_percentiles");
         let mut values: Vec<f64> = scores.iter().map(|s| s.value).collect();
         values.sort_by(|a, b| a.total_cmp(b));
 
@@ -201,7 +194,6 @@ impl TDGCalculator {
 
     /// Calculate specific percentile value
     fn percentile(&self, sorted_values: &[f64], percentile: f64) -> f64 {
-        debug_assert!(true, "contract: percentile");
         if sorted_values.is_empty() {
             return 0.0;
         }

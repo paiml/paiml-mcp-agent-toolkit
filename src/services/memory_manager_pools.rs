@@ -5,7 +5,6 @@
 
 impl PooledBuffer {
     fn new(data: Vec<u8>, pool_type: PoolType, manager: Arc<MemoryManager>) -> Self {
-        debug_assert!(!data.is_empty(), "data must not be empty");
         Self {
             data,
             pool_type,
@@ -50,7 +49,6 @@ impl Drop for PooledBuffer {
 
 impl StringInterner {
     fn new(max_size: usize) -> Self {
-        debug_assert!(max_size > 0, "max_size must be positive");
         Self {
             strings: RwLock::new(FxHashSet::default()),
             total_size: Mutex::new(0),
@@ -60,7 +58,6 @@ impl StringInterner {
 
     /// Intern a string, returning a shared reference
     fn intern(&self, s: &str) -> Result<Arc<str>> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         // Check if string already exists
         {
             let strings = self.strings.read();
@@ -95,7 +92,6 @@ impl StringInterner {
 
     /// Get current memory usage
     fn memory_usage(&self) -> usize {
-        debug_assert!(true, "contract: memory_usage");
         *self.total_size.lock()
     }
 
@@ -108,7 +104,6 @@ impl StringInterner {
 
 impl MemoryPool {
     fn new(max_size: usize) -> Self {
-        debug_assert!(max_size > 0, "max_size must be positive");
         Self {
             buffers: Mutex::new(VecDeque::new()),
             total_size: Mutex::new(0),
@@ -120,7 +115,6 @@ impl MemoryPool {
 
     /// Get a buffer from the pool or allocate a new one
     fn get_buffer(&self, min_size: usize) -> Vec<u8> {
-        debug_assert!(min_size > 0, "min_size must be positive");
         let mut buffers = self.buffers.lock();
         let mut total_size = self.total_size.lock();
 
@@ -147,7 +141,6 @@ impl MemoryPool {
 
     /// Return a buffer to the pool
     fn return_buffer(&self, mut buffer: Vec<u8>) {
-        debug_assert!(!buffer.is_empty(), "buffer must not be empty");
         let mut buffers = self.buffers.lock();
         let total_size = self.total_size.lock();
 
@@ -163,7 +156,6 @@ impl MemoryPool {
 
     /// Get pool statistics
     fn stats(&self) -> PoolStats {
-        debug_assert!(true, "contract: stats");
         let buffers = self.buffers.lock();
         let total_size = *self.total_size.lock();
         let allocation_count = *self.allocation_count.lock();
@@ -184,7 +176,6 @@ impl MemoryPool {
 
     /// Clear all buffers
     fn clear(&self) {
-        debug_assert!(true, "contract: clear");
         self.buffers.lock().clear();
         *self.total_size.lock() = 0;
     }

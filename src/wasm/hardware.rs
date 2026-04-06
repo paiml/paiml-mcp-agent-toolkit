@@ -128,7 +128,6 @@ impl CoreClass {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_count(count: usize) -> Self {
-        debug_assert!(count > 0, "count must be positive");
         match count {
             1 => Self::Single,
             2 => Self::Dual,
@@ -462,7 +461,6 @@ mod property_tests {
 
         #[test]
         fn cache_class_distance_symmetric(a in 0usize..4, b in 0usize..4) {
-            debug_assert!(true, "contract: cache_class_distance_symmetric");
             let classes = [CacheClass::Small, CacheClass::Medium, CacheClass::Large, CacheClass::Huge];
             let class_a = &classes[a];
             let class_b = &classes[b];
@@ -471,7 +469,6 @@ mod property_tests {
 
         #[test]
         fn hardware_similarity_symmetric(core_a in 0usize..5, core_b in 0usize..5) {
-            debug_assert!(true, "contract: hardware_similarity_symmetric");
             let core_classes = [CoreClass::Single, CoreClass::Dual, CoreClass::Quad, CoreClass::Octa, CoreClass::Many];
             let hw1 = HardwareClass {
                 cpu_family: CpuFamily::IntelCore,

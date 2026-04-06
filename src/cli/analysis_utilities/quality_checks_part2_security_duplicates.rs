@@ -3,7 +3,6 @@
 
 /// Extract Method: Get security violation patterns
 fn get_security_patterns() -> Vec<(&'static str, &'static str)> {
-    debug_assert!(true, "contract: get_security_patterns");
     vec![
         (
             r#"(?i)password\s*=\s*["'][^"']+["']"#,
@@ -26,7 +25,6 @@ async fn check_file_security(
     patterns: &[(&str, &str)],
     violations: &mut Vec<QualityViolation>,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use regex::Regex;
     use tokio::fs;
 
@@ -48,8 +46,6 @@ fn scan_content_for_pattern(
     path: &std::path::Path,
     violations: &mut Vec<QualityViolation>,
 ) {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
-    debug_assert!(!content.is_empty(), "content must not be empty");
     for (line_no, line) in content.lines().enumerate() {
         if regex.is_match(line) {
             violations.push(QualityViolation {
@@ -125,7 +121,6 @@ fn scan_content_for_pattern(
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn check_duplicates(project_path: &Path) -> Result<Vec<QualityViolation>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::collections::HashMap;
 
     let mut violations = Vec::new();
@@ -142,7 +137,6 @@ async fn collect_file_hashes(
     project_path: &Path,
     file_hashes: &mut std::collections::HashMap<u64, Vec<PathBuf>>,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use walkdir::WalkDir;
 
     for entry in WalkDir::new(project_path) {
@@ -179,13 +173,11 @@ async fn collect_file_hashes(
 
 /// Check if file should be processed for duplicate detection
 fn should_process_file_for_duplicates(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.is_file() && is_source_file(path) && !is_build_artifact(path)
 }
 
 /// Process a file and return its content hash if valid
 async fn process_file_for_hash(path: &Path) -> Option<u64> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Ok(content) = tokio::fs::read_to_string(path).await {
         let normalized = normalize_code_content(&content);
         if is_file_large_enough(&normalized) {
@@ -200,7 +192,6 @@ async fn process_file_for_hash(path: &Path) -> Option<u64> {
 
 /// Check if file content is large enough to consider for duplicate detection
 fn is_file_large_enough(normalized_content: &str) -> bool {
-    debug_assert!(!normalized_content.is_empty(), "normalized_content must not be empty");
     normalized_content.len() > 50
 }
 
@@ -209,7 +200,6 @@ fn generate_duplicate_violations(
     file_hashes: &std::collections::HashMap<u64, Vec<PathBuf>>,
     violations: &mut Vec<QualityViolation>,
 ) {
-    debug_assert!(true, "contract: generate_duplicate_violations");
     for paths in file_hashes.values() {
         if paths.len() > 1 {
             create_violations_for_duplicate_group(paths, violations);
@@ -222,7 +212,6 @@ fn create_violations_for_duplicate_group(
     paths: &[PathBuf],
     violations: &mut Vec<QualityViolation>,
 ) {
-    debug_assert!(!paths.is_empty(), "paths must not be empty");
     let files_str = format_file_list(paths);
 
     for path in paths {
@@ -249,7 +238,6 @@ fn format_file_list(paths: &[PathBuf]) -> String {
 // Helper function to normalize code content
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn normalize_code_content(content: &str) -> String {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .filter(|line| {
@@ -264,7 +252,6 @@ pub fn normalize_code_content(content: &str) -> String {
 // Helper function to calculate content hash
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_content_hash(content: &str) -> u64 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 

@@ -7,7 +7,6 @@ pub async fn analyze_tdg(
     include_components: Option<bool>,
     with_git_context: Option<bool>, // Sprint 65: Git-commit correlation
 ) -> Result<Value> {
-    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::tdg::TdgAnalyzer;
 
     if paths.is_empty() {
@@ -33,7 +32,6 @@ pub async fn analyze_tdg(
 }
 
 async fn analyze_single_tdg_path(analyzer: &crate::tdg::TdgAnalyzer, path: &Path) -> Result<Value> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Sprint 65: Get git context from analyzer for output
     let git_context = analyzer.get_git_context();
 
@@ -90,7 +88,6 @@ async fn analyze_multiple_tdg_paths(
     analyzer: &crate::tdg::TdgAnalyzer,
     paths: &[PathBuf],
 ) -> Result<Value> {
-    debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::tdg::ProjectScore;
     let mut all_scores = Vec::new();
 
@@ -141,8 +138,6 @@ pub async fn compare_tdg(
     path2: &Path,
     with_git_context: Option<bool>, // Sprint 65: Git-commit correlation
 ) -> Result<Value> {
-    debug_assert!(path1.exists(), "path1 must exist: {}", path1.display());
-    debug_assert!(path2.exists(), "path2 must exist: {}", path2.display());
     use crate::tdg::TdgAnalyzer;
 
     let mut analyzer = TdgAnalyzer::new()?;

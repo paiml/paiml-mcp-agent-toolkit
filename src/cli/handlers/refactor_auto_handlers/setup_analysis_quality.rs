@@ -10,7 +10,6 @@
 /// Coordinates all quality analysis activities including lint, complexity, SATD, and coverage.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn analyze_project_quality(context: &RefactorContext) -> Result<ProjectQualityAnalysis> {
-    debug_assert!(true, "contract: analyze_project_quality");
     eprintln!("🔍 Analyzing project quality comprehensively...");
 
     // Analyze lint violations across the project
@@ -54,7 +53,6 @@ async fn analyze_project_quality(context: &RefactorContext) -> Result<ProjectQua
 async fn analyze_project_lint_violations(
     source_files: &[PathBuf],
 ) -> Result<Vec<ViolationDetailJson>> {
-    debug_assert!(!source_files.is_empty(), "source_files must not be empty");
     let mut all_violations = Vec::new();
 
     for file in source_files {
@@ -69,7 +67,6 @@ async fn analyze_project_lint_violations(
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn analyze_project_complexity(source_files: &[PathBuf]) -> Result<ComplexityAnalysis> {
-    debug_assert!(!source_files.is_empty(), "source_files must not be empty");
     let mut high_complexity_violations = Vec::new();
     let mut total_functions = 0;
     let mut total_complexity_sum = 0.0;
@@ -112,7 +109,6 @@ async fn analyze_project_complexity(source_files: &[PathBuf]) -> Result<Complexi
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn analyze_project_satd(source_files: &[PathBuf]) -> Result<SatdAnalysis> {
-    debug_assert!(!source_files.is_empty(), "source_files must not be empty");
     let mut total_satd_count = 0;
     let mut files_with_satd = std::collections::HashSet::new();
 
@@ -139,7 +135,6 @@ async fn analyze_project_satd(source_files: &[PathBuf]) -> Result<SatdAnalysis> 
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysis> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Use cargo llvm-cov to get coverage metrics
     let coverage_output = tokio::process::Command::new("cargo")
         .args([
@@ -172,7 +167,6 @@ async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysi
 
 /// Parse coverage percentage from llvm-cov JSON output
 fn parse_coverage_from_output(output: &[u8]) -> Option<f64> {
-    debug_assert!(true, "contract: parse_coverage_from_output");
     let output_str = String::from_utf8_lossy(output);
     // Simple regex to extract coverage percentage (case-insensitive)
     let coverage_regex = regex::Regex::new(r"(?i)coverage.*?(\d+\.\d+)%").ok()?;

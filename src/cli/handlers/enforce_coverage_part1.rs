@@ -42,7 +42,6 @@ pub fn complex_function(x: i32) -> i32 {
     /// Create a test project with Cargo.toml for more realistic testing
     #[allow(dead_code)]
     fn create_test_project_with_cargo() -> TempDir {
-        debug_assert!(true, "contract: create_test_project_with_cargo");
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
         // Create src directory
@@ -97,7 +96,6 @@ pub fn complex_function(x: i32, y: i32) -> i32 {
 }
 
 fn unused_function() {
-    debug_assert!(true, "contract: unused_function");
     println!("This is unused");
 }
 
@@ -119,7 +117,6 @@ mod tests {
 
     /// Create a QualityProfile for testing
     fn make_test_profile() -> QualityProfile {
-        debug_assert!(true, "contract: make_test_profile");
         QualityProfile {
             coverage_min: 80.0,
             complexity_max: 20,
@@ -134,7 +131,6 @@ mod tests {
 
     /// Create a relaxed QualityProfile for testing
     fn make_relaxed_profile() -> QualityProfile {
-        debug_assert!(true, "contract: make_relaxed_profile");
         QualityProfile {
             coverage_min: 50.0,
             complexity_max: 50,
@@ -149,7 +145,6 @@ mod tests {
 
     /// Create a test EnforcementConfig
     fn make_test_enforcement_config() -> EnforcementConfig {
-        debug_assert!(true, "contract: make_test_enforcement_config");
         EnforcementConfig {
             max_iterations: 5,
             target_improvement: None,
@@ -168,7 +163,6 @@ mod tests {
 
     /// Create a test EnforcementConfig with all options enabled
     fn make_full_enforcement_config() -> EnforcementConfig {
-        debug_assert!(true, "contract: make_full_enforcement_config");
         EnforcementConfig {
             max_iterations: 10,
             target_improvement: Some(0.1),
@@ -187,8 +181,6 @@ mod tests {
 
     /// Create a test violation
     fn make_test_violation(violation_type: &str, severity: &str) -> QualityViolation {
-        debug_assert!(!violation_type.is_empty(), "violation_type must not be empty");
-        debug_assert!(!severity.is_empty(), "severity must not be empty");
         QualityViolation {
             violation_type: violation_type.to_string(),
             severity: severity.to_string(),
@@ -207,9 +199,6 @@ mod tests {
         current: f64,
         target: f64,
     ) -> QualityViolation {
-        debug_assert!(!violation_type.is_empty(), "violation_type must not be empty");
-        debug_assert!(!severity.is_empty(), "severity must not be empty");
-        debug_assert!(!location.is_empty(), "location must not be empty");
         QualityViolation {
             violation_type: violation_type.to_string(),
             severity: severity.to_string(),

@@ -4,14 +4,12 @@
 /// Walk directory recursively for `.yaml`/`.yml` files.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn walkdir_yaml_files(dir: &Path) -> Vec<PathBuf> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     walk_yaml_recursive(dir, &mut files);
     files
 }
 
 fn walk_yaml_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -37,7 +35,6 @@ fn walk_yaml_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 /// Compute production lines (strip YAML comments).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn compute_yaml_production_lines(content: &str) -> Vec<(usize, String)> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut result = Vec::new();
     for (i, line) in content.lines().enumerate() {
         let trimmed = line.trim();
@@ -54,7 +51,6 @@ pub fn compute_yaml_production_lines(content: &str) -> Vec<(usize, String)> {
 }
 
 fn strip_yaml_inline_comment(line: &str) -> String {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let mut in_single = false;
     let mut in_double = false;
     let bytes = line.as_bytes();

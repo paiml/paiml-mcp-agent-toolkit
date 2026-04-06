@@ -27,7 +27,6 @@ pub async fn analyze_python_file_with_complexity(
     path: &Path,
     classifier: Option<&FileClassifier>,
 ) -> Result<FileComplexityMetrics, TemplateError> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Delegate to the version with classifier
     analyze_python_file_with_complexity_and_classifier(path, classifier).await
 }
@@ -37,7 +36,6 @@ async fn analyze_python_file_with_complexity_and_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileComplexityMetrics, TemplateError> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = tokio::fs::read_to_string(path)
         .await
@@ -90,7 +88,6 @@ async fn analyze_python_file_with_complexity_and_classifier(
 /// Analyze a Python file and return context (compatibility function)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_python_file(path: &Path) -> Result<FileContext, TemplateError> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_python_file_with_classifier(path, None).await
 }
 
@@ -100,7 +97,6 @@ pub async fn analyze_python_file_with_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileContext, TemplateError> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = tokio::fs::read_to_string(path)
         .await
@@ -175,7 +171,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

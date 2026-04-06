@@ -5,7 +5,6 @@ fn diff_both_maps(
     vars_a: &HashMap<String, serde_json::Value>,
     vars_b: &HashMap<String, serde_json::Value>,
 ) -> HashMap<String, DiffStatus> {
-    debug_assert!(true, "contract: diff_both_maps");
     let mut diff = HashMap::new();
     for (name, value_a) in vars_a {
         let status = match vars_b.get(name) {
@@ -24,7 +23,6 @@ fn diff_both_maps(
 }
 
 fn mark_all_as(vars: &HashMap<String, serde_json::Value>, status: DiffStatus) -> HashMap<String, DiffStatus> {
-    debug_assert!(true, "contract: mark_all_as");
     vars.keys().map(|name| (name.clone(), status.clone())).collect()
 }
 

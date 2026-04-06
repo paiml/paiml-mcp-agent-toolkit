@@ -19,7 +19,6 @@ use std::path::PathBuf;
 /// Estimate WASM function index from DWARF offset
 /// This is a heuristic until we have full WASM module analysis
 fn estimate_function_index(die_offset: u64) -> u32 {
-    debug_assert!(true, "contract: estimate_function_index");
     // Simple heuristic: assume functions are roughly 100 bytes apart in DWARF
     // This will be replaced with accurate mapping from WASM module analysis
     (die_offset / 100) as u32
@@ -42,7 +41,6 @@ impl CorrelationEngine {
     /// Create correlation engine with custom confidence threshold
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_confidence_threshold(threshold: f64) -> Self {
-        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         Self {
             confidence_threshold: threshold.clamp(0.0, 1.0),
         }

@@ -84,11 +84,6 @@ impl ParallelWasmAnalyzer {
     /// Analyze files in parallel
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_directory(&self, dir_path: &Path) -> Result<AggregatedAnalysis> {
-        debug_assert!(
-            dir_path.exists(),
-            "dir_path must exist: {}",
-            dir_path.display()
-        );
         let _start_time = Instant::now();
         let mut aggregated = AggregatedAnalysis::default();
 
@@ -129,7 +124,6 @@ impl ParallelWasmAnalyzer {
 
     /// Analyze a single file
     fn analyze_file(&self, path: &Path) -> FileAnalysisResult {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let start_time = Instant::now();
         let mut errors = Vec::new();
         let mut size_bytes = 0;
@@ -158,7 +152,6 @@ impl ParallelWasmAnalyzer {
 
     /// Check if file is relevant for analysis
     fn is_relevant_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(extension) = path.extension() {
             matches!(extension.to_str(), Some("wasm" | "wat" | "ts"))
         } else {
@@ -350,7 +343,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

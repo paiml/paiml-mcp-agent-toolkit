@@ -13,11 +13,6 @@ use std::path::PathBuf;
 /// Run git-aware tests for changed modules.
 /// Returns true if tests passed or were skipped.
 fn run_changed_module_tests(project_path: &PathBuf) -> Result<bool> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use std::process::Command;
 
     println!("   {}", c::dim("Running tests..."));
@@ -63,11 +58,6 @@ fn run_changed_module_tests(project_path: &PathBuf) -> Result<bool> {
 /// Run Rust-specific checks: examples compilation and project score.
 /// Returns true if all checks passed.
 fn run_rust_project_checks(project_path: &PathBuf) -> Result<bool> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use std::process::Command;
 
     if !project_path.join("Cargo.toml").exists() {
@@ -128,11 +118,6 @@ fn run_rust_project_checks(project_path: &PathBuf) -> Result<bool> {
 /// Validate golden traces via renacer if baseline exists.
 /// Returns true if validation passed or was skipped.
 fn run_golden_trace_validation(project_path: &PathBuf) -> Result<bool> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use std::process::Command;
 
     if !project_path.join("renacer.toml").exists() {
@@ -183,11 +168,6 @@ fn run_golden_trace_validation(project_path: &PathBuf) -> Result<bool> {
 
 /// Run cargo clippy. Returns true if no warnings.
 fn run_clippy_check(project_path: &PathBuf) -> Result<bool> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use std::process::Command;
 
     println!("   {}", c::dim("Running clippy..."));
@@ -211,11 +191,6 @@ fn run_clippy_check(project_path: &PathBuf) -> Result<bool> {
 /// Returns Ok(true) if all gates pass, Ok(false) if any fail, or Err on execution failure.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let tests_ok = run_changed_module_tests(project_path)?;
     let rust_ok = run_rust_project_checks(project_path)?;
     let traces_ok = run_golden_trace_validation(project_path)?;
@@ -231,11 +206,6 @@ pub async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
 /// Refresh agent context index after quality gates pass.
 /// Non-blocking: failures are logged but don't block quality gates.
 fn refresh_agent_context_index(project_path: &PathBuf) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::services::agent_context::AgentContextIndex;
 
     let index_path = project_path.join(".pmat/context.idx");
@@ -308,11 +278,6 @@ fn falsify_test_regression(
     step: usize,
     total: usize,
 ) -> Result<(bool, Vec<String>)> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use std::process::Command;
 
     println!(
@@ -346,11 +311,6 @@ fn falsify_coverage_regression(
     step: usize,
     total: usize,
 ) -> (bool, Vec<String>) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     println!();
     println!(
         "   {} Hypothesis: Coverage maintained or improved",
@@ -409,7 +369,6 @@ fn falsify_coverage_regression(
 
 /// Parse coverage trend from JSON file. Returns (previous, current) if available.
 fn parse_coverage_trend(path: &std::path::Path) -> Option<(f32, f32)> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = std::fs::read_to_string(path).ok()?;
     let json: serde_json::Value = serde_json::from_str(&content).ok()?;
     let entries = json.as_array()?;
@@ -424,11 +383,6 @@ fn parse_coverage_trend(path: &std::path::Path) -> Option<(f32, f32)> {
 
 /// Check binary size hypothesis.
 fn falsify_binary_bloat(project_path: &PathBuf, step: usize, total: usize) -> (bool, Vec<String>) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     println!();
     println!(
         "   {} Hypothesis: No dependency bloat",
@@ -481,11 +435,6 @@ fn falsify_binary_bloat(project_path: &PathBuf, step: usize, total: usize) -> (b
 /// Pass only if all falsification attempts fail (work is valid).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let mut result = FalsificationResult::default();
     let total = 3;
 

@@ -4,7 +4,6 @@
 #[async_trait]
 impl McpTool for LanguageBoundaryTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "analyze_language_boundaries".to_string(),
             description: "Detects language boundaries and interoperability points in a project"
@@ -36,7 +35,6 @@ impl McpTool for LanguageBoundaryTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         let (path, max_depth, source_language, target_language) = parse_boundary_params(&params)?;
         let languages = resolve_languages(source_language, target_language);
         let all_nodes = collect_language_nodes(&path, max_depth, &languages).await;
@@ -71,7 +69,6 @@ impl McpTool for LanguageBoundaryTool {
 }
 
 fn parse_language_param(value: &Value, key: &str) -> Option<Language> {
-    debug_assert!(!key.is_empty(), "key must not be empty");
     value[key].as_str().and_then(|l| match l.to_lowercase().as_str() {
         "java" => Some(Language::Java),
         "kotlin" => Some(Language::Kotlin),
@@ -83,7 +80,6 @@ fn parse_language_param(value: &Value, key: &str) -> Option<Language> {
 }
 
 fn parse_boundary_params(params: &Value) -> Result<(PathBuf, usize, Option<Language>, Option<Language>), McpError> {
-    debug_assert!(true, "contract: parse_boundary_params");
     let path_str = params["path"].as_str().ok_or_else(|| McpError {
         code: crate::mcp_integration::error_codes::INVALID_PARAMS,
         message: "Missing path parameter".to_string(),
@@ -109,7 +105,6 @@ fn parse_boundary_params(params: &Value) -> Result<(PathBuf, usize, Option<Langu
 }
 
 fn resolve_languages(source: Option<Language>, target: Option<Language>) -> Vec<Language> {
-    debug_assert!(true, "contract: resolve_languages");
     if source.is_none() && target.is_none() {
         vec![Language::Java, Language::Kotlin, Language::Scala, Language::TypeScript, Language::JavaScript]
     } else {
@@ -123,7 +118,6 @@ fn resolve_languages(source: Option<Language>, target: Option<Language>) -> Vec<
 }
 
 async fn collect_language_nodes(path: &Path, max_depth: usize, languages: &[Language]) -> Vec<UnifiedNode> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut all_nodes = Vec::new();
     for language in languages {
         match LanguageMapperFactory::create(*language) {
@@ -151,8 +145,6 @@ fn filter_dependencies<'a>(
 }
 
 fn node_to_json(nodes: &[UnifiedNode], id: &str) -> Value {
-    debug_assert!(!id.is_empty(), "id must not be empty");
-    debug_assert!(!nodes.is_empty(), "nodes must not be empty");
     nodes.iter().find(|n| n.id == id).map(|n| {
         json!({"id": n.id, "name": n.name, "fqn": n.fqn, "kind": n.kind.as_str(), "file": n.file_path.display().to_string()})
     }).unwrap_or_else(|| json!({"id": id}))
@@ -162,7 +154,6 @@ fn build_boundaries_json(
     filtered_deps: &[&crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency],
     all_nodes: &[UnifiedNode],
 ) -> Value {
-    debug_assert!(!filtered_deps.is_empty(), "filtered_deps must not be empty");
     let boundaries: Vec<Value> = filtered_deps.iter().map(|dep| {
         json!({
             "boundary_type": format!("{:?}", dep.kind),
@@ -177,7 +168,6 @@ fn build_boundaries_json(
 fn build_boundary_stats(
     filtered_deps: &[&crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency],
 ) -> Value {
-    debug_assert!(!filtered_deps.is_empty(), "filtered_deps must not be empty");
     let mut grouped: HashMap<String, Vec<_>> = HashMap::new();
     for dep in filtered_deps {
         grouped.entry(format!("{:?}", dep.kind)).or_default().push(*dep);
@@ -193,8 +183,6 @@ fn build_boundary_stats(
 }
 
 fn recommendations_for_pair(a: &str, b: &str) -> Value {
-    debug_assert!(!a.is_empty(), "a must not be empty");
-    debug_assert!(!b.is_empty(), "b must not be empty");
     match (a, b) {
         ("Java", "Kotlin") | ("Kotlin", "Java") => json!([
             "Use Kotlin's @JvmName annotation to control Java-visible names",
@@ -233,7 +221,6 @@ fn analyze_boundary_patterns(
     deps: Vec<&crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency>,
     _nodes: &[UnifiedNode],
 ) -> Value {
-    debug_assert!(!deps.is_empty(), "deps must not be empty");
     let mut language_pairs: HashMap<String, Vec<_>> = HashMap::new();
     for dep in &deps {
         let key = format!("{}-{}", dep.source_language.name(), dep.target_language.name());

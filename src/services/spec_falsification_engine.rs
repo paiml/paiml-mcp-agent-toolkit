@@ -6,7 +6,6 @@ pub struct FalsificationEngine {
 impl FalsificationEngine {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_path: &Path) -> Self {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self {
             project_path: project_path.to_path_buf(),
         }
@@ -15,7 +14,6 @@ impl FalsificationEngine {
     /// Falsify all claims in a specification file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn falsify_spec(&self, spec_path: &Path) -> Result<SpecFalsificationReport> {
-        debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
         let content = std::fs::read_to_string(spec_path)
             .with_context(|| format!("Failed to read spec: {}", spec_path.display()))?;
 
@@ -39,7 +37,6 @@ impl FalsificationEngine {
 
     /// Falsify a single claim using the appropriate strategy
     fn falsify_claim(&self, claim: SpecClaim) -> SpecVerdict {
-        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         let evidence = match &claim.category {
             SpecClaimCategory::PathReference => self.check_path_references(&claim),
             SpecClaimCategory::CodeEntity => self.check_code_entities(&claim),
@@ -75,7 +72,6 @@ impl FalsificationEngine {
     }
 
     fn check_single_path(&self, path_str: &str) -> SpecEvidence {
-        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         let full_path = self.project_path.join(path_str);
         if full_path.exists() {
             return SpecEvidence {
@@ -93,8 +89,6 @@ impl FalsificationEngine {
     }
 
     fn find_similar_file(full_path: &Path, project_path: &Path) -> String {
-        debug_assert!(full_path.exists(), "full_path must exist: {}", full_path.display());
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let parent = full_path.parent().unwrap_or(project_path);
         let stem = full_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
         if !parent.exists() || stem.is_empty() {
@@ -113,7 +107,6 @@ impl FalsificationEngine {
 
     /// Check if referenced code entities exist using pmat query
     fn check_code_entities(&self, claim: &SpecClaim) -> Vec<SpecEvidence> {
-        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         claim
             .entity_refs
             .iter()
@@ -186,7 +179,6 @@ impl FalsificationEngine {
 
     /// Check absence claims by searching for counterexamples
     fn check_absence_claim(&self, claim: &SpecClaim) -> Vec<SpecEvidence> {
-        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         // Extract what should be absent from the claim text
         let text_lower = claim.original_text.to_lowercase();
         let search_terms: Vec<&str> = if text_lower.contains("unsafe") {
@@ -261,7 +253,6 @@ impl FalsificationEngine {
 
     /// Check if referenced commands exist
     fn check_command_claim(&self, claim: &SpecClaim) -> Vec<SpecEvidence> {
-        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         let cmd_pattern = Regex::new(r"`(pmat\s+[\w-]+)`").expect("internal regex");
         let commands: Vec<String> = cmd_pattern
             .captures_iter(&claim.original_text)
@@ -305,7 +296,6 @@ impl FalsificationEngine {
 
     /// Check numeric/metric claims
     fn check_metric_claim(&self, _claim: &SpecClaim) -> Vec<SpecEvidence> {
-        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         // Metric claims require running actual measurements (coverage, complexity, etc.)
         // For MVP, mark these as inconclusive since we can't cheaply verify them
         vec![SpecEvidence {
@@ -318,7 +308,6 @@ impl FalsificationEngine {
 
     /// Determine the verdict status from evidence
     fn determine_verdict(&self, claim: &SpecClaim, evidence: &[SpecEvidence]) -> VerdictStatus {
-        debug_assert!(self.project_path.exists(), "self.project_path must exist");
         if matches!(
             claim.category,
             SpecClaimCategory::Unfalsifiable | SpecClaimCategory::ArchitecturalClaim
@@ -345,7 +334,6 @@ impl FalsificationEngine {
     }
 
     fn compute_summary(verdicts: &[SpecVerdict]) -> SpecFalsificationSummary {
-        debug_assert!(!verdicts.is_empty(), "verdicts must not be empty");
         let total_claims = verdicts.len();
         let survived = verdicts
             .iter()

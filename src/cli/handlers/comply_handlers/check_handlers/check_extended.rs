@@ -17,11 +17,6 @@ use super::types::*;
 /// CB-300: Muda Waste Score (COMPLY-040)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::comply_handlers::muda_handlers;
     let report = muda_handlers::calculate_muda_score(project_path);
     let mut message = format!(
@@ -62,11 +57,6 @@ pub(crate) fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
 /// CB-301: Reproducibility Level Check (COMPLY-041)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
     let report = reproducibility_handlers::check_reproducibility(project_path);
     let detail_summary: String = report
@@ -100,11 +90,6 @@ pub(crate) fn check_reproducibility_level(project_path: &Path) -> ComplianceChec
 /// CB-302: Golden Trace Drift Detection (COMPLY-042)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
     match reproducibility_handlers::check_golden_trace_drift(project_path) {
         None => ComplianceCheck {
@@ -131,11 +116,6 @@ pub(crate) fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
 /// CB-303: Equation-Driven Development Compliance (COMPLY-043)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::comply_handlers::edd_handlers;
     let report = edd_handlers::check_edd_compliance(project_path);
     if !report.is_simulation_project {
@@ -181,11 +161,6 @@ pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
 /// CB-304: Dead Code Percentage
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let config = crate::models::deep_context_config::DeepContextConfig::default();
     let threshold_pct = config.dead_code_threshold * 100.0;
     let source_dirs: Vec<std::path::PathBuf> = ["src", "crates", "lean", "lib"]
@@ -251,7 +226,6 @@ pub(crate) fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck
 }
 
 fn format_dependency_message(report: &DependencyCountReport) -> String {
-    debug_assert!(true, "contract: format_dependency_message");
     let transitive_display = if let Some(prod) = report.prod_transitive_count {
         format!(
             "{} prod transitive ({} total w/dev)",
@@ -287,7 +261,6 @@ fn format_dependency_message(report: &DependencyCountReport) -> String {
 }
 
 fn append_violation_details(msg: &mut String, report: &DependencyCountReport, limit: usize) {
-    debug_assert!(limit > 0, "limit must be positive");
     for v in report.violations.iter().take(limit) {
         let icon = if v.severity == crate::cli::handlers::comply_cb_detect::Severity::Error {
             "\u{2717}"
@@ -301,11 +274,6 @@ fn append_violation_details(msg: &mut String, report: &DependencyCountReport, li
 /// CB-081: Dependency Count Check
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     if !project_path.join("Cargo.toml").exists() {
         return ComplianceCheck {
             name: "CB-081: Dependency Health".into(),
@@ -353,11 +321,6 @@ pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
 pub(crate) fn discover_source_files(
     project_path: &Path,
 ) -> Result<Vec<std::path::PathBuf>, String> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let is_rust = project_path.join("Cargo.toml").exists();
     let is_lean = project_path.join("lakefile.lean").exists()
         || project_path.join("lean-toolchain").exists()
@@ -395,11 +358,6 @@ pub(crate) fn discover_source_files(
 /// Check file health across the project (CB-040)
 /// Analyze a single file for health metrics, returning (critical, problem, over_500) increments
 fn classify_file_health(file_path: &std::path::PathBuf, content: &str) -> (usize, usize, usize) {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     let lines = content.lines().count();
     let is_test_file = file_path.to_string_lossy().contains("/tests/")
         || file_path
@@ -424,7 +382,6 @@ fn build_file_health_check(
     problem_count: usize,
     over_500_count: usize,
 ) -> ComplianceCheck {
-    debug_assert!(true, "contract: build_file_health_check");
     if critical_count > 0 {
         ComplianceCheck { name: "File Health".into(), status: CheckStatus::Fail, message: format!("CRITICAL: {} files >2000 lines, {} files >1000 lines, {} files >500 lines (avg health: {}%, grade: {})", critical_count, problem_count, over_500_count, report.average_health, report.average_grade.as_str()), severity: Severity::Critical }
     } else if problem_count > 0 || over_500_count > 5 {
@@ -447,11 +404,6 @@ fn build_file_health_check(
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = match discover_source_files(project_path) {
         Ok(f) => f,
         Err(msg) => {
@@ -499,7 +451,6 @@ pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn estimate_test_lines(content: &str) -> usize {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut test_lines = 0;
     let mut in_test_module = false;
     let mut brace_depth = 0;
@@ -524,7 +475,6 @@ pub(crate) fn estimate_test_lines(content: &str) -> usize {
 }
 
 fn count_line_complexity(trimmed: &str) -> u32 {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let flow_keywords: &[(&str, &str)] = &[
         ("if ", " if "),
         ("else if ", "} else if "),
@@ -550,7 +500,6 @@ fn count_line_complexity(trimmed: &str) -> u32 {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn estimate_avg_complexity(content: &str) -> f32 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut total_complexity = 1u32;
     let mut function_count = 0u32;
     for line in content.lines() {

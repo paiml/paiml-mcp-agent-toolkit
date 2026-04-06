@@ -59,7 +59,6 @@ impl DemoScorer {
     /// Based on Uddin et al. (2017) and Steinmacher et al. (2015)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn detect_archetype(&self, repo_path: &Path) -> RepoArchetype {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let name = repo_path
             .file_name()
             .and_then(|n| n.to_str())

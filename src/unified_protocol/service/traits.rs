@@ -16,7 +16,6 @@ pub trait TemplateService: Send + Sync {
 /// Analysis service trait for dependency injection
 #[async_trait::async_trait]
 pub trait AnalysisService: Send + Sync {
-    debug_assert!(!template_id.is_empty(), "template_id must not be empty");
     async fn analyze_complexity(
         &self,
         params: &ComplexityParams,

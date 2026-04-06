@@ -25,7 +25,6 @@ impl LocalEmbedder {
     /// Fit the embedder on a corpus of documents (builds IDF statistics)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn fit(&self, documents: &[String]) -> Result<(), String> {
-        debug_assert!(!documents.is_empty(), "documents must not be empty");
         let mut df = self
             .document_frequencies
             .write()
@@ -52,7 +51,6 @@ impl LocalEmbedder {
     /// Generate embedding for a single text using feature hashing + TF-IDF weighting
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn embed(&self, text: &str) -> Result<Vec<f32>, String> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         let tokens = self.tokenize(text);
         let mut embedding = vec![0.0f32; self.dimension];
 
@@ -108,7 +106,6 @@ impl LocalEmbedder {
 
     /// Tokenize text into words
     fn tokenize(&self, text: &str) -> Vec<String> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         text.to_lowercase()
             .split(|c: char| !c.is_alphanumeric() && c != '_')
             .filter(|s| s.len() > 1)

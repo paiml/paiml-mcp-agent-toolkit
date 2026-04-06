@@ -8,7 +8,6 @@ impl Detector for DuplicateDetector {
     type Config = DetectionConfig;
 
     async fn detect(&self, input: Self::Input, config: Self::Config) -> Result<Self::Output> {
-        debug_assert!(true, "contract: detect");
         // Extract duplicate-specific config
         let duplicate_config = match config.detector_specific {
             DetectorSpecificConfig::Duplicates(config) => config,
@@ -53,12 +52,10 @@ impl Detector for DuplicateDetector {
     }
 
     fn name(&self) -> &'static str {
-        debug_assert!(true, "contract: name");
         "duplicates"
     }
 
     fn capabilities(&self) -> DetectorCapabilities {
-        debug_assert!(true, "contract: capabilities");
         DetectorCapabilities {
             supports_batch: true,
             supports_streaming: false,
@@ -74,7 +71,6 @@ impl DuplicateDetector {
         files: &[std::path::PathBuf],
         config: &DuplicateConfig,
     ) -> Result<DuplicateDetectionResult> {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         // Delegate to the existing duplicate_detector module functionality
         // Convert to the existing detector's expected input format
         let duplicate_config = crate::services::duplicate_detector::DuplicateDetectionConfig {
@@ -120,7 +116,6 @@ impl DuplicateDetector {
     }
 
     fn scan_directory_for_files(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut files = Vec::new();
 
         if dir.is_dir() {

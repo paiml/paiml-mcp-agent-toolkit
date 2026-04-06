@@ -23,11 +23,6 @@ pub(crate) async fn handle_review(
     format: ComplyOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::comply_handlers::muda_handlers;
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
 
@@ -84,7 +79,6 @@ fn build_review_checklist(
     muda: &crate::cli::handlers::comply_handlers::muda_handlers::MudaReport,
     git_clean: bool,
 ) -> Vec<ReviewItem> {
-    debug_assert!(true, "contract: build_review_checklist");
     let mut items = Vec::new();
 
     items.push(ReviewItem {
@@ -159,7 +153,6 @@ fn build_review_checklist(
 
 /// Format review checklist as markdown.
 fn format_review_markdown(items: &[ReviewItem]) -> String {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut out = String::new();
     out.push_str("# PMAT Comply Review Checklist\n\n");
     out.push_str("**Layer 2 (Genchi Genbutsu)**: Reviewer must verify evidence.\n\n");
@@ -181,11 +174,6 @@ fn format_review_markdown(items: &[ReviewItem]) -> String {
 
 /// Check if git working tree is clean.
 fn check_git_clean(project_path: &Path) -> bool {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     std::process::Command::new("git")
         .args(["status", "--porcelain"])
         .current_dir(project_path)
@@ -219,11 +207,6 @@ pub(crate) async fn handle_audit(
     format: ComplyOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     println!("{}", c::header("PMAT Comply Audit (Layer 3: Governance)"));
     println!("{}\n", c::rule());
 
@@ -306,11 +289,6 @@ fn collect_layer1_checks(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
 ) -> Vec<ComplianceCheck> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     vec![
         filter_check_by_config(check_compute_brick(project_path), "cb-060", comply_config),
         filter_check_by_config(
@@ -344,7 +322,6 @@ fn collect_layer1_checks(
 
 /// Format audit artifact as markdown.
 fn format_audit_markdown(artifact: &AuditArtifact) -> String {
-    debug_assert!(true, "contract: format_audit_markdown");
     let mut out = String::new();
     out.push_str("# PMAT Compliance Audit\n\n");
     out.push_str(&format!("**PMAT Version**: {}\n", artifact.version));

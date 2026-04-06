@@ -31,12 +31,10 @@ impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
     }
 
     fn node_count(&self) -> usize {
-        debug_assert!(true, "contract: node_count");
         self.nodes.iter().filter(|n| n.is_some()).count()
     }
 
     fn node_indices(&self) -> impl Iterator<Item = NodeIndex> + '_ {
-        debug_assert!(true, "contract: node_indices");
         self.nodes
             .iter()
             .enumerate()
@@ -44,7 +42,6 @@ impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
     }
 
     fn edge_references(&self) -> impl Iterator<Item = EdgeRef<'_, E>> + '_ {
-        debug_assert!(true, "contract: edge_references");
         self.edges.iter().map(|e| EdgeRef {
             source: e.source,
             target: e.target,
@@ -54,7 +51,6 @@ impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
 
     #[allow(dead_code)]
     fn get_node(&self, idx: NodeIndex) -> Option<&N> {
-        debug_assert!(true, "contract: get_node");
         self.nodes.get(idx.0).and_then(|n| n.as_ref())
     }
 }

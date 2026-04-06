@@ -23,7 +23,6 @@ pub enum CleanupTarget {
 impl CleanupTarget {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(s: &str) -> Option<Self> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "rust" => Some(Self::Rust),
             "docker" => Some(Self::Docker),
@@ -68,11 +67,6 @@ pub async fn handle_cleanup_resources(
     min_age_days: u32,
     format: OutputFormat,
 ) -> Result<()> {
-    debug_assert!(
-        project_dir.exists(),
-        "project_dir must exist: {}",
-        project_dir.display()
-    );
     // Parse targets
     let parsed_targets: Vec<CleanupTarget> = targets
         .iter()
@@ -116,11 +110,6 @@ fn scan_targets(
     min_age_days: u32,
     result: &mut CleanupResult,
 ) -> Result<()> {
-    debug_assert!(
-        project_dir.exists(),
-        "project_dir must exist: {}",
-        project_dir.display()
-    );
     if has_all || targets.contains(&CleanupTarget::Rust) {
         scan_rust_targets(project_dir, exclude, min_age_days, result)?;
     }
@@ -137,7 +126,6 @@ fn scan_targets(
 }
 
 fn finalize_cleanup(execute: bool, result: &mut CleanupResult) -> Result<()> {
-    debug_assert!(true, "contract: finalize_cleanup");
     if execute && !result.candidates.is_empty() {
         println!();
         println!("🔥 Executing cleanup...");

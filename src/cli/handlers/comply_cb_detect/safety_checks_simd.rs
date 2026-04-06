@@ -3,7 +3,6 @@
 
 /// Mark all lines in a function body as protected, starting from the `fn` declaration line.
 fn mark_function_body(lines: &[&str], fn_line: usize, protected: &mut HashSet<usize>) {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut depth: usize = 0;
     let mut entered_body = false;
     for k in fn_line..lines.len() {
@@ -39,7 +38,6 @@ pub(super) fn compute_target_feature_protected_lines(lines: &[&str]) -> HashSet<
 }
 
 fn check_file_for_simd_violations(entry: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let content = match fs::read_to_string(entry) {
         Ok(c) => c,
         Err(_) => return vec![],
@@ -70,7 +68,6 @@ fn check_file_for_simd_violations(entry: &Path) -> Vec<CbPatternViolation> {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     if !src_dir.exists() {
         return vec![];

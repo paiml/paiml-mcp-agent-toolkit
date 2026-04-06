@@ -6,7 +6,6 @@ impl JavaAstVisitor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
@@ -18,7 +17,6 @@ impl JavaAstVisitor {
     /// Analyzes Java source code and extracts AST items (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_java_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -38,7 +36,6 @@ impl JavaAstVisitor {
 
     /// Check basic Java syntax validity (complexity ≤10)
     fn is_valid_java_syntax(&self, source: &str) -> bool {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let open_braces = source.chars().filter(|&c| c == '{').count();
         let close_braces = source.chars().filter(|&c| c == '}').count();
 
@@ -48,7 +45,6 @@ impl JavaAstVisitor {
 
     /// Extracts package declaration (complexity ≤10)
     fn extract_package_declaration(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -63,7 +59,6 @@ impl JavaAstVisitor {
 
     /// Extracts class declarations (complexity ≤10)
     fn extract_class_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -91,8 +86,6 @@ impl JavaAstVisitor {
 
     /// Count methods in a class (complexity ≤10)
     fn count_class_members(&self, source: &str, class_name: &str) -> usize {
-        debug_assert!(!source.is_empty(), "source must not be empty");
-        debug_assert!(!class_name.is_empty(), "class_name must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         let mut count = 0;
         let mut in_class = false;
@@ -137,7 +130,6 @@ impl JavaAstVisitor {
 
     /// Helper to extract class name from line (complexity ≤10)
     fn extract_class_name_from_line(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("class ") && line.contains('{') {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -152,7 +144,6 @@ impl JavaAstVisitor {
 
     /// Extracts method declarations (complexity ≤10)
     fn extract_method_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -173,7 +164,6 @@ impl JavaAstVisitor {
 
     /// Helper to extract method name from line (complexity ≤10)
     fn extract_method_name_from_line(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains('(') && line.contains(')') && !line.contains("class") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -192,7 +182,6 @@ impl JavaAstVisitor {
 
     /// Helper to extract method visibility (complexity ≤10)
     fn extract_method_visibility(&self, line: &str) -> String {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("public") {
             "public".to_string()
         } else if line.contains("private") {
@@ -206,7 +195,6 @@ impl JavaAstVisitor {
 
     /// Extracts interface declarations (complexity ≤10)
     fn extract_interface_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -230,7 +218,6 @@ impl JavaAstVisitor {
 
     /// Helper to extract interface name from line (complexity ≤10)
     fn extract_interface_name_from_line(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("interface ") && line.contains('{') {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -245,7 +232,6 @@ impl JavaAstVisitor {
 
     /// Gets qualified name for a symbol (complexity ≤10)
     fn get_qualified_name(&self, name: &str) -> String {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if self.package_name.is_empty() {
             name.to_string()
         } else {

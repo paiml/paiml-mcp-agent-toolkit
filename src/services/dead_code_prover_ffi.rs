@@ -15,7 +15,6 @@ impl FFIReferenceTracker {
     }
 
     fn lookahead_function(&self, lines: &[&str], line_num: usize, max_offset: usize) -> Option<(String, usize)> {
-        debug_assert!(!lines.is_empty(), "lines must not be empty");
         for offset in 1..=max_offset {
             if let Some(next_line) = lines.get(line_num + offset) {
                 if let Some(func_name) = self.extract_function_name_from_line(next_line) {
@@ -29,7 +28,6 @@ impl FFIReferenceTracker {
     /// Scan AST for FFI exports
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn scan_for_ffi_exports(&mut self, content: &str, file_path: &str) {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
 
         for (line_num, line) in lines.iter().enumerate() {
@@ -79,7 +77,6 @@ impl FFIReferenceTracker {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_function_name_from_line(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // Extract function name from "pub fn name(" or "fn name("
         if let Some(fn_pos) = line.find("fn ") {
             let after_fn = line.get(fn_pos + 3..).unwrap_or_default();
@@ -94,7 +91,6 @@ impl FFIReferenceTracker {
     }
 
     fn extract_export_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // Extract name from #[export_name = "custom_name"]
         if line.starts_with("#[export_name") {
             if let Some(start) = line.find('"') {

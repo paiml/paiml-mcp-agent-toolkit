@@ -3,7 +3,6 @@
 
 /// Format score as human-readable text
 fn format_text(score: &RepoScore, verbose: bool) -> String {
-    debug_assert!(true, "contract: format_text");
     use crate::cli::colors as c;
 
     let mut output = String::new();
@@ -88,7 +87,6 @@ fn format_category(
     category: &crate::services::repo_score::CategoryScore,
     verbose: bool,
 ) -> String {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     use crate::cli::colors as c;
 
     let mut output = String::new();
@@ -123,19 +121,16 @@ fn format_category(
 
 /// Format score as JSON
 fn format_json(score: &RepoScore) -> Result<String> {
-    debug_assert!(true, "contract: format_json");
     serde_json::to_string_pretty(score).context("Failed to serialize to JSON")
 }
 
 /// Format score as YAML
 fn format_yaml(score: &RepoScore) -> Result<String> {
-    debug_assert!(true, "contract: format_yaml");
     serde_yaml_ng::to_string(score).context("Failed to serialize to YAML")
 }
 
 /// Format score as Markdown
 fn format_markdown(score: &RepoScore) -> String {
-    debug_assert!(true, "contract: format_markdown");
     let mut output = String::new();
 
     output.push_str("# Repository Health Score\n\n");

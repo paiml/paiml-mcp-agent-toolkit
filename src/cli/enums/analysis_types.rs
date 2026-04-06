@@ -118,7 +118,6 @@ impl QualityCheckType {
 impl QualityCheckType {
     /// Get the string representation of the quality check type
     fn as_str(&self) -> &'static str {
-        debug_assert!(true, "contract: as_str");
         match self {
             QualityCheckType::DeadCode => "dead-code",
             QualityCheckType::Complexity => "complexity",

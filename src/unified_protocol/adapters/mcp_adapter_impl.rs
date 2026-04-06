@@ -7,12 +7,10 @@ impl ProtocolAdapter for McpAdapter {
     type Output = String;
 
     fn protocol(&self) -> Protocol {
-        debug_assert!(true, "contract: protocol");
         Protocol::Mcp
     }
 
     async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
-        debug_assert!(true, "contract: decode");
         debug!("Decoding MCP input: {:?}", input);
 
         let json_rpc: JsonRpcRequest = match input {
@@ -54,7 +52,6 @@ impl ProtocolAdapter for McpAdapter {
     }
 
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
-        debug_assert!(true, "contract: encode");
         debug!(status = %response.status, "Encoding MCP response");
 
         // Extract MCP context to get the request ID

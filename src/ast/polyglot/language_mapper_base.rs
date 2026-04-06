@@ -8,7 +8,6 @@ impl LanguageMapper for BaseLanguageMapper {
     }
 
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         PolyglotPathValidator::validate_file_path(path)?;
 
         let content = fs::read_to_string(path).await?;
@@ -16,7 +15,6 @@ impl LanguageMapper for BaseLanguageMapper {
     }
 
     async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         PolyglotPathValidator::validate_directory_path(path)?;
 
         let mut nodes = Vec::new();
@@ -57,14 +55,12 @@ impl LanguageMapper for BaseLanguageMapper {
     }
 
     async fn map_source(&self, _source: &str, _path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Base implementation doesn't know how to map source
         // Subclasses should override this
         Err(anyhow!("Source mapping not implemented for this language"))
     }
 
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         items
             .iter()
             .map(|item| UnifiedNode::from_ast_item(item, self.language(), path, None))
@@ -72,7 +68,6 @@ impl LanguageMapper for BaseLanguageMapper {
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
-        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 }

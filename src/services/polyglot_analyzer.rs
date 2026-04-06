@@ -17,7 +17,6 @@ include!("polyglot_analyzer_architecture.rs");
 
 /// Toyota Way: Extract Method - Check if directory should be skipped (complexity <= 3)
 fn should_skip_directory(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
         matches!(
             dir_name,

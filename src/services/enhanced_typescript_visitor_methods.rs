@@ -6,7 +6,6 @@ impl EnhancedTypeScriptVisitor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             file_path: file_path.to_path_buf(),
@@ -33,7 +32,6 @@ impl EnhancedTypeScriptVisitor {
 
     /// Creates a qualified name for the current context
     fn get_qualified_name(&self, name: &str) -> String {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let mut parts = Vec::new();
 
         // Add module path
@@ -50,13 +48,11 @@ impl EnhancedTypeScriptVisitor {
 
     /// Checks if function is async
     fn is_async_function(&self, func: &Function) -> bool {
-        debug_assert!(true, "contract: is_async_function");
         func.is_async
     }
 
     /// Extracts functions from expressions (handles named function expressions)
     fn extract_function_from_expr(&mut self, expr: &Expr) {
-        debug_assert!(true, "contract: extract_function_from_expr");
         match expr {
             Expr::Fn(fn_expr) => {
                 if let Some(ident) = &fn_expr.ident {
@@ -91,7 +87,6 @@ impl EnhancedTypeScriptVisitor {
 
     /// Extracts methods from object literals (complexity <=10)
     fn extract_object_methods(&mut self, obj_lit: &ObjectLit, object_name: &str) {
-        debug_assert!(!object_name.is_empty(), "object_name must not be empty");
         for prop_or_spread in &obj_lit.props {
             if let PropOrSpread::Prop(prop) = prop_or_spread {
                 match prop.as_ref() {

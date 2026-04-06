@@ -33,11 +33,6 @@ pub async fn handle_analyze_wasm(
     output: Option<PathBuf>,
     verbose: bool,
 ) -> Result<()> {
-    debug_assert!(
-        wasm_file.exists(),
-        "wasm_file must exist: {}",
-        wasm_file.display()
-    );
     info!("🔍 Analyzing WASM module: {}", wasm_file.display());
 
     // Load and analyze WASM binary
@@ -77,11 +72,6 @@ pub async fn handle_analyze_wasm(
 
 /// Load WASM file from disk (Complexity: 1)
 fn load_wasm_file(wasm_file: &PathBuf) -> Result<Vec<u8>> {
-    debug_assert!(
-        wasm_file.exists(),
-        "wasm_file must exist: {}",
-        wasm_file.display()
-    );
     let binary = std::fs::read(wasm_file)?;
     debug!("Loaded WASM binary: {} bytes", binary.len());
     Ok(binary)
@@ -89,7 +79,6 @@ fn load_wasm_file(wasm_file: &PathBuf) -> Result<Vec<u8>> {
 
 /// Run basic WASM analysis (Complexity: 2)
 fn run_basic_analysis(binary: &[u8]) -> Result<AnalysisResult> {
-    debug_assert!(!binary.is_empty(), "binary must not be empty");
     let analyzer = WasmAnalyzer::new()?;
     analyzer.analyze(binary)
 }
@@ -99,7 +88,6 @@ async fn run_verification_if_requested(
     verify: bool,
     binary: &[u8],
 ) -> Result<Option<VerificationResult>> {
-    debug_assert!(true, "contract: run_verification_if_requested");
     if !verify {
         return Ok(None);
     }
@@ -114,7 +102,6 @@ fn run_security_scan_if_requested(
     security: bool,
     binary: &[u8],
 ) -> Result<Option<Vec<VulnerabilityMatch>>> {
-    debug_assert!(true, "contract: run_security_scan_if_requested");
     if !security {
         return Ok(None);
     }
@@ -135,7 +122,6 @@ async fn run_profiling_if_requested(
     profile: bool,
     binary: &[u8],
 ) -> Result<Option<ProfilingReport>> {
-    debug_assert!(true, "contract: run_profiling_if_requested");
     if !profile {
         return Ok(None);
     }
@@ -151,7 +137,6 @@ async fn run_baseline_comparison_if_requested(
     _binary: &[u8],
     analysis_result: &AnalysisResult,
 ) -> Result<Option<QualityAssessment>> {
-    debug_assert!(true, "contract: run_baseline_comparison_if_requested");
     let baseline_path = match baseline {
         Some(path) => path,
         None => return Ok(None),
@@ -168,11 +153,6 @@ async fn run_baseline_comparison_if_requested(
 
 /// Load and analyze baseline WASM file (Complexity: 3)
 fn load_and_analyze_baseline(baseline_path: &PathBuf) -> Result<Metrics> {
-    debug_assert!(
-        baseline_path.exists(),
-        "baseline_path must exist: {}",
-        baseline_path.display()
-    );
     let baseline_binary = std::fs::read(baseline_path)?;
     let baseline_analyzer = WasmAnalyzer::new()?;
     let baseline_result = baseline_analyzer.analyze(&baseline_binary)?;
@@ -181,7 +161,6 @@ fn load_and_analyze_baseline(baseline_path: &PathBuf) -> Result<Metrics> {
 
 /// Write output to file or stdout (Complexity: 3)
 fn write_output(output_str: String, output: Option<PathBuf>) -> Result<()> {
-    debug_assert!(true, "contract: write_output");
     if let Some(output_path) = output {
         std::fs::write(&output_path, &output_str)?;
         info!("✅ Results written to: {}", output_path.display());

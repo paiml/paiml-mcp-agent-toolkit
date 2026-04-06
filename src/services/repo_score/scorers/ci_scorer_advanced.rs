@@ -9,7 +9,6 @@ struct FeatureCheck {
 }
 
 fn check_ci_feature(content: &str, check: &FeatureCheck) -> (f64, Finding) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let found = check.keywords.iter().any(|kw| content.contains(kw));
     if found {
         (check.points, Finding {
@@ -61,7 +60,6 @@ impl CiScorer {
     /// Score advanced CI features (E3: 8 points)
     /// Issue #72: Provides actionable feedback for advanced CI improvements
     async fn score_advanced_features(&self, repo_path: &Path) -> Result<SubcategoryScore> {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let workflows_dir = repo_path.join(".github/workflows");
 
         if !workflows_dir.exists() {

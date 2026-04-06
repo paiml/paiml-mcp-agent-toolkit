@@ -68,11 +68,6 @@ impl Scorer for FormalVerificationScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         self.score_internal(project_path, ScoringMode::default(), None)
     }
 
@@ -81,11 +76,6 @@ impl Scorer for FormalVerificationScorer {
         project_path: &Path,
         mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         self.score_internal(project_path, mode, None)
     }
 
@@ -99,11 +89,6 @@ impl Scorer for FormalVerificationScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut recs = Vec::new();
         self.recommend_miri(project_path, &mut recs);
         self.recommend_kani(project_path, &mut recs);
@@ -134,8 +119,6 @@ struct KaniResult {
 
 /// Parse test count from cargo test output
 fn parse_test_count(output: &str, status: &str) -> usize {
-    debug_assert!(!output.is_empty(), "output must not be empty");
-    debug_assert!(!status.is_empty(), "status must not be empty");
     let pattern = format!(r"(\d+) {}", status);
     Regex::new(&pattern)
         .ok()

@@ -76,20 +76,17 @@ pub trait Service: Send + Sync {
 
     /// Validate input before processing
     fn validate_input(&self, _input: &Self::Input) -> Result<(), ValidationError> {
-        debug_assert!(true, "contract: process");
         // Default validation - can be overridden
         Ok(())
     }
 
     /// Get service metrics
     fn metrics(&self) -> ServiceMetrics {
-        debug_assert!(true, "contract: metrics");
         ServiceMetrics::default()
     }
 
     /// Get service name for logging and monitoring
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         std::any::type_name::<Self>()
     }
 }
@@ -198,7 +195,6 @@ where
     type Error = anyhow::Error;
 
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
-        debug_assert!(true, "contract: process");
         // Process through first service
         let intermediate = self
             .first
@@ -220,12 +216,10 @@ where
     }
 
     fn validate_input(&self, input: &Self::Input) -> Result<(), ValidationError> {
-        debug_assert!(true, "contract: validate_input");
         self.first.validate_input(input)
     }
 
     fn name(&self) -> &'static str {
-        debug_assert!(true, "contract: name");
         "CompositeService"
     }
 }
@@ -254,7 +248,6 @@ mod tests {
         type Error = anyhow::Error;
 
         async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
-            debug_assert!(true, "contract: process");
             Ok(TestOutput {
                 result: input.value * 2,
             })
@@ -507,7 +500,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

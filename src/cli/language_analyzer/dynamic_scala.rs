@@ -2,7 +2,6 @@
 
 impl LanguageAnalyzer for ScalaAnalyzer {
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
 
@@ -26,7 +25,6 @@ impl LanguageAnalyzer for ScalaAnalyzer {
     }
 
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let end = function.line_end.min(lines.len().saturating_sub(1));
         let func_lines = &lines[function.line_start..=end];
@@ -71,7 +69,6 @@ impl LanguageAnalyzer for ScalaAnalyzer {
 
 impl ScalaAnalyzer {
     fn extract_scala_name(trimmed: &str) -> Option<String> {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         // Match: def name, class name, object name, trait name
         let prefixes = [
             "def ",
@@ -99,7 +96,6 @@ impl ScalaAnalyzer {
     }
 
     fn find_expression_end(lines: &[&str], start: usize) -> usize {
-        debug_assert!(true, "contract: find_expression_end");
         for i in (start + 1)..lines.len() {
             let trimmed = lines[i].trim();
             if trimmed.is_empty()

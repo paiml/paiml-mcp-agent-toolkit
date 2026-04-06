@@ -1,7 +1,6 @@
 /// Detect coverage gaming patterns in a project
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_coverage_gaming(project_path: &Path) -> Result<GamingDetectionResult> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut result = GamingDetectionResult {
         patterns_checked: vec![
             "cfg(not(coverage))".to_string(),
@@ -42,7 +41,6 @@ pub fn detect_coverage_gaming(project_path: &Path) -> Result<GamingDetectionResu
 /// Update raw string tracking state and determine if the line should be skipped.
 /// Returns (should_skip, new_in_raw_string_state).
 fn update_raw_string_state(trimmed: &str, in_raw_string: bool) -> (bool, bool) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     if in_raw_string {
         let closed = trimmed.contains("\"#");
         return (true, !closed);
@@ -67,7 +65,6 @@ fn is_non_attribute_line(trimmed: &str) -> bool {
 
 /// Check for cfg(not(...)) coverage exclusion patterns
 fn check_cfg_patterns(path: &Path, content: &str, violations: &mut Vec<GamingViolation>) {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let patterns = [
         ("cfg(not(coverage))", GamingPattern::CfgNotCoverage),
         ("cfg(not(tarpaulin))", GamingPattern::CfgNotTarpaulin),
@@ -116,7 +113,6 @@ fn check_cfg_patterns(path: &Path, content: &str, violations: &mut Vec<GamingVio
 
 /// Check for coverage exclusion comment patterns
 fn check_exclusion_comments(path: &Path, content: &str, violations: &mut Vec<GamingViolation>) {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let comment_patterns = [
         "// LCOV_EXCL_START",
         "// LCOV_EXCL_STOP",
@@ -160,7 +156,6 @@ fn check_codecov_changes(
     project_path: &Path,
     violations: &mut Vec<GamingViolation>,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let codecov_path = project_path.join(".codecov.yml");
     let codecov_yaml = project_path.join("codecov.yml");
 
@@ -219,7 +214,6 @@ pub fn detect_test_deletions(
     project_path: &Path,
     baseline_files: &HashSet<PathBuf>,
 ) -> Vec<GamingViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     for baseline_file in baseline_files {
@@ -253,7 +247,6 @@ pub fn detect_critical_file_removals(
     project_path: &Path,
     baseline_files: &HashSet<PathBuf>,
 ) -> Vec<GamingViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     for baseline_file in baseline_files {
@@ -288,7 +281,6 @@ pub fn detect_critical_file_removals(
 
 /// Check if path is an excluded directory
 fn is_excluded_dir(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
     path_str.contains("/target/")
         || path_str.contains("/.git/")
@@ -299,7 +291,6 @@ fn is_excluded_dir(path: &Path) -> bool {
 
 /// Check if file is a source file we should scan
 fn is_source_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension().and_then(|e| e.to_str());
     matches!(
         ext,
@@ -323,13 +314,11 @@ fn is_source_file(path: &Path) -> bool {
 /// Run meta-falsification check (verify the detector itself is working)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn run_meta_falsification(_project_path: &Path) -> Result<bool> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Create a temporary test pattern to verify detection
     let test_content = r#"
         // This is a meta-test pattern
         #[cfg(not(coverage))]
         fn hidden_function() {}
-            debug_assert!(true, "contract: hidden_function");
     "#;
 
     // Meta-check: verify the detector can identify this known pattern

@@ -22,8 +22,6 @@ pub async fn handle_validate(
     strict: bool,
     format: QaOutputFormat,
 ) -> anyhow::Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
     println!("Running QA validation for task: {}", task_id);
     println!();
 

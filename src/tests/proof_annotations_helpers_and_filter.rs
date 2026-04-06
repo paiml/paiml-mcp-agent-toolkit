@@ -25,7 +25,6 @@ fn create_test_annotation(
 
 /// Create a test location with file path and span
 fn create_test_location(file_name: &str, start: u32, end: u32) -> Location {
-    debug_assert!(!file_name.is_empty(), "file_name must not be empty");
     Location {
         file_path: PathBuf::from(file_name),
         span: Span {

@@ -52,7 +52,6 @@ impl QualityAssistant {
         accepted: bool,
         outcome: Option<String>,
     ) {
-        debug_assert!(!suggestion_id.is_empty(), "suggestion_id must not be empty");
         self.feedback.record(suggestion_id, accepted, outcome);
     }
 
@@ -65,7 +64,6 @@ impl QualityAssistant {
 
     /// Initialize pattern database with common refactorings
     fn initialize_patterns() -> HashMap<ViolationType, Vec<Pattern>> {
-        debug_assert!(true, "contract: initialize_patterns");
         let mut patterns = HashMap::new();
 
         // Complexity reduction patterns
@@ -142,7 +140,6 @@ impl QualityAssistant {
 
     /// Generate diff preview for a suggestion
     fn generate_diff(&self, violation: &Violation, pattern: &Pattern) -> String {
-        debug_assert!(true, "contract: generate_diff");
         format!(
             "--- {}\n+++ {}\n@@ -1,1 +1,1 @@\n-{}\n+{}",
             violation.file, violation.file, pattern.example.before, pattern.example.after
@@ -151,7 +148,6 @@ impl QualityAssistant {
 
     /// Estimate impact of applying a pattern
     fn estimate_impact(&self, pattern: &Pattern) -> Impact {
-        debug_assert!(true, "contract: estimate_impact");
         Impact {
             complexity_reduction: match pattern.id.as_str() {
                 "extract_method" => 10,
@@ -178,7 +174,6 @@ impl QualityAssistant {
         &self,
         file_path: &std::path::Path,
     ) -> Result<Vec<Suggestion>, anyhow::Error> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Read file content and analyze for violations
         let content = std::fs::read_to_string(file_path)?;
 
@@ -206,7 +201,6 @@ impl QualityAssistant {
         &self,
         file_path: &std::path::Path,
     ) -> Result<Vec<Suggestion>, anyhow::Error> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Synchronous version of analyze_file
         let content = std::fs::read_to_string(file_path)?;
         let mut suggestions = Vec::new();

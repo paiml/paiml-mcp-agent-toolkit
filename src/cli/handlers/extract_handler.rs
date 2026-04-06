@@ -10,11 +10,6 @@ use crate::services::semantic::chunker::{self, Language};
 /// Handle `pmat extract --list <FILE>`
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_extract_list(file_path: &Path) -> Result<()> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     let source = std::fs::read_to_string(file_path)
         .with_context(|| format!("Cannot read {}", file_path.display()))?;
 
@@ -27,7 +22,6 @@ pub async fn handle_extract_list(file_path: &Path) -> Result<()> {
 }
 
 fn detect_chunker_language(path: &Path) -> Result<Language> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     match ext {
         "rs" => Ok(Language::Rust),

@@ -95,8 +95,6 @@ pub async fn handle_report(
     output: Option<&Path>,
     format: QaOutputFormat,
 ) -> anyhow::Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(!task_id.is_empty(), "task_id must not be empty");
     use crate::cli::colors as c;
     println!("{} {}", c::label("Generating QA report for task:"), task_id);
 

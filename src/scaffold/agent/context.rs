@@ -80,7 +80,6 @@ impl AgentContextBuilder {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_feature_str(mut self, feature_str: &str) -> Self {
-        debug_assert!(!feature_str.is_empty(), "feature_str must not be empty");
         if let Ok(feature) = feature_str.parse::<AgentFeature>() {
             self.context.features.insert(feature);
         }
@@ -158,7 +157,6 @@ impl AgentContextBuilder {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn create_agent_context(name: &str, template: &str) -> AgentContextBuilder {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     AgentContextBuilder::new(name, template)
 }
 
@@ -227,7 +225,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

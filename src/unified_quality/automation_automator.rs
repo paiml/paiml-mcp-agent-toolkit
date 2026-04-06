@@ -54,7 +54,6 @@ impl ConservativeAutomator {
     /// Batch fix multiple violations
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn batch_fix(&self, violations: Vec<Violation>) -> Result<AutomationResult> {
-        debug_assert!(!violations.is_empty(), "violations must not be empty");
         let mut result = AutomationResult {
             successful: Vec::new(),
             failed: Vec::new(),
@@ -122,7 +121,6 @@ impl ConservativeAutomator {
 
     /// Initialize safe transforms
     fn initialize_safe_transforms() -> Vec<SafeTransform> {
-        debug_assert!(true, "contract: initialize_safe_transforms");
         vec![
             SafeTransform {
                 id: "remove_dead_code".to_string(),
@@ -167,7 +165,6 @@ impl ConservativeAutomator {
 
     /// Remove dead code
     fn remove_dead_code(&self, violation: &Violation) -> Result<Fix> {
-        debug_assert!(true, "contract: remove_dead_code");
         // In production, would use syn to parse and remove dead code
         Ok(Fix {
             file: PathBuf::from(&violation.file),
@@ -184,7 +181,6 @@ impl ConservativeAutomator {
 
     /// Remove unused import
     fn remove_import(&self, violation: &Violation) -> Result<Fix> {
-        debug_assert!(true, "contract: remove_import");
         // In production, would use syn to parse and remove import
         Ok(Fix {
             file: PathBuf::from(&violation.file),
@@ -201,7 +197,6 @@ impl ConservativeAutomator {
 
     /// Run rustfmt
     fn run_rustfmt(&self, violation: &Violation) -> Result<Fix> {
-        debug_assert!(true, "contract: run_rustfmt");
         // In production, would actually run rustfmt
         Ok(Fix {
             file: PathBuf::from(&violation.file),
@@ -218,7 +213,6 @@ impl ConservativeAutomator {
 
     /// Suggest a fix for manual review
     fn suggest_fix(&self, violation: &Violation) -> Result<Fix> {
-        debug_assert!(true, "contract: suggest_fix");
         Ok(Fix {
             file: PathBuf::from(&violation.file),
             fix_type: FixType::SimpleRefactor,
@@ -234,7 +228,6 @@ impl ConservativeAutomator {
 
     /// Apply a fix to a file
     fn apply_fix(&self, fix: &Fix) -> Result<bool> {
-        debug_assert!(true, "contract: apply_fix");
         // In production, would actually modify the file
         // For now, just verify
         if let Some(cmd) = &fix.verify_command {

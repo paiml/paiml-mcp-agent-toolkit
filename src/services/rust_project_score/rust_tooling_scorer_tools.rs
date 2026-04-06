@@ -4,7 +4,6 @@
 impl RustToolingScorer {
     /// Run clippy and calculate tiered score
     pub(super) fn score_clippy(&self, project_path: &Path) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Check if Cargo.toml exists
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -57,7 +56,6 @@ impl RustToolingScorer {
 
     /// Run rustfmt check and calculate score
     pub(super) fn score_rustfmt(&self, project_path: &Path) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Run rustfmt in check mode (doesn't modify files)
         let output = Command::new("cargo")
             .arg("fmt")
@@ -88,7 +86,6 @@ impl RustToolingScorer {
 
     /// Run cargo-audit and calculate risk-based score
     pub(super) fn score_cargo_audit(&self, project_path: &Path) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Run cargo-audit with JSON output for proper parsing
         let output = Command::new("cargo")
             .args(["audit", "--json"])
@@ -126,7 +123,6 @@ impl RustToolingScorer {
 
     /// Parse cargo-audit JSON output to count vulnerabilities by severity
     fn parse_audit_json(&self, json_str: &str) -> VulnerabilityCount {
-        debug_assert!(!json_str.is_empty(), "json_str must not be empty");
         let mut counts = VulnerabilityCount::default();
 
         // Try to parse as JSON
@@ -159,7 +155,6 @@ impl RustToolingScorer {
 
     /// Check for cargo-deny configuration and calculate score
     pub(super) fn score_cargo_deny(&self, project_path: &Path) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Check if deny.toml exists
         if project_path.join("deny.toml").exists() {
             // Has deny.toml - give full 3 points

@@ -9,7 +9,6 @@ pub fn calculate_similarities(
     fuzzy: bool,
     phonetic: bool,
 ) -> Vec<NameSimilarityResult> {
-    debug_assert!(!query.is_empty(), "query must not be empty");
     let mut similarities = Vec::new();
     let query_lower = if case_sensitive {
         query.to_string()
@@ -50,8 +49,6 @@ pub fn calculate_similarities(
 
 /// Calculate combined similarity score
 fn calculate_combined_similarity(query: &str, name: &str, fuzzy: bool, phonetic: bool) -> f32 {
-    debug_assert!(!query.is_empty(), "query must not be empty");
-    debug_assert!(!name.is_empty(), "name must not be empty");
     let mut score = super::analysis_utilities::calculate_string_similarity(query, name);
 
     if fuzzy {

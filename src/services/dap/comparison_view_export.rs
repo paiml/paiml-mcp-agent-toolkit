@@ -23,7 +23,6 @@ impl ComparisonView {
     }
 
     fn build_frame_diffs(&self) -> Vec<serde_json::Value> {
-        debug_assert!(true, "contract: build_frame_diffs");
         let max_frames = self.total_frames_max();
         let snapshots_a = self.player_a.recording().snapshots();
         let snapshots_b = self.player_b.recording().snapshots();

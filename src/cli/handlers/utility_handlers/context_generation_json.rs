@@ -4,8 +4,6 @@ fn generate_json_context(
     project_path: &Path,
     context: &crate::services::deep_context::DeepContext,
 ) -> Result<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     let (total_files, total_functions) =
         if let Some(report) = &context.analyses.complexity_report {
             (report.files.len(), report.summary.total_functions)
@@ -43,7 +41,6 @@ fn build_json_file(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) -> ContextJsonFile {
-    debug_assert!(true, "contract: build_json_file");
     let file_metrics = find_file_metrics(file, analyses);
 
     let items: Vec<ContextJsonItem> = file
@@ -63,7 +60,6 @@ fn build_json_item(
     item: &crate::services::context::AstItem,
     file_metrics: Option<&crate::services::complexity::FileComplexityMetrics>,
 ) -> Option<ContextJsonItem> {
-    debug_assert!(true, "contract: build_json_item");
     use crate::services::context::AstItem;
     match item {
         AstItem::Function { name, line, .. } => {

@@ -4,7 +4,6 @@ fn format_qg_as_json(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> Result<String> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     Ok(serde_json::to_string_pretty(&serde_json::json!({
         "results": results,
         "violations": violations,
@@ -16,7 +15,6 @@ fn format_qg_as_human(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> Result<String> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::fmt::Write;
     let mut output = String::new();
 
@@ -36,7 +34,6 @@ fn format_qg_as_human(
 
 // Helper: Write human header
 fn write_qg_human_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
-    debug_assert!(true, "contract: write_qg_human_header");
     use std::fmt::Write;
     writeln!(output, "# Quality Gate Report\n")?;
     writeln!(
@@ -54,7 +51,6 @@ fn write_qg_human_header(output: &mut String, results: &QualityGateResults) -> R
 
 // Helper: Write violation counts
 fn write_qg_violation_counts(output: &mut String, results: &QualityGateResults) -> Result<()> {
-    debug_assert!(true, "contract: write_qg_violation_counts");
     use std::fmt::Write;
     let counts = [
         ("Complexity", results.complexity_violations),
@@ -75,7 +71,6 @@ fn write_qg_violation_counts(output: &mut String, results: &QualityGateResults) 
 
 // Helper: Write violations list
 fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]) -> Result<()> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::fmt::Write;
     writeln!(output, "\n## Violations:\n")?;
     for v in violations {
@@ -97,7 +92,6 @@ fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]
 
 /// Write explainability details for violations that have them (#226, #229).
 fn write_violation_details(output: &mut String, v: &QualityViolation) -> Result<()> {
-    debug_assert!(true, "contract: write_violation_details");
     use std::fmt::Write;
     let Some(details) = &v.details else {
         return Ok(());
@@ -122,7 +116,6 @@ fn write_violation_details(output: &mut String, v: &QualityViolation) -> Result<
 
 /// Truncate a line to max_len characters with ellipsis.
 fn truncate_line(s: &str, max_len: usize) -> String {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     if s.len() <= max_len {
         s.to_string()
     } else {
@@ -133,7 +126,6 @@ fn truncate_line(s: &str, max_len: usize) -> String {
 // Helper: Format as JUnit XML
 /// Toyota Way: Extract Method - Format quality gate as `JUnit` XML (complexity <=8)
 fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut output = String::new();
 
     write_junit_header(&mut output)?;
@@ -154,7 +146,6 @@ fn write_junit_header(output: &mut String) -> Result<()> {
 
 /// Toyota Way: Extract Method - Write `JUnit` testsuite start (complexity <=3)
 fn write_junit_testsuite_start(output: &mut String, count: usize) -> Result<()> {
-    debug_assert!(count > 0, "count must be positive");
     use std::fmt::Write;
     writeln!(
         output,
@@ -165,7 +156,6 @@ fn write_junit_testsuite_start(output: &mut String, count: usize) -> Result<()> 
 
 /// Toyota Way: Extract Method - Write `JUnit` testcases (complexity <=5)
 fn write_junit_testcases(output: &mut String, violations: &[QualityViolation]) -> Result<()> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     for v in violations {
         write_single_junit_testcase(output, v)?;
     }
@@ -174,7 +164,6 @@ fn write_junit_testcases(output: &mut String, violations: &[QualityViolation]) -
 
 /// Toyota Way: Extract Method - Write single `JUnit` testcase (complexity <=5)
 fn write_single_junit_testcase(output: &mut String, v: &QualityViolation) -> Result<()> {
-    debug_assert!(true, "contract: write_single_junit_testcase");
     use std::fmt::Write;
     writeln!(
         output,
@@ -192,7 +181,6 @@ fn write_single_junit_testcase(output: &mut String, v: &QualityViolation) -> Res
 
 /// Toyota Way: Extract Method - Write `JUnit` XML footer (complexity <=3)
 fn write_junit_footer(output: &mut String) -> Result<()> {
-    debug_assert!(true, "contract: write_junit_footer");
     use std::fmt::Write;
     writeln!(output, r"  </testsuite>")?;
     writeln!(output, r"</testsuites>")?;

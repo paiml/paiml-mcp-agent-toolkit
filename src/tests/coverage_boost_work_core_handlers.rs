@@ -23,7 +23,6 @@ use std::path::PathBuf;
 
 /// Test helper that mimics parse_acceptance_criteria logic
 fn parse_acceptance_criteria_test(body: &str) -> Vec<String> {
-    debug_assert!(!body.is_empty(), "body must not be empty");
     let mut criteria = Vec::new();
 
     for line in body.lines() {
@@ -132,7 +131,6 @@ fn test_parse_acceptance_criteria_special_characters() {
 
 /// Test helper that mimics parse_github_url logic
 fn parse_github_url_test(url: &str) -> Option<String> {
-    debug_assert!(!url.is_empty(), "url must not be empty");
     // HTTPS: https://github.com/owner/repo.git
     if let Some(start) = url.find("github.com/") {
         let rest = &url[start + 11..];
@@ -224,7 +222,6 @@ const CLAIM_PATTERNS: &[(&[&str], &str)] = &[
 ];
 
 fn claim_to_override_name_test(hypothesis: &str) -> String {
-    debug_assert!(!hypothesis.is_empty(), "hypothesis must not be empty");
     let hypothesis_lower = hypothesis.to_lowercase();
 
     for (patterns, name) in CLAIM_PATTERNS {
@@ -507,7 +504,6 @@ fn filter_unoverriden_failures_test<'a>(
 }
 
 fn make_claim_result(hypothesis: &str) -> ClaimResult {
-    debug_assert!(!hypothesis.is_empty(), "hypothesis must not be empty");
     ClaimResult {
         index: 1,
         hypothesis: hypothesis.to_string(),
@@ -583,7 +579,6 @@ fn make_test_claim(
     falsified: bool,
     is_blocking: bool,
 ) -> ClaimResult {
-    debug_assert!(!hypothesis.is_empty(), "hypothesis must not be empty");
     ClaimResult {
         index,
         hypothesis: hypothesis.to_string(),
@@ -719,7 +714,6 @@ fn test_roadmap_item_type_epic() {
 // ============================================================================
 
 fn truncate_id_for_display(id: &str) -> String {
-    debug_assert!(!id.is_empty(), "id must not be empty");
     if id.chars().count() > 30 {
         format!("{}...", id.chars().take(30).collect::<String>())
     } else {

@@ -104,7 +104,6 @@ impl FalsificationReceipt {
 
     /// Compute SHA-256 hash of receipt content (excluding content_hash itself)
     fn compute_content_hash(&self) -> String {
-        debug_assert!(true, "contract: compute_content_hash");
         let mut hasher = Sha256::new();
         hasher.update(self.id.as_bytes());
         hasher.update(self.git_sha.as_bytes());
@@ -135,7 +134,6 @@ impl FalsificationReceipt {
     /// Check if receipt is fresh (matches HEAD SHA and within max_age)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_fresh(&self, current_sha: &str, max_age_secs: u64) -> bool {
-        debug_assert!(!current_sha.is_empty(), "current_sha must not be empty");
         if self.git_sha != current_sha {
             return false;
         }
@@ -155,7 +153,6 @@ fn build_overrides(
     override_claims: Option<&Vec<String>>,
     ticket: Option<&String>,
 ) -> Vec<ClaimOverride> {
-    debug_assert!(!claim_results.is_empty(), "claim_results must not be empty");
     let Some(overrides) = override_claims else {
         return Vec::new();
     };
@@ -185,7 +182,6 @@ fn build_overrides(
 
 /// Convert hypothesis text to a stable claim ID (mirrors claim_to_override_name in core_handlers)
 fn hypothesis_to_claim_id(hypothesis: &str) -> String {
-    debug_assert!(!hypothesis.is_empty(), "hypothesis must not be empty");
     let h = hypothesis.to_lowercase();
     // "examples" + "compile" requires conjunctive match (both keywords)
     if h.contains("examples") && h.contains("compile") {
@@ -206,7 +202,6 @@ fn hypothesis_to_claim_id(hypothesis: &str) -> String {
 /// Get current git SHA from project path
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn get_current_git_sha(project_path: &Path) -> String {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     std::process::Command::new("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(project_path)

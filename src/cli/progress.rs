@@ -110,7 +110,6 @@ impl ProgressIndicator {
     ///
     /// CC=5: TTY check + env checks (TICKET-PMAT-6006)
     fn should_show_progress() -> bool {
-        debug_assert!(true, "contract: should_show_progress");
         // Don't show in CI environments
         if std::env::var("CI").is_ok() {
             return false;
@@ -221,7 +220,6 @@ impl MultiStageProgress {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn next_stage(&mut self, _message: &str) {
-        debug_assert!(!_message.is_empty(), "_message must not be empty");
         if self.current_stage_index < self.stages.len() - 1 {
             self.current_stage_index += 1;
         }
@@ -267,7 +265,6 @@ impl MultiStageProgress {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn finish(&self, _message: &str) {
-        debug_assert!(!_message.is_empty(), "_message must not be empty");
         if let Some(ref pb) = self.progress_bar {
             pb.finish_and_clear();
         }
@@ -299,7 +296,6 @@ impl CategoryProgress {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn next_category(&mut self, _name: &str) {
-        debug_assert!(!_name.is_empty(), "_name must not be empty");
         if self.current_category_index < self.categories.len() - 1 {
             self.current_category_index += 1;
         }

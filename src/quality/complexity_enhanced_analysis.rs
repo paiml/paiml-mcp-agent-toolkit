@@ -37,7 +37,6 @@ impl ComplexityAnalyzer {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_halstead_metrics(&self, code: &str) -> HalsteadMetrics {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut operators = HashMap::new();
         let mut operands = HashMap::new();
 
@@ -86,7 +85,6 @@ fn count_lines(block: &syn::Block) -> usize {
 }
 
 fn tokenize(code: &str) -> Vec<String> {
-    debug_assert!(!code.is_empty(), "code must not be empty");
     let mut tokens = Vec::new();
     let mut current = String::new();
 
@@ -112,7 +110,6 @@ fn tokenize(code: &str) -> Vec<String> {
 }
 
 fn is_operator(token: &str) -> bool {
-    debug_assert!(!token.is_empty(), "token must not be empty");
     matches!(
         token,
         "+" | "-"
@@ -151,7 +148,6 @@ fn is_operator(token: &str) -> bool {
 }
 
 fn is_operand(token: &str) -> bool {
-    debug_assert!(!token.is_empty(), "token must not be empty");
     !is_operator(token) && !token.chars().all(|c| c.is_ascii_punctuation())
 }
 
@@ -162,7 +158,6 @@ pub fn calculate_maintainability_index(
     cyclomatic_complexity: u32,
     lines_of_code: usize,
 ) -> f64 {
-    // Contract: calculate_maintainability_index returns a bounded score
     let mi = 171.0
         - 5.2 * halstead_volume.ln()
         - 0.23 * cyclomatic_complexity as f64

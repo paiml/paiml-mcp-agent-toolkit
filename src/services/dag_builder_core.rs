@@ -33,7 +33,6 @@ impl DagBuilder {
     const EDGE_BUDGET: usize = 400; // Empirically derived Mermaid limit
 
     fn finalize_graph(mut self) -> DependencyGraph {
-        debug_assert!(true, "contract: finalize_graph");
         // First, remove edges that reference non-existent nodes
         let valid_nodes: FxHashSet<&String> = self.graph.nodes.keys().collect();
         self.graph
@@ -49,7 +48,6 @@ impl DagBuilder {
 
     /// Prune edges when over budget, keeping highest-priority edge types
     fn prune_edges_by_priority(&mut self) {
-        debug_assert!(true, "contract: prune_edges_by_priority");
         // Priority-based edge sorting (Inherits > Uses > Implements > Call > Import)
         let priority = |edge_type: &EdgeType| -> u8 {
             match edge_type {

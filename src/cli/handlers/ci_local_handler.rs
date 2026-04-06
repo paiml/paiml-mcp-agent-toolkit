@@ -25,7 +25,6 @@ pub async fn handle_ci_local(
     fix: bool,
     verbose: bool,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::cli::colors as c;
 
     println!("{}\n", c::header("PMAT Local CI Simulation"));
@@ -117,7 +116,6 @@ pub async fn handle_ci_local(
 
 /// Build the list of checks to run
 fn build_check_list(quick: bool, matrix: Option<&str>) -> Vec<&'static str> {
-    debug_assert!(true, "contract: build_check_list");
     if let Some(m) = matrix {
         match m {
             "fmt" => vec!["cargo-fmt"],
@@ -142,7 +140,6 @@ fn build_check_list(quick: bool, matrix: Option<&str>) -> Vec<&'static str> {
 }
 
 fn full_checks() -> Vec<&'static str> {
-    debug_assert!(true, "contract: full_checks");
     vec![
         "cargo-fmt",
         "clippy-default",
@@ -156,7 +153,6 @@ fn full_checks() -> Vec<&'static str> {
 
 /// Run a single CI check
 async fn run_check(check: &str, path: &Path, fix: bool, _verbose: bool) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     match check {
         "cargo-fmt" => {
             if fix {
@@ -228,13 +224,11 @@ async fn run_check(check: &str, path: &Path, fix: bool, _verbose: bool) -> Resul
 
 /// Run a command and capture output
 fn run_cmd(path: &Path, cmd: &str, args: &[&str]) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     run_cmd_with_env(path, cmd, args, &[])
 }
 
 /// Run a command with environment variables
 fn run_cmd_with_env(path: &Path, cmd: &str, args: &[&str], env: &[(&str, &str)]) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut command = std::process::Command::new(cmd);
     command.args(args).current_dir(path);
 
@@ -256,7 +250,6 @@ fn run_cmd_with_env(path: &Path, cmd: &str, args: &[&str], env: &[(&str, &str)])
 
 /// Get fix hint for a failed check
 fn get_fix_hint(check: &str) -> Option<String> {
-    debug_assert!(!check.is_empty(), "check must not be empty");
     match check {
         "cargo-fmt" => Some("Run `cargo fmt --all` or use `pmat ci-local --fix`".to_string()),
         "clippy-default" | "clippy-all-features" => {

@@ -26,7 +26,6 @@ fn process_demo_step(
     dag_result: &mut Option<crate::models::dag::DependencyGraph>,
     timings: &mut (u64, u64, u64, u64),
 ) {
-    debug_assert!(true, "contract: process_demo_step");
     match step.capability {
         "AST Context Analysis" => process_ast_step(step, timings),
         "Code Complexity Analysis" => process_complexity_step(step, complexity_result, timings),
@@ -38,7 +37,6 @@ fn process_demo_step(
 
 /// Process AST context analysis step (cognitive complexity 1)
 fn process_ast_step(step: &crate::demo::DemoStep, timings: &mut (u64, u64, u64, u64)) {
-    debug_assert!(true, "contract: process_ast_step");
     timings.0 = step.elapsed_ms;
 }
 
@@ -48,7 +46,6 @@ fn process_complexity_step(
     complexity_result: &mut Option<crate::services::complexity::ComplexityReport>,
     timings: &mut (u64, u64, u64, u64),
 ) {
-    debug_assert!(true, "contract: process_complexity_step");
     timings.1 = step.elapsed_ms;
 
     if let Some(result) = &step.response.result {
@@ -64,7 +61,6 @@ fn process_dag_step(
     dag_result: &mut Option<crate::models::dag::DependencyGraph>,
     timings: &mut (u64, u64, u64, u64),
 ) {
-    debug_assert!(true, "contract: process_dag_step");
     timings.2 = step.elapsed_ms;
 
     if let Some(result) = &step.response.result {

@@ -8,11 +8,6 @@ use std::path::Path;
 /// CB-148: Detect specs with planned sections that have no work tickets.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb148_spec_work_gaps(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let specs_dir = project_path.join("docs/specifications/components");
     if !specs_dir.exists() {
         return Vec::new();
@@ -83,16 +78,6 @@ pub fn detect_cb148_spec_work_gaps(project_path: &Path) -> Vec<CbPatternViolatio
 }
 
 fn collect_ticket_ids(work_dir: &Path, roadmap: &Path) -> Vec<String> {
-    debug_assert!(
-        work_dir.exists(),
-        "work_dir must exist: {}",
-        work_dir.display()
-    );
-    debug_assert!(
-        roadmap.exists(),
-        "roadmap must exist: {}",
-        roadmap.display()
-    );
     let mut ids = Vec::new();
 
     // From .pmat-work/ directories

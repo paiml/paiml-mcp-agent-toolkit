@@ -68,7 +68,6 @@ impl DefectProbabilityCalculator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_batch(&self, metrics: &[FileMetrics]) -> Vec<(String, DefectScore)> {
-        debug_assert!(!metrics.is_empty(), "metrics must not be empty");
         metrics
             .iter()
             .map(|m| (m.file_path.clone(), self.calculate(m)))
@@ -77,7 +76,6 @@ impl DefectProbabilityCalculator {
 
     /// Normalize churn score using empirical CDF from OSS projects
     fn normalize_churn(&self, raw_score: f32) -> f32 {
-        debug_assert!(true, "contract: normalize_churn");
         // Empirical CDF from 10K+ OSS projects
         const CHURN_PERCENTILES: [(f32, f32); 10] = [
             (0.0, 0.0),
@@ -97,7 +95,6 @@ impl DefectProbabilityCalculator {
 
     /// Normalize complexity using empirical CDF
     fn normalize_complexity(&self, raw_score: f32) -> f32 {
-        debug_assert!(true, "contract: normalize_complexity");
         // Empirical CDF for cyclomatic complexity
         const COMPLEXITY_PERCENTILES: [(f32, f32); 10] = [
             (1.0, 0.1),
@@ -117,14 +114,12 @@ impl DefectProbabilityCalculator {
 
     /// Normalize duplication ratio
     fn normalize_duplication(&self, raw_score: f32) -> f32 {
-        debug_assert!(true, "contract: normalize_duplication");
         // Direct normalization since it's already a ratio
         raw_score.clamp(0.0, 1.0)
     }
 
     /// Normalize coupling using empirical CDF
     fn normalize_coupling(&self, raw_score: f32) -> f32 {
-        debug_assert!(true, "contract: normalize_coupling");
         // Empirical CDF for afferent coupling
         const COUPLING_PERCENTILES: [(f32, f32); 8] = [
             (0.0, 0.1),
@@ -142,7 +137,6 @@ impl DefectProbabilityCalculator {
 
     /// Calculate confidence based on data availability and quality
     fn calculate_confidence(&self, metrics: &FileMetrics) -> f32 {
-        debug_assert!(true, "contract: calculate_confidence");
         let mut confidence: f32 = 1.0;
 
         // Reduce confidence for very small files (less reliable metrics)
@@ -171,7 +165,6 @@ impl DefectProbabilityCalculator {
         metrics: &FileMetrics,
         factors: &[(String, f32)],
     ) -> Vec<String> {
-        debug_assert!(true, "contract: generate_recommendations");
         let mut recommendations = Vec::new();
 
         if let Some((factor_name, contribution)) = factors.iter().max_by(|a, b| a.1.total_cmp(&b.1)) {
@@ -191,7 +184,6 @@ impl DefectProbabilityCalculator {
 }
 
 fn add_factor_recommendations(recommendations: &mut Vec<String>, factor_name: &str, metrics: &FileMetrics) {
-    debug_assert!(!factor_name.is_empty(), "factor_name must not be empty");
     match factor_name {
         "complexity" => {
             recommendations.push("Consider breaking down complex functions into smaller, more focused units".to_string());

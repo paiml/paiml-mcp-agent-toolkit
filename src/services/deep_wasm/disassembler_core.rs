@@ -71,7 +71,6 @@ impl Disassembler {
         &self,
         instructions: &[DisassembledInstruction],
     ) -> Vec<InstructionPattern> {
-        debug_assert!(!instructions.is_empty(), "instructions must not be empty");
         let mut patterns = Vec::new();
         detect_dead_code_after_unreachable(instructions, &mut patterns);
         detect_infinite_loops(instructions, &mut patterns);
@@ -85,7 +84,6 @@ impl Disassembler {
         &self,
         instructions: &[DisassembledInstruction],
     ) -> DeepWasmResult<Vec<BasicBlock>> {
-        debug_assert!(!instructions.is_empty(), "instructions must not be empty");
         let mut blocks = Vec::new();
         let mut current_block_id = 0u32;
         let mut current_block_start = 0u32;
@@ -150,7 +148,6 @@ impl Default for Disassembler {
 }
 
 fn detect_dead_code_after_unreachable(instructions: &[DisassembledInstruction], patterns: &mut Vec<InstructionPattern>) {
-    debug_assert!(!instructions.is_empty(), "instructions must not be empty");
     for (i, instr) in instructions.iter().enumerate() {
         if instr.mnemonic != "unreachable" { continue; }
         let dead_count = instructions.iter().skip(i + 1)
@@ -171,7 +168,6 @@ fn detect_dead_code_after_unreachable(instructions: &[DisassembledInstruction], 
 }
 
 fn detect_infinite_loops(instructions: &[DisassembledInstruction], patterns: &mut Vec<InstructionPattern>) {
-    debug_assert!(!instructions.is_empty(), "instructions must not be empty");
     for (i, instr) in instructions.iter().enumerate() {
         if instr.mnemonic != "loop" { continue; }
         let loop_start = i;
@@ -201,7 +197,6 @@ fn detect_infinite_loops(instructions: &[DisassembledInstruction], patterns: &mu
 }
 
 fn detect_excessive_drops(instructions: &[DisassembledInstruction], patterns: &mut Vec<InstructionPattern>) {
-    debug_assert!(!instructions.is_empty(), "instructions must not be empty");
     let mut consecutive_drops: u32 = 0;
     let mut drop_start = 0;
     for (i, instr) in instructions.iter().enumerate() {
@@ -226,7 +221,6 @@ fn detect_excessive_drops(instructions: &[DisassembledInstruction], patterns: &m
 }
 
 fn detect_deep_nesting(instructions: &[DisassembledInstruction], patterns: &mut Vec<InstructionPattern>) {
-    debug_assert!(!instructions.is_empty(), "instructions must not be empty");
     let mut nesting_level: u32 = 0;
     let mut max_nesting: u32 = 0;
     let mut max_nesting_offset: u32 = 0;

@@ -5,7 +5,6 @@ impl<'src> MakefileParser<'src> {
     // SWAR-optimized character search
     #[allow(dead_code)]
     fn find_char_swar(&self, needle: u8) -> Option<usize> {
-        debug_assert!(true, "contract: find_char_swar");
         let bytes = self.input.as_bytes();
         let mut pos = self.cursor;
 
@@ -52,7 +51,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn find_assignment_or_colon(&self) -> Option<LineType> {
-        debug_assert!(true, "contract: find_assignment_or_colon");
         let bytes = self.input.as_bytes();
         let mut pos = self.cursor;
 
@@ -67,7 +65,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn check_char_at_position(&self, bytes: &[u8], pos: usize) -> Option<LineType> {
-        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         match bytes[pos] {
             b':' => self.check_colon_operator(bytes, pos),
             b'=' => Some(LineType::Assignment(pos, AssignmentOp::Deferred)),
@@ -79,7 +76,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn check_colon_operator(&self, bytes: &[u8], pos: usize) -> Option<LineType> {
-        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         if pos + 1 < bytes.len() {
             match bytes[pos + 1] {
                 b'=' => Some(LineType::Assignment(pos, AssignmentOp::Immediate)),
@@ -98,7 +94,6 @@ impl<'src> MakefileParser<'src> {
         second_char: u8,
         op: AssignmentOp,
     ) -> Option<LineType> {
-        debug_assert!(true, "contract: check_two_char_operator");
         if pos + 1 < bytes.len() && bytes[pos + 1] == second_char {
             Some(LineType::Assignment(pos, op))
         } else {

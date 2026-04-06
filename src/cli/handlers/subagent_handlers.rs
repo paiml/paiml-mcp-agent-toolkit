@@ -63,7 +63,6 @@ pub fn list_subagents(show_all: bool) -> Result<()> {
 /// Create a specific sub-agent.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn create_subagent(agent_name: &str, output_dir: Option<PathBuf>) -> Result<()> {
-    debug_assert!(!agent_name.is_empty(), "agent_name must not be empty");
     // Parse agent name
     let agent: PmatSubAgent = agent_name.parse()?;
 
@@ -163,7 +162,6 @@ pub fn create_all_mvp_subagents(output_dir: Option<PathBuf>) -> Result<()> {
 
 /// Check for required markdown sections in sub-agent definition.
 fn check_required_sections(content: &str, issues: &mut Vec<String>) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let required_sections = [
         "# ", // Title
         "## Description",
@@ -185,7 +183,6 @@ fn check_required_sections(content: &str, issues: &mut Vec<String>) {
 
 /// Check for common content patterns in sub-agent definition.
 fn check_content_patterns(content: &str, warnings: &mut Vec<String>) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     if !content.contains("MCP") {
         warnings.push("No MCP tools mentioned (expected for PMAT sub-agents)".to_string());
     }
@@ -201,7 +198,6 @@ fn check_content_patterns(content: &str, warnings: &mut Vec<String>) {
 
 /// Check markdown formatting rules.
 fn check_markdown_format(content: &str, issues: &mut Vec<String>) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     if !content.starts_with("# ") {
         issues.push("File should start with # title".to_string());
     }
@@ -209,7 +205,6 @@ fn check_markdown_format(content: &str, issues: &mut Vec<String>) {
 
 /// Report validation results to the user.
 fn report_validation_results(issues: &[String], warnings: &[String]) -> Result<()> {
-    debug_assert!(!issues.is_empty(), "issues must not be empty");
     if issues.is_empty() && warnings.is_empty() {
         println!("{}", c::pass("Validation passed!"));
         println!("  All required sections present");
@@ -247,11 +242,6 @@ fn report_validation_results(issues: &[String], warnings: &[String]) -> Result<(
 /// Validate a sub-agent definition file.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn validate_subagent(file_path: &Path) -> Result<()> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     println!(
         "{} {}",
         c::label("Validating sub-agent:"),
@@ -321,11 +311,6 @@ pub fn show_tool_mapping(agent_name: Option<String>) -> Result<()> {
 /// Export MCP tool mapping as JSON.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn export_tool_mapping_json(output_path: &Path) -> Result<()> {
-    debug_assert!(
-        output_path.exists(),
-        "output_path must exist: {}",
-        output_path.display()
-    );
     use std::collections::HashMap;
 
     let mapping = SubAgentGenerator::get_tool_mapping();

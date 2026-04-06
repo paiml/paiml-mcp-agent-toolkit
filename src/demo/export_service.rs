@@ -25,7 +25,6 @@ impl ExportService {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save_to_file(&self, format: &str, report: &ExportReport, path: &Path) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = self.export(format, report)?;
         std::fs::write(path, content)?;
         Ok(())
@@ -58,7 +57,6 @@ pub fn create_export_report(
     mermaid_diagram: &str,
     analysis_time_ms: u64,
 ) -> ExportReport {
-    debug_assert!(!repo_name.is_empty(), "repo_name must not be empty");
     create_full_export_report(
         repo_name,
         dag,
@@ -94,7 +92,6 @@ pub fn create_full_export_report(
     defect_summary: Option<DefectSummary>,
     // tdg_analysis: Option<TDGAnalysis>, // Disabled due to compilation errors
 ) -> ExportReport {
-    debug_assert!(!repo_name.is_empty(), "repo_name must not be empty");
     let complexity_analysis = if let Some(c) = complexity {
         let hotspots = c
             .files

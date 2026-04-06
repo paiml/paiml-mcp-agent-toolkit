@@ -2,7 +2,6 @@ impl WorkerMonitor {
     /// Create a new worker monitor
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(worker_count: usize, stall_timeout: Duration) -> Self {
-        debug_assert!(count > 0, "count must be positive");
         Self {
             workers: RwLock::new(HashMap::new()),
             stall_timeout,
@@ -53,7 +52,6 @@ impl WorkerMonitor {
     /// Record task failure
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn record_failure(&self, worker_id: usize, error: &str) {
-        debug_assert!(!error.is_empty(), "error must not be empty");
         let mut workers = self.workers.write().await;
 
         if let Some(worker) = workers.get_mut(&worker_id) {

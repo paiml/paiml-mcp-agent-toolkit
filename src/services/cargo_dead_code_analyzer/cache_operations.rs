@@ -4,13 +4,11 @@
 impl CargoDeadCodeAnalyzer {
     /// Get the cache file path
     fn cache_path(&self) -> PathBuf {
-        debug_assert!(true, "contract: cache_path");
         self.project_path.join(".pmat").join("dead-code-cache.json")
     }
 
     /// Get current git tree hash for cache invalidation
     fn get_tree_hash(&self) -> Option<String> {
-        debug_assert!(true, "contract: get_tree_hash");
         let output = Command::new("git")
             .current_dir(&self.project_path)
             .args(["rev-parse", "HEAD:"])
@@ -26,7 +24,6 @@ impl CargoDeadCodeAnalyzer {
 
     /// Try to load cached result if valid
     fn try_load_cache(&self) -> Option<AccurateDeadCodeReport> {
-        debug_assert!(true, "contract: try_load_cache");
         if !self.use_cache || self.force_refresh {
             return None;
         }
@@ -56,7 +53,6 @@ impl CargoDeadCodeAnalyzer {
 
     /// Save result to cache
     fn save_cache(&self, report: &AccurateDeadCodeReport) {
-        debug_assert!(true, "contract: save_cache");
         if !self.use_cache {
             return;
         }

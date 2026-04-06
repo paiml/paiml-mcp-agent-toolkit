@@ -10,7 +10,6 @@ async fn handle_analyze_code_churn(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_analyze_code_churn");
     // Parse arguments
     let args = match parse_code_churn_args(arguments) {
         Ok(args) => args,
@@ -39,13 +38,11 @@ async fn handle_analyze_code_churn(
 fn parse_code_churn_args(
     arguments: serde_json::Value,
 ) -> Result<AnalyzeCodeChurnArgs, serde_json::Error> {
-    debug_assert!(true, "contract: parse_code_churn_args");
     serde_json::from_value(arguments)
 }
 
 /// Toyota Way Helper: Extract churn analysis parameters
 fn extract_churn_parameters(args: &AnalyzeCodeChurnArgs) -> (PathBuf, u32, ChurnOutputFormat) {
-    debug_assert!(true, "contract: extract_churn_parameters");
     let project_path = args.project_path.as_ref().map_or_else(
         || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
         PathBuf::from,
@@ -69,7 +66,6 @@ async fn run_and_format_churn_analysis(
     period_days: u32,
     format: ChurnOutputFormat,
 ) -> McpResponse {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     match GitAnalysisService::analyze_code_churn(&project_path, period_days) {
         Ok(analysis) => {
             let content_text = format_churn_output(&analysis, &format);
@@ -88,7 +84,6 @@ fn format_churn_output(
     analysis: &crate::models::churn::CodeChurnAnalysis,
     format: &ChurnOutputFormat,
 ) -> String {
-    debug_assert!(true, "contract: format_churn_output");
     match format {
         ChurnOutputFormat::Json => serde_json::to_string_pretty(&analysis).unwrap_or_default(),
         ChurnOutputFormat::Markdown => format_churn_as_markdown(analysis),
@@ -103,7 +98,6 @@ fn build_churn_response(
     analysis: crate::models::churn::CodeChurnAnalysis,
     format: &ChurnOutputFormat,
 ) -> serde_json::Value {
-    debug_assert!(true, "contract: build_churn_response");
     json!({
         "content": [{
             "type": "text",

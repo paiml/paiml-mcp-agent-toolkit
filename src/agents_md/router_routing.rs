@@ -43,7 +43,6 @@ impl AgentRouter {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn balance_load(&self, requests: Vec<AgentRequest>) -> Vec<RouteDecision> {
-        debug_assert!(!requests.is_empty(), "requests must not be empty");
         requests
             .into_iter()
             .enumerate()

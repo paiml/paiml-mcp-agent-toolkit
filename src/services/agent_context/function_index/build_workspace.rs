@@ -6,7 +6,6 @@ impl AgentContextIndex {
     /// to disambiguate across projects.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn build_workspace(project_paths: &[&Path]) -> Result<Self, String> {
-        debug_assert!(!project_paths.is_empty(), "project_paths must not be empty");
         if project_paths.is_empty() {
             return Err("No project paths provided".to_string());
         }
@@ -35,7 +34,6 @@ impl AgentContextIndex {
     /// call graph are reused from the persisted payload.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_with_prefix(index_path: &Path, prefix: &str) -> Result<Self, String> {
-        debug_assert!(index_path.exists(), "index_path must exist: {}", index_path.display());
         let mut index = Self::load(index_path)?;
 
         // Backfill source and call graph for workspace construction.
@@ -77,7 +75,6 @@ impl AgentContextIndex {
     /// without an index.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn discover_sibling_indexes(project_path: &Path) -> Vec<(PathBuf, String)> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let workspace_config = project_path.join(".pmat/workspace.toml");
         let config_str = match fs::read_to_string(&workspace_config) {
             Ok(s) => s,
@@ -126,7 +123,6 @@ impl AgentContextIndex {
     /// Each sibling's `.pmat/context.idx` is never modified.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn merge_siblings(&mut self, siblings: &[(PathBuf, String)]) {
-        debug_assert!(!siblings.is_empty(), "siblings must not be empty");
         for (idx_path, project_name) in siblings {
             match Self::load_with_prefix(idx_path, project_name) {
                 Ok(sibling) => {
@@ -216,7 +212,6 @@ impl AgentContextIndex {
 
     /// Merge another index into this one.
     fn merge(&mut self, other: Self) {
-        debug_assert!(true, "contract: merge");
         for func in other.functions {
             self.functions.push(func);
         }

@@ -15,11 +15,6 @@ use crate::cli::handlers::work_contract::{
 /// evaluated against the current project state. The result is persisted
 /// to `.pmat-work/{id}/checkpoints/` for audit trail.
 pub(super) fn run_checkpoint(project_path: &Path, work_item_id: &str) -> Result<CheckpointRecord> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let contract = WorkContract::load(project_path, work_item_id).with_context(|| {
         format!(
             "No contract found for '{}'. Run 'pmat work start {}' first.",
@@ -59,11 +54,6 @@ fn evaluate_invariants(
     invariants: &[ContractClause],
     contract: &WorkContract,
 ) -> Vec<InvariantResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     invariants
         .iter()
         .filter(|c| c.kind == ClauseKind::Invariant)
@@ -77,11 +67,6 @@ fn evaluate_single_invariant(
     clause: &ContractClause,
     contract: &WorkContract,
 ) -> InvariantResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     match clause.falsification_method {
         FalsificationMethod::FileSizeRegression => {
             check_file_size_invariant(project_path, clause, contract)
@@ -118,11 +103,6 @@ fn check_file_size_invariant(
     clause: &ContractClause,
     contract: &WorkContract,
 ) -> InvariantResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let max_lines = contract.thresholds.max_file_lines;
 
     // Check staged/modified files from git status
@@ -185,11 +165,6 @@ fn check_file_size_invariant(
 
 /// Check invariant.lint: cargo clippy passes.
 fn check_lint_invariant(project_path: &Path, clause: &ContractClause) -> InvariantResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     // Only run lint if Cargo.toml exists
     if !project_path.join("Cargo.toml").exists() {
         return pass_result(&clause.id, "Not a Rust project, lint skipped");
@@ -227,11 +202,6 @@ fn check_lint_invariant(project_path: &Path, clause: &ContractClause) -> Invaria
 
 /// Check invariant.compiles: project builds successfully.
 fn check_compiles_invariant(project_path: &Path, clause: &ContractClause) -> InvariantResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     if project_path.join("Cargo.toml").exists() {
         let output = std::process::Command::new("cargo")
             .args(["check", "--quiet"])
@@ -272,11 +242,6 @@ fn pass_result(clause_id: &str, explanation: &str) -> InvariantResult {
 
 /// Get current git SHA (short helper to avoid duplication)
 fn get_git_sha(project_path: &Path) -> String {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     std::process::Command::new("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(project_path)
@@ -293,11 +258,6 @@ pub(super) fn evaluate_final_invariants(
     project_path: &Path,
     contract: &WorkContract,
 ) -> (Vec<InvariantResult>, bool) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let results = evaluate_invariants(project_path, &contract.invariant, contract);
     let all_pass = results.iter().all(|r| r.passed);
     (results, all_pass)

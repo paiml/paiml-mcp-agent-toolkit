@@ -8,7 +8,6 @@ impl IncrementalChurnAnalyzer {
         &self,
         file_path: &Path,
     ) -> Result<FileChurnMetrics, TemplateError> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Check cache first
         let relative_path = file_path
             .strip_prefix(&self.project_root)
@@ -44,7 +43,6 @@ impl IncrementalChurnAnalyzer {
         files: Vec<PathBuf>,
         period_days: u32,
     ) -> Result<CodeChurnAnalysis, TemplateError> {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut file_metrics = Vec::new();
         let mut uncached_files = Vec::new();
 
@@ -108,7 +106,6 @@ impl IncrementalChurnAnalyzer {
         entry: &ChurnCacheEntry,
         file_path: &Path,
     ) -> Result<bool, TemplateError> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Check if file has been modified in git since cache entry
         let current_hash = self.get_file_last_commit_hash(file_path).await?;
         Ok(current_hash == entry.git_commit_hash)

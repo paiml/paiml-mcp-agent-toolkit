@@ -1,7 +1,6 @@
 // Message extensions implementation
 impl MessageExtensions for AgentMessage {
     fn with_metadata(self, metadata: MessageMetadata) -> MessageWithMetadata {
-        debug_assert!(true, "contract: with_metadata");
         MessageWithMetadata {
             message: self,
             metadata,
@@ -9,7 +8,6 @@ impl MessageExtensions for AgentMessage {
     }
 
     fn is_expired(&self) -> bool {
-        debug_assert!(true, "contract: is_expired");
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("internal error")

@@ -112,7 +112,6 @@ fn run_primary_gate(
     baseline_path: Option<&PathBuf>,
     current: &crate::tdg::TdgBaseline,
 ) -> Result<crate::tdg::GateResult> {
-    debug_assert!(true, "contract: run_primary_gate");
     use crate::tdg::{GateConfig, MinimumGradeGate, NewFileGate, QualityGate, TdgBaseline};
 
     if new_files_only {

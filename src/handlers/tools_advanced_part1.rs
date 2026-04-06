@@ -17,8 +17,6 @@ struct AnalyzeDefectProbabilityArgs {
 }
 
 fn get_relative_path(path: &Path, project_path: &Path) -> String {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     path.strip_prefix(project_path)
         .unwrap_or(path)
         .to_string_lossy()
@@ -26,7 +24,6 @@ fn get_relative_path(path: &Path, project_path: &Path) -> String {
 }
 
 fn calculate_cyclomatic_complexity(content: &str) -> u32 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let control_flow_keywords = ["if", "else", "for", "while", "match", "loop", "?"];
     control_flow_keywords
         .iter()
@@ -40,7 +37,6 @@ fn calculate_cognitive_complexity(cyclomatic_complexity: u32) -> u32 {
 }
 
 fn calculate_duplicate_ratio(lines: &[&str]) -> f32 {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut line_counts = std::collections::HashMap::new();
     let mut duplicate_lines = 0;
 
@@ -67,7 +63,6 @@ fn calculate_duplicate_ratio(lines: &[&str]) -> f32 {
 }
 
 fn calculate_efferent_coupling(content: &str) -> f32 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .filter(|line| line.trim().starts_with("use "))
@@ -75,7 +70,6 @@ fn calculate_efferent_coupling(content: &str) -> f32 {
 }
 
 fn is_public_declaration(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim();
     trimmed.starts_with("pub fn")
         || trimmed.starts_with("pub struct")
@@ -85,7 +79,6 @@ fn is_public_declaration(line: &str) -> bool {
 }
 
 fn calculate_afferent_coupling(content: &str) -> f32 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .filter(|line| is_public_declaration(line))
@@ -102,8 +95,6 @@ async fn calculate_file_metrics(
     project_path: PathBuf,
     churn_map: std::collections::HashMap<String, f32>,
 ) -> crate::services::defect_probability::FileMetrics {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::defect_probability::FileMetrics;
 
     let relative_path = get_relative_path(&path, &project_path);
@@ -170,7 +161,6 @@ pub(crate) async fn handle_analyze_defect_probability(
 fn parse_defect_probability_args(
     arguments: serde_json::Value,
 ) -> Result<(AnalyzeDefectProbabilityArgs, PathBuf), Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: parse_defect_probability_args");
     let args: AnalyzeDefectProbabilityArgs = serde_json::from_value(arguments)?;
 
     let project_path = args.project_path.as_ref().map_or_else(
@@ -183,7 +173,6 @@ fn parse_defect_probability_args(
 
 /// Toyota Way: Extract Method - Build churn map from git analysis (complexity ≤5)
 fn build_churn_map(project_path: &Path) -> std::collections::HashMap<String, f32> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::git_analysis::GitAnalysisService;
 
     let churn_analysis = GitAnalysisService::analyze_code_churn(project_path, 30).ok();
@@ -204,7 +193,6 @@ async fn discover_and_analyze_files(
     churn_map: std::collections::HashMap<String, f32>,
     request_id: serde_json::Value,
 ) -> Result<Vec<crate::services::defect_probability::FileMetrics>, McpResponse> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::file_discovery::ProjectFileDiscovery;
     use futures::stream::{self, StreamExt};
 
@@ -248,7 +236,6 @@ fn create_defect_probability_response(
     args: AnalyzeDefectProbabilityArgs,
     file_metrics: Vec<crate::services::defect_probability::FileMetrics>,
 ) -> McpResponse {
-    debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     use crate::services::defect_probability::{DefectProbabilityCalculator, ProjectDefectAnalysis};
 
     let calculator = DefectProbabilityCalculator::new();
@@ -274,7 +261,6 @@ fn format_defect_probability_output(
     args: &AnalyzeDefectProbabilityArgs,
     analysis: &crate::services::defect_probability::ProjectDefectAnalysis,
 ) -> String {
-    debug_assert!(true, "contract: format_defect_probability_output");
     match args.format.as_deref() {
         Some("json") => serde_json::to_string_pretty(analysis).unwrap_or_default(),
         _ => format!(
@@ -342,7 +328,6 @@ pub(crate) async fn handle_analyze_dead_code(
 fn parse_dead_code_args(
     arguments: serde_json::Value,
 ) -> Result<(AnalyzeDeadCodeArgs, PathBuf), Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: parse_dead_code_args");
     let args: AnalyzeDeadCodeArgs = serde_json::from_value(arguments)?;
 
     let project_path = args.project_path.as_ref().map_or_else(
@@ -358,7 +343,6 @@ async fn run_dead_code_analysis(
     project_path: &Path,
     args: &AnalyzeDeadCodeArgs,
 ) -> Result<crate::models::dead_code::DeadCodeRankingResult, Box<dyn std::error::Error>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::models::dead_code::DeadCodeAnalysisConfig;
     use crate::services::dead_code_analyzer::DeadCodeAnalyzer;
 
@@ -379,7 +363,6 @@ fn format_and_respond_dead_code(
     args: AnalyzeDeadCodeArgs,
     result: crate::models::dead_code::DeadCodeRankingResult,
 ) -> McpResponse {
-    debug_assert!(true, "contract: format_and_respond_dead_code");
     let format = args.format.as_deref().unwrap_or("summary");
 
     let content_text = match format_dead_code_output(&result, format) {
@@ -399,7 +382,6 @@ fn build_dead_code_response(
     content_text: String,
     result: &crate::models::dead_code::DeadCodeRankingResult,
 ) -> serde_json::Value {
-    debug_assert!(!format.is_empty(), "format must not be empty");
     json!({
         "content": [{
             "type": "text",
@@ -419,7 +401,6 @@ fn format_dead_code_output(
     result: &crate::models::dead_code::DeadCodeRankingResult,
     format: &str,
 ) -> anyhow::Result<String> {
-    debug_assert!(!format.is_empty(), "format must not be empty");
     use crate::cli::DeadCodeOutputFormat;
 
     let output_format = match format {
@@ -446,7 +427,6 @@ fn format_dead_code_output(
 fn format_dead_code_summary_mcp(
     result: &crate::models::dead_code::DeadCodeRankingResult,
 ) -> anyhow::Result<String> {
-    debug_assert!(true, "contract: format_dead_code_summary_mcp");
     let mut output = String::with_capacity(1024);
 
     output.push_str("# Dead Code Analysis Summary\n\n");
@@ -461,7 +441,6 @@ fn format_dead_code_summary_stats(
     output: &mut String,
     summary: &crate::models::dead_code::DeadCodeSummary,
 ) {
-    debug_assert!(true, "contract: format_dead_code_summary_stats");
     output.push_str(&format!(
         "**Total files analyzed:** {}\n",
         summary.total_files_analyzed

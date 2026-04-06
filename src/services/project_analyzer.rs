@@ -76,7 +76,6 @@ impl Project {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(root: &Path) -> Result<Self> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         Ok(Self {
             root: root.to_path_buf(),
             file_discovery: ProjectFileDiscovery::new(root.to_path_buf()),
@@ -97,7 +96,6 @@ impl Project {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn root(&self) -> &Path {
-        debug_assert!(self.root.exists(), "self.root must exist");
         &self.root
     }
 
@@ -105,7 +103,6 @@ impl Project {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn source_files(&self) -> Vec<PathBuf> {
-        debug_assert!(self.root.exists(), "self.root must exist");
         self.file_discovery
             .discover_files()
             .unwrap_or_default()
@@ -117,7 +114,6 @@ impl Project {
     /// Build a dependency graph for the project
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn build_dependency_graph(&self) -> Result<DependencyGraph> {
-        debug_assert!(self.root.exists(), "self.root must exist");
         use crate::services::context::{ProjectContext, ProjectSummary};
 
         // Create a project context for the DAG builder
@@ -142,7 +138,6 @@ impl Project {
 
     /// Check if a file is a source file
     fn is_source_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(ext) = path.extension() {
             matches!(
                 ext.to_str().unwrap_or(""),
@@ -178,7 +173,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

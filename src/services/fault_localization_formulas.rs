@@ -88,7 +88,6 @@ impl SbflLocalizer {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_top_n(mut self, n: usize) -> Self {
-        debug_assert!(n > 0, "n must be positive");
         self.top_n = n;
         self
     }
@@ -102,7 +101,6 @@ impl SbflLocalizer {
     #[allow(dead_code)]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_min_confidence(mut self, threshold: f32) -> Self {
-        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         self.min_confidence_threshold = threshold;
         self
     }
@@ -203,7 +201,6 @@ impl SbflLocalizer {
         total_failed: usize,
         total_passed: usize,
     ) -> f32 {
-        debug_assert!(true, "contract: calculate_score");
         match self.formula {
             SbflFormula::Tarantula => tarantula(failed, passed, total_failed, total_passed),
             SbflFormula::Ochiai => ochiai(failed, passed, total_failed),
@@ -220,7 +217,6 @@ impl SbflLocalizer {
         total_passed: usize,
         score: f32,
     ) -> String {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         let failed_pct = if total_failed > 0 {
             (failed as f32 / total_failed as f32 * 100.0) as u32
         } else {
@@ -247,7 +243,6 @@ impl SbflLocalizer {
         total_passed: usize,
         total_failed: usize,
     ) -> f32 {
-        debug_assert!(true, "contract: calculate_confidence");
         let total_tests = total_passed + total_failed;
         if total_tests == 0 || total_failed == 0 {
             return 0.0;

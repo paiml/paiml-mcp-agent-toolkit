@@ -2,7 +2,6 @@ impl UnifiedNode {
     /// Create a new basic unified node with minimal information
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(kind: NodeKind, name: &str, language: Language) -> Self {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}:{}:{}", language.name(), kind.as_str(), name);
         Self {
             id,
@@ -32,7 +31,6 @@ impl UnifiedNode {
         file_path: &Path,
         id_prefix: Option<&str>,
     ) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Generate a unique ID
         let prefix = id_prefix.unwrap_or(language.name());
 
@@ -182,7 +180,6 @@ impl UnifiedNode {
     /// Check if this node has a specific modifier
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_modifier(&self, modifier: &str) -> bool {
-        debug_assert!(!modifier.is_empty(), "modifier must not be empty");
         self.attributes
             .contains_key(&format!("modifier:{}", modifier))
     }
@@ -249,7 +246,6 @@ impl UnifiedNode {
     /// Add language-specific metadata
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_metadata(&mut self, key: &str, value: &str) {
-        debug_assert!(!key.is_empty(), "key must not be empty");
         self.metadata.insert(key.to_string(), value.to_string());
     }
 }

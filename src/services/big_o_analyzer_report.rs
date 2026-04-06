@@ -9,7 +9,6 @@ impl BigOAnalyzer {
         functions: Vec<FunctionComplexity>,
         pattern_counts: rustc_hash::FxHashMap<String, usize>,
     ) -> BigOAnalysisReport {
-        debug_assert!(!functions.is_empty(), "functions must not be empty");
         let mut distribution = ComplexityDistribution {
             constant: 0,
             logarithmic: 0,
@@ -69,7 +68,6 @@ impl BigOAnalyzer {
 
     /// Increment the appropriate distribution counter for a complexity class
     fn increment_distribution(distribution: &mut ComplexityDistribution, class: &BigOClass) {
-        debug_assert!(true, "contract: increment_distribution");
         match class {
             BigOClass::Constant => distribution.constant += 1,
             BigOClass::Logarithmic => distribution.logarithmic += 1,
@@ -88,7 +86,6 @@ impl BigOAnalyzer {
         distribution: &ComplexityDistribution,
         total_functions: usize,
     ) -> Vec<String> {
-        debug_assert!(true, "contract: generate_recommendations");
         let mut recommendations = Vec::new();
 
         if distribution.quadratic > 0 {
@@ -218,7 +215,6 @@ impl BigOAnalyzer {
 
     /// Format the complexity distribution table in markdown
     fn format_distribution_table(md: &mut String, report: &BigOAnalysisReport) {
-        debug_assert!(true, "contract: format_distribution_table");
         md.push_str("## Complexity Distribution\n\n");
         md.push_str("| Complexity | Count | Percentage |\n");
         md.push_str("|------------|-------|------------|\n");
@@ -251,7 +247,6 @@ impl BigOAnalyzer {
 
     /// Format the high-complexity functions table in markdown
     fn format_high_complexity_table(md: &mut String, report: &BigOAnalysisReport) {
-        debug_assert!(true, "contract: format_high_complexity_table");
         md.push_str("## High Complexity Functions\n\n");
         md.push_str(
             "| File | Function | Line | Time Complexity | Space Complexity | Confidence |\n",

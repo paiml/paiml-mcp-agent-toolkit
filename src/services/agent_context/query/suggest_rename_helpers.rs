@@ -3,7 +3,6 @@
 /// Convert CamelCase to snake_case.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn to_snake_case(name: &str) -> String {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     let chars: Vec<char> = name.chars().collect();
     let mut result = String::with_capacity(name.len() + 4);
     let mut prev_lower = false;
@@ -36,8 +35,6 @@ fn needs_acronym_break(prev_upper: bool, chars: &[char], i: usize) -> bool {
 
 /// Replace the filename in a path, preserving the directory.
 fn replace_filename(path: &str, new_filename: &str) -> String {
-    debug_assert!(!path.is_empty(), "path must not be empty");
-    debug_assert!(!new_filename.is_empty(), "new_filename must not be empty");
     if let Some(dir_end) = path.rfind('/') {
         format!("{}/{new_filename}", &path[..dir_end])
     } else {
@@ -47,7 +44,6 @@ fn replace_filename(path: &str, new_filename: &str) -> String {
 
 /// Strip `_part_XX` segments from a filename stem.
 fn strip_part_segments(stem: &str) -> String {
-    debug_assert!(!stem.is_empty(), "stem must not be empty");
     let mut result = String::new();
     let mut rest = stem;
 
@@ -71,7 +67,6 @@ fn strip_part_segments(stem: &str) -> String {
 
 /// Detect parent file that includes this part file.
 fn detect_parent_file(file_path: &str, index: &AgentContextIndex) -> Option<String> {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     // Look for parent mod.rs or the base file without _part_ suffix
     let dir = file_path.rfind('/').map(|i| &file_path[..i])?;
     let mod_rs = format!("{dir}/mod.rs");
@@ -98,14 +93,12 @@ fn detect_parent_file(file_path: &str, index: &AgentContextIndex) -> Option<Stri
 /// Check if the suggested path already exists in the index.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn check_collision(suggested_path: &str, index: &AgentContextIndex) -> bool {
-    debug_assert!(!suggested_path.is_empty(), "suggested_path must not be empty");
     index.file_index.contains_key(suggested_path)
 }
 
 /// Find a context word from function names (most common non-trivial word).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn find_context_word(entries: &[&FunctionEntry]) -> Option<String> {
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let mut word_counts: HashMap<String, usize> = HashMap::new();
     for entry in entries {
         if entry.definition_type != DefinitionType::Function {
@@ -128,7 +121,6 @@ pub(crate) fn find_context_word(entries: &[&FunctionEntry]) -> Option<String> {
 
 /// Compute the longest common prefix of a slice of strings.
 fn longest_common_prefix(strings: &[&str]) -> String {
-    debug_assert!(!strings.is_empty(), "strings must not be empty");
     if strings.is_empty() {
         return String::new();
     }
@@ -151,7 +143,6 @@ fn longest_common_prefix(strings: &[&str]) -> String {
 
 /// Check if a word is a common English stopword.
 fn is_stopword(word: &str) -> bool {
-    debug_assert!(!word.is_empty(), "word must not be empty");
     matches!(
         word,
         "this"
@@ -204,7 +195,6 @@ fn is_stopword(word: &str) -> bool {
 /// Check if a name is valid as a Rust module name.
 /// Must be ASCII, start with a letter or underscore, contain only alphanumerics/underscores.
 fn is_valid_module_name(name: &str) -> bool {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     if name.is_empty() {
         return false;
     }

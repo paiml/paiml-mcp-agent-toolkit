@@ -79,7 +79,6 @@ max_complexity = 10
 /// - Cyclomatic: 2
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn install_gate_config(project_dir: &Path) -> Result<()> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::fs;
 
     let config_path = project_dir.join(".pmat-gates.toml");
@@ -99,7 +98,6 @@ pub fn install_gate_config(project_dir: &Path) -> Result<()> {
 /// - Cyclomatic: 2
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn install_all_hooks_with_gates(project_dir: &Path) -> Result<()> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     // Install pre-commit hook with gates (fast mode)
     let pre_commit = generate_pre_commit_hook_with_gates_fast();
     install_pre_commit_hook(project_dir, &pre_commit)?;

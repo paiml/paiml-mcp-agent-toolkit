@@ -126,7 +126,6 @@ impl DagEngine {
         path: &mut Vec<String>,
         cycles: &mut Vec<Vec<String>>,
     ) {
-        debug_assert!(!node.is_empty(), "node must not be empty");
         visited.insert(node.to_string());
         rec_stack.insert(node.to_string());
         path.push(node.to_string());
@@ -251,7 +250,6 @@ impl DagEngine {
     }
 
     fn find_critical_path(&self) -> Vec<String> {
-        debug_assert!(true, "contract: find_critical_path");
         // Simple implementation: longest path through the DAG
         // In production, would use actual execution time estimates
         let mut longest_path = Vec::new();
@@ -267,7 +265,6 @@ impl DagEngine {
     }
 
     fn dfs_longest_path(&self, node: &str, visited: &mut HashSet<String>) -> Vec<String> {
-        debug_assert!(!node.is_empty(), "node must not be empty");
         if visited.contains(node) {
             return Vec::new();
         }
@@ -291,7 +288,6 @@ impl DagEngine {
     }
 
     fn extract_dependencies(&mut self) -> Result<(), WorkflowError> {
-        debug_assert!(true, "contract: extract_dependencies");
         // Extract dependencies from step conditions and references
         // For now, sequential steps have implicit dependencies
         let node_ids: Vec<String> = self.nodes.keys().cloned().collect();

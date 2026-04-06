@@ -42,7 +42,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
@@ -79,7 +78,6 @@ mod unit_tests {
         // This test verifies that all three handler functions are accessible
         // The test will fail to compile if any are missing
         fn _verify_exports() {
-            debug_assert!(true, "contract: _verify_exports");
             let _dead_code: fn(AnalyzeCommands) -> _ = handle_dead_code;
             let _satd: fn(AnalyzeCommands) -> _ = handle_satd;
             let _makefile: fn(AnalyzeCommands) -> _ = handle_makefile;
@@ -91,7 +89,6 @@ mod unit_tests {
     fn test_result_type_compatibility() {
         // This test ensures our handlers use compatible Result types
         fn _check_result_type() -> Result<()> {
-            debug_assert!(true, "contract: _check_result_type");
             Ok(())
         }
         assert!(_check_result_type().is_ok());

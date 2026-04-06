@@ -43,7 +43,6 @@ pub async fn handle_telemetry(
 
 /// Handle reset command based on build configuration
 async fn handle_reset_command() -> Result<()> {
-    debug_assert!(true, "contract: handle_reset_command");
     #[cfg(test)]
     {
         telemetry().reset();
@@ -63,7 +62,6 @@ async fn handle_reset_command() -> Result<()> {
 
 /// Handle test event recording command
 async fn handle_test_event_command() -> Result<()> {
-    debug_assert!(true, "contract: handle_test_event_command");
     record_test_telemetry_event().await?;
     println!("{}", c::pass("Test telemetry event recorded successfully"));
     Ok(())
@@ -71,7 +69,6 @@ async fn handle_test_event_command() -> Result<()> {
 
 /// Handle display command based on options
 async fn handle_display_command(system: bool, service: Option<String>) -> Result<()> {
-    debug_assert!(true, "contract: handle_display_command");
     match (system, service) {
         (_, Some(service_name)) => show_service_telemetry(&service_name).await,
         (true, None) => show_system_telemetry().await,
@@ -81,7 +78,6 @@ async fn handle_display_command(system: bool, service: Option<String>) -> Result
 
 /// Show comprehensive system telemetry data
 async fn show_system_telemetry() -> Result<()> {
-    debug_assert!(true, "contract: show_system_telemetry");
     info!("Generating system telemetry report");
 
     let telemetry_service = telemetry();
@@ -173,7 +169,6 @@ async fn show_system_telemetry() -> Result<()> {
 
 /// Show telemetry data for a specific service
 async fn show_service_telemetry(service_name: &str) -> Result<()> {
-    debug_assert!(!service_name.is_empty(), "service_name must not be empty");
     info!(service = %service_name, "Generating service telemetry report");
 
     let telemetry_service = telemetry();
@@ -276,7 +271,6 @@ async fn show_service_telemetry(service_name: &str) -> Result<()> {
 
 /// Show system overview (default command)
 async fn show_system_overview() -> Result<()> {
-    debug_assert!(true, "contract: show_system_overview");
     info!("Generating system overview");
 
     let telemetry_service = telemetry();
@@ -332,7 +326,6 @@ async fn show_system_overview() -> Result<()> {
 
 /// Record a test telemetry event for demonstration
 async fn record_test_telemetry_event() -> Result<()> {
-    debug_assert!(true, "contract: record_test_telemetry_event");
     debug!("Recording test telemetry event");
 
     let test_input = TelemetryInput {
@@ -369,7 +362,6 @@ async fn record_test_telemetry_event() -> Result<()> {
 
 /// Record telemetry for this telemetry command execution
 async fn record_telemetry_command_execution(start_time: Instant) -> Result<()> {
-    debug_assert!(true, "contract: record_telemetry_command_execution");
     let duration = start_time.elapsed();
 
     let input = TelemetryInput {
@@ -471,7 +463,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

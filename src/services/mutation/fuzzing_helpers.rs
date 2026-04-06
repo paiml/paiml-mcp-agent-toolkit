@@ -1,7 +1,6 @@
 /// Execute mutant code with given input (simulated for Phase 1)
 /// Real implementation would compile mutant and execute with input
 fn execute_mutant_with_input(_mutant_source: &str, input: &[u8]) -> Result<()> {
-    debug_assert!(!_mutant_source.is_empty(), "_mutant_source must not be empty");
     // Phase 1: Simulate execution
     // This would be replaced with actual compilation + execution
 
@@ -17,7 +16,6 @@ fn execute_mutant_with_input(_mutant_source: &str, input: &[u8]) -> Result<()> {
 
 /// Mutate an input to create new test cases
 fn mutate_input(seed: &[u8]) -> Vec<u8> {
-    debug_assert!(!seed.is_empty(), "seed must not be empty");
     use rand::Rng;
     let mut rng = rand::rng();
     let mut mutated = seed.to_vec();

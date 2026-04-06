@@ -1,6 +1,5 @@
 impl DemoRunner {
     fn generate_system_diagram(&self, _steps: &[DemoStep]) -> Result<String> {
-        debug_assert!(!_steps.is_empty(), "_steps must not be empty");
         // Extract component relationships from analysis results
         let mut components = HashMap::new();
 
@@ -134,7 +133,6 @@ impl DemoRunner {
     }
 
     fn render_system_mermaid(&self, _components: &HashMap<String, Component>) -> Result<String> {
-        debug_assert!(true, "contract: render_system_mermaid");
         let mut output = String::with_capacity(1024);
         output.push_str("graph TD\n");
 

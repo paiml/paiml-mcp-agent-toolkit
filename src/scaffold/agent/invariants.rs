@@ -69,7 +69,6 @@ impl<S: AgentState, C: AgentContext> InvariantChecker<S, C> {
     /// Create a new invariant checker.
     #[must_use]
     pub fn new(invariants: Vec<Box<dyn Invariant<S, C>>>) -> Self {
-        debug_assert!(!invariants.is_empty(), "invariants must not be empty");
         Self {
             invariants,
             violation_handler: ViolationHandler::default(),
@@ -82,7 +81,6 @@ impl<S: AgentState, C: AgentContext> InvariantChecker<S, C> {
         invariants: Vec<Box<dyn Invariant<S, C>>>,
         handler: ViolationHandler,
     ) -> Self {
-        debug_assert!(!invariants.is_empty(), "invariants must not be empty");
         Self {
             invariants,
             violation_handler: handler,

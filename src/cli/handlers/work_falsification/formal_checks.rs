@@ -10,7 +10,6 @@ use std::path::Path;
 /// and word-boundary checking to avoid false positives from identifiers like `sorry_helper`.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn count_lean_sorry_in_source(source: &str) -> usize {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut count = 0;
     let mut in_block_comment = 0i32;
 
@@ -38,7 +37,6 @@ pub(crate) fn count_lean_sorry_in_source(source: &str) -> usize {
 
 /// Strips block comment content from a line, updating nesting depth.
 fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let mut result = String::with_capacity(line.len());
     let mut i = 0;
@@ -65,7 +63,6 @@ fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
 
 /// Checks if line contains "sorry" as a standalone word (not part of an identifier).
 fn contains_sorry_word_boundary(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let sorry = b"sorry";
     let mut pos = 0;
@@ -93,11 +90,6 @@ pub(crate) fn test_formal_proof_verification(
     project_path: &Path,
     max_sorry_count: usize,
 ) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     print!("Scanning .lean files for sorry... ");
 
     let mut total_sorry = 0usize;

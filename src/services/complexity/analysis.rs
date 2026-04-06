@@ -45,7 +45,6 @@ fn process_file_functions(
     thresholds: &ComplexityThresholds,
     data: &mut AnalysisData,
 ) {
-    debug_assert!(true, "contract: process_file_functions");
     let (cyclomatic_rule, cognitive_rule) = rules;
 
     for func in &file.functions {
@@ -70,7 +69,6 @@ fn process_file_classes(
     rules: &(CyclomaticComplexityRule, CognitiveComplexityRule),
     data: &mut AnalysisData,
 ) {
-    debug_assert!(true, "contract: process_file_classes");
     let (cyclomatic_rule, cognitive_rule) = rules;
 
     for class in &file.classes {
@@ -98,7 +96,6 @@ fn check_function_violations(
     cognitive_rule: &CognitiveComplexityRule,
     violations: &mut Vec<Violation>,
 ) {
-    debug_assert!(true, "contract: check_function_violations");
     if let Some(violation) =
         cyclomatic_rule.evaluate(&func.metrics, &file.path, func.line_start, Some(&func.name))
     {
@@ -120,7 +117,6 @@ fn check_method_violations(
     cognitive_rule: &CognitiveComplexityRule,
     violations: &mut Vec<Violation>,
 ) {
-    debug_assert!(true, "contract: check_method_violations");
     if let Some(violation) = cyclomatic_rule.evaluate(
         &method.metrics,
         &file.path,
@@ -147,7 +143,6 @@ fn check_function_hotspots(
     thresholds: &ComplexityThresholds,
     hotspots: &mut Vec<ComplexityHotspot>,
 ) {
-    debug_assert!(true, "contract: check_function_hotspots");
     if func.metrics.cyclomatic > thresholds.cyclomatic_warn {
         hotspots.push(ComplexityHotspot {
             file: file.path.clone(),
@@ -195,10 +190,6 @@ pub(super) fn calculate_summary_statistics(data: &mut AnalysisData) -> SummarySt
 
 /// Calculate 90th percentile values
 fn calculate_percentiles(all_cyclomatic: &[u16], all_cognitive: &[u16]) -> (u16, u16) {
-    debug_assert!(
-        !all_cyclomatic.is_empty(),
-        "all_cyclomatic must not be empty"
-    );
     let p90_index = (all_cyclomatic.len() as f32 * 0.9) as usize;
     let p90_cyclomatic = all_cyclomatic.get(p90_index).copied().unwrap_or(0);
     let p90_cognitive = all_cognitive.get(p90_index).copied().unwrap_or(0);
@@ -214,7 +205,6 @@ fn calculate_medians(all_cyclomatic: &[u16], all_cognitive: &[u16]) -> (f32, f32
 
 /// Calculate median for a sorted array
 fn calculate_median(values: &[u16]) -> f32 {
-    debug_assert!(!values.is_empty(), "values must not be empty");
     if values.is_empty() {
         return 0.0;
     }
@@ -229,10 +219,6 @@ fn calculate_median(values: &[u16]) -> f32 {
 
 /// Calculate maximum values
 fn calculate_max_values(all_cyclomatic: &[u16], all_cognitive: &[u16]) -> (u16, u16) {
-    debug_assert!(
-        !all_cyclomatic.is_empty(),
-        "all_cyclomatic must not be empty"
-    );
     let max_cyclomatic = all_cyclomatic.iter().max().copied().unwrap_or(0);
     let max_cognitive = all_cognitive.iter().max().copied().unwrap_or(0);
     (max_cyclomatic, max_cognitive)

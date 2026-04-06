@@ -8,7 +8,6 @@ fn export_to_graphml(
     result: &GraphMetricsResult,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(true, "contract: export_to_graphml");
     let mut graphml = String::new();
 
     // Delegate XML generation to extracted functions
@@ -28,7 +27,6 @@ fn export_to_graphml(
 /// Write `GraphML` XML header - EXTRACTED FUNCTION
 /// Complexity: 3 (A+ standard)
 fn write_graphml_header(graphml: &mut String) -> Result<()> {
-    debug_assert!(true, "contract: write_graphml_header");
     use std::fmt::Write;
     writeln!(graphml, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
     writeln!(
@@ -42,7 +40,6 @@ fn write_graphml_header(graphml: &mut String) -> Result<()> {
 /// Write `GraphML` nodes section - EXTRACTED FUNCTION\
 /// Complexity: 4 (A+ standard)
 fn write_graphml_nodes(graphml: &mut String, nodes: &[NodeMetrics]) -> Result<()> {
-    debug_assert!(!nodes.is_empty(), "nodes must not be empty");
     use std::fmt::Write;
     for node in nodes {
         writeln!(graphml, r#"    <node id="{}" />"#, node.name)?;
@@ -53,7 +50,6 @@ fn write_graphml_nodes(graphml: &mut String, nodes: &[NodeMetrics]) -> Result<()
 /// Write `GraphML` edges section - EXTRACTED FUNCTION
 /// Complexity: 7 (A+ standard)
 fn write_graphml_edges(graphml: &mut String, graph: &SimpleGraph) -> Result<()> {
-    debug_assert!(true, "contract: write_graphml_edges");
     use std::fmt::Write;
 
     // Write edges
@@ -80,7 +76,6 @@ fn write_graphml_footer(graphml: &mut String) -> Result<()> {
 /// Write `GraphML` to file - EXTRACTED FUNCTION
 /// Complexity: 4 (A+ standard)
 fn write_graphml_file(graphml: &str, output: &Option<PathBuf>) -> Result<()> {
-    debug_assert!(!graphml.is_empty(), "graphml must not be empty");
     if let Some(path) = output {
         let graphml_path = path.with_extension("graphml");
         std::fs::write(&graphml_path, graphml)?;
@@ -95,7 +90,6 @@ fn format_output(
     result: GraphMetricsResult,
     format: crate::cli::GraphMetricsOutputFormat,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_output");
     match format {
         crate::cli::GraphMetricsOutputFormat::Json => format_gm_as_json(result),
         crate::cli::GraphMetricsOutputFormat::Human
@@ -111,13 +105,11 @@ fn format_output(
 
 // Helper: Format as JSON
 fn format_gm_as_json(result: GraphMetricsResult) -> Result<String> {
-    debug_assert!(true, "contract: format_gm_as_json");
     Ok(serde_json::to_string_pretty(&result)?)
 }
 
 // Helper: Format as human-readable
 fn format_gm_as_human(result: GraphMetricsResult) -> Result<String> {
-    debug_assert!(true, "contract: format_gm_as_human");
     let mut output = String::new();
 
     write_gm_human_header(&mut output)?;
@@ -129,7 +121,6 @@ fn format_gm_as_human(result: GraphMetricsResult) -> Result<String> {
 
 // Helper: Write human header
 fn write_gm_human_header(output: &mut String) -> Result<()> {
-    debug_assert!(true, "contract: write_gm_human_header");
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(output, "{}{}Graph Metrics Analysis{}\n", c::BOLD, c::UNDERLINE, c::RESET)?;
@@ -139,7 +130,6 @@ fn write_gm_human_header(output: &mut String) -> Result<()> {
 
 // Helper: Write statistics
 fn write_gm_statistics(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
-    debug_assert!(true, "contract: write_gm_statistics");
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(output, "  {}Total nodes:{} {}{}{}", c::BOLD, c::RESET, c::BOLD_WHITE, result.total_nodes, c::RESET)?;
@@ -157,7 +147,6 @@ fn write_gm_statistics(output: &mut String, result: &GraphMetricsResult) -> Resu
 
 // Helper: Write top nodes
 fn write_gm_top_nodes(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
-    debug_assert!(true, "contract: write_gm_top_nodes");
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(output, "\n{}Top Nodes by Centrality{}\n", c::BOLD, c::RESET)?;
@@ -171,7 +160,6 @@ fn write_gm_top_nodes(output: &mut String, result: &GraphMetricsResult) -> Resul
 
 // Helper: Write node details
 fn write_gm_node_details(output: &mut String, index: usize, node: &NodeMetrics) -> Result<()> {
-    debug_assert!(true, "contract: write_gm_node_details");
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(output, "  {}. {}{}{}", index, c::CYAN, node.name, c::RESET)?;
@@ -193,7 +181,6 @@ fn write_gm_node_details(output: &mut String, index: usize, node: &NodeMetrics) 
 
 // Helper: Format as CSV
 fn format_gm_as_csv(result: GraphMetricsResult) -> Result<String> {
-    debug_assert!(true, "contract: format_gm_as_csv");
     use std::fmt::Write;
     let mut output = String::new();
 
@@ -223,7 +210,6 @@ fn format_gm_as_csv(result: GraphMetricsResult) -> Result<String> {
 
 // Helper: Format as Markdown
 fn format_gm_as_markdown(result: GraphMetricsResult) -> Result<String> {
-    debug_assert!(true, "contract: format_gm_as_markdown");
     let mut output = String::new();
 
     write_gm_markdown_header(&mut output)?;
@@ -235,7 +221,6 @@ fn format_gm_as_markdown(result: GraphMetricsResult) -> Result<String> {
 
 // Helper: Write Markdown header
 fn write_gm_markdown_header(output: &mut String) -> Result<()> {
-    debug_assert!(true, "contract: write_gm_markdown_header");
     use std::fmt::Write;
     writeln!(output, "# Graph Metrics Report\n")?;
     writeln!(output, "## Summary\n")?;
@@ -244,7 +229,6 @@ fn write_gm_markdown_header(output: &mut String) -> Result<()> {
 
 // Helper: Write Markdown summary table
 fn write_gm_markdown_summary(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
-    debug_assert!(true, "contract: write_gm_markdown_summary");
     use std::fmt::Write;
     writeln!(output, "| Metric | Value |")?;
     writeln!(output, "|--------|-------|")?;
@@ -263,7 +247,6 @@ fn write_gm_markdown_summary(output: &mut String, result: &GraphMetricsResult) -
 
 // Helper: Write Markdown top nodes table
 fn write_gm_markdown_top_nodes(output: &mut String, result: &GraphMetricsResult) -> Result<()> {
-    debug_assert!(true, "contract: write_gm_markdown_top_nodes");
     use std::fmt::Write;
     writeln!(output, "\n## Top Nodes\n")?;
     writeln!(

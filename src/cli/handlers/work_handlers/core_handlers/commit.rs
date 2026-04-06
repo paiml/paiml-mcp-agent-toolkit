@@ -10,11 +10,6 @@ use super::types::CommitMetadata;
 
 /// Capture TDG score (O(1) from cache)
 pub(super) async fn capture_tdg_score(project_path: &PathBuf) -> Result<f64> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let metrics_dir = project_path.join(".pmat-metrics");
     let tdg_file = metrics_dir.join("tdg-score.json");
 
@@ -32,11 +27,6 @@ pub(super) async fn capture_tdg_score(project_path: &PathBuf) -> Result<f64> {
 
 /// Capture repo score (O(1) from cache)
 pub(super) async fn capture_repo_score(project_path: &PathBuf) -> Result<f64> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let metrics_dir = project_path.join(".pmat-metrics");
     let repo_file = metrics_dir.join("repo-score.json");
 
@@ -54,11 +44,6 @@ pub(super) async fn capture_repo_score(project_path: &PathBuf) -> Result<f64> {
 
 /// Capture rust project score (O(1) from cache)
 pub(super) async fn capture_rust_project_score(project_path: &PathBuf) -> Result<f64> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let metrics_dir = project_path.join(".pmat-metrics");
     let rust_file = metrics_dir.join("rust-project-score.json");
 
@@ -79,11 +64,6 @@ pub(super) async fn capture_commit_metadata(
     project_path: &PathBuf,
     item: &RoadmapItem,
 ) -> Result<CommitMetadata> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use std::process::Command;
 
     let short_sha = Command::new("git")
@@ -130,11 +110,6 @@ pub(super) async fn capture_commit_metadata(
 
 /// Update changelog from item labels (helper for handle_work_complete)
 pub(super) fn update_changelog(project_path: &PathBuf, item: &RoadmapItem) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::services::changelog_manager::{ChangeCategory, ChangelogEntry};
 
     if item.labels.is_empty() {
@@ -198,11 +173,6 @@ pub(super) fn auto_commit_work_files(
     id: &str,
     metadata: &CommitMetadata,
 ) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use std::process::Command;
 
     // Stage files that pmat work complete may have modified

@@ -99,7 +99,6 @@ pub fn format_summary_output(
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_recommendations(predictions: &[(String, DefectScore)]) -> Vec<String> {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut recommendations = Vec::new();
 
     for (file_path, score) in predictions.iter().take(5) {
@@ -154,7 +153,6 @@ pub fn format_detailed_output(
     filtered_predictions: &[(String, DefectScore)],
     include_recommendations: bool,
 ) -> String {
-    debug_assert!(!filtered_predictions.is_empty(), "filtered_predictions must not be empty");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -258,7 +256,6 @@ pub fn format_markdown_output(
     filtered_predictions: &[(String, DefectScore)],
     include_recommendations: bool,
 ) -> String {
-    debug_assert!(!filtered_predictions.is_empty(), "filtered_predictions must not be empty");
     let mut output = String::new();
 
     output.push_str("# Defect Prediction Analysis\n\n");
@@ -327,7 +324,6 @@ pub fn format_markdown_output(
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_csv_output(filtered_predictions: &[(String, DefectScore)]) -> String {
-    debug_assert!(!filtered_predictions.is_empty(), "filtered_predictions must not be empty");
     let mut output = String::new();
 
     output.push_str("file,probability,confidence,risk_level,churn_factor,complexity_factor,duplication_factor,coupling_factor\n");
@@ -365,7 +361,6 @@ pub fn format_csv_output(filtered_predictions: &[(String, DefectScore)]) -> Stri
 /// Format SARIF output
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_sarif_output(filtered_predictions: &[(String, DefectScore)]) -> Result<String> {
-    debug_assert!(!filtered_predictions.is_empty(), "filtered_predictions must not be empty");
     let sarif = serde_json::json!({
         "version": "2.1.0",
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",

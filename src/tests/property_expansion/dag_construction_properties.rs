@@ -83,7 +83,6 @@ impl DependencyGraph {
         path: &mut Vec<String>,
         cycles: &mut Vec<Vec<String>>,
     ) {
-        debug_assert!(!node.is_empty(), "node must not be empty");
         visited.insert(node.to_string());
         rec_stack.insert(node.to_string());
         path.push(node.to_string());

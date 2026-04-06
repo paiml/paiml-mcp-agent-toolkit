@@ -103,12 +103,6 @@ pub async fn handle_split(config: SplitConfig) -> Result<()> {
 }
 
 fn normalize_file_path(file: &Path, project_root: &Path) -> Result<String> {
-    debug_assert!(file.exists(), "file must exist: {}", file.display());
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     let abs_file = if file.is_absolute() {
         file.to_path_buf()
     } else {
@@ -124,7 +118,6 @@ fn normalize_file_path(file: &Path, project_root: &Path) -> Result<String> {
 }
 
 fn output_json(plan: &SplitPlan, output: Option<&Path>) -> Result<()> {
-    debug_assert!(true, "contract: output_json");
     let json = serde_json::to_string_pretty(plan)?;
     if let Some(path) = output {
         std::fs::write(path, &json)?;
@@ -140,7 +133,6 @@ fn output_json(plan: &SplitPlan, output: Option<&Path>) -> Result<()> {
 }
 
 fn output_text(plan: &SplitPlan) {
-    debug_assert!(true, "contract: output_text");
     println!(
         "{} {}",
         c::label("Split Plan for:"),

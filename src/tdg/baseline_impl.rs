@@ -19,14 +19,12 @@ impl TdgBaseline {
     /// Add file entry to baseline
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn add_entry(&mut self, path: PathBuf, entry: BaselineEntry) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.files.insert(path, entry);
         self.recompute_summary();
     }
 
     /// Recompute summary statistics
     fn recompute_summary(&mut self) {
-        debug_assert!(true, "contract: recompute_summary");
         self.summary.total_files = self.files.len();
 
         if self.files.is_empty() {

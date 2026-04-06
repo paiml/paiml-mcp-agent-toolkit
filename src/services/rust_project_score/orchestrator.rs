@@ -106,11 +106,6 @@ impl RustProjectScoreOrchestrator {
     /// Runs all 10 category scorers and aggregates results
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn score(&self, project_path: &Path) -> ScorerResult<ProjectScore> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         self.score_with_mode(project_path, ScoringMode::default())
     }
 
@@ -130,11 +125,6 @@ impl RustProjectScoreOrchestrator {
         project_path: &Path,
         mode: ScoringMode,
     ) -> ScorerResult<ProjectScore> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         // Verify project has Cargo.toml or lakefile.lean (root or lean/ subdir)
         let is_rust = project_path.join("Cargo.toml").exists();
         let is_lean = project_path.join("lakefile.lean").exists()
@@ -286,7 +276,6 @@ impl RustProjectScoreOrchestrator {
             recommendations: all_recommendations,
         };
         debug_assert!(result.total_earned >= 0.0, "earned score negative");
-        debug_assert!(result.total_possible > 0.0, "max score must be positive");
         debug_assert!(
             result.percentage >= 0.0 && result.percentage <= 100.0,
             "percentage out of range: {}",

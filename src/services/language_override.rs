@@ -31,7 +31,6 @@ pub fn get_effective_languages(
     override_opts: &LanguageOverride,
     path: &Path,
 ) -> Result<Vec<String>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Case 1: Single language override
     if let Some(lang) = &override_opts.language {
         let normalized = normalize_language_name(lang)?;
@@ -63,7 +62,6 @@ pub fn get_effective_languages(
 /// - "TypeScript" -> "typescript"
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn normalize_language_name(name: &str) -> Result<String> {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     let normalized = name.to_lowercase().trim().to_string();
 
     if normalized.is_empty() {
@@ -80,7 +78,6 @@ pub fn normalize_language_name(name: &str) -> Result<String> {
 ///   swift, ruby, php, bash, wasm, etc.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn validate_language_support(language: &str) -> Result<()> {
-    debug_assert!(!language.is_empty(), "language must not be empty");
     let supported = [
         "rust",
         "python",
@@ -125,7 +122,6 @@ pub fn get_language_detection_with_override(
     override_opts: &LanguageOverride,
     path: &Path,
 ) -> Result<LanguageDetection> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(lang) = &override_opts.language {
         let normalized = normalize_language_name(lang)?;
         validate_language_support(&normalized)?;
@@ -240,14 +236,12 @@ mod tests {
     }
 
     fn create_test_project() -> TempDir {
-        debug_assert!(true, "contract: create_test_project");
         let temp = TempDir::new().unwrap();
         std::fs::write(temp.path().join("test.txt"), "test").unwrap();
         temp
     }
 
     fn create_rust_project() -> TempDir {
-        debug_assert!(true, "contract: create_rust_project");
         use std::fs;
 
         let temp = TempDir::new().unwrap();

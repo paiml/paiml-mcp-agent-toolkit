@@ -53,7 +53,6 @@ impl AdaptiveAllocator {
 
     #[allow(clippy::cast_possible_truncation)]
     fn update_predictions(&self, history: &ResourceHistory) {
-        debug_assert!(true, "contract: update_predictions");
         if history.samples.len() < 10 {
             return; // Not enough data
         }

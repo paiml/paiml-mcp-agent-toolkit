@@ -27,14 +27,12 @@ impl UniversalFeatureExtractor {
     /// Extract features from source code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_features(&self, source: &str, lang: Language) -> Vec<Token> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let tokens = self.tokenize(source, lang);
         self.normalize_tokens(&tokens)
     }
 
     /// Tokenize source code based on language
     fn tokenize(&self, source: &str, lang: Language) -> Vec<Token> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match lang {
             Language::Rust => self.tokenize_rust(source),
             Language::TypeScript | Language::JavaScript => self.tokenize_typescript(source),
@@ -45,7 +43,6 @@ impl UniversalFeatureExtractor {
     }
 
     fn handle_whitespace(&self, tokens: &mut Vec<Token>) {
-        debug_assert!(true, "contract: handle_whitespace");
         if !self.config.ignore_comments {
             tokens.push(Token::new(TokenKind::Whitespace));
         }
@@ -56,7 +53,6 @@ impl UniversalFeatureExtractor {
         chars: &mut std::iter::Peekable<std::str::CharIndices>,
         tokens: &mut Vec<Token>,
     ) {
-        debug_assert!(true, "contract: handle_comment");
         if !self.config.ignore_comments {
             while let Some((_, ch)) = chars.peek() {
                 if *ch == '\n' {
@@ -74,7 +70,6 @@ impl UniversalFeatureExtractor {
         chars: &mut std::iter::Peekable<std::str::CharIndices>,
         tokens: &mut Vec<Token>,
     ) {
-        debug_assert!(true, "contract: handle_string_literal");
         let mut literal = String::new();
         literal.push(ch);
         while let Some((_, ch)) = chars.next() {
@@ -97,7 +92,6 @@ impl UniversalFeatureExtractor {
         chars: &mut std::iter::Peekable<std::str::CharIndices>,
         tokens: &mut Vec<Token>,
     ) {
-        debug_assert!(true, "contract: handle_number");
         let mut number = String::new();
         number.push(ch);
         while let Some((_, ch)) = chars.peek() {
@@ -117,7 +111,6 @@ impl UniversalFeatureExtractor {
         chars: &mut std::iter::Peekable<std::str::CharIndices>,
         tokens: &mut Vec<Token>,
     ) {
-        debug_assert!(true, "contract: handle_identifier");
         let mut ident = String::new();
         ident.push(ch);
         while let Some((_, ch)) = chars.peek() {
@@ -143,7 +136,6 @@ impl UniversalFeatureExtractor {
         chars: &mut std::iter::Peekable<std::str::CharIndices>,
         tokens: &mut Vec<Token>,
     ) {
-        debug_assert!(true, "contract: handle_operator");
         let mut op = String::new();
         op.push(ch);
 
@@ -163,7 +155,6 @@ impl UniversalFeatureExtractor {
     }
 
     fn tokenize_rust(&self, source: &str) -> Vec<Token> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut tokens = Vec::new();
         let mut chars = source.char_indices().peekable();
 
@@ -187,14 +178,12 @@ impl UniversalFeatureExtractor {
 
     /// Basic TypeScript/JavaScript tokenizer
     fn tokenize_typescript(&self, source: &str) -> Vec<Token> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simplified tokenizer - in production would use swc_ecma_parser
         self.tokenize_generic(source, TYPESCRIPT_KEYWORDS)
     }
 
     /// Basic Python tokenizer
     fn tokenize_python(&self, source: &str) -> Vec<Token> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simplified tokenizer - in production would use rustpython_parser
         self.tokenize_generic(source, PYTHON_KEYWORDS)
     }
@@ -206,7 +195,6 @@ impl UniversalFeatureExtractor {
         keywords: &[&str],
         ignore_comments: bool,
     ) -> Option<Token> {
-        debug_assert!(true, "contract: classify_char");
         match ch {
             ' ' | '\t' | '\n' | '\r' if !ignore_comments => Some(Token::new(TokenKind::Whitespace)),
             ' ' | '\t' | '\n' | '\r' => None,
@@ -228,7 +216,6 @@ impl UniversalFeatureExtractor {
 
     /// Generic tokenizer for any language
     fn tokenize_generic(&self, source: &str, keywords: &[&str]) -> Vec<Token> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut tokens = Vec::new();
         let mut chars = source.char_indices().peekable();
         while let Some((_, ch)) = chars.next() {
@@ -246,7 +233,6 @@ impl UniversalFeatureExtractor {
         first: char,
         chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
     ) -> String {
-        debug_assert!(true, "contract: consume_identifier");
         let mut ident = String::new();
         ident.push(first);
         while let Some((_, ch)) = chars.peek() {
@@ -265,7 +251,6 @@ impl UniversalFeatureExtractor {
         first: char,
         chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
     ) -> String {
-        debug_assert!(true, "contract: consume_number");
         let mut number = String::new();
         number.push(first);
         while let Some((_, ch)) = chars.peek() {
@@ -281,21 +266,18 @@ impl UniversalFeatureExtractor {
 
     /// Tokenize C/C++ source code
     fn tokenize_c_style(&self, source: &str) -> Vec<Token> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simplified tokenizer for C/C++ - in production would use tree-sitter-c/cpp
         self.tokenize_generic(source, C_CPP_KEYWORDS)
     }
 
     /// Tokenize Kotlin source code
     fn tokenize_kotlin(&self, source: &str) -> Vec<Token> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simplified tokenizer for Kotlin - in production would use tree-sitter-kotlin
         self.tokenize_generic(source, KOTLIN_KEYWORDS)
     }
 
     /// Check if string is a Rust keyword
     fn is_rust_keyword(&self, s: &str) -> bool {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         matches!(
             s,
             "fn" | "let"
@@ -332,7 +314,6 @@ impl UniversalFeatureExtractor {
 
     /// Check if string is a Rust operator
     fn is_rust_operator(&self, s: &str) -> bool {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         matches!(
             s,
             "+" | "-"
@@ -376,7 +357,6 @@ impl UniversalFeatureExtractor {
 
     /// Check if character is a delimiter
     fn is_delimiter(&self, ch: char) -> bool {
-        debug_assert!(true, "contract: is_delimiter");
         matches!(ch, '(' | ')' | '[' | ']' | '{' | '}' | ',' | ';' | '.')
     }
 
@@ -400,7 +380,6 @@ impl UniversalFeatureExtractor {
     /// Canonicalize identifier names
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn canonicalize_identifier(&self, name: &str) -> String {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(canonical) = self.identifier_map.get(name) {
             canonical.clone()
         } else {

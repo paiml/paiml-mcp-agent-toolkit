@@ -15,7 +15,6 @@ impl ProjectMetadata {
     /// Load project metadata from .pmat/project.toml
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(project_path: &Path) -> Result<Self> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let path = Self::get_path(project_path);
         let content = fs::read_to_string(&path)
             .with_context(|| format!("Failed to read {}", path.display()))?;
@@ -26,7 +25,6 @@ impl ProjectMetadata {
     /// Save project metadata to .pmat/project.toml
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, project_path: &Path) -> Result<()> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let path = Self::get_path(project_path);
 
         // Ensure .pmat directory exists
@@ -44,14 +42,12 @@ impl ProjectMetadata {
     /// Check if project metadata exists
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn exists(project_path: &Path) -> bool {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self::get_path(project_path).exists()
     }
 
     /// Get path to project.toml
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_path(project_path: &Path) -> PathBuf {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         project_path.join(".pmat").join("project.toml")
     }
 
@@ -88,7 +84,6 @@ impl ProjectMetadata {
     /// Check if a breaking change has been accepted
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_breaking_change_accepted(&self, version: &str) -> bool {
-        debug_assert!(!version.is_empty(), "version must not be empty");
         self.compliance
             .breaking_changes_accepted
             .contains(&version.to_string())

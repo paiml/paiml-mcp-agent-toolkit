@@ -83,7 +83,6 @@ impl AstBuilder {
     /// Generate example value for doctest
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_example_value(&self, param_type: &str) -> String {
-        debug_assert!(!param_type.is_empty(), "param_type must not be empty");
         match param_type {
             "u32" | "i32" => "42".to_string(),
             "f32" | "f64" => "3.14".to_string(),
@@ -223,7 +222,6 @@ mod tests {
 
     // Test helpers
     fn create_minimal_spec(name: &str) -> CreateSpec {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         CreateSpec {
             code_type: CodeType::Function,
             name: name.to_string(),
@@ -238,7 +236,6 @@ mod tests {
     }
 
     fn create_multi_param_spec(name: &str) -> CreateSpec {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         CreateSpec {
             code_type: CodeType::Function,
             name: name.to_string(),

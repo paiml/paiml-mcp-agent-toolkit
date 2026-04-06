@@ -24,11 +24,6 @@ use super::cpp;
 impl AstStrategy for CStrategy {
     /// Analyze a C source file and extract AST information
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         // Use our comprehensive C analyzer
         let file_context = c::analyze_c_file(file_path)
             .await
@@ -39,13 +34,11 @@ impl AstStrategy for CStrategy {
 
     /// Get the primary file extension this strategy handles
     fn primary_extension(&self) -> &'static str {
-        debug_assert!(true, "contract: primary_extension");
         "c"
     }
 
     /// Get all file extensions this strategy can handle
     fn supported_extensions(&self) -> Vec<&'static str> {
-        debug_assert!(true, "contract: supported_extensions");
         vec!["c", "h"]
     }
 
@@ -59,11 +52,6 @@ impl AstStrategy for CStrategy {
 impl AstStrategy for CppStrategy {
     /// Analyze a C++ source file and extract AST information
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         // Use our comprehensive C++ analyzer
         let file_context = cpp::analyze_cpp_file(file_path)
             .await
@@ -74,19 +62,16 @@ impl AstStrategy for CppStrategy {
 
     /// Get the primary file extension this strategy handles
     fn primary_extension(&self) -> &'static str {
-        debug_assert!(true, "contract: primary_extension");
         "cpp"
     }
 
     /// Get all file extensions this strategy can handle
     fn supported_extensions(&self) -> Vec<&'static str> {
-        debug_assert!(true, "contract: supported_extensions");
         vec!["cpp", "cc", "cxx", "hpp", "hxx", "hh"]
     }
 
     /// Get the language name
     fn language_name(&self) -> &'static str {
-        debug_assert!(true, "contract: language_name");
         "C++"
     }
 }

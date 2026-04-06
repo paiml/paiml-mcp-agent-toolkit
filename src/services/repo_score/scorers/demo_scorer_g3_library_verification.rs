@@ -2,7 +2,6 @@
 // Verifies that detected libraries are actually used in source code, not just in manifest
 
 fn build_usage_patterns() -> std::collections::HashMap<&'static str, &'static [&'static str]> {
-    debug_assert!(true, "contract: build_usage_patterns");
     [
         ("indicatif", &["ProgressBar", "MultiProgress", "ProgressStyle"][..]),
         ("console", &["Term", "Style", "Color"][..]),
@@ -28,7 +27,6 @@ fn build_usage_patterns() -> std::collections::HashMap<&'static str, &'static [&
 }
 
 fn is_source_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     ["rs", "py", "js", "ts"].contains(&ext)
 }
@@ -38,7 +36,6 @@ fn file_contains_usage(
     libs: &[&str],
     usage_patterns: &std::collections::HashMap<&str, &[&str]>,
 ) -> bool {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     for lib in libs {
         if let Some(patterns) = usage_patterns.get(lib) {
             for pattern in *patterns {
@@ -55,7 +52,6 @@ impl DemoScorer {
     /// Verify that detected libraries are actually used in source code
     /// Implements Genchi Genbutsu principle - go and see the actual usage
     async fn verify_library_usage(&self, src_path: &Path, libs: &[&str]) -> bool {
-        debug_assert!(src_path.exists(), "src_path must exist: {}", src_path.display());
         let usage_patterns = build_usage_patterns();
 
         if let Ok(entries) = std::fs::read_dir(src_path) {

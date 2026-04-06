@@ -12,7 +12,6 @@ impl SATDDetector {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_metrics(&self, debts: &[TechnicalDebt], total_loc: u64) -> SATDMetrics {
-        debug_assert!(!debts.is_empty(), "debts must not be empty");
         let debt_density = if total_loc > 0 {
             (debts.len() as f64 / total_loc as f64) * 1000.0
         } else {
@@ -78,11 +77,6 @@ impl SATDDetector {
         debts: &[TechnicalDebt],
         project_root: &Path,
     ) -> Result<f64, TemplateError> {
-        debug_assert!(
-            project_root.exists(),
-            "project_root must exist: {}",
-            project_root.display()
-        );
         use chrono::Utc;
 
         let mut total_age_days = 0.0;
@@ -118,16 +112,6 @@ impl SATDDetector {
     }
 
     fn get_relative_path(&self, file_path: &Path, project_root: &Path) -> Option<PathBuf> {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
-        debug_assert!(
-            project_root.exists(),
-            "project_root must exist: {}",
-            project_root.display()
-        );
         file_path
             .strip_prefix(project_root)
             .ok()
@@ -140,16 +124,6 @@ impl SATDDetector {
         line: u32,
         project_root: &Path,
     ) -> Option<String> {
-        debug_assert!(
-            relative_path.exists(),
-            "relative_path must exist: {}",
-            relative_path.display()
-        );
-        debug_assert!(
-            project_root.exists(),
-            "project_root must exist: {}",
-            project_root.display()
-        );
         use std::process::Command;
 
         let output = Command::new("git")
@@ -172,7 +146,6 @@ impl SATDDetector {
     }
 
     fn parse_git_blame_timestamp(&self, blame_output: &str) -> Option<i64> {
-        debug_assert!(!blame_output.is_empty(), "blame_output must not be empty");
         for line in blame_output.lines() {
             if let Some(timestamp_str) = line.strip_prefix("author-time ") {
                 return timestamp_str.parse::<i64>().ok();
@@ -186,7 +159,6 @@ impl SATDDetector {
         timestamp: i64,
         now: &chrono::DateTime<chrono::Utc>,
     ) -> Option<f64> {
-        debug_assert!(true, "contract: calculate_age_from_timestamp");
         use chrono::DateTime;
 
         let debt_date = DateTime::from_timestamp(timestamp, 0)?;

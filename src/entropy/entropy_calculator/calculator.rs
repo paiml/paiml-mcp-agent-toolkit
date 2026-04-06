@@ -66,7 +66,6 @@ impl EntropyCalculator {
     /// Calculate Shannon entropy of pattern distribution
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_pattern_diversity(&self, patterns: &PatternCollection) -> f64 {
-        // Contract: calculate_pattern_diversity returns a bounded score
         if patterns.patterns.is_empty() {
             return 0.0;
         }
@@ -92,7 +91,6 @@ impl EntropyCalculator {
     /// Calculate average entropy at file level
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_file_level_entropy(&self, patterns: &PatternCollection) -> f64 {
-        // Contract: calculate_file_level_entropy returns a bounded score
         // Calculate how diverse patterns are within each file
         let mut file_entropies = Vec::new();
 
@@ -133,7 +131,6 @@ impl EntropyCalculator {
     /// Calculate entropy at module level
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_module_level_entropy(&self, patterns: &PatternCollection) -> f64 {
-        // Contract: calculate_module_level_entropy returns a bounded score
         // Group files by module (simplified: by directory)
         let mut modules: HashMap<String, Vec<&AstPattern>> = HashMap::new();
 
@@ -187,7 +184,6 @@ impl EntropyCalculator {
     /// Calculate entropy at project level
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_project_level_entropy(&self, patterns: &PatternCollection) -> f64 {
-        // Contract: calculate_project_level_entropy returns a bounded score
         // Overall project pattern diversity
         self.calculate_pattern_diversity(patterns)
     }

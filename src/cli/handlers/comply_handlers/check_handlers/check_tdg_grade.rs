@@ -10,7 +10,6 @@ use super::types::*;
 
 /// Convert a TDG grade letter to a numeric ordinal for comparison.
 fn grade_ordinal(grade: &str) -> u8 {
-    debug_assert!(!grade.is_empty(), "grade must not be empty");
     match grade.trim() {
         "A" => 0,
         "B" => 1,
@@ -23,7 +22,6 @@ fn grade_ordinal(grade: &str) -> u8 {
 
 /// Return all grade letters that are strictly below (worse than) the given minimum.
 fn grades_below(min_grade: &str) -> Vec<&'static str> {
-    debug_assert!(!min_grade.is_empty(), "min_grade must not be empty");
     let threshold = grade_ordinal(min_grade);
     ["A", "B", "C", "D", "F"]
         .into_iter()
@@ -45,11 +43,6 @@ struct TdgGateOverrides {
 }
 
 fn load_tdg_gate_overrides(project_path: &Path) -> TdgGateOverrides {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let path = project_path.join(".pmat-gates.toml");
     let content = match std::fs::read_to_string(&path) {
         Ok(c) => c,
@@ -87,11 +80,6 @@ fn load_tdg_gate_overrides(project_path: &Path) -> TdgGateOverrides {
 }
 
 fn is_index_stale(project_path: &Path, db_path: &Path) -> bool {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let db_mtime = match std::fs::metadata(db_path).and_then(|m| m.modified()) {
         Ok(t) => t,
         Err(_) => return true,
@@ -109,7 +97,6 @@ fn is_index_stale(project_path: &Path, db_path: &Path) -> bool {
 }
 
 fn has_newer_source_file(dir: &Path, threshold: std::time::SystemTime) -> bool {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return false,
@@ -132,7 +119,6 @@ fn has_newer_source_file(dir: &Path, threshold: std::time::SystemTime) -> bool {
 }
 
 fn is_source_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|ext| {
@@ -155,11 +141,6 @@ fn is_source_file(path: &Path) -> bool {
 }
 
 fn rebuild_index(project_path: &Path) -> bool {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::services::agent_context::AgentContextIndex;
     let index_path = project_path.join(".pmat").join("context.idx");
     eprintln!("\u{1f504} CB-200: context.db is stale \u{2014} rebuilding index...");
@@ -190,11 +171,6 @@ fn query_tdg_violations(
     db_path: &Path,
     failing_grades: &[&str],
 ) -> Result<Vec<TdgViolation>, ComplianceCheck> {
-    debug_assert!(
-        db_path.exists(),
-        "db_path must exist: {}",
-        db_path.display()
-    );
     let conn = rusqlite::Connection::open_with_flags(
         db_path,
         rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
@@ -241,7 +217,6 @@ fn query_tdg_violations(
 
 /// Check if a violation should be excluded (test files or glob patterns)
 fn is_tdg_violation_excluded(v: &TdgViolation, exclude_patterns: &[glob::Pattern]) -> bool {
-    debug_assert!(true, "contract: is_tdg_violation_excluded");
     if v.file_path.contains("/tests/")
         || v.file_path.contains("/test/")
         || v.file_path.ends_with("_test.rs")
@@ -264,11 +239,6 @@ pub(crate) fn check_tdg_grade_gate(
     project_path: &Path,
     comply_config: &ComplyConfig,
 ) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let db_path = project_path.join(".pmat").join("context.db");
     if (!db_path.exists() || is_index_stale(project_path, &db_path))
         && !rebuild_index(project_path)
@@ -354,11 +324,6 @@ fn evaluate_custom_score(
     project_path: &Path,
     score_def: &crate::models::comply_config::CustomScoreDefinition,
 ) -> ComplianceCheck {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let check_name = format!("CB-1100: Custom Score [{}]", score_def.id);
     let output = match std::process::Command::new("sh")
         .args(["-c", &score_def.command])
@@ -433,11 +398,6 @@ fn evaluate_custom_score(
 /// CB-1100: Custom Project Scores
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_custom_scores(project_path: &Path) -> Vec<ComplianceCheck> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let config = match crate::models::comply_config::PmatYamlConfig::load(project_path) {
         Ok(c) => c,
         Err(_) => return vec![],
@@ -454,7 +414,6 @@ pub(crate) fn check_custom_scores(project_path: &Path) -> Vec<ComplianceCheck> {
 }
 
 fn extract_score_from_output(output: &str) -> Option<f64> {
-    debug_assert!(!output.is_empty(), "output must not be empty");
     for line in output.lines() {
         let line = line.trim();
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {

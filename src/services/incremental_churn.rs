@@ -34,11 +34,6 @@ impl IncrementalChurnAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_root: PathBuf) -> Self {
-        debug_assert!(
-            project_root.exists(),
-            "project_root must exist: {}",
-            project_root.display()
-        );
         Self {
             cache: Arc::new(DashMap::new()),
             project_root,

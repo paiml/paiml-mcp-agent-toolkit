@@ -43,7 +43,6 @@ impl TelemetryService {
 
     /// Update service-specific telemetry data
     async fn update_service_telemetry(&self, input: &TelemetryInput) -> Result<()> {
-        debug_assert!(true, "contract: update_service_telemetry");
         let mut entry = self
             .services
             .entry(input.service_name.clone())
@@ -92,7 +91,6 @@ impl TelemetryService {
 
     /// Update system-wide metrics
     async fn update_system_metrics(&self, input: &TelemetryInput) -> Result<()> {
-        debug_assert!(true, "contract: update_system_metrics");
         let mut metrics = self
             .system_metrics
             .write()
@@ -139,7 +137,6 @@ impl TelemetryService {
     /// Get telemetry data for a specific service
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_service_telemetry(&self, service_name: &str) -> Option<ServiceTelemetryData> {
-        debug_assert!(!service_name.is_empty(), "service_name must not be empty");
         self.services.get(service_name).map(|entry| entry.clone())
     }
 
@@ -164,7 +161,6 @@ struct ServiceTotals {
 fn aggregate_service_data(
     services_map: &Arc<DashMap<String, ServiceTelemetryData>>,
 ) -> (HashMap<String, ServiceTelemetryData>, ServiceTotals) {
-    debug_assert!(true, "contract: aggregate_service_data");
     let mut services = HashMap::new();
     let mut totals = ServiceTotals {
         total_operations: 0,
@@ -186,7 +182,6 @@ fn aggregate_service_data(
 }
 
 fn build_system_data(totals: ServiceTotals) -> ServiceTelemetryData {
-    debug_assert!(true, "contract: build_system_data");
     let ServiceTotals {
         total_operations,
         total_successful,
@@ -221,7 +216,6 @@ fn build_system_data(totals: ServiceTotals) -> ServiceTelemetryData {
 }
 
 fn log_operation_result(event_id: &str, input: &TelemetryInput, event_count: u64) {
-    debug_assert!(!event_id.is_empty(), "event_id must not be empty");
     if input.metrics.success {
         info!(
             event_id = %event_id,

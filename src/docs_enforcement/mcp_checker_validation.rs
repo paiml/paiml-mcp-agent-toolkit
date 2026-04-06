@@ -73,7 +73,6 @@ pub fn validate_mcp_documentation(tool: &McpToolDefinition) -> Result<McpDocumen
 
 /// Validate a single parameter's documentation
 fn validate_parameter(name: &str, schema: &Value, is_required: bool) -> ParameterReport {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     let description = schema
         .get("description")
         .and_then(|d| d.as_str())

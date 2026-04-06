@@ -83,7 +83,6 @@ impl ParsedFileCache {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<FileContext>>,
     {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let key = self.compute_key(path, content, CacheType::Context)?;
 
         // Check cache first
@@ -124,7 +123,6 @@ impl ParsedFileCache {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<FileComplexityMetrics>>,
     {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let key = self.compute_key(path, content, CacheType::Complexity)?;
 
         // Check cache first
@@ -187,8 +185,6 @@ impl ParsedFileCache {
         content: &str,
         cache_type: CacheType,
     ) -> Result<ParsedFileCacheKey> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Compute content hash
         let mut hasher = Hasher::new();
         hasher.update(content.as_bytes());
@@ -203,7 +199,6 @@ impl ParsedFileCache {
 
     /// Perform cache maintenance (evict old entries)
     fn perform_maintenance(&self) {
-        debug_assert!(true, "contract: perform_maintenance");
         if self.cache.len() <= self.max_entries {
             return;
         }
@@ -325,7 +320,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

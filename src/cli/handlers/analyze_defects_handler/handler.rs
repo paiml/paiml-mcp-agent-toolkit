@@ -74,7 +74,6 @@ pub async fn handle_analyze_defects(
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn collect_rust_files(path: &Path) -> Result<Vec<std::path::PathBuf>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut files = Vec::new();
 
     for entry in WalkDir::new(path)
@@ -111,7 +110,6 @@ pub(crate) fn calculate_summary(
     files_with_defects: usize,
     defects: &[DefectPattern],
 ) -> DefectSummary {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     let mut critical = 0;
     let mut high = 0;
     let mut medium = 0;

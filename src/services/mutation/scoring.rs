@@ -14,7 +14,6 @@ impl MutationScorer {
     /// Create new scorer from results
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(results: Vec<MutationResult>) -> Self {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         Self { results }
     }
 
@@ -110,7 +109,6 @@ pub struct MutationSummary {
 
 /// Generate test improvement suggestions
 fn generate_suggestions(file: &PathBuf, survived_count: usize) -> Vec<String> {
-    debug_assert!(file.exists(), "file must exist: {}", file.display());
     let mut suggestions = Vec::new();
 
     suggestions.push(format!(

@@ -27,11 +27,6 @@ impl SemanticCli {
     /// No external API keys or internet connection required.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn new(db_path: &str, workspace_path: &std::path::Path) -> Result<Self, String> {
-        debug_assert!(
-            workspace_path.exists(),
-            "workspace_path must exist: {}",
-            workspace_path.display()
-        );
         let vector_db = Arc::new(TursoVectorDB::new_local(db_path).await?);
 
         let search_engine = Arc::new(SemanticSearchEngine::new(db_path).await?);
@@ -56,11 +51,6 @@ impl SemanticCli {
         directory: &PathBuf,
         language: Option<String>,
     ) -> Result<String, String> {
-        debug_assert!(
-            directory.exists(),
-            "directory must exist: {}",
-            directory.display()
-        );
         let stats = self.search_engine.index_directory(directory).await?;
 
         let msg = format!(
@@ -102,7 +92,6 @@ impl SemanticCli {
         limit: usize,
         language: Option<String>,
     ) -> Result<String, String> {
-        debug_assert!(!query.is_empty(), "query must not be empty");
         if query.trim().is_empty() {
             return Err("Query cannot be empty".to_string());
         }
@@ -136,7 +125,6 @@ impl SemanticCli {
     /// Find similar code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn semantic_similar(&self, file: &PathBuf, limit: usize) -> Result<String, String> {
-        debug_assert!(file.exists(), "file must exist: {}", file.display());
         if !file.exists() {
             return Err(format!("File not found: {}", file.display()));
         }
@@ -172,7 +160,6 @@ impl SemanticCli {
     /// Cluster code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_cluster(&self, method: &str, k: Option<usize>) -> Result<String, String> {
-        debug_assert!(!method.is_empty(), "method must not be empty");
         let clustering_method = match method {
             "kmeans" => {
                 let k_val = k.ok_or("K-means requires --k parameter")?;
@@ -203,7 +190,6 @@ impl SemanticCli {
         num_topics: usize,
         language: Option<String>,
     ) -> Result<String, String> {
-        debug_assert!(num_topics > 0, "num_topics must be positive");
         if num_topics == 0 || num_topics > 20 {
             return Err("num_topics must be between 1 and 20".to_string());
         }

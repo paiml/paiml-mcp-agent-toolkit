@@ -22,7 +22,6 @@ impl Language {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_extension(ext: &str) -> Self {
-        debug_assert!(!ext.is_empty(), "ext must not be empty");
         let ext = ext.to_lowercase();
 
         // Check all languages for matching extensions
@@ -97,7 +96,6 @@ impl Language {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_path(path: &Path) -> Self {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Handle special cases by filename
         if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
             match filename.to_lowercase().as_str() {

@@ -28,7 +28,6 @@ impl KotlinStrategy {
 impl AstStrategy for KotlinStrategy {
     /// Analyzes a Kotlin file and returns a FileContext with AST information
     async fn analyze(&self, path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use tokio::fs;
 
         // Read file content
@@ -60,17 +59,14 @@ impl AstStrategy for KotlinStrategy {
     }
 
     fn primary_extension(&self) -> &'static str {
-        debug_assert!(true, "contract: primary_extension");
         "kt"
     }
 
     fn supported_extensions(&self) -> Vec<&'static str> {
-        debug_assert!(true, "contract: supported_extensions");
         vec!["kt", "kts"]
     }
 
     fn language_name(&self) -> &'static str {
-        debug_assert!(true, "contract: language_name");
         "Kotlin"
     }
 }

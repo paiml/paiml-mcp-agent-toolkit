@@ -40,7 +40,6 @@ impl ContractMcpServer {
     /// Handle tool calls using uniform contracts
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn handle_tool_call(&self, name: &str, params: Value) -> Result<ToolResult> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         // Apply backward compatibility mapping
         let params = super::adapter::BackwardCompatibility::map_json_params(params);
         
@@ -64,56 +63,48 @@ impl ContractMcpServer {
     }
     
     async fn handle_analyze_complexity(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_analyze_complexity");
         let contract = serde_json::from_value::<AnalyzeComplexityContract>(params)?;
         let result = self.service.analyze_complexity(contract).await?;
         Ok(ToolResult::Success(result))
     }
     
     async fn handle_analyze_satd(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_analyze_satd");
         let contract = serde_json::from_value::<AnalyzeSatdContract>(params)?;
         let result = self.service.analyze_satd(contract).await?;
         Ok(ToolResult::Success(result))
     }
     
     async fn handle_analyze_dead_code(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_analyze_dead_code");
         let contract = serde_json::from_value::<AnalyzeDeadCodeContract>(params)?;
         let result = self.service.analyze_dead_code(contract).await?;
         Ok(ToolResult::Success(result))
     }
     
     async fn handle_analyze_tdg(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_analyze_tdg");
         let contract = serde_json::from_value::<AnalyzeTdgContract>(params)?;
         let result = self.service.analyze_tdg(contract).await?;
         Ok(ToolResult::Success(result))
     }
     
     async fn handle_analyze_lint_hotspot(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_analyze_lint_hotspot");
         let contract = serde_json::from_value::<AnalyzeLintHotspotContract>(params)?;
         let result = self.service.analyze_lint_hotspot(contract).await?;
         Ok(ToolResult::Success(result))
     }
     
     async fn handle_analyze_entropy(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_analyze_entropy");
         let contract = serde_json::from_value::<AnalyzeEntropyContract>(params)?;
         let result = self.service.analyze_entropy(contract).await?;
         Ok(ToolResult::Success(result))
     }
     
     async fn handle_quality_gate(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_quality_gate");
         let contract = serde_json::from_value::<QualityGateContract>(params)?;
         let result = self.service.quality_gate(contract).await?;
         Ok(ToolResult::Success(result))
     }
     
     async fn handle_refactor_auto(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_refactor_auto");
         let contract = serde_json::from_value::<RefactorAutoContract>(params)?;
         let result = self.service.refactor_auto(contract).await?;
         Ok(ToolResult::Success(result))

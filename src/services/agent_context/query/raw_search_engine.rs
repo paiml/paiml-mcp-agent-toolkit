@@ -8,7 +8,6 @@ fn should_skip_file(
     lang_extensions: &Option<Vec<&str>>,
     exclude_glob: &Option<globset::GlobSet>,
 ) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Apply language filter
     if let Some(ref exts) = lang_extensions {
         let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
@@ -41,7 +40,6 @@ struct FileMatchAccumulator {
 
 /// Check if a line matches the search pattern and passes the exclude filter.
 fn line_matches(line: &str, regex: &Regex, exclude_regex: &Option<Regex>) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     if !regex.is_match(line) {
         return false;
     }
@@ -61,8 +59,6 @@ fn build_match_result(
     before_ctx: usize,
     after_ctx: usize,
 ) -> RawSearchResult {
-    debug_assert!(!relative_path.is_empty(), "relative_path must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let before_start = i.saturating_sub(before_ctx);
     let after_end = (i + 1 + after_ctx).min(lines.len());
 
@@ -94,8 +90,6 @@ fn collect_files_with_matches(
     exclude_regex: &Option<Regex>,
     acc: &mut FileMatchAccumulator,
 ) {
-    debug_assert!(!relative_path.is_empty(), "relative_path must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let has_match = lines
         .iter()
         .any(|line| line_matches(line, regex, exclude_regex));
@@ -112,8 +106,6 @@ fn collect_count_matches(
     exclude_regex: &Option<Regex>,
     acc: &mut FileMatchAccumulator,
 ) {
-    debug_assert!(!relative_path.is_empty(), "relative_path must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let count = lines
         .iter()
         .filter(|line| line_matches(line, regex, exclude_regex))
@@ -136,8 +128,6 @@ fn collect_line_matches(
     options: &RawSearchOptions,
     acc: &mut FileMatchAccumulator,
 ) -> bool {
-    debug_assert!(!relative_path.is_empty(), "relative_path must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     for (i, line) in lines.iter().enumerate() {
         if !line_matches(line, regex, exclude_regex) {
             continue;
@@ -167,8 +157,6 @@ fn collect_file_matches(
     options: &RawSearchOptions,
     acc: &mut FileMatchAccumulator,
 ) -> bool {
-    debug_assert!(!relative_path.is_empty(), "relative_path must not be empty");
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     if options.files_with_matches {
         collect_files_with_matches(lines, relative_path, regex, exclude_regex, acc);
         return false;
@@ -182,7 +170,6 @@ fn collect_file_matches(
 
 /// Build the search and exclude regex patterns from options.
 fn build_search_patterns(options: &RawSearchOptions) -> Result<(Regex, Option<Regex>), String> {
-    debug_assert!(true, "contract: build_search_patterns");
     let pattern_str = if options.literal {
         regex::escape(options.pattern)
     } else {
@@ -223,7 +210,6 @@ fn build_search_patterns(options: &RawSearchOptions) -> Result<(Regex, Option<Re
 
 /// Build the exclude file glob from options.
 fn build_exclude_glob(options: &RawSearchOptions) -> Option<globset::GlobSet> {
-    debug_assert!(true, "contract: build_exclude_glob");
     if options.exclude_file_pattern.is_empty() {
         return None;
     }
@@ -249,7 +235,6 @@ fn walk_and_collect(
     options: &RawSearchOptions,
     acc: &mut FileMatchAccumulator,
 ) {
-    debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
     let walker = WalkBuilder::new(project_root)
         .hidden(true)
         .git_ignore(true)
@@ -293,7 +278,6 @@ pub fn raw_search(
     project_path: &Path,
     options: &RawSearchOptions,
 ) -> Result<RawSearchOutput, String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let project_root = project_path
         .canonicalize()
         .unwrap_or_else(|_| project_path.to_path_buf());
@@ -344,7 +328,6 @@ pub fn is_within_indexed_function(
 
 /// Directories to skip during raw search (beyond .gitignore)
 fn is_search_ignored_dir(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.components().any(|c| {
         let s = c.as_os_str().to_str().unwrap_or("");
         matches!(
@@ -369,7 +352,6 @@ fn is_search_ignored_dir(path: &Path) -> bool {
 
 /// Map language name to file extensions for filtering
 fn language_to_extensions(lang: &str) -> Vec<&'static str> {
-    debug_assert!(!lang.is_empty(), "lang must not be empty");
     match lang.to_lowercase().as_str() {
         "rust" | "rs" => vec!["rs"],
         "python" | "py" => vec!["py", "pyi"],

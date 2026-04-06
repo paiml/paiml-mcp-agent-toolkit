@@ -178,7 +178,6 @@ impl PdmtGitHubService {
     /// Extract validation commands from issue body
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_validation_commands(&self, body: &str) -> Vec<String> {
-        debug_assert!(!body.is_empty(), "body must not be empty");
         let mut commands = Vec::new();
         let mut in_code_block = false;
 
@@ -202,7 +201,6 @@ impl PdmtGitHubService {
     /// Extract success criteria from issue body
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_success_criteria(&self, body: &str) -> Vec<String> {
-        debug_assert!(!body.is_empty(), "body must not be empty");
         let mut criteria = Vec::new();
 
         for line in body.lines() {
@@ -217,7 +215,6 @@ impl PdmtGitHubService {
 
 /// Generate validation commands based on issue type
 fn generate_validation_commands_for_type(issue_type: &IssueType) -> Vec<String> {
-    debug_assert!(true, "contract: generate_validation_commands_for_type");
     let mut commands = vec![
         "cargo test --package pmat".to_string(),
         "pmat analyze satd --strict".to_string(),
@@ -254,7 +251,6 @@ fn generate_validation_commands_for_type(issue_type: &IssueType) -> Vec<String> 
 
 /// Generate success criteria based on issue type
 fn generate_success_criteria_for_type(issue_type: &IssueType) -> Vec<String> {
-    debug_assert!(true, "contract: generate_success_criteria_for_type");
     let mut criteria = vec![
         "All tests pass successfully".to_string(),
         "Zero SATD comments in implementation".to_string(),
@@ -297,7 +293,6 @@ fn generate_success_criteria_for_type(issue_type: &IssueType) -> Vec<String> {
 
 /// Generate quality requirements based on issue type
 fn generate_quality_requirements_for_type(issue_type: &IssueType) -> QualityRequirements {
-    debug_assert!(true, "contract: generate_quality_requirements_for_type");
     let base_requirements = QualityRequirements::default();
 
     match issue_type {

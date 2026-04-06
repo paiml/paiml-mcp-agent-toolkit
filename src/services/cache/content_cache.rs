@@ -181,7 +181,6 @@ impl<T: CacheStrategy> ContentCache<T> {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn hot_entries(&self, limit: usize) -> Vec<(String, u32)> {
-        debug_assert!(limit > 0, "limit must be positive");
         let cache = self.cache.read();
 
         let mut entries: Vec<(String, u32)> = cache
@@ -268,17 +267,14 @@ mod tests {
         }
 
         fn validate(&self, _key: &Self::Key, _value: &Self::Value) -> bool {
-            debug_assert!(true, "contract: validate");
             true
         }
 
         fn ttl(&self) -> Option<Duration> {
-            debug_assert!(true, "contract: ttl");
             None
         }
 
         fn max_size(&self) -> usize {
-            debug_assert!(true, "contract: max_size");
             100
         }
     }
@@ -353,7 +349,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

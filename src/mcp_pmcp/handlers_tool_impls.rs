@@ -4,7 +4,6 @@
 #[async_trait]
 impl ToolHandler for RefactorStartTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling refactor.start with args: {}", args);
 
         let params: RefactorStartArgs = serde_json::from_value(args)
@@ -37,7 +36,6 @@ impl ToolHandler for RefactorStartTool {
 #[async_trait]
 impl ToolHandler for RefactorNextIterationTool {
     async fn handle(&self, _args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling refactor.nextIteration");
 
         let mut manager = self.state_manager.lock().await;
@@ -57,7 +55,6 @@ impl ToolHandler for RefactorNextIterationTool {
 #[async_trait]
 impl ToolHandler for RefactorGetStateTool {
     async fn handle(&self, _args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling refactor.getState");
 
         let manager = self.state_manager.lock().await;
@@ -73,7 +70,6 @@ impl ToolHandler for RefactorGetStateTool {
 #[async_trait]
 impl ToolHandler for RefactorStopTool {
     async fn handle(&self, _args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling refactor.stop");
 
         let mut manager = self.state_manager.lock().await;

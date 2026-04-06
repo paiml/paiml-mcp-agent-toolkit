@@ -4,7 +4,6 @@ async fn run_complexity_analysis(
     include: &Option<String>,
     _exclude: &Option<String>,
 ) -> Result<ComplexityReport> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::complexity::aggregate_results_with_thresholds;
 
     // Use the ONE implementation - analyze_project_files
@@ -88,7 +87,6 @@ async fn run_satd_analysis(
     _include: &Option<String>,
     _exclude: &Option<String>,
 ) -> Result<SatdReport> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     use regex::Regex;
     use walkdir::WalkDir;
 
@@ -130,7 +128,6 @@ async fn process_file_for_satd(
     by_type: &mut HashMap<String, usize>,
     by_severity: &mut HashMap<String, usize>,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Ok(content) = tokio::fs::read_to_string(path).await {
         for (line_no, line) in content.lines().enumerate() {
             if let Some(captures) = satd_pattern.captures(line) {
@@ -150,7 +147,6 @@ fn process_satd_match(
     by_type: &mut HashMap<String, usize>,
     by_severity: &mut HashMap<String, usize>,
 ) {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let satd_type = captures
         .get(1)
         .expect("Match group 1 exists for successful regex match")
@@ -186,7 +182,6 @@ pub fn determine_satd_severity(satd_type: &str) -> &'static str {
 }
 
 async fn create_tdg_report(_project_path: &Path) -> Result<TdgReport> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Simplified TDG analysis
     // Mock data for now
     let files = vec![TdgFile {
@@ -208,7 +203,6 @@ async fn run_dead_code_analysis(
     _include: &Option<String>,
     _exclude: &Option<String>,
 ) -> Result<DeadCodeReport> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Simplified dead code detection
     let items = vec![DeadCodeItem {
         name: "unused_function".to_string(),
@@ -229,7 +223,6 @@ async fn run_defect_prediction(
     _confidence_threshold: f32,
     _min_lines: usize,
 ) -> Result<DefectReport> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Simplified defect prediction
     let predictions = vec![DefectPrediction {
         file: "src/parser.rs".to_string(),
@@ -249,7 +242,6 @@ async fn run_duplicate_detection(
     _include: &Option<String>,
     _exclude: &Option<String>,
 ) -> Result<DuplicateReport> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Simplified duplicate detection
     let blocks = vec![DuplicateBlock {
         files: vec!["src/handler1.rs".to_string(), "src/handler2.rs".to_string()],

@@ -24,11 +24,6 @@ impl EnhancedAstVisitor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         Self {
             items: Vec::new(),
             file_path: file_path.to_path_buf(),
@@ -46,7 +41,6 @@ impl EnhancedAstVisitor {
 
     /// Gets visibility as a string
     fn get_visibility(&self, vis: &Visibility) -> String {
-        debug_assert!(true, "contract: get_visibility");
         match vis {
             Visibility::Public(_) => "pub".to_string(),
             Visibility::Restricted(r) => {
@@ -73,7 +67,6 @@ impl EnhancedAstVisitor {
 
     /// Gets line number from a span debug representation
     fn get_line_from_span_debug(&self, span_debug: &str) -> usize {
-        debug_assert!(!span_debug.is_empty(), "span_debug must not be empty");
         // Extract line number from debug representation if available
         // Format is typically "Span { start: Loc { line: X, ... }, ... }"
         if let Some(line_start) = span_debug.find("line: ") {
@@ -91,7 +84,6 @@ impl EnhancedAstVisitor {
 
     /// Gets line number from a Spanned item
     fn get_line<S: Spanned>(&self, item: &S) -> usize {
-        debug_assert!(true, "contract: get_line");
         // In real proc_macro2, spans don't carry line info by default
         // We'll use a heuristic based on the span's debug representation
         // For production, we'd integrate with proc_macro2's unstable features
@@ -103,7 +95,6 @@ impl EnhancedAstVisitor {
 
     /// Creates a qualified name for the current module context
     fn get_qualified_name(&self, name: &str) -> String {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if self.module_path.is_empty() {
             name.to_string()
         } else {
@@ -114,7 +105,6 @@ impl EnhancedAstVisitor {
 
 impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     fn visit_item_fn(&mut self, node: &'ast ItemFn) {
-        debug_assert!(true, "contract: visit_item_fn");
         let name = self.get_qualified_name(&node.sig.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
         let is_async = node.sig.asyncness.is_some();
@@ -131,7 +121,6 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_struct(&mut self, node: &'ast ItemStruct) {
-        debug_assert!(true, "contract: visit_item_struct");
         let name = self.get_qualified_name(&node.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
         let fields_count = node.fields.len();
@@ -170,7 +159,6 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_enum(&mut self, node: &'ast ItemEnum) {
-        debug_assert!(true, "contract: visit_item_enum");
         let name = self.get_qualified_name(&node.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
         let variants_count = node.variants.len();
@@ -187,7 +175,6 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_trait(&mut self, node: &'ast ItemTrait) {
-        debug_assert!(true, "contract: visit_item_trait");
         let name = self.get_qualified_name(&node.ident.to_string());
         let visibility = self.get_visibility(&node.vis);
         let line = self.get_line(node);
@@ -202,7 +189,6 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_impl(&mut self, node: &'ast ItemImpl) {
-        debug_assert!(true, "contract: visit_item_impl");
         #[cfg(feature = "rust-ast")]
         let type_name = quote::quote!(#node.self_ty).to_string();
         #[cfg(not(feature = "rust-ast"))]
@@ -229,7 +215,6 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_mod(&mut self, node: &'ast ItemMod) {
-        debug_assert!(true, "contract: visit_item_mod");
         let name = node.ident.to_string();
         let visibility = self.get_visibility(&node.vis);
         let line = self.get_line(node);
@@ -247,7 +232,6 @@ impl<'ast> Visit<'ast> for EnhancedAstVisitor {
     }
 
     fn visit_item_use(&mut self, node: &'ast ItemUse) {
-        debug_assert!(true, "contract: visit_item_use");
         #[cfg(feature = "rust-ast")]
         let path = quote::quote!(#node.tree).to_string();
         #[cfg(not(feature = "rust-ast"))]
@@ -444,7 +428,6 @@ mod property_tests {
         /// Property: qualified names preserve module hierarchy
         #[test]
         fn qualified_names_preserve_hierarchy(module_depth in 0usize..5) {
-            debug_assert!(true, "contract: qualified_names_preserve_hierarchy");
             let code = generate_nested_modules(module_depth);
 
             if let Ok(syntax) = syn::parse_file(&code) {
@@ -463,7 +446,6 @@ mod property_tests {
     }
 
     fn generate_test_code(seed: u64) -> String {
-        debug_assert!(true, "contract: generate_test_code");
         let fn_count = (seed % 5) + 1;
         let mut code = String::new();
 
@@ -483,7 +465,6 @@ mod property_tests {
     }
 
     fn generate_nested_modules(depth: usize) -> String {
-        debug_assert!(depth > 0, "depth must be positive");
         let mut code = String::new();
         let mut indent = String::new();
 

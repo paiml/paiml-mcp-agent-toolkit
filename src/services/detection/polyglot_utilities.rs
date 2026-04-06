@@ -17,7 +17,6 @@ impl PolyglotDetector {
     }
 
     fn estimate_file_complexity(&self, content: &str) -> f64 {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines = content.lines().count();
         let branches = content.matches("if").count()
             + content.matches("for").count()
@@ -39,7 +38,6 @@ impl PolyglotDetector {
     }
 
     fn scan_project_directory(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut files = Vec::new();
         if !dir.is_dir() {
             return Ok(files);
@@ -60,7 +58,6 @@ impl PolyglotDetector {
     }
 
     fn should_skip_directory(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.file_name()
             .and_then(|n| n.to_str())
             .map_or(true, |name| {
@@ -73,7 +70,6 @@ impl PolyglotDetector {
 }
 
 fn detect_rust_frameworks(content: &str) -> Vec<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut frameworks = Vec::new();
     if content.contains("tokio") { frameworks.push("Tokio".to_string()); }
     if content.contains("serde") { frameworks.push("Serde".to_string()); }
@@ -82,7 +78,6 @@ fn detect_rust_frameworks(content: &str) -> Vec<String> {
 }
 
 fn detect_js_frameworks(content: &str) -> Vec<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut frameworks = Vec::new();
     if content.contains("React") { frameworks.push("React".to_string()); }
     if content.contains("Express") { frameworks.push("Express".to_string()); }
@@ -91,7 +86,6 @@ fn detect_js_frameworks(content: &str) -> Vec<String> {
 }
 
 fn detect_python_frameworks(content: &str) -> Vec<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut frameworks = Vec::new();
     if content.contains("django") { frameworks.push("Django".to_string()); }
     if content.contains("flask") { frameworks.push("Flask".to_string()); }

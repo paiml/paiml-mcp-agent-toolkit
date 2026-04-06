@@ -24,7 +24,6 @@
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_ranked_files_table(ranked_files: &[RankedFile]) -> String {
-    debug_assert!(!ranked_files.is_empty(), "ranked_files must not be empty");
     let mut output = String::new();
 
     // Header

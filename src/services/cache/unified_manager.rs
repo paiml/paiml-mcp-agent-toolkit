@@ -48,7 +48,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
@@ -123,7 +122,6 @@ mod coverage_tests {
         // The actual CacheDiagnostics requires specific construction
         // so we just verify the type alias compiles
         fn _assert_type_alias() -> Option<UnifiedCacheDiagnostics> {
-            debug_assert!(true, "contract: _assert_type_alias");
             None
         }
     }

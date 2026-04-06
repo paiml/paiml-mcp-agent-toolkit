@@ -70,7 +70,6 @@ pub async fn handle_score(
         "composite score out of range: {}",
         score.composite
     );
-    debug_assert!(!score.grade.is_empty(), "grade must not be empty");
 
     // Persist to .pmat-metrics/
     persist_score(path, &score);

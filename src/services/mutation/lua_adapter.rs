@@ -30,7 +30,6 @@ impl LanguageAdapter for LuaAdapter {
     }
 
     async fn parse(&self, source: &str) -> Result<String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Validate basic Lua syntax by checking for obvious parse errors
         if source.trim().is_empty() {
             return Err(anyhow::anyhow!("Empty Lua source"));
@@ -39,7 +38,6 @@ impl LanguageAdapter for LuaAdapter {
     }
 
     async fn unparse(&self, ast: &str) -> Result<String> {
-        debug_assert!(!ast.is_empty(), "ast must not be empty");
         Ok(ast.to_string())
     }
 
@@ -53,11 +51,6 @@ impl LanguageAdapter for LuaAdapter {
     }
 
     async fn run_tests(&self, source_file: &Path) -> Result<TestRunResult> {
-        debug_assert!(
-            source_file.exists(),
-            "source_file must exist: {}",
-            source_file.display()
-        );
         // Try busted first, then lua test runner
         let project_root = find_lua_project_root(source_file);
         if let Some(root) = project_root {
@@ -85,7 +78,6 @@ impl Default for LuaAdapter {
 /// Find Lua project root by looking for .busted, rockspec, or init.lua
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn find_lua_project_root(start: &Path) -> Option<&Path> {
-    debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
     loop {
         if current.join(".busted").exists()
@@ -100,7 +92,6 @@ pub fn find_lua_project_root(start: &Path) -> Option<&Path> {
 
 /// Check if directory contains a .rockspec file.
 fn has_rockspec(dir: &Path) -> bool {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     std::fs::read_dir(dir).is_ok_and(|entries| {
         entries.flatten().any(|e| {
             e.path()
@@ -113,11 +104,6 @@ fn has_rockspec(dir: &Path) -> bool {
 
 /// Run busted test framework.
 async fn run_busted_tests(project_root: &Path) -> Result<TestRunResult> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     let output = tokio::process::Command::new("busted")
         .arg("--output=plainTerminal")
         .current_dir(project_root)
@@ -141,8 +127,6 @@ async fn run_busted_tests(project_root: &Path) -> Result<TestRunResult> {
 /// Parse busted test failures from output.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_busted_failures(stdout: &str, stderr: &str) -> Vec<String> {
-    debug_assert!(!stdout.is_empty(), "stdout must not be empty");
-    debug_assert!(!stderr.is_empty(), "stderr must not be empty");
     let mut failures = Vec::new();
     for line in stdout.lines().chain(stderr.lines()) {
         let trimmed = line.trim();
@@ -284,7 +268,6 @@ mod tests {
     #[test]
     fn test_implements_language_adapter() {
         fn _assert_adapter<T: LanguageAdapter>() {}
-        debug_assert!(true, "contract: _assert_adapter");
         _assert_adapter::<LuaAdapter>();
     }
 }

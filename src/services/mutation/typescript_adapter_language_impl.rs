@@ -10,7 +10,6 @@ impl LanguageAdapter for TypeScriptAdapter {
 
     #[cfg(feature = "typescript-ast")]
     async fn parse(&self, source: &str) -> Result<String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let cm: Lrc<SourceMap> = Default::default();
         let fm = cm.new_source_file(FileName::Anon.into(), source.to_string());
 
@@ -35,12 +34,10 @@ impl LanguageAdapter for TypeScriptAdapter {
 
     #[cfg(not(feature = "typescript-ast"))]
     async fn parse(&self, source: &str) -> Result<String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         Ok(source.to_string())
     }
 
     async fn unparse(&self, ast: &str) -> Result<String> {
-        debug_assert!(!ast.is_empty(), "ast must not be empty");
         Ok(ast.to_string())
     }
 
@@ -54,7 +51,6 @@ impl LanguageAdapter for TypeScriptAdapter {
     }
 
     async fn run_tests(&self, source_file: &Path) -> Result<TestRunResult> {
-        debug_assert!(source_file.exists(), "source_file must exist: {}", source_file.display());
         // GREEN PHASE: Real test execution
         use std::time::Instant;
         use tokio::process::Command;

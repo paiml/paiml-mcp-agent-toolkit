@@ -74,7 +74,6 @@ impl RuchyAstAnalyzer {
     }
 
     fn _analyze_expr(&mut self, _expr: &ruchy::Expr) -> Result<()> {
-        debug_assert!(true, "contract: _analyze_expr");
         // Placeholder for future Ruchy AST analysis
         // use ruchy::{ExprKind, BinaryOp};
 
@@ -88,7 +87,6 @@ impl RuchyAstAnalyzer {
     }
 
     fn _analyze_function(&mut self, name: &str, _body: &ruchy::Expr) -> Result<()> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         // Simplified implementation for TDD GREEN phase
         // Store function metrics with basic complexity
         self.functions.push(FunctionComplexity {
@@ -108,7 +106,6 @@ impl RuchyAstAnalyzer {
     }
 
     fn calculate_total_complexity(&self) -> ComplexityMetrics {
-        debug_assert!(true, "contract: calculate_total_complexity");
         ComplexityMetrics {
             cyclomatic: self
                 .functions
@@ -138,7 +135,6 @@ impl RuchyAstAnalyzer {
 #[cfg(feature = "ruchy-ast")]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_ruchy_file_with_parser(path: &Path) -> Result<FileComplexityMetrics> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use ruchy::{get_parse_error, is_valid_syntax, Parser};
 
     let content = tokio::fs::read_to_string(path).await?;
@@ -169,7 +165,6 @@ pub async fn analyze_ruchy_file_with_parser(path: &Path) -> Result<FileComplexit
 /// Parse a Ruchy file and analyze its complexity (fallback heuristic method)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_ruchy_file(path: &Path) -> Result<FileComplexityMetrics> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = tokio::fs::read_to_string(path).await?;
 
     // For now, use a simple heuristic-based analysis
@@ -253,12 +248,10 @@ impl RuchyParserState {
     }
 
     fn is_function_start(&self, trimmed: &str) -> bool {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         trimmed.starts_with("fun ") || trimmed.starts_with("@test") || trimmed.contains("fun test_")
     }
 
     fn start_function(&mut self, trimmed: &str, line_num: u32) {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         self.in_function = true;
         self.function_start = line_num + 1;
         self.function_name = self.extract_function_name(trimmed);
@@ -273,7 +266,6 @@ impl RuchyParserState {
     }
 
     fn extract_function_name(&self, trimmed: &str) -> String {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         if let Some(name_start) = trimmed.find("fun ") {
             let after_fun = &trimmed[name_start + 4..];
             after_fun.split('(').next().unwrap_or("").trim().to_string()
@@ -283,7 +275,6 @@ impl RuchyParserState {
     }
 
     fn update_complexity_metrics(&mut self, trimmed: &str) {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         // Control flow patterns and their complexity impacts
         let patterns = [
             ("if ", 1, 1),
@@ -308,7 +299,6 @@ impl RuchyParserState {
     }
 
     fn update_brace_count(&mut self, trimmed: &str) {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         self.brace_count += trimmed.chars().filter(|&c| c == '{').count() as i32;
         self.brace_count -= trimmed.chars().filter(|&c| c == '}').count() as i32;
     }

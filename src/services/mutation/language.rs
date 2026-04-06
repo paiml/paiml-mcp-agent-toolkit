@@ -91,7 +91,6 @@ impl LanguageRegistry {
 
     /// Detect language from file path using centralized Language enum (Sprint 63)
     pub fn detect_language(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use centralized language detection from language_detector module
         let detected_language = Language::from_extension(path);
 
@@ -108,7 +107,6 @@ impl LanguageRegistry {
 
     /// Detect language from file path (legacy extension-based detection)
     pub fn detect_language_by_extension(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let extension = path.extension()?.to_str()?;
 
         for adapter in self.adapters.values() {
@@ -122,7 +120,6 @@ impl LanguageRegistry {
 
     /// Get adapter by name
     pub fn get_adapter(&self, name: &str) -> Option<Arc<dyn LanguageAdapter>> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.adapters.get(name).map(Arc::clone)
     }
 
@@ -156,12 +153,10 @@ mod tests {
         }
 
         async fn parse(&self, source: &str) -> Result<String> {
-            debug_assert!(!source.is_empty(), "source must not be empty");
             Ok(source.to_string())
         }
 
         async fn unparse(&self, ast: &str) -> Result<String> {
-            debug_assert!(!ast.is_empty(), "ast must not be empty");
             Ok(ast.to_string())
         }
 
@@ -170,11 +165,6 @@ mod tests {
         }
 
         async fn run_tests(&self, _source_file: &Path) -> Result<TestRunResult> {
-            debug_assert!(
-                _source_file.exists(),
-                "_source_file must exist: {}",
-                _source_file.display()
-            );
             Ok(TestRunResult {
                 passed: true,
                 failures: vec![],
@@ -254,12 +244,10 @@ mod tests {
             }
 
             async fn parse(&self, source: &str) -> Result<String> {
-                debug_assert!(!source.is_empty(), "source must not be empty");
                 Ok(source.to_string())
             }
 
             async fn unparse(&self, ast: &str) -> Result<String> {
-                debug_assert!(!ast.is_empty(), "ast must not be empty");
                 Ok(ast.to_string())
             }
 
@@ -268,11 +256,6 @@ mod tests {
             }
 
             async fn run_tests(&self, _source_file: &Path) -> Result<TestRunResult> {
-                debug_assert!(
-                    _source_file.exists(),
-                    "_source_file must exist: {}",
-                    _source_file.display()
-                );
                 Ok(TestRunResult {
                     passed: true,
                     failures: vec![],

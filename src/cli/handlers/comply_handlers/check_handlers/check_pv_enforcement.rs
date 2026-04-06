@@ -3,7 +3,6 @@
 
 /// Extract equation names from contract YAMLs that have preconditions or postconditions.
 fn collect_contract_equation_names(contracts_dir: &Path) -> Vec<String> {
-    debug_assert!(contracts_dir.exists(), "contracts_dir must exist: {}", contracts_dir.display());
     let mut eq_names = Vec::new();
     let headers = [
         "equations",
@@ -76,7 +75,6 @@ fn collect_contract_equation_names(contracts_dir: &Path) -> Vec<String> {
 /// Preferred: `#[contract("yaml-name", equation = "eq")]` — auto-injects from YAML.
 /// Legacy: `#[requires(...)]` / `#[ensures(...)]` — hand-written assertions.
 pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
     if !contracts_dir.exists() {
         return ComplianceCheck {
@@ -278,7 +276,6 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
 /// emit CONTRACT_*_PRE_COUNT / CONTRACT_*_PRE_0 env vars that the #[contract]
 /// proc macro reads at compile time.
 pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
     let build_rs = project_path.join("build.rs");
 
@@ -383,7 +380,6 @@ pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
 /// pv-compatibility spec §2.2
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
     if !contracts_dir.exists() {
         return ComplianceCheck {
@@ -481,7 +477,6 @@ pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceChec
 /// pv-compatibility spec §2.3
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_verification_levels(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Resolve to absolute path so .parent() works correctly from "."
     let abs_path =
         std::fs::canonicalize(project_path).unwrap_or_else(|_| project_path.to_path_buf());
@@ -618,7 +613,6 @@ pub(crate) fn check_verification_levels(project_path: &Path, thresholds: &Comply
 
 /// Quick check if a directory contains any contract YAML files (not just binding.yaml).
 fn has_contract_yamls(dir: &Path) -> bool {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     std::fs::read_dir(dir).into_iter().flatten().flatten().any(|e| {
         let p = e.path();
         p.is_file()
@@ -631,7 +625,6 @@ fn has_contract_yamls(dir: &Path) -> bool {
 /// Checks local `contracts/` first (if it has YAMLs), then sibling `../provable-contracts/contracts/<name>/`.
 /// Tries both the directory name and the Cargo.toml package name (e.g., paiml-mcp-agent-toolkit → pmat).
 fn resolve_contracts_dir(project_path: &Path) -> Option<std::path::PathBuf> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Prefer sibling provable-contracts repo — contains only provable-contracts YAMLs.
     // Local contracts/ may contain pmat work contracts (different schema) that pv lint
     // cannot parse.
@@ -675,7 +668,6 @@ fn resolve_contracts_dir(project_path: &Path) -> Option<std::path::PathBuf> {
 /// Returns a set of stems (e.g., "softmax-kernel-v1") for filtering proof-status.json.
 /// Checks local `contracts/` then sibling `../provable-contracts/contracts/<project>/`.
 fn collect_project_contract_stems(project_path: &Path) -> std::collections::HashSet<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut stems = std::collections::HashSet::new();
     if let Some(contracts_dir) = resolve_contracts_dir(project_path) {
         collect_stems_recursive(&contracts_dir, &mut stems);
@@ -684,7 +676,6 @@ fn collect_project_contract_stems(project_path: &Path) -> std::collections::Hash
 }
 
 fn collect_stems_recursive(dir: &Path, stems: &mut std::collections::HashSet<String>) {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -713,7 +704,6 @@ fn collect_stems_recursive(dir: &Path, stems: &mut std::collections::HashSet<Str
 /// pv-compatibility spec CD5.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -834,7 +824,6 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
 /// the YAML status field (self-attestation) without verifying the Rust function exists.
 /// 16,977 bindings across the stack but only 35 have #[contract] annotations.
 pub(crate) fn check_binding_existence(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -954,7 +943,6 @@ pub(crate) fn check_binding_existence(project_path: &Path, thresholds: &ComplyTh
 
 /// Detect if build.rs has contract enforcement (reads binding.yaml or contracts/)
 fn detect_buildrs_enforcement(project_path: &Path) -> bool {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check root build.rs
     let build_rs = project_path.join("build.rs");
     if build_rs.exists() {
@@ -994,7 +982,6 @@ fn detect_buildrs_enforcement(project_path: &Path) -> bool {
 /// 3. Count provable-contracts trait imports
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_contract_trait_enforcement(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Look for contract_traits.rs in tests/ or tests/contract_traits/
     let trait_test = project_path.join("tests").join("contract_traits.rs");
     if !trait_test.exists() {
@@ -1134,8 +1121,6 @@ fn resolve_binding_files(
     abs_path: &Path,
     project_name: &str,
 ) -> Vec<std::path::PathBuf> {
-    debug_assert!(contracts_dir.exists(), "contracts_dir must exist: {}", contracts_dir.display());
-    debug_assert!(abs_path.exists(), "abs_path must exist: {}", abs_path.display());
     let mut files: Vec<std::path::PathBuf> = Vec::new();
     for entry in walkdir::WalkDir::new(contracts_dir)
         .max_depth(3)
@@ -1175,7 +1160,6 @@ fn resolve_binding_files(
 fn collect_known_fn_names(
     project_path: &Path,
 ) -> Option<std::collections::HashSet<String>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     let crates_dir = project_path.join("crates");
     let mut search_dirs: Vec<std::path::PathBuf> = Vec::new();
@@ -1214,7 +1198,6 @@ fn collect_known_fn_names(
 
 /// Extract fn/const/static names from a single Rust source file
 fn extract_names_from_source(content: &str, names: &mut std::collections::HashSet<String>) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
         let t = line.trim();
         // fn declarations (all visibility/async/unsafe/const variants)
@@ -1262,7 +1245,6 @@ fn cross_reference_bindings(
     entries: &[(String, String)],
     known_fns: &std::collections::HashSet<String>,
 ) -> (usize, usize, usize, Vec<String>) {
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let total = entries.len();
     let mut missing = Vec::new();
     let mut verified = 0usize;
@@ -1287,9 +1269,6 @@ fn parse_binding_entries(
     contracts_dir: &Path,
     entries: &mut Vec<(String, String)>,
 ) {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
-    debug_assert!(contracts_dir.exists(), "contracts_dir must exist: {}", contracts_dir.display());
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut current_fn = None;
     let mut current_status = None;
     for line in content.lines() {
@@ -1344,7 +1323,6 @@ fn parse_binding_entries(
 /// CB-1202: Contract coverage — do repos with critical functions have contracts?
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     let contracts_dir = project_path.join("contracts");
     if !src_dir.exists() {
@@ -1480,7 +1458,6 @@ pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
 /// Missing test = unfalsifiable claim = FAIL (like TDG grade F).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_pv_lint(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(dir) => dir,
         None => {
@@ -1570,7 +1547,6 @@ pub(crate) fn check_pv_lint(project_path: &Path, thresholds: &ComplyThresholds) 
 }
 
 fn count_contract_test_refs(project_path: &Path) -> (usize, usize, usize) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
     let src_dir = project_path.join("src");
     let mut refs = Vec::new();

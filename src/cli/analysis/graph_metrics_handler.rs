@@ -18,7 +18,6 @@ pub async fn handle_analyze_graph_metrics(
     top_k: usize,
     min_centrality: f64,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("📊 Analyzing graph metrics...");
 
     // Build dependency graph
@@ -67,7 +66,6 @@ async fn build_dependency_graph(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<SimpleGraph> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut graph = SimpleGraph::new();
     let mut node_indices = HashMap::new();
 
@@ -113,7 +111,6 @@ async fn collect_files(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<Vec<PathBuf>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut files = Vec::new();
 
     collect_files_recursive(project_path, &mut files, include, exclude).await?;
@@ -130,7 +127,6 @@ async fn collect_files_recursive(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<()> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut entries = tokio::fs::read_dir(dir).await?;
 
     while let Some(entry) = entries.next_entry().await? {
@@ -156,7 +152,6 @@ async fn collect_files_recursive(
 /// Check if path should be excluded - EXTRACTED FUNCTION
 /// Complexity: 3 (A+ standard)
 fn should_exclude_path_sprint85(path_str: &str, exclude_pattern: &Option<String>) -> bool {
-    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     if let Some(excl) = exclude_pattern {
         path_str.contains(excl)
     } else {
@@ -167,7 +162,6 @@ fn should_exclude_path_sprint85(path_str: &str, exclude_pattern: &Option<String>
 /// Check if path should be included - EXTRACTED FUNCTION\
 /// Complexity: 3 (A+ standard)
 fn should_include_path_sprint85(path_str: &str, include_pattern: &Option<String>) -> bool {
-    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     if let Some(incl) = include_pattern {
         path_str.contains(incl)
     } else {
@@ -178,7 +172,6 @@ fn should_include_path_sprint85(path_str: &str, include_pattern: &Option<String>
 /// Check if directory should be traversed - EXTRACTED FUNCTION
 /// Complexity: 5 (A+ standard)
 fn should_traverse_directory_sprint85(dir_name: &str) -> bool {
-    debug_assert!(!dir_name.is_empty(), "dir_name must not be empty");
     !dir_name.starts_with('.') && dir_name != "node_modules" && dir_name != "target"
 }
 
@@ -190,7 +183,6 @@ async fn process_directory_entry_sprint85(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if path.is_dir() {
         let name = path.file_name().unwrap_or_default().to_string_lossy();
         if should_traverse_directory_sprint85(&name) {
@@ -207,7 +199,6 @@ async fn process_directory_entry_sprint85(
 
 // Check if file is source
 fn is_source_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     matches!(
         path.extension().and_then(|s| s.to_str()),
         Some("rs" | "js" | "ts" | "py" | "java")
@@ -216,7 +207,6 @@ fn is_source_file(path: &Path) -> bool {
 
 // Extract dependencies from file
 fn extract_dependencies(content: &str, file_path: &Path) -> Result<Vec<String>> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     use regex::Regex;
 
     let ext = file_path.extension().and_then(|s| s.to_str()).unwrap_or("");

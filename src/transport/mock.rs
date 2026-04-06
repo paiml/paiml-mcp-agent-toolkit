@@ -190,7 +190,6 @@ impl Default for MockTransport {
 #[async_trait]
 impl PmcpTransport for MockTransport {
     async fn send(&mut self, message: TransportMessage) -> pmcp::Result<()> {
-        debug_assert!(true, "contract: send");
         let mut state = self.state.lock().await;
         
         // Check for injected error
@@ -214,7 +213,6 @@ impl PmcpTransport for MockTransport {
     }
     
     async fn receive(&mut self) -> pmcp::Result<TransportMessage> {
-        debug_assert!(true, "contract: receive");
         let mut state = self.state.lock().await;
         
         // Check for injected error
@@ -238,19 +236,16 @@ impl PmcpTransport for MockTransport {
     }
     
     async fn close(&mut self) -> pmcp::Result<()> {
-        debug_assert!(true, "contract: close");
         let mut state = self.state.lock().await;
         state.connected = false;
         Ok(())
     }
     
     fn is_connected(&self) -> bool {
-        debug_assert!(true, "contract: is_connected");
         self.state.try_lock().map(|s| s.connected).unwrap_or(false)
     }
     
     fn transport_type(&self) -> &'static str {
-        debug_assert!(true, "contract: transport_type");
         "mock"
     }
 }
@@ -259,33 +254,28 @@ impl PmcpTransport for MockTransport {
 #[async_trait]
 impl TransportAdapter for MockTransport {
     async fn send(&mut self, message: TransportMessage) -> Result<(), TransportError> {
-        debug_assert!(true, "contract: send");
         PmcpTransport::send(self, message)
             .await
             .map_err(|e| TransportError::Send(e.to_string()))
     }
     
     async fn receive(&mut self) -> Result<TransportMessage, TransportError> {
-        debug_assert!(true, "contract: receive");
         PmcpTransport::receive(self)
             .await
             .map_err(|e| TransportError::Receive(e.to_string()))
     }
     
     async fn close(&mut self) -> Result<(), TransportError> {
-        debug_assert!(true, "contract: close");
         PmcpTransport::close(self)
             .await
             .map_err(|e| TransportError::Connection(e.to_string()))
     }
     
     fn is_connected(&self) -> bool {
-        debug_assert!(true, "contract: is_connected");
         PmcpTransport::is_connected(self)
     }
     
     fn transport_type(&self) -> &'static str {
-        debug_assert!(true, "contract: transport_type");
         PmcpTransport::transport_type(self)
     }
 }

@@ -145,11 +145,6 @@ jobs:
 /// - Cyclomatic: 2
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn install_github_workflow(project_dir: &Path, config: &WorkflowConfig) -> std::io::Result<()> {
-    debug_assert!(
-        project_dir.exists(),
-        "project_dir must exist: {}",
-        project_dir.display()
-    );
     use std::fs;
 
     // Create .github/workflows directory
@@ -347,7 +342,6 @@ mod tests {
 
     #[test]
     fn integration_workflow_installation() {
-        debug_assert!(true, "contract: integration_workflow_installation");
         use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();

@@ -2,7 +2,6 @@
 fn create_defect_report_from_predictions(
     predictions: Vec<(String, crate::services::defect_probability::DefectScore)>,
 ) -> Result<DefectPredictionReport> {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     use crate::services::defect_probability::RiskLevel;
     let mut high_risk_files = 0;
     let mut medium_risk_files = 0;
@@ -110,7 +109,6 @@ pub fn format_defect_summary(report: &DefectPredictionReport, top_files: usize) 
 
 /// Format the defect prediction summary statistics
 fn format_defect_summary_stats(output: &mut String, report: &DefectPredictionReport) -> Result<()> {
-    debug_assert!(true, "contract: format_defect_summary_stats");
     use std::fmt::Write;
 
     writeln!(output, "## Summary")?;
@@ -128,7 +126,6 @@ fn format_defect_top_files(
     report: &DefectPredictionReport,
     top_files: usize,
 ) -> Result<()> {
-    debug_assert!(true, "contract: format_defect_top_files");
     use std::fmt::Write;
 
     writeln!(output, "## Top Files by Defect Risk\n")?;
@@ -152,7 +149,6 @@ fn format_defect_prediction_entry(
     index: usize,
     prediction: &FilePrediction,
 ) -> Result<()> {
-    debug_assert!(true, "contract: format_defect_prediction_entry");
     use std::fmt::Write;
 
     let filename = extract_filename_from_prediction(prediction);
@@ -170,7 +166,6 @@ fn format_defect_prediction_entry(
 
 /// Extract display filename from prediction
 fn extract_filename_from_prediction(prediction: &FilePrediction) -> &str {
-    debug_assert!(true, "contract: extract_filename_from_prediction");
     std::path::Path::new(&prediction.file_path)
         .file_name()
         .and_then(|n| n.to_str())
@@ -178,17 +173,14 @@ fn extract_filename_from_prediction(prediction: &FilePrediction) -> &str {
 }
 
 fn format_defect_full(report: &DefectPredictionReport, top_files: usize) -> Result<String> {
-    debug_assert!(true, "contract: format_defect_full");
     crate::cli::defect_formatter::format_defect_report(report, "full", top_files)
 }
 
 fn format_defect_sarif(report: &DefectPredictionReport) -> Result<String> {
-    debug_assert!(true, "contract: format_defect_sarif");
     crate::cli::defect_formatter::format_defect_report(report, "sarif", 0)
 }
 
 fn format_defect_csv(report: &DefectPredictionReport) -> Result<String> {
-    debug_assert!(true, "contract: format_defect_csv");
     crate::cli::defect_formatter::format_defect_report(report, "csv", 0)
 }
 
@@ -209,7 +201,6 @@ mod defect_report_tests {
     }
 
     fn create_test_report() -> DefectPredictionReport {
-        debug_assert!(true, "contract: create_test_report");
         DefectPredictionReport {
             total_files: 3,
             high_risk_files: 1,

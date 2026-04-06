@@ -53,7 +53,6 @@ impl WhyIteration {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_confidence(mut self, confidence: f64) -> Self {
-        debug_assert!(confidence >= 0.0, "confidence must be non-negative");
         self.confidence = confidence.clamp(0.0, 1.0);
         self
     }
@@ -83,7 +82,6 @@ impl Evidence {
         value: serde_json::Value,
         interpretation: String,
     ) -> Self {
-        debug_assert!(file.exists(), "file must exist: {}", file.display());
         Self {
             source,
             file,
@@ -172,7 +170,6 @@ pub struct EvidenceSummary {
 
 impl EvidenceSummary {
     fn process_complexity_evidence(&mut self, evidence: &Evidence) {
-        debug_assert!(true, "contract: process_complexity_evidence");
         let value = evidence
             .value
             .get("value")
@@ -189,7 +186,6 @@ impl EvidenceSummary {
     }
 
     fn process_satd_evidence(&mut self, evidence: &Evidence) {
-        debug_assert!(true, "contract: process_satd_evidence");
         self.satd_markers += evidence
             .value
             .get("count")
@@ -198,7 +194,6 @@ impl EvidenceSummary {
     }
 
     fn process_evidence(&mut self, evidence: &Evidence) {
-        debug_assert!(true, "contract: process_evidence");
         match evidence.source {
             EvidenceSource::Complexity => self.process_complexity_evidence(evidence),
             EvidenceSource::SATD => self.process_satd_evidence(evidence),
@@ -237,7 +232,6 @@ impl EvidenceSummary {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_whys(whys: &[WhyIteration]) -> Self {
-        debug_assert!(!whys.is_empty(), "whys must not be empty");
         let mut summary = Self::default();
         for why in whys {
             for evidence in &why.evidence {

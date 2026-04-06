@@ -8,7 +8,6 @@ async fn handle_oracle_fix(
     format: OracleOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("🔮 PMAT Oracle - PDCA Quality Improvement Loop");
     println!("   Path: {}", path.display());
     println!("   Max iterations: {}", max_iterations);
@@ -65,7 +64,6 @@ async fn handle_oracle_fix(
 
 /// Handle `pmat oracle status` - Show current quality status
 async fn handle_oracle_status(path: &Path, format: OracleOutputFormat) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("📊 PMAT Oracle - Project Quality Status");
     println!("   Path: {}", path.display());
     println!();
@@ -93,7 +91,6 @@ async fn handle_oracle_single(
     format: OracleOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("⚡ PMAT Oracle - Single PDCA Iteration");
     println!("   Path: {}", path.display());
     println!();
@@ -129,7 +126,6 @@ async fn handle_oracle_single(
 ///
 /// Oracle-driven convergence uses these metrics to guide iterative improvements.
 async fn collect_project_metrics(_path: &Path) -> Result<ProjectMetrics> {
-    debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
     // Stub implementation - full metrics collection would be expensive
     // and is meant for CI/CD pipelines, not interactive use.
     Ok(ProjectMetrics::default())

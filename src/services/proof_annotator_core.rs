@@ -21,7 +21,6 @@ impl ProofAnnotator {
     /// Collect proof annotations from all sources in parallel
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn collect_proofs(&self, project_root: &Path) -> ProofMap {
-        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let start = Instant::now();
         let mut join_set = JoinSet::new();
 
@@ -88,7 +87,6 @@ impl ProofAnnotator {
 
     /// Merge results from multiple sources with conflict resolution
     fn merge_with_conflict_resolution(&self, results: Vec<ProofCollectionResult>) -> ProofMap {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         let mut proof_map: ProofMap = std::collections::HashMap::new();
         let mut total_errors = 0;
 

@@ -36,7 +36,6 @@ impl DefectAnalyzer for PerformanceDefectAnalyzer {
     type Config = PerformanceConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut defects = Vec::new();
         let analysis_config = crate::services::big_o_analyzer::BigOAnalysisConfig {
             project_path: project_path.to_path_buf(),
@@ -57,12 +56,10 @@ impl DefectAnalyzer for PerformanceDefectAnalyzer {
     }
 
     fn category(&self) -> DefectCategory {
-        debug_assert!(true, "contract: category");
         DefectCategory::Performance
     }
 
     fn supports_incremental(&self) -> bool {
-        debug_assert!(true, "contract: supports_incremental");
         true
     }
 }
@@ -73,7 +70,6 @@ impl PerformanceDefectAnalyzer {
         complexity: &crate::models::complexity_bound::ComplexityBound,
         config: &PerformanceConfig,
     ) -> bool {
-        debug_assert!(true, "contract: is_problematic_complexity");
         use crate::models::complexity_bound::BigOClass;
 
         matches!(
@@ -83,7 +79,6 @@ impl PerformanceDefectAnalyzer {
     }
 
     fn function_complexity_to_defect(&self, func: &FunctionComplexity, index: usize) -> Defect {
-        debug_assert!(true, "contract: function_complexity_to_defect");
         use crate::models::complexity_bound::BigOClass;
 
         let severity = match func.time_complexity.class {
@@ -128,7 +123,6 @@ impl PerformanceDefectAnalyzer {
         &self,
         complexity: &crate::models::complexity_bound::ComplexityBound,
     ) -> String {
-        debug_assert!(true, "contract: generate_performance_suggestion");
         use crate::models::complexity_bound::BigOClass;
 
         match complexity.class {
@@ -157,7 +151,6 @@ impl DefectAnalyzer for ArchitectureDefectAnalyzer {
     type Config = ArchitectureConfig;
 
     async fn analyze(&self, project_path: &Path, _config: Self::Config) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let defects = Vec::new();
 
         // Build dependency graph
@@ -171,12 +164,10 @@ impl DefectAnalyzer for ArchitectureDefectAnalyzer {
     }
 
     fn category(&self) -> DefectCategory {
-        debug_assert!(true, "contract: category");
         DefectCategory::Architecture
     }
 
     fn supports_incremental(&self) -> bool {
-        debug_assert!(true, "contract: supports_incremental");
         false
     }
 }

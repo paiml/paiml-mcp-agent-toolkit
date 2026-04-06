@@ -40,11 +40,6 @@ pub async fn handle_analyze_name_similarity(
     fuzzy: bool,
     case_sensitive: bool,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     eprintln!("🔍 Searching for names similar to '{query}'...");
 
     // Collect all names from the project

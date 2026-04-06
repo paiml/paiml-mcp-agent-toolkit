@@ -2,7 +2,6 @@
 // Included into formatters.rs -- do NOT add `use` imports or `#!` inner attributes here.
 
 fn build_quality_md(r: &QueryResult) -> String {
-    debug_assert!(true, "contract: build_quality_md");
     let mut q = format!(
         "**Quality:** TDG {} ({:.1}) | Complexity: {} | Big-O: {}",
         r.tdg_grade, r.tdg_score, r.complexity, r.big_o
@@ -29,7 +28,6 @@ fn build_quality_md(r: &QueryResult) -> String {
 }
 
 fn push_churn_md(r: &QueryResult, out: &mut String) {
-    debug_assert!(true, "contract: push_churn_md");
     if r.churn_score > 0.5 {
         out.push_str(&format!(
             " | 🔥 **Hot: {} commits ({:.0}%)**",
@@ -42,7 +40,6 @@ fn push_churn_md(r: &QueryResult, out: &mut String) {
 }
 
 fn format_md_details(r: &QueryResult, output: &mut String) {
-    debug_assert!(true, "contract: format_md_details");
     if let Some(doc) = &r.doc_comment {
         output.push_str(&format!("**Documentation:** {}\n\n", doc));
     }
@@ -63,7 +60,6 @@ fn format_md_details(r: &QueryResult, output: &mut String) {
 /// Format results as markdown
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_markdown(results: &[QueryResult]) -> String {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut output = String::new();
     output.push_str(&format!(
         "# Search Results ({} functions)\n\n",

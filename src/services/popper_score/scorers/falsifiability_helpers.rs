@@ -2,7 +2,6 @@
 // Included from falsifiability.rs — no `use` imports or `#!` attributes allowed
 
 fn dir_contains_test_markers(src_path: &Path) -> bool {
-    debug_assert!(src_path.exists(), "src_path must exist: {}", src_path.display());
     let Ok(entries) = std::fs::read_dir(src_path) else { return false };
     entries.flatten().any(|entry| {
         entry.path().is_file()
@@ -12,7 +11,6 @@ fn dir_contains_test_markers(src_path: &Path) -> bool {
 }
 
 fn score_bench_directory(project_path: &Path, earned: &mut f64, description: &mut Vec<String>) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if !workspace::any_member_has_dir(project_path, "benches") {
         return;
     }
@@ -27,7 +25,6 @@ fn score_bench_directory(project_path: &Path, earned: &mut f64, description: &mu
 }
 
 fn score_bench_dependencies(project_path: &Path, earned: &mut f64, description: &mut Vec<String>) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let has_bench_dep = workspace::get_code_paths(project_path).iter().any(|member| {
         let cargo_path = member.join("Cargo.toml");
         cargo_path.exists()
@@ -45,7 +42,6 @@ fn score_bench_dependencies(project_path: &Path, earned: &mut f64, description: 
 }
 
 fn score_readme_hardware(project_path: &Path, earned: &mut f64, description: &mut Vec<String>) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let readme_path = project_path.join("README.md");
     let Ok(content) = std::fs::read_to_string(&readme_path) else { return };
     let hw_patterns = ["CPU", "RAM", "Intel", "AMD", "i7", "i9", "Ryzen", "GB"];
@@ -60,7 +56,6 @@ fn score_readme_hardware(project_path: &Path, earned: &mut f64, description: &mu
 }
 
 fn ci_path_has_tests(project_path: &Path, ci_path: &str) -> bool {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let full_path = project_path.join(ci_path);
     if !full_path.exists() {
         return false;
@@ -72,7 +67,6 @@ fn ci_path_has_tests(project_path: &Path, ci_path: &str) -> bool {
 }
 
 fn ci_dir_has_test_commands(dir: &Path) -> bool {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let Ok(entries) = std::fs::read_dir(dir) else { return false };
     entries.flatten().any(|entry| {
         std::fs::read_to_string(entry.path()).is_ok_and(|content| {
@@ -82,7 +76,6 @@ fn ci_dir_has_test_commands(dir: &Path) -> bool {
 }
 
 fn makefile_has_tests(project_path: &Path) -> bool {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let makefile = project_path.join("Makefile");
     makefile.exists()
         && std::fs::read_to_string(&makefile)

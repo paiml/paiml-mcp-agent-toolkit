@@ -7,7 +7,6 @@ fn compute_cohesion(
     func_indices: &[usize],
     global_to_local: &HashMap<usize, usize>,
 ) -> f64 {
-    debug_assert!(true, "contract: compute_cohesion");
     if local_indices.len() < 2 {
         return 1.0;
     }
@@ -38,7 +37,6 @@ fn compute_cohesion(
 
 /// Compute split impact: which files import this module.
 fn compute_impact(index: &AgentContextIndex, file_path: &str) -> SplitImpact {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let mut importing_files = Vec::new();
 
     // Scan for files that reference functions in this file
@@ -81,7 +79,6 @@ fn compute_impact(index: &AgentContextIndex, file_path: &str) -> SplitImpact {
 /// original file with `include!()` directives.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_split(plan: &SplitPlan, project_root: &Path) -> anyhow::Result<Vec<PathBuf>> {
-    debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
     use std::fs;
 
     let source_path = project_root.join(&plan.source_file);

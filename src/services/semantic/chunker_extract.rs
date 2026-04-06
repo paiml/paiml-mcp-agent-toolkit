@@ -35,7 +35,6 @@ pub fn extract_file_details(
     source: &str,
     language: Language,
 ) -> Result<FileExtract, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     if source.trim().is_empty() {
         return Ok(FileExtract {
             file: path.to_string(),
@@ -128,7 +127,6 @@ pub fn extract_file_details(
 /// Nest items that fall within a module's line range into that module's `children`.
 /// Items not inside any module remain at the top level.
 fn nest_children_into_modules(flat_items: Vec<ExtractedItem>) -> Vec<ExtractedItem> {
-    debug_assert!(!flat_items.is_empty(), "flat_items must not be empty");
     // Identify module indices and their line ranges
     let module_ranges: Vec<(usize, usize, usize)> = flat_items
         .iter()
@@ -182,7 +180,6 @@ fn nest_children_into_modules(flat_items: Vec<ExtractedItem>) -> Vec<ExtractedIt
 
 /// Route to the correct language parser.
 fn parse_for_language(source: &str, language: Language) -> Result<Tree, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     match language {
         #[cfg(feature = "rust-ast")]
         Language::Rust => parse_rust(source),
@@ -203,7 +200,6 @@ fn parse_for_language(source: &str, language: Language) -> Result<Tree, String> 
 
 /// Collect top-level import statements from the AST root.
 fn collect_imports(root: Node, source: &str, language: Language) -> Vec<String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let import_kinds: &[&str] = match language {
         Language::Rust => &["use_declaration", "extern_crate_declaration"],
         Language::Python => &["import_statement", "import_from_statement"],
@@ -243,7 +239,6 @@ fn find_cfg_test_line(root: Node, source: &str) -> Option<usize> {
 
 /// Collect visibility per item start_line.
 fn collect_visibility(root: Node, source: &str, language: Language) -> HashMap<usize, String> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut map = HashMap::new();
     match language {
         Language::Rust => collect_rust_visibility(root, source, &mut map),
@@ -265,7 +260,6 @@ fn find_visibility_modifier<'a>(node: Node<'a>) -> Option<Node<'a>> {
 
 /// Walk Rust AST mirroring extract_rust_items to collect visibility per start_line.
 fn collect_rust_visibility(node: Node, source: &str, map: &mut HashMap<usize, String>) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let is_container = matches!(node.kind(), "impl_item" | "mod_item" | "trait_item");
 
     if rust_node_to_chunk(node.kind()).is_some() {
@@ -290,7 +284,6 @@ fn collect_rust_visibility(node: Node, source: &str, map: &mut HashMap<usize, St
 
 /// Walk Go AST to determine exported (uppercase) vs unexported visibility.
 fn collect_go_visibility(node: Node, source: &str, map: &mut HashMap<usize, String>) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     match node.kind() {
         "function_declaration" | "method_declaration" => {
             if let Some(name_node) = node.child_by_field_name("name") {
@@ -333,7 +326,6 @@ fn collect_ts_visibility(
     map: &mut HashMap<usize, String>,
     exported: bool,
 ) {
-    debug_assert!(true, "contract: collect_ts_visibility");
     let is_export = node.kind() == "export_statement";
     let currently_exported = exported || is_export;
 

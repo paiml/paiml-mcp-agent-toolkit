@@ -1,7 +1,6 @@
 #[async_trait]
 impl McpTool for JavaAnalysisTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "analyze_java".to_string(),
             description:
@@ -36,7 +35,6 @@ impl McpTool for JavaAnalysisTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         // Extract parameters
         let path_str = params["path"].as_str().ok_or_else(|| McpError {
             code: crate::mcp_integration::error_codes::INVALID_PARAMS,
@@ -95,7 +93,6 @@ async fn analyze_java_file(
     include_metrics: bool,
     include_ast: bool,
 ) -> Result<Value> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = fs::read_to_string(path).await?;
 
@@ -187,7 +184,6 @@ async fn analyze_java_directory(
     include_metrics: bool,
     include_ast: bool,
 ) -> Result<Value> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Use walkdir to find all Java files
     let java_files = find_java_files(path, max_depth as usize)?;
 
@@ -267,7 +263,6 @@ async fn analyze_java_directory(
 
 /// Helper function to find all Java files in a directory
 fn find_java_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<PathBuf>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut java_files = Vec::new();
 
     let walker = walkdir::WalkDir::new(path)
@@ -291,7 +286,6 @@ fn accumulate_summary_counts(
     total_interfaces: &mut u64,
     total_methods: &mut u64,
 ) {
-    debug_assert!(true, "contract: accumulate_summary_counts");
     if let Some(summary) = result["summary"].as_object() {
         if let Some(c) = summary["class_count"].as_u64() {
             *total_classes += c;
@@ -311,7 +305,6 @@ fn accumulate_metrics(
     max_complexity: &mut u64,
     total_loc: &mut u64,
 ) {
-    debug_assert!(true, "contract: accumulate_metrics");
     if let Some(metrics) = result["metrics"].as_object() {
         if let Some(c) = metrics["total_complexity"].as_u64() {
             *total_complexity += c;

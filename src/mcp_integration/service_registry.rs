@@ -39,7 +39,6 @@ pub trait Service: Send + Sync {
 }
 
 impl Default for ServiceRegistry {
-    debug_assert!(!operation.is_empty(), "operation must not be empty");
     fn default() -> Self {
         Self::new()
     }
@@ -65,7 +64,6 @@ impl ServiceRegistry {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, name: &str) -> Option<Arc<dyn Service>> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.services.read().get(name).cloned()
     }
 
@@ -76,7 +74,6 @@ impl ServiceRegistry {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn unregister(&self, name: &str) -> bool {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let service_removed = self.services.write().remove(name).is_some();
         let metadata_removed = self.metadata.write().remove(name).is_some();
         service_removed && metadata_removed
@@ -117,7 +114,6 @@ mod tests {
     #[async_trait]
     impl Service for MockService {
         fn metadata(&self) -> ServiceMetadata {
-            debug_assert!(true, "contract: metadata");
             ServiceMetadata {
                 name: self.name.clone(),
                 description: "Mock service for testing".to_string(),
@@ -131,7 +127,6 @@ mod tests {
         }
 
         async fn invoke(&self, _operation: &str, _params: Value) -> Result<Value, McpError> {
-            debug_assert!(!_operation.is_empty(), "_operation must not be empty");
             Ok(serde_json::json!({"result": "success"}))
         }
     }
@@ -141,7 +136,6 @@ mod tests {
     #[async_trait]
     impl Service for FailingHealthService {
         fn metadata(&self) -> ServiceMetadata {
-            debug_assert!(true, "contract: metadata");
             ServiceMetadata {
                 name: "failing_health".to_string(),
                 description: "Service with failing health check".to_string(),
@@ -159,7 +153,6 @@ mod tests {
         }
 
         async fn invoke(&self, _operation: &str, _params: Value) -> Result<Value, McpError> {
-            debug_assert!(!_operation.is_empty(), "_operation must not be empty");
             Ok(serde_json::json!({}))
         }
     }

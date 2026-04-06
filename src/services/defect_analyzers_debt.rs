@@ -22,7 +22,6 @@ impl DefectAnalyzer for SATDDefectAnalyzer {
     type Config = SATDConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut defects = Vec::new();
 
         // Analyze the project directory
@@ -39,19 +38,16 @@ impl DefectAnalyzer for SATDDefectAnalyzer {
     }
 
     fn category(&self) -> DefectCategory {
-        debug_assert!(true, "contract: category");
         DefectCategory::TechnicalDebt
     }
 
     fn supports_incremental(&self) -> bool {
-        debug_assert!(true, "contract: supports_incremental");
         true
     }
 }
 
 impl SATDDefectAnalyzer {
     fn technical_debt_to_defect(&self, debt: &TechnicalDebt, index: usize) -> Defect {
-        debug_assert!(true, "contract: technical_debt_to_defect");
         let severity = match debt.severity {
             crate::services::satd_detector::Severity::Critical => Severity::Critical,
             crate::services::satd_detector::Severity::High => Severity::High,
@@ -82,7 +78,6 @@ impl SATDDefectAnalyzer {
     }
 
     fn get_debt_fix_suggestion(&self, category: &DebtCategory) -> String {
-        debug_assert!(true, "contract: get_debt_fix_suggestion");
         match category {
             DebtCategory::Design => "Refactor to improve design and architecture",
             DebtCategory::Defect => "Fix the known defect or bug",

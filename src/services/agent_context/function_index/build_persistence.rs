@@ -2,7 +2,6 @@ impl AgentContextIndex {
     /// Save index to directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, index_path: &Path) -> Result<(), String> {
-        debug_assert!(!self.functions.is_empty(), "saving empty index — no functions parsed");
 
         fs::create_dir_all(index_path)
             .map_err(|e| format!("Failed to create index directory: {e}"))?;
@@ -34,7 +33,6 @@ impl AgentContextIndex {
     /// LZ4+bincode blob `context.idx/functions.lz4` (v1.x).
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(index_path: &Path) -> Result<Self, String> {
-        debug_assert!(index_path.exists(), "index_path must exist: {}", index_path.display());
         // Try SQLite path first (v2.0)
         let db_candidate = index_path.with_extension("db");
         if db_candidate.exists() {
@@ -66,7 +64,6 @@ impl AgentContextIndex {
     /// Skips corpus (FTS5 handles search), call graph (queried on-demand),
     /// and source code (loaded on-demand for display or regex/literal search).
     fn load_from_sqlite(db_path: &Path) -> Result<Self, String> {
-        debug_assert!(db_path.exists(), "db_path must exist: {}", db_path.display());
         use super::sqlite_backend::{
             load_functions_lightweight, load_graph_metrics, load_metadata, open_db,
         };
@@ -107,7 +104,6 @@ impl AgentContextIndex {
 
     /// Load index from LZ4+bincode blob (v1.x legacy path).
     fn load_from_blob(index_path: &Path) -> Result<Self, String> {
-        debug_assert!(index_path.exists(), "index_path must exist: {}", index_path.display());
         // Load manifest
         let manifest_str = fs::read_to_string(index_path.join("manifest.json"))
             .map_err(|e| format!("Failed to read manifest: {e}"))?;

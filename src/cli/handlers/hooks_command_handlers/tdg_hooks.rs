@@ -10,11 +10,6 @@ use std::path::Path;
 /// Atomic write: write to temp file then rename (CB-1334 fix).
 /// Ensures hook file is never partial — old or new, never corrupt.
 fn atomic_write_hook(hook_path: &Path, content: &str) -> Result<()> {
-    debug_assert!(
-        hook_path.exists(),
-        "hook_path must exist: {}",
-        hook_path.display()
-    );
     let tmp_path = hook_path.with_extension("tmp");
     fs::write(&tmp_path, content).context("Failed to write temp hook file")?;
 
@@ -34,7 +29,6 @@ fn atomic_write_hook(hook_path: &Path, content: &str) -> Result<()> {
 /// Escape shell metacharacters in template substitution values (CB-1336 fix).
 /// Prevents injection when config values like baseline_path contain shell metacharacters.
 fn shell_escape(s: &str) -> String {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     let mut escaped = String::with_capacity(s.len());
     for c in s.chars() {
         match c {
@@ -69,11 +63,6 @@ pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
 /// Install TDG enforcement hooks
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     let git_dir = project_root.join(".git");
     let hooks_dir = git_dir.join("hooks");
 
@@ -111,11 +100,6 @@ pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
 /// Install pre-commit hook with TDG enforcement
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Result<()> {
-    debug_assert!(
-        hooks_dir.exists(),
-        "hooks_dir must exist: {}",
-        hooks_dir.display()
-    );
     let hook_path = hooks_dir.join("pre-commit");
 
     // Read template
@@ -167,11 +151,6 @@ pub(crate) fn install_tdg_post_commit_hook(
     hooks_dir: &Path,
     config: &TdgHooksConfig,
 ) -> Result<()> {
-    debug_assert!(
-        hooks_dir.exists(),
-        "hooks_dir must exist: {}",
-        hooks_dir.display()
-    );
     let hook_path = hooks_dir.join("post-commit");
 
     // Read template

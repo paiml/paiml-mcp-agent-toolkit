@@ -10,7 +10,6 @@ pub struct RustAnalyzer;
 
 impl LanguageAnalyzer for RustAnalyzer {
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
 
@@ -33,7 +32,6 @@ impl LanguageAnalyzer for RustAnalyzer {
     }
 
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let function_lines = &lines[function.line_start..=function.line_end];
 
@@ -45,7 +43,6 @@ impl LanguageAnalyzer for RustAnalyzer {
 
 impl RustAnalyzer {
     fn is_function_declaration(&self, line: &str) -> bool {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         line.starts_with("fn ")
             || line.starts_with("pub fn ")
             || line.starts_with("async fn ")
@@ -56,7 +53,6 @@ impl RustAnalyzer {
     }
 
     fn extract_function_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let line = line.trim();
         if let Some(fn_pos) = line.find("fn ") {
             let after_fn = line.get(fn_pos + 3..).unwrap_or_default();
@@ -71,7 +67,6 @@ impl RustAnalyzer {
     }
 
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
-        debug_assert!(!lines.is_empty(), "lines must not be empty");
         find_brace_balanced_end(lines, start, true)
     }
 }
@@ -90,7 +85,6 @@ pub fn test_function() {
 }
 
 async fn async_function() {
-    debug_assert!(true, "contract: async_function");
     // Some async code
 }
 "#;

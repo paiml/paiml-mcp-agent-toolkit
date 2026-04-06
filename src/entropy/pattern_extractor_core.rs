@@ -13,7 +13,6 @@ impl PatternExtractor {
     /// Extract patterns from project using pmat context
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn extract_patterns(&self, project_path: &Path) -> Result<PatternCollection> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Get project context with AST
         let context = self.get_project_context(project_path).await?;
 
@@ -35,7 +34,6 @@ impl PatternExtractor {
 
     /// Get project context using pmat context command
     async fn get_project_context(&self, project_path: &Path) -> Result<ProjectContext> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         use std::collections::HashMap;
         use tokio::process::Command;
 
@@ -81,7 +79,6 @@ impl PatternExtractor {
 
     /// Fallback method to scan directory when pmat context fails
     async fn scan_directory_fallback(&self, project_path: &Path) -> Result<ProjectContext> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         use std::fs;
         use walkdir::WalkDir;
 
@@ -115,7 +112,6 @@ impl PatternExtractor {
 
     /// Check if file should be processed
     fn should_process_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         !self.config.exclude_paths.iter().any(|pattern| {
             glob::Pattern::new(pattern)
@@ -131,8 +127,6 @@ impl PatternExtractor {
         ast_data: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!ast_data.is_empty(), "ast_data must not be empty");
         // Extract patterns using regex-based AST pattern matching
         // Language-specific extraction based on file extension
 

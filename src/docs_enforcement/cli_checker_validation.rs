@@ -14,7 +14,6 @@ pub fn validate_cli_documentation(
     binary_path: &str,
     command: &[&str],
 ) -> Result<CliDocumentationReport> {
-    debug_assert!(!binary_path.is_empty(), "binary_path must not be empty");
     let mut report = CliDocumentationReport {
         command: command.join(" "),
         has_help: false,
@@ -55,7 +54,6 @@ pub fn validate_cli_documentation(
 
 /// Execute command with --help flag and return output
 fn execute_help_command(binary_path: &str, command: &[&str]) -> Result<String, i32> {
-    debug_assert!(!binary_path.is_empty(), "binary_path must not be empty");
     let mut cmd = Command::new(binary_path);
     for arg in command {
         cmd.arg(arg);
@@ -73,7 +71,6 @@ fn execute_help_command(binary_path: &str, command: &[&str]) -> Result<String, i
 
 /// Validate presence of required sections and add issues if missing
 fn validate_sections(help_text: &str, report: &mut CliDocumentationReport) {
-    debug_assert!(!help_text.is_empty(), "help_text must not be empty");
     report.has_usage_section = help_text.contains("Usage:");
     report.has_options_section = help_text.contains("Options:") || help_text.contains("FLAGS:");
     report.has_examples_section = help_text.contains("EXAMPLE")
@@ -93,7 +90,6 @@ fn validate_sections(help_text: &str, report: &mut CliDocumentationReport) {
 
 /// Find generic descriptions in flag help text
 fn find_generic_flag_descriptions(help_text: &str) -> Vec<String> {
-    debug_assert!(!help_text.is_empty(), "help_text must not be empty");
     let mut generic_descriptions = Vec::new();
 
     for line in help_text.lines() {
@@ -121,7 +117,6 @@ fn find_generic_flag_descriptions(help_text: &str) -> Vec<String> {
 
 /// Extract description part from a flag help line
 fn extract_description_from_flag_line(line: &str) -> Option<String> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     // Format: "  -f, --flag <VALUE>    Description here"
     let desc_part: Vec<&str> = line
         .split_whitespace()

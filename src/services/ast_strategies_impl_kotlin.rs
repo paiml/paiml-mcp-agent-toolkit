@@ -9,7 +9,6 @@ impl KotlinAstStrategy {
         node: &crate::models::unified_ast::UnifiedAstNode,
         content: &str,
     ) -> Option<String> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // For now, extract a reasonable segment from the source range
         let start = node.source_range.start as usize;
         let end = node.source_range.end as usize;
@@ -33,7 +32,6 @@ impl KotlinAstStrategy {
     /// Extract function name from Kotlin source text
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_function_name(source_text: &str) -> Option<String> {
-        debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for pattern: fun name(...)
         if let Some(fun_pos) = source_text.find("fun ") {
             let after_fun = &source_text[fun_pos + 4..];
@@ -52,7 +50,6 @@ impl KotlinAstStrategy {
     /// Extract class/interface/object name from source text
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_class_name(source_text: &str) -> Option<String> {
-        debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for patterns like "class Name", "interface Name", "object Name",
         // "data class Name", "enum class Name"
         let lines = source_text.lines().next()?; // Get first line
@@ -113,7 +110,6 @@ impl KotlinAstStrategy {
 #[async_trait]
 impl AstStrategy for KotlinAstStrategy {
     async fn analyze(&self, path: &Path, classifier: &FileClassifier) -> Result<FileContext> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Delegate to the new implementation in ast::languages::kotlin_strategy
         use crate::services::ast::languages::kotlin_strategy::KotlinStrategy;
         use crate::services::ast::AstStrategy as UnifiedAstStrategy;
@@ -123,7 +119,6 @@ impl AstStrategy for KotlinAstStrategy {
     }
 
     fn supports_extension(&self, ext: &str) -> bool {
-        debug_assert!(!ext.is_empty(), "ext must not be empty");
         matches!(ext, "kt" | "kts")
     }
 }

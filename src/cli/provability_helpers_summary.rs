@@ -47,7 +47,6 @@ pub fn format_provability_summary(
     summaries: &[ProofSummary],
     top_files: usize,
 ) -> Result<String> {
-    debug_assert!(!function_ids.is_empty(), "function_ids must not be empty");
     let mut output = String::new();
 
     write_summary_header(&mut output, function_ids.len())?;
@@ -62,7 +61,6 @@ pub fn format_provability_summary(
 }
 
 fn write_summary_header(output: &mut String, total_functions: usize) -> Result<()> {
-    debug_assert!(true, "contract: write_summary_header");
     use crate::cli::colors as c;
     writeln!(output, "{}\n", c::header("Provability Analysis Summary"))?;
     writeln!(output, "Total functions analyzed: {}", c::number(&total_functions.to_string()))?;
@@ -71,7 +69,6 @@ fn write_summary_header(output: &mut String, total_functions: usize) -> Result<(
 
 /// Explain the 4-factor scoring model so users understand what drives provability (#229).
 fn write_scoring_model(output: &mut String) -> Result<()> {
-    debug_assert!(true, "contract: write_scoring_model");
     use crate::cli::colors as c;
     writeln!(output, "\n{}\n", c::subheader("Scoring Model (4 factors, equally weighted)"))?;
     writeln!(output, "  {}{:<14}{} {:<14} {:<14} 0%", c::BOLD, "Factor", c::RESET, "100%", "50%")?;
@@ -85,7 +82,6 @@ fn write_scoring_model(output: &mut String) -> Result<()> {
 
 /// Show aggregate property verification coverage across all functions (#229).
 fn write_property_coverage(output: &mut String, summaries: &[ProofSummary]) -> Result<()> {
-    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     use crate::services::lightweight_provability_analyzer::PropertyType;
 
     if summaries.is_empty() {
@@ -133,7 +129,6 @@ fn write_lowest_scoring_functions(
     summaries: &[ProofSummary],
     limit: usize,
 ) -> Result<()> {
-    debug_assert!(limit > 0, "limit must be positive");
     if function_ids.is_empty() {
         return Ok(());
     }
@@ -174,7 +169,6 @@ fn write_lowest_scoring_functions(
 }
 
 fn write_score_distribution(output: &mut String, summaries: &[ProofSummary]) -> Result<()> {
-    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     use crate::cli::colors as c;
     let (high_count, medium_count, low_count) = categorize_scores(summaries);
 
@@ -187,7 +181,6 @@ fn write_score_distribution(output: &mut String, summaries: &[ProofSummary]) -> 
 }
 
 fn write_average_score(output: &mut String, summaries: &[ProofSummary]) -> Result<()> {
-    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     use crate::cli::colors as c;
     let avg_score = calculate_average_score(summaries);
     writeln!(
@@ -204,7 +197,6 @@ fn write_top_files_section(
     summaries: &[ProofSummary],
     top_files: usize,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_top_files_section");
     if function_ids.is_empty() {
         return Ok(());
     }
@@ -221,7 +213,6 @@ fn calculate_file_averages<'a>(
     function_ids: &'a [FunctionId],
     summaries: &'a [ProofSummary],
 ) -> Vec<(&'a str, f64, usize)> {
-    debug_assert!(true, "contract: calculate_file_averages");
     let mut file_scores: HashMap<&str, Vec<f64>> = HashMap::new();
 
     for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
@@ -248,7 +239,6 @@ fn write_top_files_list(
     file_avg_scores: &[(&str, f64, usize)],
     top_files: usize,
 ) -> Result<()> {
-    debug_assert!(!file_avg_scores.is_empty(), "file_avg_scores must not be empty");
     use crate::cli::colors as c;
     let files_to_show = if top_files == 0 { 10 } else { top_files };
 

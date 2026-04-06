@@ -53,7 +53,6 @@ impl InstructionProfiler {
 
 /// Categorize WASM operators by type
 fn categorize_operator(op: &wasmparser::Operator) -> String {
-    debug_assert!(true, "contract: categorize_operator");
     use wasmparser::Operator::{
         Block, Br, BrIf, BrTable, Call, CallIndirect, Else, End, F32Add, F32Div, F32Load, F32Mul,
         F32Store, F32Sub, F64Add, F64Div, F64Load, F64Mul, F64Store, F64Sub, I32Add, I32DivS,

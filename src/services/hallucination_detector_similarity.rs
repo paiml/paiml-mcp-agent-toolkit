@@ -26,8 +26,6 @@ impl SemanticSimilarity {
     /// - Semantic keyword boosting
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate(&self, claim: &str, fact: &str) -> f32 {
-        debug_assert!(!claim.is_empty(), "claim must not be empty");
-        debug_assert!(!fact.is_empty(), "fact must not be empty");
         let claim_lower = claim.to_lowercase();
         let fact_lower = fact.to_lowercase();
 
@@ -72,13 +70,11 @@ impl SemanticSimilarity {
 
         // Combine base score with boost (capped at 1.0)
         let result = (base_score + boost).min(1.0);
-        debug_assert!((0.0..=1.0).contains(&result), "similarity must be 0-1: {}", result);
         result
     }
 
     /// Extract meaningful keywords (filter stopwords)
     fn extract_keywords(&self, text: &str) -> Vec<String> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         text.split_whitespace()
             .filter(|word| !self.stopwords.contains(&word.to_string()))
             .map(|s| s.to_string())
@@ -87,7 +83,6 @@ impl SemanticSimilarity {
 
     /// Get weight for a word (higher weight for important words)
     fn get_word_weight(&self, word: &str) -> f32 {
-        debug_assert!(!word.is_empty(), "word must not be empty");
         // Technical terms get higher weight
         match word {
             // Language names
@@ -111,8 +106,6 @@ impl SemanticSimilarity {
 
     /// Calculate semantic keyword boost
     fn semantic_keyword_boost(&self, claim: &str, fact: &str) -> f32 {
-        debug_assert!(!claim.is_empty(), "claim must not be empty");
-        debug_assert!(!fact.is_empty(), "fact must not be empty");
         let mut boost = 0.0;
 
         // Check for explicit contradictions first (highest priority)

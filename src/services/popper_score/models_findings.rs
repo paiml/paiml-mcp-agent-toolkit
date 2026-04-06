@@ -64,7 +64,6 @@ impl PopperRecommendation {
         priority: RecommendationPriority,
         potential_percent: f64,
     ) -> Self {
-        debug_assert!(!category.is_empty(), "category must not be empty");
         Self {
             category: category.to_string(),
             description: description.to_string(),
@@ -77,7 +76,6 @@ impl PopperRecommendation {
     /// Add command to recommendation
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_command(mut self, cmd: &str) -> Self {
-        debug_assert!(!cmd.is_empty(), "cmd must not be empty");
         self.command = Some(cmd.to_string());
         self
     }
@@ -116,7 +114,6 @@ impl PopperMetadata {
     /// Set project path
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_path(mut self, path: PathBuf) -> Self {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.project_path = Some(path);
         self
     }

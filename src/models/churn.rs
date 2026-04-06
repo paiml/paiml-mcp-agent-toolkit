@@ -68,7 +68,6 @@ impl FileChurnMetrics {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_churn_score(&mut self, max_commits: usize, max_changes: usize) {
-        debug_assert!(self.path.exists(), "self.path must exist");
         let commit_factor = if max_commits > 0 {
             self.commit_count as f32 / max_commits as f32
         } else {
@@ -97,7 +96,6 @@ impl std::str::FromStr for ChurnOutputFormat {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "json" => Ok(ChurnOutputFormat::Json),
             "markdown" => Ok(ChurnOutputFormat::Markdown),

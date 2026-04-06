@@ -14,7 +14,6 @@ impl ProofCache {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, key: &str) -> Option<&Vec<ProofAnnotation>> {
-        debug_assert!(!key.is_empty(), "key must not be empty");
         self.cache.get(key)
     }
 
@@ -26,7 +25,6 @@ impl ProofCache {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn is_file_cached(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Ok(metadata) = std::fs::metadata(path) {
             if let Ok(modified) = metadata.modified() {
                 if let Some(cached_time) = self.file_times.get(path) {

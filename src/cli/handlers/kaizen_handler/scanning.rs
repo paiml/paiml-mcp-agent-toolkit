@@ -18,7 +18,6 @@ pub(crate) fn scan_crate(
     crate_name: Option<&str>,
     config: &KaizenConfig,
 ) -> Result<Vec<KaizenFinding>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut findings = Vec::new();
 
     // Phase 1: Lint scans (sequential — both use cargo)
@@ -104,14 +103,12 @@ pub(crate) fn extract_file_from_message(message: &serde_json::Value) -> Option<S
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn first_line(s: &str) -> String {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     s.lines().next().unwrap_or(s).to_string()
 }
 
 /// Extract a numeric score from command output (JSON {"score": N} or "SCORE: N")
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub(crate) fn extract_score_from_command_output(output: &str) -> Option<f64> {
-    debug_assert!(!output.is_empty(), "output must not be empty");
     for line in output.lines() {
         let line = line.trim();
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {

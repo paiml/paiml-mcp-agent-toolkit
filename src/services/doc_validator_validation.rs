@@ -76,7 +76,6 @@ impl DocValidator {
         &self,
         link: &Link,
     ) -> (ValidationStatus, Option<String>, Option<u16>) {
-        debug_assert!(true, "contract: validate_internal_link");
         // Remove anchor from target
         let target = link
             .target
@@ -111,7 +110,6 @@ impl DocValidator {
         &self,
         link: &Link,
     ) -> (ValidationStatus, Option<String>, Option<u16>) {
-        debug_assert!(true, "contract: validate_http_link");
         let client = match &self.http_client {
             Some(c) => c,
             None => {
@@ -175,7 +173,6 @@ impl DocValidator {
     /// Handles: https://crates.io/crates/{crate_name}
     #[cfg(feature = "http-client")]
     fn extract_crates_io_crate_name(url: &str) -> Option<String> {
-        debug_assert!(!url.is_empty(), "url must not be empty");
         // Match patterns like:
         // - https://crates.io/crates/trueno
         // - http://crates.io/crates/trueno
@@ -200,7 +197,6 @@ impl DocValidator {
         &self,
         _link: &Link,
     ) -> (ValidationStatus, Option<String>, Option<u16>) {
-        debug_assert!(true, "contract: validate_http_link");
         (
             ValidationStatus::Skipped,
             Some("HTTP validation requires http-client feature".to_string()),
@@ -215,7 +211,6 @@ impl DocValidator {
         client: &reqwest::Client,
         crate_name: &str,
     ) -> (ValidationStatus, Option<String>, Option<u16>) {
-        debug_assert!(!crate_name.is_empty(), "crate_name must not be empty");
         // Use the crates.io API which accepts programmatic access
         let api_url = format!("https://crates.io/api/v1/crates/{}", crate_name);
 
@@ -265,7 +260,6 @@ impl DocValidator {
 
     /// Checks if a path should be excluded
     fn should_exclude(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         for pattern in &self.config.exclude_patterns {
@@ -298,7 +292,6 @@ impl DocValidator {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn validate_directory(&self, root: &Path) -> Result<ValidationSummary> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let start = Instant::now();
         let mut all_links = Vec::new();
         let mut file_count = 0;
@@ -353,7 +346,6 @@ impl DocValidator {
 
     /// Validates multiple links concurrently
     async fn validate_links_concurrent(&self, links: &[Link]) -> Result<Vec<ValidationResult>> {
-        debug_assert!(!links.is_empty(), "links must not be empty");
         use futures::stream::{self, StreamExt};
 
         let results = stream::iter(links)

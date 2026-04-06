@@ -1,5 +1,4 @@
 pub(super) fn detect_language(path: &std::path::Path) -> String {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         match ext {
             // Core languages with full support
@@ -49,7 +48,6 @@ pub(super) fn detect_language(path: &std::path::Path) -> String {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_complexity(path: &std::path::Path) -> anyhow::Result<ComplexityReport> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::complexity::aggregate_results;
 
     info!("Starting complexity analysis for path: {:?}", path);
@@ -75,7 +73,6 @@ pub async fn analyze_complexity(path: &std::path::Path) -> anyhow::Result<Comple
 fn discover_source_files_for_complexity(
     path: &std::path::Path,
 ) -> anyhow::Result<Vec<std::path::PathBuf>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
 
     let discovery_config = FileDiscoveryConfig {
@@ -92,7 +89,6 @@ fn discover_source_files_for_complexity(
 async fn analyze_files_complexity(
     source_files: Vec<std::path::PathBuf>,
 ) -> Vec<crate::services::complexity::FileComplexityMetrics> {
-    debug_assert!(!source_files.is_empty(), "source_files must not be empty");
     // Parallelize complexity analysis using futures for better performance
     use futures::stream::{self, StreamExt};
 
@@ -107,7 +103,6 @@ async fn analyze_files_complexity(
 async fn analyze_single_file_complexity(
     file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let ext = file_path.extension()?.to_str()?;
 
     // All cached languages use process-global DashMap populated by the AST phase
@@ -133,7 +128,6 @@ async fn analyze_single_file_complexity(
 async fn analyze_lua_complexity_metrics(
     file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     use crate::ast::languages::lua::LuaStrategy;
     use crate::ast::languages::LanguageStrategy;
     use crate::services::complexity::{
@@ -170,7 +164,6 @@ async fn analyze_lua_complexity_metrics(
 async fn analyze_lua_complexity_metrics(
     _file_path: &std::path::Path,
 ) -> Option<crate::services::complexity::FileComplexityMetrics> {
-    debug_assert!(_file_path.exists(), "_file_path must exist: {}", _file_path.display());
     None
 }
 
@@ -179,7 +172,6 @@ async fn analyze_lua_complexity_metrics(
 fn extract_lua_function_complexities(
     content: &str,
 ) -> Vec<crate::services::complexity::FunctionComplexity> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     use crate::services::complexity::{ComplexityMetrics as CMetrics, FunctionComplexity as FComp};
 
     let patterns = [

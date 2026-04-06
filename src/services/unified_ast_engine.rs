@@ -26,13 +26,11 @@ impl UnifiedAstEngine {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_project(&self, _path: &Path) -> Result<AstForest> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Ok(AstForest::default())
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn parse_project(&self, _path: &Path) -> Result<AstForest> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Ok(AstForest::default())
     }
 
@@ -53,7 +51,6 @@ impl UnifiedAstEngine {
     /// This is a stub implementation for backward compatibility
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn generate_artifacts(&self, _path: &Path) -> Result<ArtifactTree> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Ok(ArtifactTree::default())
     }
 }

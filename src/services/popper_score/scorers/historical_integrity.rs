@@ -44,11 +44,6 @@ impl HistoricalIntegrityScorer {
     /// - Multiple contributors (1 point)
     /// - Protected main branch (1 point)
     fn score_version_control_hygiene(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut earned: f64 = 0.0;
         let max: f64 = 4.0;
         let mut description = Vec::new();
@@ -118,11 +113,6 @@ impl HistoricalIntegrityScorer {
     /// - DESIGN.md or RFC documents before implementation (2 points)
     /// - Issue templates for feature proposals (1 point)
     fn score_preregistration(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut earned: f64 = 0.0;
         let max: f64 = 3.0;
         let mut description = Vec::new();
@@ -189,11 +179,6 @@ impl HistoricalIntegrityScorer {
     /// - Release tags (1 point)
     /// - Semantic versioning (1 point)
     fn score_claim_timestamping(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut earned: f64 = 0.0;
         let max: f64 = 3.0;
         let mut description = Vec::new();
@@ -270,7 +255,6 @@ impl Default for HistoricalIntegrityScorer {
 
 impl PopperScorer for HistoricalIntegrityScorer {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "Historical Integrity"
     }
 
@@ -283,11 +267,6 @@ impl PopperScorer for HistoricalIntegrityScorer {
     }
 
     fn score(&self, project_path: &Path) -> PopperScorerResult<PopperCategoryScore> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut category = PopperCategoryScore::new(self.name(), 0.0, self.max_points());
 
         // Score each sub-category

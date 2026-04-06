@@ -4,7 +4,6 @@
 impl TeamOnboarding {
     /// Calculate tutorial relevance to team preferences
     fn calculate_relevance(&self, tutorial: &Tutorial, preferences: &TeamPreferences) -> f64 {
-        debug_assert!(true, "contract: calculate_relevance");
         let mut relevance: f64 = 0.0;
 
         // Language relevance
@@ -52,7 +51,6 @@ impl TeamOnboarding {
 
     /// Calculate engagement score
     fn calculate_engagement_score(&self, session: &OnboardingSession) -> f64 {
-        debug_assert!(true, "contract: calculate_engagement_score");
         let tutorial_ratio = f64::from(session.progress.tutorials_completed)
             / f64::from(session.progress.tutorials_total);
 
@@ -64,7 +62,6 @@ impl TeamOnboarding {
 
     /// Calculate current phase progress
     fn calculate_phase_progress(&self, session: &OnboardingSession) -> f64 {
-        debug_assert!(true, "contract: calculate_phase_progress");
         let phase_tutorials = self
             .tutorials
             .get_tutorials_for_phase(&session.current_phase);
@@ -78,7 +75,6 @@ impl TeamOnboarding {
 
     /// Calculate achievements earned
     fn calculate_achievements(&self, session: &OnboardingSession) -> Vec<Achievement> {
-        debug_assert!(true, "contract: calculate_achievements");
         let mut achievements = Vec::new();
 
         if session.progress.tutorials_completed >= 5 {
@@ -114,7 +110,6 @@ impl TeamOnboarding {
     /// Get next phase in progression
     #[allow(dead_code)]
     fn next_phase(&self, current: &OnboardingPhase) -> OnboardingPhase {
-        debug_assert!(true, "contract: next_phase");
         match current {
             OnboardingPhase::Introduction => OnboardingPhase::MonitoringSetup,
             OnboardingPhase::MonitoringSetup => OnboardingPhase::MetricsLearning,
@@ -129,7 +124,6 @@ impl TeamOnboarding {
     /// Get recommended quality mode for phase
     #[allow(dead_code)]
     fn recommended_quality_mode(&self, phase: &OnboardingPhase) -> QualityMode {
-        debug_assert!(true, "contract: recommended_quality_mode");
         match phase {
             OnboardingPhase::Introduction => QualityMode::Observe,
             OnboardingPhase::MonitoringSetup => QualityMode::Observe,

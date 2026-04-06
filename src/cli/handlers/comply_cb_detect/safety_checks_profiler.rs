@@ -3,7 +3,6 @@
 
 /// Detect ComputeBricks without assertions/validation (CB-BUDGET)
 fn check_brick_file_for_assertions(entry: &Path) -> Option<CbPatternViolation> {
-    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let content = fs::read_to_string(entry).ok()?;
     let is_brick_impl = content.contains("impl") && content.contains("Brick");
     if !is_brick_impl {
@@ -28,7 +27,6 @@ fn check_brick_file_for_assertions(entry: &Path) -> Option<CbPatternViolation> {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_bricks_without_assertions(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let brick_dir = project_path.join("src").join("brick");
     if !brick_dir.exists() {
         return vec![];
@@ -45,8 +43,6 @@ pub fn detect_bricks_without_assertions(project_path: &Path) -> Vec<CbPatternVio
 
 /// Check a single line for high coefficient of variation (CV > 15%) anomaly.
 fn check_cv_anomaly(line: &str, content: &str) -> Option<ProfilerAnomaly> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
-    debug_assert!(!content.is_empty(), "content must not be empty");
     if !line.contains("\"cv\"") && !line.contains("\"cv_percent\"") {
         return None;
     }
@@ -67,8 +63,6 @@ fn check_cv_anomaly(line: &str, content: &str) -> Option<ProfilerAnomaly> {
 
 /// Check a single line for low efficiency (< 25%) anomaly.
 fn check_efficiency_anomaly(line: &str, content: &str) -> Option<ProfilerAnomaly> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
-    debug_assert!(!content.is_empty(), "content must not be empty");
     if !line.contains("\"efficiency\"") {
         return None;
     }
@@ -89,7 +83,6 @@ fn check_efficiency_anomaly(line: &str, content: &str) -> Option<ProfilerAnomaly
 
 /// Scan profiler file content for CV and efficiency anomalies.
 fn check_profiler_file(content: &str) -> Vec<ProfilerAnomaly> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut anomalies = Vec::new();
     for line in content.lines() {
         let trimmed = line.trim();
@@ -106,7 +99,6 @@ fn check_profiler_file(content: &str) -> Vec<ProfilerAnomaly> {
 /// Parse BrickProfiler JSON output and detect anomalies
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_profiler_anomalies(project_path: &Path) -> Vec<ProfilerAnomaly> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check standard profiler output locations
     let profiler_paths = [
         project_path
@@ -132,7 +124,6 @@ pub fn detect_profiler_anomalies(project_path: &Path) -> Vec<ProfilerAnomaly> {
 /// Helper to extract numeric value from JSON line like `"cv": 0.18,`
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_json_number(line: &str) -> Option<f64> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     line.split(':')
         .nth(1)?
         .trim()
@@ -155,7 +146,6 @@ fn find_name_field_backwards(lines: &[&str], from: usize) -> Option<String> {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_brick_name(content: &str, target_line: &str) -> String {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let lines: Vec<&str> = content.lines().collect();
     for (i, line) in lines.iter().enumerate() {
         if *line == target_line {

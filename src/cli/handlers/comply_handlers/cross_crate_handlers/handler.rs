@@ -34,11 +34,6 @@ pub async fn handle_cross_crate(
     strict: bool,
     save_baseline: bool,
 ) -> Result<()> {
-    debug_assert!(
-        workspace_path.exists(),
-        "workspace_path must exist: {}",
-        workspace_path.display()
-    );
     let yaml_config = PmatYamlConfig::load(workspace_path).unwrap_or_default();
     let det_config = DetectionConfig::from_yaml(&yaml_config.cross_crate);
 
@@ -83,7 +78,6 @@ pub async fn handle_cross_crate(
 }
 
 fn print_discovery_help() {
-    debug_assert!(true, "contract: print_discovery_help");
     println!("Cross-crate analysis requires at least 2 crates.");
     println!("Discovery priority:");
     println!("  1. --crates ../foo,../bar  (explicit paths)");
@@ -103,7 +97,6 @@ fn run_detection_rules(
     similarity_threshold: f64,
     churn_window_days: u32,
 ) -> Vec<CrossCrateFinding> {
-    debug_assert!(true, "contract: run_detection_rules");
     let mut findings = Vec::new();
 
     if is_rule_enabled("cc001", enabled_rules) {
@@ -150,7 +143,6 @@ fn emit_report(
     format: ComplyOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    debug_assert!(true, "contract: emit_report");
     let output_text = match format {
         ComplyOutputFormat::Text => format_text(report),
         ComplyOutputFormat::Json | ComplyOutputFormat::Sarif => {
@@ -169,11 +161,6 @@ fn emit_report(
 }
 
 fn enforce_strict(report: &CrossCrateReport, strict: bool, workspace_path: &Path) {
-    debug_assert!(
-        workspace_path.exists(),
-        "workspace_path must exist: {}",
-        workspace_path.display()
-    );
     if !strict {
         return;
     }

@@ -66,7 +66,6 @@ impl DataScienceAnalyzer {
     /// Convert a finding to a feature vector
     #[allow(clippy::cast_possible_truncation)]
     fn finding_to_features(&self, finding: &Finding) -> Vec<f32> {
-        debug_assert!(true, "contract: finding_to_features");
         let mut features = vec![0.0f32; 6];
 
         // Severity (0-3)
@@ -105,8 +104,6 @@ impl DataScienceAnalyzer {
         findings: &[Finding],
         labels: &[usize],
     ) -> Vec<FindingCluster> {
-        debug_assert!(!findings.is_empty(), "findings must not be empty");
-        debug_assert!(!labels.is_empty(), "labels must not be empty");
         let mut cluster_findings: HashMap<usize, Vec<&Finding>> = HashMap::new();
 
         for (finding, &label) in findings.iter().zip(labels.iter()) {

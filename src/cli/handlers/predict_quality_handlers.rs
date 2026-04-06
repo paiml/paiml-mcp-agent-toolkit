@@ -110,7 +110,6 @@ pub async fn handle_predict_quality(
 
 /// Print predictions in table format
 fn print_predictions_table(predictions: &[PredictionResult]) {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     println!("\n{}\n", c::header("Quality Metrics Predictions"));
 
     for pred in predictions {

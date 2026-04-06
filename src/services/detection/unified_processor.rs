@@ -21,7 +21,6 @@ impl UnifiedDetectionProcessor {
         &self,
         files: Vec<std::path::PathBuf>,
     ) -> Result<duplicates::DuplicateDetectionResult> {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         let input = DetectionInput::MultipleFiles(files);
         let config = DetectionConfig {
             detector_specific: DetectorSpecificConfig::Duplicates(
@@ -41,7 +40,6 @@ impl UnifiedDetectionProcessor {
     /// Detect SATD in project
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn detect_satd(&self, project_path: &Path) -> Result<satd::SATDAnalysisResult> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let input = DetectionInput::ProjectDirectory(project_path.to_path_buf());
         let config = DetectionConfig {
             detector_specific: DetectorSpecificConfig::SATD(satd::SATDConfig::default()),
@@ -60,7 +58,6 @@ impl UnifiedDetectionProcessor {
         &self,
         project_path: &Path,
     ) -> Result<polyglot::PolyglotAnalysis> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let input = DetectionInput::ProjectDirectory(project_path.to_path_buf());
         let config = DetectionConfig {
             detector_specific: DetectorSpecificConfig::Polyglot(polyglot::PolyglotConfig::default()),

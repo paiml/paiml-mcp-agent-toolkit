@@ -15,7 +15,6 @@ pub enum SqlOutputFormat {
 impl SqlOutputFormat {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_str_opt(s: &str) -> Self {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "json" => Self::Json,
             "csv" => Self::Csv,
@@ -104,11 +103,6 @@ const EXAMPLE_QUERIES: &[(&str, &str)] = &[
 /// Handle --schema flag: print table schemas
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_schema(db_path: &Path) -> Result<()> {
-    debug_assert!(
-        db_path.exists(),
-        "db_path must exist: {}",
-        db_path.display()
-    );
     let conn = open_readonly(db_path)?;
     let mut stmt =
         conn.prepare("SELECT sql FROM sqlite_master WHERE type='table' ORDER BY name")?;
@@ -154,11 +148,6 @@ pub fn handle_examples() {
 /// Handle SQL query execution
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_sql(query: &str, format: SqlOutputFormat, db_path: &Path) -> Result<()> {
-    debug_assert!(
-        db_path.exists(),
-        "db_path must exist: {}",
-        db_path.display()
-    );
     // Check if query is a named example
     let resolved_query = resolve_query(query);
 
@@ -195,7 +184,6 @@ pub fn handle_sql(query: &str, format: SqlOutputFormat, db_path: &Path) -> Resul
 
 /// Resolve a query: if it's a named example, return the example SQL
 fn resolve_query(query: &str) -> &str {
-    debug_assert!(!query.is_empty(), "query must not be empty");
     for (name, sql) in EXAMPLE_QUERIES {
         if *name == query {
             return sql;
@@ -206,7 +194,6 @@ fn resolve_query(query: &str) -> &str {
 
 /// Format a single cell from a SQLite row
 fn format_cell(row: &rusqlite::Row<'_>, idx: usize) -> String {
-    debug_assert!(true, "contract: format_cell");
     // Try integer first, then float, then string
     if let Ok(v) = row.get::<_, i64>(idx) {
         return v.to_string();
@@ -232,8 +219,6 @@ fn open_readonly(db_path: &Path) -> Result<rusqlite::Connection> {
 
 /// Print results as aligned table
 fn print_table(columns: &[String], rows: &[Vec<String>]) {
-    debug_assert!(!columns.is_empty(), "columns must not be empty");
-    debug_assert!(!rows.is_empty(), "rows must not be empty");
     if rows.is_empty() {
         println!("(0 rows)");
         return;
@@ -279,8 +264,6 @@ fn print_table(columns: &[String], rows: &[Vec<String>]) {
 
 /// Print results as JSON array
 fn print_json(columns: &[String], rows: &[Vec<String>]) {
-    debug_assert!(!columns.is_empty(), "columns must not be empty");
-    debug_assert!(!rows.is_empty(), "rows must not be empty");
     print!("[");
     for (i, row) in rows.iter().enumerate() {
         if i > 0 {
@@ -307,8 +290,6 @@ fn print_json(columns: &[String], rows: &[Vec<String>]) {
 
 /// Print results as CSV
 fn print_csv(columns: &[String], rows: &[Vec<String>]) {
-    debug_assert!(!columns.is_empty(), "columns must not be empty");
-    debug_assert!(!rows.is_empty(), "rows must not be empty");
     println!("{}", columns.join(","));
     for row in rows {
         let escaped: Vec<String> = row
@@ -328,11 +309,6 @@ fn print_csv(columns: &[String], rows: &[Vec<String>]) {
 /// Locate the best database path for the project
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn find_db_path(project_path: &Path, workspace: bool) -> Result<std::path::PathBuf> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let db_name = if workspace {
         "workspace.db"
     } else {

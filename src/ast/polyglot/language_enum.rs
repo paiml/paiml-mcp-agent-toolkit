@@ -42,7 +42,6 @@ impl Language {
     /// Returns the language from a file extension
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_extension(ext: &str) -> Option<Self> {
-        debug_assert!(!ext.is_empty(), "ext must not be empty");
         match ext.to_lowercase().as_str() {
             "java" => Some(Language::Java),
             "kt" | "kts" => Some(Language::Kotlin),
@@ -64,7 +63,6 @@ impl Language {
     /// Returns the language from a file path
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_path(path: &Path) -> Option<Self> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
             .and_then(|ext| ext.to_str())
             .and_then(Self::from_extension)

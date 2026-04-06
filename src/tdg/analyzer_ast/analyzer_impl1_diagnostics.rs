@@ -21,7 +21,6 @@ impl TdgAnalyzerAst {
     /// Get stored score for a specific file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn get_stored_score(&self, path: &Path) -> Result<Option<TdgScore>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(storage) = &self.storage {
             // Calculate content hash for the file
             let source = fs::read_to_string(path)?;
@@ -109,7 +108,6 @@ impl TdgAnalyzerAst {
 
     /// Estimate memory required for file analysis
     fn estimate_analysis_memory(&self, path: &Path) -> Result<f64> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let metadata = fs::metadata(path)?;
         let file_size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
 

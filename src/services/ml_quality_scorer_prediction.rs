@@ -111,7 +111,6 @@ impl MLQualityScorer {
 
     /// Heuristic complexity calculation (fallback)
     fn heuristic_complexity(&self, features: &ComplexityFeatures) -> f64 {
-        debug_assert!(true, "contract: heuristic_complexity");
         // Traditional formula: base + nesting_penalty + control_flow
         let base = features.loc / 50.0;
         let nesting_penalty = features.max_nesting * 2.0;
@@ -122,7 +121,6 @@ impl MLQualityScorer {
 
     /// Heuristic TDG calculation (fallback)
     fn heuristic_tdg(&self, features: &TDGFeatures) -> f64 {
-        debug_assert!(true, "contract: heuristic_tdg");
         // Traditional weighted sum
         let score = features.complexity * 0.3
             + features.churn * 0.25
@@ -148,7 +146,6 @@ impl MLQualityScorer {
     /// Save model to file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, _path: &Path) -> Result<()> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Serialization deferred until aprender supports it
         Ok(())
     }
@@ -156,7 +153,6 @@ impl MLQualityScorer {
     /// Load model from file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(_path: &Path) -> Result<Self> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Deserialization deferred until aprender supports it
         Ok(Self::new())
     }

@@ -34,7 +34,6 @@ impl DiscoveryService {
     /// 3. Trigram fuzzy match (O(m) where m = tool count)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn resolve_tool(&self, query: &str) -> Option<&'static str> {
-        debug_assert!(!query.is_empty(), "query must not be empty");
         let normalized = query.to_lowercase();
 
         // Short-circuit: empty or single-char queries cannot meaningfully match
@@ -92,7 +91,6 @@ impl DiscoveryService {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn disambiguate<'a>(&self, candidates: Vec<&'a str>, context: Option<&Context>) -> &'a str {
-        debug_assert!(!candidates.is_empty(), "candidates must not be empty");
         if candidates.is_empty() {
             return "";
         }
@@ -113,7 +111,6 @@ impl DiscoveryService {
         candidates: &[&'a str],
         context: Option<&Context>,
     ) -> Option<&'a str> {
-        debug_assert!(!candidates.is_empty(), "candidates must not be empty");
         let ext = context.and_then(|ctx| ctx.file_extension.as_deref())?;
         match ext {
             "rs" if candidates.contains(&"analyze_complexity") => Some("analyze_complexity"),
@@ -132,7 +129,6 @@ impl DiscoveryService {
     }
 
     fn category_priority(name: &str) -> u8 {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if name.starts_with("generate") || name.starts_with("scaffold") {
             return 0;
         }
@@ -350,7 +346,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

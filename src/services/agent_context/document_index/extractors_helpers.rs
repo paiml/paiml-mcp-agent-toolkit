@@ -8,9 +8,6 @@ fn split_into_chunks(
     checksum: &str,
     quality: f32,
 ) -> Vec<DocumentChunk> {
-    debug_assert!(!text.is_empty(), "text must not be empty");
-    debug_assert!(!relative_path.is_empty(), "relative_path must not be empty");
-    debug_assert!(!checksum.is_empty(), "checksum must not be empty");
     let mut chunks = Vec::new();
     let mut current = String::new();
     let mut chunk_idx: u32 = 0;
@@ -54,7 +51,6 @@ fn split_into_chunks(
 
 /// Truncate text to MAX_CHUNK_SIZE at a word boundary, respecting UTF-8.
 fn truncate_to_max_chunk(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     if text.len() <= MAX_CHUNK_SIZE {
         return text.to_string();
     }

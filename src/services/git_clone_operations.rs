@@ -5,7 +5,6 @@ impl GitCloner {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(cache_dir: PathBuf) -> Self {
-        debug_assert!(cache_dir.exists(), "cache_dir must exist: {}", cache_dir.display());
         Self {
             cache_dir,
             progress: Arc::new(Mutex::new(CloneProgress {
@@ -40,7 +39,6 @@ impl GitCloner {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn clone_or_update(&self, url: &str) -> Result<ClonedRepo, CloneError> {
-        debug_assert!(!url.is_empty(), "url must not be empty");
         // Validate URL format
         let _parsed_url = self.parse_github_url(url)?;
 
@@ -124,7 +122,6 @@ impl GitCloner {
     }
 
     fn clone_shallow(&self, url: &str, target: &Path) -> Result<(), CloneError> {
-        debug_assert!(!url.is_empty(), "url must not be empty");
         let progress = self.progress.clone();
 
         // Set up fetch options
@@ -162,7 +159,6 @@ impl GitCloner {
     }
 
     async fn update_repository(&self, repo: &Repository) -> Result<()> {
-        debug_assert!(true, "contract: update_repository");
         // This is a simplified update - in production you'd want more sophisticated logic
         let mut remote = repo.find_remote("origin")?;
 
@@ -189,7 +185,6 @@ impl GitCloner {
     }
 
     async fn is_cache_fresh(&self, _repo: &Repository) -> Result<bool> {
-        debug_assert!(true, "contract: is_cache_fresh");
         // Check if the cached repository is less than 1 hour old
         // In a real implementation, you might check the last fetch time
         // For now, we'll use file modification time

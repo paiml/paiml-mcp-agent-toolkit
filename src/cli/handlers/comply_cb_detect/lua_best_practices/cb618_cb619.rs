@@ -16,11 +16,6 @@ use std::path::Path;
 /// - Reports FFI usage summary
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb618_ffi_safety(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
     let mut ffi_file_count = 0;
@@ -65,8 +60,6 @@ pub fn detect_cb618_ffi_safety(project_path: &Path) -> Vec<CbPatternViolation> {
 
 /// Check FFI-related patterns in a single file.
 fn check_ffi_patterns(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     for (i, line) in content.lines().enumerate() {
         let trimmed = line.trim();
         if trimmed.starts_with("--") {
@@ -85,9 +78,6 @@ fn check_ffi_resource_call(
     content: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let resource_funcs = ["C.open", "C.socket", "C.malloc", "C.mmap"];
     for func in &resource_funcs {
         if !trimmed.contains(func) {
@@ -148,11 +138,6 @@ impl std::fmt::Display for LuaOopPattern {
 /// Recognizes: separate metatable, prototypal inheritance, __call constructor, self-as-metatable.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb619_oop_patterns(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut pattern_counts: std::collections::HashMap<LuaOopPattern, usize> =
         std::collections::HashMap::new();
@@ -191,7 +176,6 @@ pub fn detect_cb619_oop_patterns(project_path: &Path) -> Vec<CbPatternViolation>
 
 /// Detect OOP patterns in a single file's content.
 fn detect_oop_in_file(content: &str) -> Vec<LuaOopPattern> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut patterns = Vec::new();
     let has_setmetatable = content.contains("setmetatable");
 

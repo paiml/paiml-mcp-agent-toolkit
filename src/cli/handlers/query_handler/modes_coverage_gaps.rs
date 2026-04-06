@@ -119,7 +119,6 @@ pub(super) async fn handle_coverage_gaps_mode(
 
 /// Format and print coverage gap results in text mode (testable gaps only)
 fn print_coverage_gaps_text(results: &[QueryResult]) {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     println!(
         "{BOLD}{UNDERLINE}Coverage Gaps{RESET} ({} testable functions with uncovered code)\n",
         results.len()
@@ -147,7 +146,6 @@ fn print_coverage_gaps_text(results: &[QueryResult]) {
 
 /// Print the excluded summary footer
 fn print_exclusion_summary(summary: &crate::services::agent_context::ExclusionSummary) {
-    debug_assert!(true, "contract: print_exclusion_summary");
     println!("{DIM}Excluded from coverage (not shown):{RESET}");
     if summary.coverage_off_count > 0 {
         println!(
@@ -173,7 +171,6 @@ fn print_exclusion_summary(summary: &crate::services::agent_context::ExclusionSu
 
 /// Print excluded results grouped by category
 fn print_excluded_results(excluded: &[&QueryResult]) {
-    debug_assert!(!excluded.is_empty(), "excluded must not be empty");
     use crate::services::agent_context::CoverageExclusion;
 
     let groups: &[(CoverageExclusion, &str)] = &[
@@ -213,7 +210,6 @@ fn print_excluded_results(excluded: &[&QueryResult]) {
 /// `--files-with-matches`: prints file paths sorted by total uncovered lines desc.
 /// `--count`: prints `file_path: N uncovered lines (M functions)` sorted desc.
 fn output_coverage_gaps_by_file(results: &[QueryResult], files_only: bool) -> anyhow::Result<()> {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     use std::collections::BTreeMap;
     let mut by_file: BTreeMap<&str, (usize, usize)> = BTreeMap::new(); // (uncov_lines, func_count)
     for r in results {
@@ -240,7 +236,6 @@ fn output_coverage_gaps(
     excluded: Vec<QueryResult>,
     include_excluded: bool,
 ) -> anyhow::Result<()> {
-    debug_assert!(true, "contract: output_coverage_gaps");
     let excluded_refs: Vec<&QueryResult> = excluded.iter().collect();
     let excl_summary =
         crate::services::agent_context::ExclusionSummary::from_results(&excluded_refs);
@@ -282,7 +277,6 @@ fn print_coverage_gaps_text_with_exclusions(
     summary: &crate::services::agent_context::ExclusionSummary,
     include_excluded: bool,
 ) {
-    debug_assert!(true, "contract: print_coverage_gaps_text_with_exclusions");
     if include_excluded && !excluded.is_empty() {
         println!(
             "{BOLD}{UNDERLINE}Coverage Gaps{RESET} ({} testable + {} excluded)\n",

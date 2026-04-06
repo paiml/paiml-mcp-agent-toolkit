@@ -3,7 +3,6 @@
 // AFTER: Complexity 6 (A+ standard, single responsibility)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
-    debug_assert!(config.path.exists(), "config.path must exist: {}", config.path.display());
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 
     // Delegate filter logging to extracted function
@@ -26,7 +25,6 @@ pub async fn handle_analyze_satd(config: SatdAnalysisConfig) -> Result<()> {
 /// Log filter information if filters are specified - EXTRACTED FUNCTION
 /// Complexity: 5 (A+ standard)
 fn log_filter_info(config: &SatdAnalysisConfig) {
-    debug_assert!(true, "contract: log_filter_info");
     if !config.include.is_empty() || !config.exclude.is_empty() {
         eprintln!("🔍 Applying file filters...");
         if !config.include.is_empty() {
@@ -41,7 +39,6 @@ fn log_filter_info(config: &SatdAnalysisConfig) {
 /// Execute SATD analysis using facade - EXTRACTED FUNCTION
 /// Complexity: 6 (A+ standard)
 async fn execute_satd_analysis(config: &SatdAnalysisConfig) -> Result<SatdAnalysisResult> {
-    debug_assert!(true, "contract: execute_satd_analysis");
     // Create service registry and facade
     let registry = Arc::new(ServiceRegistry::new());
     let facade = SatdFacade::new(registry);
@@ -69,7 +66,6 @@ fn apply_analysis_filters(
     mut result: SatdAnalysisResult,
     config: &SatdAnalysisConfig,
 ) -> Result<SatdAnalysisResult> {
-    debug_assert!(true, "contract: apply_analysis_filters");
     // Apply file filter to results if filters are specified
     if !config.include.is_empty() || !config.exclude.is_empty() {
         use crate::utils::file_filter::FileFilter;
@@ -102,7 +98,6 @@ async fn write_satd_output(
     filtered_result: &SatdAnalysisResult,
     config: &SatdAnalysisConfig,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_satd_output");
     // Format output
     let content = format_output(
         filtered_result,
@@ -134,7 +129,6 @@ fn apply_filters(
     severity: Option<SatdSeverity>,
     critical_only: bool,
 ) -> SatdAnalysisResult {
-    debug_assert!(true, "contract: apply_filters");
     if let Some(min_severity) = severity {
         result.violations.retain(|v| match min_severity {
             SatdSeverity::Critical => matches!(

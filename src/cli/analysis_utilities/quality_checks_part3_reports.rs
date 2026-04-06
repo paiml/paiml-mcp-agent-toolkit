@@ -4,7 +4,6 @@ fn format_qg_as_summary(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> Result<String> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::fmt::Write;
     let mut output = String::new();
     writeln!(
@@ -32,7 +31,6 @@ fn write_qg_violations_summary(
     output: &mut String,
     violations: &[QualityViolation],
 ) -> Result<()> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::collections::BTreeMap;
     use std::fmt::Write;
 
@@ -63,7 +61,6 @@ fn format_qg_as_detailed(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> Result<String> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut output = String::new();
 
     write_qg_detailed_header(&mut output, results)?;
@@ -78,7 +75,6 @@ fn format_qg_as_detailed(
 
 // Helper: Write detailed header
 fn write_qg_detailed_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
-    debug_assert!(true, "contract: write_qg_detailed_header");
     use std::fmt::Write;
     writeln!(output, "# Quality Gate Detailed Report\n")?;
     writeln!(
@@ -96,7 +92,6 @@ fn write_qg_detailed_header(output: &mut String, results: &QualityGateResults) -
 
 // Helper: Write detailed summary
 fn write_qg_detailed_summary(output: &mut String, results: &QualityGateResults) -> Result<()> {
-    debug_assert!(true, "contract: write_qg_detailed_summary");
     use std::fmt::Write;
     writeln!(output, "## Violations by Type\n")?;
     let items = [
@@ -122,7 +117,6 @@ fn write_qg_detailed_violations(
     output: &mut String,
     violations: &[QualityViolation],
 ) -> Result<()> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::fmt::Write;
     writeln!(output, "\n## All Violations\n")?;
     for (i, v) in violations.iter().enumerate() {
@@ -149,7 +143,6 @@ fn format_qg_as_markdown(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> Result<String> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut output = String::new();
 
     write_qg_markdown_header(&mut output, results)?;
@@ -168,7 +161,6 @@ fn write_qg_markdown_violations(
     output: &mut String,
     violations: &[QualityViolation],
 ) -> Result<()> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::collections::BTreeMap;
     use std::fmt::Write;
 
@@ -203,7 +195,6 @@ fn write_qg_markdown_violations(
 
 /// Toyota Way: Extract Method - Write QG Markdown header section (complexity <=5)
 fn write_qg_markdown_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
-    debug_assert!(true, "contract: write_qg_markdown_header");
     use std::fmt::Write;
 
     writeln!(output, "# Quality Gate Report\n")?;
@@ -223,7 +214,6 @@ fn write_qg_markdown_header(output: &mut String, results: &QualityGateResults) -
 
 /// Toyota Way: Extract Method - Format QG status badge (complexity <=3)
 fn format_qg_status_badge(passed: bool) -> &'static str {
-    debug_assert!(true, "contract: format_qg_status_badge");
     if passed {
         "\u{2705} PASSED"
     } else {
@@ -236,7 +226,6 @@ fn write_qg_markdown_summary_table(
     output: &mut String,
     results: &QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_qg_markdown_summary_table");
     use std::fmt::Write;
 
     writeln!(output, "## Summary\n")?;
@@ -248,7 +237,6 @@ fn write_qg_markdown_summary_table(
 
 /// Toyota Way: Extract Method - Write QG Markdown table headers (complexity <=3)
 fn write_qg_markdown_table_headers(output: &mut String) -> Result<()> {
-    debug_assert!(true, "contract: write_qg_markdown_table_headers");
     use std::fmt::Write;
 
     writeln!(output, "| Check Type | Violations |")?;
@@ -259,7 +247,6 @@ fn write_qg_markdown_table_headers(output: &mut String) -> Result<()> {
 
 /// Toyota Way: Extract Method - Write QG Markdown table rows (complexity <=5)
 fn write_qg_markdown_table_rows(output: &mut String, results: &QualityGateResults) -> Result<()> {
-    debug_assert!(true, "contract: write_qg_markdown_table_rows");
     use std::fmt::Write;
 
     let rows = get_qg_violation_summary_rows(results);

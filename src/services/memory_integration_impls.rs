@@ -16,7 +16,6 @@ impl<T> MemoryVec<T> {
     /// Create with pre-allocated capacity
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_capacity(pool_type: PoolType, capacity: usize) -> Result<Self> {
-        debug_assert!(capacity > 0, "capacity must be positive");
         let memory_manager = global_memory_manager()?;
         Ok(Self {
             data: Vec::with_capacity(capacity),
@@ -109,7 +108,6 @@ impl MemoryString {
     /// Create a new memory-aware string with interning
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(content: &str) -> Result<Self> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let memory_manager = global_memory_manager()?;
         let interned = memory_manager.intern_string(content)?;
         Ok(Self {
@@ -181,7 +179,6 @@ impl AstBufferPool {
     /// Get buffer sized for specific file content
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_buffer_for_content(&self, content: &str) -> Result<PooledBuffer> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Size buffer based on content with some overhead for parsing structures
         let size = content.len() * 2; // 2x overhead for AST structures
         self.memory_manager.allocate_buffer(self.pool_type, size)
@@ -202,7 +199,6 @@ impl InternedStringSet {
     /// Insert a string with interning
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn insert(&mut self, s: &str) -> Result<bool> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         let interned = self.memory_manager.intern_string(s)?;
         Ok(self.strings.insert(interned))
     }
@@ -211,7 +207,6 @@ impl InternedStringSet {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn contains(&self, s: &str) -> bool {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         // Note: This requires interning the string to check, which is not ideal
         // In practice, you'd store the interned version when inserting
         if let Ok(interned) = self.memory_manager.intern_string(s) {

@@ -35,7 +35,6 @@ impl std::str::FromStr for AgentFeature {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         let parts: Vec<&str> = s.split(':').collect();
         match parts[0] {
             "state-machine" => {
@@ -101,7 +100,6 @@ impl std::str::FromStr for QualityLevel {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "standard" => Ok(Self::Standard),
             "strict" => Ok(Self::Strict),
@@ -194,7 +192,6 @@ impl std::str::FromStr for MonitoringBackend {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "prometheus" => Ok(Self::Prometheus),
             "opentelemetry" | "otel" => Ok(Self::OpenTelemetry),
@@ -218,7 +215,6 @@ impl std::str::FromStr for TraceExporter {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "jaeger" => Ok(Self::Jaeger),
             "zipkin" => Ok(Self::Zipkin),
@@ -339,7 +335,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

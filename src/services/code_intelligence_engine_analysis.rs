@@ -127,7 +127,6 @@ impl CodeIntelligence {
 
     /// Analyze project and build AST DAG
     async fn analyze_project(&self, project_path: &str) -> anyhow::Result<()> {
-        debug_assert!(!project_path.is_empty(), "project_path must not be empty");
         use crate::models::unified_ast::{AstKind, Language, NodeMetadata, UnifiedAstNode};
         use crate::services::context::analyze_project as analyze_project_context;
         use std::path::Path;
@@ -260,7 +259,6 @@ impl CodeIntelligence {
         req: &'a AnalysisRequest,
         _report: &'a mut AnalysisReport,
     ) -> Vec<std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + 'a>>> {
-        debug_assert!(true, "contract: build_analysis_futures");
         let mut futures = Vec::new();
 
         for analysis_type in &req.analysis_types {

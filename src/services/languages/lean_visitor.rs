@@ -6,7 +6,6 @@ impl LeanAstVisitor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
@@ -17,7 +16,6 @@ impl LeanAstVisitor {
     /// Analyzes Lean 4 source code and extracts AST items (single-pass, complexity <=10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_lean_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -42,7 +40,6 @@ impl LeanAstVisitor {
 
     /// Extracts AST items from a single line (complexity <=10)
     fn extract_line(&mut self, trimmed: &str, line_num: usize) {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         // Try definitions first
         if let Some(item) = self.try_extract_definition(trimmed, line_num) {
             self.items.push(item);
@@ -71,7 +68,6 @@ impl LeanAstVisitor {
 
     /// Tries to extract a def/abbrev from a line (complexity <=10)
     fn try_extract_definition(&self, trimmed: &str, line_num: usize) -> Option<AstItem> {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         let name = if trimmed.starts_with("def ") {
             Self::extract_name_after_keyword(trimmed, "def")
         } else if trimmed.starts_with("noncomputable def ") {
@@ -104,7 +100,6 @@ impl LeanAstVisitor {
 
     /// Tries to extract a theorem/lemma from a line (complexity <=10)
     fn try_extract_theorem(&self, trimmed: &str, line_num: usize) -> Option<AstItem> {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         let name = if trimmed.starts_with("theorem ") {
             Self::extract_name_after_keyword(trimmed, "theorem")
         } else if trimmed.starts_with("lemma ") {
@@ -128,7 +123,6 @@ impl LeanAstVisitor {
 
     /// Tries to extract a structure/class/inductive from a line (complexity <=10)
     fn try_extract_type(&self, trimmed: &str, line_num: usize) -> Option<AstItem> {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         let name = if trimmed.starts_with("structure ") {
             Self::extract_name_after_keyword(trimmed, "structure")
         } else if trimmed.starts_with("class ") {
@@ -151,7 +145,6 @@ impl LeanAstVisitor {
 
     /// Tries to extract an instance from a line (complexity <=10)
     fn try_extract_instance(&self, trimmed: &str, line_num: usize) -> Option<AstItem> {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         if !trimmed.starts_with("instance ") {
             return None;
         }
@@ -167,7 +160,6 @@ impl LeanAstVisitor {
 
     /// Tries to extract an axiom/opaque from a line (complexity <=10)
     fn try_extract_axiom(&self, trimmed: &str, line_num: usize) -> Option<AstItem> {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         let name = if trimmed.starts_with("axiom ") {
             Self::extract_name_after_keyword(trimmed, "axiom")
         } else if trimmed.starts_with("opaque ") {
@@ -187,8 +179,6 @@ impl LeanAstVisitor {
 
     /// Extracts name after a keyword (complexity <=10)
     fn extract_name_after_keyword(line: &str, keyword: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
-        debug_assert!(!keyword.is_empty(), "keyword must not be empty");
         // Find the keyword position and get the word after it
         if let Some(pos) = line.find(keyword) {
             let after = &line[pos + keyword.len()..].trim_start();
@@ -208,7 +198,6 @@ impl LeanAstVisitor {
 
     /// Gets qualified name for a symbol (complexity <=10)
     fn get_qualified_name(&self, name: &str) -> String {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if self.namespace.is_empty() {
             name.to_string()
         } else {

@@ -1,7 +1,6 @@
 impl RateLimiter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(capacity: u32, refill_rate: u32) -> Self {
-        debug_assert!(capacity > 0, "capacity must be positive");
         Self {
             capacity,
             tokens: AtomicU32::new(capacity),
@@ -40,7 +39,6 @@ impl RateLimiter {
     }
 
     fn refill(&self) {
-        debug_assert!(true, "contract: refill");
         let mut last_refill = self.last_refill.lock();
         let now = Instant::now();
         let elapsed = now.duration_since(*last_refill);

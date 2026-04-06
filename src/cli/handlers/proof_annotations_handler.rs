@@ -27,11 +27,6 @@ pub async fn handle_analyze_proof_annotations(
     _perf: bool,
     clear_cache: bool,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     eprintln!("🔍 Collecting proof annotations from project...");
     let start = Instant::now();
 
@@ -81,11 +76,6 @@ fn format_proof_annotations(
     project_path: &Path,
     include_evidence: bool,
 ) -> Result<String> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     match format {
         ProofAnnotationOutputFormat::Json => format_as_json(annotations, elapsed, annotator),
         ProofAnnotationOutputFormat::Summary => format_as_summary(annotations, elapsed),
@@ -113,7 +103,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

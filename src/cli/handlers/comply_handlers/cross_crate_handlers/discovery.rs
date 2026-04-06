@@ -19,11 +19,6 @@ pub fn discover_workspace_crates(
     workspace_path: &Path,
     explicit_crates: Option<&[PathBuf]>,
 ) -> Vec<CrateInfo> {
-    debug_assert!(
-        workspace_path.exists(),
-        "workspace_path must exist: {}",
-        workspace_path.display()
-    );
     // Priority 1: Explicit --crates flag
     if let Some(paths) = explicit_crates {
         if !paths.is_empty() {
@@ -68,11 +63,6 @@ pub fn discover_workspace_crates(
 
 /// Priority 1: Build CrateInfo from explicit paths.
 fn discover_from_explicit(workspace_path: &Path, paths: &[PathBuf]) -> Vec<CrateInfo> {
-    debug_assert!(
-        workspace_path.exists(),
-        "workspace_path must exist: {}",
-        workspace_path.display()
-    );
     let mut crates = vec![make_crate_info(workspace_path)];
 
     for p in paths {
@@ -105,11 +95,6 @@ fn discover_from_explicit(workspace_path: &Path, paths: &[PathBuf]) -> Vec<Crate
 
 /// Priority 2: Parse Cargo.toml [workspace] members with glob expansion.
 fn discover_from_cargo_workspace(workspace_path: &Path) -> Vec<CrateInfo> {
-    debug_assert!(
-        workspace_path.exists(),
-        "workspace_path must exist: {}",
-        workspace_path.display()
-    );
     let cargo_toml = workspace_path.join("Cargo.toml");
     let Ok(content) = std::fs::read_to_string(&cargo_toml) else {
         return Vec::new();
@@ -131,7 +116,6 @@ fn discover_from_cargo_workspace(workspace_path: &Path) -> Vec<CrateInfo> {
 
 /// Parse `members = [...]` from workspace TOML, expanding glob patterns.
 pub(super) fn parse_workspace_members_with_globs(content: &str, base: &Path) -> Vec<PathBuf> {
-    debug_assert!(base.exists(), "base must exist: {}", base.display());
     let members_buf = extract_members_array(content);
     let raw_members = extract_quoted_strings(&members_buf);
     resolve_member_paths(&raw_members, base)
@@ -139,7 +123,6 @@ pub(super) fn parse_workspace_members_with_globs(content: &str, base: &Path) -> 
 
 /// Extract the raw `members = [...]` array content from TOML.
 fn extract_members_array(content: &str) -> String {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut in_members = false;
     let mut bracket_depth = 0;
     let mut buf = String::new();
@@ -171,7 +154,6 @@ fn extract_members_array(content: &str) -> String {
 
 /// Extract double-quoted strings from a TOML array fragment.
 fn extract_quoted_strings(buf: &str) -> Vec<String> {
-    debug_assert!(true, "contract: extract_quoted_strings");
     let mut result = Vec::new();
     let mut in_quote = false;
     let mut current = String::new();
@@ -195,7 +177,6 @@ fn extract_quoted_strings(buf: &str) -> Vec<String> {
 
 /// Resolve member path strings to absolute paths, expanding globs.
 fn resolve_member_paths(raw_members: &[String], base: &Path) -> Vec<PathBuf> {
-    debug_assert!(base.exists(), "base must exist: {}", base.display());
     let mut resolved = Vec::new();
 
     for member in raw_members {
@@ -221,11 +202,6 @@ fn resolve_member_paths(raw_members: &[String], base: &Path) -> Vec<PathBuf> {
 /// oracle's project list, then include all crates that share a dependency relationship
 /// with it (direct deps or reverse deps within the PAIML stack).
 fn discover_from_batuta_oracle(workspace_path: &Path) -> Vec<CrateInfo> {
-    debug_assert!(
-        workspace_path.exists(),
-        "workspace_path must exist: {}",
-        workspace_path.display()
-    );
     let Some(projects) = invoke_batuta_oracle() else {
         return Vec::new();
     };
@@ -244,7 +220,6 @@ fn discover_from_batuta_oracle(workspace_path: &Path) -> Vec<CrateInfo> {
 
 /// Run `batuta oracle --local --format json` and parse the projects map.
 fn invoke_batuta_oracle() -> Option<serde_json::Map<String, serde_json::Value>> {
-    debug_assert!(true, "contract: invoke_batuta_oracle");
     let output = std::process::Command::new("batuta")
         .args(["oracle", "--local", "--format", "json"])
         .output()
@@ -265,11 +240,6 @@ fn find_current_project(
     projects: &serde_json::Map<String, serde_json::Value>,
     canonical_ws: &Path,
 ) -> Option<String> {
-    debug_assert!(
-        canonical_ws.exists(),
-        "canonical_ws must exist: {}",
-        canonical_ws.display()
-    );
     projects.iter().find_map(|(name, info)| {
         let path_str = info.get("path")?.as_str()?;
         let project_path = PathBuf::from(path_str);
@@ -280,7 +250,6 @@ fn find_current_project(
 
 /// Extract PAIML dependency names from a project's JSON value.
 fn extract_paiml_dep_names(info: &serde_json::Value) -> Vec<String> {
-    debug_assert!(true, "contract: extract_paiml_dep_names");
     info.get("paiml_dependencies")
         .and_then(|d| d.as_array())
         .map(|deps| {
@@ -296,7 +265,6 @@ fn collect_related_crates(
     projects: &serde_json::Map<String, serde_json::Value>,
     current_name: &str,
 ) -> HashSet<String> {
-    debug_assert!(!current_name.is_empty(), "current_name must not be empty");
     let mut related = HashSet::new();
     related.insert(current_name.to_string());
 
@@ -323,7 +291,6 @@ fn projects_to_crate_infos(
     projects: &serde_json::Map<String, serde_json::Value>,
     related: &HashSet<String>,
 ) -> Vec<CrateInfo> {
-    debug_assert!(true, "contract: projects_to_crate_infos");
     related
         .iter()
         .filter_map(|crate_name| {
@@ -340,11 +307,6 @@ fn projects_to_crate_infos(
 
 /// Priority 4: Legacy `.pmat/workspace.toml` siblings.
 fn discover_from_pmat_siblings(workspace_path: &Path) -> Vec<CrateInfo> {
-    debug_assert!(
-        workspace_path.exists(),
-        "workspace_path must exist: {}",
-        workspace_path.display()
-    );
     let mut crates = vec![make_crate_info(workspace_path)];
 
     let workspace_toml = workspace_path.join(".pmat").join("workspace.toml");
@@ -366,11 +328,6 @@ fn discover_from_pmat_siblings(workspace_path: &Path) -> Vec<CrateInfo> {
 
 /// Build a CrateInfo from a crate directory, reading its name from Cargo.toml.
 pub(super) fn make_crate_info(crate_path: &Path) -> CrateInfo {
-    debug_assert!(
-        crate_path.exists(),
-        "crate_path must exist: {}",
-        crate_path.display()
-    );
     let cargo_toml = crate_path.join("Cargo.toml");
     let name = read_crate_name(&cargo_toml).unwrap_or_else(|| {
         crate_path
@@ -389,11 +346,6 @@ pub(super) fn make_crate_info(crate_path: &Path) -> CrateInfo {
 
 /// Extract `name = "..."` from [package] section of a Cargo.toml.
 pub(super) fn read_crate_name(cargo_toml: &Path) -> Option<String> {
-    debug_assert!(
-        cargo_toml.exists(),
-        "cargo_toml must exist: {}",
-        cargo_toml.display()
-    );
     let content = std::fs::read_to_string(cargo_toml).ok()?;
     let mut in_package = false;
 
@@ -419,11 +371,6 @@ pub(super) fn read_crate_name(cargo_toml: &Path) -> Option<String> {
 /// Simple string parser — no full TOML parser needed.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn read_cargo_deps(cargo_toml: &Path) -> Vec<String> {
-    debug_assert!(
-        cargo_toml.exists(),
-        "cargo_toml must exist: {}",
-        cargo_toml.display()
-    );
     let Ok(content) = std::fs::read_to_string(cargo_toml) else {
         return Vec::new();
     };

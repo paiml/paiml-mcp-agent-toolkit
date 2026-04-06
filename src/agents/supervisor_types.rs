@@ -25,7 +25,6 @@ impl Actor for QualityGateSupervisor {
 
 impl Supervised for QualityGateSupervisor {
     fn restarting(&mut self, _ctx: &mut Context<Self>) {
-        debug_assert!(true, "contract: restarting");
         tracing::info!("QualityGateSupervisor restarting");
     }
 }

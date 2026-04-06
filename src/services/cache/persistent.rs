@@ -33,7 +33,6 @@ impl<V> PersistentCacheEntry<V> {
     }
 
     fn age(&self) -> Duration {
-        debug_assert!(true, "contract: age");
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -43,7 +42,6 @@ impl<V> PersistentCacheEntry<V> {
     }
 
     fn into_cache_entry(self) -> CacheEntry<V> {
-        debug_assert!(true, "contract: into_cache_entry");
         let age = self.age();
         let created = Instant::now().checked_sub(age).expect("internal error");
 
@@ -78,11 +76,6 @@ where
 {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(strategy: T, cache_dir: PathBuf) -> Result<Self> {
-        debug_assert!(
-            cache_dir.exists(),
-            "cache_dir must exist: {}",
-            cache_dir.display()
-        );
         // Create cache directory if it doesn't exist
         fs::create_dir_all(&cache_dir).with_context(|| {
             format!("Failed to create cache directory: {}", cache_dir.display())
@@ -103,7 +96,6 @@ where
 
     /// Get cache file path for a key
     fn cache_file_path(&self, cache_key: &str) -> PathBuf {
-        debug_assert!(!cache_key.is_empty(), "cache_key must not be empty");
         let mut hasher = DefaultHasher::new();
         cache_key.hash(&mut hasher);
         let hash = hasher.finish();
@@ -113,7 +105,6 @@ where
 
     /// Load cache entries from disk
     fn load_from_disk(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: load_from_disk");
         if !self.cache_dir.exists() {
             return Ok(());
         }
@@ -155,7 +146,6 @@ where
 
     /// Load a single cache file
     fn load_cache_file(&self, path: &Path) -> Result<bool> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)
             .with_context(|| format!("Failed to read cache file: {}", path.display()))?;
 
@@ -487,7 +477,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

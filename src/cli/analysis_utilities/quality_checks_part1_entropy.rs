@@ -49,7 +49,6 @@ pub async fn check_entropy(
     project_path: &Path,
     min_entropy: f64,
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     check_entropy_with_excludes(project_path, min_entropy, &[]).await
 }
 
@@ -60,7 +59,6 @@ pub async fn check_entropy_with_excludes(
     min_entropy: f64,
     extra_exclude_paths: &[String],
 ) -> Result<Vec<QualityViolation>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // TOYOTA WAY FIX: Replace Shannon entropy with AST pattern-based entropy
     // Sprint 98: Fix for 5831 false positive entropy violations
     use crate::entropy::violation_detector::Severity;
@@ -144,7 +142,6 @@ pub async fn check_entropy_with_excludes(
 /// Load max_pattern_repetition from config files (#219, #227).
 /// Priority: `.pmat-gates.toml` > `.pmat-metrics.toml` > `pmat.toml [quality]` > default (5).
 fn load_max_pattern_repetition(project_path: &Path) -> usize {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Highest priority: .pmat-gates.toml and .pmat-metrics.toml [entropy] section
     for filename in &[".pmat-gates.toml", ".pmat-metrics.toml"] {
         let path = project_path.join(filename);

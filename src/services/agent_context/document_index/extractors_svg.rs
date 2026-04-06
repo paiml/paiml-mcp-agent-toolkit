@@ -9,7 +9,6 @@ pub(crate) fn extract_svg(
     relative_path: &str,
     checksum: &str,
 ) -> Result<Vec<DocumentChunk>, String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = std::fs::read_to_string(path)
         .map_err(|e| format!("Failed to read SVG {}: {e}", path.display()))?;
 

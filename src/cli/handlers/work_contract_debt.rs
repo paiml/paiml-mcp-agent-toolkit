@@ -14,7 +14,6 @@ impl WorkContract {
     /// This is the "managed migration path" for existing projects.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn acknowledge_legacy_debt(&mut self, project_path: &Path) -> Result<()> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let timestamp = chrono::Utc::now().format("%Y%m%d%H%M%S").to_string();
         let mut debt_items: Vec<DebtItem> = Vec::new();
 
@@ -99,7 +98,6 @@ impl WorkContract {
 
 /// Write debt ticket YAML files to .pmat-tickets/
 fn write_debt_tickets(project_path: &Path, debt_items: &[DebtItem]) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let tickets_dir = project_path.join(".pmat-tickets");
     std::fs::create_dir_all(&tickets_dir)?;
 

@@ -80,11 +80,6 @@ pub trait Scorer: Send + Sync {
     /// # Returns
     /// * `ScorerResult<CategoryScore>` - The score earned and max possible
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         self.score_with_mode(project_path, ScoringMode::default())
     }
 
@@ -140,11 +135,6 @@ pub trait Scorer: Send + Sync {
     ///
     /// Default implementation returns empty vec
     fn recommendations(&self, _project_path: &Path) -> Vec<String> {
-        debug_assert!(
-            _project_path.exists(),
-            "_project_path must exist: {}",
-            _project_path.display()
-        );
         Vec::new()
     }
 }

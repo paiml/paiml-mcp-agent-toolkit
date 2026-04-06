@@ -141,7 +141,6 @@ impl Default for AgentState {
 impl AgentState {
     /// Convert to JSON string
     fn to_json(&self) -> Result<String> {
-        debug_assert!(true, "contract: to_json");
         serde_json::to_string_pretty(self).context("Failed to serialize state")
     }
 }

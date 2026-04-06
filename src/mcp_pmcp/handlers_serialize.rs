@@ -4,7 +4,6 @@
 fn serialize_state(
     state_machine: &crate::models::refactor::RefactorStateMachine,
 ) -> Result<Value, Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: serialize_state");
     let state_json = match &state_machine.current {
         crate::models::refactor::State::Scan { targets } => {
             json!({

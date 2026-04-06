@@ -4,7 +4,6 @@
 impl RustBorrowChecker {
     /// Create memory safety annotation
     fn memory_safety_annotation(&self) -> ProofAnnotation {
-        debug_assert!(true, "contract: memory_safety_annotation");
         ProofAnnotation {
             annotation_id: uuid::Uuid::new_v4(),
             property_proven: PropertyType::MemorySafety,
@@ -25,7 +24,6 @@ impl RustBorrowChecker {
 
     /// Create thread safety annotation
     fn create_thread_safety_annotation(&self) -> ProofAnnotation {
-        debug_assert!(true, "contract: create_thread_safety_annotation");
         ProofAnnotation {
             annotation_id: uuid::Uuid::new_v4(),
             property_proven: PropertyType::ThreadSafety,
@@ -46,7 +44,6 @@ impl RustBorrowChecker {
 
     /// Create const fn termination annotation
     fn const_fn_termination(&self) -> ProofAnnotation {
-        debug_assert!(true, "contract: const_fn_termination");
         ProofAnnotation {
             annotation_id: uuid::Uuid::new_v4(),
             property_proven: PropertyType::Termination,
@@ -65,7 +62,6 @@ impl RustBorrowChecker {
     /// Create auto trait annotation
     #[cfg(all(feature = "rust-ast", feature = "quote"))]
     fn auto_trait_annotation(&self, trait_path: &syn::Path) -> ProofAnnotation {
-        debug_assert!(true, "contract: auto_trait_annotation");
         let trait_name = quote::quote!(#trait_path).to_string();
         let property = match trait_name.as_str() {
             "Send" | "Sync" => PropertyType::ThreadSafety,
@@ -90,7 +86,6 @@ impl RustBorrowChecker {
     /// Create auto trait annotation without quote
     #[cfg(all(feature = "rust-ast", not(feature = "quote")))]
     fn auto_trait_annotation(&self, trait_path: &syn::Path) -> ProofAnnotation {
-        debug_assert!(true, "contract: auto_trait_annotation");
         let trait_name = if let Some(segment) = trait_path.segments.last() {
             segment.ident.to_string()
         } else {

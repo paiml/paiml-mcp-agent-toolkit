@@ -26,7 +26,6 @@ impl GitHubMcpIntegration {
     /// Create GitHub Issues service for MCP integration
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_github_service(token: &str) -> Result<GitHubIssuesService, String> {
-        debug_assert!(!token.is_empty(), "token must not be empty");
         GitHubIssuesService::new(token)
             .map_err(|e| format!("Failed to create GitHub service: {}", e))
     }
@@ -124,7 +123,6 @@ mod property_tests {
 
         #[test] 
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

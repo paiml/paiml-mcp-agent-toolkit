@@ -46,8 +46,6 @@ async fn generate_enhanced_ast_context(
     format: ContextFormat,
     include_large_files: bool,
 ) -> Result<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     // GH-46: --include-large-files not yet implemented
     if include_large_files {
         eprintln!("Warning: --include-large-files is not yet implemented. Flag ignored.");
@@ -66,7 +64,6 @@ fn find_file_metrics<'a>(
     file: &crate::services::context::FileContext,
     analyses: &'a crate::services::deep_context::AnalysisResults,
 ) -> Option<&'a crate::services::complexity::FileComplexityMetrics> {
-    debug_assert!(true, "contract: find_file_metrics");
     analyses.complexity_report.as_ref().and_then(|report| {
         report.files.iter().find(|f| {
             use std::path::Path;
@@ -90,7 +87,6 @@ fn find_file_metrics<'a>(
 
 /// Generate minimal SARIF v2.1 stub
 fn generate_sarif_stub(toolchain: &str, project_path: &Path) -> Result<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let sarif = serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",
@@ -118,7 +114,6 @@ fn generate_sarif_stub(toolchain: &str, project_path: &Path) -> Result<String> {
 
 /// Detect toolchain or use provided one
 fn detect_or_use_toolchain(toolchain: Option<String>, project_path: &Path) -> Result<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::io::{self, Write};
 
     if let Some(t) = toolchain {

@@ -75,7 +75,6 @@ impl FixedGraphBuilder {
 
     /// Group nodes by module path
     fn group_by_module(&self, graph: &DependencyGraph) -> HashMap<String, Vec<String>> {
-        debug_assert!(true, "contract: group_by_module");
         let mut groups: HashMap<String, Vec<String>> = HashMap::new();
 
         for (node_id, node) in &graph.nodes {
@@ -88,7 +87,6 @@ impl FixedGraphBuilder {
 
     /// Get the module name for a node
     fn get_module_name(&self, node: &NodeInfo) -> String {
-        debug_assert!(true, "contract: get_module_name");
         // Extract module from file path
         if !node.file_path.is_empty() {
             let parts: Vec<&str> = node.file_path.split('/').collect();
@@ -117,7 +115,6 @@ impl FixedGraphBuilder {
         graph: &DependencyGraph,
         groups: &HashMap<String, Vec<String>>,
     ) -> HashMap<String, f64> {
-        debug_assert!(true, "contract: calculate_pagerank");
         let damping_factor = 0.85;
         let iterations = 10;
         let num_nodes = graph.nodes.len() as f64;
@@ -179,7 +176,6 @@ impl FixedGraphBuilder {
         scores: HashMap<String, f64>,
         groups: &HashMap<String, Vec<String>>,
     ) -> Vec<String> {
-        debug_assert!(true, "contract: select_top_nodes");
         // Sort groups by score
         let mut sorted_groups: Vec<(String, f64)> = scores.into_iter().collect();
         sorted_groups.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -212,7 +208,6 @@ impl FixedGraphBuilder {
         selected_nodes: Vec<String>,
         original_graph: &DependencyGraph,
     ) -> Result<FixedGraph> {
-        debug_assert!(!selected_nodes.is_empty(), "selected_nodes must not be empty");
         let selected_set: HashSet<_> = selected_nodes.iter().cloned().collect();
         let mut nodes = BTreeMap::new();
         let mut edges = Vec::new();

@@ -14,22 +14,18 @@ struct SatdArgs {
 }
 
 fn default_true() -> bool {
-    debug_assert!(true, "contract: default_true");
     true
 }
 
 fn default_summary_format() -> String {
-    debug_assert!(true, "contract: default_summary_format");
     "summary".to_string()
 }
 
 fn parse_satd_args(arguments: serde_json::Value) -> Result<SatdArgs, String> {
-    debug_assert!(true, "contract: parse_satd_args");
     serde_json::from_value(arguments).map_err(|e| format!("Invalid analyze_satd arguments: {e}"))
 }
 
 fn create_satd_detector(strict: bool) -> crate::services::satd_detector::SATDDetector {
-    debug_assert!(true, "contract: create_satd_detector");
     use crate::services::satd_detector::SATDDetector;
 
     if strict {
@@ -42,7 +38,6 @@ fn create_satd_detector(strict: bool) -> crate::services::satd_detector::SATDDet
 async fn execute_satd_analysis(
     args: &SatdArgs,
 ) -> Result<crate::services::satd_detector::SATDAnalysisResult, String> {
-    debug_assert!(true, "contract: execute_satd_analysis");
     use std::path::Path;
 
     let detector = create_satd_detector(args.strict);
@@ -61,7 +56,6 @@ fn filter_satd_items(
     crate::services::satd_detector::SATDAnalysisResult,
     Vec<crate::services::satd_detector::TechnicalDebt>,
 ) {
-    debug_assert!(true, "contract: filter_satd_items");
     use crate::services::satd_detector::Severity;
 
     let items = if critical_only {
@@ -81,7 +75,6 @@ fn format_satd_json_output(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     items: &[crate::services::satd_detector::TechnicalDebt],
 ) -> serde_json::Value {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     json!({
         "project_path": args.project_path,
         "total_debt_items": result.summary.total_items,
@@ -102,7 +95,6 @@ fn format_satd_json_output(
 fn build_satd_summary_header(
     result: &crate::services::satd_detector::SATDAnalysisResult,
 ) -> String {
-    debug_assert!(true, "contract: build_satd_summary_header");
     let mut summary = String::from("SATD Analysis Summary\n");
     summary.push_str("====================\n");
     summary.push_str(&format!(
@@ -132,7 +124,6 @@ fn group_and_sort_satd_items(
     &std::path::Path,
     Vec<&crate::services::satd_detector::TechnicalDebt>,
 )> {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     use std::collections::HashMap;
 
     let mut files_map: HashMap<
@@ -153,7 +144,6 @@ fn format_satd_summary_output(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     items: &[crate::services::satd_detector::TechnicalDebt],
 ) -> serde_json::Value {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     let mut summary = build_satd_summary_header(result);
     let sorted_files = group_and_sort_satd_items(items);
 
@@ -180,7 +170,6 @@ fn format_satd_output(
     result: &crate::services::satd_detector::SATDAnalysisResult,
     items: &[crate::services::satd_detector::TechnicalDebt],
 ) -> serde_json::Value {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     match args.format.as_str() {
         "json" => format_satd_json_output(args, result, items),
         _ => format_satd_summary_output(result, items),
@@ -228,12 +217,10 @@ struct LintHotspotArgs {
 }
 
 fn default_min_violations() -> usize {
-    debug_assert!(true, "contract: default_min_violations");
     1
 }
 
 fn default_table_format() -> String {
-    debug_assert!(true, "contract: default_table_format");
     "table".to_string()
 }
 
@@ -246,7 +233,6 @@ async fn execute_lint_hotspot_analysis(
     args: &LintHotspotArgs,
     project_path: &Path,
 ) -> Result<std::path::PathBuf, String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::handlers::lint_hotspot_handlers::handle_analyze_lint_hotspot;
     use crate::cli::LintHotspotOutputFormat;
 
@@ -279,7 +265,6 @@ async fn execute_lint_hotspot_analysis(
 async fn read_and_parse_lint_output(
     output_path: &std::path::Path,
 ) -> Result<serde_json::Value, String> {
-    debug_assert!(true, "contract: read_and_parse_lint_output");
     let json_output = tokio::fs::read_to_string(output_path)
         .await
         .map_err(|e| format!("Failed to read temporary file: {e}"))?;
@@ -295,7 +280,6 @@ struct LintHotspotData {
 }
 
 fn extract_lint_data(lint_data: &serde_json::Value) -> LintHotspotData {
-    debug_assert!(true, "contract: extract_lint_data");
     LintHotspotData {
         hotspots: lint_data["hotspots"].as_array().unwrap_or(&vec![]).clone(),
         total_files: lint_data["total_files_analyzed"].as_u64().unwrap_or(0) as usize,
@@ -307,7 +291,6 @@ fn extract_lint_data(lint_data: &serde_json::Value) -> LintHotspotData {
 }
 
 fn format_lint_hotspot_output(args: &LintHotspotArgs, data: &LintHotspotData) -> serde_json::Value {
-    debug_assert!(true, "contract: format_lint_hotspot_output");
     match args.format.as_str() {
         "json" => format_json_output(args, data),
         "csv" => format_csv_output(),
@@ -316,7 +299,6 @@ fn format_lint_hotspot_output(args: &LintHotspotArgs, data: &LintHotspotData) ->
 }
 
 fn format_json_output(args: &LintHotspotArgs, data: &LintHotspotData) -> serde_json::Value {
-    debug_assert!(true, "contract: format_json_output");
     json!({
         "project_path": args.project_path,
         "total_files_analyzed": data.total_files,
@@ -327,7 +309,6 @@ fn format_json_output(args: &LintHotspotArgs, data: &LintHotspotData) -> serde_j
 }
 
 fn format_csv_output() -> serde_json::Value {
-    debug_assert!(true, "contract: format_csv_output");
     json!({
         "formatted_output": "file_path,violations,lines_of_code,defect_density\n",
         "content_type": "text/csv"
@@ -335,7 +316,6 @@ fn format_csv_output() -> serde_json::Value {
 }
 
 fn format_table_output(data: &LintHotspotData) -> serde_json::Value {
-    debug_assert!(true, "contract: format_table_output");
     let mut table = String::from("Lint Hotspot Analysis\n");
     table.push_str("====================\n");
     table.push_str(&format!("Total files analyzed: {}\n", data.total_files));

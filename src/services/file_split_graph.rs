@@ -7,7 +7,6 @@ fn build_intra_file_graph(
     func_indices: &[usize],
     global_to_local: &HashMap<usize, usize>,
 ) -> (UndirectedGraph, HashMap<usize, usize>) {
-    debug_assert!(true, "contract: build_intra_file_graph");
     let mut graph = UndirectedGraph::new();
     let mut local_to_node: HashMap<usize, crate::graph::types::NodeId> = HashMap::new();
     let mut node_to_local: HashMap<usize, usize> = HashMap::new();
@@ -50,7 +49,6 @@ fn collect_intra_file_edges(
     global_to_local: &HashMap<usize, usize>,
     local_to_node: &HashMap<usize, crate::graph::types::NodeId>,
 ) -> Vec<(crate::graph::types::NodeId, crate::graph::types::NodeId)> {
-    debug_assert!(true, "contract: collect_intra_file_edges");
     let mut edges = Vec::new();
     for &global_idx in func_indices {
         let Some(&local_src) = global_to_local.get(&global_idx) else {
@@ -80,7 +78,6 @@ fn collect_intra_file_edges(
 
 /// Simple connected components for small graphs (fallback when < 10 functions).
 fn connected_components(graph: &UndirectedGraph) -> Vec<usize> {
-    debug_assert!(true, "contract: connected_components");
     let n = graph.node_count();
     if n == 0 {
         return Vec::new();
@@ -122,7 +119,6 @@ fn make_cluster_item(
     func_indices: &[usize],
     global_to_local: &HashMap<usize, usize>,
 ) -> ClusterItem {
-    debug_assert!(true, "contract: make_cluster_item");
     let entry = local_entries[local_idx];
     let global_idx = func_indices[local_idx];
 

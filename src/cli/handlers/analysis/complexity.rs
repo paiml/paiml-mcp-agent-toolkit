@@ -27,7 +27,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
@@ -51,7 +50,6 @@ mod unit_tests {
     fn test_module_exports_handler() {
         // This test verifies that the handler function is accessible
         fn _verify_export() {
-            debug_assert!(true, "contract: _verify_export");
             let _complexity: fn(AnalyzeCommands) -> _ = handle_complexity;
         }
     }
@@ -60,7 +58,6 @@ mod unit_tests {
     #[test]
     fn test_result_type_compatibility() {
         fn _check_result_type() -> Result<()> {
-            debug_assert!(true, "contract: _check_result_type");
             Ok(())
         }
         assert!(_check_result_type().is_ok());
@@ -72,7 +69,6 @@ mod unit_tests {
         // The handle_complexity function is async, verified by its usage
         // This test ensures the async nature is preserved
         fn _verify_async_nature() {
-            debug_assert!(true, "contract: _verify_async_nature");
             // Can only call handle_complexity in async context
             // This compile-time check ensures it's async
         }

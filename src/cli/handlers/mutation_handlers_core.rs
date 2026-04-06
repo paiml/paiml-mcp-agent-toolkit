@@ -73,7 +73,6 @@ pub async fn handle_mutate(
     format: OutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     print_header(&path, &config.operators);
     validate_path(&path)?;
 
@@ -100,7 +99,6 @@ pub async fn handle_mutate(
 
 /// Print mutation testing header
 fn print_header(path: &PathBuf, operators: &Option<Vec<String>>) {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("🧬 Mutation Testing");
     println!("Path: {}", path.display());
 
@@ -113,7 +111,6 @@ fn print_header(path: &PathBuf, operators: &Option<Vec<String>>) {
 
 /// Validate path exists
 fn validate_path(path: &PathBuf) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !path.exists() {
         anyhow::bail!("Path does not exist: {}", path.display());
     }
@@ -132,7 +129,6 @@ async fn generate_mutants(
     engine: &MutationEngine,
     path: &PathBuf,
 ) -> Result<Vec<crate::services::mutation::Mutant>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("\n📝 Generating mutants...");
 
     let mutants = if path.is_file() {
@@ -157,7 +153,6 @@ async fn execute_mutants(
     distributed: bool,
     workers: usize,
 ) -> Result<Vec<crate::services::mutation::MutationResult>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     println!("\n🧪 Running tests on mutants...");
 
     let work_dir = path
@@ -184,7 +179,6 @@ async fn execute_mutants(
 
 /// Validate mutation score meets threshold
 fn validate_score_threshold(score: &MutationScore, min_score: Option<f64>) -> Result<()> {
-    debug_assert!(true, "contract: validate_score_threshold");
     if let Some(min) = min_score {
         if score.score < min {
             anyhow::bail!(
@@ -204,7 +198,6 @@ fn format_report(
     operators: &Option<Vec<String>>,
     format: OutputFormat,
 ) -> serde_json::Value {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     match format {
         OutputFormat::Json => format_json_report(score, results, operators),
         _ => format_summary_report(score),
@@ -217,7 +210,6 @@ fn format_json_report(
     results: &[crate::services::mutation::MutationResult],
     operators: &Option<Vec<String>>,
 ) -> serde_json::Value {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     serde_json::json!({
         "mutation_score": score.score,
         "total_mutants": score.total,
@@ -245,7 +237,6 @@ fn format_json_report(
 
 /// Format summary report
 fn format_summary_report(score: &MutationScore) -> serde_json::Value {
-    debug_assert!(true, "contract: format_summary_report");
     serde_json::json!({
         "summary": format!(
             "Mutation Score: {:.2}% ({}/{} mutants killed)",
@@ -262,7 +253,6 @@ fn format_summary_report(score: &MutationScore) -> serde_json::Value {
 
 /// Output report to file or console
 async fn output_report(report: &serde_json::Value, output: Option<PathBuf>) -> Result<()> {
-    debug_assert!(true, "contract: output_report");
     if let Some(output_path) = output {
         let output_str = serde_json::to_string_pretty(report)?;
         tokio::fs::write(&output_path, output_str).await?;
@@ -276,7 +266,6 @@ async fn output_report(report: &serde_json::Value, output: Option<PathBuf>) -> R
 
 /// Print summary statistics
 fn print_summary(score: &MutationScore) {
-    debug_assert!(true, "contract: print_summary");
     println!("\n✅ Mutation testing complete!");
     println!("   Mutation score: {:.2}%", score.score * 100.0);
     println!(

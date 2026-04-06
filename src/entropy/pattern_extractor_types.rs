@@ -96,7 +96,6 @@ impl PatternCollection {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_patterns_for_file(&self, file: &Path) -> Vec<&AstPattern> {
-        debug_assert!(file.exists(), "file must exist: {}", file.display());
         self.file_patterns
             .get(file)
             .map(|hashes| hashes.iter().filter_map(|h| self.patterns.get(h)).collect())

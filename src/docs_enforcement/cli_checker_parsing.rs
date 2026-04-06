@@ -6,7 +6,6 @@
 /// Parses help output to find all documented flags.
 /// Returns flags like ["--help", "--verbose", "-v", etc.]
 fn extract_flags_from_help(help_text: &str) -> Vec<String> {
-    debug_assert!(!help_text.is_empty(), "help_text must not be empty");
     let mut flags = Vec::new();
     let options_lines = extract_options_section_lines(help_text);
 
@@ -21,7 +20,6 @@ fn extract_flags_from_help(help_text: &str) -> Vec<String> {
 
 /// Extract lines from the Options/FLAGS section
 fn extract_options_section_lines(help_text: &str) -> Vec<&str> {
-    debug_assert!(!help_text.is_empty(), "help_text must not be empty");
     let mut section_lines = Vec::new();
     let mut in_options_section = false;
 
@@ -47,13 +45,11 @@ fn extract_options_section_lines(help_text: &str) -> Vec<&str> {
 
 /// Check if line marks the start of options section
 fn is_options_section_start(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     line.contains("Options:") || line.contains("FLAGS:")
 }
 
 /// Check if line is a section boundary (end of current section)
 fn is_section_boundary(line: &str, in_section: bool) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     in_section && !line.trim().is_empty() && !line.starts_with(' ')
 }
 
@@ -61,7 +57,6 @@ fn is_section_boundary(line: &str, in_section: bool) -> bool {
 /// Format: "  -f, --flag <VALUE>    Description"
 /// Returns: Some(vec!["-f", "--flag"]) or None
 fn parse_flags_from_line(line: &str) -> Option<Vec<String>> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim_start();
     if !trimmed.starts_with('-') {
         return None;
@@ -87,7 +82,6 @@ fn parse_flags_from_line(line: &str) -> Option<Vec<String>> {
 
 /// Extract primary flag name from a help line
 fn extract_flag_name(line: &str) -> String {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim_start();
     if let Some(long_flag) = trimmed.split_whitespace().find(|w| w.starts_with("--")) {
         long_flag.trim_end_matches(',').to_string()
@@ -110,7 +104,6 @@ pub fn find_undocumented_flags(
     expected_flags: &[&str],
     documented_flags: &[String],
 ) -> Vec<String> {
-    debug_assert!(!expected_flags.is_empty(), "expected_flags must not be empty");
     let documented_set: HashSet<String> = documented_flags.iter().map(|f| f.to_string()).collect();
 
     expected_flags

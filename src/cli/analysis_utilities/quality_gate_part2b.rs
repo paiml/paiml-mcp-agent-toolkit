@@ -5,7 +5,6 @@ async fn output_project_results(
     format: QualityGateOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let content = format_quality_gate_output(results, violations, format)?;
 
     if let Some(output_path) = output {
@@ -23,7 +22,6 @@ async fn output_project_results(
 
 /// Prints the final quality gate status
 fn print_quality_gate_final_status(results: &QualityGateResults, violations: &[QualityViolation]) {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     if results.passed {
         eprintln!("\n✅ Quality gate PASSED");
     } else {
@@ -33,7 +31,6 @@ fn print_quality_gate_final_status(results: &QualityGateResults, violations: &[Q
 
 /// Handles the exit status based on quality gate results
 fn handle_quality_gate_exit_status(fail_on_violation: bool, passed: bool) {
-    debug_assert!(true, "contract: handle_quality_gate_exit_status");
     if fail_on_violation && !passed {
         eprintln!("\n❌ Quality gate FAILED");
         std::process::exit(1);
@@ -50,7 +47,6 @@ fn persist_violations_to_sqlite(
     violations: &[QualityViolation],
     quiet: bool,
 ) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let db_path = project_path.join(".pmat").join("context.db");
     if !db_path.exists() {
         if !quiet {
@@ -104,7 +100,6 @@ fn persist_entropy_details_to_sqlite(
     violations: &[QualityViolation],
     quiet: bool,
 ) {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let entropy_tuples: Vec<_> = violations
         .iter()
         .filter(|v| v.check_type == "entropy")
@@ -129,7 +124,6 @@ fn persist_entropy_details_to_sqlite(
 fn entropy_violation_to_tuple(
     v: &QualityViolation,
 ) -> Option<(String, String, String, usize, f64, usize, String, Option<String>)> {
-    debug_assert!(true, "contract: entropy_violation_to_tuple");
     let details = v.details.as_ref()?;
     let (pattern_type, repetitions, variation_score) = parse_entropy_score_factors(&details.score_factors);
     let loc_reduction = parse_loc_reduction(&v.message);
@@ -148,7 +142,6 @@ fn entropy_violation_to_tuple(
 
 /// Parse score_factors strings to extract pattern_type, repetitions, variation_score.
 fn parse_entropy_score_factors(factors: &[String]) -> (String, usize, f64) {
-    debug_assert!(!factors.is_empty(), "factors must not be empty");
     let mut pattern_type = String::new();
     let mut repetitions: usize = 0;
     let mut variation_score: f64 = 0.0;
@@ -166,7 +159,6 @@ fn parse_entropy_score_factors(factors: &[String]) -> (String, usize, f64) {
 
 /// Parse "saves N lines" from a violation message to extract LOC reduction.
 fn parse_loc_reduction(message: &str) -> usize {
-    debug_assert!(true, "contract: parse_loc_reduction");
     message
         .find("saves ")
         .and_then(|i| {
@@ -185,7 +177,6 @@ pub(crate) async fn persist_provability_to_sqlite(
     project_path: &std::path::Path,
     quiet: bool,
 ) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let db_path = project_path.join(".pmat").join("context.db");
     if !db_path.exists() {
         return;

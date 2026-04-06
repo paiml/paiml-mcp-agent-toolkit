@@ -50,7 +50,6 @@ impl LanguageStrategy for PlaceholderStrategy {
     }
 
     fn can_parse(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check file extension
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             if self.extensions.contains(&ext) {
@@ -69,28 +68,23 @@ impl LanguageStrategy for PlaceholderStrategy {
     }
 
     async fn parse_file(&self, _path: &Path, _content: &str) -> Result<AstDag> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Return a basic AST with minimal structure
         Ok(AstDag::new())
     }
 
     fn extract_imports(&self, _ast: &AstDag) -> Vec<String> {
-        debug_assert!(true, "contract: extract_imports");
         Vec::new()
     }
 
     fn extract_functions(&self, _ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_functions");
         Vec::new()
     }
 
     fn extract_types(&self, _ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_types");
         Vec::new()
     }
 
     fn calculate_complexity(&self, _ast: &AstDag) -> (u32, u32) {
-        debug_assert!(true, "contract: calculate_complexity");
         (1, 0) // Base complexity
     }
 }

@@ -422,28 +422,24 @@ impl UniformCommandHandler {
     }
 
     async fn handle_complexity_analysis(&self, args: UniformComplexityArgs) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: handle_complexity_analysis");
         let contract = AnalyzeComplexityContract::from(args);
         let result = self.service.analyze_complexity(contract).await?;
         self.output_result(result)
     }
 
     async fn handle_satd_analysis(&self, args: UniformSatdArgs) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: handle_satd_analysis");
         let contract = AnalyzeSatdContract::from(args);
         let result = self.service.analyze_satd(contract).await?;
         self.output_result(result)
     }
 
     async fn handle_dead_code_analysis(&self, args: UniformDeadCodeArgs) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: handle_dead_code_analysis");
         let contract = AnalyzeDeadCodeContract::from(args);
         let result = self.service.analyze_dead_code(contract).await?;
         self.output_result(result)
     }
 
     async fn handle_tdg_analysis(&self, args: UniformTdgArgs) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: handle_tdg_analysis");
         let contract = AnalyzeTdgContract::from(args);
         let result = self.service.analyze_tdg(contract).await?;
         self.output_result(result)
@@ -453,14 +449,12 @@ impl UniformCommandHandler {
         &self,
         args: UniformLintHotspotArgs,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: handle_lint_hotspot_analysis");
         let contract = AnalyzeLintHotspotContract::from(args);
         let result = self.service.analyze_lint_hotspot(contract).await?;
         self.output_result(result)
     }
 
     fn output_result(&self, result: serde_json::Value) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: output_result");
         match result {
             serde_json::Value::String(s) => println!("{s}"),
             other => println!("{}", serde_json::to_string_pretty(&other)?),

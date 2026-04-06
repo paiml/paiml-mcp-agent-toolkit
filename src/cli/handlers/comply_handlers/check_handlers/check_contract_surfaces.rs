@@ -32,7 +32,6 @@ const GENERIC_PLACEHOLDERS: &[&str] = &[
 /// Also detects semantic leaks: API-pattern contracts disguised as kernel-math.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_contract_surface_classification(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -182,7 +181,6 @@ pub(crate) fn check_contract_surface_classification(project_path: &Path) -> Comp
 /// WARN if any clap arg structs lack validation contracts.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_cli_arg_contracts(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     if !src_dir.exists() {
         return ComplianceCheck {
@@ -277,7 +275,6 @@ pub(crate) fn check_cli_arg_contracts(project_path: &Path) -> ComplianceCheck {
 /// --lib flag in cargo test) and Cargo.toml for sovereign dep contracts.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_config_contracts(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut issues: Vec<String> = Vec::new();
     let mut checks_run = 0usize;
 
@@ -329,7 +326,6 @@ pub(crate) fn check_config_contracts(project_path: &Path) -> ComplianceCheck {
 /// meet minimum version contracts. Also checks for adapter pattern.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_sovereign_dep_contracts(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() {
         return ComplianceCheck {
@@ -429,7 +425,6 @@ pub(crate) fn check_sovereign_dep_contracts(project_path: &Path) -> ComplianceCh
 /// for schema documentation. WARN if >20 arg structs lack doc comments.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_mcp_schema_contracts(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mcp_dir = project_path.join("src").join("mcp_pmcp");
     if !mcp_dir.exists() {
         return ComplianceCheck {
@@ -532,7 +527,6 @@ pub(crate) fn check_mcp_schema_contracts(project_path: &Path) -> ComplianceCheck
 /// preconditions (not placeholders).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_tui_widget_contracts(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
     // Check if this is a presentar-like project (has presentar-core dep or crate)
     // Only flag as presentar project if it HAS the presentar-core crate as workspace member
@@ -635,7 +629,6 @@ pub(crate) fn check_tui_widget_contracts(project_path: &Path) -> ComplianceCheck
 /// functions use Result<_, JsValue> (not panic) and have doc comments.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check if WASM target exists
     let has_wasm_dep = project_path.join("Cargo.toml").exists()
         && std::fs::read_to_string(project_path.join("Cargo.toml"))
@@ -788,7 +781,6 @@ pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
 /// Behaves like `pmat tdg` — names every violating file.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_verification_ladder(project_path: &Path) -> ComplianceCheck {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -916,7 +908,6 @@ enum ContractClass {
 
 /// Extract top-level YAML keys (lines at column 0 ending with ':')
 fn extract_top_level_keys(content: &str) -> Vec<String> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .filter(|l| {
@@ -948,7 +939,6 @@ const SCHEMA_REGISTRY_KEYS: &[&str] = &[
 
 /// Classify a contract by its top-level keys and precondition content.
 fn classify_contract(top_keys: &[String], content: &str) -> ContractClass {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let has_equations = top_keys.iter().any(|k| k == "equations");
     let has_enforcement_level = content
         .lines()
@@ -990,7 +980,6 @@ fn classify_contract(top_keys: &[String], content: &str) -> ContractClass {
 /// Detect if a contract is a generic API pattern with only placeholder assertions.
 /// Checks BOTH preconditions AND postconditions + invariant text.
 fn is_generic_api_pattern(content: &str) -> bool {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut assertions: Vec<String> = Vec::new();
     let mut in_list = false;
 
@@ -1035,7 +1024,6 @@ fn check_workflow_contracts(
     issues: &mut Vec<String>,
     checks_run: &mut usize,
 ) {
-    debug_assert!(workflows_dir.exists(), "workflows_dir must exist: {}", workflows_dir.display());
     let Ok(entries) = std::fs::read_dir(workflows_dir) else {
         return;
     };
@@ -1084,7 +1072,6 @@ fn check_cargo_contracts(
     issues: &mut Vec<String>,
     checks_run: &mut usize,
 ) {
-    debug_assert!(cargo_toml.exists(), "cargo_toml must exist: {}", cargo_toml.display());
     let Ok(content) = std::fs::read_to_string(cargo_toml) else {
         return;
     };
@@ -1101,7 +1088,6 @@ fn check_cargo_contracts(
 
 /// Extract dependency version from Cargo.toml content.
 fn extract_dep_version<'a>(content: &'a str, dep_name: &str) -> Option<&'a str> {
-    debug_assert!(!dep_name.is_empty(), "dep_name must not be empty");
     for line in content.lines() {
         let trimmed = line.trim();
         // Must start with dep name followed by space or =
@@ -1141,8 +1127,6 @@ fn extract_dep_version<'a>(content: &'a str, dep_name: &str) -> Option<&'a str> 
 
 /// Simple semver minimum check: does `actual` >= `minimum`?
 fn version_satisfies_minimum(actual: &str, minimum: &str) -> bool {
-    debug_assert!(!actual.is_empty(), "actual must not be empty");
-    debug_assert!(!minimum.is_empty(), "minimum must not be empty");
     let parse = |v: &str| -> Vec<u32> {
         v.split('.')
             .filter_map(|s| s.parse().ok())

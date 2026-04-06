@@ -109,7 +109,6 @@ impl StructuralAnalyzer {
 
 /// Compute reciprocity: fraction of edges that have a reverse edge.
 fn compute_reciprocity(graph: &DependencyGraph) -> f64 {
-    debug_assert!(true, "contract: compute_reciprocity");
     if graph.edge_count() == 0 {
         return 0.0;
     }
@@ -259,7 +258,6 @@ mod tests {
     use std::path::PathBuf;
 
     fn make_test_node(name: &str) -> NodeData {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         NodeData {
             path: PathBuf::from(format!("{}.rs", name)),
             module: name.to_string(),
@@ -271,7 +269,6 @@ mod tests {
     }
 
     fn make_test_edge() -> EdgeData {
-        debug_assert!(true, "contract: make_test_edge");
         EdgeData::Import {
             weight: 1.0,
             visibility: Visibility::Public,

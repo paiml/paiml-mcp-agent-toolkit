@@ -3,7 +3,6 @@
 
 impl TdgAnalyzer {
     fn estimate_cyclomatic_complexity(&self, lines: &[&str]) -> u32 {
-        debug_assert!(!lines.is_empty(), "lines must not be empty");
         let mut complexity = 1;
 
         for line in lines {
@@ -16,7 +15,6 @@ impl TdgAnalyzer {
     }
 
     fn estimate_nesting_depth(&self, source: &str) -> usize {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut max_depth = 0;
         let mut current_depth = 0;
 
@@ -35,7 +33,6 @@ impl TdgAnalyzer {
     }
 
     fn estimate_duplication_ratio(&self, source: &str) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source
             .lines()
             .map(str::trim)
@@ -59,14 +56,12 @@ impl TdgAnalyzer {
     }
 
     fn discover_files(&self, dir: &Path) -> Result<Vec<PathBuf>> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut files = Vec::new();
         self.discover_files_recursive(dir, &mut files)?;
         Ok(files)
     }
 
     fn discover_files_recursive(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         if !dir.is_dir() {
             return Ok(());
         }
@@ -88,7 +83,6 @@ impl TdgAnalyzer {
     }
 
     fn should_skip_directory(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
             matches!(
                 name,
@@ -112,7 +106,6 @@ impl TdgAnalyzer {
     }
 
     fn should_analyze_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             matches!(
                 ext,
@@ -145,7 +138,6 @@ impl TdgAnalyzer {
 /// Skips line comments (`--`) and nested block comments (`/- ... -/`).
 /// Uses word-boundary checking to avoid false positives from identifiers.
 fn count_lean_sorry(source: &str) -> usize {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut count = 0;
     let mut in_block_comment: i32 = 0;
 
@@ -176,7 +168,6 @@ fn count_lean_sorry(source: &str) -> usize {
 
 /// Strips Lean block comment content (`/- ... -/`) from a line.
 fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let mut result = String::with_capacity(line.len());
     let mut i = 0;
@@ -203,7 +194,6 @@ fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
 
 /// Checks if a line contains "sorry" as a standalone word.
 fn contains_lean_sorry_word(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let sorry = b"sorry";
 
@@ -229,7 +219,6 @@ fn contains_lean_sorry_word(line: &str) -> bool {
 
 /// Count control flow keywords in a single trimmed line.
 fn count_control_flow_keywords(trimmed: &str) -> u32 {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let mut count = 0;
     if trimmed.starts_with("if ") || trimmed.contains(" if ") {
         count += 1;
@@ -248,7 +237,6 @@ fn count_control_flow_keywords(trimmed: &str) -> u32 {
 
 /// Count logical operators (&& and ||) in a single trimmed line.
 fn count_logical_operators(trimmed: &str) -> u32 {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     if trimmed.contains(" && ") || trimmed.contains(" || ") {
         trimmed.matches(" && ").count() as u32 + trimmed.matches(" || ").count() as u32
     } else {

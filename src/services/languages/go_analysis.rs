@@ -7,7 +7,6 @@ impl GoAstVisitor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
@@ -19,7 +18,6 @@ impl GoAstVisitor {
     /// Analyzes Go source code and extracts AST items (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_go_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -34,7 +32,6 @@ impl GoAstVisitor {
 
     /// Extracts package declaration (complexity ≤10)
     fn extract_package_declaration(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for line in source.lines() {
             let trimmed = line.trim();
             if trimmed.starts_with("package ") {
@@ -51,7 +48,6 @@ impl GoAstVisitor {
 
     /// Extracts function declarations (complexity ≤10)
     fn extract_function_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut in_function = false;
         let mut brace_depth = 0;
 
@@ -83,7 +79,6 @@ impl GoAstVisitor {
 
     /// Extracts type declarations (complexity ≤10)
     fn extract_type_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -105,7 +100,6 @@ impl GoAstVisitor {
 
     /// Extracts interface declarations (complexity ≤10)
     fn extract_interface_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -125,7 +119,6 @@ impl GoAstVisitor {
 
     /// Extracts function name from declaration line (complexity ≤10)
     fn extract_function_name(&self, line: &str) -> Result<String, String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
             let name_part = parts[1];
@@ -138,7 +131,6 @@ impl GoAstVisitor {
 
     /// Extracts type name from type declaration line (complexity ≤10)
     fn extract_type_name(&self, line: &str) -> Result<String, String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 2 {
             Ok(parts[1].to_string())
@@ -149,7 +141,6 @@ impl GoAstVisitor {
 
     /// Gets qualified name for a symbol (complexity ≤10)
     fn get_qualified_name(&self, name: &str) -> String {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if self.package_name.is_empty() {
             name.to_string()
         } else {
@@ -172,7 +163,6 @@ impl GoComplexityAnalyzer {
     /// Analyzes complexity of Go source code (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
         self.cognitive_complexity = 1;
 
@@ -200,7 +190,6 @@ impl GoComplexityAnalyzer {
 pub async fn analyze_go_file(
     path: &Path,
 ) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::error::TemplateError;
     use crate::services::context::FileContext;
 

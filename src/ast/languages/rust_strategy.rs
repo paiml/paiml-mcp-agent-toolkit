@@ -5,20 +5,17 @@ impl LanguageStrategy for RustStrategy {
     }
 
     fn can_parse(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| ext == "rs")
     }
 
     async fn parse_file(&self, _path: &Path, content: &str) -> Result<AstDag> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         let syn_file = self.parse_syn_file(content)?;
         Ok(self.convert_to_dag(&syn_file))
     }
 
     fn extract_imports(&self, ast: &AstDag) -> Vec<String> {
-        debug_assert!(true, "contract: extract_imports");
         // Iterate through nodes looking for imports
         let mut imports = Vec::new();
         for i in 0..ast.nodes.len() {
@@ -33,7 +30,6 @@ impl LanguageStrategy for RustStrategy {
     }
 
     fn extract_functions(&self, ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_functions");
         let mut functions = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -46,7 +42,6 @@ impl LanguageStrategy for RustStrategy {
     }
 
     fn extract_types(&self, ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_types");
         let mut types = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -59,7 +54,6 @@ impl LanguageStrategy for RustStrategy {
     }
 
     fn calculate_complexity(&self, ast: &AstDag) -> (u32, u32) {
-        debug_assert!(true, "contract: calculate_complexity");
         let mut cyclomatic = 1;
         let mut cognitive = 0;
 

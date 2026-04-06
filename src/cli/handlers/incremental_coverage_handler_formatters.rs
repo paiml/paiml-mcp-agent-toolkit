@@ -3,7 +3,6 @@
 
 /// Format as summary
 fn format_summary(result: &IncrementalCoverageResult, top_files: usize) -> String {
-    debug_assert!(true, "contract: format_summary");
     let mut output = String::new();
     output.push_str("# Incremental Coverage Summary\n\n");
     output.push_str(&result.summary);
@@ -25,7 +24,6 @@ fn format_summary(result: &IncrementalCoverageResult, top_files: usize) -> Strin
 
 /// Format as detailed report
 fn format_detailed(result: &IncrementalCoverageResult, top_files: usize) -> String {
-    debug_assert!(true, "contract: format_detailed");
     let mut output = String::new();
     output.push_str("# Incremental Coverage Detailed Report\n\n");
     output.push_str(&format!("Total files analyzed: {}\n", result.total_files));
@@ -64,7 +62,6 @@ fn format_detailed(result: &IncrementalCoverageResult, top_files: usize) -> Stri
 
 /// Format as Markdown
 fn format_markdown(result: &IncrementalCoverageResult, top_files: usize) -> String {
-    debug_assert!(true, "contract: format_markdown");
     let mut output = String::new();
     output.push_str("# Incremental Coverage Report\n\n");
     output.push_str(&format!("**Summary:** {}\n\n", result.summary));
@@ -107,7 +104,6 @@ fn format_markdown(result: &IncrementalCoverageResult, top_files: usize) -> Stri
 
 /// Format as LCOV
 fn format_lcov(result: &IncrementalCoverageResult) -> String {
-    debug_assert!(true, "contract: format_lcov");
     let mut output = String::new();
 
     for file in &result.changed_files {
@@ -123,7 +119,6 @@ fn format_lcov(result: &IncrementalCoverageResult) -> String {
 
 /// Format as delta report
 fn format_delta(result: &IncrementalCoverageResult, top_files: usize) -> String {
-    debug_assert!(true, "contract: format_delta");
     let mut output = String::new();
     output.push_str("Coverage Delta Report\n");
     output.push_str("====================\n\n");
@@ -170,7 +165,6 @@ fn format_delta(result: &IncrementalCoverageResult, top_files: usize) -> String 
 
 /// Format as SARIF
 fn format_sarif(result: &IncrementalCoverageResult) -> String {
-    debug_assert!(true, "contract: format_sarif");
     serde_json::json!({
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
         "version": "2.1.0",

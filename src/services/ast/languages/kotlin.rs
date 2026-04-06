@@ -31,7 +31,6 @@ impl KotlinStrategy {
 impl AstStrategy for KotlinStrategy {
     /// Analyzes a Kotlin file and returns a FileContext with AST information
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Read the file content
         let content = fs::read_to_string(file_path).await?;
         
@@ -62,19 +61,16 @@ impl AstStrategy for KotlinStrategy {
     
     /// Returns the primary file extension for Kotlin
     fn primary_extension(&self) -> &'static str {
-        debug_assert!(true, "contract: primary_extension");
         "kt"
     }
     
     /// Returns all file extensions supported by this strategy
     fn supported_extensions(&self) -> Vec<&'static str> {
-        debug_assert!(true, "contract: supported_extensions");
         vec!["kt", "kts"]
     }
     
     /// Returns the language name
     fn language_name(&self) -> &'static str {
-        debug_assert!(true, "contract: language_name");
         "Kotlin"
     }
 }
@@ -175,7 +171,6 @@ mod property_tests {
         
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

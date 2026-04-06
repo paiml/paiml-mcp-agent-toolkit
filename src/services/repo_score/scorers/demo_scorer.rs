@@ -58,11 +58,6 @@ impl Scorer for DemoScorer {
     }
 
     async fn score(&self, repo_path: &Path, _config: &ScorerConfig) -> Result<CategoryScore> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         // Detect repository archetype for calibrated scoring
         let archetype = self.detect_archetype(repo_path).await;
 

@@ -46,7 +46,6 @@ pub async fn handle_refactor_serve(params: RefactorServeParams) -> anyhow::Resul
 
 /// Extract parameters from `RefactorServeParams` into a cleaner struct
 fn extract_refactor_params(params: RefactorServeParams) -> ExtractedRefactorParams {
-    debug_assert!(true, "contract: extract_refactor_params");
     let RefactorServeParams {
         mode,
         config,
@@ -78,7 +77,6 @@ fn extract_refactor_params(params: RefactorServeParams) -> ExtractedRefactorPara
 
 /// Log refactor server startup information
 fn log_refactor_server_startup(params: &ExtractedRefactorParams) {
-    debug_assert!(true, "contract: log_refactor_server_startup");
     println!("🔧 Starting refactor server mode...");
     println!("📁 Project: {}", params.project.display());
     println!("⚙️  Mode: {:?}", params.mode);
@@ -91,7 +89,6 @@ fn log_refactor_server_startup(params: &ExtractedRefactorParams) {
 async fn setup_refactor_configuration(
     params: &ExtractedRefactorParams,
 ) -> anyhow::Result<RefactorConfig> {
-    debug_assert!(true, "contract: setup_refactor_configuration");
     let mut refactor_config = load_base_configuration(params).await?;
     apply_command_line_overrides(&mut refactor_config, params);
     Ok(refactor_config)
@@ -101,7 +98,6 @@ async fn setup_refactor_configuration(
 async fn load_base_configuration(
     params: &ExtractedRefactorParams,
 ) -> anyhow::Result<RefactorConfig> {
-    debug_assert!(true, "contract: load_base_configuration");
     if let Some(config_path) = &params.config {
         println!("📋 Loading config from: {}", config_path.display());
         load_refactor_config_json(config_path).await
@@ -112,7 +108,6 @@ async fn load_base_configuration(
 
 /// Apply command-line parameter overrides to configuration
 fn apply_command_line_overrides(config: &mut RefactorConfig, params: &ExtractedRefactorParams) {
-    debug_assert!(true, "contract: apply_command_line_overrides");
     if let Some(prio) = &params.priority {
         println!("🎯 Priority expression: {prio}");
         config.priority_expression = Some(prio.clone());
@@ -130,7 +125,6 @@ fn apply_command_line_overrides(config: &mut RefactorConfig, params: &ExtractedR
 
 /// Setup checkpoint directory for resume functionality
 async fn setup_checkpoint_directory(params: &ExtractedRefactorParams) -> anyhow::Result<PathBuf> {
-    debug_assert!(true, "contract: setup_checkpoint_directory");
     let checkpoint_path = params
         .checkpoint_dir
         .clone()
@@ -152,7 +146,6 @@ async fn setup_checkpoint_directory(params: &ExtractedRefactorParams) -> anyhow:
 fn setup_cache_and_ast_engine(
     memory_limit: usize,
 ) -> anyhow::Result<(Arc<UnifiedCacheManager>, Arc<UnifiedAstEngine>)> {
-    debug_assert!(true, "contract: setup_cache_and_ast_engine");
     let cache_config = crate::services::cache::unified::UnifiedCacheConfig {
         max_memory_mb: memory_limit / 2, // Use half the memory for cache
         ..Default::default()
@@ -164,7 +157,6 @@ fn setup_cache_and_ast_engine(
 
 /// Create engine mode based on refactor mode and checkpoint path
 fn create_engine_mode(params: &ExtractedRefactorParams, checkpoint_path: &Path) -> EngineMode {
-    debug_assert!(checkpoint_path.exists(), "checkpoint_path must exist: {}", checkpoint_path.display());
     match params.mode {
         RefactorMode::Batch => EngineMode::Batch {
             checkpoint_dir: checkpoint_path.to_path_buf(),
@@ -183,7 +175,6 @@ async fn discover_and_prioritize_targets(
     params: &ExtractedRefactorParams,
     config: &RefactorConfig,
 ) -> anyhow::Result<Vec<PathBuf>> {
-    debug_assert!(true, "contract: discover_and_prioritize_targets");
     let mut targets = discover_refactor_targets(&params.project).await?;
 
     if let Some(priority_expr) = &config.priority_expression {
@@ -207,7 +198,6 @@ async fn execute_refactor_engine(
     targets: Vec<PathBuf>,
     max_runtime: Option<u64>,
 ) -> anyhow::Result<Summary> {
-    debug_assert!(true, "contract: execute_refactor_engine");
     let mut engine = UnifiedEngine::new(ast_engine, cache, engine_mode, refactor_config, targets);
 
     if let Some(runtime_seconds) = max_runtime {
@@ -222,7 +212,6 @@ async fn execute_with_timeout(
     mut engine: UnifiedEngine,
     runtime_seconds: u64,
 ) -> anyhow::Result<Summary> {
-    debug_assert!(true, "contract: execute_with_timeout");
     let limit = Duration::from_secs(runtime_seconds);
     println!("⏱️  Maximum runtime: {} seconds", limit.as_secs());
 
@@ -239,7 +228,6 @@ async fn execute_with_timeout(
 
 /// Print refactor execution summary
 fn print_refactor_summary(summary: &Summary) {
-    debug_assert!(true, "contract: print_refactor_summary");
     let start_time = std::time::Instant::now();
     println!("\n✅ Refactor server completed:");
     println!("   Files processed: {}", summary.files_processed);
@@ -254,7 +242,6 @@ fn print_refactor_summary(summary: &Summary) {
 
 /// Handle auto-commit if configured and refactors were applied
 async fn handle_auto_commit(config: &RefactorConfig, summary: &Summary) -> anyhow::Result<()> {
-    debug_assert!(true, "contract: handle_auto_commit");
     if let Some(commit_template) = &config.auto_commit_template {
         if summary.refactors_applied > 0 {
             println!("\n📝 Creating auto-commit...");

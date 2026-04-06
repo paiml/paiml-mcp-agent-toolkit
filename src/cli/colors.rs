@@ -40,7 +40,6 @@ pub const DIM_CYAN: &str = "\x1b[2;36m";
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn header(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD}{UNDERLINE}{text}{RESET}")
 }
 
@@ -48,7 +47,6 @@ pub fn header(text: &str) -> String {
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn subheader(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD}{text}{RESET}")
 }
 
@@ -56,7 +54,6 @@ pub fn subheader(text: &str) -> String {
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn pass(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{GREEN}✓{RESET} {text}")
 }
 
@@ -64,7 +61,6 @@ pub fn pass(text: &str) -> String {
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn warn(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{YELLOW}⚠{RESET} {text}")
 }
 
@@ -72,7 +68,6 @@ pub fn warn(text: &str) -> String {
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn fail(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{RED}✗{RESET} {text}")
 }
 
@@ -80,7 +75,6 @@ pub fn fail(text: &str) -> String {
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn skip(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{DIM}⏭{RESET} {DIM}{text}{RESET}")
 }
 
@@ -88,7 +82,6 @@ pub fn skip(text: &str) -> String {
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn dim(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{DIM}{text}{RESET}")
 }
 
@@ -96,7 +89,6 @@ pub fn dim(text: &str) -> String {
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn path(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{CYAN}{text}{RESET}")
 }
 
@@ -104,7 +96,6 @@ pub fn path(text: &str) -> String {
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn number(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD_WHITE}{text}{RESET}")
 }
 
@@ -112,7 +103,6 @@ pub fn number(text: &str) -> String {
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn label(text: &str) -> String {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD}{text}{RESET}")
 }
 
@@ -120,7 +110,6 @@ pub fn label(text: &str) -> String {
 #[inline]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn grade(g: &str) -> String {
-    debug_assert!(!g.is_empty(), "g must not be empty");
     let color = match g.chars().next() {
         Some('A') => GREEN,
         Some('B') => YELLOW,

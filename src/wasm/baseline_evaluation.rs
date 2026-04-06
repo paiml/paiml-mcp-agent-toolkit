@@ -85,7 +85,6 @@ impl QualityBaseline {
 
     /// Calculate overall health score (0-100)
     fn calculate_health_score(&self, current: &Metrics) -> f64 {
-        debug_assert!(true, "contract: calculate_health_score");
         let mut score = 100.0;
 
         // Complexity penalty
@@ -113,7 +112,6 @@ impl QualityBaseline {
 
     /// Generate actionable recommendation
     fn generate_recommendation(&self, violations: &[Violation]) -> String {
-        debug_assert!(!violations.is_empty(), "violations must not be empty");
         if violations.is_empty() {
             return "Quality metrics are within acceptable bounds.".to_string();
         }

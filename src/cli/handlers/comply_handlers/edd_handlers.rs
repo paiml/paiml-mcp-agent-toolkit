@@ -35,11 +35,6 @@ pub struct EddViolation {
 /// Check if a project is a simulation project (has simular or trueno-sim deps).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn is_simulation_project(project_path: &Path) -> bool {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() {
         return false;
@@ -61,11 +56,6 @@ pub fn is_simulation_project(project_path: &Path) -> bool {
 /// contain LaTeX math notation (`$$...$$`, `$...$`, or ` ```math` blocks).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn check_edd_compliance(project_path: &Path) -> EddReport {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     if !is_simulation_project(project_path) {
         return EddReport {
             is_simulation_project: false,
@@ -122,12 +112,6 @@ fn scan_dir_for_edd(
     documented: &mut usize,
     violations: &mut Vec<EddViolation>,
 ) {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(_) => return,
@@ -154,16 +138,6 @@ fn check_file_edd(
     documented: &mut usize,
     violations: &mut Vec<EddViolation>,
 ) {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     let content = match std::fs::read_to_string(file_path) {
         Ok(c) => c,
         Err(_) => return,
@@ -206,7 +180,6 @@ fn check_file_edd(
 
 /// Extract function name from a `pub fn` line.
 fn extract_fn_name(line: &str) -> String {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let after_fn = if line.contains("async fn ") {
         line.split("async fn ").nth(1)
     } else {
@@ -225,7 +198,6 @@ fn extract_fn_name(line: &str) -> String {
 
 /// Collect doc comments (`///` or `//!`) above a given line index.
 fn collect_doc_comments(lines: &[&str], fn_line: usize) -> String {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut doc_lines = Vec::new();
     let mut i = fn_line.saturating_sub(1);
 
@@ -258,7 +230,6 @@ fn collect_doc_comments(lines: &[&str], fn_line: usize) -> String {
 /// - ` ```math` code blocks
 /// - `\frac`, `\sum`, `\int`, `\partial` etc. (LaTeX commands)
 fn has_math_notation(doc: &str) -> bool {
-    debug_assert!(!doc.is_empty(), "doc must not be empty");
     // Display math: $$ ... $$
     if doc.contains("$$") {
         return true;

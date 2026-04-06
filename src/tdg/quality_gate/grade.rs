@@ -23,7 +23,6 @@ impl MinimumGradeGate {
 
     /// Get minimum grade for a file based on its language
     fn get_min_grade_for_file(&self, path: &PathBuf) -> Grade {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Detect language from extension
         if let Some(ext) = path.extension() {
             let ext_str = ext.to_string_lossy();
@@ -54,12 +53,10 @@ impl MinimumGradeGate {
 
 impl QualityGate for MinimumGradeGate {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "MinimumGradeGate"
     }
 
     fn check(&self, _baseline: &TdgBaseline, current: &TdgBaseline) -> Result<GateResult> {
-        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
 
         for (path, entry) in &current.files {

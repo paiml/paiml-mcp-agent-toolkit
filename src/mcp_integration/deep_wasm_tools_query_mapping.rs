@@ -3,7 +3,6 @@
 #[async_trait]
 impl McpTool for DeepWasmQueryMappingTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "deep_wasm_query_mapping".to_string(),
             description: "Query source-to-WASM bidirectional mappings".to_string(),
@@ -42,7 +41,6 @@ impl McpTool for DeepWasmQueryMappingTool {
 
     #[cfg(feature = "deep-wasm")]
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         use std::path::PathBuf;
 
         let wasm_path = params["wasm_path"]
@@ -186,7 +184,6 @@ impl McpTool for DeepWasmQueryMappingTool {
 
     #[cfg(not(feature = "deep-wasm"))]
     async fn execute(&self, _params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         Err(McpError {
             code: error_codes::METHOD_NOT_FOUND,
             message: "Deep WASM feature not enabled. Recompile with --features deep-wasm"

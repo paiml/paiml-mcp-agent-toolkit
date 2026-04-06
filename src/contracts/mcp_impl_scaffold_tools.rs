@@ -1,6 +1,5 @@
 /// Create scaffold_agent tool definition
 fn create_scaffold_agent_tool() -> ToolDefinition {
-    debug_assert!(true, "contract: create_scaffold_agent_tool");
     ToolDefinition {
         name: "scaffold_agent".to_string(),
         description: "Generate a new MCP agent project with best practices".to_string(),
@@ -36,7 +35,6 @@ fn create_scaffold_agent_tool() -> ToolDefinition {
 
 /// Create scaffold_wasm tool definition
 fn create_scaffold_wasm_tool() -> ToolDefinition {
-    debug_assert!(true, "contract: create_scaffold_wasm_tool");
     ToolDefinition {
         name: "scaffold_wasm".to_string(),
         description: "Generate a new WASM project with best practices".to_string(),
@@ -72,7 +70,6 @@ fn create_scaffold_wasm_tool() -> ToolDefinition {
 
 /// Create validate_roadmap tool definition
 fn create_validate_roadmap_tool() -> ToolDefinition {
-    debug_assert!(true, "contract: create_validate_roadmap_tool");
     ToolDefinition {
         name: "validate_roadmap".to_string(),
         description: "Validate roadmap structure and ticket consistency".to_string(),
@@ -96,7 +93,6 @@ fn create_validate_roadmap_tool() -> ToolDefinition {
 
 /// Create health_check tool definition
 fn create_health_check_tool() -> ToolDefinition {
-    debug_assert!(true, "contract: create_health_check_tool");
     ToolDefinition {
         name: "health_check".to_string(),
         description: "Run project health checks (build, tests, coverage, complexity)".to_string(),
@@ -140,7 +136,6 @@ fn create_health_check_tool() -> ToolDefinition {
 
 /// Create generate_tickets tool definition
 fn create_generate_tickets_tool() -> ToolDefinition {
-    debug_assert!(true, "contract: create_generate_tickets_tool");
     ToolDefinition {
         name: "generate_tickets".to_string(),
         description: "Auto-generate missing ticket files from roadmap entries".to_string(),

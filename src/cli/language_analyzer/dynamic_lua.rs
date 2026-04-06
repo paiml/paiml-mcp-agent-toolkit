@@ -5,7 +5,6 @@ impl LuaAnalyzer {
 
     #[cfg(feature = "lua-ast")]
     fn extract_functions_treesitter(&self, content: &str) -> Option<Vec<FunctionInfo>> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         use tree_sitter::Parser as TsParser;
         let mut parser = TsParser::new();
         parser
@@ -19,7 +18,6 @@ impl LuaAnalyzer {
 
     #[cfg(feature = "lua-ast")]
     fn collect_functions(node: &tree_sitter::Node, source: &str, out: &mut Vec<FunctionInfo>) {
-        debug_assert!(true, "contract: collect_functions");
         match node.kind() {
             "function_declaration" | "function_definition" => {
                 let name = Self::ts_function_name(node, source);
@@ -39,7 +37,6 @@ impl LuaAnalyzer {
 
     #[cfg(feature = "lua-ast")]
     fn ts_function_name(node: &tree_sitter::Node, source: &str) -> String {
-        debug_assert!(true, "contract: ts_function_name");
         if let Some(name_node) = node.child_by_field_name("name") {
             return source[name_node.byte_range()].to_string();
         }
@@ -61,7 +58,6 @@ impl LuaAnalyzer {
         content: &str,
         function: &FunctionInfo,
     ) -> Option<ComplexityMetrics> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         use tree_sitter::Parser as TsParser;
         let mut parser = TsParser::new();
         parser
@@ -108,7 +104,6 @@ impl LuaAnalyzer {
         max_nest: &mut u8,
         lines: &mut u16,
     ) {
-        debug_assert!(true, "contract: find_and_analyze_function");
         if (node.kind() == "function_declaration" || node.kind() == "function_definition")
             && node.start_position().row == target_line
         {
@@ -135,7 +130,6 @@ impl LuaAnalyzer {
         cog: &mut u16,
         max_nest: &mut u8,
     ) {
-        debug_assert!(true, "contract: walk_complexity");
         match node.kind() {
             "if_statement" | "for_statement" | "while_statement" | "repeat_statement" => {
                 *cyc += 1;
@@ -171,7 +165,6 @@ impl LuaAnalyzer {
     // ===== Heuristic fallback =====
 
     fn extract_functions_heuristic(&self, content: &str) -> Vec<FunctionInfo> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut functions = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
 
@@ -196,7 +189,6 @@ impl LuaAnalyzer {
         content: &str,
         function: &FunctionInfo,
     ) -> ComplexityMetrics {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
         let end = function.line_end.min(lines.len() - 1);
         let function_lines = &lines[function.line_start..=end];
@@ -254,7 +246,6 @@ impl LuaAnalyzer {
     }
 
     fn extract_function_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let after = if let Some(rest) = line.strip_prefix("local function ") {
             rest
         } else if let Some(rest) = line.strip_prefix("function ") {
@@ -271,7 +262,6 @@ impl LuaAnalyzer {
     }
 
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
-        debug_assert!(true, "contract: find_function_end");
         let mut depth: i32 = 0;
         let mut found_first = false;
 

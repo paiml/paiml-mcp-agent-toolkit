@@ -46,7 +46,6 @@ impl AdaptiveSnapshotScheduler {
     }
 
     fn adaptive_decision(&self, events_since: usize, time_since: Duration) -> bool {
-        debug_assert!(true, "contract: adaptive_decision");
         let metrics = self.metrics.read();
 
         if metrics.recovery_times.is_empty() {
@@ -96,7 +95,6 @@ impl AdaptiveSnapshotScheduler {
     }
 
     fn adapt_configuration(&self, recovery_time: Duration) {
-        debug_assert!(true, "contract: adapt_configuration");
         let mut config = self.config.write();
 
         if recovery_time > config.recovery_time_target * 2 {

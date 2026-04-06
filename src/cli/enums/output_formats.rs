@@ -249,7 +249,6 @@ pub enum ReportOutputFormat {
 impl ReportOutputFormat {
     /// Get the string representation of the report output format
     fn as_str(&self) -> &'static str {
-        debug_assert!(true, "contract: as_str");
         match self {
             ReportOutputFormat::Json => "json",
             ReportOutputFormat::Csv => "csv",
@@ -284,7 +283,6 @@ pub enum RepoScoreOutputFormat {
 impl RepoScoreOutputFormat {
     /// Get the string representation
     fn as_str(&self) -> &'static str {
-        debug_assert!(true, "contract: as_str");
         match self {
             RepoScoreOutputFormat::Text => "text",
             RepoScoreOutputFormat::Json => "json",

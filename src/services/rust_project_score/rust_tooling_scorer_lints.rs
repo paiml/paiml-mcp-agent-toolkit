@@ -85,7 +85,6 @@ impl RustToolingScorer {
 
     /// Generate workspace lint recommendations based on Cargo.toml content
     pub(super) fn lint_recommendations(project_path: &Path) -> Vec<String> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut recs = Vec::new();
         let cargo_path = project_path.join("Cargo.toml");
         if !cargo_path.exists() {

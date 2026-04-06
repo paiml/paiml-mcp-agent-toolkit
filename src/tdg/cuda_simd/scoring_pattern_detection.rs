@@ -6,8 +6,6 @@ impl CudaSimdAnalyzer {
         path: &Path,
         analysis: &mut FileAnalysis,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let has_flash = content.contains("FlashAttention")
             || content.contains("flash_attention")
             || content.contains("tiled_attention");
@@ -42,8 +40,6 @@ impl CudaSimdAnalyzer {
         path: &Path,
         analysis: &mut FileAnalysis,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let has_matmul = content.contains("matmul") || content.contains("gemm");
         let has_tensor = content.contains("wmma")
             || content.contains("mma")
@@ -65,14 +61,11 @@ impl CudaSimdAnalyzer {
     }
 
     fn detect_known_patterns(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.check_flash_attention_tile_size(content, path, analysis);
         self.check_missing_tensor_core(content, path, analysis);
     }
 
     fn extract_value(&self, content: &str, name: &str) -> Option<usize> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
-        debug_assert!(!name.is_empty(), "name must not be empty");
         // Simple pattern matching for variable assignments
         let patterns = [
             format!("{} = ", name),
@@ -95,7 +88,6 @@ impl CudaSimdAnalyzer {
 
     /// Check if any .rs file in src/backends contains SAFETY comments
     fn has_safety_comments(path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let backends = path.join("src/backends");
         let entries = match std::fs::read_dir(&backends) {
             Ok(e) => e,
@@ -111,7 +103,6 @@ impl CudaSimdAnalyzer {
 
     /// Detect Rust project quality patterns for enhanced scoring
     fn detect_rust_patterns(&self, path: &Path) -> RustProjectPatterns {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut patterns = RustProjectPatterns::default();
 
         patterns.has_cargo_lock = path.join("Cargo.lock").exists();

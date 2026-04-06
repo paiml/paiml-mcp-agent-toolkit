@@ -13,7 +13,6 @@ async fn handle_analyze_dag(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_analyze_dag");
     let args: AnalyzeDagArgs = match serde_json::from_value(arguments) {
         Ok(a) => a,
         Err(e) => {
@@ -33,7 +32,6 @@ async fn handle_analyze_dag(
 
 /// Toyota Way: Extract Method pattern for DAG analysis
 async fn execute_dag_analysis(args: &AnalyzeDagArgs) -> anyhow::Result<serde_json::Value> {
-    debug_assert!(true, "contract: execute_dag_analysis");
     use crate::services::context::analyze_project;
     let project_path = resolve_project_path(&args.project_path);
     let project_context = analyze_project(&project_path, "rust").await?;
@@ -45,7 +43,6 @@ async fn execute_dag_analysis(args: &AnalyzeDagArgs) -> anyhow::Result<serde_jso
 }
 
 fn resolve_project_path(project_path: &Option<String>) -> PathBuf {
-    debug_assert!(true, "contract: resolve_project_path");
     project_path.as_ref().map_or_else(
         || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
         PathBuf::from,
@@ -55,13 +52,11 @@ fn resolve_project_path(project_path: &Option<String>) -> PathBuf {
 fn build_dag_graph(
     project_context: &crate::services::context::ProjectContext,
 ) -> crate::models::dag::DependencyGraph {
-    debug_assert!(true, "contract: build_dag_graph");
     use crate::services::dag_builder::DagBuilder;
     DagBuilder::build_from_project_with_limit(project_context, 50)
 }
 
 fn parse_dag_type(dag_type_str: Option<&str>) -> crate::cli::DagType {
-    debug_assert!(true, "contract: parse_dag_type");
     use crate::cli::DagType;
     dag_type_str
         .and_then(|t| match t {
@@ -78,7 +73,6 @@ fn apply_dag_filters(
     graph: crate::models::dag::DependencyGraph,
     dag_type: crate::cli::DagType,
 ) -> crate::models::dag::DependencyGraph {
-    debug_assert!(true, "contract: apply_dag_filters");
     use crate::cli::DagType;
     use crate::services::dag_builder::{
         filter_call_edges, filter_import_edges, filter_inheritance_edges,
@@ -97,7 +91,6 @@ fn generate_dag_output(
     args: &AnalyzeDagArgs,
     dag_type: crate::cli::DagType,
 ) -> serde_json::Value {
-    debug_assert!(true, "contract: generate_dag_output");
     use crate::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
 
     let generator = MermaidGenerator::new(MermaidOptions {

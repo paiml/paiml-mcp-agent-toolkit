@@ -5,7 +5,6 @@ impl DependencyGraphBuilder {
     /// Resolve dependencies for a file
     /// Complexity: 9 (import parsing + edge creation)
     fn resolve_file_dependencies(&mut self, node_id: NodeId, path: &Path) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)?;
 
         let imports = match path.extension().and_then(|s| s.to_str()) {
@@ -34,7 +33,6 @@ impl DependencyGraphBuilder {
     /// Parse Rust imports
     /// Complexity: 6
     fn parse_rust_imports(&self, content: &str) -> Result<Vec<String>> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut imports = Vec::new();
 
         for line in content.lines() {
@@ -55,7 +53,6 @@ impl DependencyGraphBuilder {
     /// Parse Python imports
     /// Complexity: 5
     fn parse_python_imports(&self, content: &str) -> Result<Vec<String>> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut imports = Vec::new();
 
         for line in content.lines() {
@@ -71,7 +68,6 @@ impl DependencyGraphBuilder {
     /// Parse TypeScript/JavaScript imports
     /// Complexity: 6
     fn parse_typescript_imports(&self, content: &str) -> Result<Vec<String>> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut imports = Vec::new();
 
         for line in content.lines() {

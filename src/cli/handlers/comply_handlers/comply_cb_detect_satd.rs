@@ -44,7 +44,6 @@ impl SATDManifestationType {
 /// Classify SATD content into Code or Comment manifestation type
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn classify_satd_manifestation(content: &str) -> SATDManifestationType {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // Code patterns: deterministic runtime failures
     let code_patterns = [
         "todo!",
@@ -74,7 +73,6 @@ pub fn classify_satd_manifestation(content: &str) -> SATDManifestationType {
 /// Classify based on pattern ID from CB-050 detection
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn classify_satd_by_pattern_id(pattern_id: &str) -> SATDManifestationType {
-    debug_assert!(!pattern_id.is_empty(), "pattern_id must not be empty");
     match pattern_id {
         // Code patterns - will crash at runtime
         "CB-050-A" => SATDManifestationType::Code, // todo!()

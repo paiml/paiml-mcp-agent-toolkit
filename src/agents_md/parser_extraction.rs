@@ -82,7 +82,6 @@ impl AgentsMdParser {
 
     /// Detect section type from title
     fn detect_section_type(title: &str) -> SectionType {
-        debug_assert!(true, "contract: detect_section_type");
         let lower = title.to_lowercase();
 
         if lower.contains("overview") || lower.contains("introduction") || lower.contains("about") {
@@ -106,7 +105,6 @@ impl AgentsMdParser {
 
     /// Extract commands from text
     fn extract_commands(&self, text: &str, commands: &mut Vec<Command>) {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         for pattern in &self.command_patterns {
             if let Some(captures) = pattern.captures(text) {
                 if let Some(cmd) = captures.get(1) {
@@ -130,7 +128,6 @@ impl AgentsMdParser {
         section_type: &SectionType,
         guidelines: &mut Vec<Guideline>,
     ) {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         // Simple extraction: lines starting with - or *
         for line in text.lines() {
             let trimmed = line.trim();
@@ -149,7 +146,6 @@ impl AgentsMdParser {
 
     /// Detect priority from guideline text
     fn detect_priority(&self, text: &str) -> Priority {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         let lower = text.to_lowercase();
 
         if lower.contains("must") || lower.contains("critical") || lower.contains("required") {
@@ -165,7 +161,6 @@ impl AgentsMdParser {
 
     /// Check if command is safe to execute
     fn is_command_safe(&self, command: &str) -> bool {
-        debug_assert!(!command.is_empty(), "command must not be empty");
         let dangerous_patterns = [
             "rm -rf",
             "sudo",
@@ -184,7 +179,6 @@ impl AgentsMdParser {
 
     /// Extract quality rules from sections
     fn extract_quality_rules(&self, sections: &[Section]) -> Option<QualityRules> {
-        debug_assert!(!sections.is_empty(), "sections must not be empty");
         let mut rules = QualityRules {
             max_complexity: None,
             min_coverage: None,
@@ -241,7 +235,6 @@ impl AgentsMdParser {
 
     /// Extract metadata from document
     fn extract_metadata(&self, sections: &[Section], metadata: &mut DocumentMetadata) {
-        debug_assert!(!sections.is_empty(), "sections must not be empty");
         // Look for project name in overview
         for section in sections {
             if matches!(section.section_type, SectionType::Overview) {

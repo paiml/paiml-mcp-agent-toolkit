@@ -9,7 +9,6 @@ impl SATDDetector {
         root: &Path,
         include_tests: bool,
     ) -> Result<SATDAnalysisResult, TemplateError> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let files = self.find_source_files(root).await?;
         let mut analysis_stats = ProjectAnalysisStats::new();
 
@@ -29,7 +28,6 @@ impl SATDDetector {
         include_tests: bool,
         stats: &mut ProjectAnalysisStats,
     ) {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         for file_path in files {
             if self.should_skip_file(file_path, include_tests).await {
                 continue;
@@ -42,7 +40,6 @@ impl SATDDetector {
 
     /// Toyota Way: Extract Method - check if file should be skipped (complexity <=8)
     async fn should_skip_file(&self, file_path: &Path, include_tests: bool) -> bool {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Skip test files if not requested
         if !include_tests && self.is_test_file(file_path) {
             return true;
@@ -71,7 +68,6 @@ impl SATDDetector {
 
     /// Toyota Way: Extract Method - process individual file (complexity <=8)
     async fn process_single_file(&self, file_path: &Path, stats: &mut ProjectAnalysisStats) {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         match tokio::fs::read_to_string(file_path).await {
             Ok(content) => {
                 if content.len() > 10_000_000 {
@@ -106,7 +102,6 @@ impl SATDDetector {
 
     /// Toyota Way: Extract Method - calculate debt age (complexity <=3)
     async fn calculate_project_debt_age(&self, debts: &[TechnicalDebt], root: &Path) -> f64 {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         if !debts.is_empty() && root.join(".git").exists() {
             self.calculate_average_debt_age(debts, root)
                 .await
@@ -122,7 +117,6 @@ impl SATDDetector {
         stats: ProjectAnalysisStats,
         avg_age_days: f64,
     ) -> SATDAnalysisResult {
-        debug_assert!(true, "contract: build_analysis_result");
         SATDAnalysisResult {
             items: stats.all_debts.clone(),
             summary: SATDSummary {
@@ -143,7 +137,6 @@ impl SATDDetector {
         &self,
         debts: &[TechnicalDebt],
     ) -> std::collections::HashMap<String, usize> {
-        debug_assert!(!debts.is_empty(), "debts must not be empty");
         let mut map = std::collections::HashMap::with_capacity(3);
         for debt in debts {
             *map.entry(format!("{:?}", debt.severity)).or_insert(0) += 1;
@@ -156,7 +149,6 @@ impl SATDDetector {
         &self,
         debts: &[TechnicalDebt],
     ) -> std::collections::HashMap<String, usize> {
-        debug_assert!(!debts.is_empty(), "debts must not be empty");
         let mut map = std::collections::HashMap::with_capacity(5);
         for debt in debts {
             *map.entry(format!("{:?}", debt.category)).or_insert(0) += 1;
@@ -170,7 +162,6 @@ impl SATDDetector {
         &self,
         root: &Path,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         self.analyze_directory_with_tests(root, false).await
     }
 
@@ -181,7 +172,6 @@ impl SATDDetector {
         root: &Path,
         include_tests: bool,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let mut all_debts = Vec::new();
         let files = self.find_source_files(root).await?;
 
@@ -201,7 +191,6 @@ impl SATDDetector {
     }
 
     async fn should_skip_file_for_analysis(&self, file_path: &Path, include_tests: bool) -> bool {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Skip test files unless explicitly requested
         if !include_tests && self.is_test_file(file_path) {
             return true;
@@ -217,7 +206,6 @@ impl SATDDetector {
     }
 
     async fn should_skip_large_file(&self, file_path: &Path) -> bool {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         if let Ok(metadata) = tokio::fs::metadata(file_path).await {
             if metadata.len() > 1_000_000 && self.is_likely_minified_content(file_path).await {
                 return true;
@@ -227,7 +215,6 @@ impl SATDDetector {
     }
 
     async fn process_file_for_debts(&self, file_path: &Path) -> Vec<TechnicalDebt> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         match tokio::fs::read_to_string(file_path).await {
             Ok(content) => self.extract_debts_from_content(&content, file_path),
             Err(_e) => {
@@ -239,7 +226,6 @@ impl SATDDetector {
     }
 
     fn extract_debts_from_content(&self, content: &str, file_path: &Path) -> Vec<TechnicalDebt> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Validate file size before processing
         if content.len() > 10_000_000 {
             eprintln!(

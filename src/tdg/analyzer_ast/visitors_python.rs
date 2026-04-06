@@ -25,13 +25,11 @@ impl<'a> PythonComplexityVisitor<'a> {
     }
 
     fn analyze_tree(&mut self, tree: &tree_sitter::Tree) {
-        debug_assert!(true, "contract: analyze_tree");
         let root = tree.root_node();
         self.visit_node(&root);
     }
 
     fn visit_node(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_node");
         match node.kind() {
             "function_definition" => self.visit_function_def(node),
             "class_definition" => self.visit_class_def(node),
@@ -58,7 +56,6 @@ impl<'a> PythonComplexityVisitor<'a> {
 
     #[allow(clippy::cast_possible_truncation)]
     fn visit_function_def(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_function_def");
         self.total_functions += 1;
         self.current_nesting_depth += 1;
         self.max_nesting_depth = self.max_nesting_depth.max(self.current_nesting_depth);
@@ -82,7 +79,6 @@ impl<'a> PythonComplexityVisitor<'a> {
 
     #[allow(clippy::cast_possible_truncation)]
     fn check_python_docstring(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: check_python_docstring");
         let body = match node.child_by_field_name("body") {
             Some(b) => b,
             None => return,
@@ -101,7 +97,6 @@ impl<'a> PythonComplexityVisitor<'a> {
     }
 
     fn visit_class_def(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_class_def");
         self.current_nesting_depth += 1;
         self.max_nesting_depth = self.max_nesting_depth.max(self.current_nesting_depth);
 
@@ -117,7 +112,6 @@ impl<'a> PythonComplexityVisitor<'a> {
     }
 
     fn visit_nesting_branch(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_nesting_branch");
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
         self.current_nesting_depth += 1;
@@ -127,14 +121,12 @@ impl<'a> PythonComplexityVisitor<'a> {
     }
 
     fn visit_flat_branch(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_flat_branch");
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
         self.visit_children_recursive(node);
     }
 
     fn visit_children_recursive(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_children_recursive");
         for child in node.children(&mut node.walk()) {
             self.visit_node(&child);
         }

@@ -7,7 +7,6 @@ impl IncrementalChurnAnalyzer {
         &self,
         file_path: &Path,
     ) -> Result<FileChurnMetrics, TemplateError> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Use git log to get file-specific churn
         let output = std::process::Command::new("git")
             .arg("log")
@@ -92,7 +91,6 @@ impl IncrementalChurnAnalyzer {
         files: &[PathBuf],
         period_days: u32,
     ) -> Result<Vec<FileChurnMetrics>, TemplateError> {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         // Fall back to full analysis for batch
         let analysis = GitAnalysisService::analyze_code_churn(&self.project_root, period_days)?;
 
@@ -109,7 +107,6 @@ impl IncrementalChurnAnalyzer {
 
     /// Get current git commit hash
     async fn get_current_commit_hash(&self) -> Result<String, TemplateError> {
-        debug_assert!(true, "contract: get_current_commit_hash");
         let output = tokio::process::Command::new("git")
             .arg("rev-parse")
             .arg("HEAD")
@@ -129,7 +126,6 @@ impl IncrementalChurnAnalyzer {
 
     /// Get last commit hash for a specific file
     async fn get_file_last_commit_hash(&self, file_path: &Path) -> Result<String, TemplateError> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let output = tokio::process::Command::new("git")
             .arg("log")
             .arg("-1")
@@ -150,7 +146,6 @@ impl IncrementalChurnAnalyzer {
 
     /// Parse commit line from git log
     fn parse_commit_line(line: &str) -> Option<(String, String, String)> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split('|').collect();
         if parts.len() == 3 {
             Some((
@@ -165,7 +160,6 @@ impl IncrementalChurnAnalyzer {
 
     /// Parse numstat line from git log
     fn parse_numstat_line(line: &str) -> Option<(usize, usize, String)> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 3 {
             let additions = parts[0].parse::<usize>().ok()?;
@@ -179,7 +173,6 @@ impl IncrementalChurnAnalyzer {
 
     /// Generate summary from file metrics
     fn generate_summary(&self, files: &[FileChurnMetrics]) -> ChurnSummary {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut author_contributions: HashMap<String, usize> = HashMap::new();
         let mut total_commits = 0;
 

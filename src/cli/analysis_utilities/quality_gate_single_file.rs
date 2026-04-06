@@ -11,8 +11,6 @@ async fn handle_single_file_quality_gate(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     use std::time::Instant;
     if !quiet {
         eprintln!("📄 Analyzing single file: {}", single_file.display());
@@ -70,8 +68,6 @@ async fn run_single_file_checks(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     for check in checks_to_run {
         execute_single_file_check(
             check,
@@ -95,8 +91,6 @@ async fn execute_single_file_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     match check {
         QualityCheckType::Complexity => {
             run_single_file_complexity_check(
@@ -136,7 +130,6 @@ async fn execute_single_file_check(
 
 /// Extract Method: Handle unsupported single file check types
 fn handle_unsupported_single_file_check(check: &QualityCheckType) {
-    debug_assert!(true, "contract: handle_unsupported_single_file_check");
     eprintln!("⚠️  Skipping {check} check - not applicable to single file");
 }
 
@@ -148,8 +141,6 @@ async fn run_all_single_file_checks(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     run_single_file_complexity_check(
         project_path,
         single_file,
@@ -172,8 +163,6 @@ async fn run_single_file_complexity_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     eprint!("  🔍 Checking complexity...");
     let violations_found =
         check_single_file_complexity(project_path, single_file, max_complexity_p99).await?;
@@ -190,8 +179,6 @@ async fn run_single_file_dead_code_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     eprint!("  🔍 Checking dead code...");
     let violations_found = check_single_file_dead_code(project_path, single_file).await?;
     results.dead_code_violations = violations_found.len();
@@ -207,8 +194,6 @@ async fn run_single_file_satd_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     eprint!("  🔍 Checking SATD...");
     let violations_found = check_single_file_satd(project_path, single_file).await?;
     results.satd_violations = violations_found.len();
@@ -224,8 +209,6 @@ async fn run_single_file_security_check(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     eprint!("  🔍 Checking security...");
     let violations_found = check_single_file_security(project_path, single_file).await?;
     results.security_violations = violations_found.len();
@@ -242,7 +225,6 @@ async fn output_single_file_results(
     format: QualityGateOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     let output_content = format_single_file_output(single_file, results, violations, format)?;
 
     if let Some(output_path) = output {
@@ -261,7 +243,6 @@ fn format_single_file_output(
     violations: &[QualityViolation],
     format: QualityGateOutputFormat,
 ) -> Result<String> {
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     match format {
         QualityGateOutputFormat::Json => Ok(serde_json::to_string_pretty(&json!({
             "file": single_file,

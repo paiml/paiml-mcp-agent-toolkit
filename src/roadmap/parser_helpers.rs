@@ -1,7 +1,6 @@
 // Utility parsing helpers: parse_task_status, parse_duration, parse_priority
 
 fn parse_task_status(s: &str) -> TaskStatus {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     let s = s.trim();
     TaskStatus::from_emoji(s).unwrap_or_else(|| match s.to_lowercase().as_str() {
         "planned" => TaskStatus::Planned,
@@ -14,7 +13,6 @@ fn parse_task_status(s: &str) -> TaskStatus {
 }
 
 fn parse_duration(line: &str) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     // Parse format like "2025-08-20 to 2025-08-21"
     let date_regex = Regex::new(r"(\d{4}-\d{2}-\d{2})[^\d]+(\d{4}-\d{2}-\d{2})").ok()?;
 
@@ -38,7 +36,6 @@ fn parse_duration(line: &str) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
 }
 
 fn parse_priority(line: &str) -> Option<Priority> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     if line.contains("P0") || line.contains("CRITICAL") {
         Some(Priority::P0)
     } else if line.contains("P1") {

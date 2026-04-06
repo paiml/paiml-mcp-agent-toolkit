@@ -41,7 +41,6 @@ impl DependencyGraphBuilder {
     /// Complexity: 8 (file collection + analysis loop)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_workspace(path: &Path) -> Result<Self> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut builder = Self::new();
 
         // Collect source files

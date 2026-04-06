@@ -7,7 +7,6 @@ impl PlatformResourceController {
         priority: &OperationPriority,
         estimated_memory_mb: f64,
     ) -> Result<ResourceAction> {
-        debug_assert!(true, "contract: evaluate_resource_request");
         // Critical operations always get priority
         if *priority == OperationPriority::Critical {
             if current_usage.memory_pressure == ResourcePressure::Critical {
@@ -82,7 +81,6 @@ impl PlatformResourceController {
         limits: &ResourceLimits,
         active_ops: &Arc<RwLock<HashMap<String, OperationContext>>>,
     ) -> ResourceUsage {
-        debug_assert!(true, "contract: measure_current_usage");
         let ops = active_ops.read().await;
         let active_count = ops.len();
 
@@ -139,7 +137,6 @@ impl PlatformResourceController {
 
     /// Estimate time to wait for resources to become available
     async fn estimate_resource_wait_time(&self) -> u64 {
-        debug_assert!(true, "contract: estimate_resource_wait_time");
         let ops = self.active_operations.read().await;
         if ops.is_empty() {
             return 100; // Minimum wait
@@ -159,7 +156,6 @@ impl PlatformResourceController {
 
     /// Estimate time for operation slot to become available
     async fn estimate_operation_wait_time(&self) -> u64 {
-        debug_assert!(true, "contract: estimate_operation_wait_time");
         let available_permits = self.operation_semaphore.available_permits();
         if available_permits > 0 {
             return 100;
@@ -182,7 +178,6 @@ impl PlatformResourceController {
 
     /// Trigger emergency cleanup of non-critical operations
     async fn emergency_cleanup(&self) -> Result<()> {
-        debug_assert!(true, "contract: emergency_cleanup");
         let ops = self.active_operations.read().await;
         let low_priority_count = ops
             .values()
@@ -206,7 +201,6 @@ impl PlatformResourceController {
         usage: ResourceUsage,
         reason: String,
     ) {
-        debug_assert!(true, "contract: log_enforcement_event");
         let event = EnforcementEvent {
             timestamp: Instant::now(),
             operation_id,

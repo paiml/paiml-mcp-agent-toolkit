@@ -10,7 +10,6 @@ pub(crate) fn handle_pv_query_delegation(
     limit: usize,
     format: &crate::cli::QueryOutputFormat,
 ) -> anyhow::Result<()> {
-    debug_assert!(!query.is_empty(), "query must not be empty");
     let format_arg = match format {
         crate::cli::QueryOutputFormat::Json => "json",
         _ => "text",
@@ -65,11 +64,6 @@ pub(crate) fn handle_contract_gaps(
     limit: usize,
     format: &crate::cli::QueryOutputFormat,
 ) -> anyhow::Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::services::contract_index::ContractIndex;
 
     let idx = ContractIndex::load(project_path);
@@ -128,11 +122,6 @@ pub(crate) fn handle_asset_contracts(
     project_path: &std::path::Path,
     format: &crate::cli::QueryOutputFormat,
 ) -> anyhow::Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::services::asset_validator::{validate_all_assets, AssetStatus};
 
     let results = validate_all_assets(project_path);
@@ -187,8 +176,6 @@ pub(crate) fn handle_asset_contracts(
 
 /// Recursively collect .rs files relative to project root.
 fn collect_rs_files(dir: &std::path::Path, root: &std::path::Path, out: &mut Vec<String>) {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
-    debug_assert!(root.exists(), "root must exist: {}", root.display());
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,

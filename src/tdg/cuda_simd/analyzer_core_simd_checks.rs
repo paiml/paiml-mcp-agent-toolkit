@@ -2,14 +2,12 @@
 
 impl CudaSimdAnalyzer {
     fn analyze_cuda_content(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.detect_barrier_issues(content, path, analysis);
         self.detect_memory_patterns(content, path, analysis);
         self.detect_known_patterns(content, path, analysis);
     }
 
     fn analyze_wgpu_content(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let barrier_count =
             content.matches("workgroupBarrier").count() + content.matches("storageBarrier").count();
         analysis.barrier_safety.total_barriers += barrier_count;
@@ -19,7 +17,6 @@ impl CudaSimdAnalyzer {
 
     /// Comprehensive SIMD bug detection based on trueno research
     fn analyze_simd_content(&self, content: &str, path: &Path, analysis: &mut FileAnalysis) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let lines: Vec<&str> = content.lines().collect();
         let mut state = SimdAnalysisState::new();
 
@@ -55,7 +52,6 @@ impl CudaSimdAnalyzer {
     fn check_simd_alignment(
         &self, line_num: usize, trimmed: &str, lines: &[&str], path: &Path, analysis: &mut FileAnalysis,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use concat! to avoid self-matching during CB-021 compliance scanning
         if trimmed.contains(concat!("_mm", "256_load_si256"))
             || trimmed.contains(concat!("_mm", "512_load_si512"))
@@ -91,7 +87,6 @@ impl CudaSimdAnalyzer {
     fn check_simd_bounds(
         &self, line_num: usize, trimmed: &str, content: &str, path: &Path, analysis: &mut FileAnalysis,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use concat! to avoid self-matching during CB-021 compliance scanning
         if (trimmed.contains(concat!("_mm", "256_loadu_")) || trimmed.contains(concat!("_mm", "512_loadu_")))
             && !content.contains("len()")
@@ -118,7 +113,6 @@ impl CudaSimdAnalyzer {
     fn check_simd_vzeroupper(
         &self, trimmed: &str, content: &str, line_num: usize, path: &Path, analysis: &mut FileAnalysis,
     ) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use concat! to avoid self-matching during CB-021 compliance scanning
         let is_sse_only = trimmed.contains("_mm_")
             && !trimmed.contains(concat!("_mm", "256_"))
@@ -153,8 +147,6 @@ impl CudaSimdAnalyzer {
         has_avx512: bool, has_avx: bool, has_target_feature: bool,
         content: &str, path: &Path, analysis: &mut FileAnalysis,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         if (has_avx512 || has_avx) && !has_target_feature && !content.contains("is_x86_feature_detected") {
             analysis.defects.push(DetectedDefect {
                 defect_class: DefectClass {
@@ -175,7 +167,6 @@ impl CudaSimdAnalyzer {
 
     /// P1: Low vectorization ratio check
     fn check_vectorization_ratio(state: &SimdAnalysisState, path: &Path, analysis: &mut FileAnalysis) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let total_ops = state.scalar_ops + state.sse_ops + state.avx_ops + state.avx512_ops;
         if total_ops > 0 {
             let vectorized = state.sse_ops + state.avx_ops + state.avx512_ops;
@@ -201,7 +192,6 @@ impl CudaSimdAnalyzer {
 
     /// P2: Using narrower SIMD than available
     fn check_suboptimal_width(state: &SimdAnalysisState, has_avx: bool, path: &Path, analysis: &mut FileAnalysis) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if state.sse_ops > state.avx_ops && has_avx && state.avx_ops == 0 {
             analysis.defects.push(DetectedDefect {
                 defect_class: DefectClass {

@@ -20,7 +20,6 @@ impl JavaMapper {
     /// Process Java-specific nodes
     #[allow(dead_code)]
     fn process_java_specific(&self, nodes: &mut [UnifiedNode]) {
-        debug_assert!(true, "contract: process_java_specific");
         for node in nodes.iter_mut() {
             // Add Java-specific metadata
             match node.kind {
@@ -48,17 +47,14 @@ impl LanguageMapper for JavaMapper {
     }
 
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_file(path).await
     }
 
     async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_directory(path, recursive).await
     }
 
     async fn map_source(&self, _source: &str, _path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         #[cfg(feature = "java-ast")]
         {
             use crate::services::languages::java::JavaAstVisitor;
@@ -81,12 +77,10 @@ impl LanguageMapper for JavaMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], _path: &Path) -> Vec<UnifiedNode> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         self.base.convert_ast_items(items, _path)
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
-        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 }
@@ -110,7 +104,6 @@ impl KotlinMapper {
     /// Process Kotlin-specific nodes
     #[allow(dead_code)]
     fn process_kotlin_specific(&self, nodes: &mut [UnifiedNode]) {
-        debug_assert!(true, "contract: process_kotlin_specific");
         for node in nodes.iter_mut() {
             // Add Kotlin-specific metadata
             match node.kind {
@@ -139,28 +132,23 @@ impl LanguageMapper for KotlinMapper {
     }
 
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_file(path).await
     }
 
     async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_directory(path, recursive).await
     }
 
     async fn map_source(&self, source: &str, path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Kotlin-specific analysis deferred until kotlin-ast feature is available
         self.base.map_source(source, path).await
     }
 
     fn convert_ast_items(&self, items: &[AstItem], path: &Path) -> Vec<UnifiedNode> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.convert_ast_items(items, path)
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
-        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 }
@@ -184,7 +172,6 @@ impl ScalaMapper {
     /// Process Scala-specific nodes
     #[allow(dead_code)]
     fn process_scala_specific(&self, nodes: &mut [UnifiedNode]) {
-        debug_assert!(true, "contract: process_scala_specific");
         for node in nodes.iter_mut() {
             // Add Scala-specific metadata
             match node.kind {
@@ -211,17 +198,14 @@ impl LanguageMapper for ScalaMapper {
     }
 
     async fn map_file(&self, path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_file(path).await
     }
 
     async fn map_directory(&self, path: &Path, recursive: bool) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.base.map_directory(path, recursive).await
     }
 
     async fn map_source(&self, _source: &str, _path: &Path) -> Result<Vec<UnifiedNode>> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         #[cfg(feature = "scala-ast")]
         {
             use crate::services::languages::scala::ScalaAstVisitor;
@@ -244,12 +228,10 @@ impl LanguageMapper for ScalaMapper {
     }
 
     fn convert_ast_items(&self, items: &[AstItem], _path: &Path) -> Vec<UnifiedNode> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         self.base.convert_ast_items(items, _path)
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
-        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 }

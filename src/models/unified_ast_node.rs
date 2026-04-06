@@ -310,7 +310,6 @@ impl UnifiedAstNode {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn location(&self, file_path: &Path) -> Location {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Location {
             file_path: file_path.to_path_buf(),
             span: Span {

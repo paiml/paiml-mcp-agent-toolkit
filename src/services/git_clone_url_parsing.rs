@@ -5,7 +5,6 @@ impl GitCloner {
     #[inline]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_github_url(&self, url: &str) -> Result<ParsedGitHubUrl, CloneError> {
-        debug_assert!(!url.is_empty(), "url must not be empty");
         // Support various GitHub URL formats
         let url = url.trim();
 
@@ -63,7 +62,6 @@ impl GitCloner {
     }
 
     fn validate_github_name(&self, name: &str) -> bool {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         // Reject empty names
         if name.is_empty() || name.len() > 100 {
             return false;
@@ -119,7 +117,6 @@ impl GitCloner {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_cache_key(&self, url: &str) -> String {
-        debug_assert!(!url.is_empty(), "url must not be empty");
         // Create a cache key from the URL
         // In production, you might want to use a hash
         url.chars()

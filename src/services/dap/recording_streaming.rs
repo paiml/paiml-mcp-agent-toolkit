@@ -116,7 +116,6 @@ impl SnapshotSerializer {
     /// Create a serializer with specific initial capacity
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_capacity(capacity: usize) -> Self {
-        debug_assert!(capacity > 0, "capacity must be positive");
         Self {
             buffer: Vec::with_capacity(capacity),
             compression: CompressionLevel::None,

@@ -1,7 +1,6 @@
 impl DemoRunner {
     #[cfg(feature = "git-lib")]
     async fn clone_and_prepare(&self, url: &str) -> Result<PathBuf> {
-        debug_assert!(!url.is_empty(), "url must not be empty");
         println!("🔄 Cloning repository: {url}");
 
         // Create a temporary directory for cloning
@@ -71,7 +70,6 @@ impl DemoRunner {
 
     #[cfg(not(feature = "git-lib"))]
     async fn clone_and_prepare(&self, url: &str) -> Result<PathBuf> {
-        debug_assert!(!url.is_empty(), "url must not be empty");
         use std::process::Command;
 
         println!("🔄 Cloning repository: {url}");

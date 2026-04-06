@@ -1,6 +1,5 @@
 /// Handle analyze subcommand
 async fn handle_analyze(path: &PathBuf, config: &CudaTdgCommandConfig) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
@@ -16,7 +15,6 @@ async fn handle_score(
     breakdown: bool,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
@@ -38,7 +36,6 @@ async fn handle_report(
     output: Option<&PathBuf>,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
@@ -63,7 +60,6 @@ async fn handle_report(
 
 /// Handle barrier-check subcommand
 async fn handle_barrier_check(path: &PathBuf, config: &CudaTdgCommandConfig) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let analyzer = CudaSimdAnalyzer::new();
     let result = analyzer.analyze(path)?;
 
@@ -87,7 +83,6 @@ async fn handle_validate_tiles(
     shared_memory: usize,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
-    debug_assert!(true, "contract: handle_validate_tiles");
     let output = match config.format {
         CudaTdgOutputFormat::Json => {
             let result = serde_json::json!({
@@ -121,7 +116,6 @@ async fn handle_validate_tiles(
 }
 
 fn format_validate_tiles_text(head_dim: usize, tile_kv: usize, shared_memory: usize) -> String {
-    debug_assert!(true, "contract: format_validate_tiles_text");
     let valid = tile_kv >= head_dim;
     let shared_required = tile_kv * head_dim * 2; // FP16
 

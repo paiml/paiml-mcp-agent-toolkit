@@ -243,7 +243,6 @@ jobs:
         analysis: &QualityAnalysis,
         decision: &Decision,
     ) -> String {
-        debug_assert!(true, "contract: generate_comment");
         let template = &self.config.comments.template;
         let mut comment = format!("{}\n\n", template.header);
 
@@ -337,7 +336,6 @@ jobs:
 
     /// Extract team identifier from repository name
     fn extract_team_from_repository(&self) -> String {
-        debug_assert!(true, "contract: extract_team_from_repository");
         // Simple heuristic: use repository owner as team
         self.config
             .repository

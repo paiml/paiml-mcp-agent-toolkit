@@ -15,7 +15,6 @@ impl HierarchicalBitSet {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(capacity: usize) -> Self {
-        debug_assert!(capacity > 0, "capacity must be positive");
         Self {
             levels: vec![roaring::RoaringBitmap::new()],
             total_nodes: capacity,
@@ -129,7 +128,6 @@ impl CrossLangReferenceGraph {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn edges_for_chunk(&self, _chunk: &[u8]) -> Vec<ReferenceEdge> {
-        debug_assert!(!_chunk.is_empty(), "_chunk must not be empty");
         // TRACKED: Implement efficient edge lookup for chunks
         Vec::new()
     }
@@ -212,8 +210,6 @@ impl VTableResolver {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn resolve_dynamic_call(&self, interface: &str, method: &str) -> Vec<NodeKey> {
-        debug_assert!(!interface.is_empty(), "interface must not be empty");
-        debug_assert!(!method.is_empty(), "method must not be empty");
         let mut targets = Vec::new();
 
         if let Some(impls) = self.interface_impls.get(interface) {

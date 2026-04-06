@@ -39,7 +39,6 @@ impl ClaudeCodeAgentMcpServer {
 
     /// Run the MCP protocol handler
     async fn run_mcp_protocol(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: run_mcp_protocol");
         let stdin = tokio::io::stdin();
         let mut stdout = tokio::io::stdout();
         let mut reader = BufReader::new(stdin);
@@ -104,7 +103,6 @@ impl ClaudeCodeAgentMcpServer {
 
     /// Handle incoming MCP request
     async fn handle_mcp_request(&mut self, request_json: &str) -> Result<Option<Value>> {
-        debug_assert!(!request_json.is_empty(), "request_json must not be empty");
         // Parse JSON-RPC request
         let request: Value = serde_json::from_str(request_json)?;
 
@@ -149,7 +147,6 @@ impl ClaudeCodeAgentMcpServer {
 
     /// Handle initialize request
     async fn handle_initialize(&self, _params: Value) -> Result<Value> {
-        debug_assert!(true, "contract: handle_initialize");
         Ok(json!({
             "protocolVersion": "2024-11-05",
             "capabilities": {
@@ -166,7 +163,6 @@ impl ClaudeCodeAgentMcpServer {
 
     /// Handle tools list request
     async fn handle_tools_list(&self) -> Result<Value> {
-        debug_assert!(true, "contract: handle_tools_list");
         Ok(json!({
             "tools": [
                 {
@@ -230,7 +226,6 @@ impl ClaudeCodeAgentMcpServer {
 
     /// Handle tool call request
     async fn handle_tool_call(&mut self, params: Value) -> Result<Value> {
-        debug_assert!(true, "contract: handle_tool_call");
         let tool_name = params
             .get("name")
             .and_then(|n| n.as_str())
@@ -250,7 +245,6 @@ impl ClaudeCodeAgentMcpServer {
     }
 
     async fn handle_run_quality_gates(&self, arguments: &Value) -> Result<Value> {
-        debug_assert!(true, "contract: handle_run_quality_gates");
         let target_path = arguments
             .get("target_path")
             .and_then(|p| p.as_str())
@@ -286,7 +280,6 @@ impl ClaudeCodeAgentMcpServer {
         target_path: &str,
         quality_result: &QualityGateOutput,
     ) -> String {
-        debug_assert!(!target_path.is_empty(), "target_path must not be empty");
         let mut result_text = format!("🏁 Quality Gate Results for {target_path}\n\n");
 
         let all_passed = quality_result.results.iter().all(|r| r.passed);
@@ -306,7 +299,6 @@ impl ClaudeCodeAgentMcpServer {
     }
 
     fn format_failed_checks(&self, result_text: &mut String, quality_result: &QualityGateOutput) {
-        debug_assert!(true, "contract: format_failed_checks");
         let failed_checks = quality_result.results.iter().filter(|r| !r.passed).count();
 
         if failed_checks > 0 {
@@ -325,7 +317,6 @@ impl ClaudeCodeAgentMcpServer {
     }
 
     fn format_quality_summary(&self, result_text: &mut String, quality_result: &QualityGateOutput) {
-        debug_assert!(true, "contract: format_quality_summary");
         result_text.push_str("\n📋 Summary:\n");
         result_text.push_str(&format!(
             "• Total Checks: {}\n",
@@ -342,7 +333,6 @@ impl ClaudeCodeAgentMcpServer {
     }
 
     async fn handle_analyze_complexity(&self, arguments: &Value) -> Result<Value> {
-        debug_assert!(true, "contract: handle_analyze_complexity");
         let file_path = arguments
             .get("file_path")
             .and_then(|p| p.as_str())
@@ -359,7 +349,6 @@ impl ClaudeCodeAgentMcpServer {
     }
 
     fn format_complexity_analysis_results(&self, file_path: &str) -> String {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let mut result_text = format!("🧮 Complexity Analysis for {file_path}\n\n");
 
         result_text.push_str("📊 Summary:\n");
@@ -373,7 +362,6 @@ impl ClaudeCodeAgentMcpServer {
 
     /// Handle health check request
     async fn handle_health_check(&self) -> Result<Value> {
-        debug_assert!(true, "contract: handle_health_check");
         Ok(json!({
             "status": "healthy",
             "timestamp": chrono::Utc::now().to_rfc3339(),
@@ -385,7 +373,6 @@ impl ClaudeCodeAgentMcpServer {
     /// Send server information and capabilities
     #[allow(dead_code)]
     async fn send_server_info(&self, stdout: &mut Stdout) -> Result<()> {
-        debug_assert!(true, "contract: send_server_info");
         let server_info = json!({
             "jsonrpc": "2.0",
             "method": "initialize",

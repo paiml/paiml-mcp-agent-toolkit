@@ -6,7 +6,6 @@ fn apply_filters(
     filter: Option<crate::cli::SymbolTypeFilter>,
     query: Option<String>,
 ) -> Result<SymbolTable> {
-    debug_assert!(true, "contract: apply_filters");
     // Filter by type
     if let Some(type_filter) = filter {
         table.symbols.retain(|s| match type_filter {
@@ -101,13 +100,11 @@ pub fn format_output(
 
 /// Format JSON output (cognitive complexity ≤2)
 fn format_json_output(table: &SymbolTable) -> Result<String> {
-    debug_assert!(true, "contract: format_json_output");
     Ok(serde_json::to_string_pretty(table)?)
 }
 
 /// Format human-readable output (cognitive complexity ≤8)
 fn format_human_output(table: SymbolTable, show_unreferenced: bool) -> Result<String> {
-    debug_assert!(true, "contract: format_human_output");
     let mut output = String::new();
 
     write_header(&mut output, table.total_symbols)?;
@@ -125,7 +122,6 @@ fn format_human_output(table: SymbolTable, show_unreferenced: bool) -> Result<St
 
 /// Write header section (cognitive complexity ≤3)
 fn write_header(output: &mut String, total_symbols: usize) -> Result<()> {
-    debug_assert!(true, "contract: write_header");
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(
@@ -144,7 +140,6 @@ fn write_header(output: &mut String, total_symbols: usize) -> Result<()> {
 
 /// Write symbols grouped by type (cognitive complexity ≤8)
 fn write_symbols_by_type(output: &mut String, symbols: &[Symbol]) -> Result<()> {
-    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let by_type = group_symbols_by_type(symbols);
 
     for (kind, syms) in by_type {
@@ -156,7 +151,6 @@ fn write_symbols_by_type(output: &mut String, symbols: &[Symbol]) -> Result<()> 
 
 /// Group symbols by their kind (cognitive complexity ≤4)
 fn group_symbols_by_type(symbols: &[Symbol]) -> HashMap<SymbolKind, Vec<&Symbol>> {
-    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut by_type: HashMap<SymbolKind, Vec<&Symbol>> = HashMap::new();
     for symbol in symbols {
         by_type.entry(symbol.kind.clone()).or_default().push(symbol);
@@ -166,7 +160,6 @@ fn group_symbols_by_type(symbols: &[Symbol]) -> HashMap<SymbolKind, Vec<&Symbol>
 
 /// Write a single symbol group (cognitive complexity ≤6)
 fn write_symbol_group(output: &mut String, kind: &SymbolKind, syms: &[&Symbol]) -> Result<()> {
-    debug_assert!(true, "contract: write_symbol_group");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -198,7 +191,6 @@ fn write_symbol_group(output: &mut String, kind: &SymbolKind, syms: &[&Symbol]) 
 
 /// Write unreferenced symbols section (cognitive complexity ≤5)
 fn write_unreferenced_symbols(output: &mut String, unreferenced: &[String]) -> Result<()> {
-    debug_assert!(!unreferenced.is_empty(), "unreferenced must not be empty");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -216,7 +208,6 @@ fn write_unreferenced_symbols(output: &mut String, unreferenced: &[String]) -> R
 
 /// Write most referenced symbols section (cognitive complexity ≤5)
 fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)]) -> Result<()> {
-    debug_assert!(!most_referenced.is_empty(), "most_referenced must not be empty");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -238,7 +229,6 @@ fn write_most_referenced(output: &mut String, most_referenced: &[(String, usize)
 
 /// Write top files by symbol count (cognitive complexity ≤8)
 fn write_top_files_by_count(output: &mut String, symbols: &[Symbol]) -> Result<()> {
-    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -265,7 +255,6 @@ fn write_top_files_by_count(output: &mut String, symbols: &[Symbol]) -> Result<(
 
 /// Get file counts sorted by symbol count (cognitive complexity ≤5)
 fn get_sorted_file_counts(symbols: &[Symbol]) -> Vec<(&str, usize)> {
-    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut file_counts: HashMap<&str, usize> = HashMap::new();
 
     for symbol in symbols {
@@ -279,7 +268,6 @@ fn get_sorted_file_counts(symbols: &[Symbol]) -> Vec<(&str, usize)> {
 
 /// Extract filename from path (cognitive complexity ≤3)
 fn extract_filename(file_path: &str) -> &str {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     Path::new(file_path)
         .file_name()
         .and_then(|n| n.to_str())
@@ -288,7 +276,6 @@ fn extract_filename(file_path: &str) -> &str {
 
 /// Format CSV output (cognitive complexity ≤5)
 fn format_csv_output(table: SymbolTable) -> Result<String> {
-    debug_assert!(true, "contract: format_csv_output");
     use std::fmt::Write;
     let mut output = String::new();
 

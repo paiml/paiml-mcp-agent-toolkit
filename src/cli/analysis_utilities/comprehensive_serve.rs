@@ -23,7 +23,6 @@ pub async fn handle_serve(
 
 /// Extract Method: Handle HTTP server startup
 async fn handle_http_server(host: &str, port: u16, cors: bool) -> Result<()> {
-    debug_assert!(!host.is_empty(), "host must not be empty");
     eprintln!("🚀 Starting PMAT HTTP server on http://{host}:{port}");
     eprintln!("✅ Server ready!");
     eprintln!("📍 Health check: http://{host}:{port}/health");
@@ -36,7 +35,6 @@ async fn handle_http_server(host: &str, port: u16, cors: bool) -> Result<()> {
 
 /// Extract Method: Handle WebSocket server startup
 async fn handle_websocket_server(host: &str, port: u16) -> Result<()> {
-    debug_assert!(!host.is_empty(), "host must not be empty");
     eprintln!("🚀 Starting PMAT WebSocket server on ws://{host}:{port}");
     eprintln!("✅ WebSocket server ready!");
     eprintln!("📍 WebSocket endpoint: ws://{host}:{port}");
@@ -48,7 +46,6 @@ async fn handle_websocket_server(host: &str, port: u16) -> Result<()> {
 
 /// Extract Method: Handle HTTP-SSE server startup
 async fn handle_http_sse_server(host: &str, port: u16, cors: bool) -> Result<()> {
-    debug_assert!(!host.is_empty(), "host must not be empty");
     eprintln!("🚀 Starting PMAT HTTP-SSE server on http://{host}:{port}");
     eprintln!("✅ HTTP-SSE server ready!");
     eprintln!("📍 SSE endpoint: http://{host}:{port}/sse");
@@ -62,7 +59,6 @@ async fn handle_http_sse_server(host: &str, port: u16, cors: bool) -> Result<()>
 
 /// Extract Method: Handle hybrid server startup
 async fn handle_hybrid_server(host: &str, port: u16, cors: bool) -> Result<()> {
-    debug_assert!(!host.is_empty(), "host must not be empty");
     eprintln!("🚀 Starting PMAT hybrid server (HTTP + WebSocket) on {host}:{port}");
     eprintln!("✅ Hybrid server ready!");
     eprintln!("📍 HTTP endpoint: http://{host}:{port}");
@@ -76,7 +72,6 @@ async fn handle_hybrid_server(host: &str, port: u16, cors: bool) -> Result<()> {
 
 /// Extract Method: Handle full server startup  
 async fn handle_full_server(host: &str, port: u16, cors: bool) -> Result<()> {
-    debug_assert!(!host.is_empty(), "host must not be empty");
     eprintln!("🚀 Starting PMAT full server (HTTP + WebSocket + SSE) on {host}:{port}");
     eprintln!("✅ All transports ready!");
     eprintln!("📍 HTTP endpoint: http://{host}:{port}");
@@ -91,7 +86,6 @@ async fn handle_full_server(host: &str, port: u16, cors: bool) -> Result<()> {
 
 /// Extract Method: Print CORS status
 fn print_cors_status(cors: bool) {
-    debug_assert!(true, "contract: print_cors_status");
     if cors {
         eprintln!("🌐 CORS enabled for all origins");
     }
@@ -99,7 +93,6 @@ fn print_cors_status(cors: bool) {
 
 /// Extract Method: Await shutdown signal
 async fn await_shutdown_signal() -> Result<()> {
-    debug_assert!(true, "contract: await_shutdown_signal");
     eprintln!("Press Ctrl+C to exit.\n");
     tokio::signal::ctrl_c().await?;
     eprintln!("🛑 Shutting down server...");
@@ -108,7 +101,6 @@ async fn await_shutdown_signal() -> Result<()> {
 
 /// Start a WebSocket-only server
 async fn start_websocket_server(addr: String) -> Result<()> {
-    debug_assert!(true, "contract: start_websocket_server");
     eprintln!("🔌 WebSocket server implementation ready for {addr}");
     eprintln!("📍 This would start a WebSocket server for MCP protocol communication");
     eprintln!("🔗 Integration with transport layer and MCP server required");
@@ -123,7 +115,6 @@ async fn start_websocket_server(addr: String) -> Result<()> {
 
 /// Start a hybrid server (HTTP + WebSocket)
 async fn start_hybrid_server(addr: String, _cors: bool) -> Result<()> {
-    debug_assert!(true, "contract: start_hybrid_server");
     eprintln!("🔧 Hybrid server functionality ready for implementation on {addr}.");
     eprintln!("📍 This would support both HTTP REST API and WebSocket MCP protocol");
     eprintln!("Press Ctrl+C to exit.\n");
@@ -137,7 +128,6 @@ async fn start_hybrid_server(addr: String, _cors: bool) -> Result<()> {
 
 /// Start an HTTP-SSE server
 async fn start_http_sse_server(addr: String, _cors: bool) -> Result<()> {
-    debug_assert!(true, "contract: start_http_sse_server");
     eprintln!("🌊 HTTP-SSE server implementation ready for {addr}");
     eprintln!("📍 This would start an HTTP Server-Sent Events server for MCP protocol");
     eprintln!("📨 POST /message - Send messages to server");
@@ -153,7 +143,6 @@ async fn start_http_sse_server(addr: String, _cors: bool) -> Result<()> {
 
 /// Start a full multi-transport server (HTTP + WebSocket + SSE)
 async fn start_full_server(addr: String, _cors: bool) -> Result<()> {
-    debug_assert!(true, "contract: start_full_server");
     eprintln!("🌐 Full multi-transport server implementation ready for {addr}");
     eprintln!("📍 This would support HTTP, WebSocket, and SSE transports simultaneously");
     eprintln!("🔗 All MCP protocol communication methods available");

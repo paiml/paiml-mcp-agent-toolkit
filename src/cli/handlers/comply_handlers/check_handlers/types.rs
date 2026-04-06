@@ -94,7 +94,6 @@ pub(crate) fn filter_check_by_config(
     check_id: &str,
     config: &ComplyConfig,
 ) -> ComplianceCheck {
-    debug_assert!(!check_id.is_empty(), "check_id must not be empty");
     if !config.is_check_enabled(check_id) {
         return ComplianceCheck {
             name: check.name,
@@ -130,7 +129,6 @@ pub(crate) fn format_violation_list(issues: &[String]) -> String {
 /// Helper: Create skip check result
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn skip_check(name: &str, message: &str) -> ComplianceCheck {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     ComplianceCheck {
         name: name.to_string(),
         status: CheckStatus::Skip,
@@ -172,7 +170,6 @@ pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn get_breaking_changes_since(_from_version: &str) -> Vec<BreakingChange> {
-    debug_assert!(!_from_version.is_empty(), "_from_version must not be empty");
     vec![]
 }
 
@@ -185,8 +182,6 @@ pub(crate) struct ChangelogEntry {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
-    debug_assert!(!_from.is_empty(), "_from must not be empty");
-    debug_assert!(!_to.is_empty(), "_to must not be empty");
     vec![
         ChangelogEntry {
             version: PMAT_VERSION.to_string(),
@@ -208,11 +203,6 @@ pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntr
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Result<ProjectConfig> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let config_path = project_path.join(".pmat").join("project.toml");
     if config_path.exists() {
         let content = std::fs::read_to_string(&config_path)?;
@@ -231,11 +221,6 @@ pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Resu
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let config_path = project_path.join(".pmat").join("project.toml");
     if let Ok(mut config) = load_or_create_project_config(project_path) {
         config.pmat.last_compliance_check = Some(Utc::now());
@@ -314,11 +299,6 @@ pub(crate) fn migrate_project_version(
     target: &str,
     dry_run: bool,
 ) -> anyhow::Result<bool> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     if dry_run {
         return Ok(true);
     }
@@ -335,11 +315,6 @@ pub(crate) fn migrate_project_version(
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let gitignore_path = project_path.join(".gitignore");
     let pmat_entries = [
         ".pmat/backup/",
@@ -377,11 +352,6 @@ pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> anyhow::R
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn update_project_config(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     migrate_project_version(project_path, PMAT_VERSION, dry_run)
 }
 
@@ -391,11 +361,6 @@ pub(crate) async fn update_project_hooks(
     project_path: &Path,
     dry_run: bool,
 ) -> anyhow::Result<bool> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::handlers::hooks_command_handlers::HooksCommand;
     let hooks_dir = project_path.join(".git/hooks");
     if !hooks_dir.exists() {

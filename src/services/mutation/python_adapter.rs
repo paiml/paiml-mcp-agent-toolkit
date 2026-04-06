@@ -34,7 +34,6 @@ impl LanguageAdapter for PythonAdapter {
 
     #[cfg(feature = "python-ast")]
     async fn parse(&self, source: &str) -> Result<String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Parse using tree-sitter-python to validate syntax
         let mut parser = TsParser::new();
         parser
@@ -56,12 +55,10 @@ impl LanguageAdapter for PythonAdapter {
 
     #[cfg(not(feature = "python-ast"))]
     async fn parse(&self, source: &str) -> Result<String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         Ok(source.to_string())
     }
 
     async fn unparse(&self, ast: &str) -> Result<String> {
-        debug_assert!(!ast.is_empty(), "ast must not be empty");
         Ok(ast.to_string())
     }
 
@@ -75,11 +72,6 @@ impl LanguageAdapter for PythonAdapter {
     }
 
     async fn run_tests(&self, _source_file: &Path) -> Result<TestRunResult> {
-        debug_assert!(
-            _source_file.exists(),
-            "_source_file must exist: {}",
-            _source_file.display()
-        );
         // Minimal implementation for now
         Ok(TestRunResult {
             passed: true,
@@ -95,7 +87,6 @@ impl LanguageAdapter for PythonAdapter {
 impl PythonAdapter {
     /// Check if tree-sitter parse tree has syntax errors
     fn has_syntax_errors(node: &tree_sitter::Node) -> bool {
-        debug_assert!(true, "contract: has_syntax_errors");
         if node.kind() == "ERROR" || node.is_error() || node.is_missing() {
             return true;
         }
@@ -119,7 +110,6 @@ impl Default for PythonAdapter {
 /// Find pytest root by traversing up from source file
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn find_pytest_root(start: &Path) -> Option<&Path> {
-    debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
 
     loop {
@@ -138,8 +128,6 @@ pub fn find_pytest_root(start: &Path) -> Option<&Path> {
 /// Parse test failures from pytest output
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
-    debug_assert!(!stdout.is_empty(), "stdout must not be empty");
-    debug_assert!(!stderr.is_empty(), "stderr must not be empty");
     let mut failures = Vec::new();
 
     for line in stdout.lines().chain(stderr.lines()) {
@@ -156,7 +144,6 @@ pub fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
 
 /// Extract test name from pytest failure line
 fn extract_test_name_from_pytest(line: &str) -> Option<String> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     // Pattern: "FAILED tests/test_math.py::test_subtract"
     let trimmed = line.trim();
 
@@ -372,7 +359,6 @@ class Calculator:
     #[test]
     fn test_implements_language_adapter() {
         fn _assert_adapter<T: LanguageAdapter>() {}
-        debug_assert!(true, "contract: _assert_adapter");
         _assert_adapter::<PythonAdapter>();
     }
 

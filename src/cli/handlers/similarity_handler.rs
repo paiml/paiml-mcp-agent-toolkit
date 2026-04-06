@@ -27,11 +27,6 @@ pub async fn handle_analyze_similarity(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let start = if perf { Some(Instant::now()) } else { None };
     eprintln!("🔍 Advanced similarity analysis starting...");
 
@@ -69,8 +64,6 @@ fn build_config(
     min_lines: usize,
     max_tokens: usize,
 ) -> SimilarityConfig {
-    debug_assert!(min_lines > 0, "min_lines must be positive");
-    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let mut config = SimilarityConfig {
         similarity_threshold: f64::from(threshold),
         min_lines,
@@ -104,11 +97,6 @@ async fn collect_files(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<Vec<(PathBuf, String)>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use walkdir::WalkDir;
     let mut files = Vec::new();
     for entry in WalkDir::new(project_path) {
@@ -124,7 +112,6 @@ async fn collect_files(
 }
 
 fn is_source_file(path: &std::path::Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(ext) = path.extension() {
         matches!(
             ext.to_str(),
@@ -154,7 +141,6 @@ fn should_include_file(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
     if let Some(exclude_pattern) = exclude {
         if path_str.contains(exclude_pattern) {
@@ -168,7 +154,6 @@ fn should_include_file(
 }
 
 fn filter_top_files(report: ComprehensiveReport, top_files: usize) -> ComprehensiveReport {
-    debug_assert!(true, "contract: filter_top_files");
     if top_files > 0 {
         eprintln!("📈 Showing top {top_files} files with issues");
     }
@@ -179,7 +164,6 @@ fn format_report(
     report: &ComprehensiveReport,
     format: crate::cli::DuplicateOutputFormat,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_report");
     match format {
         crate::cli::DuplicateOutputFormat::Json => Ok(serde_json::to_string_pretty(report)?),
         crate::cli::DuplicateOutputFormat::Summary | crate::cli::DuplicateOutputFormat::Human => {

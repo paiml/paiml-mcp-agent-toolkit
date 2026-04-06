@@ -1,6 +1,5 @@
 /// Check if directory should be ignored
 pub(super) fn is_ignored_dir(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
     matches!(
@@ -30,7 +29,6 @@ pub(super) fn is_ignored_dir(path: &Path) -> bool {
 
 /// Detect language from file extension
 pub(super) fn detect_language(path: &Path) -> Option<Language> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension()?.to_str()?;
     match ext {
         "rs" => Some(Language::Rust),
@@ -283,7 +281,6 @@ pub(super) fn count_satd_markers(source: &str) -> u32 {
 
 /// Count SATD markers in a single line (used for block comments).
 fn count_markers_in_line(line: &str) -> u32 {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let upper = line.to_uppercase();
     let mut count = 0u32;
     for marker in ["TODO", "FIXME", "HACK", "OPTIMIZE"] {
@@ -295,7 +292,6 @@ fn count_markers_in_line(line: &str) -> u32 {
 /// Count SATD markers in inline comment portion of a line.
 /// Skips if // is inside a string literal (odd quote count before //).
 fn count_markers_in_comment(trimmed: &str) -> u32 {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let Some(comment_start) = trimmed.find("//") else {
         return 0;
     };
@@ -308,7 +304,6 @@ fn count_markers_in_comment(trimmed: &str) -> u32 {
 
 /// Track raw string literal state. Returns true if line should be skipped.
 fn update_raw_string_state(trimmed: &str, in_raw_string: &mut bool) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     if *in_raw_string {
         if trimmed.contains("\"#") || trimmed.ends_with('"') {
             *in_raw_string = false;
@@ -403,7 +398,6 @@ enum DocLineKind<'a> {
 }
 
 fn classify_doc_line(line: &str) -> DocLineKind<'_> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     if line.starts_with("///") || line.starts_with("//!") {
         DocLineKind::DocComment(
             line.trim_start_matches("///")

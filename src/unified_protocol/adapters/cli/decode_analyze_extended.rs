@@ -11,7 +11,6 @@ impl CliAdapter {
         port: u16,
         cors: bool,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(!host.is_empty(), "host must not be empty");
         let body = json!({
             "host": host,
             "port": port,
@@ -32,7 +31,6 @@ impl CliAdapter {
         centrality_threshold: f64,
         merge_threshold: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(true, "contract: decode_demo");
         let body = json!({
             "path": path.as_ref().map(|p| p.to_string_lossy().to_string()),
             "url": url,
@@ -62,7 +60,6 @@ impl CliAdapter {
         clippy_flags: &String,
         top_files: &usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let params = json!({
             "project_path": project_path,
             "file": file,
@@ -93,7 +90,6 @@ impl CliAdapter {
         gnu_version: &String,
         top_files: &usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let params = json!({
             "path": path,
             "rules": rules,
@@ -124,7 +120,6 @@ impl CliAdapter {
         output: &Option<PathBuf>,
         top_files: &usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let params = json!({
             "project_path": project_path,
             "detection_type": detection_type,
@@ -161,7 +156,6 @@ impl CliAdapter {
         perf: &bool,
         top_files: &usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let params = json!({
             "project_path": project_path,
             "confidence_threshold": confidence_threshold,
@@ -204,7 +198,6 @@ impl CliAdapter {
         executive_summary: &bool,
         top_files: &usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let params = json!({
             "project_path": project_path,
             "file": file,
@@ -249,7 +242,6 @@ impl CliAdapter {
         top_k: &usize,
         min_centrality: &f64,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let params = json!({
             "project_path": project_path,
             "metrics": metrics.iter().map(graph_metric_type_to_string).collect::<Vec<_>>(),
@@ -290,7 +282,6 @@ impl CliAdapter {
         fuzzy: &bool,
         case_sensitive: &bool,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let params = json!({
             "project_path": project_path,
             "query": query,
@@ -332,7 +323,6 @@ impl CliAdapter {
         clear_cache: &bool,
         top_files: &usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let params = json!({
             "project_path": project_path,
             "format": proof_annotation_format_to_string(format),
@@ -368,7 +358,6 @@ impl CliAdapter {
         force_refresh: &bool,
         top_files: &usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let params = json!({
             "project_path": project_path,
             "base_branch": base_branch,
@@ -405,7 +394,6 @@ impl CliAdapter {
         perf: &bool,
         top_files: &usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let params = json!({
             "project_path": project_path,
             "format": symbol_table_format_to_string(format),
@@ -440,7 +428,6 @@ impl CliAdapter {
         high_complexity_only: &bool,
         top_files: &usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let params = json!({
             "project_path": project_path,
             "format": big_o_format_to_string(format),
@@ -463,7 +450,6 @@ impl CliAdapter {
 
     fn decode_analyze_assemblyscript(
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(true, "contract: decode_analyze_assemblyscript");
         Ok((
             Method::POST,
             "/api/v1/analyze/assemblyscript".to_string(),
@@ -474,7 +460,6 @@ impl CliAdapter {
 
     fn decode_analyze_webassembly(
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(true, "contract: decode_analyze_webassembly");
         Ok((
             Method::POST,
             "/api/v1/analyze/webassembly".to_string(),
@@ -485,14 +470,12 @@ impl CliAdapter {
 
     fn cli_only_command_error(
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
-        debug_assert!(true, "contract: cli_only_command_error");
         Err(ProtocolError::InvalidFormat(
             "Command should be handled directly by CLI".to_string(),
         ))
     }
 
     fn format_to_extension_string(format: &OutputFormat) -> &'static str {
-        debug_assert!(true, "contract: format_to_extension_string");
         match format {
             OutputFormat::Json => "json",
             OutputFormat::Table => "table",

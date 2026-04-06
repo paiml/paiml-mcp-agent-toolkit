@@ -28,17 +28,14 @@ impl Default for OrchestratorState {
 
 impl AgentState for OrchestratorState {
     fn last_event_id(&self) -> u64 {
-        debug_assert!(true, "contract: last_event_id");
         self.last_event_id
     }
 
     fn events_since_snapshot(&self) -> usize {
-        debug_assert!(true, "contract: events_since_snapshot");
         self.events_since_snapshot
     }
 
     fn time_since_snapshot(&self) -> Duration {
-        debug_assert!(true, "contract: time_since_snapshot");
         self.time_since_snapshot
     }
 }

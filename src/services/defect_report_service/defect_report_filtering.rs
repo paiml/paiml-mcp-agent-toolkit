@@ -40,7 +40,6 @@ impl DefectReportService {
         exclude: Option<String>,
         min_lines: usize,
     ) -> DefectReport {
-        debug_assert!(min_lines > 0, "min_lines must be positive");
         use globset::{Glob, GlobMatcher};
 
         // Build glob matchers

@@ -21,12 +21,10 @@ impl WebSocketTransport {
 #[async_trait]
 impl McpTransport for WebSocketTransport {
     async fn send(&self, _message: McpMessage) -> Result<(), McpError> {
-        debug_assert!(true, "contract: send");
         Ok(())
     }
 
     async fn receive(&self) -> Result<McpMessage, McpError> {
-        debug_assert!(true, "contract: receive");
         Err(McpError {
             code: error_codes::INTERNAL_ERROR,
             message: "Not implemented".to_string(),
@@ -35,7 +33,6 @@ impl McpTransport for WebSocketTransport {
     }
 
     async fn close(&self) -> Result<(), McpError> {
-        debug_assert!(true, "contract: close");
         Ok(())
     }
 }
@@ -61,12 +58,10 @@ impl HttpTransport {
 #[async_trait]
 impl McpTransport for HttpTransport {
     async fn send(&self, _message: McpMessage) -> Result<(), McpError> {
-        debug_assert!(true, "contract: send");
         Ok(())
     }
 
     async fn receive(&self) -> Result<McpMessage, McpError> {
-        debug_assert!(true, "contract: receive");
         Err(McpError {
             code: error_codes::INTERNAL_ERROR,
             message: "Not implemented".to_string(),
@@ -75,7 +70,6 @@ impl McpTransport for HttpTransport {
     }
 
     async fn close(&self) -> Result<(), McpError> {
-        debug_assert!(true, "contract: close");
         Ok(())
     }
 }

@@ -128,7 +128,6 @@ pub async fn handle_analyze_proof_annotations(
     _perf: bool,
     clear_cache: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::proof_annotation_helpers::{
         collect_and_filter_annotations, format_as_full, format_as_json, format_as_markdown,
         format_as_sarif, format_as_summary, setup_proof_annotator, ProofAnnotationFilter,
@@ -305,7 +304,6 @@ pub async fn handle_analyze_incremental_coverage(
     _force_refresh: bool,
     top_files: usize,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     print_coverage_analysis_header(
         &project_path,
         &base_branch,
@@ -355,7 +353,6 @@ fn print_coverage_analysis_header(
     coverage_threshold: f64,
     format: &IncrementalCoverageOutputFormat,
 ) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("📊 Analyzing incremental coverage...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("🌿 Base branch: {base_branch}");
@@ -370,7 +367,6 @@ fn print_coverage_analysis_header(
 fn create_file_ids_from_changes(
     changed_files: &[(PathBuf, String)],
 ) -> Result<Vec<crate::services::incremental_coverage_analyzer::FileId>> {
-    debug_assert!(!changed_files.is_empty(), "changed_files must not be empty");
     use crate::services::incremental_coverage_analyzer::FileId;
     use sha2::{Digest, Sha256};
 
@@ -398,7 +394,6 @@ fn format_coverage_report(
     format: IncrementalCoverageOutputFormat,
     top_files: usize,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_coverage_report");
     use IncrementalCoverageOutputFormat::{Delta, Detailed, Json, Lcov, Markdown, Sarif, Summary};
     match format {
         Summary => format_incremental_coverage_summary(report, top_files),
@@ -412,7 +407,6 @@ fn format_coverage_report(
 }
 
 async fn output_coverage_result(content: String, output: Option<PathBuf>) -> Result<()> {
-    debug_assert!(true, "contract: output_coverage_result");
     eprintln!("✅ Incremental coverage analysis complete");
 
     if let Some(output_path) = output {

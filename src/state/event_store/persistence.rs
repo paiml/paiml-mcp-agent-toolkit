@@ -70,18 +70,15 @@ impl EventPersistence for InMemoryPersistence {
     }
 
     async fn append_batch(&self, events: &[StateEvent]) -> Result<(), EventStoreError> {
-        debug_assert!(!events.is_empty(), "events must not be empty");
         self.events.write().extend(events.iter().cloned());
         Ok(())
     }
 
     async fn load_all(&self) -> Result<Vec<StateEvent>, EventStoreError> {
-        debug_assert!(true, "contract: load_all");
         Ok(self.events.read().clone())
     }
 
     async fn compact(&self, events: &BTreeMap<EventId, StateEvent>) -> Result<(), EventStoreError> {
-        debug_assert!(true, "contract: compact");
         let mut persisted = self.events.write();
         persisted.clear();
         persisted.extend(events.values().cloned());

@@ -4,7 +4,6 @@ pub(crate) async fn analyze_ast_contexts(
     path: &std::path::Path,
     _config: Option<FileClassifierConfig>,
 ) -> anyhow::Result<Vec<EnhancedFileContext>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let _start_time = std::time::Instant::now();
     info!("Starting AST analysis for path: {:?}", path);
 
@@ -20,7 +19,6 @@ pub(crate) async fn analyze_ast_contexts(
 
 /// Discover files and filter for source files only
 fn discover_and_categorize_source_files(path: &std::path::Path) -> anyhow::Result<Vec<PathBuf>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::file_discovery::ProjectFileDiscovery;
 
     let discovery_config = create_ast_discovery_config();
@@ -35,7 +33,6 @@ fn discover_and_categorize_source_files(path: &std::path::Path) -> anyhow::Resul
 
 /// Create discovery configuration for AST analysis
 fn create_ast_discovery_config() -> crate::services::file_discovery::FileDiscoveryConfig {
-    debug_assert!(true, "contract: create_ast_discovery_config");
     crate::services::file_discovery::FileDiscoveryConfig {
         respect_gitignore: true,
         filter_external_repos: true,
@@ -48,7 +45,6 @@ fn create_ast_discovery_config() -> crate::services::file_discovery::FileDiscove
 fn categorize_files_in_parallel(
     all_files: Vec<PathBuf>,
 ) -> Vec<(PathBuf, crate::services::file_discovery::FileCategory)> {
-    debug_assert!(!all_files.is_empty(), "all_files must not be empty");
     use crate::services::file_discovery::ProjectFileDiscovery;
 
     all_files
@@ -66,7 +62,6 @@ fn categorize_files_in_parallel(
 fn filter_and_categorize_files(
     categorized_files: Vec<(PathBuf, crate::services::file_discovery::FileCategory)>,
 ) -> Vec<PathBuf> {
-    debug_assert!(!categorized_files.is_empty(), "categorized_files must not be empty");
     use crate::services::file_discovery::FileCategory;
 
     let mut source_files = Vec::new();
@@ -112,7 +107,6 @@ fn filter_and_categorize_files(
 /// Matches: *_tests.rs, *_test.rs, tests/*.rs, test_*.rs
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn is_test_file(path: &std::path::Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
     // Common Rust test file patterns
@@ -139,7 +133,6 @@ pub(crate) fn is_test_file(path: &std::path::Path) -> bool {
 async fn analyze_source_files_for_contexts(
     source_files: Vec<PathBuf>,
 ) -> anyhow::Result<Vec<EnhancedFileContext>> {
-    debug_assert!(!source_files.is_empty(), "source_files must not be empty");
     let mut enhanced_contexts = Vec::new();
     let mut file_count = 0;
     let analysis_start = std::time::Instant::now();
@@ -161,7 +154,6 @@ async fn analyze_single_file_for_context(
     file_path: &Path,
     file_count: &mut usize,
 ) -> Option<EnhancedFileContext> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let file_start = std::time::Instant::now();
 
     if let Ok(file_context) = analysis_functions::analyze_single_file(file_path).await {
@@ -196,7 +188,6 @@ async fn analyze_single_file_for_context(
 
 /// Log analysis completion statistics
 fn log_analysis_completion(analysis_start: std::time::Instant, file_count: usize) {
-    debug_assert!(true, "contract: log_analysis_completion");
     let total_time = analysis_start.elapsed();
     info!(
         "AST analysis phase took {:?} for {} files ({:?} per file average)",

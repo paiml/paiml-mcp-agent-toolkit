@@ -19,11 +19,6 @@ pub(crate) async fn analyze_single_file(
     file_path: &Path,
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     eprintln!("🔍 Analyzing complexity of file: {}", file_path.display());
 
     // Ensure file exists and resolve absolute path
@@ -61,7 +56,6 @@ pub(crate) async fn analyze_multiple_files(
     files: &[PathBuf],
     config: &ComplexityConfig,
 ) -> Result<Vec<FileComplexityMetrics>> {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     eprintln!("🔍 Analyzing complexity of {} files...", files.len());
 
     let mut all_metrics = Vec::new();
@@ -255,7 +249,6 @@ pub(crate) fn has_complexity_violations(
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
 ) -> bool {
-    debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     file_metrics.iter().any(|file| {
         file.functions.iter().any(|func| {
             let cyclomatic_exceeded = func.metrics.cyclomatic > max_cyclomatic.unwrap_or(20);

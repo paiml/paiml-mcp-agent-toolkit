@@ -45,11 +45,6 @@ impl AssemblyScriptParser {
     /// Parse an `AssemblyScript` file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn parse_file(&mut self, _file_path: &Path, content: &str) -> Result<AstDag> {
-        debug_assert!(
-            _file_path.exists(),
-            "_file_path must exist: {}",
-            _file_path.display()
-        );
         // Check file size limit
         if content.len() > MAX_FILE_SIZE {
             return Err(anyhow::anyhow!("File too large: {} bytes", content.len()));
@@ -65,7 +60,6 @@ impl AssemblyScriptParser {
     /// Analyze complexity of `AssemblyScript` code
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&self, content: &str) -> Result<WasmComplexity> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Basic complexity analysis
         let line_count = content.lines().count();
         let function_count = content.matches("function").count();
@@ -215,7 +209,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

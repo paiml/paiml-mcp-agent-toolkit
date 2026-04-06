@@ -17,7 +17,6 @@ async fn handle_single_file_refactor(
     dry_run: bool,
     _max_iterations: u32,
 ) -> Result<()> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     eprintln!("🎯 Analyzing single file: {}", file_path.display());
 
     if is_markdown_file(&file_path) {
@@ -35,7 +34,6 @@ async fn handle_regular_file_analysis(
     format: RefactorAutoOutputFormat,
     dry_run: bool,
 ) -> Result<()> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let lint_violations = get_single_file_lint_violations(file_path).await?;
     eprintln!("📊 Found {} lint violations", lint_violations.len());
 
@@ -66,7 +64,6 @@ fn output_regular_file_results(
     refactor_request: &serde_json::Value,
     format: RefactorAutoOutputFormat,
 ) {
-    debug_assert!(true, "contract: output_regular_file_results");
     match format {
         RefactorAutoOutputFormat::Json => {
             if let Ok(json_str) = serde_json::to_string_pretty(refactor_request) {
@@ -135,14 +132,12 @@ pub async fn handle_refactor_auto(config: RefactorAutoConfig) -> Result<()> {
 
 /// Print refactoring header information
 fn print_refactoring_header(config: &RefactorAutoConfig) {
-    debug_assert!(true, "contract: print_refactoring_header");
     eprintln!("🚀 Starting automated refactoring...");
     eprintln!("📁 Project: {}", config.project_path.display());
 }
 
 /// Initialize the refactoring context from configuration
 async fn initialize_refactoring_context(config: &RefactorAutoConfig) -> Result<RefactorContext> {
-    debug_assert!(true, "contract: initialize_refactoring_context");
     setup_refactoring_context(
         config.project_path.clone(),
         config.single_file_mode,
@@ -161,7 +156,6 @@ async fn initialize_refactoring_context(config: &RefactorAutoConfig) -> Result<R
 
 /// Check if we should exit early due to special modes
 async fn should_exit_early(context: &RefactorContext) -> Result<bool> {
-    debug_assert!(true, "contract: should_exit_early");
     #[allow(clippy::redundant_pattern_matching)]
     if let Some(()) = handle_special_modes(context).await? {
         return Ok(true);
@@ -171,7 +165,6 @@ async fn should_exit_early(context: &RefactorContext) -> Result<bool> {
 
 /// Prepare source files for analysis
 async fn prepare_source_files(context: &mut RefactorContext) -> Result<()> {
-    debug_assert!(true, "contract: prepare_source_files");
     context.ignore_patterns = load_ignore_patterns(&context.config.patterns).await?;
     context.source_files = discover_source_files(
         &context.config.project_path,
@@ -199,7 +192,6 @@ async fn execute_refactoring_cycles(
     context: &RefactorContext,
     max_iterations: u32,
 ) -> Result<Vec<IterationResult>> {
-    debug_assert!(!refactoring_requests.is_empty(), "refactoring_requests must not be empty");
     let mut iteration_results = Vec::new();
     let mut remaining_requests = refactoring_requests;
 
@@ -233,7 +225,6 @@ async fn execute_single_iteration(
     iteration: u32,
     results: &mut Vec<IterationResult>,
 ) -> Result<IterationContinuation> {
-    debug_assert!(true, "contract: execute_single_iteration");
     let iteration_result = execute_refactoring_iteration(requests, context, iteration).await?;
     let validation_result = validate_refactoring_results(&iteration_result, context).await?;
 
@@ -263,7 +254,6 @@ fn filter_successful_requests(
     requests: &[RefactoringRequest],
     iteration_result: &IterationResult,
 ) -> Vec<RefactoringRequest> {
-    debug_assert!(!requests.is_empty(), "requests must not be empty");
     requests
         .iter()
         .filter(|req| {
@@ -281,7 +271,6 @@ async fn finalize_refactoring(
     iteration_results: &[IterationResult],
     context: &RefactorContext,
 ) -> Result<()> {
-    debug_assert!(!iteration_results.is_empty(), "iteration_results must not be empty");
     let final_validation = get_final_validation(iteration_results, context).await?;
     format_and_output_results(iteration_results, &final_validation, context).await
 }
@@ -291,7 +280,6 @@ async fn get_final_validation(
     iteration_results: &[IterationResult],
     context: &RefactorContext,
 ) -> Result<ValidationResult> {
-    debug_assert!(!iteration_results.is_empty(), "iteration_results must not be empty");
     if let Some(last_result) = iteration_results.last() {
         validate_refactoring_results(last_result, context).await
     } else {
@@ -307,21 +295,18 @@ async fn get_final_validation(
 
 /// Get lint violations for a single file (helper function)
 async fn get_single_file_lint_violations(_file_path: &Path) -> Result<Vec<ViolationDetailJson>> {
-    debug_assert!(_file_path.exists(), "_file_path must exist: {}", _file_path.display());
     // Use clippy and other linting tools for actual implementation
     Ok(vec![])
 }
 
 /// Count SATD comments in a single file (helper function)
 async fn count_file_satd(_file_path: &Path) -> Result<usize> {
-    debug_assert!(_file_path.exists(), "_file_path must exist: {}", _file_path.display());
     // Parse file content for SATD comment patterns
     Ok(0)
 }
 
 /// Analyze complexity of a single file (helper function)
 async fn analyze_file_complexity(_file_path: &Path) -> Result<QualityMetrics> {
-    debug_assert!(_file_path.exists(), "_file_path must exist: {}", _file_path.display());
     // Use AST-based complexity analysis tools
     Ok(QualityMetrics::default())
 }
@@ -333,7 +318,6 @@ fn generate_single_file_refactor_request(
     _complexity: QualityMetrics,
     _satd_count: usize,
 ) -> Result<serde_json::Value> {
-    debug_assert!(_file_path.exists(), "_file_path must exist: {}", _file_path.display());
     // Generate comprehensive refactoring analysis
     Ok(serde_json::json!({
         "file": "test.rs",
@@ -343,12 +327,10 @@ fn generate_single_file_refactor_request(
 
 /// Print summary for single file (helper function)
 fn print_single_file_summary(_request: &serde_json::Value) {
-    debug_assert!(true, "contract: print_single_file_summary");
     eprintln!("📋 Single file refactoring summary");
 }
 
 /// Print detailed results for single file (helper function)
 fn print_single_file_detailed(_request: &serde_json::Value) {
-    debug_assert!(true, "contract: print_single_file_detailed");
     eprintln!("📋 Single file refactoring details");
 }

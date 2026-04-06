@@ -37,17 +37,14 @@ impl GetFunctionTool {
 #[async_trait]
 impl McpTool for GetFunctionTool {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "pmat_get_function"
     }
 
     fn schema(&self) -> Value {
-        debug_assert!(true, "contract: schema");
         Self::schema()
     }
 
     async fn execute(&self, params: Value) -> Result<Value, String> {
-        debug_assert!(true, "contract: execute");
         let function_id = params["function_id"]
             .as_str()
             .ok_or("Missing required parameter: function_id")?;
@@ -138,17 +135,14 @@ impl FindSimilarTool {
 #[async_trait]
 impl McpTool for FindSimilarTool {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "pmat_find_similar"
     }
 
     fn schema(&self) -> Value {
-        debug_assert!(true, "contract: schema");
         Self::schema()
     }
 
     async fn execute(&self, params: Value) -> Result<Value, String> {
-        debug_assert!(true, "contract: execute");
         let start = Instant::now();
 
         let function_id = params["function_id"]
@@ -236,17 +230,14 @@ impl IndexStatsTool {
 #[async_trait]
 impl McpTool for IndexStatsTool {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "pmat_index_stats"
     }
 
     fn schema(&self) -> Value {
-        debug_assert!(true, "contract: schema");
         Self::schema()
     }
 
     async fn execute(&self, params: Value) -> Result<Value, String> {
-        debug_assert!(true, "contract: execute");
         let rebuild = params["rebuild"].as_bool().unwrap_or(false);
 
         let index = if rebuild {

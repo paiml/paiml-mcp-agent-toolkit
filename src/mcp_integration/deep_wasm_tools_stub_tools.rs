@@ -6,7 +6,6 @@
 #[async_trait]
 impl McpTool for DeepWasmTraceExecutionTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "deep_wasm_trace_execution".to_string(),
             description: "Trace execution flow through Source → WASM → JS layers".to_string(),
@@ -33,7 +32,6 @@ impl McpTool for DeepWasmTraceExecutionTool {
     }
 
     async fn execute(&self, _params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         Ok(json!({
             "type": "text",
             "text": "Execution tracing not yet implemented - coming in Phase 3"
@@ -44,7 +42,6 @@ impl McpTool for DeepWasmTraceExecutionTool {
 #[async_trait]
 impl McpTool for DeepWasmCompareOptimizationsTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "deep_wasm_compare_optimizations".to_string(),
             description: "Compare WASM binaries at different optimization levels".to_string(),
@@ -72,7 +69,6 @@ impl McpTool for DeepWasmCompareOptimizationsTool {
     }
 
     async fn execute(&self, _params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         Ok(json!({
             "type": "text",
             "text": "Optimization comparison not yet implemented - coming in Phase 2"
@@ -83,7 +79,6 @@ impl McpTool for DeepWasmCompareOptimizationsTool {
 #[async_trait]
 impl McpTool for DeepWasmDetectIssuesTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "deep_wasm_detect_issues".to_string(),
             description: "Detect WASM-specific quality issues and anti-patterns".to_string(),
@@ -121,7 +116,6 @@ impl McpTool for DeepWasmDetectIssuesTool {
     }
 
     async fn execute(&self, _params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         Ok(json!({
             "type": "text",
             "text": "Issue detection not yet implemented - coming in Phase 2"

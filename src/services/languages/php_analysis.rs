@@ -6,7 +6,6 @@ impl PhpScriptAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
@@ -24,7 +23,6 @@ impl PhpScriptAnalyzer {
     /// Analyzes PHP script and extracts AST items (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_php_script(mut self, source: &str) -> Result<Vec<AstItem>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -38,7 +36,6 @@ impl PhpScriptAnalyzer {
 
     /// Extracts function definitions from PHP script (complexity ≤10)
     fn extract_functions(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -62,7 +59,6 @@ impl PhpScriptAnalyzer {
 
     /// Extracts class definitions from PHP script (complexity ≤10)
     fn extract_classes(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -87,7 +83,6 @@ impl PhpScriptAnalyzer {
 
     /// Extracts method definitions from PHP classes (complexity ≤10)
     fn extract_methods(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut current_class: Option<String> = None;
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
@@ -105,7 +100,6 @@ impl PhpScriptAnalyzer {
 
     /// Extracts function name from PHP line (complexity ≤10)
     fn extract_function_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // function functionName(...) {
         let after_function = line.strip_prefix("function ")?.trim();
         let name_part = after_function.split('(').next()?;
@@ -114,7 +108,6 @@ impl PhpScriptAnalyzer {
 
     /// Extracts class name from PHP line (complexity ≤10)
     fn extract_class_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // class ClassName {
         let after_class = line.strip_prefix("class ")?.trim();
         let name_part = after_class.split_whitespace().next()?.trim_end_matches('{');
@@ -123,7 +116,6 @@ impl PhpScriptAnalyzer {
 
     /// Extracts method name from PHP line (complexity ≤10)
     fn extract_method_name(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // public/private/protected function methodName(...) {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() >= 3 && parts[1] == "function" {
@@ -136,7 +128,6 @@ impl PhpScriptAnalyzer {
 
     /// Gets qualified name for PHP symbol (complexity ≤10)
     fn get_qualified_name(&self, symbol_name: &str) -> String {
-        debug_assert!(!symbol_name.is_empty(), "symbol_name must not be empty");
         if self.script_name.is_empty() {
             symbol_name.to_string()
         } else {
@@ -147,7 +138,6 @@ impl PhpScriptAnalyzer {
 
 /// Parse a single PHP source line into a method AstItem if it matches a method declaration
 fn parse_php_method_line(trimmed: &str, line_num: usize, current_class: &Option<String>) -> Option<AstItem> {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let is_method = (trimmed.starts_with("public function ")
         || trimmed.starts_with("private function ")
         || trimmed.starts_with("protected function "))

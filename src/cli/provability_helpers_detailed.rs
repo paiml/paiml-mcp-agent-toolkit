@@ -5,7 +5,6 @@ pub fn format_provability_detailed(
     summaries: &[ProofSummary],
     include_evidence: bool,
 ) -> Result<String> {
-    debug_assert!(!function_ids.is_empty(), "function_ids must not be empty");
     let mut output = String::new();
 
     use crate::cli::colors as c;
@@ -20,7 +19,6 @@ fn group_functions_by_file<'a>(
     function_ids: &'a [FunctionId],
     summaries: &'a [ProofSummary],
 ) -> HashMap<&'a str, Vec<(&'a FunctionId, &'a ProofSummary)>> {
-    debug_assert!(true, "contract: group_functions_by_file");
     let mut by_file = HashMap::new();
 
     for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
@@ -38,7 +36,6 @@ fn write_detailed_analysis_by_file(
     by_file: HashMap<&str, Vec<(&FunctionId, &ProofSummary)>>,
     include_evidence: bool,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_detailed_analysis_by_file");
     for (file_path, functions) in by_file {
         write_file_section(output, file_path, &functions, include_evidence)?;
     }
@@ -51,8 +48,6 @@ fn write_file_section(
     functions: &[(&FunctionId, &ProofSummary)],
     include_evidence: bool,
 ) -> Result<()> {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
-    debug_assert!(!functions.is_empty(), "functions must not be empty");
     use crate::cli::colors as c;
     writeln!(output, "{}\n", c::subheader(&c::path(file_path)))?;
 
@@ -74,7 +69,6 @@ fn write_function_details(
     func_id: &FunctionId,
     summary: &ProofSummary,
 ) -> Result<()> {
-    debug_assert!(true, "contract: write_function_details");
     use crate::cli::colors as c;
     use crate::services::lightweight_provability_analyzer::PropertyType;
 
@@ -124,7 +118,6 @@ fn write_verified_properties(
     output: &mut String,
     properties: &[crate::services::lightweight_provability_analyzer::VerifiedProperty],
 ) -> Result<()> {
-    debug_assert!(!properties.is_empty(), "properties must not be empty");
     use crate::cli::colors as c;
     writeln!(output, "\n    {}Verified Properties:{}", c::BOLD, c::RESET)?;
 

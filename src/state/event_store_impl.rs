@@ -134,7 +134,6 @@ impl<P: EventPersistence> EventStore<P> {
         &self,
         events: Vec<StateEvent>,
     ) -> Result<Vec<EventId>, EventStoreError> {
-        debug_assert!(!events.is_empty(), "events must not be empty");
         let mut ids = Vec::with_capacity(events.len());
         let mut persisted_events = Vec::with_capacity(events.len());
 
@@ -196,7 +195,6 @@ impl<P: EventPersistence> EventStore<P> {
         partition_key: &str,
         since: Option<EventId>,
     ) -> Vec<StateEvent> {
-        debug_assert!(!partition_key.is_empty(), "partition_key must not be empty");
         let partitions = self.partitions.read();
         let events = self.events.read();
 

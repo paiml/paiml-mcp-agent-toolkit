@@ -4,7 +4,6 @@
 impl RoadmapService {
     /// Get lock file path
     fn lock_file_path(&self) -> PathBuf {
-        debug_assert!(true, "contract: lock_file_path");
         let mut lock_path = self.roadmap_path.clone();
         lock_path.set_extension("yaml.lock");
         lock_path
@@ -12,7 +11,6 @@ impl RoadmapService {
 
     /// Acquire exclusive lock for writing
     fn acquire_write_lock(&self) -> Result<File> {
-        debug_assert!(true, "contract: acquire_write_lock");
         let lock_path = self.lock_file_path();
 
         // Create parent directory if needed
@@ -37,7 +35,6 @@ impl RoadmapService {
 
     /// Acquire shared lock for reading
     fn acquire_read_lock(&self) -> Result<File> {
-        debug_assert!(true, "contract: acquire_read_lock");
         let lock_path = self.lock_file_path();
 
         // Create parent directory if needed
@@ -64,7 +61,6 @@ impl RoadmapService {
 
     /// Parse YAML with enhanced error reporting
     fn parse_roadmap_yaml(&self, contents: &str) -> Result<Roadmap> {
-        debug_assert!(!contents.is_empty(), "contents must not be empty");
         serde_yaml_ng::from_str(contents).map_err(|e| {
             // Extract line/column info if available
             let location_info = if let Some(location) = e.location() {

@@ -3,7 +3,6 @@
 impl ContractMcpServer {
     /// Handle scaffold_agent tool call (TICKET-PMAT-6017, PMAT-6022)
     async fn handle_scaffold_agent(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_scaffold_agent");
         match self.scaffold_agent_internal(params).await {
             Ok(data) => {
                 let result = McpOperationResult::success(data);
@@ -18,7 +17,6 @@ impl ContractMcpServer {
 
     /// Internal implementation of scaffold_agent
     async fn scaffold_agent_internal(&self, params: Value) -> Result<Value> {
-        debug_assert!(true, "contract: scaffold_agent_internal");
         use crate::scaffold::agent::{scaffold_agent, AgentContextBuilder, QualityLevel};
         use std::path::PathBuf;
 
@@ -80,7 +78,6 @@ impl ContractMcpServer {
 
     /// Handle scaffold_wasm tool call
     async fn handle_scaffold_wasm(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_scaffold_wasm");
         let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("my-wasm");
         let framework = params.get("framework").and_then(|v| v.as_str()).unwrap_or("wasm-labs");
         let output_dir = params.get("output_dir").and_then(|v| v.as_str()).unwrap_or(".");
@@ -98,7 +95,6 @@ impl ContractMcpServer {
 
     /// Handle validate_roadmap tool call (TICKET-PMAT-6019, PMAT-6022)
     async fn handle_validate_roadmap(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_validate_roadmap");
         match self.validate_roadmap_internal(params).await {
             Ok(data) => {
                 let result = McpOperationResult::success(data);
@@ -113,7 +109,6 @@ impl ContractMcpServer {
 
     /// Internal implementation of validate_roadmap
     async fn validate_roadmap_internal(&self, params: Value) -> Result<Value> {
-        debug_assert!(true, "contract: validate_roadmap_internal");
         use crate::cli::handlers::roadmap_handler::validate_roadmap_internal as validate_impl;
         use std::path::PathBuf;
 
@@ -147,7 +142,6 @@ impl ContractMcpServer {
 
     /// Handle health_check tool call (TICKET-PMAT-6020, PMAT-6022)
     async fn handle_health_check(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_health_check");
         match self.health_check_internal(params).await {
             Ok(data) => {
                 let result = McpOperationResult::success(data);
@@ -162,7 +156,6 @@ impl ContractMcpServer {
 
     /// Internal implementation of health_check
     async fn health_check_internal(&self, params: Value) -> Result<Value> {
-        debug_assert!(true, "contract: health_check_internal");
         use crate::cli::handlers::health_handler::run_health_checks_internal;
         use std::path::PathBuf;
 
@@ -224,7 +217,6 @@ impl ContractMcpServer {
 
     /// Handle generate_tickets tool call (TICKET-PMAT-6021, PMAT-6022)
     async fn handle_generate_tickets(&self, params: Value) -> Result<ToolResult> {
-        debug_assert!(true, "contract: handle_generate_tickets");
         match self.generate_tickets_internal(params).await {
             Ok(data) => {
                 let result = McpOperationResult::success(data);
@@ -239,7 +231,6 @@ impl ContractMcpServer {
 
     /// Internal implementation of generate_tickets
     async fn generate_tickets_internal(&self, params: Value) -> Result<Value> {
-        debug_assert!(true, "contract: generate_tickets_internal");
         use crate::cli::handlers::roadmap_handler::generate_tickets_internal as generate_impl;
         use std::path::PathBuf;
 

@@ -16,7 +16,6 @@ pub async fn handle_analyze_defect_prediction(
     _output: Option<PathBuf>,
     _perf: bool,
 ) -> anyhow::Result<()> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Defect prediction analysis using ML models
     println!("🤖 Running defect prediction analysis...");
     println!("📊 Analyzing code patterns for defect likelihood...");
@@ -61,7 +60,6 @@ pub async fn handle_analyze_graph_metrics(
     _top_k: usize,
     _min_centrality: f64,
 ) -> anyhow::Result<()> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Graph metrics analysis for code structure
     println!("📈 Analyzing graph metrics...");
     println!("🔍 Computing dependency graph metrics...");
@@ -86,7 +84,6 @@ pub async fn handle_analyze_name_similarity(
     fuzzy: bool,
     case_sensitive: bool,
 ) -> anyhow::Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Delegate to the actual implementation
     crate::cli::analysis::name_similarity::handle_analyze_name_similarity(
         project_path,
@@ -120,7 +117,6 @@ pub async fn handle_analyze_symbol_table(
     _output: Option<PathBuf>,
     _perf: bool,
 ) -> anyhow::Result<()> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Symbol table analysis for code symbols
     println!("🔍 Analyzing symbol table...");
     println!("📊 Processing symbols and references...");
@@ -146,7 +142,6 @@ pub async fn handle_analyze_comprehensive(
     _perf: bool,
     _executive_summary: bool,
 ) -> anyhow::Result<()> {
-    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Comprehensive analysis combining all metrics
     println!("🔍 Running comprehensive analysis...");
     println!("📊 Analyzing complexity, quality, and dependencies...");

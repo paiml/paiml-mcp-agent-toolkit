@@ -17,19 +17,16 @@ pub trait Service: Send + Sync {
 
     /// Initialize the service with configuration
     fn initialize(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: service_name");
         Ok(())
     }
 
     /// Check if service is healthy and ready
     fn health_check(&self) -> Result<()> {
-        debug_assert!(true, "contract: health_check");
         Ok(())
     }
 
     /// Cleanup resources on shutdown
     fn shutdown(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: shutdown");
         Ok(())
     }
 }
@@ -46,7 +43,6 @@ pub trait AnalysisService: Service {
 
     /// Get analysis capabilities and metadata
     fn capabilities(&self) -> AnalysisCapabilities {
-        debug_assert!(true, "contract: analyze");
         AnalysisCapabilities::default()
     }
 }
@@ -221,14 +217,12 @@ mod tests {
 
     impl Service for TestService {
         fn service_name(&self) -> &'static str {
-            debug_assert!(true, "contract: service_name");
             self.name
         }
     }
 
     impl Service for AnotherTestService {
         fn service_name(&self) -> &'static str {
-            debug_assert!(true, "contract: service_name");
             self.name
         }
     }
@@ -389,7 +383,6 @@ mod tests {
 
     impl Service for DefaultMethodsService {
         fn service_name(&self) -> &'static str {
-            debug_assert!(true, "contract: service_name");
             "default_methods"
         }
     }
@@ -427,7 +420,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

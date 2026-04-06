@@ -47,7 +47,6 @@ impl ShowcaseGallery {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_repositories_by_language(&self, language: &str) -> Vec<&ShowcaseRepository> {
-        debug_assert!(!language.is_empty(), "language must not be empty");
         let lang_lower = language.to_lowercase();
         self.repositories
             .values()
@@ -64,7 +63,6 @@ impl ShowcaseGallery {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_repository_by_name(&self, name: &str) -> Option<&ShowcaseRepository> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.repositories.get(name)
     }
 

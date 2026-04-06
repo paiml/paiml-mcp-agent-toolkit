@@ -5,7 +5,6 @@
 /// for large repos (e.g., 58GB -> <100MB for 230K-function repos).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_generic_callee(name: &str) -> bool {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     matches!(
         name,
         "new" | "from" | "into" | "default" | "clone" | "fmt"
@@ -42,8 +41,6 @@ pub(crate) fn is_generic_callee(name: &str) -> bool {
 /// by 25-70% for test-heavy repos.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_test_chunk(chunk_name: &str, file_path: &str) -> bool {
-    debug_assert!(!chunk_name.is_empty(), "chunk_name must not be empty");
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     // File-level: skip test directories and test file suffixes
     if file_path.contains("/tests/")
         || file_path.contains("/test/")
@@ -91,7 +88,6 @@ fn record_call_edges_from_source(
     called_by: &mut HashMap<usize, Vec<usize>>,
     seen: &mut std::collections::HashSet<usize>,
 ) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     for ident in source.split(|c: char| !c.is_alphanumeric() && c != '_') {
         if ident.len() < 3 || is_keyword(ident) || is_generic_callee(ident) {
             continue;
@@ -119,7 +115,6 @@ pub(crate) fn build_call_graph(
     functions: &[FunctionEntry],
     name_index: &HashMap<String, Vec<usize>>,
 ) -> (HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>) {
-    debug_assert!(!functions.is_empty(), "functions must not be empty");
     let capacity = functions.len() / 2;
     let mut calls: HashMap<usize, Vec<usize>> = HashMap::with_capacity(capacity);
     let mut called_by: HashMap<usize, Vec<usize>> = HashMap::with_capacity(capacity);
@@ -160,7 +155,6 @@ fn pagerank_iteration(
     damping: f32,
     num_functions: usize,
 ) {
-    debug_assert!(true, "contract: pagerank_iteration");
     let teleport = (1.0 - damping) / num_functions as f32;
     new_pagerank.iter_mut().for_each(|s| *s = teleport);
 
@@ -192,7 +186,6 @@ pub(crate) fn compute_graph_metrics(
     calls: &HashMap<usize, Vec<usize>>,
     called_by: &HashMap<usize, Vec<usize>>,
 ) -> Vec<GraphMetrics> {
-    debug_assert!(num_functions > 0, "num_functions must be positive");
     if num_functions == 0 {
         return Vec::new();
     }

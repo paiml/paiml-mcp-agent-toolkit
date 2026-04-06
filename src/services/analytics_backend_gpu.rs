@@ -85,7 +85,6 @@ impl GpuDevice {
     ///
     /// Reference: Gregg & Hazelwood (2011) ISPASS
     fn calibrate_pcie_bandwidth(device: &wgpu::Device, queue: &wgpu::Queue) -> Result<f64> {
-        debug_assert!(true, "contract: calibrate_pcie_bandwidth");
         const CALIBRATION_SIZE: usize = 30_000_000; // 30M f64 = 240 MB (under 256 MB limit)
 
         let start = std::time::Instant::now();
@@ -191,7 +190,6 @@ impl GpuDevice {
     /// Compute sum of f64 array using GPU
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_sum(&self, data: &[f64]) -> Result<f64> {
-        debug_assert!(!data.is_empty(), "data must not be empty");
         // For small datasets, GPU overhead isn't worth it
         if data.len() < 10_000 {
             return Ok(data.iter().sum());

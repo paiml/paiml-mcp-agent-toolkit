@@ -10,7 +10,6 @@ fn count_pairwise_cochanges(
     file_paths: &[&str],
     cochange_counts: &mut HashMap<(String, String), usize>,
 ) {
-    debug_assert!(!file_paths.is_empty(), "file_paths must not be empty");
     let n = file_paths.len();
     for i in 0..n {
         for j in (i + 1)..n {
@@ -28,7 +27,6 @@ fn count_pairwise_cochanges(
 fn aggregate_hotspots(
     commits: &[CommitInfo],
 ) -> (HashMap<String, FileHotspot>, HashMap<(String, String), usize>) {
-    debug_assert!(!commits.is_empty(), "commits must not be empty");
     let mut hotspots: HashMap<String, FileHotspot> = HashMap::new();
     let mut cochange_counts: HashMap<(String, String), usize> = HashMap::new();
     for commit in commits {
@@ -55,7 +53,6 @@ fn build_code_annotations(
     index: &AgentContextIndex,
     hotspots: &HashMap<String, FileHotspot>,
 ) -> HashMap<String, FileAnnotation> {
-    debug_assert!(true, "contract: build_code_annotations");
     let mut file_annots: HashMap<String, FileAnnotation> = HashMap::new();
     for file_path in hotspots.keys() {
         let funcs = index.get_by_file(file_path);
@@ -73,7 +70,6 @@ fn annotate_file_functions(
     file_path: &str,
     funcs: &[&crate::services::agent_context::FunctionEntry],
 ) -> FileAnnotation {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let mut annot = FileAnnotation::default();
     annot.function_count = funcs.len();
     let mut worst_tdg_score: f32 = 0.0;
@@ -107,7 +103,6 @@ fn load_dead_code_annotations(
     file_annots: &mut HashMap<String, FileAnnotation>,
     hotspots: &mut HashMap<String, FileHotspot>,
 ) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let dead_code_path = project_path.join(".pmat/dead-code-cache.json");
     let data = match std::fs::read_to_string(&dead_code_path) {
         Ok(d) => d,
@@ -130,7 +125,6 @@ fn load_dead_code_annotations(
 }
 
 fn aggregate_bug_hunter_faults(bug_hunter_dir: &std::path::Path) -> HashMap<String, usize> {
-    debug_assert!(bug_hunter_dir.exists(), "bug_hunter_dir must exist: {}", bug_hunter_dir.display());
     let mut counts: HashMap<String, usize> = HashMap::new();
     let entries = match std::fs::read_dir(bug_hunter_dir) { Ok(e) => e, Err(_) => return counts };
     // Only read the most recent cache file (by mtime) to avoid parsing multiple large JSONs
@@ -154,7 +148,6 @@ fn load_bug_hunter_annotations(
     project_path: &std::path::Path,
     file_annots: &mut HashMap<String, FileAnnotation>,
 ) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let bug_hunter_dir = project_path.join(".pmat/bug-hunter-cache");
     if !bug_hunter_dir.is_dir() { return; }
     let counts = aggregate_bug_hunter_faults(&bug_hunter_dir);
@@ -170,7 +163,6 @@ fn compute_cochange_pairs(
     cochange_counts: HashMap<(String, String), usize>,
     hotspots: &HashMap<String, FileHotspot>,
 ) -> Vec<CoChangePair> {
-    debug_assert!(true, "contract: compute_cochange_pairs");
     let mut pairs: Vec<CoChangePair> = cochange_counts
         .into_iter()
         .filter(|(_, count)| *count >= 3)
@@ -196,7 +188,6 @@ fn build_file_annotations(
     Vec<CoChangePair>,
     HashMap<String, FileAnnotation>,
 ) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let (mut hotspots, cochange_counts) = aggregate_hotspots(commits);
     let mut file_annots = build_code_annotations(index, &hotspots);
     load_dead_code_annotations(project_path, &mut file_annots, &mut hotspots);
@@ -212,7 +203,6 @@ fn build_file_annotations(
 
 /// Load work ticket info for issue refs
 fn load_work_ticket(project_path: &std::path::Path, issue_ref: &str) -> Option<WorkTicketInfo> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Try matching PMAT-### style refs
     let ticket_id = if issue_ref.starts_with("PMAT-") || issue_ref.starts_with("pmat-") {
         issue_ref.to_uppercase()
@@ -265,7 +255,6 @@ fn load_commit_quality(
     project_path: &std::path::Path,
     commit_hash: &str,
 ) -> Option<CommitQualityMeta> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let short_hash = commit_hash.get(..7.min(commit_hash.len())).unwrap_or(commit_hash);
     let meta_path = project_path
         .join(".pmat-metrics")

@@ -11,12 +11,10 @@ pub struct CppBinaryOpMutation;
 
 impl TreeSitterMutationOperator for CppBinaryOpMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "CppBinaryOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         if node.kind() != "binary_expression" {
             return false;
         }
@@ -33,7 +31,6 @@ impl TreeSitterMutationOperator for CppBinaryOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         // Find operator child node
         let mut cursor = node.walk();
         let mut operator_node = None;
@@ -96,12 +93,10 @@ pub struct CppRelationalOpMutation;
 
 impl TreeSitterMutationOperator for CppRelationalOpMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "CppRelationalOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         if node.kind() != "binary_expression" {
             return false;
         }
@@ -117,7 +112,6 @@ impl TreeSitterMutationOperator for CppRelationalOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         let mut cursor = node.walk();
         let mut operator_node = None;
 
@@ -180,12 +174,10 @@ pub struct CppLogicalOpMutation;
 
 impl TreeSitterMutationOperator for CppLogicalOpMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "CppLogicalOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         if node.kind() != "binary_expression" {
             return false;
         }
@@ -201,7 +193,6 @@ impl TreeSitterMutationOperator for CppLogicalOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         let mut cursor = node.walk();
         let mut operator_node = None;
 

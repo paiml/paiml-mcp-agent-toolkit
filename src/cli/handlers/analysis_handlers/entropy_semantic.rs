@@ -88,7 +88,6 @@ pub(crate) fn format_entropy_report(
 
 /// Format summary report
 fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations: usize) -> String {
-    debug_assert!(true, "contract: format_summary_report");
     use crate::cli::colors as c;
 
     let violations = get_top_violations(&report.actionable_violations, top_violations);
@@ -128,7 +127,6 @@ fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations:
 
 /// Format markdown report
 fn format_markdown_report(report: &crate::entropy::EntropyReport, top_violations: usize) -> String {
-    debug_assert!(true, "contract: format_markdown_report");
     let max_violations = if top_violations == 0 {
         usize::MAX
     } else {
@@ -156,7 +154,6 @@ pub(crate) fn get_top_violations(
     violations: &[crate::entropy::violation_detector::ActionableViolation],
     top_n: usize,
 ) -> Vec<crate::entropy::violation_detector::ActionableViolation> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     if top_n > 0 && violations.len() > top_n {
         violations.iter().take(top_n).cloned().collect()
     } else {
@@ -169,7 +166,6 @@ pub(crate) fn get_top_violations(
 pub(crate) fn format_violation_list(
     violations: &[crate::entropy::violation_detector::ActionableViolation],
 ) -> String {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use crate::cli::colors as c;
     violations
         .iter()
@@ -203,7 +199,6 @@ pub(crate) fn format_markdown_violations(
     violations: &[crate::entropy::violation_detector::ActionableViolation],
     max_count: usize,
 ) -> String {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     violations
         .iter()
         .take(max_count)
@@ -233,7 +228,6 @@ pub(crate) fn output_entropy_results(
     output: Option<std::path::PathBuf>,
     content: &str,
 ) -> Result<()> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     use std::fs;
 
     if let Some(output_path) = output {
@@ -251,11 +245,6 @@ fn index_workspace(
     workspace: &Path,
     language: Option<&str>,
 ) -> Result<usize> {
-    debug_assert!(
-        workspace.exists(),
-        "workspace must exist: {}",
-        workspace.display()
-    );
     println!("\u{1f50d} Indexing source files...");
     let num_docs = engine
         .index_directory(workspace, language)
@@ -272,7 +261,6 @@ fn output_cluster_results(
     result: &crate::services::local_semantic::LocalClusterResult,
     format: &crate::cli::enums::OutputFormat,
 ) -> Result<()> {
-    debug_assert!(true, "contract: output_cluster_results");
     match format {
         crate::cli::enums::OutputFormat::Json => {
             let json_output = serde_json::json!({
@@ -310,7 +298,6 @@ fn output_topic_results(
     result: &crate::services::local_semantic::LocalTopicResult,
     format: &crate::cli::enums::OutputFormat,
 ) -> Result<()> {
-    debug_assert!(true, "contract: output_topic_results");
     match format {
         crate::cli::enums::OutputFormat::Json => {
             let json_output = serde_json::json!({

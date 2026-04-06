@@ -45,8 +45,6 @@ const GENERIC_PREFIX_BLOCKLIST: &[&str] = &[
 
 /// Name a cluster using the suggest-rename signal cascade.
 fn name_cluster(entries: &[&FunctionEntry], file_path: &str) -> (String, String, f32) {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     // Try each signal in priority order
 
     // 1. Dominant type (struct/enum/trait)

@@ -213,7 +213,6 @@ impl ConfigurationService {
 
     /// Notify all watchers of configuration changes
     fn notify_watchers(&self, config: &PmatConfig) -> Result<()> {
-        debug_assert!(true, "contract: notify_watchers");
         let watchers = self
             .watchers
             .read()

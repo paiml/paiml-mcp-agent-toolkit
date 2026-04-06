@@ -104,7 +104,6 @@
     proptest! {
         #[test]
         fn prop_confidence_always_clamped(confidence in -100.0f64..100.0) {
-            debug_assert!(true, "contract: prop_confidence_always_clamped");
             let why = WhyIteration::new(
                 1,
                 "Why?".to_string(),
@@ -117,7 +116,6 @@
 
         #[test]
         fn prop_depth_preserved(depth in 1u8..=10) {
-            debug_assert!(true, "contract: prop_depth_preserved");
             let why = WhyIteration::new(
                 depth,
                 "Question".to_string(),
@@ -128,7 +126,6 @@
 
         #[test]
         fn prop_evidence_count_preserved(count in 0usize..50) {
-            debug_assert!(true, "contract: prop_evidence_count_preserved");
             let mut why = WhyIteration::new(1, "Q".to_string(), "H".to_string());
 
             for _ in 0..count {
@@ -146,7 +143,6 @@
 
         #[test]
         fn prop_serialization_roundtrip_debug_analysis(issue in "\\PC{1,100}") {
-            debug_assert!(true, "contract: prop_serialization_roundtrip_debug_analysis");
             let analysis = DebugAnalysis::new(issue.clone());
             let json = serde_json::to_string(&analysis)
                 .expect("Serialization should succeed");
@@ -157,7 +153,6 @@
 
         #[test]
         fn prop_satd_count_accumulates(counts in proptest::collection::vec(0u64..100, 1..10)) {
-            debug_assert!(true, "contract: prop_satd_count_accumulates");
             let mut whys = Vec::new();
 
             for (i, count) in counts.iter().enumerate() {
@@ -181,7 +176,6 @@
         fn prop_complexity_violations_count_correctly(
             values in proptest::collection::vec(0.0f64..100.0, 1..20)
         ) {
-            debug_assert!(true, "contract: prop_complexity_violations_count_correctly");
             let mut why = create_test_why_iteration(1, 0.5);
 
             for (i, value) in values.iter().enumerate() {
@@ -201,7 +195,6 @@
 
         #[test]
         fn prop_git_churn_threshold_at_10(commit_count in 0u64..100) {
-            debug_assert!(true, "contract: prop_git_churn_threshold_at_10");
             let mut why = create_test_why_iteration(1, 0.5);
             why.add_evidence(Evidence::new(
                 EvidenceSource::GitChurn,
@@ -221,7 +214,6 @@
             Priority::Medium,
             Priority::Low,
         ])) {
-            debug_assert!(true, "contract: prop_priority_serialization_stable");
             let json = serde_json::to_string(&priority).unwrap();
             let roundtrip: Priority = serde_json::from_str(&json).expect("serde roundtrip");
             prop_assert_eq!(roundtrip, priority);

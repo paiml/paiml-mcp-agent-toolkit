@@ -16,7 +16,6 @@ impl MinHashGenerator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(num_hashes: usize) -> Self {
-        debug_assert!(num_hashes > 0, "num_hashes must be positive");
         let seeds = (0..num_hashes).map(|i| i as u64).collect();
 
         Self { num_hashes, seeds }
@@ -26,7 +25,6 @@ impl MinHashGenerator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_signature(&self, shingles: &[u64]) -> MinHashSignature {
-        debug_assert!(!shingles.is_empty(), "shingles must not be empty");
         let mut signature = vec![u64::MAX; self.num_hashes];
 
         for &shingle in shingles {
@@ -43,8 +41,6 @@ impl MinHashGenerator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_shingles(&self, tokens: &[Token], k: usize) -> Vec<u64> {
-        debug_assert!(k > 0, "k must be positive");
-        debug_assert!(!tokens.is_empty(), "tokens must not be empty");
         if tokens.len() < k {
             return vec![];
         }

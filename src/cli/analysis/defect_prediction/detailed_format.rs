@@ -9,7 +9,6 @@ pub(crate) fn format_defect_json(
     predictions: &[(String, DefectScore)],
     elapsed: std::time::Duration,
 ) -> Result<String> {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let report = serde_json::json!({
         "analysis_type": "defect_prediction",
         "summary": {
@@ -41,7 +40,6 @@ pub(crate) fn format_defect_detailed(
     elapsed: std::time::Duration,
     include_recommendations: bool,
 ) -> Result<String> {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut output = String::new();
 
     write_detailed_header(&mut output)?;
@@ -72,7 +70,6 @@ pub(crate) fn write_file_details(
     score: &DefectScore,
     include_recommendations: bool,
 ) -> Result<()> {
-    debug_assert!(!file.is_empty(), "file must not be empty");
     use std::fmt::Write;
 
     writeln!(output, "📄 File: {file}")?;

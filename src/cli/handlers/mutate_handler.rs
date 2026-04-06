@@ -70,7 +70,6 @@ async fn execute_with_progress(
     mutants: Vec<crate::services::mutation::types::Mutant>,
     total: usize,
 ) -> Result<Vec<MutationResult>> {
-    debug_assert!(!mutants.is_empty(), "mutants must not be empty");
     use tokio::time::sleep;
 
     // Start execution in background
@@ -100,7 +99,6 @@ async fn execute_sequential_with_progress(
     mutants: Vec<crate::services::mutation::types::Mutant>,
     total: usize,
 ) -> Result<Vec<MutationResult>> {
-    debug_assert!(!mutants.is_empty(), "mutants must not be empty");
     let mut results = Vec::new();
 
     for (i, mutant) in mutants.into_iter().enumerate() {
@@ -120,7 +118,6 @@ async fn execute_sequential_with_progress(
 
 /// Print progress indicator
 fn print_progress(completed: usize, total: usize) {
-    debug_assert!(true, "contract: print_progress");
     if total == 0 {
         return;
     }

@@ -3,7 +3,6 @@
 
 /// Parse confidence level from string (complexity: 3)
 fn parse_confidence_level(level: &Option<String>) -> Result<ConfidenceLevel> {
-    debug_assert!(true, "contract: parse_confidence_level");
     match level.as_deref() {
         Some("high") => Ok(ConfidenceLevel::High),
         Some("medium") => Ok(ConfidenceLevel::Medium),
@@ -15,7 +14,6 @@ fn parse_confidence_level(level: &Option<String>) -> Result<ConfidenceLevel> {
 
 /// Run clippy analysis and parse output (complexity: 5)
 async fn run_clippy_analysis(path: &str) -> Result<Vec<ClippyDiagnostic>> {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     use tokio::process::Command;
 
     let output = Command::new("cargo")
@@ -36,7 +34,6 @@ async fn run_clippy_analysis(path: &str) -> Result<Vec<ClippyDiagnostic>> {
 
 /// Parse clippy JSON output (complexity: 6)
 fn parse_clippy_output(output: &str) -> Result<Vec<ClippyDiagnostic>> {
-    debug_assert!(!output.is_empty(), "output must not be empty");
     let mut diagnostics = Vec::new();
 
     for line in output.lines() {
@@ -59,7 +56,6 @@ fn filter_diagnostics(
     min_confidence: ConfidenceLevel,
     specific_codes: &Option<Vec<String>>,
 ) -> Vec<ClippyDiagnostic> {
-    debug_assert!(true, "contract: filter_diagnostics");
     diagnostics
         .into_iter()
         .filter(|d| {
@@ -78,7 +74,6 @@ fn filter_diagnostics(
 
 /// Check if confidence meets minimum (complexity: 3)
 fn confidence_meets_minimum(actual: ConfidenceLevel, minimum: ConfidenceLevel) -> bool {
-    debug_assert!(true, "contract: confidence_meets_minimum");
     matches!(
         (actual, minimum),
         (ConfidenceLevel::High, _)
@@ -93,7 +88,6 @@ async fn simulate_fixes(
     engine: &ClippyFixEngine,
     diagnostics: Vec<ClippyDiagnostic>,
 ) -> Result<Value> {
-    debug_assert!(true, "contract: simulate_fixes");
     let mut fixes = Vec::new();
 
     for diagnostic in diagnostics {
@@ -120,7 +114,6 @@ async fn apply_fixes(
     engine: &ClippyFixEngine,
     diagnostics: Vec<ClippyDiagnostic>,
 ) -> Result<Value> {
-    debug_assert!(true, "contract: apply_fixes");
     let results = engine.apply_batch_fixes(&diagnostics).await?;
     let report = engine.generate_report(results.clone());
 
@@ -154,7 +147,6 @@ async fn apply_fixes(
 
 /// Create MCP response (complexity: 2)
 fn create_fix_response(results: Value, is_dry_run: bool) -> ToolResult {
-    debug_assert!(true, "contract: create_fix_response");
     let action = if is_dry_run { "analyzed" } else { "applied" };
 
     let response = json!({

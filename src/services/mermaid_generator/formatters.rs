@@ -68,7 +68,6 @@ impl MermaidGenerator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn sanitize_id(&self, id: &str) -> String {
-        debug_assert!(!id.is_empty(), "id must not be empty");
         // First replace common multi-character patterns
         let sanitized = id.replace("::", "_").replace(['/', '.', '-', ' '], "_");
 

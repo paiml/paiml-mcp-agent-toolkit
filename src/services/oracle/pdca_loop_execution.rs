@@ -31,7 +31,6 @@ impl PdcaLoop {
     /// Run the PDCA loop until convergence or max iterations
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn run(&self, project_path: &Path) -> Result<Vec<PdcaIterationResult>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         if !project_path.exists() {
             bail!("Project path does not exist: {}", project_path.display());
         }
@@ -127,7 +126,6 @@ impl PdcaLoop {
     /// Run a single PDCA iteration (for CI/CD)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn run_single(&self, project_path: &Path) -> Result<PdcaIterationResult> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let results = self.run_iterations(project_path, 1).await?;
         results
             .into_iter()
@@ -142,7 +140,6 @@ impl PdcaLoop {
         project_path: &Path,
         max_iterations: usize,
     ) -> Result<Vec<PdcaIterationResult>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let limited_config = OracleConfig {
             max_iterations,
             ..self.config.clone()
@@ -159,7 +156,6 @@ impl PdcaLoop {
 
     /// Collect current project metrics
     async fn collect_metrics(&self, project_path: &Path) -> Result<ProjectMetrics> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Simplified metrics collection - would integrate with actual PMAT commands
         let signals = self.collector.collect_all(project_path).await?;
 
@@ -189,7 +185,6 @@ impl PdcaLoop {
 
     /// Apply fixes for defects
     async fn apply_fixes(&self, defects: &[&DefectReport], project_path: &Path) -> Result<usize> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut fixed_count = 0;
 
         for defect in defects {
@@ -225,7 +220,6 @@ impl PdcaLoop {
 
     /// Check for regression after applying fixes
     fn check_regression(&self, before: &ProjectMetrics, after: &ProjectMetrics) -> Result<()> {
-        debug_assert!(true, "contract: check_regression");
         // Coverage should not decrease significantly
         if after.test_coverage < before.test_coverage - 0.01 {
             bail!(
@@ -258,7 +252,6 @@ impl PdcaLoop {
 
     /// Calculate progress across iterations
     fn calculate_progress(&self, results: &[PdcaIterationResult]) -> f32 {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         if results.len() < 2 {
             return 1.0;
         }

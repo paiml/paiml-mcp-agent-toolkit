@@ -6,7 +6,6 @@ async fn set_configuration_values(
     config_service: &ConfigurationService,
     set_values: Vec<String>,
 ) -> Result<()> {
-    debug_assert!(true, "contract: set_configuration_values");
     info!("Updating configuration values");
 
     for set_value in set_values {
@@ -33,7 +32,6 @@ async fn set_configuration_values(
 
 /// Edit configuration interactively
 async fn edit_configuration(config_service: &ConfigurationService) -> Result<()> {
-    debug_assert!(true, "contract: edit_configuration");
     println!("Interactive Configuration Editor");
     println!("{}", "=".repeat(40));
     println!();
@@ -84,7 +82,6 @@ async fn edit_configuration(config_service: &ConfigurationService) -> Result<()>
 
 /// Reset configuration to defaults
 async fn reset_configuration(config_service: &ConfigurationService) -> Result<()> {
-    debug_assert!(true, "contract: reset_configuration");
     info!("Resetting configuration to defaults");
 
     config_service

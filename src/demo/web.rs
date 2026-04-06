@@ -13,7 +13,6 @@ use super::server::{DemoContent, Hotspot, LocalDemoServer};
 #[allow(dead_code)] // Used only when "demo" feature is enabled
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn open_browser(url: &str) -> std::io::Result<()> {
-    debug_assert!(!url.is_empty(), "url must not be empty");
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open").arg(url).spawn()?;

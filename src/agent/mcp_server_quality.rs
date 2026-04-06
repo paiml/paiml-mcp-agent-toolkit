@@ -1,7 +1,6 @@
 // MCP Server Quality Gates & Monitor - included by mcp_server.rs
 
 fn format_quality_json(target_path: &str, all_passed: bool, quality_result: &QualityGateOutput) -> Value {
-    debug_assert!(!target_path.is_empty(), "target_path must not be empty");
     let checks_status: HashMap<String, String> = quality_result
         .results
         .iter()
@@ -25,7 +24,6 @@ fn format_quality_json(target_path: &str, all_passed: bool, quality_result: &Qua
 }
 
 fn format_quality_markdown(target_path: &str, all_passed: bool, quality_result: &QualityGateOutput) -> Value {
-    debug_assert!(!target_path.is_empty(), "target_path must not be empty");
     let status_icon = if all_passed { "✅" } else { "❌" };
     let status_text = if all_passed { "PASSED" } else { "FAILED" };
     let mut text = format!("# Quality Gates Report\n\n**Target**: {target_path}\n");
@@ -47,7 +45,6 @@ fn format_quality_markdown(target_path: &str, all_passed: bool, quality_result: 
 }
 
 fn format_quality_claude(target_path: &str, all_passed: bool, quality_result: &QualityGateOutput) -> Value {
-    debug_assert!(!target_path.is_empty(), "target_path must not be empty");
     let status_icon = if all_passed { "✅" } else { "❌" };
     let status_text = if all_passed { "PASSED" } else { "FAILED" };
     let mut text = format!("🎯 Quality Gates Report for {target_path}\n\nStatus: {status_icon} {status_text}\n");
@@ -78,7 +75,6 @@ impl ClaudeCodeAgentMcpServer {
     /// Handle quality gates request
     #[allow(dead_code)]
     async fn handle_quality_gates(&self, params: &Value) -> Result<Value> {
-        debug_assert!(true, "contract: handle_quality_gates");
         let target_path = params["target_path"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("target_path parameter required"))?;
@@ -118,7 +114,6 @@ impl ClaudeCodeAgentMcpServer {
         mut self,
         mut rx: mpsc::Receiver<QualityMonitorCommand>,
     ) -> Result<()> {
-        debug_assert!(true, "contract: run_quality_monitor");
         info!("Starting quality monitoring background task");
 
         let mut monitoring_tasks: HashMap<String, tokio::task::JoinHandle<()>> = HashMap::new();

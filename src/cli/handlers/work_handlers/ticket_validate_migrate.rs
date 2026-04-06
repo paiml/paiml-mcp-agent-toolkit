@@ -1,6 +1,5 @@
 /// Collect semantic warnings for roadmap items (helper for handle_work_validate)
 fn collect_semantic_warnings(roadmap: &crate::models::roadmap::Roadmap) -> Vec<String> {
-    debug_assert!(true, "contract: collect_semantic_warnings");
     let mut warnings = Vec::new();
     for item in &roadmap.roadmap {
         if item.acceptance_criteria.is_empty()
@@ -26,7 +25,6 @@ fn print_valid_roadmap(
     verbose: bool,
     fix: bool,
 ) {
-    debug_assert!(true, "contract: print_valid_roadmap");
     use crate::cli::colors as c;
     println!("{}", c::pass("Syntax valid"));
     println!("   {} {}", c::label("Version:"), roadmap.roadmap_version);
@@ -67,8 +65,6 @@ fn print_valid_roadmap(
 
 /// Print YAML parse error with context and suggestions (helper for handle_work_validate)
 fn print_yaml_error_context(error_msg: &str, content: &str) {
-    debug_assert!(!error_msg.is_empty(), "error_msg must not be empty");
-    debug_assert!(!content.is_empty(), "content must not be empty");
     use crate::cli::colors as c;
     println!("{}", c::fail("Validation failed"));
     println!();

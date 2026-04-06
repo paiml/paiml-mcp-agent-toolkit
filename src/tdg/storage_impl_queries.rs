@@ -5,7 +5,6 @@ impl TieredStore {
     /// Supports full SHA, short SHA (7 chars), or git tags.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_by_commit(&self, commit_ref: &str) -> Result<Vec<FullTdgRecord>> {
-        debug_assert!(!commit_ref.is_empty(), "commit_ref must not be empty");
         let mut results = Vec::new();
 
         // Search warm storage
@@ -98,7 +97,6 @@ impl TieredStore {
     /// Filters records to only those matching the specified file path.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn get_by_path(&self, target_path: &Path) -> Result<Vec<FullTdgRecord>> {
-        debug_assert!(target_path.exists(), "target_path must exist: {}", target_path.display());
         let mut results = Vec::new();
 
         // Search warm storage

@@ -45,7 +45,6 @@ impl McpAgentsMdBridge {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mcp_to_agents(&self, tools: &[McpTool]) -> String {
-        debug_assert!(!tools.is_empty(), "tools must not be empty");
         let mut output = String::new();
         output.push_str("# AGENTS.md\n\n");
         output.push_str("## Available Tools\n\n");
@@ -112,7 +111,6 @@ impl McpAgentsMdBridge {
 
     /// Convert command to MCP tool
     fn command_to_tool(&self, cmd: &Command) -> McpTool {
-        debug_assert!(true, "contract: command_to_tool");
         McpTool {
             name: cmd.name.clone(),
             description: format!("Execute: {}", cmd.command),
@@ -139,7 +137,6 @@ impl McpAgentsMdBridge {
 
     /// Create quality gate tool
     fn create_quality_tool(&self) -> McpTool {
-        debug_assert!(true, "contract: create_quality_tool");
         McpTool {
             name: "quality_gate".to_string(),
             description: "Run PMAT quality gates".to_string(),
@@ -167,7 +164,6 @@ impl McpAgentsMdBridge {
 
     /// Convert AGENTS.md request to MCP
     fn agents_request_to_mcp(&self, req: &AgentsMdRequest) -> McpRequest {
-        debug_assert!(true, "contract: agents_request_to_mcp");
         McpRequest {
             method: req.request_type.clone(),
             params: req.params.clone(),
@@ -176,7 +172,6 @@ impl McpAgentsMdBridge {
 
     /// Convert MCP request to AGENTS.md
     fn mcp_request_to_agents(&self, req: &McpRequest) -> AgentsMdRequest {
-        debug_assert!(true, "contract: mcp_request_to_agents");
         AgentsMdRequest {
             request_type: req.method.clone(),
             params: req.params.clone(),
@@ -185,7 +180,6 @@ impl McpAgentsMdBridge {
 
     /// Convert AGENTS.md response to unified format
     fn agents_response_to_unified(&self, resp: &AgentsMdResponse) -> JsonValue {
-        debug_assert!(true, "contract: agents_response_to_unified");
         json!({
             "success": resp.success,
             "result": resp.result,
@@ -195,7 +189,6 @@ impl McpAgentsMdBridge {
 
     /// Convert MCP response to unified format
     fn mcp_response_to_unified(&self, resp: &McpResponse) -> JsonValue {
-        debug_assert!(true, "contract: mcp_response_to_unified");
         json!({
             "success": resp.error.is_none(),
             "result": resp.result,
@@ -205,7 +198,6 @@ impl McpAgentsMdBridge {
 
     /// Check response quality
     fn check_response_quality(&self, response: &JsonValue) -> QualityReport {
-        debug_assert!(true, "contract: check_response_quality");
         let mut issues = Vec::new();
         let mut suggestions = Vec::new();
         let mut score: f64 = 100.0;

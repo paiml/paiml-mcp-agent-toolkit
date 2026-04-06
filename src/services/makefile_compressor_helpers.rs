@@ -1,6 +1,4 @@
 fn extract_package_name(line: &str, after: &str) -> Option<String> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
-    debug_assert!(!after.is_empty(), "after must not be empty");
     let parts: Vec<&str> = line.split_whitespace().collect();
 
     let install_pos = find_install_position(&parts, after)?;
@@ -8,7 +6,6 @@ fn extract_package_name(line: &str, after: &str) -> Option<String> {
 }
 
 fn find_install_position(parts: &[&str], after: &str) -> Option<usize> {
-    debug_assert!(!after.is_empty(), "after must not be empty");
     match after {
         "cargo install" => find_cargo_install_position(parts),
         "npm install" => find_npm_install_position(parts),
@@ -18,7 +15,6 @@ fn find_install_position(parts: &[&str], after: &str) -> Option<usize> {
 }
 
 fn find_cargo_install_position(parts: &[&str]) -> Option<usize> {
-    debug_assert!(!parts.is_empty(), "parts must not be empty");
     parts.iter().position(|&p| p == "cargo")?;
     parts
         .iter()
@@ -27,7 +23,6 @@ fn find_cargo_install_position(parts: &[&str]) -> Option<usize> {
 }
 
 fn find_npm_install_position(parts: &[&str]) -> Option<usize> {
-    debug_assert!(!parts.is_empty(), "parts must not be empty");
     parts.iter().position(|&p| p == "npm")?;
     parts
         .iter()
@@ -36,7 +31,6 @@ fn find_npm_install_position(parts: &[&str]) -> Option<usize> {
 }
 
 fn find_simple_install_position(parts: &[&str]) -> Option<usize> {
-    debug_assert!(!parts.is_empty(), "parts must not be empty");
     parts
         .iter()
         .position(|&p| p == "install")
@@ -44,7 +38,6 @@ fn find_simple_install_position(parts: &[&str]) -> Option<usize> {
 }
 
 fn find_package_at_position(parts: &[&str], position: usize) -> Option<String> {
-    debug_assert!(!parts.is_empty(), "parts must not be empty");
     // Check primary position
     if let Some(pkg) = get_valid_package(parts, position) {
         return Some(pkg);
@@ -55,7 +48,6 @@ fn find_package_at_position(parts: &[&str], position: usize) -> Option<String> {
 }
 
 fn get_valid_package(parts: &[&str], position: usize) -> Option<String> {
-    debug_assert!(!parts.is_empty(), "parts must not be empty");
     parts
         .get(position)
         .filter(|pkg| !pkg.starts_with('-') && !pkg.is_empty())

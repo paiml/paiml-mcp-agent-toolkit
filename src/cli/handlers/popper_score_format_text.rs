@@ -10,7 +10,6 @@ fn format_text_category(
     verbose: bool,
     failures_only: bool,
 ) {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     use crate::cli::colors as c;
 
     if category.is_not_applicable {
@@ -57,7 +56,6 @@ fn format_text_category(
 
 /// Append text-formatted recommendations to the output
 fn format_text_recommendations(output: &mut String, score: &PopperScore, failures_only: bool) {
-    debug_assert!(true, "contract: format_text_recommendations");
     use crate::cli::colors as c;
 
     if score.recommendations.is_empty() || (failures_only && score.gateway_passed) {
@@ -79,7 +77,6 @@ fn format_text_recommendations(output: &mut String, score: &PopperScore, failure
 
 /// Format score as human-readable text
 fn format_text(score: &PopperScore, verbose: bool, failures_only: bool) -> String {
-    debug_assert!(true, "contract: format_text");
     use crate::cli::colors as c;
 
     let mut output = String::new();

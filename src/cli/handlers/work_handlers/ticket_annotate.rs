@@ -145,7 +145,6 @@ struct ChurnResult {
 }
 
 fn calculate_spec_score_simple(spec: &crate::services::spec_parser::ParsedSpec) -> f64 {
-    debug_assert!(true, "contract: calculate_spec_score_simple");
     let mut score = 0.0;
     if !spec.issue_refs.is_empty() {
         score += 10.0;
@@ -175,8 +174,6 @@ fn calculate_spec_score_simple(spec: &crate::services::spec_parser::ParsedSpec) 
 
 /// Extract file paths mentioned in a spec file (helper for find_related_files)
 fn extract_files_from_spec(spec_path: &Path, project_path: &Path) -> Vec<PathBuf> {
-    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let full_path = project_path.join(spec_path);
     let content = match std::fs::read_to_string(&full_path) {
         Ok(c) => c,
@@ -195,7 +192,6 @@ fn extract_files_from_spec(spec_path: &Path, project_path: &Path) -> Vec<PathBuf
 
 /// Extract file paths from item labels (helper for find_related_files)
 fn extract_files_from_labels(labels: &[String], project_path: &Path) -> Vec<PathBuf> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     labels
         .iter()
         .filter(|label| label.ends_with(".rs") || label.ends_with(".ts"))
@@ -208,7 +204,6 @@ fn find_related_files(
     item: &crate::models::roadmap::RoadmapItem,
     project_path: &Path,
 ) -> Vec<PathBuf> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut files = Vec::new();
 
     if let Some(ref spec_path) = item.spec {
@@ -225,7 +220,6 @@ fn find_related_files(
 }
 
 fn analyze_churn_simple(project_path: &Path, files: &[PathBuf], days: u32) -> ChurnResult {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut total_commits = 0;
     let mut hotspots = Vec::new();
     let mut repeated_fixes = Vec::new();
@@ -292,7 +286,6 @@ fn analyze_churn_simple(project_path: &Path, files: &[PathBuf], days: u32) -> Ch
 
 /// Convert TDG score (0-5) to human-readable severity label.
 fn tdg_severity_label(score: f64) -> &'static str {
-    debug_assert!(score >= 0.0, "score must be non-negative");
     if score <= 1.0 {
         "Excellent"
     } else if score <= 2.0 {
@@ -306,7 +299,6 @@ fn tdg_severity_label(score: f64) -> &'static str {
 
 /// Detect project coverage from LCOV report at standard locations.
 fn detect_coverage_percent(project_path: &Path) -> Option<f64> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let candidates = [
         project_path.join("target/coverage/lcov.info"),
         project_path.join("target/llvm-cov/lcov.info"),

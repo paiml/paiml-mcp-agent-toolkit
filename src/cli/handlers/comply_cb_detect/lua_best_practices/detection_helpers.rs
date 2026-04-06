@@ -14,7 +14,6 @@ pub(super) fn starts_with_lua_keyword(trimmed: &str) -> bool {
 
 /// Check if `=` at position is a comparison operator (==, ~=, <=, >=), not assignment.
 fn is_comparison_eq(trimmed: &str, eq_pos: usize) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let bytes = trimmed.as_bytes();
     if eq_pos > 0
         && matches!(
@@ -73,7 +72,6 @@ pub(super) fn count_braces(line: &str) -> (i32, i32) {
 /// Extract comma-separated identifiers from a parameter/variable list string.
 /// E.g., "a, b, c" -> ["a", "b", "c"]; "k, v" -> ["k", "v"]
 fn extract_comma_separated_idents(s: &str) -> Vec<String> {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     s.split(',')
         .map(|part| part.trim())
         .filter(|part| !part.is_empty())
@@ -105,7 +103,6 @@ pub(super) fn collect_known_locals(
 
 /// Extract function parameter names from lines like `function foo(a, b, c)`.
 fn collect_function_params(trimmed: &str, locals: &mut std::collections::HashSet<String>) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     // Match both `function name(...)` and `function M.name(...)` and `function M:name(...)`
     if let Some(open) = trimmed.find('(') {
         let prefix = &trimmed[..open];
@@ -124,7 +121,6 @@ fn collect_function_params(trimmed: &str, locals: &mut std::collections::HashSet
 
 /// Extract for-loop variable names from `for i = ...` and `for k, v in ...`.
 fn collect_for_loop_vars(trimmed: &str, locals: &mut std::collections::HashSet<String>) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let rest = match trimmed.strip_prefix("for ") {
         Some(r) => r,
         None => return,
@@ -151,7 +147,6 @@ fn collect_for_loop_vars(trimmed: &str, locals: &mut std::collections::HashSet<S
 
 /// Extract variable names from `local x = ...` and `local a, b = ...` declarations.
 fn collect_local_decl_vars(trimmed: &str, locals: &mut std::collections::HashSet<String>) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let after = match trimmed.strip_prefix("local ") {
         Some(a) => a,
         None => return,
@@ -175,7 +170,6 @@ fn collect_local_decl_vars(trimmed: &str, locals: &mut std::collections::HashSet
 ///      `status = pcall(...)` -> Some("status")
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_pcall_status_var(line: &str) -> Option<String> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     // Find the `=` that precedes pcall
     let eq_pos = line.find('=')?;
     let lhs = line[..eq_pos].trim();
@@ -210,7 +204,6 @@ pub(super) fn has_status_check(
 
 /// Check if a single line matches a status-check pattern.
 fn line_matches_status_check(line: &str, status_var: Option<&str>) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     // Check for the specific captured variable name (e.g. "if wrap_ok then")
     if let Some(var) = status_var {
         if line.contains(&format!("if {var}"))

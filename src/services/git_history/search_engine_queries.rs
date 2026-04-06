@@ -18,7 +18,6 @@ impl<'a> GitHistorySearchEngine<'a> {
         query: &str,
         options: GitSearchOptions,
     ) -> Result<Vec<GitSearchResult>, GitHistoryError> {
-        debug_assert!(!query.is_empty(), "query must not be empty");
         let limit = if options.limit == 0 {
             10
         } else {
@@ -78,7 +77,6 @@ impl<'a> GitHistorySearchEngine<'a> {
         file_path: &str,
         limit: usize,
     ) -> Result<Vec<GitSearchResult>, GitHistoryError> {
-        debug_assert!(limit > 0, "limit must be positive");
         let commits = self.index.get_commits_for_file(file_path, limit)?;
 
         let results: Vec<GitSearchResult> = commits
@@ -103,7 +101,6 @@ impl<'a> GitHistorySearchEngine<'a> {
         &self,
         options: &GitSearchOptions,
     ) -> Result<Vec<CommitInfo>, GitHistoryError> {
-        debug_assert!(true, "contract: get_candidates");
         let mut sql = String::from(
             r#"
             SELECT commit_hash, message_subject, message_body, author_name, author_email,
@@ -163,7 +160,6 @@ impl<'a> GitHistorySearchEngine<'a> {
     }
 
     fn row_to_commit(row: &rusqlite::Row<'_>) -> Result<CommitInfo, rusqlite::Error> {
-        debug_assert!(true, "contract: row_to_commit");
         let issue_refs_str: String = row.get::<_, String>(9).unwrap_or_default();
         let issue_refs: Vec<String> = serde_json::from_str(&issue_refs_str).unwrap_or_default();
 
@@ -184,7 +180,6 @@ impl<'a> GitHistorySearchEngine<'a> {
 
     /// Get commit by hash
     fn get_commit_by_hash(&self, hash: &str) -> Result<Option<CommitInfo>, GitHistoryError> {
-        debug_assert!(!hash.is_empty(), "hash must not be empty");
         let conn = self.get_connection()?;
         let result = conn.query_row(
             r#"
@@ -206,7 +201,6 @@ impl<'a> GitHistorySearchEngine<'a> {
 
     /// Get files changed in a commit
     fn get_files_for_commit(&self, hash: &str) -> Result<Vec<String>, GitHistoryError> {
-        debug_assert!(!hash.is_empty(), "hash must not be empty");
         let conn = self.get_connection()?;
         let mut stmt = conn.prepare("SELECT file_path FROM commit_files WHERE commit_hash = ?1")?;
 
@@ -220,7 +214,6 @@ impl<'a> GitHistorySearchEngine<'a> {
 
     /// Get connection reference (workaround for borrowing)
     fn get_connection(&self) -> Result<&rusqlite::Connection, GitHistoryError> {
-        debug_assert!(true, "contract: get_connection");
         // Access the connection through the index
         // This requires making conn pub(crate) in GitHistoryIndex
         Ok(&self.index.conn)

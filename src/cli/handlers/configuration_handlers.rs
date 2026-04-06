@@ -42,7 +42,6 @@ struct ConfigurationCommand {
 }
 
 fn create_config_service(config_path: Option<PathBuf>) -> std::sync::Arc<ConfigurationService> {
-    debug_assert!(true, "contract: create_config_service");
     if let Some(path) = config_path {
         std::sync::Arc::new(ConfigurationService::new(Some(path)))
     } else {
@@ -54,7 +53,6 @@ async fn execute_configuration_command(
     config_service: &ConfigurationService,
     cmd: ConfigurationCommand,
 ) -> Result<()> {
-    debug_assert!(true, "contract: execute_configuration_command");
     if cmd.reset {
         reset_configuration(config_service).await?;
         println!("Configuration reset to defaults");
@@ -183,7 +181,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

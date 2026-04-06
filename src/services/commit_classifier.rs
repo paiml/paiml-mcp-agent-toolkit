@@ -81,7 +81,6 @@ impl CommitClassifier {
 
     /// Tokenize text into words
     fn tokenize(text: &str) -> Vec<String> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         let text = text.to_lowercase();
         // Remove patterns that aren't useful
         let text = regex::Regex::new(r"co-authored-by:.*")
@@ -117,7 +116,6 @@ impl CommitClassifier {
     /// Classify a commit message
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn classify(&self, text: &str) -> ClassificationResult {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         let tokens = Self::tokenize(text);
         let mut scores: HashMap<String, f64> = HashMap::new();
 

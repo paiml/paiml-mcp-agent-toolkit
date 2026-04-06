@@ -13,7 +13,6 @@ async fn handle_project_quality_gate(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::time::Instant;
     let mut violations = Vec::new();
     let mut results = QualityGateResults::default();
@@ -111,7 +110,6 @@ async fn run_project_checks(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // If checks contains All, just run that single check which will run all checks
     if checks.contains(&QualityCheckType::All) {
         run_single_project_check(
@@ -157,7 +155,6 @@ async fn run_individual_project_checks(
     perf: bool,
     quiet: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::time::Instant;
 
     for check in checks {
@@ -187,14 +184,12 @@ async fn run_individual_project_checks(
 
 /// Print performance timing for a quality check
 fn print_check_performance(check: &QualityCheckType, elapsed_secs: f64) {
-    debug_assert!(true, "contract: print_check_performance");
     let check_name = get_check_display_name(check);
     eprintln!("    ⏱️  {check_name} check: {elapsed_secs:.3}s");
 }
 
 /// Get display name for a quality check type
 fn get_check_display_name(check: &QualityCheckType) -> &'static str {
-    debug_assert!(true, "contract: get_check_display_name");
     match check {
         QualityCheckType::Complexity => "Complexity",
         QualityCheckType::DeadCode => "Dead code",

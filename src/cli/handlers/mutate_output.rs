@@ -2,7 +2,6 @@
 ///
 /// Reads the source file and extracts lines from location.line to location.end_line
 fn extract_code_snippet(file_path: &Path, location: &SourceLocation) -> Result<String> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let content = fs::read_to_string(file_path)
         .with_context(|| format!("Failed to read source file: {}", file_path.display()))?;
 
@@ -43,7 +42,6 @@ fn output_json(
     results: &[MutationResult],
     failures_only: bool,
 ) -> Result<()> {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::services::mutation::types::MutantStatus;
 
     // Sprint 62 Day 2: Filter for failures-only mode
@@ -92,7 +90,6 @@ fn output_markdown(
     results: &[MutationResult],
     failures_only: bool,
 ) -> Result<()> {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::services::mutation::types::MutantStatus;
 
     // Sprint 62 Day 2: Filter for failures-only mode
@@ -202,7 +199,6 @@ fn output_markdown(
 
 /// Print the summary statistics block (total, killed, survived, etc.)
 fn output_text_summary(score: &MutationScore) {
-    debug_assert!(true, "contract: output_text_summary");
     use crate::cli::colors as c;
 
     println!("{}: {}", c::label("Total mutants"), c::number(&score.total.to_string()));
@@ -271,7 +267,6 @@ fn output_text_summary(score: &MutationScore) {
 
 /// Print survived mutants with code snippets
 fn output_survived_mutants(results: &[&MutationResult]) {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::cli::colors as c;
 
     if results.is_empty() {
@@ -307,7 +302,6 @@ fn output_survived_mutants(results: &[&MutationResult]) {
 
 /// Print a list of mutant results under a titled section
 fn output_mutant_section(title: &str, results: &[&MutationResult]) {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::cli::colors as c;
 
     if results.is_empty() {
@@ -343,7 +337,6 @@ fn output_text(
     results: &[MutationResult],
     failures_only: bool,
 ) -> Result<()> {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::services::mutation::types::MutantStatus;
     use crate::cli::colors as c;
 

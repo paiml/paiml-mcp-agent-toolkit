@@ -84,8 +84,6 @@ impl SuppressionConfig {
     /// Returns (suppressed, reason) - O(1) for file-specific rules
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn should_suppress(&self, check_id: &str, file_path: &str, line: u32) -> SuppressionResult {
-        debug_assert!(!check_id.is_empty(), "check_id must not be empty");
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         // Normalize path separators (handle Windows paths)
         let normalized_path = file_path.replace('\\', "/");
 
@@ -130,7 +128,6 @@ impl SuppressionConfig {
 
     /// Check if a file path matches a rule
     fn check_file_match(&self, rule_idx: usize, rule: &SuppressionRule, path: &str) -> bool {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         // If no file constraints, match all files
         if rule.file.is_none() && rule.glob_pattern.is_none() {
             return true;
@@ -158,7 +155,6 @@ impl SuppressionConfig {
 
 /// Check if a date string (ISO 8601) is in the past
 fn is_expired(date_str: &str) -> bool {
-    debug_assert!(!date_str.is_empty(), "date_str must not be empty");
     // Simple date comparison: "2026-01-24" format
     // Current date is 2026-01-24
     let current_date = "2026-01-24";

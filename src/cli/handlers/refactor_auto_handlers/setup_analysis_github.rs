@@ -9,7 +9,6 @@
 /// Routes to appropriate handlers for single file, bug reports, and GitHub issues.
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
-    debug_assert!(true, "contract: handle_special_modes");
     match &context.config.mode {
         RefactorMode::SingleFile(file_path) => {
             handle_single_file_refactor(
@@ -48,7 +47,6 @@ async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
 /// Handles GitHub issue processing and integration with FULL implementation.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn process_github_issue(url: &str, context: &RefactorContext) -> Result<()> {
-    debug_assert!(!url.is_empty(), "url must not be empty");
     eprintln!("🔗 GitHub issue mode: {url}");
 
     // Parse GitHub URL to extract owner, repo, and issue number
@@ -86,7 +84,6 @@ async fn process_github_issue(url: &str, context: &RefactorContext) -> Result<()
 ///
 /// This function has complexity <3 and follows Toyota Way principles.
 fn parse_github_issue_url(url: &str) -> Result<GitHubIssueRef> {
-    debug_assert!(!url.is_empty(), "url must not be empty");
     // Expected format: https://github.com/owner/repo/issues/number
     let url_parts: Vec<&str> = url.split('/').collect();
 
@@ -112,7 +109,6 @@ fn parse_github_issue_url(url: &str) -> Result<GitHubIssueRef> {
 /// This function has complexity <3 and follows Toyota Way principles.
 #[cfg(feature = "http-client")]
 async fn fetch_github_issue_content(issue_ref: &GitHubIssueRef) -> Result<GitHubIssueContent> {
-    debug_assert!(true, "contract: fetch_github_issue_content");
     use crate::services::github_integration::GitHubClient;
 
     let client = GitHubClient::new()?;
@@ -146,7 +142,6 @@ fn extract_target_files_from_issue(
     issue_content: &GitHubIssueContent,
     project_path: &Path,
 ) -> Result<Vec<PathBuf>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut target_files = Vec::new();
 
     // Search for file paths in both issue title and body using regex patterns

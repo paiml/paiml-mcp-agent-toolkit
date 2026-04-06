@@ -70,7 +70,6 @@ impl AgentContextIndex {
     /// Find function index by file path and name
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn find_function_index(&self, file_path: &str, function_name: &str) -> Option<usize> {
-        debug_assert!(!function_name.is_empty(), "function_name must not be empty");
         self.functions
             .iter()
             .position(|f| f.file_path == file_path && f.function_name == function_name)
@@ -129,7 +128,6 @@ impl AgentContextIndex {
     }
 
     fn load_source_from_db(&mut self) {
-        debug_assert!(true, "contract: load_source_from_db");
         let db_path = match self.db_path {
             Some(ref p) => p,
             None => return,
@@ -142,7 +140,6 @@ impl AgentContextIndex {
     }
 
     fn load_source_from_filesystem(&mut self) {
-        debug_assert!(true, "contract: load_source_from_filesystem");
         let mut files_to_read: HashMap<String, Vec<usize>> = HashMap::new();
         for (idx, func) in self.functions.iter().enumerate() {
             if func.source.is_empty() && func.end_line > 0 {
@@ -197,7 +194,6 @@ impl AgentContextIndex {
     /// Falls back to reading the file directly when both in-memory and SQLite
     /// source are empty (e.g., lightweight-loaded index with stale DB).
     fn find_in_memory(&self, file_path: &str, start_line: usize) -> (Option<String>, usize) {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let indices = match self.file_index.get(file_path) {
             Some(i) => i,
             None => return (None, 0),
@@ -216,7 +212,6 @@ impl AgentContextIndex {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn load_source_for(&self, file_path: &str, start_line: usize) -> String {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let (in_memory, end_line) = self.find_in_memory(file_path, start_line);
         if let Some(src) = in_memory {
             return src;

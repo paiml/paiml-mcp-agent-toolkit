@@ -1,6 +1,5 @@
 /// Transport waste: excessive data copying (.clone() density)
 fn measure_transport(project_path: &Path) -> f64 {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     if !src_dir.exists() {
         return 0.0;
@@ -37,7 +36,6 @@ fn measure_transport(project_path: &Path) -> f64 {
 
 /// Over-processing waste: cyclomatic complexity
 fn measure_over_processing(project_path: &Path) -> f64 {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check cached complexity metrics
     let metrics_path = project_path.join(".pmat/hooks-cache/metrics.json");
     if let Ok(content) = std::fs::read_to_string(&metrics_path) {
@@ -57,7 +55,6 @@ fn measure_over_processing(project_path: &Path) -> f64 {
 
 /// Motion waste: dependency sprawl
 fn measure_motion(project_path: &Path) -> f64 {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_lock = project_path.join("Cargo.lock");
     if !cargo_lock.exists() {
         return 0.0;
@@ -74,7 +71,6 @@ fn measure_motion(project_path: &Path) -> f64 {
 
 /// Defects waste: stub/panic indicators
 fn measure_defects(project_path: &Path) -> f64 {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     if !src_dir.exists() {
         return 0.0;
@@ -115,7 +111,6 @@ fn measure_defects(project_path: &Path) -> f64 {
 /// Scans source files and estimates per-file max complexity using heuristics.
 /// Returns up to 5 file paths sorted by estimated complexity descending.
 fn collect_over_processing_files(project_path: &Path) -> Vec<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     if !src_dir.exists() {
         return Vec::new();
@@ -165,7 +160,6 @@ fn collect_over_processing_files(project_path: &Path) -> Vec<String> {
 /// Estimate the maximum cyclomatic complexity of any function in the content.
 /// Uses a lightweight heuristic: counts branching keywords per function.
 fn estimate_max_complexity(content: &str) -> u32 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut max_cc = 1u32;
     let mut current_cc = 1u32;
     let mut in_function = false;
@@ -239,7 +233,6 @@ fn estimate_max_complexity(content: &str) -> u32 {
 /// Collect top files with defect indicators (panics, unwraps, stubs).
 /// Returns up to 5 file paths sorted by defect score descending.
 fn collect_defect_files(project_path: &Path) -> Vec<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     if !src_dir.exists() {
         return Vec::new();

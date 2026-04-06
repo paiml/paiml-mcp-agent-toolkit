@@ -42,7 +42,6 @@ pub async fn handle_cache_command(command: &CacheCommand) -> Result<()> {
 }
 
 async fn handle_cache_stats(detailed: bool, format: &str, history: bool) -> Result<()> {
-    debug_assert!(!format.is_empty(), "format must not be empty");
     let config = OrchestratorConfig::default();
     let orchestrator = CacheOrchestrator::new(config);
 
@@ -181,7 +180,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

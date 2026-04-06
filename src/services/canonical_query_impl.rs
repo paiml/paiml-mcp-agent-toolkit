@@ -4,12 +4,10 @@
 
 impl CanonicalQuery for SystemArchitectureQuery {
     fn query_id(&self) -> &'static str {
-        debug_assert!(true, "contract: query_id");
         "system-architecture-v1"
     }
 
     fn execute(&self, ctx: &AnalysisContext) -> Result<QueryResult> {
-        debug_assert!(true, "contract: execute");
         let start = std::time::Instant::now();
 
         // 1. Component detection via module hierarchy
@@ -45,7 +43,6 @@ impl CanonicalQuery for SystemArchitectureQuery {
 fn detect_architectural_components(
     dag: &crate::models::dag::DependencyGraph,
 ) -> Result<Vec<Component>> {
-    debug_assert!(true, "contract: detect_architectural_components");
     let mut components = Vec::new();
 
     // Extract top-level modules as initial components
@@ -79,7 +76,6 @@ fn infer_component_relationships(
     components: &[Component],
     call_graph: &CallGraph,
 ) -> Result<Vec<ComponentEdge>> {
-    debug_assert!(!components.is_empty(), "components must not be empty");
     let mut edges = Vec::new();
     let mut component_map = FxHashMap::default();
 
@@ -139,7 +135,6 @@ fn aggregate_component_metrics(
     components: &[Component],
     complexity_map: &FxHashMap<String, crate::services::complexity::ComplexityMetrics>,
 ) -> Result<FxHashMap<String, ComponentMetrics>> {
-    debug_assert!(!components.is_empty(), "components must not be empty");
     let mut metrics = FxHashMap::default();
 
     for component in components {

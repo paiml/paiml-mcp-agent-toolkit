@@ -14,7 +14,6 @@ impl ContextCache {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, key: &str) -> Option<&AnalysisResult> {
-        debug_assert!(!key.is_empty(), "key must not be empty");
         self.entries.get(key).map(|entry| &entry.result)
     }
 
@@ -32,7 +31,6 @@ impl ContextCache {
     }
 
     fn evict_if_needed(&mut self) {
-        debug_assert!(true, "contract: evict_if_needed");
         if self.entries.len() > self.config.max_cache_entries {
             // Simple LRU eviction
             let oldest_key = self

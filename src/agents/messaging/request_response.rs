@@ -33,7 +33,6 @@ pub trait Request: Serialize + for<'de> Deserialize<'de> + Send {
     type Response: Serialize + for<'de> Deserialize<'de> + Send;
 
     fn priority(&self) -> Priority {
-        debug_assert!(true, "contract: priority");
         Priority::Normal
     }
 }

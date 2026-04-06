@@ -94,7 +94,6 @@ pub struct WorkContract {
 }
 
 fn default_verification_level() -> String {
-    debug_assert!(true, "contract: default_verification_level");
     "L3".to_string()
 }
 
@@ -180,7 +179,6 @@ impl WorkContract {
         without: &[String],
         iteration: u32,
     ) -> Result<Self, anyhow::Error> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Detect profile (or load from config)
         let config = DbcConfig::load(project_path);
         let profile = config.profile_override.clone()
@@ -289,7 +287,6 @@ impl WorkContract {
 
     /// Generate default falsifiable claims
     fn default_claims() -> Vec<FalsifiableClaim> {
-        debug_assert!(true, "contract: default_claims");
         vec![
             FalsifiableClaim {
                 hypothesis: "All baseline files still exist".to_string(),
@@ -484,7 +481,6 @@ impl WorkContract {
     /// Load contract from file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(project_path: &Path, work_item_id: &str) -> Result<Self> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let contract_path = Self::contract_path(project_path, work_item_id);
         let content = std::fs::read_to_string(&contract_path)
             .with_context(|| format!("Failed to load contract from {}", contract_path.display()))?;
@@ -494,7 +490,6 @@ impl WorkContract {
     /// Save contract to file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, project_path: &Path) -> Result<PathBuf> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let contract_dir = project_path.join(".pmat-work").join(&self.work_item_id);
         std::fs::create_dir_all(&contract_dir)?;
 
@@ -508,7 +503,6 @@ impl WorkContract {
     /// Get contract path for a work item
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn contract_path(project_path: &Path, work_item_id: &str) -> PathBuf {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         project_path
             .join(".pmat-work")
             .join(work_item_id)
@@ -518,7 +512,6 @@ impl WorkContract {
     /// Check if contract exists for work item
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn exists(project_path: &Path, work_item_id: &str) -> bool {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self::contract_path(project_path, work_item_id).exists()
     }
 }

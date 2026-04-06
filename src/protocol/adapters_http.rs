@@ -7,7 +7,6 @@ impl ProtocolAdapter for HttpAdapter {
     type Response = HttpResponse;
 
     fn decode(&self, raw: &[u8]) -> Result<UnifiedRequest, ProtocolError> {
-        debug_assert!(!raw.is_empty(), "raw must not be empty");
         // Parse HTTP request and extract operation from path/method
         let request = parse_http_request(raw)?;
         let operation = route_to_operation(&request.path, &request.method)?;
@@ -21,7 +20,6 @@ impl ProtocolAdapter for HttpAdapter {
     }
 
     fn encode(&self, response: UnifiedResponse) -> Result<Vec<u8>, ProtocolError> {
-        debug_assert!(true, "contract: encode");
         let status = if response.error.is_some() {
             400 // Bad Request
         } else {
@@ -39,7 +37,6 @@ impl ProtocolAdapter for HttpAdapter {
     }
 
     async fn handle(&self, _request: Self::Request) -> Self::Response {
-        debug_assert!(true, "contract: handle");
         // This would be implemented to process the request
         // For now, return a placeholder response
         HttpResponse {

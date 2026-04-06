@@ -88,7 +88,6 @@ impl std::fmt::Display for CommandRestriction {
 /// Returns None if safe, or the restriction violated.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn validate_command(cmd: &str) -> Option<CommandRestriction> {
-    debug_assert!(!cmd.is_empty(), "cmd must not be empty");
     // Backtick substitution
     if cmd.contains('`') {
         return Some(CommandRestriction::BacktickSubstitution);
@@ -132,7 +131,6 @@ impl StackManifest {
     /// Parse a .dbc-stack.toml file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(content: &str) -> Result<Self> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let table: toml::Table = content.parse().context("Failed to parse .dbc-stack.toml")?;
 
         let stack = table
@@ -182,7 +180,6 @@ impl StackManifest {
     }
 
     fn parse_claims(table: &toml::Table, kind: &str) -> Result<Vec<StackClaim>> {
-        debug_assert!(!kind.is_empty(), "kind must not be empty");
         let arr = match table.get(kind) {
             Some(toml::Value::Array(a)) => a,
             _ => return Ok(vec![]),
@@ -212,7 +209,6 @@ impl StackManifest {
     }
 
     fn parse_rescues(table: &toml::Table) -> Result<Vec<StackRescue>> {
-        debug_assert!(true, "contract: parse_rescues");
         let arr = match table.get("rescue") {
             Some(toml::Value::Array(a)) => a,
             _ => return Ok(vec![]),
@@ -312,7 +308,6 @@ impl StackManifest {
     /// Get content hash for TOFU trust model
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn content_hash(content: &str) -> String {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut hasher = Sha256::new();
         hasher.update(content.as_bytes());
         format!("{:x}", hasher.finalize())
@@ -320,7 +315,6 @@ impl StackManifest {
 }
 
 fn stack_claim_to_clause(claim: &StackClaim, kind: ClauseKind, stack_name: &str) -> ContractClause {
-    debug_assert!(!stack_name.is_empty(), "stack_name must not be empty");
     let threshold = claim.threshold.as_ref().map(|t| {
         let op = match t.op.as_str() {
             "Gte" | ">=" => ThresholdOp::Gte,
@@ -353,7 +347,6 @@ fn stack_claim_to_clause(claim: &StackClaim, kind: ClauseKind, stack_name: &str)
 /// Load trust records from .pmat-work/trusted-stacks.json
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn load_trust_records(project_path: &Path) -> HashMap<String, StackTrustRecord> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let trust_path = project_path.join(".pmat-work").join("trusted-stacks.json");
     if let Ok(content) = std::fs::read_to_string(&trust_path) {
         serde_json::from_str(&content).unwrap_or_default()
@@ -365,7 +358,6 @@ pub fn load_trust_records(project_path: &Path) -> HashMap<String, StackTrustReco
 /// Save trust records to .pmat-work/trusted-stacks.json
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn save_trust_records(project_path: &Path, records: &HashMap<String, StackTrustRecord>) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let trust_dir = project_path.join(".pmat-work");
     std::fs::create_dir_all(&trust_dir)?;
     let trust_path = trust_dir.join("trusted-stacks.json");
@@ -377,7 +369,6 @@ pub fn save_trust_records(project_path: &Path, records: &HashMap<String, StackTr
 /// Check if a manifest is trusted (content hash matches)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn is_manifest_trusted(project_path: &Path, manifest_path: &str, content: &str) -> bool {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let records = load_trust_records(project_path);
     if let Some(record) = records.get(manifest_path) {
         record.sha256 == StackManifest::content_hash(content)
@@ -389,7 +380,6 @@ pub fn is_manifest_trusted(project_path: &Path, manifest_path: &str, content: &s
 /// Execute a stack claim's check command (no sh -c, uses Command::new with arg splitting)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_stack_check(cmd: &str, project_path: &Path, timeout_secs: u64) -> Result<(bool, String)> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Split on && for sequential commands
     let parts: Vec<&str> = cmd.split("&&").collect();
 
@@ -431,7 +421,6 @@ pub fn execute_stack_check(cmd: &str, project_path: &Path, timeout_secs: u64) ->
 /// Extract a metric value from command output using a regex pattern
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_metric(output: &str, pattern: &str) -> Result<Option<f64>> {
-    debug_assert!(!output.is_empty(), "output must not be empty");
     let re = regex::Regex::new(pattern).context("Invalid metric_pattern regex")?;
     if let Some(captures) = re.captures(output) {
         if let Some(m) = captures.get(1) {

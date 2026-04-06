@@ -5,7 +5,6 @@ use super::types::{EnforcementResult, EnforcementState, QualityProfile, QualityV
 use crate::cli::colors as c;
 
 fn parse_line_num(location: &str) -> i32 {
-    debug_assert!(!location.is_empty(), "location must not be empty");
     location
         .split(':')
         .nth(1)
@@ -140,11 +139,6 @@ pub fn print_progress_bar(result: &EnforcementResult) {
 /// Print enforcement header
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn print_enforcement_header(project_path: &std::path::Path) {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     eprintln!("{}", c::header("Starting Extreme Quality Enforcement"));
     eprintln!(
         "{} {}",
@@ -190,7 +184,6 @@ pub fn format_violations_output(
     profile: &QualityProfile,
     format: EnforceOutputFormat,
 ) -> Result<String> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     if format == EnforceOutputFormat::Json {
         let json_output = serde_json::json!({
             "profile": profile.clone(),

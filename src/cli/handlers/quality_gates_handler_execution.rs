@@ -13,8 +13,6 @@ pub async fn handle_quality_gates_command(
     json: bool,
     project_dir: PathBuf,
 ) -> Result<()> {
-    debug_assert!(config_path.exists(), "config_path must exist: {}", config_path.display());
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     match command {
         Some(QualityGatesCommand::Init { force }) => {
             handle_init_config(&config_path, force)?;
@@ -44,8 +42,6 @@ async fn run_quality_gates(
     json: bool,
     project_dir: PathBuf,
 ) -> Result<()> {
-    debug_assert!(config_path.exists(), "config_path must exist: {}", config_path.display());
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     // Load configuration
     let config = if config_path.exists() {
         load_config_from_file(&config_path)?
@@ -79,7 +75,6 @@ async fn run_quality_gates(
 /// - Time: O(1)
 /// - Cyclomatic: 3
 fn handle_init_config(path: &Path, force: bool) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if path.exists() && !force {
         return Err(anyhow::anyhow!(
             "Configuration file already exists. Use --force to overwrite."
@@ -99,7 +94,6 @@ fn handle_init_config(path: &Path, force: bool) -> Result<()> {
 /// - Time: O(1)
 /// - Cyclomatic: 3
 fn handle_validate_config(path: &Path) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let config = load_config_from_file(&path.to_path_buf())?;
 
     match validate_config(&config) {
@@ -123,7 +117,6 @@ fn handle_validate_config(path: &Path) -> Result<()> {
 /// - Time: O(1)
 /// - Cyclomatic: 3
 fn handle_show_config(path: &Path, format: ConfigFormat) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let config = load_config_from_file(&path.to_path_buf())?;
 
     match format {
@@ -152,7 +145,6 @@ fn handle_show_config(path: &Path, format: ConfigFormat) -> Result<()> {
 /// - Time: O(1)
 /// - Cyclomatic: 2
 fn load_config_from_file(path: &PathBuf) -> Result<GateConfig> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = std::fs::read_to_string(path)?;
     let config: GateConfigToml = toml::from_str(&content)?;
     Ok(config.into())

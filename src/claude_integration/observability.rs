@@ -94,7 +94,6 @@ impl MetricsCollector {
 
     /// Record latency measurement
     fn record_latency(&self, latency: Duration) {
-        debug_assert!(true, "contract: record_latency");
         let micros = latency.as_micros() as u64;
 
         self.latency_sum.fetch_add(micros, Ordering::Relaxed);

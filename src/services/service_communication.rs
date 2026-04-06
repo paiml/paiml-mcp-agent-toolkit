@@ -111,7 +111,6 @@ impl<T: Clone + Send> PubSubService<T> {
     /// Get the number of subscribers for a topic
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn subscriber_count(&self, topic: &str) -> usize {
-        debug_assert!(!topic.is_empty(), "topic must not be empty");
         let subs = self.subscribers.read().await;
         subs.get(topic).map_or(0, std::vec::Vec::len)
     }
@@ -224,7 +223,6 @@ impl Service for RouterService {
     type Error = anyhow::Error;
 
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
-        debug_assert!(true, "contract: process");
         self.route(input).await
     }
 }
@@ -393,7 +391,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

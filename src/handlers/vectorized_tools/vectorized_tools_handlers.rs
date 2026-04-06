@@ -3,7 +3,6 @@
 
 /// Handle vectorized duplicate detection
 async fn handle_duplicates_vectorized(request_id: Value, args: Option<Value>) -> McpResponse {
-    debug_assert!(true, "contract: handle_duplicates_vectorized");
     let params: DuplicatesVectorizedArgs = match args {
         Some(v) => match serde_json::from_value(v) {
             Ok(p) => p,
@@ -62,7 +61,6 @@ async fn handle_duplicates_vectorized(request_id: Value, args: Option<Value>) ->
 
 /// Handle vectorized graph metrics analysis
 async fn handle_graph_metrics_vectorized(request_id: Value, args: Option<Value>) -> McpResponse {
-    debug_assert!(true, "contract: handle_graph_metrics_vectorized");
     let params: GraphMetricsVectorizedArgs = match args {
         Some(v) => match serde_json::from_value(v) {
             Ok(p) => p,
@@ -123,7 +121,6 @@ async fn handle_graph_metrics_vectorized(request_id: Value, args: Option<Value>)
 
 /// Handle vectorized name similarity search
 async fn handle_name_similarity_vectorized(request_id: Value, args: Option<Value>) -> McpResponse {
-    debug_assert!(true, "contract: handle_name_similarity_vectorized");
     let params: NameSimilarityVectorizedArgs = match args {
         Some(v) => match serde_json::from_value(v) {
             Ok(p) => p,
@@ -181,7 +178,6 @@ async fn handle_name_similarity_vectorized(request_id: Value, args: Option<Value
 
 /// Handle vectorized symbol table analysis
 async fn handle_symbol_table_vectorized(request_id: Value, args: Option<Value>) -> McpResponse {
-    debug_assert!(true, "contract: handle_symbol_table_vectorized");
     let params: SymbolTableVectorizedArgs = match args {
         Some(v) => match serde_json::from_value(v) {
             Ok(p) => p,
@@ -239,7 +235,6 @@ async fn handle_incremental_coverage_vectorized(
     request_id: Value,
     args: Option<Value>,
 ) -> McpResponse {
-    debug_assert!(true, "contract: handle_incremental_coverage_vectorized");
     let params: IncrementalCoverageVectorizedArgs = match args {
         Some(v) => match serde_json::from_value(v) {
             Ok(p) => p,
@@ -292,7 +287,6 @@ async fn handle_incremental_coverage_vectorized(
 
 /// Handle vectorized Big-O complexity analysis
 async fn handle_big_o_vectorized(request_id: Value, args: Option<Value>) -> McpResponse {
-    debug_assert!(true, "contract: handle_big_o_vectorized");
     let params: BigOVectorizedArgs = match args {
         Some(v) => match serde_json::from_value(v) {
             Ok(p) => p,
@@ -353,7 +347,6 @@ async fn handle_big_o_vectorized(request_id: Value, args: Option<Value>) -> McpR
 
 /// Handle enhanced report generation
 async fn handle_enhanced_report(request_id: Value, args: Option<Value>) -> McpResponse {
-    debug_assert!(true, "contract: handle_enhanced_report");
     let params: EnhancedReportArgs = match args {
         Some(v) => match serde_json::from_value(v) {
             Ok(p) => p,

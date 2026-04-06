@@ -41,8 +41,6 @@ pub fn estimate_refactoring_hours(tdg_score: f64) -> f64 {
 
 /// Resolve file path relative to project directory
 fn resolve_file_path(project_path: &Path, file_path: PathBuf) -> PathBuf {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     if file_path.is_absolute() {
         file_path
     } else {
@@ -56,7 +54,6 @@ fn should_include_score(
     threshold: f64,
     critical_only: bool,
 ) -> bool {
-    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     if critical_only && score.value <= 2.5 {
         return false;
     }
@@ -71,7 +68,6 @@ fn apply_results_filtering(
     mut results: Vec<(crate::models::tdg::TDGScore, PathBuf)>,
     top_files: usize,
 ) -> Vec<(crate::models::tdg::TDGScore, PathBuf)> {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     // Sort by TDG score descending
     results.sort_unstable_by(|a, b| {
         b.0.value
@@ -91,7 +87,6 @@ fn apply_results_filtering(
 fn create_summary_from_file_results(
     results: &[(crate::models::tdg::TDGScore, PathBuf)],
 ) -> crate::models::tdg::TDGSummary {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     use crate::models::tdg::{TDGHotspot, TDGSeverity, TDGSummary};
 
     let total_files = results.len();

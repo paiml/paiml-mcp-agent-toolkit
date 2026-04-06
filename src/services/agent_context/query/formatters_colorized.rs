@@ -6,7 +6,6 @@
 /// `highlight`: `Some((pattern, is_regex))` for grep-like match highlighting, `None` for syntect.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_text_with_code(results: &[QueryResult], highlight: Option<(&str, bool)>) -> String {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut output = String::new();
 
     for r in results.iter() {
@@ -47,7 +46,6 @@ pub fn format_text_with_code(results: &[QueryResult], highlight: Option<(&str, b
 }
 
 fn build_text_metrics(r: &QueryResult) -> String {
-    debug_assert!(true, "contract: build_text_metrics");
     let grade_color = match r.tdg_grade.as_str() {
         "A" | "B" => "\x1b[32m",
         "C" => "\x1b[33m",
@@ -84,7 +82,6 @@ fn build_text_metrics(r: &QueryResult) -> String {
 }
 
 fn push_churn_text(r: &QueryResult, out: &mut String) {
-    debug_assert!(true, "contract: push_churn_text");
     if r.churn_score > 0.5 {
         out.push_str(&format!(
             " | \x1b[1;31m🔥 Hot: {} commits ({:.0}%)\x1b[0m",
@@ -97,7 +94,6 @@ fn push_churn_text(r: &QueryResult, out: &mut String) {
 }
 
 fn format_text_details(r: &QueryResult, output: &mut String) {
-    debug_assert!(true, "contract: format_text_details");
     if !r.fault_annotations.is_empty() {
         for fault in &r.fault_annotations {
             output.push_str(&format!("   \x1b[1;35m⚠️ {}\x1b[0m\n", fault));
@@ -129,7 +125,6 @@ fn format_text_details(r: &QueryResult, output: &mut String) {
 /// Format results as text (colorized for terminal)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_text(results: &[QueryResult]) -> String {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     let mut output = String::new();
     output.push_str(&format!(
         "\x1b[1mFound {} functions:\x1b[0m\n\n",

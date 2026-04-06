@@ -29,7 +29,6 @@ impl EquivalentMutantDetector {
     /// Train the detector on labeled data
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn train(&mut self, training_data: &[EquivalenceTrainingData]) -> Result<()> {
-        debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         if training_data.is_empty() {
             anyhow::bail!("Training data cannot be empty");
         }
@@ -70,7 +69,6 @@ impl EquivalentMutantDetector {
     /// Update detector with new patterns
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update(&mut self, new_data: &[EquivalenceTrainingData]) -> Result<()> {
-        debug_assert!(!new_data.is_empty(), "new_data must not be empty");
         if !self.trained {
             return self.train(new_data);
         }
@@ -105,7 +103,6 @@ impl EquivalentMutantDetector {
     /// Detect if a mutant is equivalent to the original
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_equivalent(&self, mutant: &Mutant, original: &str) -> Result<EquivalenceResult> {
-        debug_assert!(!original.is_empty(), "original must not be empty");
         if !self.trained {
             anyhow::bail!("Detector not trained");
         }
@@ -179,7 +176,6 @@ impl EquivalentMutantDetector {
         mutant: &Mutant,
         original: &str,
     ) -> Result<(EquivalenceResult, String)> {
-        debug_assert!(!original.is_empty(), "original must not be empty");
         let result = self.detect_equivalent(mutant, original)?;
 
         let explanation = if result.is_equivalent {
@@ -206,7 +202,6 @@ impl EquivalentMutantDetector {
         mutants: &[Mutant],
         original_sources: &[(&str, &str)],
     ) -> Result<Vec<(Mutant, EquivalenceResult)>> {
-        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         let mut non_equivalents = Vec::new();
 
         for (i, mutant) in mutants.iter().enumerate() {
@@ -248,7 +243,6 @@ impl EquivalentMutantDetector {
     /// Save detector to file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: &Path) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let serialized = bincode::serialize(self)?;
         std::fs::write(path, serialized)?;
         Ok(())
@@ -257,7 +251,6 @@ impl EquivalentMutantDetector {
     /// Load detector from file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(path: &Path) -> Result<Self> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let data = std::fs::read(path)?;
         let detector = bincode::deserialize(&data)?;
         Ok(detector)

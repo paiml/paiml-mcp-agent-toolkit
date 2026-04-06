@@ -1,7 +1,6 @@
 impl NamingStyle {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn matches(&self, name: &str) -> bool {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         match self {
             NamingStyle::SnakeCase => {
                 name.chars().all(|c| c.is_lowercase() || c == '_' || c.is_numeric())
@@ -149,7 +148,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

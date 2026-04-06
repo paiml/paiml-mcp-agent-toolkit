@@ -56,7 +56,6 @@ impl WasmSecurityValidator {
     /// Validate WebAssembly binary
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate(&self, data: &[u8]) -> Result<SecurityValidation> {
-        debug_assert!(!data.is_empty(), "data must not be empty");
         let mut issues = Vec::new();
 
         // Check magic number
@@ -99,7 +98,6 @@ impl WasmSecurityValidator {
     /// Validate text content for security issues
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_text(&self, _content: &str) -> Result<()> {
-        debug_assert!(!_content.is_empty(), "_content must not be empty");
         // Basic security validation
         Ok(())
     }
@@ -242,7 +240,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

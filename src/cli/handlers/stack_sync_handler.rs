@@ -105,7 +105,6 @@ struct StackManifest {
 // ── Stack Manifest Discovery ──────────────────────────────────────────────
 
 fn load_stack_manifest() -> Result<StackManifest> {
-    debug_assert!(true, "contract: load_stack_manifest");
     let base_path = resolve_base_path();
 
     // Try .pmat/stack.toml first
@@ -141,7 +140,6 @@ fn load_stack_manifest() -> Result<StackManifest> {
 }
 
 fn resolve_base_path() -> PathBuf {
-    debug_assert!(true, "contract: resolve_base_path");
     // Resolve repo paths by looking in parent of current project (~/src/)
     if let Ok(cwd) = std::env::current_dir() {
         if let Some(parent) = cwd.parent() {
@@ -160,7 +158,6 @@ fn dirs_next_home() -> Option<PathBuf> {
 }
 
 fn resolve_repo_path(base: &Path, repo_name: &str) -> PathBuf {
-    debug_assert!(base.exists(), "base must exist: {}", base.display());
     base.join(repo_name)
 }
 
@@ -168,18 +165,12 @@ fn resolve_repo_path(base: &Path, repo_name: &str) -> PathBuf {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn parse_cargo_dependencies(cargo_toml_path: &Path) -> Result<Vec<DepInfo>> {
-    debug_assert!(
-        cargo_toml_path.exists(),
-        "cargo_toml_path must exist: {}",
-        cargo_toml_path.display()
-    );
     let content = std::fs::read_to_string(cargo_toml_path)
         .with_context(|| format!("Failed to read {}", cargo_toml_path.display()))?;
     parse_cargo_toml_content(&content)
 }
 
 fn parse_cargo_toml_content(content: &str) -> Result<Vec<DepInfo>> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let table: toml::Value =
         toml::from_str(content).with_context(|| "Failed to parse Cargo.toml")?;
 
@@ -214,8 +205,6 @@ fn parse_cargo_toml_content(content: &str) -> Result<Vec<DepInfo>> {
 }
 
 fn parse_single_dep(name: &str, value: &toml::Value, section: &str) -> DepInfo {
-    debug_assert!(!name.is_empty(), "name must not be empty");
-    debug_assert!(!section.is_empty(), "section must not be empty");
     match value {
         toml::Value::String(version) => DepInfo {
             name: name.to_string(),
@@ -254,7 +243,6 @@ fn parse_single_dep(name: &str, value: &toml::Value, section: &str) -> DepInfo {
 // ── Version Checking ─────────────────────────────────────────────────────
 
 fn check_latest_version(crate_name: &str) -> Result<Option<String>> {
-    debug_assert!(!crate_name.is_empty(), "crate_name must not be empty");
     let output = std::process::Command::new("cargo")
         .args(["search", crate_name, "--limit", "1"])
         .output()
@@ -270,7 +258,6 @@ fn check_latest_version(crate_name: &str) -> Result<Option<String>> {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_cargo_search_output(output: &str, crate_name: &str) -> Result<Option<String>> {
-    debug_assert!(!crate_name.is_empty(), "crate_name must not be empty");
     // Format: `crate_name = "0.4.30"    # Description`
     for line in output.lines() {
         let line = line.trim();
@@ -294,7 +281,6 @@ pub fn parse_cargo_search_output(output: &str, crate_name: &str) -> Result<Optio
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_batuta_crate(name: &str) -> bool {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     BATUTA_CRATES.contains(&name)
 }
 
@@ -306,7 +292,6 @@ pub fn detect_mismatches(
     deps: &[DepInfo],
     latest_versions: &BTreeMap<String, String>,
 ) -> Vec<DepMismatch> {
-    debug_assert!(!repo_name.is_empty(), "repo_name must not be empty");
     let mut mismatches = Vec::new();
 
     for dep in deps {
@@ -338,7 +323,6 @@ pub fn detect_mismatches(
 // ── Dependency Graph ─────────────────────────────────────────────────────
 
 fn build_stack_graph(repos: &[RepoInfo], all_deps: &BTreeMap<String, Vec<DepInfo>>) -> StackGraph {
-    debug_assert!(!repos.is_empty(), "repos must not be empty");
     let mut edges = Vec::new();
 
     // Build name -> repo index map
@@ -496,7 +480,6 @@ fn print_status_table(
     latest_versions: &BTreeMap<String, String>,
     status: &StackStatus,
 ) {
-    debug_assert!(true, "contract: print_status_table");
     println!();
     println!("{}", c::header("Stack Dependency Status"));
     println!("{}", c::rule());

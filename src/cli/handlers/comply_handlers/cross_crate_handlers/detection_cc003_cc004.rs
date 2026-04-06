@@ -45,7 +45,6 @@ fn build_func_by_name<'a>(
     crate_functions: &'a [(CrateInfo, Vec<FunctionEntry>)],
     config: &DetectionConfig,
 ) -> HashMap<&'a str, Vec<CrateFuncRef<'a>>> {
-    debug_assert!(true, "contract: build_func_by_name");
     let mut map: HashMap<&str, Vec<CrateFuncRef<'_>>> = HashMap::new();
     for (crate_info, functions) in crate_functions {
         for func in functions {
@@ -66,7 +65,6 @@ fn check_cc003_pairs(
     config: &DetectionConfig,
     signatures: &HashMap<(&str, &str, &str), MinHashSignature>,
 ) -> Vec<CrossCrateFinding> {
-    debug_assert!(!func_name.is_empty(), "func_name must not be empty");
     let mut findings = Vec::new();
 
     for i in 0..impls.len() {
@@ -93,7 +91,6 @@ fn check_cc003_single_pair(
     config: &DetectionConfig,
     signatures: &HashMap<(&str, &str, &str), MinHashSignature>,
 ) -> Option<CrossCrateFinding> {
-    debug_assert!(!func_name.is_empty(), "func_name must not be empty");
     if upstream.crate_info.name == downstream.crate_info.name {
         return None;
     }
@@ -166,12 +163,6 @@ fn compute_cc003_similarity(
     min_similarity: f64,
     signatures: &HashMap<(&str, &str, &str), MinHashSignature>,
 ) -> Option<Option<f64>> {
-    debug_assert!(!up_crate.is_empty(), "up_crate must not be empty");
-    debug_assert!(!up_file.is_empty(), "up_file must not be empty");
-    debug_assert!(!down_crate.is_empty(), "down_crate must not be empty");
-    debug_assert!(!down_file.is_empty(), "down_file must not be empty");
-    debug_assert!(!func_name.is_empty(), "func_name must not be empty");
-    debug_assert!(min_similarity >= 0.0, "min_similarity must be non-negative");
     let up_key = (up_crate, up_file, func_name);
     let down_key = (down_crate, down_file, func_name);
 
@@ -194,7 +185,6 @@ fn precompute_cc003_signatures<'a>(
     crate_functions: &'a [(CrateInfo, Vec<FunctionEntry>)],
     config: &DetectionConfig,
 ) -> HashMap<(&'a str, &'a str, &'a str), MinHashSignature> {
-    debug_assert!(true, "contract: precompute_cc003_signatures");
     let dup_config = DuplicateDetectionConfig {
         normalize_identifiers: true,
         normalize_literals: true,
@@ -310,11 +300,6 @@ pub(super) fn detect_cc004_churn_correlation(
 
 /// Get files changed in the last N days from git log, grouped by basename.
 fn get_recent_file_changes(crate_path: &Path, window_days: u32) -> HashMap<String, Vec<String>> {
-    debug_assert!(
-        crate_path.exists(),
-        "crate_path must exist: {}",
-        crate_path.display()
-    );
     let since = format!("{}.days", window_days);
     let output = std::process::Command::new("git")
         .args([

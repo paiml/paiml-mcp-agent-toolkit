@@ -12,7 +12,6 @@ impl ArtifactWriter {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(root: PathBuf) -> Result<Self, TemplateError> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         // Ensure root directory exists
         fs::create_dir_all(&root).map_err(TemplateError::Io)?;
 
@@ -71,7 +70,6 @@ impl ArtifactWriter {
 
     /// Create the canonical directory structure
     fn create_directory_structure(&self) -> Result<(), TemplateError> {
-        debug_assert!(true, "contract: create_directory_structure");
         let directories = [
             "dogfooding",
             "mermaid",
@@ -98,7 +96,6 @@ impl ArtifactWriter {
         &mut self,
         artifacts: &MermaidArtifacts,
     ) -> Result<(), TemplateError> {
-        debug_assert!(true, "contract: write_mermaid_artifacts");
         // Write AST-generated diagrams
         for (name, content) in &artifacts.ast_generated {
             let subdir = if name.contains("styled") {
@@ -160,7 +157,6 @@ impl ArtifactWriter {
 
     /// Write template artifacts
     fn write_template_artifacts(&mut self, templates: &[Template]) -> Result<(), TemplateError> {
-        debug_assert!(!templates.is_empty(), "templates must not be empty");
         for template in templates {
             let filename = format!("{}.hbs", template.name);
             let path = self.root.join("templates").join(&filename);
@@ -189,8 +185,6 @@ impl ArtifactWriter {
         content: &str,
         _artifact_type: ArtifactType,
     ) -> Result<Hash, TemplateError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Compute hash first
         let hash = blake3::hash(content.as_bytes());
 
@@ -209,7 +203,6 @@ impl ArtifactWriter {
 
     /// Write the manifest file
     fn write_manifest(&mut self) -> Result<(), TemplateError> {
-        debug_assert!(true, "contract: write_manifest");
         let manifest_path = self.root.join("artifacts.json");
         let manifest_content = serde_json::to_string_pretty(&self.manifest)
             .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;

@@ -5,7 +5,6 @@ impl DependencyGraphBuilder {
     /// Analyze single file and create node
     /// Complexity: 10 (parsing + node creation)
     fn analyze_file(&mut self, path: &Path) -> Result<NodeId> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)?;
 
         // Calculate hash for incremental updates
@@ -58,14 +57,12 @@ impl DependencyGraphBuilder {
     /// Helper functions for parsing
     /// Complexity: 2 each
     fn extract_function_name(line: &str) -> Option<&str> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         line.split_whitespace()
             .find(|&w| w != "pub" && w != "fn")
             .and_then(|s| s.split('(').next())
     }
 
     fn extract_type_name<'a>(line: &'a str, keyword: &str) -> Option<&'a str> {
-        debug_assert!(!keyword.is_empty(), "keyword must not be empty");
         line.split_whitespace()
             .find(|&w| w != "pub" && w != keyword)
             .and_then(|s| s.split('{').next())
@@ -73,14 +70,12 @@ impl DependencyGraphBuilder {
     }
 
     fn extract_python_function_name(line: &str) -> Option<&str> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         line.strip_prefix("def ")
             .and_then(|s| s.split('(').next())
             .map(|s| s.trim())
     }
 
     fn extract_python_class_name(line: &str) -> Option<&str> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         line.strip_prefix("class ")
             .and_then(|s| s.split('(').next())
             .and_then(|s| s.split(':').next())
@@ -88,7 +83,6 @@ impl DependencyGraphBuilder {
     }
 
     fn extract_ts_name(line: &str) -> Option<&str> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         line.split_whitespace()
             .find(|&w| w != "export" && w != "const" && w != "function")
             .and_then(|s| s.split('(').next())
@@ -106,7 +100,6 @@ impl DependencyGraphBuilder {
     /// Convert path to module name
     /// Complexity: 4
     fn path_to_module(&self, path: &Path) -> String {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")
@@ -116,7 +109,6 @@ impl DependencyGraphBuilder {
     /// Calculate content hash
     /// Complexity: 2
     fn calculate_hash(&self, content: &str) -> u64 {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
@@ -128,7 +120,6 @@ impl DependencyGraphBuilder {
     /// Estimate complexity from content
     /// Complexity: 5
     fn estimate_complexity(&self, content: &str) -> f64 {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut complexity = 1.0;
 
         for line in content.lines() {
@@ -149,7 +140,6 @@ impl DependencyGraphBuilder {
     /// Resolve import string to node
     /// Complexity: 4
     fn resolve_import_to_node(&self, import: &str) -> Option<NodeId> {
-        debug_assert!(!import.is_empty(), "import must not be empty");
         // Try to find matching module in node_map
         for (path, &node_id) in &self.node_map {
             let module_name = self.path_to_module(path);

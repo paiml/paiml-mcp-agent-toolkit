@@ -3,7 +3,6 @@
 /// Uses a lookup table of (patterns, value) tuples, returning the first match.
 /// Default: 2.0 (balanced operation).
 fn categorize_operation(name_lower: &str) -> f64 {
-    debug_assert!(!name_lower.is_empty(), "name_lower must not be empty");
     // Lookup table: (patterns, arithmetic_intensity)
     // Order matters — first match wins.
     const OPERATION_CATEGORIES: &[(&[&str], f64)] = &[
@@ -46,7 +45,6 @@ fn categorize_operation(name_lower: &str) -> f64 {
 /// - Balanced (AI 1-10): Attention Q/K/V projections
 /// - Compute-bound (AI > 10): Matrix multiplications, convolutions
 fn estimate_arithmetic_intensity(brick_name: &str) -> f64 {
-    debug_assert!(!brick_name.is_empty(), "brick_name must not be empty");
     let name_lower = brick_name.to_lowercase();
     categorize_operation(&name_lower)
 }

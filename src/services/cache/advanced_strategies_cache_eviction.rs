@@ -22,7 +22,6 @@ where
     }
 
     async fn promote_to_l1(&self, key: &K, entry: &AdaptiveCacheEntry<V>) -> Result<()> {
-        debug_assert!(true, "contract: promote_to_l1");
         let mut promoted_entry = entry.clone();
         promoted_entry.tier = CacheTier::L1;
         self.insert_l1(key.clone(), promoted_entry).await
@@ -36,7 +35,6 @@ where
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn determine_initial_tier(&self, _key: &K, size: usize) -> CacheTier {
-        debug_assert!(size > 0, "size must be positive");
         // Simple heuristic - could be more sophisticated
         if size < 64 * 1024 {
             // < 64KB
@@ -80,7 +78,6 @@ where
     }
 
     async fn insert_l1(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
-        debug_assert!(true, "contract: insert_l1");
         let mut cache = self.l1_cache.write();
 
         // Check if we need to evict
@@ -98,7 +95,6 @@ where
     }
 
     async fn insert_l2(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
-        debug_assert!(true, "contract: insert_l2");
         let mut cache = self.l2_cache.write();
 
         let max_size = *self
@@ -115,7 +111,6 @@ where
     }
 
     async fn insert_l3(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
-        debug_assert!(true, "contract: insert_l3");
         let mut cache = self.l3_cache.write();
 
         let max_size = *self
@@ -241,7 +236,6 @@ where
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_eviction_score(&self, pattern: &AccessPattern) -> f64 {
-        // Contract: calculate_eviction_score returns a bounded score
         // Lower score = more likely to evict
         // Combine frequency, recency, and locality
         let recency_weight = 0.4;

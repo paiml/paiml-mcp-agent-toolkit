@@ -13,7 +13,6 @@ fn build_threshold_violation(
     trans_max: usize,
     severity: Severity,
 ) -> Option<CbPatternViolation> {
-    debug_assert!(!cargo_toml.is_empty(), "cargo_toml must not be empty");
     if direct <= direct_max && transitive <= trans_max {
         return None;
     }
@@ -75,8 +74,6 @@ fn check_dependency_count_violations(
     transitive_count: usize,
     sovereign_count: usize,
 ) -> Vec<CbPatternViolation> {
-    debug_assert!(!cargo_toml.is_empty(), "cargo_toml must not be empty");
-    debug_assert!(!cargo_lock.is_empty(), "cargo_lock must not be empty");
     let mut violations = Vec::new();
 
     // CB-081-A: Count thresholds -- sovereign stack adjustment
@@ -133,7 +130,6 @@ fn check_duplicate_crates_violation(
     duplicate_crates: &[DuplicateCrate],
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!cargo_lock.is_empty(), "cargo_lock must not be empty");
     if !duplicate_crates.is_empty() {
         let dup_names: Vec<_> = duplicate_crates.iter().map(|d| d.name.as_str()).collect();
         violations.push(CbPatternViolation {
@@ -157,7 +153,6 @@ fn check_trend_regression_violation(
     transitive_count: usize,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!cargo_toml.is_empty(), "cargo_toml must not be empty");
     if let Some(ref t) = trend {
         let pct_increase = if t.transitive_delta > 0 {
             (t.transitive_delta as f64 / (transitive_count as i32 - t.transitive_delta) as f64)
@@ -189,7 +184,6 @@ fn check_trend_regression_violation(
 /// - 0 points: >50 direct or >250 transitive
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountReport {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml_path = project_path.join("Cargo.toml");
     let cargo_lock_path = project_path.join("Cargo.lock");
 
@@ -261,7 +255,6 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
 /// Parse a TOML section header to determine which dependency section we're in.
 /// Returns (in_dependencies, in_dev_dependencies, in_build_dependencies).
 fn is_dependency_section(trimmed: &str) -> (bool, bool, bool) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let in_dependencies = trimmed == "[dependencies]"
         || trimmed.starts_with("[dependencies.")
         || trimmed.starts_with("[target.");
@@ -276,7 +269,6 @@ fn is_dependency_section(trimmed: &str) -> (bool, bool, bool) {
 /// The line must be inside a `[dependencies]` section (not `[dev-dependencies]`
 /// or `[build-dependencies]`), contain `=`, and not be a comment.
 fn is_scoreable_dependency(in_deps: bool, in_dev: bool, in_build: bool, trimmed: &str) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     in_deps && !in_dev && !in_build && trimmed.contains('=') && !trimmed.starts_with('#')
 }
 
@@ -285,7 +277,6 @@ fn is_scoreable_dependency(in_deps: bool, in_dev: bool, in_build: bool, trimmed:
 /// Also checks for sovereign crates, appending any found to `sovereign_found`.
 /// Returns (is_direct, is_feature_gated).
 fn process_dependency_line(trimmed: &str, sovereign_found: &mut Vec<String>) -> (bool, bool) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let is_optional = trimmed.contains("optional") && trimmed.contains("true");
     let is_direct = !is_optional;
 
@@ -305,7 +296,6 @@ fn process_dependency_line(trimmed: &str, sovereign_found: &mut Vec<String>) -> 
 
 /// Analyze Cargo.toml for dependencies, feature gating, and sovereign crates
 pub(super) fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<String>) {
-    debug_assert!(cargo_toml_path.exists(), "cargo_toml_path must exist: {}", cargo_toml_path.display());
     let content = match fs::read_to_string(cargo_toml_path) {
         Ok(c) => c,
         Err(_) => return (0, 0, Vec::new()),
@@ -373,7 +363,6 @@ pub(super) fn calculate_dependency_score(
 
 /// CB-081-E: Load previous dependency metrics for trend tracking
 pub(super) fn load_dependency_trend(project_path: &Path) -> Option<DependencyTrend> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let metrics_path = project_path
         .join(".pmat")
         .join("metrics")
@@ -405,7 +394,6 @@ pub(super) fn save_dependency_metrics(
     direct: usize,
     transitive: usize,
 ) -> std::io::Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let metrics_dir = project_path.join(".pmat").join("metrics");
     fs::create_dir_all(&metrics_dir)?;
 
@@ -439,7 +427,6 @@ pub(super) fn calculate_trend_deltas(
     current_direct: usize,
     current_transitive: usize,
 ) -> Option<DependencyTrend> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let metrics_path = project_path
         .join(".pmat")
         .join("metrics")

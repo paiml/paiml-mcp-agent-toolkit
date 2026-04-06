@@ -57,7 +57,6 @@ pub struct PtxDiagnosticResult {
 
 /// Count distinct register names in PTX source (e.g., %r1, %f2, %p0)
 fn count_registers(source: &str) -> u32 {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let re = Regex::new(r"%[rfpb]\d+").expect("static regex must compile");
     let mut seen = std::collections::HashSet::new();
     for cap in re.find_iter(source) {
@@ -68,7 +67,6 @@ fn count_registers(source: &str) -> u32 {
 
 /// Compute branch density: branches per instruction ratio
 fn compute_branch_density(source: &str) -> f32 {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut instructions = 0u32;
     let mut branches = 0u32;
     for line in source.lines() {
@@ -96,7 +94,6 @@ fn compute_branch_density(source: &str) -> f32 {
 
 /// Count total shared memory bytes declared
 fn count_shared_memory(source: &str) -> u32 {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let re = Regex::new(r"\.shared\s+\.\w+\s+\w+\[(\d+)\]").expect("static regex must compile");
     let mut total = 0u32;
     for cap in re.captures_iter(source) {
@@ -113,7 +110,6 @@ fn count_shared_memory(source: &str) -> u32 {
 
 /// Count barrier/sync points
 fn count_barriers(source: &str) -> u32 {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut count = 0u32;
     for line in source.lines() {
         let trimmed = line.trim();
@@ -130,8 +126,6 @@ fn count_barriers(source: &str) -> u32 {
 
 /// Check if a function contains PTX-relevant code
 fn is_ptx_relevant(source: &str, file_path: &str) -> bool {
-    debug_assert!(!source.is_empty(), "source must not be empty");
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     file_path.ends_with(".ptx")
         || file_path.ends_with(".cu")
         || file_path.ends_with(".cuh")
@@ -164,7 +158,6 @@ fn collect_metric_diagnostics(
 }
 
 fn collect_register_diag(diags: &mut Vec<PtxDiagnostic>, count: u32) {
-    debug_assert!(count > 0, "count must be positive");
     if count > 64 {
         diags.push(PtxDiagnostic {
             severity: PtxSeverity::Critical,
@@ -183,7 +176,6 @@ fn collect_register_diag(diags: &mut Vec<PtxDiagnostic>, count: u32) {
 }
 
 fn collect_branch_diag(diags: &mut Vec<PtxDiagnostic>, density: f32) {
-    debug_assert!(true, "contract: collect_branch_diag");
     if density > 0.3 {
         diags.push(PtxDiagnostic {
             severity: PtxSeverity::Critical,
@@ -208,7 +200,6 @@ fn collect_branch_diag(diags: &mut Vec<PtxDiagnostic>, density: f32) {
 }
 
 fn collect_shmem_diag(diags: &mut Vec<PtxDiagnostic>, bytes: u32) {
-    debug_assert!(true, "contract: collect_shmem_diag");
     if bytes > 48_000 {
         diags.push(PtxDiagnostic {
             severity: PtxSeverity::Critical,
@@ -227,7 +218,6 @@ fn collect_shmem_diag(diags: &mut Vec<PtxDiagnostic>, bytes: u32) {
 }
 
 fn collect_barrier_diag(diags: &mut Vec<PtxDiagnostic>, count: u32) {
-    debug_assert!(count > 0, "count must be positive");
     if count > 5 {
         diags.push(PtxDiagnostic {
             severity: PtxSeverity::Warning,
@@ -247,7 +237,6 @@ fn collect_barrier_diag(diags: &mut Vec<PtxDiagnostic>, count: u32) {
 
 /// Collect CB-060 compliance diagnostics from existing detectors
 fn collect_cb060_diagnostics(diags: &mut Vec<PtxDiagnostic>, source: &str) {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     use crate::cli::handlers::comply_handlers::comply_cb_detect::{
         detect_ptx_barrier_divergence_in_str, detect_shared_memory_unbounded_in_str,
         detect_tiled_kernel_no_bounds_in_str,

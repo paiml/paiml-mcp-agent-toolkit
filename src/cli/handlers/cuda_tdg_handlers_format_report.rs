@@ -1,5 +1,4 @@
 fn format_terminal_output(result: &CudaSimdTdgResult) -> Result<String> {
-    debug_assert!(true, "contract: format_terminal_output");
     let mut output = String::new();
     output.push_str("CUDA-SIMD TDG Analysis\n");
     output.push_str("======================\n\n");
@@ -31,7 +30,6 @@ fn format_terminal_output(result: &CudaSimdTdgResult) -> Result<String> {
 }
 
 fn grade_color(grade: &CudaTdgGrade) -> &'static str {
-    debug_assert!(true, "contract: grade_color");
     match grade {
         CudaTdgGrade::APLus | CudaTdgGrade::A => "\x1b[32m",
         CudaTdgGrade::B => "\x1b[33m",
@@ -41,7 +39,6 @@ fn grade_color(grade: &CudaTdgGrade) -> &'static str {
 }
 
 fn format_terminal_score_line(result: &CudaSimdTdgResult) -> String {
-    debug_assert!(true, "contract: format_terminal_score_line");
     let color = grade_color(&result.score.grade);
     format!(
         "Score: {}{:.1}/100{} (Grade: {}{}{})\n",
@@ -55,7 +52,6 @@ fn format_terminal_score_line(result: &CudaSimdTdgResult) -> String {
 }
 
 fn format_terminal_gateway_line(result: &CudaSimdTdgResult) -> String {
-    debug_assert!(true, "contract: format_terminal_gateway_line");
     format!(
         "Gateway: {}\n\n",
         if result.score.gateway_passed {
@@ -67,7 +63,6 @@ fn format_terminal_gateway_line(result: &CudaSimdTdgResult) -> String {
 }
 
 fn format_terminal_defects(result: &CudaSimdTdgResult) -> String {
-    debug_assert!(true, "contract: format_terminal_defects");
     let p0_count = result
         .defects
         .iter()
@@ -90,7 +85,6 @@ fn format_terminal_defects(result: &CudaSimdTdgResult) -> String {
 }
 
 fn format_markdown_report(result: &CudaSimdTdgResult) -> Result<String> {
-    debug_assert!(true, "contract: format_markdown_report");
     let mut md = String::new();
     md.push_str("# CUDA-SIMD TDG Analysis Report\n\n");
     md.push_str(&format!("**Path**: `{}`\n", result.path.display()));
@@ -159,7 +153,6 @@ fn format_markdown_report(result: &CudaSimdTdgResult) -> Result<String> {
 }
 
 fn format_html_report(result: &CudaSimdTdgResult) -> Result<String> {
-    debug_assert!(true, "contract: format_html_report");
     let mut html = String::new();
     html.push_str("<!DOCTYPE html>\n<html>\n<head>\n");
     html.push_str("<title>CUDA-SIMD TDG Report</title>\n");
@@ -188,7 +181,6 @@ fn format_html_report(result: &CudaSimdTdgResult) -> Result<String> {
 }
 
 fn format_sarif(result: &CudaSimdTdgResult) -> Result<String> {
-    debug_assert!(true, "contract: format_sarif");
     let sarif = serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",
@@ -242,7 +234,6 @@ fn format_sarif(result: &CudaSimdTdgResult) -> Result<String> {
 }
 
 fn write_output(output: &str, config: &CudaTdgCommandConfig) -> Result<()> {
-    debug_assert!(!output.is_empty(), "output must not be empty");
     if let Some(ref path) = config.output {
         fs::write(path, output)?;
     } else {

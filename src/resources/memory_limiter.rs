@@ -39,7 +39,6 @@ impl MemoryLimiter {
     }
 
     fn apply_memory_limits(&self, limits: &MemoryLimits) -> Result<(), ResourceError> {
-        debug_assert!(true, "contract: apply_memory_limits");
         // Apply RSS limit using setrlimit
         self.set_rss_limit(limits.max_bytes)?;
 
@@ -62,7 +61,6 @@ impl MemoryLimiter {
     }
 
     fn set_rss_limit(&self, limit_bytes: usize) -> Result<(), ResourceError> {
-        debug_assert!(true, "contract: set_rss_limit");
         #[cfg(unix)]
         {
             use libc::{rlimit, setrlimit, RLIMIT_AS};
@@ -93,7 +91,6 @@ impl MemoryLimiter {
     }
 
     fn set_heap_limit(&self, limit_bytes: usize) -> Result<(), ResourceError> {
-        debug_assert!(true, "contract: set_heap_limit");
         #[cfg(unix)]
         {
             use libc::{rlimit, setrlimit, RLIMIT_DATA};
@@ -124,7 +121,6 @@ impl MemoryLimiter {
     }
 
     fn set_stack_limit(&self, limit_bytes: usize) -> Result<(), ResourceError> {
-        debug_assert!(true, "contract: set_stack_limit");
         #[cfg(unix)]
         {
             use libc::{rlimit, setrlimit, RLIMIT_STACK};
@@ -155,7 +151,6 @@ impl MemoryLimiter {
     }
 
     fn set_swap_limit(&self, _limit_bytes: usize) -> Result<(), ResourceError> {
-        debug_assert!(true, "contract: set_swap_limit");
         // Swap limiting typically requires cgroup configuration
         #[cfg(target_os = "linux")]
         {
@@ -180,7 +175,6 @@ impl MemoryLimiter {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_allocation(&self, size: usize) -> Result<(), ResourceError> {
-        debug_assert!(size > 0, "size must be positive");
         let current = self.allocated.load(Ordering::Relaxed);
         let limit = self.limits.read().max_bytes;
 
@@ -196,7 +190,6 @@ impl MemoryLimiter {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_allocation(&self, size: usize) {
-        debug_assert!(size > 0, "size must be positive");
         let new_allocated = self.allocated.fetch_add(size, Ordering::SeqCst) + size;
 
         // Update peak if necessary
@@ -216,7 +209,6 @@ impl MemoryLimiter {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_deallocation(&self, size: usize) {
-        debug_assert!(size > 0, "size must be positive");
         self.allocated.fetch_sub(size, Ordering::SeqCst);
     }
 
@@ -232,13 +224,11 @@ impl MemoryLimiter {
 
 impl ResourceController for MemoryLimiter {
     fn apply_limits(&self, limits: &ResourceLimits) -> Result<(), ResourceError> {
-        debug_assert!(true, "contract: apply_limits");
         *self.limits.write() = limits.memory.clone();
         self.apply_memory_limits(&limits.memory)
     }
 
     fn get_usage(&self) -> Result<ResourceUsage, ResourceError> {
-        debug_assert!(true, "contract: get_usage");
         let mut system = self.system.write();
         system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
@@ -263,7 +253,6 @@ impl ResourceController for MemoryLimiter {
     }
 
     fn release(&self) -> Result<(), ResourceError> {
-        debug_assert!(true, "contract: release");
         // Reset limits to system defaults
         #[cfg(unix)]
         {

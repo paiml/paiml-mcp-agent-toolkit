@@ -39,7 +39,6 @@ impl MessageRouter {
     }
 
     fn process_queue(&self) -> Result<(), RouterError> {
-        debug_assert!(true, "contract: process_queue");
         // Sort by priority and process
         let mut messages: Vec<(Priority, AgentMessage)> = Vec::new();
 

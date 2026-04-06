@@ -31,7 +31,6 @@ impl StatePersistence {
 
     /// Load state from file
     fn load_from_file(path: &Path) -> Result<AgentState> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let contents = std::fs::read_to_string(path).context("Failed to read state file")?;
 
         serde_json::from_str(&contents).context("Failed to deserialize state")
@@ -93,7 +92,6 @@ impl StatePersistence {
     /// Remove monitored project
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn remove_project(&self, project_id: &str) -> Result<()> {
-        debug_assert!(!project_id.is_empty(), "project_id must not be empty");
         let mut state = self.state.write().await;
         state.monitored_projects.remove(project_id);
         state.last_updated = Utc::now();
@@ -103,7 +101,6 @@ impl StatePersistence {
     /// Update project metrics
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn update_metrics(&self, project_id: &str, metrics: QualityMetrics) -> Result<()> {
-        debug_assert!(!project_id.is_empty(), "project_id must not be empty");
         let mut state = self.state.write().await;
 
         if let Some(project) = state.monitored_projects.get_mut(project_id) {

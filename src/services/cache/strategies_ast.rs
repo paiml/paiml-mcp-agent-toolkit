@@ -51,7 +51,6 @@ impl CacheStrategy for AstCacheStrategy {
     type Value = FileContext;
 
     fn cache_key(&self, path: &PathBuf) -> String {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Include file path and mtime for uniqueness
         let mtime = fs::metadata(path)
             .ok()
@@ -63,7 +62,6 @@ impl CacheStrategy for AstCacheStrategy {
     }
 
     fn validate(&self, path: &PathBuf, cached: &FileContext) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check if file still exists and hasn't been modified
         if !path.exists() {
             return false;
@@ -101,12 +99,10 @@ impl CacheStrategy for AstCacheStrategy {
     }
 
     fn ttl(&self) -> Option<Duration> {
-        debug_assert!(true, "contract: ttl");
         Some(Duration::from_secs(300)) // 5 minutes
     }
 
     fn max_size(&self) -> usize {
-        debug_assert!(true, "contract: max_size");
         100 // Max 100 AST entries
     }
 }

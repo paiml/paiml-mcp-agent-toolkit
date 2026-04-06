@@ -14,11 +14,6 @@ pub async fn discover_files_for_defect_analysis(
     project_path: &Path,
     config: &DefectPredictionConfig,
 ) -> Result<Vec<(PathBuf, String, usize)>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     use crate::cli::defect_prediction_helpers::discover_source_files_for_defect_analysis;
 
     discover_source_files_for_defect_analysis(project_path, config).await
@@ -30,7 +25,6 @@ pub async fn analyze_defect_probability(
     files: &[(PathBuf, String, usize)],
     config: &DefectPredictionConfig,
 ) -> Result<Vec<(String, DefectScore)>> {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     eprintln!("📊 Analyzing {} files...", files.len());
 
     let calculator = DefectProbabilityCalculator::new();

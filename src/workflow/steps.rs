@@ -27,13 +27,11 @@ impl StepRegistry {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, name: &str) -> Option<&dyn StepHandler> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self._steps.get(name).map(|b| b.as_ref())
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn remove(&mut self, name: &str) -> Option<Box<dyn StepHandler>> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self._steps.remove(name)
     }
 
@@ -59,7 +57,6 @@ pub trait StepHandler: Send + Sync {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
-    debug_assert!(true, "contract: execute");
     use super::*;
     use std::sync::Arc;
 
@@ -73,7 +70,6 @@ mod tests {
             _params: &Value,
             _context: &WorkflowContext,
         ) -> Result<Value, WorkflowError> {
-            debug_assert!(true, "contract: execute");
             Ok(serde_json::json!({"handler": self.name}))
         }
     }
@@ -206,7 +202,6 @@ mod tests {
     #[test]
     fn test_step_handler_trait_is_send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
-        debug_assert!(true, "contract: assert_send_sync");
         assert_send_sync::<MockStepHandler>();
     }
 

@@ -97,7 +97,6 @@ impl DeadCodeAnalyzer {
     /// Performance: 2-3x speedup over scalar for large graphs (>10K nodes)
     /// Backend: Automatic selection (AVX2 > AVX > SSE2 > Scalar)
     fn mark_reachable_trueno(&mut self) {
-        debug_assert!(true, "contract: mark_reachable_trueno");
         use trueno::Vector;
 
         let entry_points = self.entry_points.read().clone();
@@ -133,7 +132,6 @@ impl DeadCodeAnalyzer {
 
     #[cfg(not(feature = "simd"))]
     fn mark_reachable_scalar(&mut self) {
-        debug_assert!(true, "contract: mark_reachable_scalar");
         let entry_points = self.entry_points.read().clone();
         let mut reachable = self.reachability.write();
         let references = self.references.read();

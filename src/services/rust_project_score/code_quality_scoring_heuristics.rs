@@ -2,7 +2,6 @@
 // Cache-aware: uses FileCache if available, falls back to filesystem
 
 fn count_deep_nesting(content: &str) -> usize {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // 10 levels of 4-space indent = 40 chars. Rust match/if-let chains
     // commonly reach 8 levels (32 chars), so threshold at 10 levels.
     content
@@ -17,7 +16,6 @@ fn count_deep_nesting(content: &str) -> usize {
 /// Returns true if the trimmed line mentions "unsafe" in a non-code context
 /// (comments, string literals, variable bindings, or string-matching expressions).
 fn is_non_code_unsafe(trimmed: &str) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     const SKIP_PREFIXES: &[&str] = &["//", "*", "\"", "r#", "r\"", "let "];
     const SKIP_CONTAINS: &[&str] = &[
         ".contains(\"unsafe",
@@ -31,7 +29,6 @@ fn is_non_code_unsafe(trimmed: &str) -> bool {
 
 /// Returns true if the trimmed line introduces an `unsafe` block.
 fn is_unsafe_block(trimmed: &str) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     const PATTERNS: &[&str] = &["unsafe {", "unsafe{", "= unsafe {", "} unsafe {"];
     PATTERNS.iter().any(|p| {
         trimmed.starts_with(p) || trimmed.contains(p)
@@ -40,12 +37,10 @@ fn is_unsafe_block(trimmed: &str) -> bool {
 
 /// Returns true if any line in the slice contains a SAFETY documentation comment.
 fn has_safety_comment(lines: &[&str]) -> bool {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     lines.iter().any(|l| l.contains("SAFETY:") || l.contains("Safety:"))
 }
 
 fn analyze_unsafe_in_content(content: &str) -> (usize, usize) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let lines: Vec<&str> = content.lines().collect();
     lines
         .iter()
@@ -60,13 +55,11 @@ fn analyze_unsafe_in_content(content: &str) -> (usize, usize) {
 }
 
 fn count_dead_code_attrs(content: &str) -> usize {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     content.matches("#[allow(dead_code)]").count()
         + content.matches("#![allow(dead_code)]").count()
 }
 
 fn score_from_nesting(count: usize) -> f64 {
-    debug_assert!(count > 0, "count must be positive");
     if count == 0 { 3.0 }
     else if count <= 5 { 2.0 }
     else if count <= 20 { 1.0 }
@@ -74,7 +67,6 @@ fn score_from_nesting(count: usize) -> f64 {
 }
 
 fn score_from_unsafe(unsafe_blocks: usize, documented: usize) -> f64 {
-    debug_assert!(true, "contract: score_from_unsafe");
     if unsafe_blocks == 0 {
         return 9.0;
     }
@@ -87,14 +79,12 @@ fn score_from_unsafe(unsafe_blocks: usize, documented: usize) -> f64 {
 }
 
 fn for_each_rs_content_cached(cache: &FileCache, src_path: &Path, mut f: impl FnMut(&str)) {
-    debug_assert!(src_path.exists(), "src_path must exist: {}", src_path.display());
     for (_path, content) in cache.get_rust_files_in_dir(src_path) {
         f(content);
     }
 }
 
 fn for_each_rs_content_fs(src_path: &Path, f: &mut impl FnMut(&str)) {
-    debug_assert!(src_path.exists(), "src_path must exist: {}", src_path.display());
     // #237 bug 3: Must be recursive — read_dir is non-recursive and missed 98%+ of code
     if let Ok(entries) = std::fs::read_dir(src_path) {
         for entry in entries.flatten() {
@@ -116,7 +106,6 @@ impl CodeQualityScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(3.0);
@@ -137,7 +126,6 @@ impl CodeQualityScorer {
     }
 
     fn score_unsafe(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(9.0);
@@ -161,7 +149,6 @@ impl CodeQualityScorer {
     }
 
     fn score_dead_code(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let src_path = project_path.join("src");
         if !src_path.exists() {
             return Ok(2.0);

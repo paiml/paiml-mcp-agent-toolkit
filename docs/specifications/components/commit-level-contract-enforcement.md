@@ -298,7 +298,7 @@ fire-and-forget with no closed-loop regeneration.
 
 | Repo | Pass | Warn | Fail | CB-1354 | CB-1340 | Notes |
 |------|------|------|------|---------|---------|-------|
-| pmat | **78** | 5 | 1 | **4/4** | **98.5%** counted, **40.5%** honest | FAIL: File Health. See falsification |
+| pmat | **78** | 5 | 1 | **4/4** | **36.9%** PASS, 0 test failures | FAIL: File Health only. Honest, verified. |
 | aprender | **74** | 13 | **2** | **4/4** | 43.8% agg, apr-cli:**63%** [CLI] FAIL | FAIL: File Health + CB-1340. #686 open |
 | trueno | **66** | 17 | 3 | 2/4 | Skip (no binding) | FAIL: File Health, CB-200, CB-1308 |
 | realizar | **67** | 18 | **0** | 3/4 | Skip | **Zero FAIL** maintained |
@@ -495,6 +495,6 @@ Tools: mdschema, hadolint, rumdl, standard-readme.
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 3.13 | 2026-04-06 | **Falsified 98.5%**: honest 27.6%. 1938 path.exists WRONG. 3631 no-ops. 2255 test fails. |
+| 3.14 | 2026-04-06 | **Tests green**: removed wrong path.exists (1938) + wrong is_empty. Honest 36.9%, 0 failures. |
 | 3.5-3.8 | 2026-04-06 | Falsified `contract_` pattern, per-crate CB-1340, self-enforcement 0.2% → 11%. |
 | 1.0–3.4 | 2026-04-05 | Phases 1-8, remediation, apr-cli Level A, 82 issues closed. |

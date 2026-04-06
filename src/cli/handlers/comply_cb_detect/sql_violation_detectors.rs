@@ -7,7 +7,6 @@
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb700_select_star(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
     let mut violations = Vec::new();
 
@@ -65,7 +64,6 @@ pub fn detect_cb700_select_star(project_path: &Path) -> Vec<CbPatternViolation> 
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb701_missing_where(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
     let mut violations = Vec::new();
 
@@ -133,7 +131,6 @@ pub fn detect_cb701_missing_where(project_path: &Path) -> Vec<CbPatternViolation
 
 /// Check if a FROM clause has comma-separated tables (implicit join).
 fn has_implicit_join(lower: &str) -> bool {
-    debug_assert!(!lower.is_empty(), "lower must not be empty");
     let from_pos = match lower.find("from ") {
         Some(p) => p,
         None => return false,
@@ -161,7 +158,6 @@ fn has_implicit_join(lower: &str) -> bool {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb702_implicit_join(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
     let mut violations = Vec::new();
 
@@ -202,7 +198,6 @@ pub fn detect_cb702_implicit_join(project_path: &Path) -> Vec<CbPatternViolation
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb703_sql_injection(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
     let mut violations = Vec::new();
 
@@ -262,7 +257,6 @@ pub fn detect_cb703_sql_injection(project_path: &Path) -> Vec<CbPatternViolation
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb704_missing_index_hint(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
     let mut violations = Vec::new();
 
@@ -319,7 +313,6 @@ pub fn detect_cb704_missing_index_hint(project_path: &Path) -> Vec<CbPatternViol
 /// Looks for patterns like `for row in results: cursor.execute("SELECT ...")`.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb705_n_plus_1_query(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let code_extensions = ["py", "rb", "php", "java", "js", "ts"];
     let mut code_files: Vec<PathBuf> = Vec::new();
     collect_code_files(project_path, &code_extensions, &mut code_files);
@@ -347,8 +340,6 @@ pub fn detect_cb705_n_plus_1_query(project_path: &Path) -> Vec<CbPatternViolatio
 }
 
 fn detect_n_plus_1_in_content(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     let mut in_loop = false;
     let mut loop_depth: i32 = 0;
 

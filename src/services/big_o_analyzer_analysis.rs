@@ -44,7 +44,6 @@ impl BigOAnalyzer {
 
     /// Discover source files based on patterns
     async fn discover_source_files(&self, config: &BigOAnalysisConfig) -> Result<Vec<PathBuf>> {
-        debug_assert!(true, "contract: discover_source_files");
         use walkdir::WalkDir;
 
         let extensions = [
@@ -100,7 +99,6 @@ impl BigOAnalyzer {
         file_path: &PathBuf,
         config: &BigOAnalysisConfig,
     ) -> Result<Vec<FunctionComplexity>> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let content = tokio::fs::read_to_string(file_path).await?;
         let mut functions = Vec::new();
 
@@ -154,7 +152,6 @@ impl BigOAnalyzer {
 
     /// Detect language pattern and name from file extension
     fn detect_language_pattern(extension: &str) -> (&'static str, &'static str) {
-        debug_assert!(true, "contract: detect_language_pattern");
         match extension {
             "rs" => (r"fn\s+(\w+)", "rust"),
             "js" | "jsx" => (r"function\s+(\w+)", "javascript"),
@@ -180,9 +177,6 @@ impl BigOAnalyzer {
         function_body: &str,
         language: &str,
     ) -> ComplexityAnalysisResult {
-        debug_assert!(!function_name.is_empty(), "function_name must not be empty");
-        debug_assert!(!function_body.is_empty(), "function_body must not be empty");
-        debug_assert!(!language.is_empty(), "language must not be empty");
         let mut notes = Vec::new();
         let lines: Vec<&str> = function_body.lines().take(100).collect();
 

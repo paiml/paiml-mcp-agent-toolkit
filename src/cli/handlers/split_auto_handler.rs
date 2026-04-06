@@ -69,7 +69,6 @@ pub async fn handle_split_auto(
     dry_run: bool,
     commit: bool,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let project_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
 
     println!("{}", c::header("Automated File Splitting"));
@@ -205,11 +204,6 @@ pub async fn handle_split_auto(
 
 /// Walk the project and find all `.rs` files exceeding `max_lines`.
 fn find_oversized_files(project_path: &Path, max_lines: usize) -> Result<Vec<OversizedFile>> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let mut results = Vec::new();
 
     for entry in WalkDir::new(project_path)
@@ -261,7 +255,6 @@ fn should_skip_dir(entry: &walkdir::DirEntry) -> bool {
 
 /// Returns true if the file should be skipped.
 fn should_skip_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let file_name = path
         .file_name()
         .map(|f| f.to_string_lossy().to_string())
@@ -287,7 +280,6 @@ fn should_skip_file(path: &Path) -> bool {
 }
 
 fn estimate_splits(line_count: usize, max_lines: usize) -> usize {
-    debug_assert!(max_lines > 0, "max_lines must be positive");
     if max_lines == 0 {
         return 1;
     }
@@ -305,7 +297,6 @@ fn estimate_splits(line_count: usize, max_lines: usize) -> usize {
 
 /// Returns true if a line starts a top-level Rust item (not indented).
 fn is_top_level_item(line: &str) -> Option<(&str, &str)> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim_start();
 
     // Must start at column 0 (no indentation) or after `pub`/`pub(crate)` etc.
@@ -352,7 +343,6 @@ fn is_top_level_item(line: &str) -> Option<(&str, &str)> {
 
 /// Strip `pub`, `pub(crate)`, `pub(super)`, `pub(in ...)` from the start.
 fn strip_visibility(s: &str) -> &str {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     if !s.starts_with("pub") {
         return s;
     }
@@ -371,7 +361,6 @@ fn strip_visibility(s: &str) -> &str {
 
 /// Extract the item name from the text after the keyword.
 fn extract_item_name(rest: &str) -> &str {
-    debug_assert!(!rest.is_empty(), "rest must not be empty");
     // Name is the first identifier-like token
     let name = rest
         .split(|c: char| !c.is_alphanumeric() && c != '_')
@@ -386,7 +375,6 @@ fn extract_item_name(rest: &str) -> &str {
 
 /// Detect split points: top-level items with their line ranges.
 fn find_split_points(content: &str) -> Vec<TopLevelItem> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let lines: Vec<&str> = content.lines().collect();
     let mut items = Vec::new();
     let mut brace_depth: i32 = 0;
@@ -543,7 +531,6 @@ fn find_split_points(content: &str) -> Vec<TopLevelItem> {
 
 /// Walk backwards from a line to find the start of preceding doc comments/attributes.
 fn find_attribute_start(lines: &[&str], item_line_idx: usize) -> usize {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut start = item_line_idx;
     while start > 0 {
         let prev = lines[start - 1].trim();
@@ -570,7 +557,6 @@ fn find_attribute_start(lines: &[&str], item_line_idx: usize) -> usize {
 
 /// Returns true if the content uses `include!()` pattern (file is already split).
 fn uses_include_pattern(content: &str) -> bool {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     content.lines().any(|line| {
         let trimmed = line.trim();
         trimmed.starts_with("include!(") || trimmed.starts_with("include!(concat!")
@@ -579,7 +565,6 @@ fn uses_include_pattern(content: &str) -> bool {
 
 /// Returns true if a line is a `use` statement.
 fn is_use_line(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim_start();
     trimmed.starts_with("use ")
         || trimmed.starts_with("pub use ")
@@ -588,7 +573,6 @@ fn is_use_line(line: &str) -> bool {
 
 /// Returns true if a line is a module-level attribute.
 fn is_module_attr(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim();
     trimmed.starts_with("#![")
 }
@@ -623,11 +607,6 @@ fn find_test_block(items: &[TopLevelItem], lines: &[&str]) -> Option<(usize, usi
 
 /// Generate a split plan for a single file.
 fn generate_split_plan(file_path: &Path, content: &str, max_lines: usize) -> SplitPlan {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     let lines: Vec<&str> = content.lines().collect();
     let items = find_split_points(content);
 
@@ -687,13 +666,6 @@ fn group_items_into_clusters(
     max_lines: usize,
     file_path: &Path,
 ) -> Vec<ItemCluster> {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
-    debug_assert!(max_lines > 0, "max_lines must be positive");
-    debug_assert!(!items.is_empty(), "items must not be empty");
     if items.is_empty() {
         return Vec::new();
     }
@@ -742,11 +714,6 @@ fn group_items_into_clusters(
 
 /// Generate a descriptive submodule name based on the items it contains.
 fn name_submodule(items: &[TopLevelItem], file_path: &Path) -> String {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     let stem = file_path
         .file_stem()
         .map(|s| s.to_string_lossy().to_string())
@@ -794,7 +761,6 @@ fn name_submodule(items: &[TopLevelItem], file_path: &Path) -> String {
 
 /// Find a common name prefix among items (returns None if no useful prefix).
 fn find_common_prefix(items: &[TopLevelItem]) -> Option<String> {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     if items.len() < 2 {
         return None;
     }
@@ -822,11 +788,6 @@ fn find_common_prefix(items: &[TopLevelItem]) -> Option<String> {
 // ── Plan display ─────────────────────────────────────────────────────────────
 
 fn print_plan(plan: &SplitPlan, rel_path: &Path) {
-    debug_assert!(
-        rel_path.exists(),
-        "rel_path must exist: {}",
-        rel_path.display()
-    );
     println!(
         "{} {}",
         c::label("Split Plan:"),

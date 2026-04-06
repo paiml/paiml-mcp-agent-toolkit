@@ -28,7 +28,6 @@ impl LanguageAdapter for RustAdapter {
     }
 
     async fn parse(&self, source: &str) -> Result<String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Parse using syn
         let _syntax_tree: syn::File =
             syn::parse_file(source).context("Failed to parse Rust source")?;
@@ -38,13 +37,11 @@ impl LanguageAdapter for RustAdapter {
     }
 
     async fn unparse(&self, ast: &str) -> Result<String> {
-        debug_assert!(!ast.is_empty(), "ast must not be empty");
         // For now, AST is just source code
         Ok(ast.to_string())
     }
 
     fn mutation_operators(&self) -> Vec<Box<dyn MutationOperator>> {
-        debug_assert!(true, "contract: mutation_operators");
         vec![
             // Phase 1-4 Operators
             Box::new(ArithmeticOperatorReplacement),
@@ -58,11 +55,6 @@ impl LanguageAdapter for RustAdapter {
     }
 
     async fn run_tests(&self, source_file: &Path) -> Result<TestRunResult> {
-        debug_assert!(
-            source_file.exists(),
-            "source_file must exist: {}",
-            source_file.display()
-        );
         // Get the project root (traverse up from source file)
         let project_root = find_cargo_root(source_file).context("Could not find Cargo.toml")?;
 
@@ -99,7 +91,6 @@ impl Default for RustAdapter {
 
 /// Find Cargo.toml by traversing up from source file
 fn find_cargo_root(start: &Path) -> Option<&Path> {
-    debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
 
     loop {
@@ -113,8 +104,6 @@ fn find_cargo_root(start: &Path) -> Option<&Path> {
 
 /// Parse test failures from cargo test output
 fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
-    debug_assert!(!stdout.is_empty(), "stdout must not be empty");
-    debug_assert!(!stderr.is_empty(), "stderr must not be empty");
     let mut failures = Vec::new();
 
     // Look for "test <name> ... FAILED" pattern
@@ -131,7 +120,6 @@ fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
 
 /// Extract test name from failure line
 fn extract_test_name(line: &str) -> Option<String> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     // Pattern: "test <name> ... FAILED"
     let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() >= 2 && parts[0] == "test" {

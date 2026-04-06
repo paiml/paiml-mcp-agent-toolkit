@@ -10,7 +10,6 @@ const DEMO_ROOT_NAMES: &[&str] = &[
 impl DemoScorer {
     /// Find demo/example files in the repository
     async fn find_demo_files(&self, repo_path: &Path) -> Vec<std::path::PathBuf> {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let mut demo_files = vec![];
 
         let examples_dirs = ["examples", "demos", "demo", "samples"];

@@ -107,7 +107,6 @@ impl CommandTiming {
     }
 
     fn recompute_stats(&mut self) {
-        debug_assert!(true, "contract: recompute_stats");
         let n = self.durations.len() as f64;
         self.mean_ms = self.durations.iter().sum::<u64>() as f64 / n;
         let variance = self
@@ -143,8 +142,6 @@ impl ViolationTracker {
         exit_code: i32,
         message: &str,
     ) {
-        debug_assert!(!work_item_id.is_empty(), "work_item_id must not be empty");
-        debug_assert!(!command.is_empty(), "command must not be empty");
         self.violations.push(RuntimeViolation {
             work_item_id: work_item_id.to_string(),
             timestamp: chrono_now(),
@@ -164,8 +161,6 @@ impl ViolationTracker {
         command: &str,
         duration_ms: u64,
     ) -> bool {
-        debug_assert!(!work_item_id.is_empty(), "work_item_id must not be empty");
-        debug_assert!(!command.is_empty(), "command must not be empty");
         let is_anomalous = self
             .timings
             .get(command)
@@ -205,7 +200,6 @@ impl ViolationTracker {
         manifest_path: &str,
         message: &str,
     ) {
-        debug_assert!(!work_item_id.is_empty(), "work_item_id must not be empty");
         self.violations.push(RuntimeViolation {
             work_item_id: work_item_id.to_string(),
             timestamp: chrono_now(),
@@ -250,7 +244,6 @@ impl ViolationTracker {
     /// Save violation tracker to disk
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, project_path: &Path, work_item_id: &str) -> Result<()> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let dir = project_path
             .join(".pmat-work")
             .join(work_item_id)
@@ -265,7 +258,6 @@ impl ViolationTracker {
     /// Load violation tracker from disk (returns default if not found)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(project_path: &Path, work_item_id: &str) -> Self {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let path = project_path
             .join(".pmat-work")
             .join(work_item_id)
@@ -300,9 +292,6 @@ impl TrustChainEntry {
     /// Create a new trust chain entry linked to the previous
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(manifest_path: &str, content_hash: &str, prev_hash: &str) -> Self {
-        debug_assert!(!manifest_path.is_empty(), "manifest_path must not be empty");
-        debug_assert!(!content_hash.is_empty(), "content_hash must not be empty");
-        debug_assert!(!prev_hash.is_empty(), "prev_hash must not be empty");
         let chain_input = format!("{}{}", content_hash, prev_hash);
         let chain_hash = format!("{:x}", Sha256::digest(chain_input.as_bytes()));
         Self {
@@ -325,7 +314,6 @@ impl TrustChainEntry {
 
 /// Simple timestamp function (avoids chrono dependency)
 fn chrono_now() -> String {
-    debug_assert!(true, "contract: chrono_now");
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

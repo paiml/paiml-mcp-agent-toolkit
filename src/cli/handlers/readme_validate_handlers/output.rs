@@ -19,7 +19,6 @@ impl ValidateReadmeCmd {
         contradictions: usize,
         unverified: usize,
     ) {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         use crate::cli::colors as c;
         println!();
         println!(
@@ -125,7 +124,6 @@ impl ValidateReadmeCmd {
         &self,
         results: &[(PathBuf, Vec<ValidationResult>)],
     ) -> Result<()> {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         use serde_json::json;
 
         let results_json: Vec<_> = results
@@ -196,7 +194,6 @@ impl ValidateReadmeCmd {
         &self,
         results: &[(PathBuf, Vec<ValidationResult>)],
     ) -> Result<()> {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         let total_claims: usize = results.iter().map(|(_, r)| r.len()).sum();
         let failures: usize = results
             .iter()
@@ -269,7 +266,6 @@ impl ValidateReadmeCmd {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn xml_escape(s: &str) -> String {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")

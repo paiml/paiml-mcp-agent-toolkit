@@ -7,7 +7,6 @@ impl ProtocolAdapter for McpAdapter {
     type Response = JsonRpcResponse;
 
     fn decode(&self, raw: &[u8]) -> Result<UnifiedRequest, ProtocolError> {
-        debug_assert!(!raw.is_empty(), "raw must not be empty");
         let json_rpc: JsonRpcRequest = serde_json::from_slice(raw)?;
 
         // Map JSON-RPC method to Operation
@@ -73,7 +72,6 @@ impl ProtocolAdapter for McpAdapter {
     }
 
     fn encode(&self, response: UnifiedResponse) -> Result<Vec<u8>, ProtocolError> {
-        debug_assert!(true, "contract: encode");
         let json_rpc = JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             result: response.result,
@@ -85,7 +83,6 @@ impl ProtocolAdapter for McpAdapter {
     }
 
     async fn handle(&self, request: Self::Request) -> Self::Response {
-        debug_assert!(true, "contract: handle");
         // This would be implemented to process the request
         // For now, return a placeholder response
         JsonRpcResponse {

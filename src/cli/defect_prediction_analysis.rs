@@ -25,7 +25,6 @@ pub async fn discover_source_files_for_defect_analysis(
     project_path: &Path,
     config: &DefectPredictionConfig,
 ) -> Result<Vec<(PathBuf, String, usize)>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
 
     let mut discovery_config = FileDiscoveryConfig::default();
@@ -67,7 +66,6 @@ pub async fn discover_source_files_for_defect_analysis(
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_simple_complexity(content: &str) -> u32 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut complexity = 1u32;
 
     for line in content.lines() {
@@ -79,7 +77,6 @@ pub fn calculate_simple_complexity(content: &str) -> u32 {
 }
 
 fn count_line_complexity(line: &str) -> u32 {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let mut line_complexity = 0u32;
 
     line_complexity += count_conditional_statements(line);
@@ -92,17 +89,14 @@ fn count_line_complexity(line: &str) -> u32 {
 }
 
 fn count_conditional_statements(line: &str) -> u32 {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     u32::from(line.starts_with("if ") || line.starts_with("else if"))
 }
 
 fn count_loop_statements(line: &str) -> u32 {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     u32::from(line.starts_with("for ") || line.starts_with("while "))
 }
 
 fn count_pattern_matching(line: &str) -> u32 {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     u32::from(
         line.starts_with("match ")
             || line.starts_with("switch ")
@@ -123,7 +117,6 @@ fn count_exception_handling(line: &str) -> u32 {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // Simple heuristic based on comments and file size
     let todo_count = content.matches("TODO").count() + content.matches("FIXME").count();
     let comment_lines = content
@@ -145,7 +138,6 @@ pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn collect_file_metrics(analyzed_files: &[(PathBuf, String, usize)]) -> Vec<FileMetrics> {
-    debug_assert!(!analyzed_files.is_empty(), "analyzed_files must not be empty");
     let mut file_metrics = Vec::new();
 
     for (file_path, content, lines_of_code) in analyzed_files {
@@ -187,7 +179,6 @@ pub fn filter_predictions(
     predictions: Vec<(String, DefectScore)>,
     config: &DefectPredictionConfig,
 ) -> Vec<(String, DefectScore)> {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut filtered_predictions = predictions;
 
     if !config.include_low_confidence {
@@ -218,7 +209,6 @@ pub struct RiskDistribution {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_risk_distribution(predictions: &[(String, DefectScore)]) -> RiskDistribution {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     RiskDistribution {
         high_risk_count: predictions
             .iter()

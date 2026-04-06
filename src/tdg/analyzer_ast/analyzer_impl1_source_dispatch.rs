@@ -6,7 +6,6 @@ impl TdgAnalyzerAst {
         language: Language,
         file_path: Option<PathBuf>,
     ) -> Result<TdgScore> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut tracker = PenaltyTracker::new();
         let mut score = TdgScore {
             language,
@@ -97,7 +96,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         #[cfg(feature = "rust-ast")]
         {
             use syn::{visit::Visit, File};
@@ -167,7 +165,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         #[cfg(feature = "python-ast")]
         {
             // Modern tree-sitter-python parsing (replaces rustpython-parser)
@@ -234,7 +231,6 @@ impl TdgAnalyzerAst {
 /// Check if a file is tracked by git (has at least one commit).
 /// Returns false for new/untracked files, enabling graceful degradation (issue #279).
 fn is_file_git_tracked(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     std::process::Command::new("git")
         .args(["log", "--oneline", "-1", "--"])
         .arg(path)

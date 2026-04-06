@@ -59,7 +59,6 @@ impl EnhancedReportingService {
         config: &ReportConfig,
         results: &AnalysisResults,
     ) -> Result<ReportMetadata> {
-        debug_assert!(true, "contract: build_metadata");
         Ok(ReportMetadata {
             project_name: config
                 .project_path
@@ -78,7 +77,6 @@ impl EnhancedReportingService {
 
     /// Generate executive summary
     fn generate_executive_summary(&self, results: &AnalysisResults) -> Result<ExecutiveSummary> {
-        debug_assert!(true, "contract: generate_executive_summary");
         let overall_health_score = self.calculate_health_score(results);
         let critical_issues = self.count_issues_by_severity(results, Severity::Critical);
         let high_priority_issues = self.count_issues_by_severity(results, Severity::High);
@@ -97,7 +95,6 @@ impl EnhancedReportingService {
 
     /// Calculate overall health score (0-100)
     fn calculate_health_score(&self, results: &AnalysisResults) -> f64 {
-        debug_assert!(true, "contract: calculate_health_score");
         let mut score = 100.0;
 
         // Deduct points for various issues
@@ -131,7 +128,6 @@ impl EnhancedReportingService {
 
     /// Count issues by severity
     fn count_issues_by_severity(&self, _results: &AnalysisResults, _severity: Severity) -> usize {
-        debug_assert!(true, "contract: count_issues_by_severity");
         // Count from various analyses
         // This is a simplified version - in real implementation, each analysis
         // would contribute its issues
@@ -141,7 +137,6 @@ impl EnhancedReportingService {
 
     /// Extract key findings
     fn extract_key_findings(&self, results: &AnalysisResults) -> Vec<String> {
-        debug_assert!(true, "contract: extract_key_findings");
         let mut findings = Vec::new();
 
         if let Some(complexity) = &results.complexity_analysis {
@@ -176,7 +171,6 @@ impl EnhancedReportingService {
 
     /// Assess overall risk level
     fn assess_overall_risk(&self, results: &AnalysisResults) -> RiskLevel {
-        debug_assert!(true, "contract: assess_overall_risk");
         let health_score = self.calculate_health_score(results);
 
         match health_score {

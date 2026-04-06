@@ -10,11 +10,6 @@ use std::path::Path;
 /// Parse function specification string into `FunctionId`
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn parse_function_spec(spec: &str, project_path: &Path) -> Result<FunctionId> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     // Parse function specification in format: path/to/file.rs:function_name
     // or just function_name (search all files)
     if let Some((file_part, func_part)) = spec.split_once(':') {
@@ -36,7 +31,6 @@ pub fn parse_function_spec(spec: &str, project_path: &Path) -> Result<FunctionId
 /// Extract function name from a line
 #[allow(dead_code)]
 fn extract_function_name(line: &str) -> Option<String> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let line = line.trim();
     let start = line.find("fn ")? + 3;
     let end = line.get(start..)?.find(['(', '<'])?;
@@ -55,7 +49,6 @@ pub fn filter_summaries(
     summaries: &[ProofSummary],
     high_confidence_only: bool,
 ) -> Vec<&ProofSummary> {
-    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     summaries
         .iter()
         .filter(|s| !high_confidence_only || s.provability_score >= 0.8)
@@ -63,7 +56,6 @@ pub fn filter_summaries(
 }
 
 fn categorize_scores(summaries: &[ProofSummary]) -> (usize, usize, usize) {
-    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     let high_provability = summaries
         .iter()
         .filter(|s| s.provability_score >= 0.8)
@@ -89,7 +81,6 @@ fn calculate_average_score(summaries: &[ProofSummary]) -> f64 {
 }
 
 fn extract_filename(file_path: &str) -> &str {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     std::path::Path::new(file_path)
         .file_name()
         .and_then(|n| n.to_str())

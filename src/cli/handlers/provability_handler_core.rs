@@ -38,7 +38,6 @@ pub struct ProvabilityConfig {
 /// * `Err(anyhow::Error)` - Analysis failed with detailed error context (cognitive complexity ≤8)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()> {
-    debug_assert!(config.project_path.exists(), "config.project_path must exist: {}", config.project_path.display());
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
     use crate::cli::colors as c;
@@ -59,7 +58,6 @@ pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()>
 async fn resolve_function_targets(
     config: &ProvabilityConfig,
 ) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
-    debug_assert!(true, "contract: resolve_function_targets");
     use crate::cli::provability_helpers::{discover_project_functions, parse_function_spec};
 
     if config.functions.is_empty() {
@@ -78,7 +76,6 @@ async fn run_provability_analysis(
     analyzer: &crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer,
     function_ids: &[crate::services::lightweight_provability_analyzer::FunctionId],
 ) -> Result<Vec<ProofSummary>> {
-    debug_assert!(true, "contract: run_provability_analysis");
     let summaries = analyzer.analyze_incrementally(function_ids).await;
     use crate::cli::colors as c;
     eprintln!("{} Analyzed {} functions", c::pass(""), c::number(&summaries.len().to_string()));
@@ -90,7 +87,6 @@ fn prepare_filtered_summaries(
     summaries: &[ProofSummary],
     high_confidence_only: bool,
 ) -> Vec<ProofSummary> {
-    debug_assert!(!summaries.is_empty(), "summaries must not be empty");
     use crate::cli::provability_helpers::filter_summaries;
     let filtered = filter_summaries(summaries, high_confidence_only);
     filtered.into_iter().cloned().collect()
@@ -102,7 +98,6 @@ fn format_provability_output(
     summaries: &[ProofSummary],
     config: &ProvabilityConfig,
 ) -> Result<String> {
-    debug_assert!(!function_ids.is_empty(), "function_ids must not be empty");
     use crate::cli::provability_helpers::{
         format_provability_detailed, format_provability_json, format_provability_sarif,
         format_provability_summary,
@@ -127,7 +122,6 @@ fn format_provability_output(
 
 /// Write provability output to file or stdout (cognitive complexity ≤4)
 async fn write_provability_output(content: &str, output_path: &Option<PathBuf>) -> Result<()> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     if let Some(output_path) = output_path {
         tokio::fs::write(output_path, content).await?;
         use crate::cli::colors as c;

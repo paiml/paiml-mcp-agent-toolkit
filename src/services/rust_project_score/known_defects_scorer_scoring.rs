@@ -11,7 +11,6 @@ impl KnownDefectsScorer {
     /// - 300-399 unwraps: 5 points (-15)
     /// - 400+ unwraps: 0 points (-20)
     fn calculate_unwrap_score(&self, production_unwraps: usize) -> f64 {
-        debug_assert!(true, "contract: calculate_unwrap_score");
         let penalty = (production_unwraps / 100) as f64 * 5.0;
         let score = self.max_points - penalty;
         score.max(0.0) // Cannot go negative
@@ -23,7 +22,6 @@ impl KnownDefectsScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -57,7 +55,6 @@ impl Scorer for KnownDefectsScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         self.score_internal(project_path, None)
     }
 
@@ -66,7 +63,6 @@ impl Scorer for KnownDefectsScorer {
         project_path: &Path,
         _mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         self.score(project_path)
     }
 
@@ -80,7 +76,6 @@ impl Scorer for KnownDefectsScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut recommendations = Vec::new();
 
         if let Ok((production_unwraps, _test_unwraps)) = self.count_unwraps(project_path, None) {

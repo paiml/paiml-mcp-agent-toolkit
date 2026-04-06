@@ -6,7 +6,6 @@ impl BashScriptAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
@@ -24,7 +23,6 @@ impl BashScriptAnalyzer {
     /// Analyzes Bash script and extracts AST items (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_bash_script(mut self, source: &str) -> Result<Vec<AstItem>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -39,7 +37,6 @@ impl BashScriptAnalyzer {
 
     /// Extracts function definitions from shell script (complexity ≤10)
     fn extract_shell_functions(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -61,7 +58,6 @@ impl BashScriptAnalyzer {
 
     /// Extracts variable declarations and usage (complexity ≤10)
     fn extract_variables(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for line in source.lines() {
             let trimmed = line.trim();
 
@@ -77,7 +73,6 @@ impl BashScriptAnalyzer {
 
     /// Analyzes command invocations and pipelines (complexity ≤10)
     fn analyze_commands(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for (line_num, line) in source.lines().enumerate() {
             let trimmed = line.trim();
 
@@ -108,7 +103,6 @@ impl BashScriptAnalyzer {
 
     /// Extracts control flow structures (complexity ≤10)
     fn extract_control_flow(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         for line in source.lines() {
             let trimmed = line.trim();
 
@@ -126,7 +120,6 @@ impl BashScriptAnalyzer {
 
     /// Extracts function name from shell line (complexity ≤10)
     fn extract_function_name(&self, line: &str) -> Result<String, String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if let Some(pos) = line.find("() {") {
             let name_part = &line[..pos];
             Ok(name_part.trim().to_string())
@@ -144,7 +137,6 @@ impl BashScriptAnalyzer {
 
     /// Gets qualified name for shell symbol (complexity ≤10)
     fn get_qualified_name(&self, symbol_name: &str) -> String {
-        debug_assert!(!symbol_name.is_empty(), "symbol_name must not be empty");
         if self.script_name.is_empty() {
             symbol_name.to_string()
         } else {

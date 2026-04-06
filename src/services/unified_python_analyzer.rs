@@ -62,11 +62,6 @@ impl UnifiedPythonAnalyzer {
     /// Create new analyzer for a file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: PathBuf) -> Self {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         Self {
             file_path,
             #[cfg(test)]

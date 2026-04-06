@@ -10,8 +10,6 @@ pub async fn handle_refactor_interactive(
     steps: Option<u32>,
     config: Option<PathBuf>,
 ) -> anyhow::Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
     println!("🤖 Starting interactive refactor mode...");
     println!("📁 Project path: {}", project_path.display());
     println!("💾 Checkpoint: {}", checkpoint.display());
@@ -65,7 +63,6 @@ pub async fn handle_refactor_resume(
     steps: u32,
     explain: Option<ExplainLevel>,
 ) -> anyhow::Result<()> {
-    debug_assert!(checkpoint.exists(), "checkpoint must exist: {}", checkpoint.display());
     println!("🔄 Resuming refactor from: {}", checkpoint.display());
     println!("⏱️  Maximum steps: {steps}");
 

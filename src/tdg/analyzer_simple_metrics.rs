@@ -3,7 +3,6 @@
 
 impl TdgAnalyzer {
     fn analyze_structural_complexity(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut points = self.config.weights.structural_complexity;
 
         let lines: Vec<&str> = source.lines().collect();
@@ -27,7 +26,6 @@ impl TdgAnalyzer {
     }
 
     fn analyze_semantic_complexity(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut points = self.config.weights.semantic_complexity;
 
         let nesting_depth = self.estimate_nesting_depth(source);
@@ -50,7 +48,6 @@ impl TdgAnalyzer {
     }
 
     fn analyze_duplication(&self, source: &str, tracker: &mut PenaltyTracker) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut points = self.config.weights.duplication;
 
         let duplication_ratio = self.estimate_duplication_ratio(source);
@@ -71,7 +68,6 @@ impl TdgAnalyzer {
     }
 
     fn analyze_coupling(&self, source: &str, _tracker: &mut PenaltyTracker) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let import_count = source
             .lines()
             .filter(|line| {
@@ -99,7 +95,6 @@ impl TdgAnalyzer {
         language: Language,
         _tracker: &mut PenaltyTracker,
     ) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let total_lines = source.lines().count();
         if total_lines == 0 {
             return self.config.weights.documentation;
@@ -117,7 +112,6 @@ impl TdgAnalyzer {
         _language: Language,
         _tracker: &mut PenaltyTracker,
     ) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Simple consistency check based on indentation style
         let lines: Vec<&str> = source.lines().collect();
         if lines.is_empty() {
@@ -153,7 +147,6 @@ impl TdgAnalyzer {
 /// Count documentation lines for a given language.
 /// Extracted as free function to reduce method complexity.
 fn count_doc_lines(source: &str, language: Language) -> usize {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     source
         .lines()
         .filter(|line| {

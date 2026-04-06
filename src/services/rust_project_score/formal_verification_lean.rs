@@ -4,7 +4,6 @@
 impl FormalVerificationScorer {
     /// Check if project is a Lean 4 project (lakefile.lean or lean-toolchain at root or lean/)
     fn is_lean_project(&self, project_path: &Path) -> bool {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         project_path.join("lakefile.lean").exists()
             || project_path.join("lean-toolchain").exists()
             || project_path.join("lean").join("lakefile.lean").exists()
@@ -18,7 +17,6 @@ impl FormalVerificationScorer {
     /// Also gives partial credit to consumer repos that reference Lean theorems
     /// via `lean_theorem:` in their contract YAML files (even without lean/ subdir).
     fn score_lean(&self, project_path: &Path) -> f64 {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         if self.is_lean_project(project_path) {
             let is_rust = project_path.join("Cargo.toml").exists();
             let lean_max = if is_rust {
@@ -64,7 +62,6 @@ impl FormalVerificationScorer {
 
     /// Count theorems and lemmas in .lean files
     fn count_lean_theorems(&self, project_path: &Path) -> usize {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let theorem_pattern = Regex::new(r"^\s*(theorem|lemma|private theorem|private lemma)\s+")
             .expect("internal error");
         let mut count = 0;
@@ -89,7 +86,6 @@ impl FormalVerificationScorer {
     /// Count sorry occurrences in .lean files (incomplete proofs)
     /// Respects block comments (/- ... -/) and line comments (--)
     fn count_lean_sorrys(&self, project_path: &Path) -> usize {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut total = 0;
 
         for entry in walkdir::WalkDir::new(project_path)
@@ -108,7 +104,6 @@ impl FormalVerificationScorer {
 
     /// Count sorry occurrences in a single file's content, respecting comments
     fn count_sorrys_in_content(content: &str) -> usize {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut count = 0;
         let mut in_block_comment = 0i32;
 
@@ -137,7 +132,6 @@ impl FormalVerificationScorer {
 
     /// Strips block comment content from a line, updating nesting depth.
     fn strip_lean_block_comments_inline(line: &str, depth: &mut i32) -> String {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let bytes = line.as_bytes();
         let mut result = String::with_capacity(line.len());
         let mut i = 0;
@@ -164,7 +158,6 @@ impl FormalVerificationScorer {
 
     /// Checks if line contains "sorry" as a standalone word.
     fn contains_sorry_word(line: &str) -> bool {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         let bytes = line.as_bytes();
         let sorry = b"sorry";
         let mut pos = 0;

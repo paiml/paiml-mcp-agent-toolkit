@@ -12,7 +12,6 @@ pub async fn handle_analyze_makefile(
     gnu_version: Option<String>,
     _top_files: usize,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::makefile_linter;
 
     eprintln!("🔧 Analyzing Makefile...");
@@ -52,7 +51,6 @@ pub async fn handle_analyze_makefile(
 
 // Helper: Print analysis summary
 fn print_makefile_analysis_summary(lint_result: &makefile_linter::LintResult) {
-    debug_assert!(true, "contract: print_makefile_analysis_summary");
     eprintln!("📊 Found {} violations", lint_result.violations.len());
     eprintln!(
         "✨ Quality score: {:.1}%",
@@ -65,7 +63,6 @@ fn filter_makefile_violations(
     violations: &[makefile_linter::Violation],
     rules: &[String],
 ) -> Vec<makefile_linter::Violation> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     if rules.is_empty() || rules == vec!["all"] {
         violations.to_vec()
     } else {
@@ -79,7 +76,6 @@ fn filter_makefile_violations(
 
 // Helper: Handle fix mode
 fn handle_makefile_fix_mode(fix: bool, filtered_violations: &[makefile_linter::Violation]) {
-    debug_assert!(true, "contract: handle_makefile_fix_mode");
     if !fix {
         return;
     }
@@ -112,7 +108,6 @@ fn format_makefile_output(
     gnu_version: Option<&String>,
     format: MakefileOutputFormat,
 ) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     match format {
         MakefileOutputFormat::Json => {
             format_makefile_as_json(path, filtered_violations, lint_result, gnu_version)
@@ -132,7 +127,6 @@ fn format_makefile_as_json(
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
 ) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     Ok(serde_json::to_string_pretty(&serde_json::json!({
         "path": path.display().to_string(),
         "violations": filtered_violations,
@@ -148,7 +142,6 @@ fn format_makefile_as_human(
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
 ) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut output = String::new();
 
     write_makefile_human_header(&mut output, path, lint_result, gnu_version)?;
@@ -165,7 +158,6 @@ fn write_makefile_human_header(
     lint_result: &makefile_linter::LintResult,
     gnu_version: Option<&String>,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::fmt::Write;
     writeln!(output, "# Makefile Analysis Report\n")?;
     writeln!(output, "**File**: {}", path.display())?;
@@ -186,7 +178,6 @@ fn write_makefile_violations_table(
     output: &mut String,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Result<()> {
-    debug_assert!(!filtered_violations.is_empty(), "filtered_violations must not be empty");
     use std::fmt::Write;
 
     if filtered_violations.is_empty() {
@@ -227,7 +218,6 @@ fn write_makefile_fix_suggestions(
     output: &mut String,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Result<()> {
-    debug_assert!(!filtered_violations.is_empty(), "filtered_violations must not be empty");
     use std::fmt::Write;
 
     let violations_with_fixes: Vec<_> = filtered_violations
@@ -258,7 +248,6 @@ fn format_makefile_as_sarif(
     path: &Path,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let sarif = serde_json::json!({
         "version": "2.1.0",
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
@@ -280,7 +269,6 @@ fn format_makefile_as_sarif(
 
 // Helper: Build SARIF rules
 fn build_sarif_rules(filtered_violations: &[makefile_linter::Violation]) -> Vec<serde_json::Value> {
-    debug_assert!(!filtered_violations.is_empty(), "filtered_violations must not be empty");
     filtered_violations
         .iter()
         .map(|v| &v.rule)
@@ -303,7 +291,6 @@ fn build_sarif_results(
     path: &Path,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Vec<serde_json::Value> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     filtered_violations
         .iter()
         .map(|violation| {
@@ -353,7 +340,6 @@ fn format_makefile_as_gcc(
     path: &Path,
     filtered_violations: &[makefile_linter::Violation],
 ) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::fmt::Write;
     let mut output = String::new();
 

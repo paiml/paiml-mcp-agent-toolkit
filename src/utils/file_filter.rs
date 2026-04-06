@@ -19,10 +19,6 @@ impl FileFilter {
     /// Create a new file filter from include/exclude patterns
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(include_patterns: Vec<String>, exclude_patterns: Vec<String>) -> Result<Self> {
-        debug_assert!(
-            !include_patterns.is_empty(),
-            "include_patterns must not be empty"
-        );
         // Expand and validate patterns
         let expanded_include = expand_patterns(&include_patterns);
         let expanded_exclude = expand_patterns(&exclude_patterns);
@@ -68,7 +64,6 @@ impl FileFilter {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn should_include(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // If exclude patterns are specified and the path matches, exclude it
         if let Some(ref exclude_set) = self.exclude_set {
             if exclude_set.is_match(path) {
@@ -89,7 +84,6 @@ impl FileFilter {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn filter_paths(&self, paths: Vec<PathBuf>) -> Vec<PathBuf> {
-        debug_assert!(!paths.is_empty(), "paths must not be empty");
         paths
             .into_iter()
             .filter(|path| self.should_include(path))
@@ -183,7 +177,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

@@ -22,7 +22,6 @@ impl WorkflowContext {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_variable(&self, name: &str) -> Option<Value> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.variables.read().get(name).cloned()
     }
 
@@ -33,7 +32,6 @@ impl WorkflowContext {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_step_result(&self, step_id: &str) -> Option<StepResult> {
-        debug_assert!(!step_id.is_empty(), "step_id must not be empty");
         self.step_results.read().get(step_id).cloned()
     }
 
@@ -83,7 +81,6 @@ pub trait WorkflowRepository: Send + Sync {
 // Workflow monitor
 #[async_trait]
 pub trait WorkflowMonitor: Send + Sync {
-        debug_assert!(!name.is_empty(), "name must not be empty");
     async fn on_workflow_started(&self, workflow_id: Uuid, execution_id: Uuid);
     async fn on_workflow_completed(&self, workflow_id: Uuid, execution_id: Uuid, result: &Value);
     async fn on_workflow_failed(
@@ -100,10 +97,6 @@ pub trait WorkflowMonitor: Send + Sync {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowMetrics {
-        debug_assert!(!step_id.is_empty(), "step_id must not be empty");
-        debug_assert!(!step_id.is_empty(), "step_id must not be empty");
-        debug_assert!(!step_id.is_empty(), "step_id must not be empty");
-        debug_assert!(!error.is_empty(), "error must not be empty");
     pub execution_id: Uuid,
     pub workflow_id: Uuid,
     pub state: WorkflowState,

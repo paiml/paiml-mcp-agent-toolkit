@@ -54,7 +54,6 @@ impl ViolationDetector {
         patterns: &PatternCollection,
         violations: &mut Vec<ActionableViolation>,
     ) -> Result<()> {
-        debug_assert!(true, "contract: detect_repetitive_patterns");
         for pattern in patterns.patterns.values() {
             if pattern.frequency > self.config.max_pattern_repetition {
                 let severity = self.calculate_repetition_severity(pattern.frequency);
@@ -97,7 +96,6 @@ impl ViolationDetector {
         metrics: &EntropyMetrics,
         violations: &mut Vec<ActionableViolation>,
     ) -> Result<()> {
-        debug_assert!(true, "contract: detect_low_diversity");
         if metrics.pattern_diversity < self.config.min_pattern_diversity {
             violations.push(ActionableViolation {
                 severity: Severity::Medium,
@@ -128,7 +126,6 @@ impl ViolationDetector {
         patterns: &PatternCollection,
         violations: &mut Vec<ActionableViolation>,
     ) -> Result<()> {
-        debug_assert!(true, "contract: detect_cross_file_duplication");
         // Find patterns that appear in multiple files
         for pattern in patterns.patterns.values() {
             let unique_files: std::collections::HashSet<_> =
@@ -173,7 +170,6 @@ impl ViolationDetector {
         patterns: &PatternCollection,
         violations: &mut Vec<ActionableViolation>,
     ) -> Result<()> {
-        debug_assert!(true, "contract: detect_inconsistent_patterns");
         for pattern in patterns.patterns.values() {
             if pattern.variation_score > self.config.max_inconsistency_score {
                 violations.push(ActionableViolation {
@@ -205,7 +201,6 @@ impl ViolationDetector {
 
     /// Calculate severity based on repetition count
     fn calculate_repetition_severity(&self, frequency: usize) -> Severity {
-        debug_assert!(true, "contract: calculate_repetition_severity");
         if frequency > 10 {
             Severity::High
         } else if frequency > 5 {
@@ -217,7 +212,6 @@ impl ViolationDetector {
 
     /// Estimate LOC reduction from fixing a pattern
     fn estimate_loc_reduction(&self, pattern: &AstPattern) -> usize {
-        debug_assert!(true, "contract: estimate_loc_reduction");
         // Estimate: (instances - 1) * average_pattern_size * reduction_factor
         let instances_to_remove = pattern.frequency.saturating_sub(1);
         let avg_size = pattern.estimated_loc;
@@ -228,7 +222,6 @@ impl ViolationDetector {
 
     /// Generate fix suggestion for a pattern
     fn generate_fix_suggestion(&self, pattern: &AstPattern) -> String {
-        debug_assert!(true, "contract: generate_fix_suggestion");
         match pattern.pattern_type {
             PatternType::ErrorHandling => {
                 format!(
@@ -250,7 +243,6 @@ impl ViolationDetector {
 
     /// Calculate priority score for ordering violations
     fn calculate_priority(&self, severity: Severity, loc_reduction: usize) -> f64 {
-        debug_assert!(true, "contract: calculate_priority");
         let severity_score = match severity {
             Severity::High => 10.0,
             Severity::Medium => 5.0,
@@ -264,7 +256,6 @@ impl ViolationDetector {
 
     /// Suggest module name for extracted pattern
     fn suggest_module_name(&self, pattern_type: PatternType) -> &'static str {
-        debug_assert!(true, "contract: suggest_module_name");
         match pattern_type {
             PatternType::ErrorHandling => "error_handler",
             PatternType::DataValidation => "validators",
@@ -277,7 +268,6 @@ impl ViolationDetector {
 
     /// Get human-readable pattern name
     fn pattern_name(&self, pattern_type: PatternType) -> &'static str {
-        debug_assert!(true, "contract: pattern_name");
         match pattern_type {
             PatternType::ErrorHandling => "error handling",
             PatternType::DataValidation => "validation",
@@ -290,7 +280,6 @@ impl ViolationDetector {
 
     /// Extract context name from pattern
     fn context_name(&self, _pattern: &AstPattern) -> &'static str {
-        debug_assert!(true, "contract: context_name");
         // Extract meaningful name from pattern
         // Simplified - would analyze actual AST
         "context"
@@ -304,7 +293,6 @@ impl ViolationDetector {
         &self,
         violations: Vec<ActionableViolation>,
     ) -> Vec<ActionableViolation> {
-        debug_assert!(!violations.is_empty(), "violations must not be empty");
         use std::collections::HashMap;
 
         let mut unique_violations: HashMap<String, ActionableViolation> = HashMap::new();

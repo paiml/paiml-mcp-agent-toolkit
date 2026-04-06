@@ -7,7 +7,6 @@ fn format_output_from_summary(
     include_components: bool,
     verbose: bool,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_output_from_summary");
     match format {
         TdgOutputFormat::Table => Ok(format_table_output(summary, include_components, verbose)),
         TdgOutputFormat::Json => Ok(format_json_output(summary, include_components)),
@@ -24,7 +23,6 @@ fn format_tdg_single_file_output(
     include_components: bool,
     verbose: bool,
 ) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::tdg::{TDGHotspot, TDGSeverity, TDGSummary};
 
     // Create a single-file summary
@@ -51,7 +49,6 @@ fn format_tdg_single_file_output(
 
 /// Format empty results when no files meet criteria
 fn format_empty_results(format: TdgOutputFormat) -> String {
-    debug_assert!(true, "contract: format_empty_results");
     match format {
         TdgOutputFormat::Table => "No files found matching the specified criteria.\n".to_string(),
         TdgOutputFormat::Json => r#"{"summary": {"total_files": 0}, "hotspots": []}"#.to_string(),
@@ -65,7 +62,6 @@ fn format_table_output(
     include_components: bool,
     verbose: bool,
 ) -> String {
-    debug_assert!(true, "contract: format_table_output");
     let mut table = String::new();
     table.push_str("\n# Technical Debt Gradient Analysis\n\n");
     table.push_str(&format!(
@@ -125,7 +121,6 @@ fn format_json_output(
     summary: &crate::models::tdg::TDGSummary,
     include_components: bool,
 ) -> String {
-    debug_assert!(true, "contract: format_json_output");
     let json_output = serde_json::json!({
         "summary": {
             "total_files": summary.total_files,
@@ -157,7 +152,6 @@ fn format_markdown_output(
     summary: &crate::models::tdg::TDGSummary,
     include_components: bool,
 ) -> String {
-    debug_assert!(true, "contract: format_markdown_output");
     let mut md = String::new();
 
     add_markdown_header(&mut md);
@@ -173,13 +167,11 @@ fn format_markdown_output(
 
 /// Extract Method: Add markdown header
 fn add_markdown_header(md: &mut String) {
-    debug_assert!(true, "contract: add_markdown_header");
     md.push_str("# Technical Debt Gradient Analysis\n\n");
 }
 
 /// Extract Method: Add summary section
 fn add_markdown_summary(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
-    debug_assert!(true, "contract: add_markdown_summary");
     md.push_str("## Summary\n\n");
     md.push_str(&format!("- **Total Files**: {}\n", summary.total_files));
 
@@ -192,7 +184,6 @@ fn add_markdown_summary(md: &mut String, summary: &crate::models::tdg::TDGSummar
 
 /// Extract Method: Add file statistics
 fn add_markdown_file_stats(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
-    debug_assert!(true, "contract: add_markdown_file_stats");
     let critical_pct = (summary.critical_files as f64 / summary.total_files as f64) * 100.0;
     let warning_pct = (summary.warning_files as f64 / summary.total_files as f64) * 100.0;
 
@@ -208,7 +199,6 @@ fn add_markdown_file_stats(md: &mut String, summary: &crate::models::tdg::TDGSum
 
 /// Extract Method: Add TDG statistics
 fn add_markdown_tdg_stats(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
-    debug_assert!(true, "contract: add_markdown_tdg_stats");
     md.push_str(&format!("- **Average TDG**: {:.2}\n", summary.average_tdg));
     md.push_str(&format!("- **95th Percentile**: {:.2}\n", summary.p95_tdg));
     md.push_str(&format!("- **99th Percentile**: {:.2}\n", summary.p99_tdg));
@@ -220,7 +210,6 @@ fn add_markdown_tdg_stats(md: &mut String, summary: &crate::models::tdg::TDGSumm
 
 /// Extract Method: Add hotspots section
 fn add_markdown_hotspots(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
-    debug_assert!(true, "contract: add_markdown_hotspots");
     if !summary.hotspots.is_empty() {
         md.push_str("## Hotspots\n\n");
         for (i, hotspot) in summary.hotspots.iter().enumerate() {
@@ -240,7 +229,6 @@ fn add_markdown_hotspots(md: &mut String, summary: &crate::models::tdg::TDGSumma
 
 /// Extract Method: Add components section
 fn add_markdown_components(md: &mut String) {
-    debug_assert!(true, "contract: add_markdown_components");
     md.push_str("## TDG Components\n\n");
     md.push_str(
         "The Technical Debt Gradient is calculated using the following weighted components:\n\n",
@@ -253,7 +241,6 @@ fn add_markdown_components(md: &mut String) {
 }
 
 fn format_sarif_output(summary: &crate::models::tdg::TDGSummary) -> String {
-    debug_assert!(true, "contract: format_sarif_output");
     let sarif = serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",

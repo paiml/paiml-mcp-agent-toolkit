@@ -14,7 +14,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn check_naming_consistency(&self, root: Node, source: &str, rules: &LanguageRules) -> u32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut violations = 0;
         
         walk_tree(root, |node| {
@@ -43,7 +42,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn check_import_organization(&self, root: Node, source: &str, language: Language) -> u32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut issues = 0;
         let mut imports = Vec::new();
         
@@ -81,7 +79,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn check_rust_import_order(&self, imports: &[(String, usize)]) -> u32 {
-        debug_assert!(true, "contract: check_rust_import_order");
         let mut issues = 0;
         let mut prev_category = -1;
         
@@ -106,7 +103,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn check_python_import_order(&self, imports: &[(String, usize)]) -> u32 {
-        debug_assert!(true, "contract: check_python_import_order");
         let mut issues = 0;
         let mut in_stdlib = true;
         let mut in_third_party = false;
@@ -129,7 +125,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn is_python_stdlib_import(&self, import: &str) -> bool {
-        debug_assert!(!import.is_empty(), "import must not be empty");
         let stdlib_modules = [
             "os", "sys", "json", "re", "datetime", "collections",
             "itertools", "functools", "math", "random", "urllib",
@@ -148,12 +143,10 @@ impl ConsistencyAnalyzer {
     }
     
     fn check_js_import_order(&self, _imports: &[(String, usize)]) -> u32 {
-        debug_assert!(true, "contract: check_js_import_order");
         0
     }
     
     fn check_go_import_order(&self, imports: &[(String, usize)]) -> u32 {
-        debug_assert!(true, "contract: check_go_import_order");
         let mut issues = 0;
         let mut in_stdlib = true;
         
@@ -171,7 +164,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn analyze_pattern_consistency(&self, root: Node, source: &str) -> f32 {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let patterns = self.extract_patterns(root, source);
         
         let error_consistency = self.error_handling_consistency(&patterns);
@@ -184,7 +176,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn extract_patterns(&self, root: Node, source: &str) -> CodePatterns {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut patterns = CodePatterns::new();
         
         walk_tree(root, |node| {
@@ -219,7 +210,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn error_handling_consistency(&self, patterns: &CodePatterns) -> f32 {
-        debug_assert!(true, "contract: error_handling_consistency");
         if patterns.error_handling.is_empty() {
             return 1.0;
         }
@@ -244,7 +234,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn null_check_consistency(&self, patterns: &CodePatterns) -> f32 {
-        debug_assert!(true, "contract: null_check_consistency");
         if patterns.null_checks.is_empty() {
             return 1.0;
         }
@@ -266,7 +255,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn loop_style_consistency(&self, patterns: &CodePatterns) -> f32 {
-        debug_assert!(true, "contract: loop_style_consistency");
         if patterns.loops.is_empty() {
             return 1.0;
         }
@@ -291,7 +279,6 @@ impl ConsistencyAnalyzer {
     }
     
     fn conditional_style_consistency(&self, patterns: &CodePatterns) -> f32 {
-        debug_assert!(true, "contract: conditional_style_consistency");
         if patterns.conditionals.is_empty() {
             return 1.0;
         }
@@ -318,7 +305,6 @@ impl ConsistencyAnalyzer {
 
 impl Scorer for ConsistencyAnalyzer {
     fn score(&self, tree: &Tree, source: &str, language: Language, config: &TdgConfig, tracker: &mut PenaltyTracker) -> Result<f32> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut points = config.weights.consistency;
         let root = tree.root_node();
         let rules = LanguageRules::for_language(language);
@@ -366,7 +352,6 @@ impl Scorer for ConsistencyAnalyzer {
     }
     
     fn category(&self) -> MetricCategory {
-        debug_assert!(true, "contract: category");
         MetricCategory::Consistency
     }
 }
@@ -457,7 +442,6 @@ mod tests {
     fn test_pattern_consistency() {
         let source = r#"
             fn inconsistent_patterns() {
-                debug_assert!(true, "contract: inconsistent_patterns");
                 // Mixed error handling
                 let result1 = something().unwrap();
                 let result2 = match something_else() {

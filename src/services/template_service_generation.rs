@@ -6,7 +6,6 @@ pub async fn get_template_content<T: TemplateServerTrait>(
     server: &T,
     uri: &str,
 ) -> Result<String, TemplateError> {
-    debug_assert!(!uri.is_empty(), "uri must not be empty");
     server
         .get_template_content(uri)
         .await
@@ -20,7 +19,6 @@ pub async fn generate_template<T: TemplateServerTrait>(
     uri: &str,
     parameters: Map<String, serde_json::Value>,
 ) -> Result<GeneratedTemplate, TemplateError> {
-    debug_assert!(!uri.is_empty(), "uri must not be empty");
     // Parse and validate URI
     let (category, toolchain, _variant) = parse_template_uri(uri)?;
 
@@ -78,7 +76,6 @@ async fn generate_context(
     toolchain: &str,
     parameters: Map<String, serde_json::Value>,
 ) -> Result<GeneratedTemplate, TemplateError> {
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     // Get project path from parameters
     let project_path = parameters
         .get("project_path")
@@ -133,7 +130,6 @@ pub async fn scaffold_project<T: TemplateServerTrait>(
     templates: Vec<String>,
     parameters: serde_json::Value,
 ) -> Result<ScaffoldResult, TemplateError> {
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     let mut files = Vec::new();
     let mut errors = Vec::new();
 

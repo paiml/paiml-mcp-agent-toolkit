@@ -4,7 +4,6 @@
 impl OperatorMatcher {
     /// Check if operator matches pattern
     fn matches(&self, op: &Operator) -> bool {
-        debug_assert!(true, "contract: matches");
         use Operator::{
             Br, BrIf, Call, CallIndirect, I32Add, I32And, I32Const, I32DivS, I32DivU, I32Eq,
             I32Eqz, I32GtS, I32GtU, I32Load, I32LtS, I32LtU, I32Mul, I32Ne, I32Or, I32RemU,

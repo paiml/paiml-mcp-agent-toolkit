@@ -28,7 +28,6 @@ pub trait NormalizedScore: fmt::Display {
     /// - Always returns a value in [0.0, 100.0]
     /// - Values are clamped if raw calculation exceeds bounds
     fn normalized(&self) -> f64 {
-        debug_assert!(true, "contract: raw");
         let max = self.max_raw();
         if max <= 0.0 {
             return 0.0;
@@ -44,7 +43,6 @@ pub trait NormalizedScore: fmt::Display {
 
     /// Returns true if score meets the given threshold (0-100).
     fn meets_threshold(&self, threshold: f64) -> bool {
-        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         self.normalized() >= threshold.clamp(0.0, 100.0)
     }
 }
@@ -83,7 +81,6 @@ impl Grade {
     /// Convert a normalized score (0-100) to a grade.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64) -> Self {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         match score {
             s if s >= 90.0 => Grade::A,
             s if s >= 80.0 => Grade::B,
@@ -166,12 +163,10 @@ impl SimpleScore {
 
 impl NormalizedScore for SimpleScore {
     fn raw(&self) -> f64 {
-        debug_assert!(true, "contract: raw");
         self.raw
     }
 
     fn max_raw(&self) -> f64 {
-        debug_assert!(true, "contract: max_raw");
         self.max
     }
 }

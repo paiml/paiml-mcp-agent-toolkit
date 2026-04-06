@@ -41,7 +41,6 @@ impl BuildPerfScorer {
     /// Validates:
     /// - `lto = true` or `lto = "thin"` or `lto = "fat"` in [profile.release]
     fn score_lto(&self, project_path: &Path, cache: Option<&FileCache>) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         let content = if let Some(cache) = cache {
@@ -95,7 +94,6 @@ impl BuildPerfScorer {
         project_path: &Path,
         _cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let target_path = project_path.join("target");
 
         // If no target directory, give full points (clean state)
@@ -126,7 +124,6 @@ impl BuildPerfScorer {
         project_path: &Path,
         _cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_lock_path = project_path.join("Cargo.lock");
 
         if cargo_lock_path.exists() {
@@ -143,7 +140,6 @@ impl BuildPerfScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_toml = project_path.join(".cargo").join("config.toml");
         let config_old = project_path.join(".cargo").join("config");
 
@@ -186,7 +182,6 @@ impl BuildPerfScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Check .cargo/config.toml first
         let config_path = project_path.join(".cargo").join("config.toml");
 
@@ -231,7 +226,6 @@ impl BuildPerfScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let cargo_toml_path = project_path.join("Cargo.toml");
 
         let content = if let Some(cache) = cache {
@@ -279,7 +273,6 @@ impl BuildPerfScorer {
         project_path: &Path,
         _cache: Option<&FileCache>,
     ) -> ScorerResult<f64> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut score: f64 = 0.0;
 
         // Check for Makefile (most common)
@@ -306,7 +299,6 @@ impl BuildPerfScorer {
         project_path: &Path,
         cache: Option<&FileCache>,
     ) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Verify project has Cargo.toml
         if !project_path.join("Cargo.toml").exists() {
             return Err(ScorerError::InvalidProject(
@@ -362,35 +354,30 @@ impl BuildPerfScorer {
     }
 
     fn recommend_lto(&self, path: &Path, recs: &mut Vec<String>) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.score_lto(path, None).unwrap_or(0.0) < 2.0 {
             recs.push("Enable LTO: Add `lto = true` or `lto = \"thin\"` to [profile.release] for 10-20% smaller binaries".into());
         }
     }
 
     fn recommend_cargo_lock(&self, path: &Path, recs: &mut Vec<String>) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.score_cargo_lock(path, None).unwrap_or(0.0) < 2.0 {
             recs.push("Add Cargo.lock: Commit Cargo.lock for reproducible builds (required for binaries)".into());
         }
     }
 
     fn recommend_cargo_config(&self, path: &Path, recs: &mut Vec<String>) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.score_cargo_config(path, None).unwrap_or(0.0) < 2.0 {
             recs.push("Add .cargo/config.toml: Configure build settings for consistent builds across machines".into());
         }
     }
 
     fn recommend_codegen_units(&self, path: &Path, recs: &mut Vec<String>) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.score_codegen_units(path, None).unwrap_or(0.0) < 2.0 {
             recs.push("Optimize codegen-units: Add `codegen-units = 1` to [profile.release] for better optimization".into());
         }
     }
 
     fn recommend_build_system(&self, path: &Path, recs: &mut Vec<String>) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let score = self.score_build_system(path, None).unwrap_or(0.0);
         if score == 0.0 {
             recs.push("Add build automation: Create a Makefile or justfile for common build tasks".into());
@@ -416,7 +403,6 @@ impl Scorer for BuildPerfScorer {
     }
 
     fn score(&self, project_path: &Path) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         self.score_internal(project_path, None)
     }
 
@@ -425,7 +411,6 @@ impl Scorer for BuildPerfScorer {
         project_path: &Path,
         _mode: ScoringMode,
     ) -> ScorerResult<CategoryScore> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // This scorer doesn't have expensive operations
         self.score(project_path)
     }
@@ -440,7 +425,6 @@ impl Scorer for BuildPerfScorer {
     }
 
     fn recommendations(&self, project_path: &Path) -> Vec<String> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut recs = Vec::new();
         self.recommend_lto(project_path, &mut recs);
         self.recommend_cargo_lock(project_path, &mut recs);
@@ -458,7 +442,6 @@ unsafe impl Sync for BuildPerfScorer {}
 
 /// Calculate directory size recursively (best-effort)
 fn dir_size(path: &Path) -> std::io::Result<u64> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut total = 0u64;
 
     if path.is_dir() {

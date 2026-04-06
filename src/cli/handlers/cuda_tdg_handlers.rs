@@ -68,7 +68,6 @@ async fn handle_cuda_tdg_subcommand(
     cmd: &CudaTdgCommand,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
-    debug_assert!(true, "contract: handle_cuda_tdg_subcommand");
     match cmd {
         CudaTdgCommand::Analyze { path } => handle_analyze(path, config).await,
         CudaTdgCommand::Score { path, breakdown } => handle_score(path, *breakdown, config).await,

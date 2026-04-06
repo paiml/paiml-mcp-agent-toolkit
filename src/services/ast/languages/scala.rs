@@ -31,7 +31,6 @@ impl ScalaStrategy {
 impl AstStrategy for ScalaStrategy {
     /// Analyzes a Scala file and returns a FileContext with AST information
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Read the file content
         let content = fs::read_to_string(file_path).await?;
         
@@ -62,19 +61,16 @@ impl AstStrategy for ScalaStrategy {
     
     /// Returns the primary file extension for Scala
     fn primary_extension(&self) -> &'static str {
-        debug_assert!(true, "contract: primary_extension");
         "scala"
     }
     
     /// Returns all file extensions supported by this strategy
     fn supported_extensions(&self) -> Vec<&'static str> {
-        debug_assert!(true, "contract: supported_extensions");
         vec!["scala", "sc"]
     }
     
     /// Returns the language name
     fn language_name(&self) -> &'static str {
-        debug_assert!(true, "contract: language_name");
         "Scala"
     }
 }

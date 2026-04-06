@@ -34,8 +34,6 @@ impl TypeScriptStrategy {
     }
 
     fn parse_module(&self, content: &str, filename: &str) -> Result<Module> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
-        debug_assert!(!filename.is_empty(), "filename must not be empty");
         let source_map = SourceMap::default();
         let source_file = source_map.new_source_file(
             FileName::Custom(filename.to_string()).into(),
@@ -92,21 +90,18 @@ impl LanguageStrategy for TypeScriptStrategy {
     }
 
     fn can_parse(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| matches!(ext, "ts" | "tsx"))
     }
 
     async fn parse_file(&self, path: &Path, content: &str) -> Result<AstDag> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let filename = path.display().to_string();
         let module = self.parse_module(content, &filename)?;
         Ok(self.convert_to_dag(&module, Language::TypeScript))
     }
 
     fn extract_imports(&self, ast: &AstDag) -> Vec<String> {
-        debug_assert!(true, "contract: extract_imports");
         let mut imports = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -119,7 +114,6 @@ impl LanguageStrategy for TypeScriptStrategy {
     }
 
     fn extract_functions(&self, ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_functions");
         let mut functions = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -132,7 +126,6 @@ impl LanguageStrategy for TypeScriptStrategy {
     }
 
     fn extract_types(&self, ast: &AstDag) -> Vec<UnifiedAstNode> {
-        debug_assert!(true, "contract: extract_types");
         let mut types = Vec::new();
         for i in 0..ast.nodes.len() {
             if let Some(node) = ast.nodes.get(i as u32) {
@@ -145,7 +138,6 @@ impl LanguageStrategy for TypeScriptStrategy {
     }
 
     fn calculate_complexity(&self, ast: &AstDag) -> (u32, u32) {
-        debug_assert!(true, "contract: calculate_complexity");
         let mut cyclomatic = 1;
         let mut cognitive = 0;
 

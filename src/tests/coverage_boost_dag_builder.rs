@@ -13,7 +13,6 @@ use crate::services::dag_builder::{
 // ============================================================================
 
 fn create_test_node(id: &str, node_type: NodeType) -> NodeInfo {
-    debug_assert!(!id.is_empty(), "id must not be empty");
     NodeInfo {
         id: id.to_string(),
         label: id.to_string(),
@@ -26,8 +25,6 @@ fn create_test_node(id: &str, node_type: NodeType) -> NodeInfo {
 }
 
 fn create_test_edge(from: &str, to: &str, edge_type: EdgeType) -> Edge {
-    debug_assert!(!from.is_empty(), "from must not be empty");
-    debug_assert!(!to.is_empty(), "to must not be empty");
     Edge {
         from: from.to_string(),
         to: to.to_string(),

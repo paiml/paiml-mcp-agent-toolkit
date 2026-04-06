@@ -5,7 +5,6 @@ impl GitHistoryIndex {
         &self,
         limit: usize,
     ) -> Result<Vec<String>, GitHistoryError> {
-        debug_assert!(limit > 0, "limit must be positive");
         let mut stmt = self
             .conn
             .prepare("SELECT commit_hash FROM git_commits WHERE embedding IS NULL LIMIT ?1")?;
@@ -36,7 +35,6 @@ impl GitHistoryIndex {
     /// Set last indexed commit hash
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn set_last_indexed_commit(&self, commit_hash: &str) -> Result<(), GitHistoryError> {
-        debug_assert!(!commit_hash.is_empty(), "commit_hash must not be empty");
         self.conn.execute(
             "INSERT OR REPLACE INTO git_metadata (key, value) VALUES ('last_indexed_commit', ?1)",
             [commit_hash],
@@ -60,7 +58,6 @@ impl GitHistoryIndex {
         file_path: &str,
         limit: usize,
     ) -> Result<Vec<String>, GitHistoryError> {
-        debug_assert!(limit > 0, "limit must be positive");
         let mut stmt = self.conn.prepare(
             r#"
             SELECT DISTINCT gc.commit_hash
@@ -83,7 +80,6 @@ impl GitHistoryIndex {
     /// Check if a commit exists in the index
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn commit_exists(&self, commit_hash: &str) -> Result<bool, GitHistoryError> {
-        debug_assert!(!commit_hash.is_empty(), "commit_hash must not be empty");
         let count: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM git_commits WHERE commit_hash = ?1",
             [commit_hash],
@@ -99,7 +95,6 @@ impl GitHistoryIndex {
         timestamp: i64,
         limit: usize,
     ) -> Result<Vec<CommitInfo>, GitHistoryError> {
-        debug_assert!(limit > 0, "limit must be positive");
         let mut stmt = self.conn.prepare(
             r#"
             SELECT commit_hash, message_subject, message_body, author_name, author_email,

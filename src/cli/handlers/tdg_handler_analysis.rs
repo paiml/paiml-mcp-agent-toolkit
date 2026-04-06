@@ -11,9 +11,6 @@ async fn analyze_single_file(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(file.exists(), "file must exist: {}", file.display());
-    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     eprintln!("📄 Analyzing TDG for file: {}", file.display());
 
     // Resolve path
@@ -54,8 +51,6 @@ async fn analyze_multiple_files(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     eprintln!("📄 Analyzing TDG for {} files...", files.len());
 
     let mut results = Vec::new();
@@ -81,9 +76,6 @@ async fn analyze_single_file(
     threshold: f64,
     critical_only: bool,
 ) -> Option<(crate::models::tdg::TDGScore, PathBuf)> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let full_path = if file_path.is_absolute() {
         file_path
     } else {
@@ -108,7 +100,6 @@ async fn analyze_single_file(
 }
 
 fn should_include_score(score: &crate::models::tdg::TDGScore, threshold: f64, critical_only: bool) -> bool {
-    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     if critical_only && score.value <= 2.5 {
         return false;
     }
@@ -127,8 +118,6 @@ async fn analyze_project(
     critical_only: bool,
     verbose: bool,
 ) -> Result<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     eprintln!("📁 Project path: {}", project_path.display());
 
     // Analyze directory
@@ -153,7 +142,6 @@ async fn analyze_project(
 
 /// Create a summary from individual file results
 fn create_summary_from_file_results(results: &[(TDGScore, PathBuf)]) -> TDGSummary {
-    debug_assert!(!results.is_empty(), "results must not be empty");
     let total_files = results.len();
     let critical_files = results.iter().filter(|(s, _)| matches!(s.severity, TDGSeverity::Critical)).count();
     let warning_files = results.iter().filter(|(s, _)| matches!(s.severity, TDGSeverity::Warning)).count();

@@ -63,11 +63,6 @@ impl AggregatedCollector {
     /// Collect signals from all sources
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn collect_all(&self, project_path: &Path) -> Result<Vec<SignalEvidence>> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let mut all_signals = Vec::new();
 
         for collector in &self.collectors {
@@ -86,7 +81,6 @@ impl AggregatedCollector {
     /// Convert signals to defect reports
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn signals_to_defects(&self, signals: Vec<SignalEvidence>) -> Vec<DefectReport> {
-        debug_assert!(!signals.is_empty(), "signals must not be empty");
         let mut defects: Vec<DefectReport> = Vec::new();
 
         for signal in signals {

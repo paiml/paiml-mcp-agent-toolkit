@@ -110,7 +110,6 @@ impl MinHashSignature {
     #[cfg(feature = "simd")]
     #[must_use]
     fn jaccard_similarity_simd(&self, other: &MinHashSignature) -> f64 {
-        debug_assert!(true, "contract: jaccard_similarity_simd");
         use trueno::Vector;
 
         // Convert u64 hash values to f32 for SIMD operations
@@ -144,7 +143,6 @@ impl MinHashSignature {
     /// Scalar fallback for Jaccard similarity (used when simd feature disabled)
     #[must_use]
     fn jaccard_similarity_scalar(&self, other: &MinHashSignature) -> f64 {
-        debug_assert!(true, "contract: jaccard_similarity_scalar");
         let matches = self
             .values
             .iter()

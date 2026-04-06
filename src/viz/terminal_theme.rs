@@ -118,8 +118,6 @@ impl RenderConfig {
 
 impl batuta_common::display::WithDimensions for RenderConfig {
     fn set_dimensions(&mut self, width: u32, height: u32) {
-        debug_assert!(width > 0, "width must be positive");
-        debug_assert!(height > 0, "height must be positive");
         self.width = width;
         self.height = height;
     }

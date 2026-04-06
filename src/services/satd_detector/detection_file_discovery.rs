@@ -8,7 +8,6 @@ impl SATDDetector {
         &self,
         root: &Path,
     ) -> Result<Vec<PathBuf>, TemplateError> {
-        debug_assert!(root.exists(), "root must exist: {}", root.display());
         // Try git ls-files first to respect .gitignore
         if let Ok(output) = tokio::process::Command::new("git")
             .args(["ls-files", "--cached", "--others", "--exclude-standard"])
@@ -42,7 +41,6 @@ impl SATDDetector {
         files: &'a mut Vec<PathBuf>,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), TemplateError>> + Send + 'a>>
     {
-        debug_assert!(true, "contract: collect_files_recursive");
         Box::pin(async move {
             if !dir.is_dir() {
                 return Ok(());
@@ -64,7 +62,6 @@ impl SATDDetector {
         path: &Path,
         files: &mut Vec<PathBuf>,
     ) -> Result<(), TemplateError> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if path.is_dir() {
             self.process_subdirectory(path, files).await
         } else {
@@ -85,7 +82,6 @@ impl SATDDetector {
     }
 
     fn should_skip_directory(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
             self.is_excluded_directory_name(name)
         } else {
@@ -94,12 +90,10 @@ impl SATDDetector {
     }
 
     fn is_excluded_directory_name(&self, name: &str) -> bool {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         name.starts_with('.') || self.is_common_build_directory(name)
     }
 
     fn is_common_build_directory(&self, name: &str) -> bool {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         [
             "target",
             "node_modules",
@@ -112,21 +106,18 @@ impl SATDDetector {
     }
 
     fn process_file(&self, path: &Path, files: &mut Vec<PathBuf>) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if self.is_valid_source_file(path) {
             files.push(path.to_path_buf());
         }
     }
 
     fn is_valid_source_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.is_source_file(path) && !self.is_test_file(path)
     }
 
     /// Check if a file is a supported source file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_source_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             matches!(
                 ext,
@@ -160,7 +151,6 @@ impl SATDDetector {
     /// Check if a file is a test file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_test_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check if path contains test directories
         let path_str = path.to_string_lossy();
         if path_str.contains("/tests/")
@@ -192,7 +182,6 @@ impl SATDDetector {
     /// Check if file should be excluded from SATD analysis
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let path_str = file_path.to_string_lossy();
 
         self.is_satd_analysis_tool(&path_str)
@@ -203,7 +192,6 @@ impl SATDDetector {
     }
 
     fn is_satd_analysis_tool(&self, path_str: &str) -> bool {
-        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         path_str.contains("satd_detector")
             || path_str.contains("satd_property_tests")
             || path_str.contains("quality_proxy")
@@ -211,7 +199,6 @@ impl SATDDetector {
     }
 
     fn is_build_or_config_file(&self, path_str: &str) -> bool {
-        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         path_str.contains("/build.rs")
             || path_str.contains("/Cargo.toml")
             || path_str.contains(".gitignore")
@@ -219,12 +206,10 @@ impl SATDDetector {
     }
 
     fn is_example_or_demo(&self, path_str: &str) -> bool {
-        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         path_str.contains("/examples/") || path_str.contains("/demo/") || path_str.contains("_demo")
     }
 
     fn is_fuzz_target(&self, path_str: &str) -> bool {
-        debug_assert!(!path_str.is_empty(), "path_str must not be empty");
         path_str.contains("/fuzz/") || path_str.contains("fuzz_targets")
     }
 
@@ -238,7 +223,6 @@ impl SATDDetector {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_minified_or_vendor_file(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check if path contains vendor directory
         if path.components().any(|c| c.as_os_str() == "vendor") {
             return true;
@@ -262,7 +246,6 @@ impl SATDDetector {
     /// Check if file content suggests it's minified (has very long lines)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn is_likely_minified_content(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use tokio::io::{AsyncBufReadExt, BufReader};
 
         match tokio::fs::File::open(path).await {

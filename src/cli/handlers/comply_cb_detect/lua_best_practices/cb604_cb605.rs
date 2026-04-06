@@ -14,11 +14,6 @@ use std::path::Path;
 /// Based on luacheck W211.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb604_unused_variables(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -64,11 +59,6 @@ pub fn detect_cb604_unused_variables(project_path: &Path) -> Vec<CbPatternViolat
 /// CB-605: String Concat in Loop -- `..` operator inside for/while/repeat (O(n^2)).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb605_string_concat_in_loop(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 

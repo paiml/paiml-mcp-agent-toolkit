@@ -22,7 +22,6 @@ impl HelpGenerator {
     /// Create with explicit width
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_width(mut self, width: usize) -> Self {
-        debug_assert!(width > 0, "width must be positive");
         self.width = width;
         self
     }
@@ -36,7 +35,6 @@ impl HelpGenerator {
     /// Formatted help text string
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate(&self, path: &str) -> String {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         match self.registry.find_command(path) {
             Some(metadata) => self.format_command_help(metadata),
             None => self.format_command_not_found(path),
@@ -108,7 +106,6 @@ impl HelpGenerator {
 
     /// Generate help for a specific command
     fn format_command_help(&self, cmd: &CommandMetadata) -> String {
-        debug_assert!(true, "contract: format_command_help");
         let mut out = String::new();
 
         // Header with name and description
@@ -206,7 +203,6 @@ impl HelpGenerator {
 
     /// Format command not found message with suggestions
     fn format_command_not_found(&self, path: &str) -> String {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         let mut out = String::new();
         out.push_str(&format!("error: unrecognized command '{}'\n\n", path));
 
@@ -226,7 +222,6 @@ impl HelpGenerator {
 
     /// Format usage string for a command
     fn format_usage(&self, cmd: &CommandMetadata) -> String {
-        debug_assert!(true, "contract: format_usage");
         let mut usage = cmd.name.clone();
 
         // Add subcommands indicator
@@ -254,7 +249,6 @@ impl HelpGenerator {
 
     /// Format a single argument for help output
     fn format_argument(&self, arg: &ArgumentMetadata) -> String {
-        debug_assert!(true, "contract: format_argument");
         let mut line = String::new();
 
         // Build flag/name part
@@ -311,7 +305,6 @@ impl HelpGenerator {
 
     /// Format a global flag
     fn format_flag(&self, flag: &crate::cli::registry::FlagMetadata) -> String {
-        debug_assert!(true, "contract: format_flag");
         let mut line = String::new();
 
         let flag_part = match (&flag.short, &flag.long) {
@@ -334,8 +327,6 @@ impl HelpGenerator {
 
     /// Find commands similar to the query using edit distance
     fn find_similar_commands(&self, query: &str, limit: usize) -> Vec<(String, usize)> {
-        debug_assert!(!query.is_empty(), "query must not be empty");
-        debug_assert!(limit > 0, "limit must be positive");
         let all_paths = self.registry.all_command_paths();
         let mut scored: Vec<(String, usize)> = all_paths
             .into_iter()
@@ -373,7 +364,6 @@ impl HelpGenerator {
 
     /// Print with ANSI colors
     fn print_colored(&self, text: &str) -> std::io::Result<()> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         // ANSI escape codes
         const RESET: &str = "\x1b[0m";
         const BOLD: &str = "\x1b[1m";

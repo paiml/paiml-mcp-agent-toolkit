@@ -26,7 +26,6 @@ pub async fn handle_prompt(
 
 /// List all available prompts
 fn list_prompts() {
-    debug_assert!(true, "contract: list_prompts");
     println!("Available Prompts:");
     println!();
 
@@ -57,7 +56,6 @@ fn show_prompt(
     format: PromptOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     // Find the prompt
     let yaml = PROMPTS
         .iter()

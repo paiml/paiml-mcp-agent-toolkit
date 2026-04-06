@@ -50,7 +50,6 @@ pub struct CategoryScore {
 impl CategoryScore {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(name: &str, raw_score: f64, max_points: u16) -> Self {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let earned_points = (raw_score / 100.0) * f64::from(max_points);
         let grade = Self::calculate_grade(raw_score);
         Self {
@@ -65,13 +64,11 @@ impl CategoryScore {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_details(mut self, details: &str) -> Self {
-        debug_assert!(!details.is_empty(), "details must not be empty");
         self.details = Some(details.to_string());
         self
     }
 
     fn calculate_grade(score: f64) -> String {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         // Standard academic grading scale (F-A)
         match score as u8 {
             97..=100 => "A+".to_string(),
@@ -105,7 +102,6 @@ pub struct PerfectionScoreResult {
 impl PerfectionScoreResult {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(categories: Vec<CategoryScore>) -> Self {
-        debug_assert!(!categories.is_empty(), "categories must not be empty");
         let total_score: f64 = categories
             .iter()
             .map(|c| c.earned_points)
@@ -133,7 +129,6 @@ impl PerfectionScoreResult {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_overall_grade(score: f64) -> String {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         // PMAT-454: Use normalized percentage (0-100) for grading
         let normalized = (score / f64::from(MAX_PERFECTION_SCORE)) * 100.0;
         match normalized as u16 {
@@ -149,7 +144,6 @@ impl PerfectionScoreResult {
     }
 
     fn generate_recommendations(categories: &[CategoryScore]) -> Vec<String> {
-        debug_assert!(!categories.is_empty(), "categories must not be empty");
         let mut recs = Vec::new();
 
         for cat in categories {
@@ -177,12 +171,10 @@ impl PerfectionScoreResult {
 
 impl NormalizedScore for PerfectionScoreResult {
     fn raw(&self) -> f64 {
-        debug_assert!(true, "contract: raw");
         self.total_score
     }
 
     fn max_raw(&self) -> f64 {
-        debug_assert!(true, "contract: max_raw");
         f64::from(MAX_PERFECTION_SCORE)
     }
 }

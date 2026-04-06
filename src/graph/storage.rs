@@ -358,7 +358,6 @@ mod tests {
     #[test]
     fn test_graph_storage_send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
-        debug_assert!(true, "contract: assert_send_sync");
         assert_send_sync::<GraphStorage>();
     }
 }

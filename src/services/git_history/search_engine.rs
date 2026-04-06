@@ -42,7 +42,6 @@ pub struct GitHistorySearchEngine<'a> {
 
 /// Compute cosine similarity between two vectors
 fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
-    debug_assert!(true, "contract: cosine_similarity");
     batuta_common::math::cosine_similarity_f32(a, b)
 }
 

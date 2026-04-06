@@ -50,23 +50,19 @@ impl CacheStrategy for TemplateCacheStrategy {
     type Value = TemplateResource;
 
     fn cache_key(&self, uri: &String) -> String {
-        debug_assert!(true, "contract: cache_key");
         format!("template:{uri}")
     }
 
     fn validate(&self, _uri: &String, _cached: &TemplateResource) -> bool {
-        debug_assert!(true, "contract: validate");
         // Templates are embedded and don't change
         true
     }
 
     fn ttl(&self) -> Option<Duration> {
-        debug_assert!(true, "contract: ttl");
         Some(Duration::from_secs(600)) // 10 minutes
     }
 
     fn max_size(&self) -> usize {
-        debug_assert!(true, "contract: max_size");
         50 // Max 50 templates
     }
 }

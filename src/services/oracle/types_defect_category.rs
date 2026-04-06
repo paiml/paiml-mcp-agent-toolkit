@@ -36,7 +36,6 @@ impl DefectCategory {
     /// Map rustc error code to defect category
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_rustc_error(code: &str) -> Option<Self> {
-        debug_assert!(!code.is_empty(), "code must not be empty");
         match code {
             "E0308" | "E0412" => Some(Self::TypeErrors),
             "E0382" | "E0502" | "E0503" | "E0505" | "E0499" | "E0597" | "E0716" | "E0515" => {

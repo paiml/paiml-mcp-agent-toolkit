@@ -89,7 +89,6 @@ impl ManifestManager {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_by_name(&self, name: &str) -> Option<&AgentManifest> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.manifests.iter().find(|m| m.name == name)
     }
 }

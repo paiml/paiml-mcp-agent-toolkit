@@ -33,7 +33,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         context: &DeepContext,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: format_legacy_header");
         use std::fmt::Write;
 
         let project_name = context
@@ -66,7 +65,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         context: &DeepContext,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: format_legacy_main_sections");
         self.write_quality_scorecard_section(output, &context.quality_scorecard)?;
         self.write_project_structure_section(output, &context.file_tree)?;
         self.write_ast_section_if_present(output, &context.analyses.ast_contexts)?;
@@ -78,7 +76,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         scorecard: &QualityScorecard,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_quality_scorecard_section");
         use std::fmt::Write;
         writeln!(output, "\n## Quality Scorecard\n")?;
         writeln!(
@@ -105,7 +102,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         file_tree: &AnnotatedFileTree,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: write_project_structure_section");
         use std::fmt::Write;
         writeln!(output, "\n## Project Structure\n")?;
         writeln!(output, "```")?;
@@ -119,7 +115,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         ast_contexts: &[EnhancedFileContext],
     ) -> anyhow::Result<()> {
-        debug_assert!(!ast_contexts.is_empty(), "ast_contexts must not be empty");
         if !ast_contexts.is_empty() {
             self.format_enhanced_ast_section(output, ast_contexts)?;
         }
@@ -132,7 +127,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         context: &DeepContext,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: format_legacy_analysis_sections");
         // Code quality metrics
         self.format_complexity_hotspots(output, context)?;
         self.format_churn_analysis(output, context)?;
@@ -175,7 +169,6 @@ impl DeepContextAnalyzer {
         prefix: &str,
         is_last: bool,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: format_tree_node");
         use std::fmt::Write;
 
         let connector = if is_last {
@@ -199,7 +192,6 @@ impl DeepContextAnalyzer {
     }
 
     fn format_node_display(&self, node: &AnnotatedNode) -> anyhow::Result<String> {
-        debug_assert!(true, "contract: format_node_display");
         let mut display = node.name.clone();
 
         if matches!(node.node_type, NodeType::Directory) {

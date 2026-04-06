@@ -111,7 +111,6 @@ impl WrapperSpec {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn confidence_threshold(mut self, threshold: f64) -> Self {
-        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         self.confidence_threshold = threshold;
         self
     }
@@ -341,7 +340,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

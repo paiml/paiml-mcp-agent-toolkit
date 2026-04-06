@@ -2,7 +2,6 @@
 
 /// Convert ValType to string representation
 fn valtype_to_string(ty: &ValType) -> String {
-    debug_assert!(true, "contract: valtype_to_string");
     match ty {
         ValType::I32 => "i32".to_string(),
         ValType::I64 => "i64".to_string(),
@@ -15,7 +14,6 @@ fn valtype_to_string(ty: &ValType) -> String {
 
 /// Categorize instruction by type
 fn categorize_instruction(op: &Operator, breakdown: &mut InstructionCategoryBreakdown) {
-    debug_assert!(true, "contract: categorize_instruction");
     match op {
         // Control flow
         Operator::Unreachable
@@ -85,7 +83,6 @@ fn categorize_instruction(op: &Operator, breakdown: &mut InstructionCategoryBrea
 
 /// Update stack depth based on instruction
 fn update_stack_depth(op: &Operator, depth: &mut u32) {
-    debug_assert!(true, "contract: update_stack_depth");
     match op {
         // Instructions that push values
         Operator::I32Const { .. }

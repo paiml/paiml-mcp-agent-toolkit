@@ -3,7 +3,6 @@
 
 /// Toyota Way: Extract Method - Add header and summary (complexity <=8)
 fn add_header_and_summary(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
-    debug_assert!(true, "contract: add_header_and_summary");
     md.push_str("# Technical Debt Gradient Analysis\n\n");
     md.push_str("## Summary\n\n");
     md.push_str(&format!("- **Total Files**: {}\n", summary.total_files));
@@ -23,7 +22,6 @@ fn add_header_and_summary(md: &mut String, summary: &crate::models::tdg::TDGSumm
 
 /// Toyota Way: Extract Method - Add file percentages (complexity <=3)
 fn add_file_percentages(md: &mut String, summary: &crate::models::tdg::TDGSummary) {
-    debug_assert!(true, "contract: add_file_percentages");
     let critical_pct = (summary.critical_files as f64 / summary.total_files as f64) * 100.0;
     let warning_pct = (summary.warning_files as f64 / summary.total_files as f64) * 100.0;
 
@@ -39,7 +37,6 @@ fn add_file_percentages(md: &mut String, summary: &crate::models::tdg::TDGSummar
 
 /// Toyota Way: Extract Method - Add hotspots section (complexity <=6)
 fn add_hotspots_section(md: &mut String, hotspots: &[crate::models::tdg::TDGHotspot]) {
-    debug_assert!(true, "contract: add_hotspots_section");
     md.push_str("## Hotspots\n\n");
 
     for (i, hotspot) in hotspots.iter().enumerate() {
@@ -58,7 +55,6 @@ fn add_hotspots_section(md: &mut String, hotspots: &[crate::models::tdg::TDGHots
 
 /// Toyota Way: Extract Method - Add components section (complexity <=2)
 fn add_components_section(md: &mut String) {
-    debug_assert!(true, "contract: add_components_section");
     md.push_str("## TDG Components\n\n");
     md.push_str(
         "The Technical Debt Gradient is calculated using the following weighted components:\n\n",

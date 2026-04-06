@@ -13,7 +13,6 @@ impl DocumentationScorer {
     }
     
     fn extract_documentation(&self, root: Node, source: &str, language: Language) -> Documentation {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut docs = Documentation::new();
         
         walk_tree(root, |node| {
@@ -30,7 +29,6 @@ impl DocumentationScorer {
     }
     
     fn extract_rust_docs(&self, node: Node, source: &str, docs: &mut Documentation) {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "line_comment" => {
                 let text = get_node_text(node, source);
@@ -53,7 +51,6 @@ impl DocumentationScorer {
     }
     
     fn extract_python_docs(&self, node: Node, source: &str, docs: &mut Documentation) {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "comment" => {
                 let text = get_node_text(node, source);
@@ -79,7 +76,6 @@ impl DocumentationScorer {
     }
     
     fn extract_js_docs(&self, node: Node, source: &str, docs: &mut Documentation) {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "comment" => {
                 let text = get_node_text(node, source);
@@ -94,7 +90,6 @@ impl DocumentationScorer {
     }
     
     fn extract_go_docs(&self, node: Node, source: &str, docs: &mut Documentation) {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "comment" => {
                 let text = get_node_text(node, source);
@@ -111,7 +106,6 @@ impl DocumentationScorer {
     }
     
     fn find_public_items(&self, root: Node, source: &str, language: Language) -> Vec<PublicItem> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut items = Vec::new();
         
         walk_tree(root, |node| {
@@ -128,7 +122,6 @@ impl DocumentationScorer {
     }
     
     fn find_rust_public_items(&self, node: Node, source: &str, items: &mut Vec<PublicItem>) {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "function_item" | "struct_item" | "enum_item" | "trait_item" | "type_item" | "const_item" | "static_item" => {
                 if self.is_rust_public(node, source) {
@@ -147,7 +140,6 @@ impl DocumentationScorer {
     }
     
     fn is_rust_public(&self, node: Node, source: &str) -> bool {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(visibility) = node.child_by_field_name("visibility_modifier") {
             let vis_text = get_node_text(visibility, source);
             vis_text.contains("pub")
@@ -157,7 +149,6 @@ impl DocumentationScorer {
     }
     
     fn find_python_public_items(&self, node: Node, source: &str, items: &mut Vec<PublicItem>) {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "function_definition" | "class_definition" => {
                 if let Some(name) = node.child_by_field_name("name") {
@@ -176,7 +167,6 @@ impl DocumentationScorer {
     }
     
     fn find_js_public_items(&self, node: Node, source: &str, items: &mut Vec<PublicItem>) {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "function_declaration" | "function_expression" | "class_declaration" | "export_statement" => {
                 if let Some(name) = node.child_by_field_name("name") {
@@ -193,7 +183,6 @@ impl DocumentationScorer {
     }
     
     fn find_go_public_items(&self, node: Node, source: &str, items: &mut Vec<PublicItem>) {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         match node.kind() {
             "function_declaration" | "type_declaration" | "var_declaration" | "const_declaration" => {
                 if let Some(name) = node.child_by_field_name("name") {
@@ -212,7 +201,6 @@ impl DocumentationScorer {
     }
     
     fn count_examples(&self, docs: &Documentation) -> usize {
-        debug_assert!(true, "contract: count_examples");
         docs.doc_comments.iter()
             .map(|comment| {
                 comment.matches("```").count() / 2 +
@@ -226,7 +214,6 @@ impl DocumentationScorer {
 
 impl Scorer for DocumentationScorer {
     fn score(&self, tree: &Tree, source: &str, language: Language, config: &TdgConfig, tracker: &mut PenaltyTracker) -> Result<f32> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut points = config.weights.documentation;
         let root = tree.root_node();
         
@@ -272,7 +259,6 @@ impl Scorer for DocumentationScorer {
     }
     
     fn category(&self) -> MetricCategory {
-        debug_assert!(true, "contract: category");
         MetricCategory::Documentation
     }
 }
@@ -292,7 +278,6 @@ impl Documentation {
     }
     
     fn add_doc_comment(&mut self, comment: String) {
-        debug_assert!(true, "contract: add_doc_comment");
         self.doc_comments.push(comment);
     }
     
@@ -304,12 +289,10 @@ impl Documentation {
     }
     
     fn is_adjacent_to_item(&self, _comment: &str, _item: &PublicItem) -> bool {
-        debug_assert!(!_comment.is_empty(), "_comment must not be empty");
         true
     }
     
     fn has_module_documentation(&self) -> bool {
-        debug_assert!(true, "contract: has_module_documentation");
         self.module_doc.is_some()
     }
 }

@@ -123,7 +123,6 @@ impl TursoVectorDB {
     /// Array of row IDs
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn batch_insert(&self, entries: &[EmbeddingEntry]) -> Result<Vec<i64>, String> {
-        debug_assert!(!entries.is_empty(), "entries must not be empty");
         let mut ids = Vec::new();
 
         for entry in entries {
@@ -143,7 +142,6 @@ impl TursoVectorDB {
     /// Array of search results
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn query_by_file(&self, file_path: &str) -> Result<Vec<SearchResult>, String> {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let file_index = self
             .file_index
             .read()
@@ -190,7 +188,6 @@ impl TursoVectorDB {
     /// Array of search results
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn query_by_language(&self, language: &str) -> Result<Vec<SearchResult>, String> {
-        debug_assert!(!language.is_empty(), "language must not be empty");
         let metadata_map = self
             .metadata
             .read()
@@ -233,7 +230,6 @@ impl TursoVectorDB {
         query: &[f32],
         limit: usize,
     ) -> Result<Vec<SearchResult>, String> {
-        debug_assert!(limit > 0, "limit must be positive");
         let store = self.store.read().map_err(|e| format!("Lock error: {e}"))?;
         let metadata_map = self
             .metadata
@@ -276,7 +272,6 @@ impl TursoVectorDB {
     /// Number of rows deleted
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn delete_by_file(&self, file_path: &str) -> Result<usize, String> {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let chunk_ids = {
             let mut file_index = self
                 .file_index
@@ -307,7 +302,6 @@ impl TursoVectorDB {
     /// Alias for delete_by_file (for backward compatibility)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn delete_file_entries(&self, file_path: &str) -> Result<usize, String> {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.delete_by_file(file_path).await
     }
 
@@ -318,8 +312,6 @@ impl TursoVectorDB {
         file_path: &str,
         chunk_name: &str,
     ) -> Result<Option<SearchResult>, String> {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
-        debug_assert!(!chunk_name.is_empty(), "chunk_name must not be empty");
         let results = self.query_by_file(file_path).await?;
         Ok(results.into_iter().find(|r| r.chunk_name == chunk_name))
     }

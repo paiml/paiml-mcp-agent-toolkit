@@ -32,11 +32,6 @@ impl std::fmt::Display for LuaAnnotationSystem {
 /// Supports LuaLS (---@param, ---@return) and LDoc (-- @tparam, -- @treturn).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb616_type_annotations(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     if files.is_empty() {
         return Vec::new();
@@ -80,7 +75,6 @@ struct AnnotationStats {
 
 /// Count annotation patterns and functions in a single file.
 fn count_annotation_stats(content: &str) -> AnnotationStats {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut stats = AnnotationStats {
         luals: 0,
         ldoc: 0,
@@ -106,7 +100,6 @@ fn count_annotation_stats(content: &str) -> AnnotationStats {
 
 /// Check if a line is an annotation and count it. Returns true if annotation.
 fn is_annotation_line(trimmed: &str, stats: &mut AnnotationStats) -> bool {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     // LuaLS: ---@param, ---@return, ---@class, ---@field, ---@type
     if trimmed.starts_with("---@") {
         stats.luals += 1;
@@ -135,7 +128,6 @@ fn build_annotation_violations(
     total_functions: usize,
     annotated_functions: usize,
 ) -> Vec<CbPatternViolation> {
-    debug_assert!(true, "contract: build_annotation_violations");
     let mut violations = Vec::new();
 
     let system = match (luals_count > 0, ldoc_count > 0) {
@@ -183,7 +175,6 @@ fn build_annotation_violations(
 
 /// Detect if a project uses OpenResty based on require("resty.*") or ngx.* usage.
 fn is_openresty_project(files: &[PathBuf]) -> bool {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     files.iter().take(50).any(|f| {
         fs::read_to_string(f).is_ok_and(|c| {
             c.contains("require(\"resty")
@@ -200,11 +191,6 @@ fn is_openresty_project(files: &[PathBuf]) -> bool {
 /// - Flags ngx.var access without nil check
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb617_openresty_checks(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     if !is_openresty_project(&files) {
         return Vec::new();
@@ -234,8 +220,6 @@ pub fn detect_cb617_openresty_checks(project_path: &Path) -> Vec<CbPatternViolat
 
 /// Check if stdlib globals are used in handler functions without local caching.
 fn check_stdlib_caching(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     // Collect locally cached names at module level
     let cached: std::collections::HashSet<&str> = content
         .lines()
@@ -262,7 +246,6 @@ fn check_stdlib_caching(content: &str, rel: &str, violations: &mut Vec<CbPattern
 /// Extract the cached name from `local type = type` or `local str_find = string.find`.
 /// Only matches exact global caching (not function calls like `local t = type(x)`).
 fn extract_local_cache_name(line: &str) -> Option<&str> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let rest = line.strip_prefix("local ")?;
     let eq_pos = rest.find('=')?;
     let rhs = rest[eq_pos + 1..].trim();
@@ -283,7 +266,6 @@ fn extract_local_cache_name(line: &str) -> Option<&str> {
 
 /// Check if a function definition is an OpenResty handler.
 fn is_handler_function(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let handlers = [
         "access",
         "header_filter",
@@ -305,8 +287,6 @@ fn check_uncached_global_in_line(
     cached: &std::collections::HashSet<&str>,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     if trimmed.starts_with("--") {
         return;
     }

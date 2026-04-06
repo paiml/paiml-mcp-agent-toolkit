@@ -43,7 +43,6 @@ impl PopperOrchestrator {
     /// Score a project and return comprehensive PopperScore
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn score(&self, project_path: &Path) -> PopperScorerResult<PopperScore> {
-        debug_assert!(project_path.exists(), "popper score path must exist");
         let project_name = project_path
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
@@ -101,7 +100,6 @@ impl PopperOrchestrator {
 
     /// Generate analysis summary based on scores
     fn generate_analysis(&self, score: &PopperScore) -> PopperAnalysis {
-        debug_assert!(true, "contract: generate_analysis");
         let mut analysis = PopperAnalysis::default();
 
         // Falsifiability status
@@ -180,7 +178,6 @@ impl PopperOrchestrator {
 
     /// Generate prioritized recommendations based on gaps
     fn generate_recommendations(&self, score: &PopperScore) -> Vec<PopperRecommendation> {
-        debug_assert!(true, "contract: generate_recommendations");
         let mut recommendations = Vec::new();
 
         // Gateway recommendation (highest priority if failed)
@@ -301,11 +298,6 @@ impl Default for PopperOrchestrator {
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn score_project(project_path: &Path) -> PopperScorerResult<PopperScore> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     PopperOrchestrator::new().score(project_path)
 }
 

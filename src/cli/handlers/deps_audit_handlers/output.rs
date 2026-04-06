@@ -6,7 +6,6 @@ use crate::cli::colors;
 /// Print Pareto analysis report
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_pareto_report(entries: &[ParetoEntry]) {
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     println!("{}", colors::rule());
     println!(
         "{}📊  Pareto Analysis: 80/20 Dependency Removal{}",

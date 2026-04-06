@@ -46,19 +46,16 @@ impl LanguageAdapter for WasmAdapter {
     }
 
     async fn parse(&self, source: &str) -> Result<String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // WAT is already text format, return as-is
         Ok(source.to_string())
     }
 
     async fn unparse(&self, ast: &str) -> Result<String> {
-        debug_assert!(!ast.is_empty(), "ast must not be empty");
         // WAT is already text format, return as-is
         Ok(ast.to_string())
     }
 
     fn mutation_operators(&self) -> Vec<Box<dyn MutationOperator>> {
-        debug_assert!(true, "contract: mutation_operators");
         self.operators
             .iter()
             .map(|op| -> Box<dyn MutationOperator> {
@@ -74,11 +71,6 @@ impl LanguageAdapter for WasmAdapter {
     }
 
     async fn run_tests(&self, _source_file: &Path) -> Result<TestRunResult> {
-        debug_assert!(
-            _source_file.exists(),
-            "_source_file must exist: {}",
-            _source_file.display()
-        );
         // For WASM, we would typically run tests using a WASM runtime
         // For now, return a placeholder result
         Ok(TestRunResult {
@@ -97,23 +89,19 @@ pub struct WasmNumericMutator;
 
 impl MutationOperator for WasmNumericMutator {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "WASM_NUM"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
-        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::ArithmeticReplacement
     }
 
     fn can_mutate(&self, _expr: &syn::Expr) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         // For WAT, we'll check string-based patterns
         false // Not applicable for Rust AST
     }
 
     fn mutate(&self, _expr: &syn::Expr, _location: SourceLocation) -> Result<Vec<syn::Expr>> {
-        debug_assert!(true, "contract: mutate");
         // WASM mutations work at text level, not Rust AST
         Ok(vec![])
     }
@@ -128,7 +116,6 @@ impl WasmNumericMutator {
     /// Mutate WASM instructions in WAT text format
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mutate_wat(&self, wat_text: &str) -> Result<Vec<String>> {
-        debug_assert!(!wat_text.is_empty(), "wat_text must not be empty");
         let mut mutants = Vec::new();
 
         // i32 arithmetic mutations
@@ -174,17 +161,14 @@ pub struct WasmControlFlowMutator;
 
 impl MutationOperator for WasmControlFlowMutator {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "WASM_CF"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
-        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::ConditionalReplacement
     }
 
     fn can_mutate(&self, _expr: &syn::Expr) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         false // Not applicable for Rust AST
     }
 
@@ -201,7 +185,6 @@ impl WasmControlFlowMutator {
     /// Mutate WASM control flow in WAT text
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mutate_wat(&self, wat_text: &str) -> Result<Vec<String>> {
-        debug_assert!(!wat_text.is_empty(), "wat_text must not be empty");
         let mut mutants = Vec::new();
 
         // Branch mutations
@@ -227,17 +210,14 @@ pub struct WasmLocalMutator;
 
 impl MutationOperator for WasmLocalMutator {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "WASM_LOCAL"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
-        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::Custom("WASM_LOCAL".to_string())
     }
 
     fn can_mutate(&self, _expr: &syn::Expr) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         false // Not applicable for Rust AST
     }
 
@@ -254,7 +234,6 @@ impl WasmLocalMutator {
     /// Mutate WASM local operations in WAT text
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mutate_wat(&self, wat_text: &str) -> Result<Vec<String>> {
-        debug_assert!(!wat_text.is_empty(), "wat_text must not be empty");
         let mut mutants = Vec::new();
 
         // local.set → local.tee mutation

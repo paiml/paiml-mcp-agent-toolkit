@@ -78,7 +78,6 @@ impl DataScienceAnalyzer {
         means: &[f32],
         stds: &[f32],
     ) -> String {
-        debug_assert!(!features.is_empty(), "features must not be empty");
         let mut reasons = Vec::new();
 
         // Check each feature for high Z-score
@@ -111,7 +110,6 @@ impl DataScienceAnalyzer {
 
     /// Suggest action for an anomalous finding
     fn suggest_anomaly_action(&self, finding: &Finding) -> String {
-        debug_assert!(true, "contract: suggest_anomaly_action");
         match finding.severity {
             super::types::Severity::Critical => "Immediate review required".to_string(),
             super::types::Severity::High => "Schedule for next sprint".to_string(),

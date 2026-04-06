@@ -35,11 +35,6 @@ pub(super) fn parse_acceptance_criteria(body: &str) -> Vec<String> {
 
 /// Create specification template
 pub(super) fn create_specification_template(spec_path: &PathBuf, item: &RoadmapItem) -> Result<()> {
-    debug_assert!(
-        spec_path.exists(),
-        "spec_path must exist: {}",
-        spec_path.display()
-    );
     use std::fs;
 
     if let Some(parent) = spec_path.parent() {
@@ -181,7 +176,6 @@ const CLAIM_ALIASES: &[(&str, &str)] = &[
 /// First checks known aliases, then checks if it already matches a known claim name.
 /// Returns `None` if the override doesn't match any known claim, triggering a warning.
 fn resolve_override_claim(user_claim: &str) -> Option<String> {
-    debug_assert!(!user_claim.is_empty(), "user_claim must not be empty");
     let lower = user_claim.to_lowercase();
 
     // Check aliases first

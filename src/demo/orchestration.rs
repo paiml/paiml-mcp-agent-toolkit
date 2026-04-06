@@ -27,7 +27,6 @@ async fn load_demo_config(
     args: DemoArgs,
     server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
 ) -> Result<DemoConfig> {
-    debug_assert!(true, "contract: load_demo_config");
     let repo_path =
         runner::resolve_repository_async(args.path.clone(), args.url.clone(), args.repo.clone())
             .await?;
@@ -40,7 +39,6 @@ async fn load_demo_config(
 
 // Create the appropriate analyzer based on configuration
 fn create_analyzer(config: DemoConfig) -> Result<DemoAnalyzer> {
-    debug_assert!(true, "contract: create_analyzer");
     use super::adapters::{cli::CliDemoAdapter, http::HttpDemoAdapter, mcp::McpDemoAdapter};
     use super::protocol_harness::DemoEngine;
 
@@ -54,7 +52,6 @@ fn create_analyzer(config: DemoConfig) -> Result<DemoAnalyzer> {
 
 // Run the actual analyses based on protocol
 async fn run_analyses(analyzer: DemoAnalyzer, config: &DemoConfig) -> Result<AnalysisResults> {
-    debug_assert!(true, "contract: run_analyses");
     if config.args.web {
         return Ok(AnalysisResults::Web);
     }
@@ -73,7 +70,6 @@ async fn run_analyses(analyzer: DemoAnalyzer, config: &DemoConfig) -> Result<Ana
 
 // Generate output based on results and protocol
 fn generate_output(results: AnalysisResults, _protocol: Protocol) -> Result<DemoOutput> {
-    debug_assert!(true, "contract: generate_output");
     match results {
         AnalysisResults::Web => Ok(DemoOutput::Web),
         #[cfg(feature = "tui")]
@@ -85,7 +81,6 @@ fn generate_output(results: AnalysisResults, _protocol: Protocol) -> Result<Demo
 
 // Handle the final output based on configuration
 async fn handle_protocol_output(output: DemoOutput, config: &DemoConfig) -> Result<()> {
-    debug_assert!(true, "contract: handle_protocol_output");
     match output {
         DemoOutput::Web => {
             run_web_demo(
@@ -117,7 +112,6 @@ async fn handle_protocol_output(output: DemoOutput, config: &DemoConfig) -> Resu
 
 // Run demo for all protocols
 async fn run_all_protocols(analyzer: DemoAnalyzer, config: &DemoConfig) -> Result<AnalysisResults> {
-    debug_assert!(true, "contract: run_all_protocols");
     println!("🎯 All Protocols Demo");
     let mut traces = Vec::new();
 
@@ -141,7 +135,6 @@ async fn run_single_protocol(
     analyzer: DemoAnalyzer,
     config: &DemoConfig,
 ) -> Result<AnalysisResults> {
-    debug_assert!(true, "contract: run_single_protocol");
     let protocol_name = protocol_to_string(&config.args.protocol);
     print_protocol_banner(&config.args.protocol);
 

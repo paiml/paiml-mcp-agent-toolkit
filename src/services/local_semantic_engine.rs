@@ -34,7 +34,6 @@ impl LocalSemanticEngine {
         path: &Path,
         language_filter: Option<&str>,
     ) -> Result<usize, String> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.documents.clear();
 
         for entry in WalkDir::new(path)
@@ -99,7 +98,6 @@ impl LocalSemanticEngine {
 
     /// Build TF-IDF matrix from documents
     fn build_tfidf_matrix(&mut self) -> Result<(), String> {
-        debug_assert!(true, "contract: build_tfidf_matrix");
         if self.documents.is_empty() {
             return Err("No documents to analyze".to_string());
         }
@@ -149,7 +147,6 @@ impl LocalSemanticEngine {
         num_topics: usize,
         language_filter: Option<String>,
     ) -> Result<LocalTopicResult, String> {
-        debug_assert!(num_topics > 0, "num_topics must be positive");
         if num_topics == 0 || num_topics > 20 {
             return Err("num_topics must be between 1 and 20".to_string());
         }
@@ -252,7 +249,6 @@ impl LocalSemanticEngine {
     /// Clustering results
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cluster(&self, method: &str, k: Option<usize>) -> Result<LocalClusterResult, String> {
-        debug_assert!(!method.is_empty(), "method must not be empty");
         let dtm = self
             .dtm
             .as_ref()

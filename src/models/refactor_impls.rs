@@ -42,7 +42,6 @@ impl RefactorStateMachine {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(targets: Vec<PathBuf>, config: RefactorConfig) -> Self {
-        debug_assert!(!targets.is_empty(), "targets must not be empty");
         let initial_state = if targets.is_empty() {
             State::Complete {
                 summary: Summary::default(),
@@ -126,7 +125,6 @@ impl RefactorStateMachine {
     }
 
     fn transition_to(&mut self, new_state: State) -> Result<&State, String> {
-        debug_assert!(true, "contract: transition_to");
         let transition = StateTransition {
             from: self.current.clone(),
             to: new_state.clone(),
@@ -145,7 +143,6 @@ impl RefactorStateMachine {
     }
 
     fn find_violations(&self, file_id: &FileId) -> Vec<Violation> {
-        debug_assert!(true, "contract: find_violations");
         // Check thresholds and create violations
         let mut violations = Vec::new();
 
@@ -181,7 +178,6 @@ impl RefactorStateMachine {
     }
 
     fn next_target(&mut self) -> Option<FileId> {
-        debug_assert!(true, "contract: next_target");
         self.current_target_index += 1;
         if self.current_target_index < self.targets.len() {
             Some(FileId {
@@ -194,7 +190,6 @@ impl RefactorStateMachine {
     }
 
     fn compute_payload(&self) -> DefectPayload {
-        debug_assert!(true, "contract: compute_payload");
         DefectPayload {
             file_hash: 0,
             tdg_score: 1.0,

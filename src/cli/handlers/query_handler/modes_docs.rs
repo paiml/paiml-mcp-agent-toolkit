@@ -61,9 +61,6 @@ fn run_document_query(
     project_path: &PathBuf,
     quiet: bool,
 ) -> anyhow::Result<Vec<crate::services::agent_context::DocumentResult>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-    debug_assert!(!query.is_empty(), "query must not be empty");
-    debug_assert!(limit > 0, "limit must be positive");
     use crate::services::agent_context::document_index::{build_document_index, query_documents};
     use crate::services::agent_context::function_index::sqlite_backend::open_db;
 

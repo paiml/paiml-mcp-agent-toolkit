@@ -21,7 +21,6 @@ impl QualityMonitorEngine {
         project_id: String,
         project_path: PathBuf,
     ) -> Result<()> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         info!(
             "Starting quality monitoring for project: {} at {:?}",
             project_id, project_path
@@ -91,7 +90,6 @@ impl QualityMonitorEngine {
     /// Stop monitoring a project
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn stop_monitoring(&mut self, project_id: &str) -> Result<()> {
-        debug_assert!(!project_id.is_empty(), "project_id must not be empty");
         info!("Stopping quality monitoring for project: {}", project_id);
 
         // Remove watcher
@@ -112,7 +110,6 @@ impl QualityMonitorEngine {
     /// Get current quality metrics for a project
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_metrics(&self, project_id: &str) -> Option<QualityMetrics> {
-        debug_assert!(!project_id.is_empty(), "project_id must not be empty");
         let metrics = self.metrics.read().await;
         metrics.get(project_id).cloned()
     }
@@ -125,7 +122,6 @@ impl QualityMonitorEngine {
 
     /// Perform full analysis of a project
     async fn perform_full_analysis(&self, project_id: &str, _project_path: &Path) -> Result<()> {
-        debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
         info!(
             "Performing full quality analysis for project: {}",
             project_id
@@ -182,7 +178,6 @@ impl QualityMonitorEngine {
         project_id: String,
         _project_path: PathBuf,
     ) -> Result<()> {
-        debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
         let metrics = self.metrics.clone();
         let config = self.config.clone();
         let _event_sender = self.event_sender.clone();

@@ -5,14 +5,12 @@ impl ParallelGitExecutor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_root: PathBuf) -> Self {
-        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         Self::with_config(project_root, ParallelGitConfig::default())
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_config(project_root: PathBuf, config: ParallelGitConfig) -> Self {
-        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let semaphore = Arc::new(Semaphore::new(config.max_concurrent_operations));
         let cache = Arc::new(RwLock::new(rustc_hash::FxHashMap::default()));
 
@@ -27,7 +25,6 @@ impl ParallelGitExecutor {
     /// Execute a single git command with caching
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_command(&self, args: Vec<&str>) -> Result<String> {
-        debug_assert!(!args.is_empty(), "args must not be empty");
         // Generate cache key
         let cache_key = format!("git_{}", args.join("_"));
 
@@ -78,7 +75,6 @@ impl ParallelGitExecutor {
     /// Execute multiple git commands in parallel
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_batch(&self, commands: Vec<Vec<&str>>) -> Result<Vec<String>> {
-        debug_assert!(!commands.is_empty(), "commands must not be empty");
         let futures: Vec<_> = commands
             .into_iter()
             .map(|args| {
@@ -133,7 +129,6 @@ impl ParallelGitExecutor {
 
     /// Execute batch with owned strings (helper for complex commands)
     async fn execute_batch_owned(&self, commands: Vec<Vec<String>>) -> Result<Vec<String>> {
-        debug_assert!(!commands.is_empty(), "commands must not be empty");
         let futures: Vec<_> = commands
             .into_iter()
             .map(|args| {
@@ -199,7 +194,6 @@ impl ParallelGitExecutor {
 
     /// Parse commit log output
     fn parse_commit_log(output: &str) -> Vec<CommitInfo> {
-        debug_assert!(!output.is_empty(), "output must not be empty");
         output
             .lines()
             .filter_map(|line| {
@@ -220,7 +214,6 @@ impl ParallelGitExecutor {
 
     /// Parse diff stats output
     fn parse_diff_stats(file: &Path, output: &str) -> DiffStats {
-        debug_assert!(file.exists(), "file must exist: {}", file.display());
         let mut additions = 0;
         let mut deletions = 0;
 

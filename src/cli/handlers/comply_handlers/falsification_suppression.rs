@@ -27,7 +27,6 @@ mod suppression_falsification {
 
     #[test]
     fn tn_072_glob_pattern_no_match() {
-        debug_assert!(true, "contract: tn_072_glob_pattern_no_match");
         // examples/** should NOT match src/lib.rs
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -48,7 +47,6 @@ mod suppression_falsification {
 
     #[test]
     fn tp_073_specific_file_matches() {
-        debug_assert!(true, "contract: tp_073_specific_file_matches");
         // file = "src/lib.rs" matches src/lib.rs
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -66,7 +64,6 @@ mod suppression_falsification {
 
     #[test]
     fn tp_074_specific_line_matches() {
-        debug_assert!(true, "contract: tp_074_specific_line_matches");
         // lines = [42] matches line 42
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -84,7 +81,6 @@ mod suppression_falsification {
 
     #[test]
     fn tn_075_specific_line_no_match() {
-        debug_assert!(true, "contract: tn_075_specific_line_no_match");
         // lines = [42] does NOT match line 43
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -105,7 +101,6 @@ mod suppression_falsification {
 
     #[test]
     fn tp_076_expired_suppression_ignored() {
-        debug_assert!(true, "contract: tp_076_expired_suppression_ignored");
         // expires = "2020-01-01" should not suppress in 2026
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -126,7 +121,6 @@ mod suppression_falsification {
 
     #[test]
     fn tp_077_future_expiry_still_active() {
-        debug_assert!(true, "contract: tp_077_future_expiry_still_active");
         // expires = "2030-01-01" should still suppress
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -147,7 +141,6 @@ mod suppression_falsification {
 
     #[test]
     fn tp_078_no_expiry_always_active() {
-        debug_assert!(true, "contract: tp_078_no_expiry_always_active");
         // Missing expires field = never expires
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -168,7 +161,6 @@ mod suppression_falsification {
 
     #[test]
     fn tp_079_multiple_rules_or_logic() {
-        debug_assert!(true, "contract: tp_079_multiple_rules_or_logic");
         // Multiple rules = suppress if ANY match
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -196,7 +188,6 @@ mod suppression_falsification {
 
     #[test]
     fn tp_080_reason_is_preserved() {
-        debug_assert!(true, "contract: tp_080_reason_is_preserved");
         // should_suppress returns the reason string
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -219,7 +210,6 @@ mod suppression_falsification {
 
     #[test]
     fn edge_081_empty_suppressions() {
-        debug_assert!(true, "contract: edge_081_empty_suppressions");
         // Empty config = nothing suppressed
         let config = SuppressionConfig::new();
         let result = config.should_suppress("CB-050-A", "src/lib.rs", 10);
@@ -231,7 +221,6 @@ mod suppression_falsification {
 
     #[test]
     fn edge_082_unknown_check_id() {
-        debug_assert!(true, "contract: edge_082_unknown_check_id");
         // Suppression for specific check_ids = no effect on other checks
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -260,7 +249,6 @@ mod suppression_falsification {
 
     #[test]
     fn edge_083_glob_double_star() {
-        debug_assert!(true, "contract: edge_083_glob_double_star");
         // **/*.rs matches deeply nested files
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -281,7 +269,6 @@ mod suppression_falsification {
 
     #[test]
     fn edge_084_glob_single_star() {
-        debug_assert!(true, "contract: edge_084_glob_single_star");
         // *.rs only matches root level
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {
@@ -310,7 +297,6 @@ mod suppression_falsification {
 
     #[test]
     fn edge_085_windows_path_separator() {
-        debug_assert!(true, "contract: edge_085_windows_path_separator");
         // Should handle both / and \ in paths
         let mut config = SuppressionConfig::new();
         config.add_rule(SuppressionRule {

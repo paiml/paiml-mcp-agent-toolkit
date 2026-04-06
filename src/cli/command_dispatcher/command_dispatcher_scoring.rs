@@ -369,7 +369,6 @@ impl CommandDispatcher {
     async fn route_maintain_command(
         command: crate::cli::commands::MaintainCommands,
     ) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: route_maintain_command");
         use crate::cli::commands::MaintainCommands;
         match command {
             MaintainCommands::Roadmap {

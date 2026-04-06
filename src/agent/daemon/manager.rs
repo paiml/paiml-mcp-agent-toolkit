@@ -86,11 +86,6 @@ impl DaemonManager {
     /// Start monitoring a project
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn start_monitoring(_project_path: &Path, _project_id: &str) -> Result<()> {
-        debug_assert!(
-            _project_path.exists(),
-            "_project_path must exist: {}",
-            _project_path.display()
-        );
         info!("Starting monitoring for project at {:?}", _project_path);
         // Implementation would send start monitoring command to daemon
         Ok(())
@@ -99,7 +94,6 @@ impl DaemonManager {
     /// Stop monitoring a project
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn stop_monitoring(_project_id: &str) -> Result<()> {
-        debug_assert!(!_project_id.is_empty(), "_project_id must not be empty");
         info!("Stopping monitoring for project {}", _project_id);
         // Implementation would send stop monitoring command to daemon
         Ok(())
@@ -131,7 +125,6 @@ impl DaemonManager {
     /// Run quality gate through daemon
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run_quality_gate(_project: &str) -> Result<QualityGateResult> {
-        debug_assert!(!_project.is_empty(), "_project must not be empty");
         info!("Running quality gate for project {}", _project);
         // Implementation would send quality gate command to daemon and return results
         Ok(QualityGateResult {

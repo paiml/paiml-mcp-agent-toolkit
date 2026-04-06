@@ -84,7 +84,6 @@ impl<S: Service> LifecycleWrapper<S> {
 
     /// Start the health check loop
     async fn start_health_check_loop(&self) {
-        debug_assert!(true, "contract: start_health_check_loop");
         let running = self.running.clone();
         let state = self.state.clone();
         let metrics = self.metrics.clone();
@@ -141,7 +140,6 @@ where
     type Error = S::Error;
 
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
-        debug_assert!(true, "contract: process");
         let start = std::time::Instant::now();
 
         // Check if service is in a runnable state

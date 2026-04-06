@@ -36,7 +36,6 @@ impl CapturedError {
     /// Create a new captured error
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(command: &str, args: &[String], error_message: &str) -> Self {
-        debug_assert!(!command.is_empty(), "command must not be empty");
         Self {
             command: command.to_string(),
             args: args.to_vec(),
@@ -55,7 +54,6 @@ impl CapturedError {
     /// Add backtrace to error
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_backtrace(mut self, backtrace: &str) -> Self {
-        debug_assert!(!backtrace.is_empty(), "backtrace must not be empty");
         self.backtrace = Some(backtrace.to_string());
         self
     }

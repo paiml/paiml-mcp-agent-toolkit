@@ -49,7 +49,6 @@ impl GitHistoryIndex {
     /// Insert multiple commits in a transaction
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn insert_commits(&mut self, commits: &[CommitInfo]) -> Result<usize, GitHistoryError> {
-        debug_assert!(!commits.is_empty(), "commits must not be empty");
         let tx = self.conn.transaction()?;
         let mut count = 0;
 
@@ -110,7 +109,6 @@ impl GitHistoryIndex {
         commit_hash: &str,
         embedding: &[f32],
     ) -> Result<(), GitHistoryError> {
-        debug_assert!(!commit_hash.is_empty(), "commit_hash must not be empty");
         let embedding_bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
 
         self.conn.execute(
@@ -130,7 +128,6 @@ impl GitHistoryIndex {
         &mut self,
         new_commits: &[CommitInfo],
     ) -> Result<SyncResult, GitHistoryError> {
-        debug_assert!(!new_commits.is_empty(), "new_commits must not be empty");
         let last_indexed = self.get_last_indexed_commit()?;
         let start_count = self.commit_count()?;
 

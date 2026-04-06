@@ -29,7 +29,6 @@ impl SemanticSearchToolAdapter {
 #[async_trait]
 impl McpTool for SemanticSearchToolAdapter {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -51,7 +50,6 @@ impl McpTool for SemanticSearchToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -82,7 +80,6 @@ impl FindSimilarCodeToolAdapter {
 #[async_trait]
 impl McpTool for FindSimilarCodeToolAdapter {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -102,7 +99,6 @@ impl McpTool for FindSimilarCodeToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -133,7 +129,6 @@ impl ClusterCodeToolAdapter {
 #[async_trait]
 impl McpTool for ClusterCodeToolAdapter {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -153,7 +148,6 @@ impl McpTool for ClusterCodeToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -184,7 +178,6 @@ impl AnalyzeTopicsToolAdapter {
 #[async_trait]
 impl McpTool for AnalyzeTopicsToolAdapter {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -204,7 +197,6 @@ impl McpTool for AnalyzeTopicsToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
 
         self.inner

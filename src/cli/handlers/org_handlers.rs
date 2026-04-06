@@ -105,7 +105,6 @@ async fn handle_org_analyze(
     top_n: usize,
     min_frequency: usize,
 ) -> Result<()> {
-    debug_assert!(!org.is_empty(), "org must not be empty");
     println!(
         "\n{}",
         c::header(&format!("Analyzing GitHub Organization: {}", org))
@@ -337,17 +336,6 @@ async fn handle_fault_localization(
     _enrich_tdg: bool,
     _repo: &Path,
 ) -> Result<()> {
-    debug_assert!(
-        passed_coverage.exists(),
-        "passed_coverage must exist: {}",
-        passed_coverage.display()
-    );
-    debug_assert!(
-        failed_coverage.exists(),
-        "failed_coverage must exist: {}",
-        failed_coverage.display()
-    );
-    debug_assert!(_repo.exists(), "_repo must exist: {}", _repo.display());
     use crate::services::fault_localization::{
         FaultLocalizer, LcovParser, ReportFormat, SbflFormula,
     };

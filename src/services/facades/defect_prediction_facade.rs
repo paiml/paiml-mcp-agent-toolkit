@@ -123,7 +123,6 @@ impl DefectPredictionFacade {
 
     /// Discover source files to analyze
     async fn discover_files(&self, request: &DefectPredictionRequest) -> Result<Vec<PathBuf>> {
-        debug_assert!(true, "contract: discover_files");
         use walkdir::WalkDir;
 
         let mut files = Vec::new();
@@ -170,11 +169,6 @@ impl DefectPredictionFacade {
         file_path: &PathBuf,
         request: &DefectPredictionRequest,
     ) -> Result<FilePrediction> {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         // Get file metrics (would integrate with real analysis services)
         let lines = tokio::fs::read_to_string(file_path).await?.lines().count();
 
@@ -243,7 +237,6 @@ impl DefectPredictionFacade {
         predictions: Vec<FilePrediction>,
         request: &DefectPredictionRequest,
     ) -> DefectPredictionResult {
-        debug_assert!(!predictions.is_empty(), "predictions must not be empty");
         let total_files_analyzed = predictions.len();
         let high_risk_files = predictions
             .iter()
@@ -293,11 +286,6 @@ impl DefectPredictionFacade {
     /// Quick analysis with defaults
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn quick_analysis(&self, project_path: PathBuf) -> Result<DefectPredictionResult> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let request = DefectPredictionRequest {
             project_path,
             confidence_threshold: 0.5,
@@ -346,7 +334,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

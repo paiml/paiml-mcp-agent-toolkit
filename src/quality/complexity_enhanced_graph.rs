@@ -9,30 +9,25 @@ impl<N, E> SimpleDiGraph<N, E> {
     }
 
     fn add_node(&mut self, node: N) -> CfgNodeIndex {
-        debug_assert!(true, "contract: add_node");
         let idx = CfgNodeIndex(self.nodes.len());
         self.nodes.push(node);
         idx
     }
 
     fn add_edge(&mut self, from: CfgNodeIndex, to: CfgNodeIndex, edge: E) {
-        debug_assert!(true, "contract: add_edge");
         self.edges.push((from, to, edge));
     }
 
     fn node_count(&self) -> usize {
-        debug_assert!(true, "contract: node_count");
         self.nodes.len()
     }
 
     fn edge_count(&self) -> usize {
-        debug_assert!(true, "contract: edge_count");
         self.edges.len()
     }
 
     // Simple SCC using Kosaraju's algorithm
     fn kosaraju_scc(&self) -> Vec<Vec<CfgNodeIndex>> {
-        debug_assert!(true, "contract: kosaraju_scc");
         let n = self.nodes.len();
         if n == 0 {
             return Vec::new();
@@ -79,7 +74,6 @@ impl<N, E> SimpleDiGraph<N, E> {
         visited: &mut [bool],
         finish: &mut Vec<usize>,
     ) {
-        debug_assert!(true, "contract: dfs_finish");
         visited[node] = true;
         for &next in &adj[node] {
             if !visited[next] {
@@ -96,7 +90,6 @@ impl<N, E> SimpleDiGraph<N, E> {
         visited: &mut [bool],
         scc: &mut Vec<usize>,
     ) {
-        debug_assert!(true, "contract: dfs_collect");
         visited[node] = true;
         scc.push(node);
         for &next in &adj[node] {
@@ -166,7 +159,6 @@ impl ControlFlowGraph {
 
 impl<'ast> Visit<'ast> for CfgBuilder {
     fn visit_expr_if(&mut self, node: &'ast syn::ExprIf) {
-        debug_assert!(true, "contract: visit_expr_if");
         let condition = self.graph.add_node(CfgNode::Condition("if".to_string()));
         self.graph
             .add_edge(self.current, condition, CfgEdge::Sequential);
@@ -198,7 +190,6 @@ impl<'ast> Visit<'ast> for CfgBuilder {
     }
 
     fn visit_expr_loop(&mut self, node: &'ast syn::ExprLoop) {
-        debug_assert!(true, "contract: visit_expr_loop");
         let loop_entry = self.graph.add_node(CfgNode::Statement("loop".to_string()));
         self.graph
             .add_edge(self.current, loop_entry, CfgEdge::Sequential);

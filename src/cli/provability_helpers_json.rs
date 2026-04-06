@@ -5,7 +5,6 @@ pub fn format_provability_json(
     summaries: &[ProofSummary],
     include_evidence: bool,
 ) -> Result<String> {
-    debug_assert!(!function_ids.is_empty(), "function_ids must not be empty");
     let results: Vec<_> = function_ids
         .iter()
         .zip(summaries.iter())

@@ -5,7 +5,6 @@ pub fn discover_source_files(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<Vec<(PathBuf, String)>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut discovery_config = FileDiscoveryConfig::default();
 
     if let Some(exclude_pattern) = exclude {
@@ -40,7 +39,6 @@ pub fn extract_all_identifiers(
     analyzed_files: &[(PathBuf, String)],
     _scope: &SearchScope,
 ) -> Vec<NameInfo> {
-    debug_assert!(!analyzed_files.is_empty(), "analyzed_files must not be empty");
     let mut all_names = Vec::new();
     for (_file_path, content) in analyzed_files {
         let names = super::analysis_utilities::extract_identifiers(content);

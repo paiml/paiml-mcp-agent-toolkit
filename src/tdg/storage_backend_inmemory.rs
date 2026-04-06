@@ -21,29 +21,24 @@ impl Default for InMemoryBackend {
 
 impl StorageBackend for InMemoryBackend {
     fn put(&self, key: &[u8], value: &[u8]) -> Result<()> {
-        debug_assert!(!key.is_empty(), "key must not be empty");
         self.data.insert(key.to_vec(), value.to_vec());
         Ok(())
     }
 
     fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
-        debug_assert!(!key.is_empty(), "key must not be empty");
         Ok(self.data.get(key).map(|v| v.clone()))
     }
 
     fn delete(&self, key: &[u8]) -> Result<()> {
-        debug_assert!(!key.is_empty(), "key must not be empty");
         self.data.remove(key);
         Ok(())
     }
 
     fn contains(&self, key: &[u8]) -> Result<bool> {
-        debug_assert!(!key.is_empty(), "key must not be empty");
         Ok(self.data.contains_key(key))
     }
 
     fn iter(&self) -> Result<StorageIterator<'_>> {
-        debug_assert!(true, "contract: iter");
         let entries: Vec<_> = self
             .data
             .iter()
@@ -53,7 +48,6 @@ impl StorageBackend for InMemoryBackend {
     }
 
     fn size_on_disk(&self) -> Result<u64> {
-        debug_assert!(true, "contract: size_on_disk");
         let size: usize = self
             .data
             .iter()
@@ -63,24 +57,20 @@ impl StorageBackend for InMemoryBackend {
     }
 
     fn flush(&self) -> Result<()> {
-        debug_assert!(true, "contract: flush");
         // No-op for in-memory backend
         Ok(())
     }
 
     fn clear(&self) -> Result<()> {
-        debug_assert!(true, "contract: clear");
         self.data.clear();
         Ok(())
     }
 
     fn backend_name(&self) -> &'static str {
-        debug_assert!(true, "contract: backend_name");
         "in-memory"
     }
 
     fn get_stats(&self) -> HashMap<String, String> {
-        debug_assert!(true, "contract: get_stats");
         let mut stats = HashMap::new();
         stats.insert("entries".to_string(), self.data.len().to_string());
         let size: usize = self

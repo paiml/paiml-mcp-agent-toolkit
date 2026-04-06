@@ -3,7 +3,6 @@
 
 impl TdgExporter {
     fn score_to_sarif(score: &TdgScore, _options: &ExportOptions) -> Result<String> {
-        debug_assert!(true, "contract: score_to_sarif");
         let sarif = json!({
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
             "version": "2.1.0",
@@ -24,7 +23,6 @@ impl TdgExporter {
     }
 
     fn project_to_sarif(project: &ProjectScore, _options: &ExportOptions) -> Result<String> {
-        debug_assert!(true, "contract: project_to_sarif");
         let mut all_results = Vec::new();
 
         for score in &project.files {
@@ -56,7 +54,6 @@ impl TdgExporter {
     }
 
     fn get_sarif_rules() -> Vec<serde_json::Value> {
-        debug_assert!(true, "contract: get_sarif_rules");
         vec![
             json!({
                 "id": "TDG001",
@@ -101,7 +98,6 @@ impl TdgExporter {
     }
 
     fn score_to_sarif_results(score: &TdgScore) -> Vec<serde_json::Value> {
-        debug_assert!(true, "contract: score_to_sarif_results");
         let mut results = Vec::new();
 
         if score.structural_complexity < 15.0 || score.semantic_complexity < 15.0 {

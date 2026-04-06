@@ -17,7 +17,6 @@ impl FileClassifier {
         content: &[u8],
         include_large_files: bool,
     ) -> ParseDecision {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Fast path: empty files
         if content.is_empty() {
             return ParseDecision::Skip(SkipReason::EmptyFile);
@@ -70,12 +69,10 @@ impl FileClassifier {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn should_parse(&self, path: &Path, content: &[u8]) -> ParseDecision {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.should_parse_with_options(path, content, false)
     }
 
     fn is_vendor_path(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Check path patterns
@@ -103,7 +100,6 @@ impl FileClassifier {
     }
 
     fn is_binary(&self, sample: &[u8]) -> bool {
-        debug_assert!(true, "contract: is_binary");
         // Check for null bytes (common in binary files)
         if sample.contains(&0) {
             return true;
@@ -119,7 +115,6 @@ impl FileClassifier {
     }
 
     fn is_minified(&self, sample: &[u8]) -> bool {
-        debug_assert!(true, "contract: is_minified");
         // Check content signatures
         for sig in &VENDOR_RULES.content_signatures {
             if sample.starts_with(sig) {
@@ -138,7 +133,6 @@ impl FileClassifier {
     }
 
     fn is_build_artifact(&self, path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Check against build artifact patterns
@@ -150,7 +144,6 @@ impl FileClassifier {
 
 /// Calculate Shannon entropy of a byte sequence
 fn calculate_shannon_entropy(data: &[u8]) -> f64 {
-    debug_assert!(!data.is_empty(), "data must not be empty");
     let mut frequencies = [0u32; 256];
     for &byte in data {
         frequencies[byte as usize] += 1;

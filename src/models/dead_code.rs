@@ -157,7 +157,6 @@ impl DeadCodeSummary {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_files(files: &[FileDeadCodeMetrics]) -> Self {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         let total_files_analyzed = files.len();
         let files_with_dead_code = files.iter().filter(|f| f.dead_lines > 0).count();
         let total_dead_lines = files.iter().map(|f| f.dead_lines).sum();
@@ -444,7 +443,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

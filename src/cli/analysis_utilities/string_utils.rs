@@ -3,7 +3,6 @@
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut identifiers = Vec::new();
     let mut seen = HashSet::new();
 
@@ -18,7 +17,6 @@ pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
 
 /// Get identifier extraction patterns for different languages
 fn get_identifier_patterns() -> Vec<(&'static str, &'static str)> {
-    debug_assert!(true, "contract: get_identifier_patterns");
     vec![
         // Function/method definitions
         (r"(?m)^\s*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)", "function"),
@@ -50,9 +48,6 @@ fn extract_identifiers_for_pattern(
     identifiers: &mut Vec<super::NameInfo>,
     seen: &mut HashSet<String>,
 ) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!pattern_str.is_empty(), "pattern_str must not be empty");
-    debug_assert!(!kind.is_empty(), "kind must not be empty");
     use regex::Regex;
 
     if let Ok(re) = Regex::new(pattern_str) {
@@ -90,9 +85,6 @@ fn extract_identifiers_for_pattern(
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_string_similarity(s1: &str, s2: &str) -> f32 {
-    debug_assert!(!s1.is_empty(), "s1 must not be empty");
-    debug_assert!(!s2.is_empty(), "s2 must not be empty");
-    // Contract: calculate_string_similarity returns a bounded score
     // Normalized Levenshtein distance for basic string similarity
     if s1.is_empty() && s2.is_empty() {
         return 1.0;
@@ -130,8 +122,6 @@ pub fn calculate_string_similarity(s1: &str, s2: &str) -> f32 {
 
 /// Get character n-grams from a string
 fn get_ngrams(s: &str, n: usize) -> HashSet<String> {
-    debug_assert!(!s.is_empty(), "s must not be empty");
-    debug_assert!(n > 0, "n must be positive");
     let chars: Vec<char> = s.chars().collect();
     let mut ngrams = HashSet::new();
 
@@ -162,8 +152,6 @@ fn get_ngrams(s: &str, n: usize) -> HashSet<String> {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_edit_distance(s1: &str, s2: &str) -> usize {
-    debug_assert!(!s1.is_empty(), "s1 must not be empty");
-    debug_assert!(!s2.is_empty(), "s2 must not be empty");
     // Levenshtein distance implementation
     let len1 = s1.chars().count();
     let len2 = s2.chars().count();
@@ -210,7 +198,6 @@ pub fn calculate_edit_distance(s1: &str, s2: &str) -> usize {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_soundex(s: &str) -> String {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     // Soundex phonetic algorithm implementation
     if s.is_empty() {
         return String::new();
@@ -258,7 +245,6 @@ pub fn calculate_soundex(s: &str) -> String {
 
 /// Get Soundex code for a character
 fn soundex_code(ch: char) -> char {
-    debug_assert!(true, "contract: soundex_code");
     match ch {
         'B' | 'F' | 'P' | 'V' => '1',
         'C' | 'G' | 'J' | 'K' | 'Q' | 'S' | 'X' | 'Z' => '2',
@@ -282,7 +268,6 @@ pub fn params_to_json(
 // Table printing function
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateResource>]) {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     if items.is_empty() {
         println!("No templates found.");
         return;

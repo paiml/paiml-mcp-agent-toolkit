@@ -27,14 +27,12 @@ const SKIP_DIRS: &[&str] = &[
 /// Walk directory recursively for `.lean` files, skipping common non-source dirs.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn walkdir_lean_files(dir: &Path) -> Vec<PathBuf> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     walk_lean_recursive(dir, &mut files);
     files
 }
 
 fn walk_lean_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -64,11 +62,6 @@ fn walk_lean_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 /// Sorry is Lean's escape hatch for unfinished proofs — it should be zero in production.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1050_sorry_usage(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lean_files(project_path);
     let mut violations = Vec::new();
 
@@ -112,11 +105,6 @@ pub fn detect_cb1050_sorry_usage(project_path: &Path) -> Vec<CbPatternViolation>
 /// Custom axioms weaken the trust base — flag any `axiom` declaration.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1051_axiom_usage(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lean_files(project_path);
     let mut violations = Vec::new();
 
@@ -148,11 +136,6 @@ pub fn detect_cb1051_axiom_usage(project_path: &Path) -> Vec<CbPatternViolation>
 /// Warns if sorry/theorem ratio exceeds 20% (more than 1 in 5 theorems incomplete).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1052_theorem_coverage(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lean_files(project_path);
     let mut total_theorems = 0usize;
     let mut total_sorrys = 0usize;
@@ -209,11 +192,6 @@ pub fn detect_cb1052_theorem_coverage(project_path: &Path) -> Vec<CbPatternViola
 /// Public theorems should have doc comments (`/-- ... -/`) for maintainability.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1053_undocumented_theorems(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lean_files(project_path);
     let mut violations = Vec::new();
 
@@ -272,7 +250,6 @@ pub fn detect_cb1053_undocumented_theorems(project_path: &Path) -> Vec<CbPattern
 
 /// Strip block comment content from a line, updating nesting depth.
 fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let mut result = String::with_capacity(line.len());
     let mut i = 0;
@@ -299,7 +276,6 @@ fn strip_lean_block_comments(line: &str, depth: &mut i32) -> String {
 
 /// Check if line contains "sorry" as a standalone word.
 fn contains_sorry_word(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let sorry = b"sorry";
     let mut pos = 0;

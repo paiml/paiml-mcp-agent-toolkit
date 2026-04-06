@@ -2,7 +2,6 @@ impl MLReproducibilityScorer {
     /// Detect if the project is an ML project
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn is_ml_project(&self, project_path: &Path) -> bool {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         has_ml_files(project_path)
             || has_ml_requirements(project_path)
             || has_rust_ml_crates(project_path)
@@ -11,7 +10,6 @@ impl MLReproducibilityScorer {
 
     /// F1: Random Seed Fixing (2 points)
     fn score_random_seed_fixing(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut earned: f64 = 0.0;
         let max: f64 = 2.0;
         let mut description = Vec::new();
@@ -40,7 +38,6 @@ impl MLReproducibilityScorer {
 
     /// F2: Model Versioning (2 points)
     fn score_model_versioning(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut earned: f64 = 0.0;
         let max: f64 = 2.0;
         let mut description = Vec::new();
@@ -77,7 +74,6 @@ impl MLReproducibilityScorer {
 
     /// F3: Dataset Documentation (1 point)
     fn score_dataset_documentation(&self, project_path: &Path) -> PopperSubScore {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut earned: f64 = 0.0;
         let max: f64 = 1.0;
         let mut description = Vec::new();

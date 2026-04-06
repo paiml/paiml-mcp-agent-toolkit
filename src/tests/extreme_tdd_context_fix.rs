@@ -14,7 +14,6 @@ async fn test_context_must_output_actual_file_content() {
 
     let expected_code = r#"// This is a comment
 fn greet(name: &str) {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     println!("Hello, {}!", name);
 }
 

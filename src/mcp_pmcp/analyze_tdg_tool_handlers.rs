@@ -73,7 +73,6 @@ impl Default for TdgTool {
 #[async_trait]
 impl ToolHandler for TdgTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling analyze.tdg with args: {}", args);
 
         let params: TdgArgs = serde_json::from_value(args)
@@ -140,7 +139,6 @@ impl Default for TdgCompareTool {
 #[async_trait]
 impl ToolHandler for TdgCompareTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling analyze.tdg_compare with args: {}", args);
 
         let params: TdgCompareArgs = serde_json::from_value(args)

@@ -3,7 +3,6 @@
 // Based on Treude et al. (2011) - badges have diminishing returns
 
 fn check_patterns(content: &str, patterns: &[&str]) -> bool {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     patterns.iter().any(|pattern| {
         regex::Regex::new(pattern)
             .map(|re| re.is_match(content))
@@ -12,7 +11,6 @@ fn check_patterns(content: &str, patterns: &[&str]) -> bool {
 }
 
 fn score_badges(content: &str) -> (f64, Finding) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let badge_count = content.matches("![").count();
     let badge_score = (badge_count.min(2) as f64) * 0.25;
 
@@ -83,7 +81,6 @@ const WEB_DEMO_PATHS: &[&str] = &[
 impl DemoScorer {
     /// Score "Wow" Factor (G4: 2 points)
     async fn score_wow_factor(&self, repo_path: &Path) -> Result<SubcategoryScore> {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let mut score: f64 = 0.0;
         let mut findings = vec![];
 

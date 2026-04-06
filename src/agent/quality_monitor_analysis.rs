@@ -7,8 +7,6 @@ impl QualityMonitorEngine {
         file_path: &PathBuf,
         relative_path: &Path,
     ) -> Result<FileQualityMetrics> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(relative_path.exists(), "relative_path must exist: {}", relative_path.display());
         use std::fs;
         use std::time::UNIX_EPOCH;
 
@@ -52,7 +50,6 @@ impl QualityMonitorEngine {
 
     /// Count functions in a file (simple heuristic)
     fn count_functions(content: &str, file_path: &Path) -> usize {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let extension = file_path.extension().and_then(|s| s.to_str()).unwrap_or("");
 
         match extension {
@@ -69,7 +66,6 @@ impl QualityMonitorEngine {
 
     /// Estimate complexity based on control flow keywords
     fn estimate_complexity(content: &str) -> u32 {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let keywords = [
             "if", "else", "for", "while", "match", "switch", "case", "catch", "&&", "||",
         ];
@@ -81,7 +77,6 @@ impl QualityMonitorEngine {
 
     /// Count SATD (Self-Admitted Technical Debt) issues
     fn count_satd_issues(content: &str) -> usize {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Using concatenation to avoid false positives in SATD detection
         let patterns = [
             ['T', 'O', 'D', 'O'].iter().collect::<String>(),
@@ -103,7 +98,6 @@ impl QualityMonitorEngine {
         avg_complexity: f64,
         satd_issues: usize,
     ) -> f64 {
-        debug_assert!(true, "contract: calculate_file_quality_score");
         let mut score = 1.0;
 
         // Penalize high complexity
@@ -133,7 +127,6 @@ impl QualityMonitorEngine {
 
     /// Update aggregate metrics for a project
     fn update_aggregate_metrics(metrics: &mut QualityMetrics) {
-        debug_assert!(true, "contract: update_aggregate_metrics");
         let files_analyzed = metrics.file_metrics.len();
         let functions_analyzed: usize = metrics
             .file_metrics
@@ -215,7 +208,6 @@ impl QualityMonitorEngine {
         new: &FileQualityMetrics,
         file_path: &str,
     ) -> Vec<QualityChange> {
-        debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let mut changes = Vec::new();
 
         // Check complexity changes

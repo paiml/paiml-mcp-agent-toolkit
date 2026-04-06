@@ -48,7 +48,6 @@ impl DemoProtocol for McpDemoAdapter {
     type Error = McpDemoError;
 
     async fn decode_request(&self, raw: &[u8]) -> Result<Self::Request, Self::Error> {
-        debug_assert!(!raw.is_empty(), "raw must not be empty");
         let request: McpRequest = serde_json::from_slice(raw)?;
 
         // Validate JSON-RPC format
@@ -63,13 +62,11 @@ impl DemoProtocol for McpDemoAdapter {
     }
 
     async fn encode_response(&self, resp: Self::Response) -> Result<Vec<u8>, Self::Error> {
-        debug_assert!(true, "contract: encode_response");
         let json = serde_json::to_vec(&resp)?;
         Ok(json)
     }
 
     async fn get_protocol_metadata(&self) -> ProtocolMetadata {
-        debug_assert!(true, "contract: get_protocol_metadata");
         ProtocolMetadata {
             name: "mcp",
             version: "2.0",
@@ -152,7 +149,6 @@ impl DemoProtocol for McpDemoAdapter {
     }
 
     async fn execute_demo(&self, request: Self::Request) -> Result<Self::Response, Self::Error> {
-        debug_assert!(true, "contract: execute_demo");
         match request.method.as_str() {
             "demo.analyze" => self.handle_demo_analyze(request.params, request.id).await,
             "demo.getResults" => {

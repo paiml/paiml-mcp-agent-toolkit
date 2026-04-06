@@ -70,7 +70,6 @@ impl TopicEngine {
         num_topics: usize,
         filters: TopicFilters,
     ) -> Result<TopicResult, String> {
-        debug_assert!(num_topics > 0, "num_topics must be positive");
         // Validate input
         if num_topics == 0 {
             return Err("num_topics must be at least 1".to_string());
@@ -122,7 +121,6 @@ impl TopicEngine {
     /// Array of keywords sorted by frequency
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_keywords(&self, chunk_names: &[String], top_k: usize) -> Vec<String> {
-        debug_assert!(!chunk_names.is_empty(), "chunk_names must not be empty");
         if chunk_names.is_empty() {
             return Vec::new();
         }
@@ -169,7 +167,6 @@ impl TopicEngine {
     /// Coherence score (0.0 to 1.0)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_coherence_score(&self, topics: &[Topic]) -> f64 {
-        // Contract: compute_coherence_score returns a bounded score
         if topics.is_empty() {
             return 0.0;
         }
@@ -207,7 +204,6 @@ impl TopicEngine {
 
     /// Count keyword overlap between two keyword sets
     fn keyword_overlap(&self, keywords1: &[String], keywords2: &[String]) -> usize {
-        debug_assert!(true, "contract: keyword_overlap");
         keywords1.iter().filter(|k| keywords2.contains(k)).count()
     }
 
@@ -227,9 +223,6 @@ impl TopicEngine {
         chunks: &[ChunkMetadata],
         num_topics: usize,
     ) -> Result<Vec<Topic>, String> {
-        debug_assert!(num_topics > 0, "num_topics must be positive");
-        debug_assert!(!vectors.is_empty(), "vectors must not be empty");
-        debug_assert!(!chunks.is_empty(), "chunks must not be empty");
         // Use clustering engine for K-means
         let clustering_engine = ClusteringEngine::new(Arc::clone(&self.vector_db));
 

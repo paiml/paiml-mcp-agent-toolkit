@@ -187,7 +187,6 @@ mod property_tests {
         fn proxy_request_validation(
             operation in prop::sample::select(vec!["write", "edit", "append"])
         ) {
-            debug_assert!(true, "contract: proxy_request_validation");
             // Verify proxy request operations are valid
             let valid_ops = vec!["write", "edit", "append"];
             prop_assert!(valid_ops.contains(&operation.as_str()));
@@ -197,7 +196,6 @@ mod property_tests {
         fn quality_modes_valid(
             mode in prop::sample::select(vec!["strict", "normal", "permissive"])
         ) {
-            debug_assert!(true, "contract: quality_modes_valid");
             // All quality modes should be recognized
             let valid_modes = vec!["strict", "normal", "permissive"];
             prop_assert!(valid_modes.contains(&mode.as_str()));

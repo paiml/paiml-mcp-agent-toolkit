@@ -3,7 +3,6 @@
 
 // Helper functions to run individual analyses
 async fn run_big_o_analysis(path: &Path) -> Result<BigOAnalysis, Error> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::big_o_analyzer::{BigOAnalysisConfig, BigOAnalyzer};
 
     let analyzer = BigOAnalyzer::new();
@@ -34,7 +33,6 @@ async fn run_big_o_analysis(path: &Path) -> Result<BigOAnalysis, Error> {
 }
 
 async fn run_entropy_analysis(_path: &Path) -> Result<EntropyAnalysis, Error> {
-    debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
     // Comment out for now, will need to update to use the new entropy APIs
     // This feature is not critical for this release but we'll need to update it later
     /*
@@ -56,7 +54,6 @@ async fn run_entropy_analysis(_path: &Path) -> Result<EntropyAnalysis, Error> {
 }
 
 async fn run_provability_analysis(_path: &Path) -> Result<ProvabilityAnalysis, Error> {
-    debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
     // Provability analysis will be updated in a future release
 
     // Return empty analysis for now
@@ -72,7 +69,6 @@ async fn run_provability_analysis(_path: &Path) -> Result<ProvabilityAnalysis, E
 }
 
 async fn run_graph_metrics_analysis(_path: &Path) -> Result<GraphMetricsAnalysis, Error> {
-    debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
     // Graph metrics analysis will be updated in a future release
 
     // Return empty analysis for now
@@ -90,7 +86,6 @@ async fn run_graph_metrics_analysis(_path: &Path) -> Result<GraphMetricsAnalysis
 }
 
 async fn run_tdg_analysis(_path: &Path) -> Result<TdgAnalysis, Error> {
-    debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
     // TDG analysis will be updated in a future release
 
     // Return empty analysis for now
@@ -103,7 +98,6 @@ async fn run_tdg_analysis(_path: &Path) -> Result<TdgAnalysis, Error> {
 }
 
 async fn run_dead_code_analysis(_path: &Path) -> Result<DeadCodeAnalysis, Error> {
-    debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
     // Dead code analysis will be updated in a future release
 
     // Return empty analysis for now
@@ -116,7 +110,6 @@ async fn run_dead_code_analysis(_path: &Path) -> Result<DeadCodeAnalysis, Error>
 }
 
 fn is_analyzable_source(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.is_file()
         && path
             .extension()
@@ -125,7 +118,6 @@ fn is_analyzable_source(path: &Path) -> bool {
 }
 
 fn classify_satd_comment(text: &str, location: String) -> (SatdComment, &'static str) {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     let comment = SatdComment {
         location,
         comment: text.to_string(),
@@ -144,7 +136,6 @@ fn classify_satd_comment(text: &str, location: String) -> (SatdComment, &'static
 }
 
 async fn run_satd_analysis(path: &Path) -> Result<SatdAnalysis, Error> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::satd_detector::SATDDetector;
     use walkdir::WalkDir;
 
@@ -244,7 +235,6 @@ struct DeadCodeAnalysis {
 
 impl DeadCodeAnalysis {
     fn is_empty(&self) -> bool {
-        debug_assert!(true, "contract: is_empty");
         self.unreachable_functions.is_empty()
             && self.unused_variables.is_empty()
             && self.unused_imports.is_empty()

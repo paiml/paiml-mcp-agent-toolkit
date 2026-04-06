@@ -3,14 +3,12 @@ const SKIPPED_DIRS: &[&str] = &[
 ];
 
 fn is_skipped_dir(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.file_name()
         .and_then(|n| n.to_str())
         .is_some_and(|name| SKIPPED_DIRS.contains(&name))
 }
 
 fn build_config_dependency_pairs(languages: &[&String], config_file: &str) -> Vec<CrossLanguageDependency> {
-    debug_assert!(!config_file.is_empty(), "config_file must not be empty");
     let mut deps = Vec::new();
     for (i, &lang1) in languages.iter().enumerate() {
         for &lang2 in languages.iter().skip(i + 1) {
@@ -32,7 +30,6 @@ impl PolyglotAnalyzer {
         project_path: &Path,
         language_info: &HashMap<String, LanguageInfo>,
     ) -> Result<Vec<CrossLanguageDependency>, Box<dyn std::error::Error>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut dependencies = Vec::new();
         let languages: Vec<_> = language_info.keys().collect();
 
@@ -66,9 +63,6 @@ impl PolyglotAnalyzer {
         lang1: &str,
         lang2: &str,
     ) -> Result<Option<CrossLanguageDependency>, Box<dyn std::error::Error>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
-        debug_assert!(!lang1.is_empty(), "lang1 must not be empty");
-        debug_assert!(!lang2.is_empty(), "lang2 must not be empty");
         if !self.has_potential_integration(lang1, lang2) {
             return Ok(None);
         }
@@ -117,7 +111,6 @@ impl PolyglotAnalyzer {
         project_path: &Path,
         files_involved: &mut Vec<String>,
     ) -> Result<f64, Box<dyn std::error::Error>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut coupling_strength: f64 = 0.0;
 
         // Check Cargo.toml for PyO3
@@ -150,7 +143,6 @@ impl PolyglotAnalyzer {
         project_path: &Path,
         files_involved: &mut Vec<String>,
     ) -> Result<f64, Box<dyn std::error::Error>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut coupling_strength: f64 = 0.0;
 
         // Check for TypeScript config
@@ -186,7 +178,6 @@ impl PolyglotAnalyzer {
         project_path: &Path,
         files_involved: &mut Vec<String>,
     ) -> Result<f64, Box<dyn std::error::Error>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut coupling_strength: f64 = 0.0;
 
         // Look for API specification files
@@ -227,7 +218,6 @@ impl PolyglotAnalyzer {
         project_path: &Path,
         language_info: &HashMap<String, LanguageInfo>,
     ) -> Result<Vec<CrossLanguageDependency>, Box<dyn std::error::Error>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut dependencies = Vec::new();
 
         // Check for multi-language build systems
@@ -262,7 +252,6 @@ impl PolyglotAnalyzer {
         project_path: &Path,
         language_info: &HashMap<String, LanguageInfo>,
     ) -> Result<Vec<CrossLanguageDependency>, Box<dyn std::error::Error>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_file = ["config.json", "settings.yaml", ".env", "app.config"]
             .iter()
             .find(|f| project_path.join(f).exists());
@@ -287,7 +276,6 @@ impl PolyglotAnalyzer {
         extensions: &[String],
         count: &mut usize,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(dir_path.exists(), "dir_path must exist: {}", dir_path.display());
         let entries = match std::fs::read_dir(dir_path) {
             Ok(e) => e,
             Err(_) => return Ok(()),
@@ -308,8 +296,6 @@ impl PolyglotAnalyzer {
     }
 
     fn has_potential_integration(&self, lang1: &str, lang2: &str) -> bool {
-        debug_assert!(!lang1.is_empty(), "lang1 must not be empty");
-        debug_assert!(!lang2.is_empty(), "lang2 must not be empty");
         matches!(
             (lang1, lang2),
             ("rust" | "javascript", "python" | "typescript")
@@ -318,8 +304,6 @@ impl PolyglotAnalyzer {
     }
 
     fn infer_dependency_type(&self, lang1: &str, lang2: &str) -> DependencyType {
-        debug_assert!(!lang1.is_empty(), "lang1 must not be empty");
-        debug_assert!(!lang2.is_empty(), "lang2 must not be empty");
         match (lang1, lang2) {
             ("rust", "python") | ("python", "rust") => DependencyType::FFI,
             ("typescript", "javascript") | ("javascript", "typescript") => {

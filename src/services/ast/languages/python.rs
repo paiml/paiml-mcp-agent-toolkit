@@ -30,11 +30,6 @@ impl PythonStrategy {
 #[async_trait]
 impl AstStrategy for PythonStrategy {
     async fn analyze(&self, file_path: &Path, _classifier: &FileClassifier) -> Result<FileContext> {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         // Delegate to existing Python analysis
         // Convert TemplateError to anyhow::Error
         let context = crate::services::ast_python::analyze_python_file(file_path)
@@ -44,17 +39,14 @@ impl AstStrategy for PythonStrategy {
     }
 
     fn primary_extension(&self) -> &'static str {
-        debug_assert!(true, "contract: primary_extension");
         "py"
     }
 
     fn supported_extensions(&self) -> Vec<&'static str> {
-        debug_assert!(true, "contract: supported_extensions");
         vec!["py", "pyi", "pyw"]
     }
 
     fn language_name(&self) -> &'static str {
-        debug_assert!(true, "contract: language_name");
         "Python"
     }
 }
@@ -73,7 +65,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

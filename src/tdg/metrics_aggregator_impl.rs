@@ -108,8 +108,6 @@ impl MetricsAggregator {
 
     /// Calculate statistics from raw values
     fn calculate_stats<T>(&self, values: &[f64], data: &[DataPoint<T>]) -> AggregatedStats {
-        debug_assert!(!values.is_empty(), "values must not be empty");
-        debug_assert!(!data.is_empty(), "data must not be empty");
         let count = values.len();
         let sum: f64 = values.iter().sum();
         let mean = sum / count as f64;
@@ -158,7 +156,6 @@ impl MetricsAggregator {
 
     /// Detect trend direction in time series
     fn detect_trend(&self, values: &[f64]) -> TrendDirection {
-        debug_assert!(!values.is_empty(), "values must not be empty");
         if values.len() < 3 {
             return TrendDirection::Stable;
         }
@@ -189,8 +186,6 @@ impl MetricsAggregator {
         std_dev: f64,
         data: &[DataPoint<T>],
     ) -> Vec<AnomalyPoint> {
-        debug_assert!(!values.is_empty(), "values must not be empty");
-        debug_assert!(!data.is_empty(), "data must not be empty");
         let mut anomalies = Vec::new();
 
         for (i, value) in values.iter().enumerate() {

@@ -19,11 +19,6 @@ impl InfraScoreAggregator {
     /// Aggregate all infra scores for a repository
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn aggregate(&self, repo_path: &Path) -> anyhow::Result<InfraScore> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let start = Instant::now();
 
         // Run all 5 base scorers + 1 bonus scorer
@@ -84,7 +79,6 @@ impl InfraScoreAggregator {
         &self,
         categories: &InfraCategoryScores,
     ) -> Vec<InfraRecommendation> {
-        debug_assert!(true, "contract: generate_recommendations");
         let mut recs = Vec::new();
 
         self.recommend_from_category(&categories.workflow_architecture, &mut recs);
@@ -103,7 +97,6 @@ impl InfraScoreAggregator {
         category: &InfraCategoryScore,
         recs: &mut Vec<InfraRecommendation>,
     ) {
-        debug_assert!(true, "contract: recommend_from_category");
         for check in &category.checks {
             if !check.passed {
                 let priority = if check.max_score >= 5.0 {
@@ -131,11 +124,6 @@ impl InfraScoreAggregator {
     }
 
     fn get_git_branch(&self, repo_path: &Path) -> anyhow::Result<String> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let git_head = repo_path.join(".git/HEAD");
         if git_head.exists() {
             let content = std::fs::read_to_string(git_head)?;
@@ -147,11 +135,6 @@ impl InfraScoreAggregator {
     }
 
     fn get_git_commit(&self, repo_path: &Path) -> anyhow::Result<String> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let git_head = repo_path.join(".git/HEAD");
         if git_head.exists() {
             let content = std::fs::read_to_string(git_head)?;
@@ -179,7 +162,6 @@ impl Default for InfraScoreAggregator {
 
 /// Estimate effort based on check point value
 fn estimate_effort(max_score: f64) -> String {
-    debug_assert!(true, "contract: estimate_effort");
     if max_score >= 5.0 {
         "30 minutes".to_string()
     } else if max_score >= 3.0 {
@@ -197,11 +179,6 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_file(repo_path: &Path, relative_path: &str, content: &str) {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let file_path = repo_path.join(relative_path);
         if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent).unwrap();

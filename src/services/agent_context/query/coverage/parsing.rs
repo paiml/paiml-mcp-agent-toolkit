@@ -66,12 +66,6 @@ pub fn build_coverage_map(
     json: &str,
     project_root: &Path,
 ) -> Result<HashMap<String, HashMap<usize, u64>>, String> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
-    debug_assert!(!json.is_empty(), "json must not be empty");
     let export: LlvmCoverageExport = serde_json::from_str(json)
         .map_err(|e| format!("Failed to parse LLVM coverage JSON: {e}"))?;
 
@@ -176,11 +170,6 @@ pub(super) fn parse_lcov_to_coverage_map(
 pub(super) fn try_load_lcov_info(
     project_root: &Path,
 ) -> Option<HashMap<String, HashMap<usize, u64>>> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     let candidates = [
         project_root.join("target/coverage/lcov.info"),
         project_root.join("target/llvm-cov-target/lcov.info"),
@@ -208,11 +197,6 @@ pub(super) fn try_load_lcov_info(
 pub(super) fn try_load_coverage_json(
     project_root: &Path,
 ) -> Option<HashMap<String, HashMap<usize, u64>>> {
-    debug_assert!(
-        project_root.exists(),
-        "project_root must exist: {}",
-        project_root.display()
-    );
     let candidates = [
         project_root.join("target/coverage/coverage.json"),
         project_root.join("target/llvm-cov-target/coverage.json"),

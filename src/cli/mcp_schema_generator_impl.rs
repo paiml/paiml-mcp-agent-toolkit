@@ -20,7 +20,6 @@ impl McpSchemaGenerator {
 
     /// Generate a single tool definition from command metadata
     fn generate_tool_definition(&self, cmd: &CommandMetadata) -> Option<McpToolDefinition> {
-        debug_assert!(true, "contract: generate_tool_definition");
         let mcp = cmd.mcp.as_ref()?;
 
         Some(McpToolDefinition {
@@ -47,7 +46,6 @@ impl McpSchemaGenerator {
 
     /// Generate JSON Schema from command arguments
     fn generate_schema_from_args(&self, cmd: &CommandMetadata) -> Value {
-        debug_assert!(true, "contract: generate_schema_from_args");
         let mut properties = serde_json::Map::new();
         let mut required = Vec::new();
 
@@ -69,7 +67,6 @@ impl McpSchemaGenerator {
 
     /// Convert argument to JSON Schema property
     fn arg_to_json_schema(&self, arg: &crate::cli::registry::ArgumentMetadata) -> Value {
-        debug_assert!(true, "contract: arg_to_json_schema");
         let mut schema = serde_json::Map::new();
 
         // Type mapping
@@ -114,7 +111,6 @@ impl McpSchemaGenerator {
 
     /// Convert CLI argument name to MCP property name (kebab-case to snake_case)
     fn arg_to_property_name(&self, name: &str) -> String {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         name.replace('-', "_")
     }
 
@@ -162,7 +158,6 @@ impl McpSchemaGenerator {
 
     /// Check if JSON schema has a property
     fn schema_has_property(&self, schema: &Value, property: &str) -> bool {
-        debug_assert!(!property.is_empty(), "property must not be empty");
         schema
             .get("properties")
             .and_then(|p| p.as_object())

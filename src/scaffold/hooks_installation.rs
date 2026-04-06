@@ -5,7 +5,6 @@
 /// - Cyclomatic: 3
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn install_pre_commit_hook(project_dir: &Path, script: &str) -> Result<()> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::fs;
 
     let hook_path = project_dir.join(".git/hooks/pre-commit");
@@ -38,7 +37,6 @@ pub fn install_pre_commit_hook(project_dir: &Path, script: &str) -> Result<()> {
 /// - Cyclomatic: 2
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn install_post_commit_hook(project_dir: &Path) -> Result<()> {
-    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::fs;
 
     let hook_path = project_dir.join(".git/hooks/post-commit");

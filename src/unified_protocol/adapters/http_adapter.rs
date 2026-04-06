@@ -155,12 +155,10 @@ impl ProtocolAdapter for HttpAdapter {
     type Output = HttpOutput;
 
     fn protocol(&self) -> Protocol {
-        debug_assert!(true, "contract: protocol");
         Protocol::Http
     }
 
     async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
-        debug_assert!(true, "contract: decode");
         debug!("Decoding HTTP input");
 
         let (request, remote_addr) = match input {
@@ -228,7 +226,6 @@ impl ProtocolAdapter for HttpAdapter {
     }
 
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
-        debug_assert!(true, "contract: encode");
         debug!(status = %response.status, "Encoding HTTP response");
 
         let mut http_response = Response::builder().status(response.status);

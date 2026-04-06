@@ -10,7 +10,6 @@ fn create_test_server() -> Arc<StatelessTemplateServer> {
 }
 
 fn create_tool_request(tool_name: &str, arguments: Value) -> McpRequest {
-    debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     let params = ToolCallParams {
         name: tool_name.to_string(),
         arguments,
@@ -153,8 +152,6 @@ async fn test_toolchain_scaffolding(
 }
 
 fn create_scaffold_request(toolchain: &str, project_name: &str, description: &str) -> McpRequest {
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
-    debug_assert!(!project_name.is_empty(), "project_name must not be empty");
     create_tool_request(
         "scaffold_project",
         json!({
@@ -170,7 +167,6 @@ fn create_scaffold_request(toolchain: &str, project_name: &str, description: &st
 }
 
 fn validate_scaffold_response(response: &crate::models::mcp::McpResponse, toolchain: &str) {
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     assert!(
         response.result.is_some(),
         "Failed for toolchain: {toolchain}"
@@ -184,8 +180,6 @@ fn verify_generated_files(
     project_name: &str,
     description: &str,
 ) {
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
-    debug_assert!(!project_name.is_empty(), "project_name must not be empty");
     let mut file_flags = GeneratedFileFlags::new();
 
     for file in generated {
@@ -211,7 +205,6 @@ impl GeneratedFileFlags {
     }
 
     fn assert_all_files_present(&self, toolchain: &str) {
-        debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
         assert!(self.has_makefile, "Missing Makefile for {toolchain}");
         assert!(self.has_readme, "Missing README for {toolchain}");
         assert!(self.has_gitignore, "Missing .gitignore for {toolchain}");
@@ -225,8 +218,6 @@ fn process_generated_file(
     project_name: &str,
     description: &str,
 ) {
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
-    debug_assert!(!project_name.is_empty(), "project_name must not be empty");
     match file["template"].as_str().unwrap() {
         "makefile" => {
             flags.has_makefile = true;
@@ -245,8 +236,6 @@ fn process_generated_file(
 }
 
 fn verify_makefile(file: &Value, toolchain: &str, project_name: &str) {
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
-    debug_assert!(!project_name.is_empty(), "project_name must not be empty");
     assert_eq!(
         file["filename"].as_str().unwrap(),
         &format!("{project_name}/Makefile")
@@ -258,8 +247,6 @@ fn verify_makefile(file: &Value, toolchain: &str, project_name: &str) {
 }
 
 fn verify_makefile_toolchain_specific(content: &str, toolchain: &str) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     match toolchain {
         "rust" => assert!(content.contains("cargo")),
         "deno" => assert!(content.contains("deno")),
@@ -269,7 +256,6 @@ fn verify_makefile_toolchain_specific(content: &str, toolchain: &str) {
 }
 
 fn verify_readme(file: &Value, project_name: &str, description: &str) {
-    debug_assert!(!project_name.is_empty(), "project_name must not be empty");
     assert_eq!(
         file["filename"].as_str().unwrap(),
         &format!("{project_name}/README.md")
@@ -280,8 +266,6 @@ fn verify_readme(file: &Value, project_name: &str, description: &str) {
 }
 
 fn verify_gitignore(file: &Value, toolchain: &str, project_name: &str) {
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
-    debug_assert!(!project_name.is_empty(), "project_name must not be empty");
     assert_eq!(
         file["filename"].as_str().unwrap(),
         &format!("{project_name}/.gitignore")
@@ -292,8 +276,6 @@ fn verify_gitignore(file: &Value, toolchain: &str, project_name: &str) {
 }
 
 fn verify_gitignore_patterns(content: &str, toolchain: &str) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!toolchain.is_empty(), "toolchain must not be empty");
     match toolchain {
         "rust" => assert!(content.contains("/target/")),
         "deno" => assert!(content.contains("deno.lock")),

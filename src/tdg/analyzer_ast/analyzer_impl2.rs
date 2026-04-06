@@ -6,7 +6,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         #[cfg(feature = "ruchy-ast")]
         {
             use crate::services::languages::ruchy::analyze_ruchy_file_with_parser;
@@ -80,7 +79,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         _tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Generic tree-sitter analysis for languages without specific parsers
         // Falls back to heuristic with reduced confidence
         score.confidence *= 0.7;
@@ -93,7 +91,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         _tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Fallback heuristic analysis (mark as low confidence)
         score.confidence *= 0.3;
 

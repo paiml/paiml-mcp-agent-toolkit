@@ -21,7 +21,6 @@
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_test_dataset(size: usize) -> Vec<f64> {
-    debug_assert!(size > 0, "size must be positive");
     // Use a deterministic seed for reproducibility
     // Generate data with realistic range (avoid overflow/underflow)
     (0..size)
@@ -57,7 +56,6 @@ pub fn generate_test_dataset(size: usize) -> Vec<f64> {
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn mean_and_std(values: &[f64]) -> (f64, f64) {
-    debug_assert!(!values.is_empty(), "values must not be empty");
     use aprender::primitives::Vector;
 
     if values.is_empty() {
@@ -104,7 +102,6 @@ pub fn mean_and_std(values: &[f64]) -> (f64, f64) {
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn compute_avg(dataset: &[f64], backend: Backend) -> Result<f64> {
-    debug_assert!(!dataset.is_empty(), "dataset must not be empty");
     if dataset.is_empty() {
         return Ok(0.0);
     }
@@ -122,7 +119,6 @@ pub fn compute_avg(dataset: &[f64], backend: Backend) -> Result<f64> {
 
 /// Scalar implementation of average (baseline)
 fn compute_avg_scalar(dataset: &[f64]) -> Result<f64> {
-    debug_assert!(!dataset.is_empty(), "dataset must not be empty");
     let sum: f64 = dataset.iter().sum();
     Ok(sum / dataset.len() as f64)
 }
@@ -130,7 +126,6 @@ fn compute_avg_scalar(dataset: &[f64]) -> Result<f64> {
 /// SIMD implementation using trueno
 #[cfg(feature = "analytics-simd")]
 fn compute_avg_simd(dataset: &[f64]) -> Result<f64> {
-    debug_assert!(!dataset.is_empty(), "dataset must not be empty");
     // Scalar placeholder until trueno::simd::sum() is available
     compute_avg_scalar(dataset)
 }
@@ -138,7 +133,6 @@ fn compute_avg_simd(dataset: &[f64]) -> Result<f64> {
 /// GPU implementation using wgpu compute shaders
 #[cfg(feature = "analytics-gpu")]
 fn compute_avg_gpu(dataset: &[f64]) -> Result<f64> {
-    debug_assert!(!dataset.is_empty(), "dataset must not be empty");
     use super::gpu::GpuDevice;
 
     // Initialize GPU device (cached globally)

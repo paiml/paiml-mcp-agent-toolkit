@@ -23,7 +23,6 @@ impl TDGSeverity {
 }
 
 fn default_dead_code_weight() -> f64 {
-    debug_assert!(true, "contract: default_dead_code_weight");
     0.20
 }
 

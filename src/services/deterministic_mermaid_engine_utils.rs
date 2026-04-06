@@ -7,7 +7,6 @@ impl DeterministicMermaidEngine {
         &self,
         graph: &SimpleStableGraph<ModuleNode, EdgeType>,
     ) -> SimpleStableGraph<ModuleNode, EdgeType> {
-        debug_assert!(true, "contract: filter_to_services");
         let mut service_graph = SimpleStableGraph::new();
         let mut node_mapping = BTreeMap::new();
 
@@ -35,7 +34,6 @@ impl DeterministicMermaidEngine {
 
     /// Heuristic to determine if a module is a service
     fn is_service_module(&self, name: &str) -> bool {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         name.contains("service")
             || name.contains("handler")
             || name.contains("controller")
@@ -45,7 +43,6 @@ impl DeterministicMermaidEngine {
 
     /// Get Mermaid arrow style for edge type
     fn get_edge_arrow(&self, edge_type: &EdgeType) -> &'static str {
-        debug_assert!(true, "contract: get_edge_arrow");
         match edge_type {
             EdgeType::Calls => "-->",
             EdgeType::Imports => "-.->",
@@ -59,7 +56,6 @@ impl DeterministicMermaidEngine {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn sanitize_id(&self, id: &str) -> String {
-        debug_assert!(!id.is_empty(), "id must not be empty");
         // Replace common multi-character patterns
         let sanitized = id.replace("::", "_").replace(['/', '.', '-', ' '], "_");
 

@@ -1,6 +1,5 @@
 /// Helper function to convert a syn::Path to a string
 fn path_to_string(path: &syn::Path) -> String {
-    debug_assert!(true, "contract: path_to_string");
     path.segments
         .iter()
         .map(|seg| seg.ident.to_string())

@@ -26,7 +26,6 @@ impl HelpNlpProcessor {
 
     /// Simple tokenization - split on whitespace and punctuation
     fn tokenize(&self, text: &str) -> Vec<String> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         text.to_lowercase()
             .split(|c: char| !c.is_alphanumeric() && c != '-' && c != '_')
             .filter(|s| !s.is_empty() && s.len() > 1)
@@ -36,7 +35,6 @@ impl HelpNlpProcessor {
 
     /// Simple Porter-like stemming (suffix removal)
     fn stem(&self, word: &str) -> String {
-        debug_assert!(!word.is_empty(), "word must not be empty");
         let word = word.to_lowercase();
         // Simple suffix removal rules
         if word.ends_with("ing") && word.len() > 5 {
@@ -63,7 +61,6 @@ impl HelpNlpProcessor {
     /// Preprocess text for search (tokenize, filter, stem)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn preprocess(&self, text: &str) -> Vec<String> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         self.tokenize(text)
             .into_iter()
             .filter(|t| !self.stop_words.contains(t))
@@ -74,7 +71,6 @@ impl HelpNlpProcessor {
     /// Calculate term frequency for a document
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn term_frequency(&self, text: &str) -> HashMap<String, f64> {
-        debug_assert!(!text.is_empty(), "text must not be empty");
         let tokens = self.preprocess(text);
         let total = tokens.len() as f64;
 
@@ -94,7 +90,6 @@ impl HelpNlpProcessor {
     /// Calculate BM25 score between query and document
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn bm25_score(&self, query: &str, document: &str, k1: f64, b: f64) -> f64 {
-        debug_assert!(!query.is_empty(), "query must not be empty");
         let query_tokens = self.preprocess(query);
         let doc_tf = self.term_frequency(document);
         let avg_dl = 100.0; // Approximate average document length

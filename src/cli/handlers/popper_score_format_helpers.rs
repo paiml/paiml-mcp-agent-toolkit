@@ -9,7 +9,6 @@ fn popper_category_entries(
     &crate::services::popper_score::PopperCategoryScore,
     bool,
 ); 6] {
-    debug_assert!(true, "contract: popper_category_entries");
     [
         (
             "A. Falsifiability & Testability",
@@ -46,7 +45,6 @@ fn popper_category_entries(
 
 /// Return the status icon for a percentage score
 fn percentage_icon(percentage: f64) -> &'static str {
-    debug_assert!(true, "contract: percentage_icon");
     if percentage >= 80.0 {
         "✅"
     } else if percentage >= 60.0 {
@@ -60,7 +58,6 @@ fn percentage_icon(percentage: f64) -> &'static str {
 fn priority_icon_text(
     priority: &crate::services::popper_score::RecommendationPriority,
 ) -> &'static str {
-    debug_assert!(true, "contract: priority_icon_text");
     match priority {
         crate::services::popper_score::RecommendationPriority::Critical => "🔴",
         crate::services::popper_score::RecommendationPriority::High => "🟠",
@@ -73,7 +70,6 @@ fn priority_icon_text(
 fn priority_label_markdown(
     priority: &crate::services::popper_score::RecommendationPriority,
 ) -> &'static str {
-    debug_assert!(true, "contract: priority_label_markdown");
     match priority {
         crate::services::popper_score::RecommendationPriority::Critical => "🔴 Critical",
         crate::services::popper_score::RecommendationPriority::High => "🟠 High",

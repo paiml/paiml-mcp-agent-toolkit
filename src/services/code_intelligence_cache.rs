@@ -29,7 +29,6 @@ impl UnifiedCache {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(capacity: usize) -> Self {
-        debug_assert!(capacity > 0, "capacity must be positive");
         // Default to capacity 1 if 0 is provided (NonZeroUsize requirement)
         let capacity = std::num::NonZeroUsize::new(capacity)
             .unwrap_or(std::num::NonZeroUsize::new(1).expect("1 is non-zero (const)"));
@@ -86,7 +85,6 @@ impl UnifiedCache {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get(&self, key: &str) -> Option<AnalysisReport> {
-        debug_assert!(!key.is_empty(), "key must not be empty");
         self.cache.read().await.peek(key).cloned()
     }
 

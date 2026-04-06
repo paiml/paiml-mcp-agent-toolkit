@@ -5,7 +5,6 @@ async fn handle_comply_prompt(
     roadmap: Option<&PathBuf>,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(!min_grade.is_empty(), "min_grade must not be empty");
     let mut vars = HashMap::new();
     vars.insert(
         "MIN_GRADE".to_string(),
@@ -44,7 +43,6 @@ async fn handle_book_prompt(
     min_pass_rate: u8,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(!book_type.is_empty(), "book_type must not be empty");
     let mut vars = HashMap::new();
 
     if let Some(t) = title {
@@ -83,7 +81,6 @@ async fn handle_repo_image_prompt(
     course_series: bool,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(!github_org.is_empty(), "github_org must not be empty");
     let mut vars = HashMap::new();
 
     if let Some(name) = repo_name {
@@ -133,9 +130,6 @@ async fn handle_github_issue_prompt(
     build_cmd: &str,
     output: &Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(!issue.is_empty(), "issue must not be empty");
-    debug_assert!(!test_cmd.is_empty(), "test_cmd must not be empty");
-    debug_assert!(!build_cmd.is_empty(), "build_cmd must not be empty");
     let mut vars = HashMap::new();
 
     // Determine if issue is a URL or number

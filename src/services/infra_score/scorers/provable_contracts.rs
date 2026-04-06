@@ -37,11 +37,6 @@ impl InfraScorer for ProvableContractsScorer {
     }
 
     async fn score(&self, repo_path: &Path) -> anyhow::Result<InfraCategoryScore> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let contracts_dir = repo_path.join("contracts");
         let mut checks = Vec::new();
         let mut findings = Vec::new();
@@ -148,11 +143,6 @@ impl InfraScorer for ProvableContractsScorer {
 
 /// PV-04: Check contracts/ directory exists with YAML files (recursive)
 fn check_contracts_exist(contracts_dir: &Path) -> InfraCheck {
-    debug_assert!(
-        contracts_dir.exists(),
-        "contracts_dir must exist: {}",
-        contracts_dir.display()
-    );
     if !contracts_dir.exists() {
         return InfraCheck::fail(
             "PV-04",
@@ -183,21 +173,18 @@ fn check_contracts_exist(contracts_dir: &Path) -> InfraCheck {
 
 /// Check whether a path has a YAML extension (.yaml or .yml).
 fn is_yaml_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.extension()
         .is_some_and(|ext| ext == "yaml" || ext == "yml")
 }
 
 /// Check whether a filename indicates a binding file (excluded from contract counts).
 fn is_binding_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.file_name()
         .is_some_and(|n| n.to_string_lossy().contains("binding"))
 }
 
 /// Check whether file content contains provable-contracts schema markers.
 fn has_contract_markers(content: &str) -> bool {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     const MARKERS: &[&str] = &[
         "proof_obligations",
         "equations:",
@@ -209,7 +196,6 @@ fn has_contract_markers(content: &str) -> bool {
 
 /// Check whether a single file is a valid provable-contract YAML.
 fn is_provable_contract_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !is_yaml_file(path) || is_binding_file(path) {
         return false;
     }
@@ -221,7 +207,6 @@ fn is_provable_contract_file(path: &Path) -> bool {
 /// Recursively count provable-contract YAML files in a directory tree.
 /// Excludes binding files and non-contract YAMLs (matching CB-1200 logic).
 fn count_yaml_files_recursive(dir: &Path) -> usize {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return 0,
@@ -244,11 +229,6 @@ fn count_yaml_files_recursive(dir: &Path) -> usize {
 
 /// PV-01: Run pv lint (via CLI if available, else check YAML structure)
 async fn check_pv_lint(contracts_dir: &Path) -> InfraCheck {
-    debug_assert!(
-        contracts_dir.exists(),
-        "contracts_dir must exist: {}",
-        contracts_dir.display()
-    );
     // Try running pv lint
     let output = tokio::process::Command::new("pv")
         .args(["lint", &contracts_dir.to_string_lossy(), "--quiet"])
@@ -298,11 +278,6 @@ async fn check_pv_lint(contracts_dir: &Path) -> InfraCheck {
 
 /// PV-02: Run pv score (via CLI if available)
 async fn check_pv_score(contracts_dir: &Path) -> InfraCheck {
-    debug_assert!(
-        contracts_dir.exists(),
-        "contracts_dir must exist: {}",
-        contracts_dir.display()
-    );
     let output = tokio::process::Command::new("pv")
         .args([
             "score",
@@ -345,11 +320,6 @@ async fn check_pv_score(contracts_dir: &Path) -> InfraCheck {
 
 /// PV-03: Check proof status for L2+ contracts
 async fn check_proof_level(contracts_dir: &Path) -> InfraCheck {
-    debug_assert!(
-        contracts_dir.exists(),
-        "contracts_dir must exist: {}",
-        contracts_dir.display()
-    );
     let output = tokio::process::Command::new("pv")
         .args([
             "proof-status",
@@ -406,11 +376,6 @@ async fn check_proof_level(contracts_dir: &Path) -> InfraCheck {
 
 /// PV-05: Check enforcement quality via `pv coverage --enforcement`
 async fn check_enforcement(repo_path: &Path) -> InfraCheck {
-    debug_assert!(
-        repo_path.exists(),
-        "repo_path must exist: {}",
-        repo_path.display()
-    );
     // Find binding.yaml
     let canonical = std::fs::canonicalize(repo_path).unwrap_or_else(|_| repo_path.to_path_buf());
     let project_name = canonical.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -497,7 +462,6 @@ fn parse_enforcement_metric(output: &str, level: &str) -> usize {
 
 /// Check whether a single YAML file has basic contract structure (name + equations/obligations).
 fn has_basic_contract_structure(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !is_yaml_file(path) {
         return false;
     }
@@ -511,11 +475,6 @@ fn has_basic_contract_structure(path: &Path) -> bool {
 
 /// Fallback: check YAML files have basic contract structure
 fn check_yaml_structure(contracts_dir: &Path) -> bool {
-    debug_assert!(
-        contracts_dir.exists(),
-        "contracts_dir must exist: {}",
-        contracts_dir.display()
-    );
     let entries = match std::fs::read_dir(contracts_dir) {
         Ok(e) => e,
         Err(_) => return false,

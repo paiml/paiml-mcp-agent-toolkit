@@ -37,11 +37,6 @@ impl Scorer for ReadmeScorer {
     }
 
     async fn score(&self, repo_path: &Path, _config: &ScorerConfig) -> Result<CategoryScore> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let a1 = self.score_accuracy(repo_path).await?;
         let a2 = self.score_comprehensiveness(repo_path).await?;
         let a3 = self.score_professional_structure(repo_path).await?;

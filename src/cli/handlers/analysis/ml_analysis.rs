@@ -24,7 +24,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
@@ -46,7 +45,6 @@ mod unit_tests {
     #[test]
     fn test_module_exports_handler() {
         fn _verify_export() {
-            debug_assert!(true, "contract: _verify_export");
             let _defect_prediction: fn(AnalyzeCommands) -> _ = handle_defect_prediction;
         }
     }
@@ -55,7 +53,6 @@ mod unit_tests {
     #[test]
     fn test_result_type_compatibility() {
         fn _check_result_type() -> Result<()> {
-            debug_assert!(true, "contract: _check_result_type");
             Ok(())
         }
         assert!(_check_result_type().is_ok());
@@ -65,7 +62,6 @@ mod unit_tests {
     #[test]
     fn test_handler_is_async() {
         fn _verify_async_nature() {
-            debug_assert!(true, "contract: _verify_async_nature");
             // handle_defect_prediction is async - verified at compile time
         }
     }

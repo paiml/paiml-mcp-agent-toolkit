@@ -3,17 +3,14 @@
 
 impl TreeSitterMutationOperator for PythonLogicalOpMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "PythonLogicalOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         node.kind() == "boolean_operator"
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         // Find logical operator child node
         let mut cursor = node.walk();
         let mut operator_node = None;
@@ -65,19 +62,16 @@ impl TreeSitterMutationOperator for PythonLogicalOpMutation {
     }
 
     fn kill_probability(&self) -> f64 {
-        debug_assert!(true, "contract: kill_probability");
         0.80 // Logical mutations are usually caught
     }
 }
 
 impl TreeSitterMutationOperator for PythonIdentityOpMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "PythonIdentityOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         if node.kind() != "comparison_operator" {
             return false;
         }
@@ -93,7 +87,6 @@ impl TreeSitterMutationOperator for PythonIdentityOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         // In Python, "is not" is represented as two separate nodes: "is" and "not"
         // We need to handle both "is" and "is not" cases
         let mut cursor = node.walk();
@@ -125,7 +118,6 @@ fn mutate_is_not_to_alternatives(
     is_n: &Node,
     not_n: &Node,
 ) -> Vec<MutatedSource> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut mutations = Vec::new();
     let start = is_n.start_byte();
     let end = not_n.end_byte();
@@ -167,7 +159,6 @@ fn mutate_is_not_to_alternatives(
 
 /// Mutate "is" to "is not" and "=="
 fn mutate_is_to_alternatives(source: &[u8], is_n: &Node) -> Vec<MutatedSource> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     vec![
         MutatedSource {
             source: {
@@ -206,12 +197,10 @@ fn mutate_is_to_alternatives(source: &[u8], is_n: &Node) -> Vec<MutatedSource> {
 
 impl TreeSitterMutationOperator for PythonMembershipOpMutation {
     fn name(&self) -> &str {
-        debug_assert!(true, "contract: name");
         "PythonMembershipOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
-        debug_assert!(true, "contract: can_mutate");
         if node.kind() != "comparison_operator" {
             return false;
         }
@@ -232,7 +221,6 @@ impl TreeSitterMutationOperator for PythonMembershipOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
-        debug_assert!(true, "contract: mutate");
         // In Python, "not in" is represented as two separate nodes: "not" and "in"
         // We need to handle both "in" and "not in" cases
         let mut cursor = node.walk();
@@ -264,7 +252,6 @@ fn mutate_not_in_to_in(
     in_n: &Node,
     not_n: &Node,
 ) -> Vec<MutatedSource> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let start = not_n.start_byte();
     let end = in_n.end_byte();
     let mut mutated = source.to_vec();
@@ -285,7 +272,6 @@ fn mutate_not_in_to_in(
 
 /// Mutate "in" to "not in"
 fn mutate_in_to_not_in(source: &[u8], in_n: &Node) -> Vec<MutatedSource> {
-    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut mutated = source.to_vec();
     mutated.splice(in_n.byte_range(), b"not in".iter().copied());
     vec![MutatedSource {

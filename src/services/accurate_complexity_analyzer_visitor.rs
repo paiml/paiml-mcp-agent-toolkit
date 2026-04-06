@@ -19,18 +19,15 @@ impl ComplexityVisitor {
     }
 
     fn with_function_name(mut self, name: String) -> Self {
-        debug_assert!(true, "contract: with_function_name");
         self.function_name = Some(name);
         self
     }
 
     fn add_cyclomatic(&mut self, amount: u32) {
-        debug_assert!(true, "contract: add_cyclomatic");
         self.cyclomatic += amount;
     }
 
     fn add_cognitive(&mut self, base: u32) {
-        debug_assert!(true, "contract: add_cognitive");
         // Add base cognitive complexity plus nesting penalty
         // According to SonarSource spec, nesting adds extra cognitive load
         self.cognitive += base + self.nesting_level;
@@ -39,7 +36,6 @@ impl ComplexityVisitor {
 
 impl ComplexityVisitor {
     fn visit_if_expr(&mut self, if_expr: &syn::ExprIf) {
-        debug_assert!(true, "contract: visit_if_expr");
         self.add_cyclomatic(1);
         self.add_cognitive(1);
 
@@ -56,7 +52,6 @@ impl ComplexityVisitor {
     }
 
     fn visit_else_branch(&mut self, else_expr: &Expr) {
-        debug_assert!(true, "contract: visit_else_branch");
         match else_expr {
             Expr::If(_) => self.visit_expr(else_expr),
             _ => {
@@ -68,7 +63,6 @@ impl ComplexityVisitor {
     }
 
     fn visit_match_expr(&mut self, match_expr: &syn::ExprMatch) {
-        debug_assert!(true, "contract: visit_match_expr");
         self.add_cyclomatic(1);
         self.add_cognitive(1);
         self.visit_expr(&match_expr.expr);
@@ -89,7 +83,6 @@ impl ComplexityVisitor {
     }
 
     fn visit_loop_body_stmts(&mut self, stmts: &[Stmt]) {
-        debug_assert!(!stmts.is_empty(), "stmts must not be empty");
         self.add_cyclomatic(1);
         self.add_cognitive(1);
         self.nesting_level += 1;
@@ -100,7 +93,6 @@ impl ComplexityVisitor {
     }
 
     fn check_recursive_call(&mut self, call: &syn::ExprCall) {
-        debug_assert!(true, "contract: check_recursive_call");
         let is_recursive = matches!(
             call.func.as_ref(),
             Expr::Path(path) if path.path.segments.last()
@@ -115,7 +107,6 @@ impl ComplexityVisitor {
 
 impl<'ast> Visit<'ast> for ComplexityVisitor {
     fn visit_expr(&mut self, expr: &'ast Expr) {
-        debug_assert!(true, "contract: visit_expr");
         match expr {
             Expr::If(if_expr) => self.visit_if_expr(if_expr),
             Expr::Match(match_expr) => self.visit_match_expr(match_expr),
@@ -160,7 +151,6 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
     }
 
     fn visit_stmt(&mut self, stmt: &'ast Stmt) {
-        debug_assert!(true, "contract: visit_stmt");
         syn::visit::visit_stmt(self, stmt);
     }
 }

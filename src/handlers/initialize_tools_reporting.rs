@@ -1,6 +1,5 @@
 /// Reporting, SATD, and lint hotspot tool definitions.
 fn reporting_tool_definitions() -> Vec<serde_json::Value> {
-    debug_assert!(true, "contract: reporting_tool_definitions");
     vec![
         json!({
             "name": "generate_enhanced_report",

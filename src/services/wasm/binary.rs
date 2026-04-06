@@ -42,11 +42,6 @@ impl WasmBinaryAnalyzer {
     /// Analyze a WebAssembly binary file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_file(&self, file_path: &Path) -> Result<WasmMetrics> {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         let content = tokio::fs::read(file_path).await?;
 
         if content.len() > self.max_file_size {
@@ -73,7 +68,6 @@ impl WasmBinaryAnalyzer {
     /// Analyze raw WASM bytes
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_bytes(&self, data: &[u8]) -> Result<WasmAnalysis> {
-        debug_assert!(!data.is_empty(), "WASM data must not be empty");
         // Check minimum size and magic bytes
         if data.len() < 8 {
             return Err(anyhow::anyhow!("File too small to be valid WASM"));
@@ -321,7 +315,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

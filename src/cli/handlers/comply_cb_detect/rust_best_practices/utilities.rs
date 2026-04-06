@@ -54,7 +54,6 @@ pub(super) fn walkdir_files_with_ext(
     dir: &Path,
     ext: &str,
 ) -> Result<Vec<std::path::PathBuf>, std::io::Error> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;

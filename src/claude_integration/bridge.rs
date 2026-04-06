@@ -117,7 +117,6 @@ impl ClaudeBridge {
     /// Analyze code content with caching
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_code(&self, content: &str) -> Result<AnalysisResult, BridgeError> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Check cache if enabled
         if self.config.enable_cache {
             let result = self
@@ -138,7 +137,6 @@ impl ClaudeBridge {
 
     /// Internal analysis without cache
     async fn analyze_code_internal(&self, content: &str) -> Result<AnalysisResult, BridgeError> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Acquire connection from pool
         let _conn = self.pool.clone().acquire().await.map_err(|e| {
             BridgeError::new(ErrorCode::PoolExhausted, format!("Pool error: {}", e))
@@ -186,7 +184,6 @@ impl ClaudeBridge {
     /// Spawn bridge process
     #[allow(dead_code)]
     async fn spawn_bridge_process(&self) -> Result<BridgeProcess, BridgeError> {
-        debug_assert!(true, "contract: spawn_bridge_process");
         // Always use tokio::process for consistency
         let mut child = tokio::process::Command::new("node")
             .arg(&self.config.bridge_path)
@@ -238,7 +235,6 @@ struct BridgeProcess {
 
 // Helper functions for mock analysis
 fn estimate_complexity(content: &str) -> u32 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // Simple heuristic: count control flow keywords
     let keywords = ["if", "for", "while", "match", "loop"];
     let mut complexity = 1; // Base complexity
@@ -251,19 +247,16 @@ fn estimate_complexity(content: &str) -> u32 {
 }
 
 fn estimate_cognitive_complexity(content: &str) -> u32 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     // Simplified cognitive complexity estimation
     (estimate_complexity(content) as f32 * 0.7) as u32
 }
 
 fn count_satd(content: &str) -> usize {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let patterns = ["TODO", "FIXME", "HACK", "XXX"];
     patterns.iter().map(|p| content.matches(p).count()).sum()
 }
 
 fn calculate_hash(content: &str) -> u64 {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     use std::collections::hash_map::DefaultHasher;
     use std::hash::Hasher;
 

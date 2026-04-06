@@ -11,7 +11,6 @@ async fn analyze_file_complexity_async(
     _cyclomatic_threshold: u16,
     _cognitive_threshold: u16,
 ) -> Result<crate::services::complexity::FileComplexityMetrics> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     crate::cli::language_analyzer::analyze_file_complexity(path, _content).await
 }
 */
@@ -25,7 +24,6 @@ async fn analyze_file_complexity_async(
 // Replace the format_defect_full function body with:
 /*
 fn format_defect_full(report: &DefectPredictionReport, top_files: usize) -> Result<String> {
-    debug_assert!(true, "contract: format_defect_full");
     crate::cli::defect_formatter::format_defect_report(report, "full", top_files)
 }
 */
@@ -33,7 +31,6 @@ fn format_defect_full(report: &DefectPredictionReport, top_files: usize) -> Resu
 // Replace the format_defect_sarif function body with:
 /*
 fn format_defect_sarif(report: &DefectPredictionReport) -> Result<String> {
-    debug_assert!(true, "contract: format_defect_sarif");
     crate::cli::defect_formatter::format_defect_report(report, "sarif", 0)
 }
 */
@@ -79,7 +76,6 @@ mod property_tests {
 
         #[test] 
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

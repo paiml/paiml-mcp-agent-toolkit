@@ -24,7 +24,6 @@ impl<'a> LuaComplexityVisitor<'a> {
     }
 
     fn analyze_tree(&mut self, tree: &tree_sitter::Tree) {
-        debug_assert!(true, "contract: analyze_tree");
         // Count comment lines via simple scan (comments aren't always visited as nodes)
         for line in self.source.lines() {
             let trimmed = line.trim();
@@ -37,7 +36,6 @@ impl<'a> LuaComplexityVisitor<'a> {
     }
 
     fn visit_node(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_node");
         match node.kind() {
             "function_declaration" | "function_definition" => self.visit_function_decl(node),
             "if_statement" | "for_statement" | "while_statement" | "repeat_statement" => {
@@ -52,7 +50,6 @@ impl<'a> LuaComplexityVisitor<'a> {
 
     #[allow(clippy::cast_possible_truncation)]
     fn visit_function_decl(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_function_decl");
         self.total_functions += 1;
         self.current_nesting_depth += 1;
         self.max_nesting_depth = self.max_nesting_depth.max(self.current_nesting_depth);
@@ -74,7 +71,6 @@ impl<'a> LuaComplexityVisitor<'a> {
 
     #[allow(clippy::cast_possible_truncation)]
     fn visit_nesting_control_flow(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_nesting_control_flow");
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
         self.current_nesting_depth += 1;
@@ -85,14 +81,12 @@ impl<'a> LuaComplexityVisitor<'a> {
 
     #[allow(clippy::cast_possible_truncation)]
     fn visit_flat_control_flow(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_flat_control_flow");
         self.cyclomatic_complexity += 1;
         self.cognitive_complexity += 1 + self.current_nesting_depth as u32;
         self.visit_children(node);
     }
 
     fn visit_binary_expr(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_binary_expr");
         for child in node.children(&mut node.walk()) {
             if child.kind() == "and" || child.kind() == "or" {
                 self.cyclomatic_complexity += 1;
@@ -102,7 +96,6 @@ impl<'a> LuaComplexityVisitor<'a> {
     }
 
     fn visit_function_call(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_function_call");
         self.external_calls += 1;
         let call_text = &self.source[node.byte_range()];
         if call_text.starts_with("require") {
@@ -115,7 +108,6 @@ impl<'a> LuaComplexityVisitor<'a> {
     }
 
     fn visit_children(&mut self, node: &tree_sitter::Node) {
-        debug_assert!(true, "contract: visit_children");
         for child in node.children(&mut node.walk()) {
             self.visit_node(&child);
         }

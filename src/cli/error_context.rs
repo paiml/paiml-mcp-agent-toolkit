@@ -76,11 +76,6 @@ impl ContextError {
 ///
 /// CC=2: Conditional suggestions
 fn format_file_not_found(file_path: &Path, suggestions: &[String]) -> String {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     let mut msg = format!(
         "ERROR: Failed to read {}\n  Location: {}\n  Reason: File not found",
         file_path.file_name().unwrap_or_default().to_string_lossy(),
@@ -101,11 +96,6 @@ fn format_file_not_found(file_path: &Path, suggestions: &[String]) -> String {
 ///
 /// CC=2: Conditional suggestions
 fn format_file_write_error(file_path: &Path, reason: &str, suggestions: &[String]) -> String {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     let mut msg = format!(
         "ERROR: Failed to write {}\n  Location: {}\n  Reason: {}",
         file_path.file_name().unwrap_or_default().to_string_lossy(),
@@ -127,11 +117,6 @@ fn format_file_write_error(file_path: &Path, reason: &str, suggestions: &[String
 ///
 /// CC=2: Conditional suggestions
 fn format_parse_error(file_path: &Path, reason: &str, suggestions: &[String]) -> String {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     let mut msg = format!(
         "ERROR: Failed to parse {}\n  Location: {}\n  Reason: {}",
         file_path.file_name().unwrap_or_default().to_string_lossy(),
@@ -158,11 +143,6 @@ fn format_config_error(
     reason: &str,
     suggestions: &[String],
 ) -> String {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     let mut msg = format!(
         "ERROR: Invalid configuration in {}\n  Location: {}\n  Field: {}\n  Reason: {}",
         file_path.file_name().unwrap_or_default().to_string_lossy(),
@@ -186,7 +166,6 @@ fn format_config_error(
 /// CC=1: Simple constructor
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn roadmap_not_found(path: &Path) -> ContextError {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     ContextError::FileNotFound {
         file_path: path.to_path_buf(),
         suggestions: vec![
@@ -202,7 +181,6 @@ pub fn roadmap_not_found(path: &Path) -> ContextError {
 /// CC=1: Simple constructor
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn cargo_toml_not_found(path: &Path) -> ContextError {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     ContextError::FileNotFound {
         file_path: path.to_path_buf(),
         suggestions: vec![
@@ -218,7 +196,6 @@ pub fn cargo_toml_not_found(path: &Path) -> ContextError {
 /// CC=1: Simple constructor
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn file_not_found(path: &Path) -> ContextError {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     ContextError::FileNotFound {
         file_path: path.to_path_buf(),
         suggestions: vec![

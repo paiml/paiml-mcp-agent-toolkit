@@ -4,7 +4,6 @@
 
     /// Create a function AstItem for testing
     fn create_function(name: &str, line: usize) -> AstItem {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         AstItem::Function {
             name: name.to_string(),
             visibility: "pub".to_string(),
@@ -15,7 +14,6 @@
 
     /// Create an async function AstItem for testing
     fn create_async_function(name: &str, line: usize) -> AstItem {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         AstItem::Function {
             name: name.to_string(),
             visibility: "pub".to_string(),
@@ -26,7 +24,6 @@
 
     /// Create a struct AstItem for testing
     fn create_struct(name: &str, line: usize) -> AstItem {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         AstItem::Struct {
             name: name.to_string(),
             visibility: "pub".to_string(),
@@ -38,7 +35,6 @@
 
     /// Create a private function AstItem for testing
     fn create_private_function(name: &str, line: usize) -> AstItem {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         AstItem::Function {
             name: name.to_string(),
             visibility: "".to_string(),
@@ -49,7 +45,6 @@
 
     /// Build a simple call graph for testing
     fn build_simple_call_graph() -> ProjectContextGraph {
-        debug_assert!(true, "contract: build_simple_call_graph");
         let mut graph = ProjectContextGraph::new();
 
         graph
@@ -71,7 +66,6 @@
 
     /// Build a larger graph with multiple components
     fn build_complex_graph() -> ProjectContextGraph {
-        debug_assert!(true, "contract: build_complex_graph");
         let mut graph = ProjectContextGraph::new();
 
         // Component 1: Main entry points

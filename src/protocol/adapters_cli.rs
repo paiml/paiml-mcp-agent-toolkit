@@ -7,7 +7,6 @@ impl ProtocolAdapter for CliAdapter {
     type Response = CliResponse;
 
     fn decode(&self, raw: &[u8]) -> Result<UnifiedRequest, ProtocolError> {
-        debug_assert!(!raw.is_empty(), "raw must not be empty");
         let cli_request: CliRequest = serde_json::from_slice(raw)?;
 
         let command = cli_request.command.clone();
@@ -43,7 +42,6 @@ impl ProtocolAdapter for CliAdapter {
     }
 
     fn encode(&self, response: UnifiedResponse) -> Result<Vec<u8>, ProtocolError> {
-        debug_assert!(true, "contract: encode");
         let cli_response = CliResponse {
             success: response.error.is_none(),
             result: response.result,
@@ -54,7 +52,6 @@ impl ProtocolAdapter for CliAdapter {
     }
 
     async fn handle(&self, _request: Self::Request) -> Self::Response {
-        debug_assert!(true, "contract: handle");
         // This would be implemented to process the request
         // For now, return a placeholder response
         CliResponse {

@@ -116,7 +116,6 @@ pub fn print_text_report(report: &DefectReport) {
 }
 
 fn print_defect_pattern(defect: &DefectPattern) {
-    debug_assert!(true, "contract: print_defect_pattern");
     let severity_color = match defect.severity {
         Severity::Critical => colors::RED,
         Severity::High => colors::BOLD_RED,

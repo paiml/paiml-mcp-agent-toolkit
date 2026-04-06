@@ -29,7 +29,6 @@ impl SimdWidth {
     /// Typical speedup factor (from trueno-zram measurements)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_speedup(&self) -> f64 {
-        // Contract: compute_speedup returns a bounded score
         let result = match self {
             SimdWidth::Scalar => 1.0,
             SimdWidth::Neon128 | SimdWidth::Sse2 | SimdWidth::WasmSimd128 => 4.0,
@@ -216,7 +215,6 @@ pub fn scale_budgets_for_hardware(
     base_budgets: &[BrickBudget],
     hardware: &HardwareCapability,
 ) -> Vec<BrickBudget> {
-    debug_assert!(!base_budgets.is_empty(), "base_budgets must not be empty");
     // Scale factor based on SIMD speedup
     let simd_factor = hardware.cpu.simd.compute_speedup();
 

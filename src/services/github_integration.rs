@@ -152,7 +152,6 @@ impl GitHubClient {
     /// Fetch a GitHub issue from a URL
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn fetch_issue(&self, url: &str) -> Result<GitHubIssue> {
-        debug_assert!(!url.is_empty(), "url must not be empty");
         let (owner, repo, issue_number) = Self::parse_issue_url(url)?;
 
         info!(
@@ -181,7 +180,6 @@ impl GitHubClient {
 
     /// Parse a GitHub issue URL to extract owner, repo, and issue number
     fn parse_issue_url(url: &str) -> Result<(String, String, u64)> {
-        debug_assert!(!url.is_empty(), "url must not be empty");
         let re = Regex::new(r"github\.com/([^/]+)/([^/]+)/issues/(\d+)")?;
 
         let captures = re
@@ -251,7 +249,6 @@ pub fn parse_issue(issue: GitHubIssue) -> ParsedIssue {
 
 /// Extract file paths from issue text
 fn extract_file_paths(text: &str) -> Vec<String> {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     let mut paths = HashSet::new();
 
     // Match common file path patterns
@@ -291,7 +288,6 @@ fn extract_file_paths(text: &str) -> Vec<String> {
 
 /// Extract keywords and assign weights based on predefined mappings
 fn extract_keywords(text: &str, keywords: &mut HashMap<String, f32>) {
-    debug_assert!(!text.is_empty(), "text must not be empty");
     let text_lower = text.to_lowercase();
 
     for (keyword_list, category, weight) in KEYWORD_MAPPINGS {
@@ -326,7 +322,6 @@ fn extract_keywords(text: &str, keywords: &mut HashMap<String, f32>) {
 
 /// Generate a concise summary of the issue
 fn generate_summary(issue: &GitHubIssue) -> String {
-    debug_assert!(true, "contract: generate_summary");
     let body = issue
         .body
         .as_ref()
@@ -406,7 +401,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

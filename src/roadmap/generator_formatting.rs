@@ -6,7 +6,6 @@ impl RoadmapTodoGenerator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_todos_as_markdown(&self, todos: &[QualityEnforcedTodo]) -> String {
-        debug_assert!(!todos.is_empty(), "todos must not be empty");
         let mut output = String::new();
         output.push_str("# Quality-Enforced Todo List\n\n");
 
@@ -88,7 +87,6 @@ impl RoadmapTodoGenerator {
         pdmt_todo: &PdmtTodo,
         index: usize,
     ) -> Result<QualityEnforcedTodo> {
-        debug_assert!(true, "contract: enhance_with_quality");
         let mut success_criteria = pdmt_todo.success_criteria.clone();
 
         // Create validation commands list
@@ -155,7 +153,6 @@ impl RoadmapTodoGenerator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn export_todos_markdown(&self, todos: &[QualityEnforcedTodo]) -> String {
-        debug_assert!(!todos.is_empty(), "todos must not be empty");
         let mut output = String::new();
 
         output.push_str("# Sprint Todos (PDMT Generated)\n\n");

@@ -55,7 +55,6 @@ impl LshIndex {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(num_bands: usize, rows_per_band: usize) -> Self {
-        debug_assert!(num_bands > 0, "num_bands must be positive");
         let buckets = (0..num_bands).map(|_| HashMap::new()).collect();
         Self {
             bands: num_bands,
@@ -126,7 +125,6 @@ impl LshIndex {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_similar(&self, query: &MinHashSignature, threshold: f64) -> Vec<(FragmentId, f64)> {
-        debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         let candidates = self.query(query);
 
         candidates
@@ -164,7 +162,6 @@ impl LshIndex {
 
     /// Hash a band of MinHash values
     fn hash_band(&self, band: &[u64]) -> u64 {
-        debug_assert!(true, "contract: hash_band");
         let mut hasher = Hasher::new();
         for &val in band {
             hasher.update(&val.to_le_bytes());

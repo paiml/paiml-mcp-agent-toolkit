@@ -25,7 +25,6 @@ impl ProgressBar {
     /// Create a new progress bar with specified width
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(width: usize) -> Self {
-        debug_assert!(width > 0, "width must be positive");
         ProgressBar {
             width,
             ..Default::default()
@@ -118,7 +117,6 @@ impl Sparkline {
     /// Render sparkline from normalized values (0-7)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render(&self, values: &[u8]) -> String {
-        debug_assert!(!values.is_empty(), "values must not be empty");
         values
             .iter()
             .map(|&v| self.chars[(v.min(7)) as usize])
@@ -128,7 +126,6 @@ impl Sparkline {
     /// Render sparkline from raw f64 values (auto-normalize)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_auto(&self, values: &[f64]) -> String {
-        debug_assert!(!values.is_empty(), "values must not be empty");
         if values.is_empty() {
             return String::new();
         }
@@ -152,7 +149,6 @@ impl Sparkline {
     /// Render sparkline with trend indicator
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_with_trend(&self, values: &[f64]) -> String {
-        debug_assert!(!values.is_empty(), "values must not be empty");
         let sparkline = self.render_auto(values);
         let direction = Self::detect_trend(values);
         format!("{} {}", sparkline, direction.arrow())
@@ -160,7 +156,6 @@ impl Sparkline {
 
     /// Detect trend direction from values
     fn detect_trend(values: &[f64]) -> TrendDirection {
-        debug_assert!(!values.is_empty(), "values must not be empty");
         if values.len() < 2 {
             return TrendDirection::Stable;
         }

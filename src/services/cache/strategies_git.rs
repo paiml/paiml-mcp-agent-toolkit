@@ -58,14 +58,12 @@ impl CacheStrategy for ChurnCacheStrategy {
     type Value = CodeChurnAnalysis;
 
     fn cache_key(&self, (repo, period_days): &(PathBuf, u32)) -> String {
-        debug_assert!(true, "contract: cache_key");
         // Include HEAD commit SHA for invalidation
         let head = self.get_git_head(repo).unwrap_or_default();
         format!("churn:{}:{}:{}", repo.display(), period_days, head)
     }
 
     fn validate(&self, (repo, _): &(PathBuf, u32), _cached: &CodeChurnAnalysis) -> bool {
-        debug_assert!(true, "contract: validate");
         // Check if HEAD has moved
         if let Some(_current_head) = self.get_git_head(repo) {
             // The cache key includes the HEAD commit, so if we get here
@@ -87,7 +85,6 @@ impl CacheStrategy for ChurnCacheStrategy {
 
 impl ChurnCacheStrategy {
     fn get_git_head(&self, repo: &PathBuf) -> Option<String> {
-        debug_assert!(repo.exists(), "repo must exist: {}", repo.display());
         std::process::Command::new("git")
             .args(["rev-parse", "HEAD"])
             .current_dir(repo)
@@ -144,7 +141,6 @@ impl CacheStrategy for GitStatsCacheStrategy {
     type Value = GitStats;
 
     fn cache_key(&self, repo: &PathBuf) -> String {
-        debug_assert!(repo.exists(), "repo must exist: {}", repo.display());
         let branch = self
             .get_current_branch(repo)
             .unwrap_or_else(|| "unknown".to_string());
@@ -152,7 +148,6 @@ impl CacheStrategy for GitStatsCacheStrategy {
     }
 
     fn validate(&self, repo: &PathBuf, cached: &GitStats) -> bool {
-        debug_assert!(repo.exists(), "repo must exist: {}", repo.display());
         // Check if HEAD is still the same
         self.get_git_head(repo)
             .is_some_and(|head| head == cached.head_commit)
@@ -169,7 +164,6 @@ impl CacheStrategy for GitStatsCacheStrategy {
 
 impl GitStatsCacheStrategy {
     fn get_current_branch(&self, repo: &PathBuf) -> Option<String> {
-        debug_assert!(repo.exists(), "repo must exist: {}", repo.display());
         std::process::Command::new("git")
             .args(["rev-parse", "--abbrev-ref", "HEAD"])
             .current_dir(repo)
@@ -180,7 +174,6 @@ impl GitStatsCacheStrategy {
     }
 
     fn get_git_head(&self, repo: &PathBuf) -> Option<String> {
-        debug_assert!(repo.exists(), "repo must exist: {}", repo.display());
         std::process::Command::new("git")
             .args(["rev-parse", "HEAD"])
             .current_dir(repo)

@@ -40,7 +40,6 @@
 /// assert_eq!(paths[0].to_string_lossy(), "/tmp/test1.rs");
 /// ```
 fn parse_targets(params: &Value) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: parse_targets");
     let targets = params
         .get("targets")
         .and_then(|t| t.as_array())
@@ -123,7 +122,6 @@ fn parse_targets(params: &Value) -> Result<Vec<PathBuf>, Box<dyn std::error::Err
 /// assert_eq!(no_config_config.target_complexity, 20);
 /// ```
 fn parse_config(params: &Value) -> Result<RefactorConfig, Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: parse_config");
     // Start with default config
     let mut config = RefactorConfig::default();
 
@@ -208,7 +206,6 @@ fn parse_config(params: &Value) -> Result<RefactorConfig, Box<dyn std::error::Er
 fn serialize_state(
     state: &crate::models::refactor::RefactorStateMachine,
 ) -> Result<Value, Box<dyn std::error::Error>> {
-    debug_assert!(true, "contract: serialize_state");
     // For now, use serde_json serialization
     // In the future, we could return a more structured representation
     Ok(serde_json::to_value(state)?)

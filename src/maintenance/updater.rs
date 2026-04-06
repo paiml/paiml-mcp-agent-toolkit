@@ -19,7 +19,6 @@ pub fn update_roadmap_ticket(
     ticket_id: &str,
     commit_hash: &str,
 ) -> Result<bool, RoadmapError> {
-    debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
     let mut updated = false;
 
     for sprint in &mut roadmap.sprints {
@@ -46,7 +45,6 @@ pub fn update_roadmap_ticket(
 /// - Cyclomatic: 2
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn write_roadmap(roadmap: &Roadmap, path: &Path) -> Result<(), std::io::Error> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = format_roadmap_markdown(roadmap);
     std::fs::write(path, content)?;
     Ok(())
@@ -58,7 +56,6 @@ pub fn write_roadmap(roadmap: &Roadmap, path: &Path) -> Result<(), std::io::Erro
 /// - Time: O(n*m) where n=sprints, m=tickets
 /// - Cyclomatic: 5
 fn format_roadmap_markdown(roadmap: &Roadmap) -> String {
-    debug_assert!(true, "contract: format_roadmap_markdown");
     let mut output = String::new();
 
     output.push_str("# PMAT Agent System Roadmap\n\n");
@@ -124,16 +121,6 @@ pub fn update_roadmap_from_commit(
     roadmap_path: &Path,
     tickets_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    debug_assert!(
-        roadmap_path.exists(),
-        "roadmap_path must exist: {}",
-        roadmap_path.display()
-    );
-    debug_assert!(
-        tickets_dir.exists(),
-        "tickets_dir must exist: {}",
-        tickets_dir.display()
-    );
     // Get current commit info
     let commit = get_current_commit()?;
 
@@ -180,12 +167,6 @@ fn process_ticket_update(
     ticket_id: &str,
     tickets_dir: &Path,
 ) -> Result<bool, Box<dyn std::error::Error>> {
-    debug_assert!(
-        tickets_dir.exists(),
-        "tickets_dir must exist: {}",
-        tickets_dir.display()
-    );
-    debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
     // Only update if ticket file was modified
     if !ticket_file_updated(commit, ticket_id) {
         return Ok(false);

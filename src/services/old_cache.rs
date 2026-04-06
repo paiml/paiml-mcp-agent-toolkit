@@ -54,7 +54,6 @@ pub async fn get_metadata<T: Clone>(
     cache: &Arc<RwLock<LruCache<String, Arc<T>>>>,
     key: &str,
 ) -> Option<Arc<T>> {
-    debug_assert!(!key.is_empty(), "key must not be empty");
     let mut cache_guard = cache.write().await;
     if let Some(value) = cache_guard.get(key) {
         debug!("Cache hit for metadata: {}", key);
@@ -81,7 +80,6 @@ pub async fn get_content(
     cache: &Arc<RwLock<LruCache<String, Arc<str>>>>,
     key: &str,
 ) -> Option<Arc<str>> {
-    debug_assert!(!key.is_empty(), "key must not be empty");
     let mut cache_guard = cache.write().await;
     if let Some(value) = cache_guard.get(key) {
         debug!("Cache hit for content: {}", key);
@@ -130,7 +128,6 @@ mod property_tests {
 
         #[test] 
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

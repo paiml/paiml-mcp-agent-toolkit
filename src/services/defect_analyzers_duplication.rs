@@ -23,7 +23,6 @@ impl DefectAnalyzer for DuplicationDefectAnalyzer {
     type Config = DuplicationConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut defects = Vec::new();
         let files = discover_source_files(project_path).await?;
 
@@ -65,7 +64,6 @@ impl DefectAnalyzer for DuplicationDefectAnalyzer {
 
 impl DuplicationDefectAnalyzer {
     fn detect_language(&self, path: &Path) -> crate::services::duplicate_detector::Language {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::duplicate_detector::Language;
 
         match path.extension().and_then(|e| e.to_str()) {
@@ -86,7 +84,6 @@ impl DuplicationDefectAnalyzer {
         instance: &crate::services::duplicate_detector::CloneInstance,
         index: usize,
     ) -> Defect {
-        debug_assert!(true, "contract: clone_to_defect");
         let severity = match &group.clone_type {
             CloneType::Type1 { .. } if group.total_lines > 50 => Severity::High,
             CloneType::Type1 { .. } => Severity::Medium,

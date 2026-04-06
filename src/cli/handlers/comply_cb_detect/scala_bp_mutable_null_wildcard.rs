@@ -27,7 +27,6 @@ const MUTABLE_COLLECTIONS: &[&str] = &[
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb800_mutable_collection(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
 
@@ -78,7 +77,6 @@ pub fn detect_cb800_mutable_collection(project_path: &Path) -> Vec<CbPatternViol
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb801_null_usage(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
 
@@ -124,7 +122,6 @@ pub fn detect_cb801_null_usage(project_path: &Path) -> Vec<CbPatternViolation> {
 
 /// Check if line contains `null` as a standalone keyword.
 fn contains_null_literal(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let null_bytes = b"null";
     let len = bytes.len();
@@ -150,7 +147,6 @@ fn contains_null_literal(line: &str) -> bool {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb802_wildcard_import(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
 
@@ -195,7 +191,6 @@ pub fn detect_cb802_wildcard_import(project_path: &Path) -> Vec<CbPatternViolati
 
 /// Wildcard imports from standard library are generally acceptable.
 fn is_allowed_wildcard_import(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let allowed = [
         "scala.collection.",
         "scala.concurrent.",

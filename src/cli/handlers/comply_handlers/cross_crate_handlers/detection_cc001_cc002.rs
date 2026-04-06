@@ -207,7 +207,6 @@ pub(super) fn detect_cc002_api_divergence(
 
 /// Count parameters in a normalized signature.
 fn count_signature_params(sig: &str) -> usize {
-    debug_assert!(!sig.is_empty(), "sig must not be empty");
     if let Some(start) = sig.find('(') {
         if let Some(end) = sig.rfind(')') {
             let inner = sig[start + 1..end].trim();

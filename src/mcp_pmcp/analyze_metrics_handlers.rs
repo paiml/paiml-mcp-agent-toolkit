@@ -27,7 +27,6 @@ impl Default for LintHotspotTool {
 #[async_trait]
 impl ToolHandler for LintHotspotTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling analyze.lint-hotspot with args: {}", args);
 
         let params: LintHotspotArgs = serde_json::from_value(args)
@@ -74,7 +73,6 @@ impl Default for ChurnTool {
 #[async_trait]
 impl ToolHandler for ChurnTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling analyze.churn with args: {}", args);
 
         let params: ChurnArgs = serde_json::from_value(args)
@@ -119,7 +117,6 @@ impl Default for CouplingTool {
 #[async_trait]
 impl ToolHandler for CouplingTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling analyze.coupling with args: {}", args);
 
         let params: CouplingArgs = serde_json::from_value(args)

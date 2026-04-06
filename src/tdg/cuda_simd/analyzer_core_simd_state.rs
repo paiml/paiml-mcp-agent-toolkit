@@ -3,7 +3,6 @@
 impl SimdAnalysisState {
     /// Track SAFETY comments for unsafe blocks
     fn track_safety_comment(&mut self, trimmed: &str) {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
         if trimmed.contains("// SAFETY:") || trimmed.contains("/// SAFETY:") {
             self.has_safety_comment = true;
         }
@@ -18,9 +17,6 @@ impl SimdAnalysisState {
         path: &Path,
         analysis: &mut FileAnalysis,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-        debug_assert!(!lines.is_empty(), "lines must not be empty");
         if trimmed.contains("unsafe {") || trimmed.starts_with("unsafe ") {
             self.in_unsafe_block = true;
             self.unsafe_start_line = line_num + 1;
@@ -54,8 +50,6 @@ impl SimdAnalysisState {
 
     /// Count SIMD instruction types (AVX-512, AVX, SSE, scalar)
     fn count_instructions(&mut self, trimmed: &str, content: &str, analysis: &mut FileAnalysis) {
-        debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Use concat! to avoid self-matching during CB-021 compliance scanning
         if trimmed.contains(concat!("_mm", "512_")) {
             self.avx512_ops += 1;

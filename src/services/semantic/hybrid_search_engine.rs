@@ -14,7 +14,6 @@ impl HybridSearchEngine {
     /// No external API keys or internet connection required.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn new(db_path: &str, search_root: &Path) -> Result<Self, String> {
-        debug_assert!(search_root.exists(), "search_root must exist: {}", search_root.display());
         let semantic_engine = SemanticSearchEngine::new(db_path).await?;
 
         Ok(Self {
@@ -31,9 +30,6 @@ impl HybridSearchEngine {
         db_path: &str,
         search_root: &Path,
     ) -> Result<Self, String> {
-        debug_assert!(search_root.exists(), "search_root must exist: {}", search_root.display());
-        debug_assert!(!_api_key.is_empty(), "_api_key must not be empty");
-        debug_assert!(!db_path.is_empty(), "db_path must not be empty");
         Self::new(db_path, search_root).await
     }
 
@@ -65,7 +61,6 @@ impl HybridSearchEngine {
         &self,
         query: &HybridSearchQuery,
     ) -> Result<Vec<HybridSearchResult>, String> {
-        debug_assert!(true, "contract: keyword_only_search");
         let matches = self.keyword_search(&query.query, query.limit * 2).await?;
 
         let mut results: Vec<HybridSearchResult> = matches
@@ -101,7 +96,6 @@ impl HybridSearchEngine {
         &self,
         query: &HybridSearchQuery,
     ) -> Result<Vec<HybridSearchResult>, String> {
-        debug_assert!(true, "contract: vector_only_search");
         let semantic_query = SearchQuery {
             query: query.query.clone(),
             mode: super::SearchMode::SemanticOnly,
@@ -137,7 +131,6 @@ impl HybridSearchEngine {
         &self,
         query: &HybridSearchQuery,
     ) -> Result<Vec<HybridSearchResult>, String> {
-        debug_assert!(true, "contract: hybrid_search");
         // Run both searches in parallel
         let keyword_matches = self.keyword_search(&query.query, query.limit * 2).await?;
 
@@ -168,8 +161,6 @@ impl HybridSearchEngine {
 
     /// Keyword search using ripgrep
     async fn keyword_search(&self, query: &str, limit: usize) -> Result<Vec<KeywordMatch>, String> {
-        debug_assert!(!query.is_empty(), "query must not be empty");
-        debug_assert!(limit > 0, "limit must be positive");
         let output = Command::new("rg")
             .arg("--line-number")
             .arg("--no-heading")
@@ -214,7 +205,6 @@ impl HybridSearchEngine {
         semantic_results: Vec<SearchResult>,
         weights: (f64, f64),
     ) -> Vec<HybridSearchResult> {
-        debug_assert!(true, "contract: merge_results");
         let mut result_map: HashMap<String, HybridSearchResult> = HashMap::new();
 
         // Add keyword results with RRF scores
@@ -290,7 +280,6 @@ impl HybridSearchEngine {
     /// RRF score (higher is better)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_rrf_score(rank: usize, k: usize) -> f64 {
-        debug_assert!(k > 0, "RRF k must be positive");
         let score = 1.0 / (k as f64 + rank as f64);
         debug_assert!(score > 0.0 && score <= 1.0, "RRF score out of range: {}", score);
         score
@@ -301,7 +290,6 @@ impl HybridSearchEngine {
         results: Vec<HybridSearchResult>,
         query: &HybridSearchQuery,
     ) -> Vec<HybridSearchResult> {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         results
             .into_iter()
             .filter(|r| {
@@ -327,14 +315,12 @@ impl HybridSearchEngine {
     /// Index a directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn index_directory(&self, path: &Path) -> Result<(), String> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.semantic_engine.index_directory(path).await?;
         Ok(())
     }
 
     /// Detect language from file path
     fn detect_language(path: &str) -> String {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         if path.ends_with(".rs") {
             "rust".to_string()
         } else if path.ends_with(".ts") || path.ends_with(".tsx") {
@@ -354,7 +340,6 @@ impl HybridSearchEngine {
 
     /// Extract chunk name from content
     fn extract_chunk_name(content: &str) -> String {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Simple heuristic: first word or identifier
         content
             .split_whitespace()
@@ -365,7 +350,6 @@ impl HybridSearchEngine {
 
     /// Check if path matches pattern
     fn matches_pattern(path: &str, pattern: &str) -> bool {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         if let Some(suffix) = pattern.strip_prefix('*') {
             path.ends_with(suffix)
         } else {
@@ -375,7 +359,6 @@ impl HybridSearchEngine {
 
     /// Truncate string to max length
     fn truncate(s: &str, max_len: usize) -> String {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         if s.len() <= max_len {
             s.to_string()
         } else {

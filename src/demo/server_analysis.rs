@@ -362,7 +362,6 @@ pub(crate) fn serve_analysis_data(state: &Arc<RwLock<DemoState>>) -> Response<By
 
 #[cfg(feature = "demo")]
 fn calculate_graph_density(graph: &DependencyGraph) -> f64 {
-    debug_assert!(true, "contract: calculate_graph_density");
     let n = graph.nodes.len() as f64;
     if n <= 1.0 {
         0.0
@@ -373,7 +372,6 @@ fn calculate_graph_density(graph: &DependencyGraph) -> f64 {
 
 #[cfg(feature = "demo")]
 fn calculate_avg_degree(graph: &DependencyGraph) -> f64 {
-    debug_assert!(true, "contract: calculate_avg_degree");
     let n = graph.nodes.len() as f64;
     if n == 0.0 {
         0.0

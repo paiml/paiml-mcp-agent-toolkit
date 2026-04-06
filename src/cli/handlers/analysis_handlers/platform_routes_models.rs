@@ -101,7 +101,6 @@ fn format_size(bytes: u64) -> String {
 }
 
 fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64) {
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let has_lfs = entries.iter().any(|e| e.lfs_tracked);
     let width = if has_lfs { 78 } else { 72 };
 
@@ -147,7 +146,6 @@ fn print_model_inventory_table(entries: &[ModelInventoryEntry], total_size: u64)
 }
 
 fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) -> Result<()> {
-    debug_assert!(!entries.is_empty(), "entries must not be empty");
     let json_entries: Vec<serde_json::Value> = entries
         .iter()
         .map(|e| {
@@ -174,7 +172,6 @@ fn print_model_inventory_json(entries: &[ModelInventoryEntry], total_size: u64) 
 
 /// Parse .gitattributes files to find LFS-tracked patterns
 fn detect_lfs_patterns(project_path: &std::path::Path) -> Vec<String> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut patterns = Vec::new();
     let gitattr_path = project_path.join(".gitattributes");
     if let Ok(content) = std::fs::read_to_string(&gitattr_path) {
@@ -196,7 +193,6 @@ fn detect_lfs_patterns(project_path: &std::path::Path) -> Vec<String> {
 
 /// Check if a filename matches any LFS glob pattern
 fn is_lfs_tracked(filename: &str, lfs_patterns: &[String]) -> bool {
-    debug_assert!(!filename.is_empty(), "filename must not be empty");
     for pattern in lfs_patterns {
         // Simple glob matching: *.ext
         if let Some(ext_pattern) = pattern.strip_prefix("*.") {
@@ -215,7 +211,6 @@ fn is_lfs_tracked(filename: &str, lfs_patterns: &[String]) -> bool {
 fn collect_model_violations(
     project_path: &std::path::Path,
 ) -> Vec<crate::cli::handlers::comply_cb_detect::CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut all = Vec::new();
     all.extend(
         crate::cli::handlers::comply_cb_detect::detect_cb1000_missing_model_card(project_path),

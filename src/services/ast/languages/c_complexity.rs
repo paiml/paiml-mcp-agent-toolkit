@@ -15,7 +15,6 @@ impl CComplexityAnalyzer {
     /// Analyzes complexity of C source code (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
         self.cognitive_complexity = 0;
 
@@ -71,7 +70,6 @@ impl CComplexityAnalyzer {
 pub async fn analyze_c_file(
     path: &Path,
 ) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::error::TemplateError;
     use crate::services::complexity::ComplexityMetrics;
     use crate::services::context::FileContext;

@@ -4,7 +4,6 @@
 impl ClaudeCodeAgentMcpServer {
     /// Handle start monitoring request
     async fn handle_start_monitoring(&mut self, params: &Value) -> Result<Value> {
-        debug_assert!(true, "contract: handle_start_monitoring");
         let project_path = params["project_path"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("project_path parameter required"))?;
@@ -70,7 +69,6 @@ impl ClaudeCodeAgentMcpServer {
 
     /// Handle stop monitoring request
     async fn handle_stop_monitoring(&mut self, params: &Value) -> Result<Value> {
-        debug_assert!(true, "contract: handle_stop_monitoring");
         let project_id = params["project_id"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("project_id parameter required"))?;
@@ -93,7 +91,6 @@ impl ClaudeCodeAgentMcpServer {
 
     /// Handle get status request
     async fn handle_get_status(&self, params: &Value) -> Result<Value> {
-        debug_assert!(true, "contract: handle_get_status");
         let project_id = params["project_id"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("project_id parameter required"))?;
@@ -133,7 +130,6 @@ async fn request_monitor_status(
     monitor: &mpsc::Sender<QualityMonitorCommand>,
     project_id: &str,
 ) -> Option<ProjectAnalysisResult> {
-    debug_assert!(!project_id.is_empty(), "project_id must not be empty");
     let (tx, rx) = oneshot::channel();
     let command = QualityMonitorCommand::GetStatus {
         project_id: project_id.to_string(),
@@ -148,7 +144,6 @@ async fn request_monitor_status(
 }
 
 fn format_status_response(project_id: &str, status: &ProjectAnalysisResult) -> Value {
-    debug_assert!(!project_id.is_empty(), "project_id must not be empty");
     json!({
         "type": "text",
         "text": format!("Quality Status for {}: {}", project_id,

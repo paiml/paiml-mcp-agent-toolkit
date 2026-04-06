@@ -40,11 +40,6 @@ impl Scorer for CiScorer {
     }
 
     async fn score(&self, repo_path: &Path, _config: &ScorerConfig) -> Result<CategoryScore> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let e1 = self.score_workflows_present(repo_path).await?;
         let e2 = self.score_workflows_configured(repo_path).await?;
         let e3 = self.score_advanced_features(repo_path).await?;

@@ -112,7 +112,6 @@ impl EventLoop {
 
     /// Parse crossterm event
     fn parse_crossterm_event(&self, event: Event) -> Option<TerminalEvent> {
-        debug_assert!(true, "contract: parse_crossterm_event");
         match event {
             Event::Key(KeyEvent { code, .. }) => {
                 let key_code = match code {

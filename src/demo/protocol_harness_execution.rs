@@ -50,7 +50,6 @@ impl DemoEngine {
     /// Get metadata for a specific protocol
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_protocol_metadata(&self, name: &str) -> Result<ProtocolMetadata, DemoError> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         let protocol = self
             .protocols
             .get(name)
@@ -66,7 +65,6 @@ impl DemoEngine {
         protocol_name: &str,
         request: Value,
     ) -> Result<ApiTrace, DemoError> {
-        debug_assert!(!protocol_name.is_empty(), "protocol_name must not be empty");
         let trace_id = Uuid::new_v4();
         let start_time = std::time::Instant::now();
 

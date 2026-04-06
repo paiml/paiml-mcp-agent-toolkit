@@ -12,7 +12,6 @@ impl MutantExecutor {
         mutants: &[Mutant],
         workers: usize,
     ) -> Result<Vec<MutationResult>> {
-        debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         use std::sync::Arc;
         use tokio::sync::Semaphore;
 
@@ -87,7 +86,6 @@ impl MutantExecutor {
     ///
     /// Uses a unique temporary file for this mutant to avoid conflicts
     async fn execute_mutant_isolated(&self, mutant: &Mutant) -> Result<MutationResult> {
-        debug_assert!(true, "contract: execute_mutant_isolated");
         use std::time::Instant;
 
         let start_time = Instant::now();

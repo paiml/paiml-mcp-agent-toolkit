@@ -4,7 +4,6 @@ impl UnifiedTypeScriptAnalyzer {
     /// Create new analyzer for a file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: PathBuf) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             file_path,
             #[cfg(test)]
@@ -57,7 +56,6 @@ impl UnifiedTypeScriptAnalyzer {
     /// Parse TypeScript/JavaScript with SWC
     #[cfg(feature = "typescript-ast")]
     fn parse_typescript(&self, content: &str) -> Result<Module, AnalysisError> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let source_map = Lrc::new(SourceMap::default());
         let source_file = source_map.new_source_file(
             Lrc::new(FileName::Custom(self.file_path.display().to_string())),
@@ -106,7 +104,6 @@ impl UnifiedTypeScriptAnalyzer {
     /// GREEN PHASE: Minimal implementation using simple pattern counting.
     /// This will be enhanced in REFACTOR phase with proper complexity calculation.
     fn extract_complexity_metrics(&self, content: &str) -> FileComplexityMetrics {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Simple visitor to count functions and estimate complexity
         let mut functions = Vec::new();
 
@@ -173,7 +170,6 @@ impl UnifiedTypeScriptAnalyzer {
     /// Estimate complexity by counting control flow keywords
     /// GREEN PHASE: Simple pattern matching
     fn estimate_complexity(&self, content: &str) -> u32 {
-        debug_assert!(true, "contract: estimate_complexity");
         let mut complexity = 1; // Base complexity
 
         // Count control flow keywords

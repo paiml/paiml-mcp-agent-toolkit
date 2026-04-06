@@ -27,7 +27,6 @@ pub struct ScalaAnalyzer;
 
 impl LanguageAnalyzer for LuaAnalyzer {
     fn extract_functions(&self, content: &str) -> Vec<FunctionInfo> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         #[cfg(feature = "lua-ast")]
         {
             if let Some(fns) = self.extract_functions_treesitter(content) {
@@ -38,7 +37,6 @@ impl LanguageAnalyzer for LuaAnalyzer {
     }
 
     fn estimate_complexity(&self, content: &str, function: &FunctionInfo) -> ComplexityMetrics {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         #[cfg(feature = "lua-ast")]
         {
             if let Some(m) = self.estimate_complexity_treesitter(content, function) {

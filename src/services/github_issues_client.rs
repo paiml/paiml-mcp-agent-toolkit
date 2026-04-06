@@ -18,7 +18,6 @@ impl GitHubIssuesService {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(token: &str) -> Result<Self, GitHubError> {
-        debug_assert!(!token.is_empty(), "token must not be empty");
         let config = GitHubConfig {
             token: token.to_string(),
             ..Default::default()
@@ -115,8 +114,6 @@ impl GitHubIssuesService {
         repo: &str,
         request: IssueRequest,
     ) -> Result<GitHubIssue, GitHubError> {
-        debug_assert!(!owner.is_empty(), "owner must not be empty");
-        debug_assert!(!repo.is_empty(), "repo must not be empty");
         let url = format!("{}/repos/{}/{}/issues", self.config.base_url, owner, repo);
 
         self.execute_with_retry(|| async {
@@ -159,8 +156,6 @@ impl GitHubIssuesService {
         repo: &str,
         issue_number: u32,
     ) -> Result<GitHubIssue, GitHubError> {
-        debug_assert!(!owner.is_empty(), "owner must not be empty");
-        debug_assert!(!repo.is_empty(), "repo must not be empty");
         let url = format!(
             "{}/repos/{}/{}/issues/{}",
             self.config.base_url, owner, repo, issue_number
@@ -209,8 +204,6 @@ impl GitHubIssuesService {
         issue_number: u32,
         request: IssueUpdateRequest,
     ) -> Result<GitHubIssue, GitHubError> {
-        debug_assert!(!owner.is_empty(), "owner must not be empty");
-        debug_assert!(!repo.is_empty(), "repo must not be empty");
         let url = format!(
             "{}/repos/{}/{}/issues/{}",
             self.config.base_url, owner, repo, issue_number
@@ -262,8 +255,6 @@ impl GitHubIssuesService {
         repo: &str,
         pagination: Option<Pagination>,
     ) -> Result<Vec<GitHubIssue>, GitHubError> {
-        debug_assert!(!owner.is_empty(), "owner must not be empty");
-        debug_assert!(!repo.is_empty(), "repo must not be empty");
         let pagination = pagination.unwrap_or_default();
         let url = format!(
             "{}/repos/{}/{}/issues?page={}&per_page={}",
@@ -283,7 +274,6 @@ impl GitHubIssuesService {
         F: Fn() -> Fut,
         Fut: std::future::Future<Output = Result<T, GitHubError>>,
     {
-        debug_assert!(true, "contract: execute_with_retry");
         let mut attempts = 0;
         let mut delay = self.config.retry_delay;
 
@@ -310,7 +300,6 @@ impl GitHubIssuesService {
     where
         T: serde::de::DeserializeOwned,
     {
-        debug_assert!(true, "contract: handle_response");
         let status = response.status();
 
         if status.is_success() {
@@ -354,8 +343,6 @@ impl GitHubIssuesService {
     /// Validate repository format (owner/repo)
     #[allow(dead_code)]
     fn validate_repo_format(owner: &str, repo: &str) -> Result<(), GitHubError> {
-        debug_assert!(!owner.is_empty(), "owner must not be empty");
-        debug_assert!(!repo.is_empty(), "repo must not be empty");
         if owner.is_empty() || repo.is_empty() {
             return Err(GitHubError::InvalidRepo {
                 repo: format!("{}/{}", owner, repo),

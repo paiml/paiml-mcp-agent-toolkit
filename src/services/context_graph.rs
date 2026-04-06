@@ -150,8 +150,6 @@ impl ProjectContextGraph {
     /// Returns error if CSR graph operation fails
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_edge(&mut self, from: &str, to: &str) -> Result<()> {
-        debug_assert!(!from.is_empty(), "from must not be empty");
-        debug_assert!(!to.is_empty(), "to must not be empty");
         if let (Some(&from_id), Some(&to_id)) = (self.node_map.get(from), self.node_map.get(to)) {
             self.graph
                 .add_edge(from_id, to_id, 1.0)
@@ -174,7 +172,6 @@ impl ProjectContextGraph {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_item(&self, name: &str) -> Option<&AstItem> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.cache.get(name)
     }
 

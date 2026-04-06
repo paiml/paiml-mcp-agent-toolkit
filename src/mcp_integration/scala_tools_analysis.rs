@@ -14,7 +14,6 @@ impl ScalaAnalysisTool {
 #[async_trait]
 impl McpTool for ScalaAnalysisTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "analyze_scala".to_string(),
             description:
@@ -49,7 +48,6 @@ impl McpTool for ScalaAnalysisTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         // Extract parameters
         let path_str = params["path"].as_str().ok_or_else(|| McpError {
             code: crate::mcp_integration::error_codes::INVALID_PARAMS,

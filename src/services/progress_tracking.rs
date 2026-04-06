@@ -20,7 +20,6 @@ impl SimpleProgressStyle {
     /// Set template (no-op)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn template(self, _template: &str) -> Result<Self, std::convert::Infallible> {
-        debug_assert!(!_template.is_empty(), "_template must not be empty");
         Ok(self)
     }
 
@@ -28,7 +27,6 @@ impl SimpleProgressStyle {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn tick_chars(self, _chars: &str) -> Self {
-        debug_assert!(!_chars.is_empty(), "_chars must not be empty");
         self
     }
 
@@ -43,7 +41,6 @@ impl SimpleProgressStyle {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn progress_chars(self, _chars: &str) -> Self {
-        debug_assert!(!_chars.is_empty(), "_chars must not be empty");
         self
     }
 }
@@ -112,7 +109,6 @@ impl ProgressTracker {
     /// Log a skipped file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn log_skipped_file(&self, file_path: &std::path::Path, reason: &str) {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         if self.enable_progress {
             eprintln!("⚠️  Skipped: {} ({})", file_path.display(), reason);
         }
@@ -157,7 +153,6 @@ impl FileClassificationReporter {
         path: &std::path::Path,
         reason: crate::services::file_classifier::SkipReason,
     ) {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use crate::services::file_classifier::SkipReason;
 
         self.skipped_count.fetch_add(1, Ordering::Relaxed);

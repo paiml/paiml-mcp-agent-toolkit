@@ -2,7 +2,6 @@ impl UnifiedPythonAnalyzer {
     /// Parse Python with tree-sitter-python
     #[cfg(feature = "python-ast")]
     fn parse_python(&self, content: &str) -> Result<Tree, AnalysisError> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut parser = TsParser::new();
         parser
             .set_language(&tree_sitter_python::LANGUAGE.into())
@@ -25,7 +24,6 @@ impl UnifiedPythonAnalyzer {
     /// Check if tree-sitter parse tree has syntax errors
     #[cfg(feature = "python-ast")]
     fn has_syntax_errors(tree: &Tree) -> bool {
-        debug_assert!(true, "contract: has_syntax_errors");
         let root = tree.root_node();
         Self::node_has_error(&root)
     }
@@ -33,7 +31,6 @@ impl UnifiedPythonAnalyzer {
     /// Recursively check node for errors
     #[cfg(feature = "python-ast")]
     fn node_has_error(node: &tree_sitter::Node) -> bool {
-        debug_assert!(true, "contract: node_has_error");
         if node.kind() == "ERROR" || node.is_error() || node.is_missing() {
             return true;
         }

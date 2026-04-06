@@ -37,7 +37,6 @@ impl RoadmapService {
     /// Remove an item from the roadmap (atomic read-modify-write with exclusive lock)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn remove_item(&self, id: &str) -> Result<Option<RoadmapItem>> {
-        debug_assert!(!id.is_empty(), "id must not be empty");
         // Acquire exclusive lock for entire read-modify-write operation
         let _lock = self.acquire_write_lock()?;
 
@@ -70,7 +69,6 @@ impl RoadmapService {
     /// Find an item by ID
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_item(&self, id: &str) -> Result<Option<RoadmapItem>> {
-        debug_assert!(!id.is_empty(), "id must not be empty");
         let roadmap = self.load()?;
         Ok(roadmap.find_item(id).cloned())
     }

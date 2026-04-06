@@ -11,11 +11,6 @@ use std::path::Path;
 /// CB-606: Missing Module Return -- `local M = {}` pattern without final `return M`.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb606_missing_module_return(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -64,11 +59,6 @@ pub fn detect_cb606_missing_module_return(project_path: &Path) -> Vec<CbPatternV
 /// Based on Luau type system research.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb607_colon_dot_confusion(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -98,7 +88,6 @@ pub fn detect_cb607_colon_dot_confusion(project_path: &Path) -> Vec<CbPatternVio
 fn build_table_call_map(
     prod_lines: &[(usize, String)],
 ) -> std::collections::HashMap<String, (Vec<usize>, Vec<usize>)> {
-    debug_assert!(!prod_lines.is_empty(), "prod_lines must not be empty");
     use std::collections::HashMap;
     let mut table_usage: HashMap<String, (Vec<usize>, Vec<usize>)> = HashMap::new();
 
@@ -124,7 +113,6 @@ fn emit_colon_dot_violations(
     rel: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     for (table_name, (colon_lines, dot_lines)) in table_usage {
         if !colon_lines.is_empty() && !dot_lines.is_empty() {
             let first_line = *colon_lines

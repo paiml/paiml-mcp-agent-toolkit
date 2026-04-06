@@ -8,7 +8,6 @@ impl RustDefectDetector {
 
     /// Check if a file should be excluded from defect detection
     fn should_exclude_file(&self, file_path: &Path) -> bool {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let path_str = file_path.to_string_lossy();
         let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
@@ -50,7 +49,6 @@ impl RustDefectDetector {
 
     /// Check if content contains test-related markers
     fn has_test_markers(&self, content: &str) -> bool {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         // Check for test cfg attributes
         let has_cfg_test = content.contains("#[cfg(test)]")
             || content.contains("#[cfg(all(test,")
@@ -68,7 +66,6 @@ impl RustDefectDetector {
     /// Returns vector of detected defect patterns with instances
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect(&self, content: &str, file_path: &Path) -> Vec<DefectPattern> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut defects = Vec::new();
 
         // Exclude test files entirely
@@ -105,7 +102,6 @@ impl RustDefectDetector {
     }
 
     fn detect_unwraps(&self, content: &str, file_path: &Path) -> Vec<DefectInstance> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut instances = Vec::new();
         // Track #[cfg(...)] blocks via brace depth so we can skip .unwrap()
         // inside conditional compilation code (issue #279).
@@ -188,7 +184,6 @@ impl RustDefectDetector {
     /// Skips comments and string literal contents to avoid false positives.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn count_unwraps(&self, content: &str) -> usize {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         content
             .lines()
             .filter(|line| {
@@ -212,7 +207,6 @@ impl Default for RustDefectDetector {
 /// Strip contents of string literals to prevent false-positive defect detection.
 /// Replaces `"..."` contents with spaces (preserving column offsets).
 fn strip_string_literals(line: &str) -> String {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let bytes = line.as_bytes();
     let len = bytes.len();
     let mut out = Vec::with_capacity(len);

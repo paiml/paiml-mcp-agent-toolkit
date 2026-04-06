@@ -17,11 +17,6 @@ use std::path::{Path, PathBuf};
 /// - Reports protection level: full, partial, or none
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb614_global_protection(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     if files.is_empty() {
         return Vec::new();
@@ -64,7 +59,6 @@ pub fn detect_cb614_global_protection(project_path: &Path) -> Vec<CbPatternViola
 
 /// Check if content sets metatable on _G with __index/__newindex.
 fn check_global_metatables(content: &str, has_newindex: &mut bool, has_index: &mut bool) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with("--") {
@@ -91,8 +85,6 @@ fn check_global_metatables(content: &str, has_newindex: &mut bool, has_index: &m
 
 /// Flag loadfile/load calls without "t" mode (allows bytecode injection).
 fn check_unsafe_load_calls(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     for (i, line) in content.lines().enumerate() {
         let trimmed = line.trim();
         if trimmed.starts_with("--") {
@@ -114,9 +106,6 @@ fn check_single_load_call(
     rel: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!func.is_empty(), "func must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     let pattern = format!("{func}(");
     let Some(pos) = trimmed.find(&pattern) else {
         return;
@@ -144,8 +133,6 @@ fn check_load_function_call(
     rel: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     let Some(pos) = trimmed.find("load(") else {
         return;
     };
@@ -183,7 +170,6 @@ fn report_protection_level(
     has_index: bool,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     if files.len() < 3 {
         return; // Too few files to assess
     }
@@ -222,11 +208,6 @@ fn report_protection_level(
 /// - Coroutine usage counts for complexity awareness
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb615_coroutine_checks(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -252,8 +233,6 @@ pub fn detect_cb615_coroutine_checks(project_path: &Path) -> Vec<CbPatternViolat
 
 /// Check for coroutine defect patterns in file content.
 fn check_coroutine_patterns(content: &str, rel: &str, violations: &mut Vec<CbPatternViolation>) {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
     for (i, line) in content.lines().enumerate() {
         let trimmed = line.trim();
         if trimmed.starts_with("--") {
@@ -271,9 +250,6 @@ fn check_resume_without_pcall(
     content: &str,
     violations: &mut Vec<CbPatternViolation>,
 ) {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!rel.is_empty(), "rel must not be empty");
-    debug_assert!(!content.is_empty(), "content must not be empty");
     if !trimmed.contains("coroutine.resume") {
         return;
     }

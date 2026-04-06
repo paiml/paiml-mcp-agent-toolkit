@@ -21,11 +21,6 @@ pub async fn run_falsification_tests(
     project_path: &Path,
     contract: &WorkContract,
 ) -> Result<FalsificationReport> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let mut claim_results = Vec::new();
     let total_claims = contract.claims.len();
 
@@ -102,7 +97,6 @@ fn determine_blocking_status(
     method: &FalsificationMethod,
     thresholds: &crate::cli::handlers::work_contract::ContractThresholds,
 ) -> bool {
-    debug_assert!(true, "contract: determine_blocking_status");
     match method {
         // Always blocking
         FalsificationMethod::ManifestIntegrity
@@ -144,11 +138,6 @@ async fn dispatch_falsification_test(
     contract: &WorkContract,
     claim: &FalsifiableClaim,
 ) -> Result<FalsificationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     match claim.falsification_method {
         FalsificationMethod::ManifestIntegrity => {
             core_checks::test_manifest_integrity(project_path, &contract.baseline_file_manifest)
@@ -233,11 +222,6 @@ async fn run_single_falsification(
     contract: &WorkContract,
     claim: &FalsifiableClaim,
 ) -> Result<(FalsificationResult, bool)> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let result = dispatch_falsification_test(project_path, contract, claim).await?;
     let is_blocking = determine_blocking_status(&claim.falsification_method, &contract.thresholds);
     Ok((result, is_blocking))
@@ -245,7 +229,6 @@ async fn run_single_falsification(
 
 /// Print evidence details
 fn print_evidence(evidence: &EvidenceType) {
-    debug_assert!(true, "contract: print_evidence");
     match evidence {
         EvidenceType::FileList(files) => {
             println!("      Evidence (files):");

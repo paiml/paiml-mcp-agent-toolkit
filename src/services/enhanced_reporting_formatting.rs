@@ -5,7 +5,6 @@ impl EnhancedReportingService {
         results: &AnalysisResults,
         sections: &[ReportSection],
     ) -> Result<Vec<Visualization>> {
-        debug_assert!(true, "contract: create_visualizations");
         let mut visualizations = Vec::new();
 
         // Complexity distribution chart
@@ -28,7 +27,6 @@ impl EnhancedReportingService {
         &self,
         complexity: &ComplexityAnalysis,
     ) -> Result<Visualization> {
-        debug_assert!(true, "contract: create_complexity_distribution_chart");
         let data = serde_json::json!({
             "labels": ["0-5", "6-10", "11-15", "16-20", "20+"],
             "datasets": [{
@@ -48,7 +46,6 @@ impl EnhancedReportingService {
 
     /// Create health score gauge
     fn create_health_score_gauge(&self, score: f64) -> Result<Visualization> {
-        debug_assert!(score >= 0.0, "score must be non-negative");
         let data = serde_json::json!({
             "value": score,
             "min": 0,
@@ -70,7 +67,6 @@ impl EnhancedReportingService {
 
     /// Create issue distribution chart
     fn create_issue_distribution_chart(&self, sections: &[ReportSection]) -> Result<Visualization> {
-        debug_assert!(!sections.is_empty(), "sections must not be empty");
         let mut issue_counts = HashMap::new();
 
         for section in sections {
@@ -113,13 +109,11 @@ impl EnhancedReportingService {
 
     /// Format report as JSON
     fn format_as_json(&self, report: &UnifiedAnalysisReport) -> Result<String> {
-        debug_assert!(true, "contract: format_as_json");
         Ok(serde_json::to_string_pretty(report)?)
     }
 
     /// Format report as Markdown
     fn format_as_markdown(&self, report: &UnifiedAnalysisReport) -> Result<String> {
-        debug_assert!(true, "contract: format_as_markdown");
         let mut md = String::with_capacity(8192);
 
         // Title
@@ -224,7 +218,6 @@ impl EnhancedReportingService {
 
     /// Format report as HTML
     async fn format_as_html(&self, report: &UnifiedAnalysisReport) -> Result<String> {
-        debug_assert!(true, "contract: format_as_html");
         // In a real implementation, this would use templates
         let mut html = String::with_capacity(16384);
 
@@ -263,14 +256,12 @@ impl EnhancedReportingService {
 
     /// Format report as PDF
     async fn format_as_pdf(&self, _report: &UnifiedAnalysisReport) -> Result<String> {
-        debug_assert!(true, "contract: format_as_pdf");
         // Generate PDF content placeholder
         Ok("[PDF Report Generated]".to_string())
     }
 
     /// Format report as interactive dashboard
     async fn format_as_dashboard(&self, _report: &UnifiedAnalysisReport) -> Result<String> {
-        debug_assert!(true, "contract: format_as_dashboard");
         // Generate dashboard HTML placeholder
         Ok("<html><body><h1>Analysis Dashboard</h1></body></html>".to_string())
     }

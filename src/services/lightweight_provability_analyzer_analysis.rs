@@ -22,7 +22,6 @@ struct SourceFlags {
 
 impl SourceFlags {
     fn extract(source: &str, func_id: &FunctionId) -> Self {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let body = source.split('{').nth(1).unwrap_or("");
         // A function body "has statements" if it contains any non-trivial content.
         // This includes explicit statements (with ;) AND expression returns (no ;).
@@ -65,7 +64,6 @@ impl SourceFlags {
     }
 
     fn infer_nullability(&self) -> NullabilityLattice {
-        debug_assert!(true, "contract: infer_nullability");
         if !self.is_rust || self.has_raw_ptr {
             NullabilityLattice::MaybeNull
         } else if self.has_unsafe && !self.returns_result_option {
@@ -79,7 +77,6 @@ impl SourceFlags {
     }
 
     fn infer_bounds(&self) -> IntervalLattice {
-        debug_assert!(true, "contract: infer_bounds");
         if self.has_unwrap && !self.has_question_mark {
             // Only unwrap, no ? — panics on failure, no bounds evidence
             IntervalLattice {
@@ -107,7 +104,6 @@ impl SourceFlags {
     }
 
     fn infer_aliasing(&self) -> AliasLattice {
-        debug_assert!(true, "contract: infer_aliasing");
         if self.has_raw_ptr || self.has_unsafe {
             // Raw pointers and unsafe bypass Rust's borrow checker — may alias
             AliasLattice::MayAlias
@@ -119,7 +115,6 @@ impl SourceFlags {
     }
 
     fn infer_purity(&self) -> PurityLattice {
-        debug_assert!(true, "contract: infer_purity");
         if !self.has_io && !self.has_mut_ref && !self.has_unsafe && !self.has_loop {
             return PurityLattice::Pure;
         }
@@ -165,7 +160,6 @@ impl LightweightProvabilityAnalyzer {
         &self,
         changed_functions: &[FunctionId],
     ) -> Vec<ProofSummary> {
-        debug_assert!(!changed_functions.is_empty(), "changed_functions must not be empty");
         let impact_set = self.compute_impact_set(changed_functions);
 
         impact_set
@@ -185,7 +179,6 @@ impl LightweightProvabilityAnalyzer {
     }
 
     fn analyze_function_fast(&self, func_id: &FunctionId) -> ProofSummary {
-        debug_assert!(true, "contract: analyze_function_fast");
         let start = std::time::Instant::now();
 
         // Read actual source code for evidence-based analysis
@@ -259,7 +252,6 @@ impl LightweightProvabilityAnalyzer {
     /// Read function source code for analysis.
     /// Returns up to 80 lines from the function start.
     fn read_function_source(func_id: &FunctionId) -> String {
-        debug_assert!(true, "contract: read_function_source");
         let Ok(content) = std::fs::read_to_string(&func_id.file_path) else {
             return String::new();
         };
@@ -291,7 +283,6 @@ impl LightweightProvabilityAnalyzer {
 
     /// Analyze concrete source patterns to produce differentiated property domains.
     fn analyze_source_patterns(source: &str, func_id: &FunctionId) -> PropertyDomain {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let flags = SourceFlags::extract(source, func_id);
         if !flags.has_statements {
             return PropertyDomain {
@@ -328,14 +319,12 @@ impl LightweightProvabilityAnalyzer {
     }
 
     fn compute_impact_set(&self, changed_functions: &[FunctionId]) -> Vec<FunctionId> {
-        debug_assert!(!changed_functions.is_empty(), "changed_functions must not be empty");
         // In a real implementation, this would use call graph analysis
         // For now, just return the changed functions
         changed_functions.to_vec()
     }
 
     fn compute_confidence(&self, state: &PropertyDomain) -> f64 {
-        debug_assert!(true, "contract: compute_confidence");
         let mut score = 0.0;
         let mut max_score = 0.0;
 
@@ -437,7 +426,6 @@ impl LightweightProvabilityAnalyzer {
 impl AbstractInterpreter {
     #[allow(dead_code)]
     fn analyze_iteration(&self, state: &PropertyDomain) -> PropertyDomain {
-        debug_assert!(true, "contract: analyze_iteration");
         // Lattice narrowing: move from Top toward concrete values.
         // Used as fallback when source analysis is unavailable.
         let mut new_state = state.clone();

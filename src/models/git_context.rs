@@ -87,11 +87,6 @@ impl GitContext {
     /// Extract git context from the current working directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_current_dir(repo_path: &Path) -> Result<Self, GitContextError> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         #[cfg(feature = "git-lib")]
         {
             Self::from_current_dir_git2(repo_path)
@@ -105,11 +100,6 @@ impl GitContext {
     /// Extract git context from a specific commit SHA
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_commit_sha(repo_path: &Path, sha: &str) -> Result<Self, GitContextError> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         #[cfg(feature = "git-lib")]
         {
             Self::from_commit_sha_git2(repo_path, sha)
@@ -123,7 +113,6 @@ impl GitContext {
     /// Check if we're in a git repository
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn is_git_repo(path: &Path) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         #[cfg(feature = "git-lib")]
         {
             git2::Repository::open(path).is_ok()
@@ -142,11 +131,6 @@ impl GitContext {
     /// Get git context or return None if not in a git repo
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn try_from_current_dir(repo_path: &Path) -> Option<Self> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         Self::from_current_dir(repo_path).ok()
     }
 
@@ -156,21 +140,11 @@ impl GitContext {
 
     #[cfg(not(feature = "git-lib"))]
     fn from_current_dir_shell(repo_path: &Path) -> Result<Self, GitContextError> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         Self::from_commit_sha_shell(repo_path, "HEAD")
     }
 
     #[cfg(not(feature = "git-lib"))]
     fn from_commit_sha_shell(repo_path: &Path, sha: &str) -> Result<Self, GitContextError> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         // Get commit SHA
         let commit_sha = Self::git_cmd(repo_path, &["rev-parse", sha])?;
         let commit_sha_short = commit_sha.chars().take(7).collect();
@@ -240,11 +214,6 @@ impl GitContext {
 
     #[cfg(not(feature = "git-lib"))]
     fn git_cmd(repo_path: &Path, args: &[&str]) -> Result<String, GitContextError> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         let output = Command::new("git")
             .args(args)
             .current_dir(repo_path)
@@ -269,11 +238,6 @@ impl GitContext {
 
     #[cfg(feature = "git-lib")]
     fn from_current_dir_git2(repo_path: &Path) -> Result<Self, GitContextError> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         use git2::Repository;
 
         let repo = Repository::open(repo_path)
@@ -287,11 +251,6 @@ impl GitContext {
 
     #[cfg(feature = "git-lib")]
     fn from_commit_sha_git2(repo_path: &Path, sha: &str) -> Result<Self, GitContextError> {
-        debug_assert!(
-            repo_path.exists(),
-            "repo_path must exist: {}",
-            repo_path.display()
-        );
         use git2::{Oid, Repository};
 
         let repo = Repository::open(repo_path)
@@ -312,7 +271,6 @@ impl GitContext {
         repo: &git2::Repository,
         commit: &git2::Commit,
     ) -> Result<Self, GitContextError> {
-        debug_assert!(true, "contract: from_git2_commit");
         use chrono::TimeZone;
 
         let commit_sha = commit.id().to_string();
@@ -362,7 +320,6 @@ impl GitContext {
 
     #[cfg(feature = "git-lib")]
     fn get_current_branch_git2(repo: &git2::Repository) -> Result<String, GitContextError> {
-        debug_assert!(true, "contract: get_current_branch_git2");
         let head = repo.head()?;
         Ok(head.shorthand().unwrap_or("(detached)").to_string())
     }
@@ -372,7 +329,6 @@ impl GitContext {
         repo: &git2::Repository,
         commit: &git2::Commit,
     ) -> Result<Vec<String>, GitContextError> {
-        debug_assert!(true, "contract: get_tags_at_commit_git2");
         let mut tags = Vec::new();
         let commit_id = commit.id();
 
@@ -397,7 +353,6 @@ impl GitContext {
 
     #[cfg(feature = "git-lib")]
     fn get_remote_url_git2(repo: &git2::Repository) -> Result<String, GitContextError> {
-        debug_assert!(true, "contract: get_remote_url_git2");
         let remote = repo.find_remote("origin")?;
         remote
             .url()
@@ -409,7 +364,6 @@ impl GitContext {
     fn check_working_dir_status_git2(
         repo: &git2::Repository,
     ) -> Result<(bool, usize), GitContextError> {
-        debug_assert!(true, "contract: check_working_dir_status_git2");
         let statuses = repo.statuses(None)?;
         let uncommitted_count = statuses.len();
         let is_clean = uncommitted_count == 0;

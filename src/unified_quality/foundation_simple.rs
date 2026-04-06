@@ -108,7 +108,6 @@ impl QualityMonitor {
     /// Start monitoring a directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         info!("Starting quality monitoring for: {:?}", path);
         
         // Create file system watcher
@@ -151,7 +150,6 @@ impl QualityMonitor {
     /// Get current metrics for a file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_metrics(&self, path: &Path) -> Option<Metrics> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.metrics.get(path).map(|entry| entry.clone())
     }
     
@@ -179,7 +177,6 @@ impl QualityMonitor {
         parser: &Arc<std::sync::Mutex<EnhancedParser>>,
         config: &MonitorConfig,
     ) {
-        debug_assert!(true, "contract: handle_fs_event");
         match event.kind {
             EventKind::Create(_) | EventKind::Modify(_) => {
                 // Process changed files
@@ -218,7 +215,6 @@ impl QualityMonitor {
     
     /// Check if file should be analyzed
     fn should_analyze(path: &Path, patterns: &[String]) -> bool {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
         patterns.iter().any(|pattern| {
             if pattern.contains("**") {
@@ -232,7 +228,6 @@ impl QualityMonitor {
     
     /// Analyze entire directory
     async fn analyze_directory(&self, path: &Path) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         use walkdir::WalkDir;
         
         let mut batch = Vec::new();
@@ -262,7 +257,6 @@ impl QualityMonitor {
     
     /// Analyze a batch of files
     async fn analyze_batch(&self, paths: &[PathBuf]) -> Result<()> {
-        debug_assert!(!paths.is_empty(), "paths must not be empty");
         for path in paths {
             if let Ok(content) = std::fs::read_to_string(path) {
                 if let Ok(mut parser) = self.parser.lock() {
@@ -346,7 +340,6 @@ mod property_tests {
 
         #[test] 
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

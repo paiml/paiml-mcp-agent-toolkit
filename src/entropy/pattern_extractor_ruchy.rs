@@ -8,8 +8,6 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: actor definitions with receive handlers
@@ -74,8 +72,6 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: pipeline operators |>
@@ -132,8 +128,6 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: actor message passing <- and <?
@@ -204,8 +198,6 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: Result<T, E> with match statements (Ruchy style)
@@ -262,8 +254,6 @@ impl PatternExtractor {
         content: &str,
         collection: &mut PatternCollection,
     ) -> Result<()> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!content.is_empty(), "content must not be empty");
         use regex::Regex;
 
         // Pattern: enum matching with => arrows
@@ -334,7 +324,6 @@ impl PatternExtractor {
         _receive_matches: &[regex::Match],
         content: &str,
     ) -> f64 {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         if actor_matches.is_empty() {
             return 0.0;
         }
@@ -356,7 +345,6 @@ impl PatternExtractor {
     }
 
     fn calculate_pipeline_variation_score(&self, matches: &[regex::Match], content: &str) -> f64 {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         if matches.len() < 2 {
             return 0.0;
         }
@@ -380,7 +368,6 @@ impl PatternExtractor {
         query_matches: &[regex::Match],
         content: &str,
     ) -> f64 {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let total_matches = send_matches.len() + query_matches.len();
         if total_matches < 2 {
             return 0.0;
@@ -405,7 +392,6 @@ impl PatternExtractor {
         _arrow_matches: &[regex::Match],
         content: &str,
     ) -> f64 {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         if match_matches.len() < 2 {
             return 0.0;
         }

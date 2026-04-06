@@ -10,7 +10,6 @@ impl AgentContextIndex {
         &self,
         query: &str,
     ) -> Result<Vec<(usize, f32)>, String> {
-        debug_assert!(!query.is_empty(), "query must not be empty");
         // Try FTS5 BM25 search first (fast path)
         if let Some(ref db_path) = self.db_path {
             if let Ok(results) = self.calculate_relevance_scores_fts5(db_path, query) {
@@ -34,7 +33,6 @@ impl AgentContextIndex {
         db_path: &std::path::Path,
         query: &str,
     ) -> Result<Vec<(usize, f32)>, String> {
-        debug_assert!(!query.is_empty(), "query must not be empty");
         use crate::services::agent_context::function_index::sqlite_backend::{
             fts5_search, open_db,
         };
@@ -48,7 +46,6 @@ impl AgentContextIndex {
     /// Used as fallback when no SQLite FTS5 index is available.
     #[allow(clippy::cast_possible_truncation)]
     fn calculate_relevance_scores_tf(&self, query: &str) -> Result<Vec<(usize, f32)>, String> {
-        debug_assert!(!query.is_empty(), "query must not be empty");
         if self.corpus.is_empty() {
             return Ok(Vec::new());
         }
@@ -108,7 +105,6 @@ impl AgentContextIndex {
         query: &str,
         candidates: &[usize],
     ) -> Result<Vec<(usize, f32)>, String> {
-        debug_assert!(!query.is_empty(), "query must not be empty");
         if candidates.is_empty() {
             return Ok(Vec::new());
         }
@@ -166,7 +162,6 @@ impl AgentContextIndex {
 
     /// Check if function passes filter options
     fn passes_filters(&self, idx: usize, options: &QueryOptions) -> bool {
-        debug_assert!(true, "contract: passes_filters");
         let func = &self.functions[idx];
 
         // Grade filter

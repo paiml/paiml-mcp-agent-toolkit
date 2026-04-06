@@ -184,7 +184,6 @@ impl CommandDispatcher {
     /// Generate metric-specific recommendations
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_metric_recommendations(metric: &str, slope_per_day: f64) -> Vec<String> {
-        debug_assert!(!metric.is_empty(), "metric must not be empty");
         let mut recommendations = Vec::new();
 
         let days_to_critical = match metric {

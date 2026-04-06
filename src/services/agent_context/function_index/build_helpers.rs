@@ -1,6 +1,5 @@
 /// Load function source from SQLite by file path and start line.
 fn load_source_from_sqlite(db_path: &Path, file_path: &str, start_line: usize) -> Option<String> {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let conn = super::sqlite_backend::open_db(db_path).ok()?;
     let src = super::sqlite_backend::load_source_by_location(&conn, file_path, start_line).ok()?;
     if src.is_empty() {
@@ -12,7 +11,6 @@ fn load_source_from_sqlite(db_path: &Path, file_path: &str, start_line: usize) -
 
 /// Load function source from filesystem using line range.
 fn load_source_from_file(file_path: &str, start_line: usize, end_line: usize) -> Option<String> {
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     if end_line == 0 || start_line == 0 {
         return None;
     }
@@ -45,7 +43,6 @@ fn check_mtime_reuse(
     index_built_at: &Option<std::time::SystemTime>,
     existing: &AgentContextIndex,
 ) -> Option<MtimeReuseResult> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let built_at = index_built_at.as_ref()?;
     let mtime = fs::metadata(path).ok()?.modified().ok()?;
     if mtime >= *built_at {
@@ -74,7 +71,6 @@ fn check_mtime_reuse(
 ///
 /// Returns None if the string can't be parsed (graceful fallback to SHA256-only path).
 fn parse_built_at(built_at: &str) -> Option<std::time::SystemTime> {
-    debug_assert!(!built_at.is_empty(), "built_at must not be empty");
     let dt = chrono::DateTime::parse_from_rfc3339(built_at).ok()?;
     let secs = dt.timestamp();
     if secs < 0 {
@@ -88,6 +84,5 @@ fn parse_built_at(built_at: &str) -> Option<std::time::SystemTime> {
 /// For workspace-merged paths like `aprender/src/lib.rs`, returns `aprender`.
 /// For local paths like `src/lib.rs`, returns `src`.
 fn project_prefix(path: &str) -> &str {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     path.split('/').next().unwrap_or(path)
 }

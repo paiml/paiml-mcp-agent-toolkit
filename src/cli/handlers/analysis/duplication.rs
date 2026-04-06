@@ -31,7 +31,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
@@ -59,7 +58,6 @@ mod unit_tests {
     #[test]
     fn test_module_exports_all_handlers() {
         fn _verify_exports() {
-            debug_assert!(true, "contract: _verify_exports");
             let _duplicates: fn(AnalyzeCommands) -> _ = handle_duplicates;
             let _name_similarity: fn(AnalyzeCommands) -> _ = handle_name_similarity;
         }
@@ -69,7 +67,6 @@ mod unit_tests {
     #[test]
     fn test_result_type_compatibility() {
         fn _check_result_type() -> Result<()> {
-            debug_assert!(true, "contract: _check_result_type");
             Ok(())
         }
         assert!(_check_result_type().is_ok());
@@ -79,11 +76,9 @@ mod unit_tests {
     #[test]
     fn test_handlers_are_async() {
         fn _verify_async_duplicates() {
-            debug_assert!(true, "contract: _verify_async_duplicates");
             // handle_duplicates is async - verified at compile time
         }
         fn _verify_async_name_similarity() {
-            debug_assert!(true, "contract: _verify_async_name_similarity");
             // handle_name_similarity is async - verified at compile time
         }
     }

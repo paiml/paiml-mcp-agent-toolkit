@@ -41,7 +41,6 @@ impl GitHubClient {
     /// - Failed to initialize octocrab client
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(repo: &str) -> Result<Self> {
-        debug_assert!(!repo.is_empty(), "repo must not be empty");
         let parts: Vec<&str> = repo.split('/').collect();
         if parts.len() != 2 {
             anyhow::bail!("Invalid repo format: '{}'. Expected 'owner/name'", repo);
@@ -72,7 +71,6 @@ impl GitHubClient {
     /// * `repo` - Repository in "owner/name" format
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_unauthenticated(repo: &str) -> Result<Self> {
-        debug_assert!(!repo.is_empty(), "repo must not be empty");
         let parts: Vec<&str> = repo.split('/').collect();
         if parts.len() != 2 {
             anyhow::bail!("Invalid repo format: '{}'. Expected 'owner/name'", repo);
@@ -124,7 +122,6 @@ impl GitHubClient {
         body: &str,
         labels: Option<Vec<String>>,
     ) -> Result<Issue> {
-        debug_assert!(!body.is_empty(), "body must not be empty");
         let issues_handler = self.octocrab.issues(&self.repo_owner, &self.repo_name);
         let mut issue_builder = issues_handler.create(title).body(body);
 

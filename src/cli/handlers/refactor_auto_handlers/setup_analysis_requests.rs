@@ -13,7 +13,6 @@ async fn generate_refactoring_requests(
     quality_analysis: &ProjectQualityAnalysis,
     context: &RefactorContext,
 ) -> Result<Vec<RefactoringRequest>> {
-    debug_assert!(true, "contract: generate_refactoring_requests");
     eprintln!("🎯 Generating targeted refactoring requests...");
 
     let mut requests = Vec::new();
@@ -58,7 +57,6 @@ async fn create_complexity_reduction_request(
     violation: &ComplexityViolation,
     _context: &RefactorContext,
 ) -> Result<RefactoringRequest> {
-    debug_assert!(true, "contract: create_complexity_reduction_request");
     Ok(RefactoringRequest {
         request_type: RefactoringType::ComplexityReduction,
         target_file: violation.file.clone(),
@@ -95,7 +93,6 @@ async fn create_lint_fix_requests(
     violations: &[ViolationDetailJson],
     _context: &RefactorContext,
 ) -> Result<Vec<RefactoringRequest>> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut requests = Vec::new();
 
     for violation in violations {
@@ -132,7 +129,6 @@ async fn create_satd_cleanup_requests(
     satd_analysis: &SatdAnalysis,
     _context: &RefactorContext,
 ) -> Result<Vec<RefactoringRequest>> {
-    debug_assert!(true, "contract: create_satd_cleanup_requests");
     let mut requests = Vec::new();
 
     for satd_comment in &satd_analysis.satd_comments {
@@ -165,7 +161,6 @@ async fn create_coverage_improvement_requests(
     coverage_analysis: &CoverageAnalysis,
     _context: &RefactorContext,
 ) -> Result<Vec<RefactoringRequest>> {
-    debug_assert!(true, "contract: create_coverage_improvement_requests");
     let mut requests = Vec::new();
 
     for uncovered_file in &coverage_analysis.files_with_low_coverage {

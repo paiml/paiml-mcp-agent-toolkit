@@ -202,11 +202,6 @@ impl DeepWasmService {
         source_path: &Path,
         language: SourceLanguage,
     ) -> DeepWasmResult<SourceMetrics> {
-        debug_assert!(
-            source_path.exists(),
-            "source_path must exist: {}",
-            source_path.display()
-        );
         use crate::services::deep_wasm::DeepWasmError;
 
         // Read source file

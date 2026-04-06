@@ -123,7 +123,6 @@ impl CoverageCorpus {
     /// Add input if it discovers new coverage
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_if_interesting(&mut self, input: Vec<u8>, coverage: CoverageInfo) -> bool {
-        debug_assert!(!input.is_empty(), "input must not be empty");
         if coverage.is_interesting(
             &self
                 .interesting_inputs
@@ -148,7 +147,6 @@ impl CoverageCorpus {
     /// Get most interesting inputs for mutation
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_seeds(&self, count: usize) -> Vec<Vec<u8>> {
-        debug_assert!(count > 0, "count must be positive");
         self.interesting_inputs
             .iter()
             .take(count)
@@ -204,7 +202,6 @@ impl CoverageTracker {
     /// Simulate coverage for given input (Phase 1)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn simulate_coverage(input: &[u8]) -> CoverageInfo {
-        debug_assert!(!input.is_empty(), "input must not be empty");
         let mut coverage = CoverageInfo::new();
 
         // Simulate coverage based on input characteristics

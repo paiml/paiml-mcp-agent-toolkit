@@ -110,7 +110,6 @@ pub(super) async fn route_tdg_analysis(cmd: AnalyzeCommands) -> Result<()> {
 
 /// Run cargo build step for build-tdg command
 fn run_cargo_build(path: &Path, release: bool) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::process::Command;
     println!("\u{1f4e6} Building project...");
     let mut build_cmd = Command::new("cargo");
@@ -129,7 +128,6 @@ fn run_cargo_build(path: &Path, release: bool) -> Result<()> {
 
 /// Check for quality regressions against baseline
 fn check_quality_regression(path: &Path) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let baseline_path = path.join(".pmat/baseline.json");
     if !baseline_path.exists() {
         println!(

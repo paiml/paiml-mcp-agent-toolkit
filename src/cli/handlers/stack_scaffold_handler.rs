@@ -34,7 +34,6 @@ pub fn get_scaffold_files(template: &str) -> Vec<ScaffoldFile> {
 }
 
 fn get_sqi_a_minus_files() -> Vec<ScaffoldFile> {
-    debug_assert!(true, "contract: get_sqi_a_minus_files");
     vec![
         ScaffoldFile {
             path: ".clippy.toml",
@@ -141,11 +140,6 @@ pub fn scaffold_repo(
     force: bool,
     diff: bool,
 ) -> Result<ScaffoldResult> {
-    debug_assert!(
-        repo_path.exists(),
-        "repo_path must exist: {}",
-        repo_path.display()
-    );
     let mut created = 0;
     let mut skipped = 0;
     let mut overwritten = 0;
@@ -294,7 +288,6 @@ pub async fn handle_stack_scaffold(
 // ── Target Discovery ──────────────────────────────────────────────────────
 
 fn discover_targets(all: bool) -> Result<Vec<std::path::PathBuf>> {
-    debug_assert!(true, "contract: discover_targets");
     if !all {
         // Current repo only
         let cwd = std::env::current_dir().context("Failed to get current directory")?;

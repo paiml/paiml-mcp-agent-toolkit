@@ -3,7 +3,6 @@
 
 impl Scorer for DuplicationDetector {
     fn score(&self, tree: &Tree, source: &str, _language: Language, config: &TdgConfig, tracker: &mut PenaltyTracker) -> Result<f32> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut points = config.weights.duplication;
         let root = tree.root_node();
 
@@ -50,12 +49,10 @@ impl CloneSet {
     }
 
     fn add_clone(&mut self, clone_type: CloneType, sequences: Vec<TokenSequence>) {
-        debug_assert!(!sequences.is_empty(), "sequences must not be empty");
         self.clones.push((clone_type, sequences));
     }
 
     fn total_tokens(&self) -> usize {
-        debug_assert!(true, "contract: total_tokens");
         self.clones.iter()
             .map(|(_, sequences)| {
                 sequences.iter()

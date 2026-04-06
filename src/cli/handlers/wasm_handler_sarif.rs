@@ -1,13 +1,11 @@
 /// Format SARIF output for security results (Complexity: 4)
 fn format_sarif(vulnerabilities: &[VulnerabilityMatch]) -> Result<String> {
-    debug_assert!(!vulnerabilities.is_empty(), "vulnerabilities must not be empty");
     let sarif_output = create_sarif_output(vulnerabilities);
     Ok(serde_json::to_string_pretty(&sarif_output)?)
 }
 
 /// Create SARIF output structure (Complexity: 6)
 fn create_sarif_output(vulnerabilities: &[VulnerabilityMatch]) -> serde_json::Value {
-    debug_assert!(!vulnerabilities.is_empty(), "vulnerabilities must not be empty");
     let rules = create_sarif_rules(vulnerabilities);
     let results = create_sarif_results(vulnerabilities);
 
@@ -30,7 +28,6 @@ fn create_sarif_output(vulnerabilities: &[VulnerabilityMatch]) -> serde_json::Va
 
 /// Create SARIF rules from vulnerabilities (Complexity: 4)
 fn create_sarif_rules(vulnerabilities: &[VulnerabilityMatch]) -> Vec<serde_json::Value> {
-    debug_assert!(!vulnerabilities.is_empty(), "vulnerabilities must not be empty");
     let unique_patterns: std::collections::HashSet<_> =
         vulnerabilities.iter().map(|v| &v.pattern).collect();
 
@@ -42,7 +39,6 @@ fn create_sarif_rules(vulnerabilities: &[VulnerabilityMatch]) -> Vec<serde_json:
 
 /// Create single SARIF rule (Complexity: 1)
 fn create_sarif_rule(pattern: &str) -> serde_json::Value {
-    debug_assert!(true, "contract: create_sarif_rule");
     serde_json::json!({
         "id": pattern,
         "name": pattern,
@@ -60,13 +56,11 @@ fn create_sarif_rule(pattern: &str) -> serde_json::Value {
 
 /// Create SARIF results from vulnerabilities (Complexity: 3)
 fn create_sarif_results(vulnerabilities: &[VulnerabilityMatch]) -> Vec<serde_json::Value> {
-    debug_assert!(!vulnerabilities.is_empty(), "vulnerabilities must not be empty");
     vulnerabilities.iter().map(create_sarif_result).collect()
 }
 
 /// Create single SARIF result (Complexity: 3)
 fn create_sarif_result(vuln: &VulnerabilityMatch) -> serde_json::Value {
-    debug_assert!(true, "contract: create_sarif_result");
     use crate::wasm::security::Severity;
 
     let level = match vuln.severity {

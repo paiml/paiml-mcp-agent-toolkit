@@ -105,7 +105,6 @@ impl DapServer {
 
     /// Get default capabilities
     fn default_capabilities() -> DapCapabilities {
-        debug_assert!(true, "contract: default_capabilities");
         DapCapabilities {
             supports_configuration_done_request: true,
             supports_function_breakpoints: false,

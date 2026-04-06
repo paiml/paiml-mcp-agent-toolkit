@@ -2,7 +2,6 @@
 /// Creates JUnit-compatible XML output for CI/CD integration
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_qg_as_junit(violations: &[QualityViolation]) -> Result<String> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     use std::fmt::Write;
     let mut output = String::new();
 
@@ -32,7 +31,6 @@ fn write_junit_test_case(
     output: &mut String,
     violation: &QualityViolation,
 ) -> Result<(), std::fmt::Error> {
-    debug_assert!(true, "contract: write_junit_test_case");
     use std::fmt::Write;
 
     writeln!(
@@ -56,7 +54,6 @@ pub fn format_project_output(
     violations: &[QualityViolation],
     format: QualityGateOutputFormat,
 ) -> Result<String> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     match format {
         QualityGateOutputFormat::Json => Ok(serde_json::to_string_pretty(&json!({
             "passed": results.passed,
@@ -73,7 +70,6 @@ pub fn format_project_output(
 
 /// Format project summary
 fn format_project_summary(results: &QualityGateResults, violations: &[QualityViolation]) -> String {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut output = String::new();
 
     output.push_str("# Quality Gate Results\n\n");
@@ -104,7 +100,6 @@ fn format_project_summary(results: &QualityGateResults, violations: &[QualityVio
 fn group_violations_by_type(
     violations: &[QualityViolation],
 ) -> HashMap<String, Vec<&QualityViolation>> {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut grouped = HashMap::new();
     for violation in violations {
         grouped
@@ -117,7 +112,6 @@ fn group_violations_by_type(
 
 /// Format violations as markdown
 fn format_violations_markdown(grouped: &HashMap<String, Vec<&QualityViolation>>) -> String {
-    debug_assert!(true, "contract: format_violations_markdown");
     let mut output = String::new();
 
     for (check_type, violations) in grouped {

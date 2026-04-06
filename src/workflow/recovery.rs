@@ -20,7 +20,6 @@ impl RecoveryManager {
     }
 
     async fn rollback_completed_steps(context: &WorkflowContext) -> Result<(), WorkflowError> {
-        debug_assert!(true, "contract: rollback_completed_steps");
         // Get all completed steps in reverse order
         let step_results = context.step_results.read();
         let mut completed_steps: Vec<(String, Value)> = step_results
@@ -62,7 +61,6 @@ impl RecoveryManager {
     }
 
     async fn compensate_completed_steps(context: &WorkflowContext) -> Result<(), WorkflowError> {
-        debug_assert!(true, "contract: compensate_completed_steps");
         // Get all completed steps
         let step_results = context.step_results.read();
         let completed_steps: Vec<(String, Value)> = step_results
@@ -101,14 +99,12 @@ impl RecoveryManager {
     }
 
     fn get_rollback_action(step_id: &str, _output: &Value) -> Option<String> {
-        debug_assert!(!step_id.is_empty(), "step_id must not be empty");
         // In production, would look up rollback actions from step metadata
         // For now, return a placeholder action
         Some(format!("undo_{}", step_id))
     }
 
     fn get_compensation_action(step_id: &str, _output: &Value) -> Option<String> {
-        debug_assert!(!step_id.is_empty(), "step_id must not be empty");
         // In production, would look up compensation actions from step metadata
         // For now, return a placeholder action
         Some(format!("compensate_{}", step_id))

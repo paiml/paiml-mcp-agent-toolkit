@@ -105,7 +105,6 @@ pub struct ComplexitySummary {
 
 /// Helper function to find source files
 async fn find_source_files(root: &Path, extensions: &[String]) -> Result<Vec<PathBuf>> {
-    debug_assert!(root.exists(), "root must exist: {}", root.display());
     let mut files = Vec::new();
     let root = root.to_path_buf();
     let extensions = extensions.to_vec();
@@ -144,11 +143,6 @@ async fn find_source_files(root: &Path, extensions: &[String]) -> Result<Vec<Pat
 
 /// Check if file should be analyzed
 fn should_analyze_file(file_path: &Path) -> bool {
-    debug_assert!(
-        file_path.exists(),
-        "file_path must exist: {}",
-        file_path.display()
-    );
     let path_str = file_path.to_string_lossy();
     !path_str.contains("/tests/")
         && !path_str.contains("/test/")
@@ -165,7 +159,6 @@ fn process_function_metrics(
     max_cyclomatic: &mut u32,
     max_cognitive: &mut u32,
 ) {
-    debug_assert!(true, "contract: process_function_metrics");
     let cyclo = u32::from(func.metrics.cyclomatic);
     let cogn = u32::from(func.metrics.cognitive);
 
@@ -181,7 +174,6 @@ fn process_function_metrics(
 
 /// Calculate average metrics
 fn calculate_averages(total: u32, count: usize) -> f64 {
-    debug_assert!(count > 0, "count must be positive");
     if count > 0 {
         f64::from(total) / count as f64
     } else {
@@ -196,7 +188,6 @@ impl Analyzer for ComplexityAnalyzer {
     type Config = ProjectConfig;
 
     async fn analyze(&self, input: Self::Input, _config: Self::Config) -> Result<Self::Output> {
-        debug_assert!(true, "contract: analyze");
         // Analyze all Rust files in the project
         let source_files = find_source_files(&input.project_path, &["rs".to_string()]).await?;
         let mut file_metrics = Vec::new();
@@ -285,11 +276,6 @@ impl Analyzer for ComplexityAnalyzer {
 #[async_trait]
 impl ProjectAnalyzer for ComplexityAnalyzer {
     async fn analyze_project(&self, project_path: &Path) -> Result<Self::Output> {
-        debug_assert!(
-            project_path.exists(),
-            "project_path must exist: {}",
-            project_path.display()
-        );
         let input = ProjectInput {
             project_path: project_path.to_path_buf(),
         };
@@ -300,12 +286,10 @@ impl ProjectAnalyzer for ComplexityAnalyzer {
 
 impl AnalyzerInfo for ComplexityAnalyzer {
     fn name(&self) -> &'static str {
-        debug_assert!(true, "contract: name");
         "complexity"
     }
 
     fn version(&self) -> &'static str {
-        debug_assert!(true, "contract: version");
         env!("CARGO_PKG_VERSION")
     }
 
@@ -380,9 +364,7 @@ mod tests {
             &test_file,
             r#"
             fn simple_function() -> i32 { 42 }
-                debug_assert!(true, "contract: simple_function");
             fn complex_function(x: i32) -> i32 {
-                debug_assert!(true, "contract: complex_function");
                 if x > 0 {
                     if x > 10 {
                         return x * 2;
@@ -420,7 +402,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

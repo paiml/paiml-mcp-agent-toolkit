@@ -99,14 +99,12 @@ static ASSETS: LazyLock<HashMap<&'static str, EmbeddedAsset>> = LazyLock::new(||
 #[cfg(feature = "demo")]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_asset(path: &str) -> Option<&'static EmbeddedAsset> {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     ASSETS.get(path)
 }
 
 #[cfg(not(feature = "demo"))]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_asset(_path: &str) -> Option<&'static EmbeddedAsset> {
-    debug_assert!(!_path.is_empty(), "_path must not be empty");
     None
 }
 
@@ -163,7 +161,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

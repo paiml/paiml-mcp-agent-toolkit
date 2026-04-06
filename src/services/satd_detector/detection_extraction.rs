@@ -28,7 +28,6 @@ impl SATDDetector {
     }
 
     fn with_classifier(debt_classifier: DebtClassifier) -> Self {
-        debug_assert!(true, "contract: with_classifier");
         let patterns = debt_classifier.compiled_patterns.clone();
         Self {
             patterns,
@@ -37,7 +36,6 @@ impl SATDDetector {
     }
 
     fn with_config(strict_mode: bool) -> Self {
-        debug_assert!(true, "contract: with_config");
         let debt_classifier = if strict_mode {
             DebtClassifier::new_strict()
         } else {
@@ -58,7 +56,6 @@ impl SATDDetector {
         content: &str,
         file_path: &Path,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut debts = Vec::new();
         let mut test_tracker = TestBlockTracker::new(self.is_rust_file(file_path));
 
@@ -78,7 +75,6 @@ impl SATDDetector {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_rust_file(&self, file_path: &Path) -> bool {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         file_path.extension().and_then(|s| s.to_str()) == Some("rs")
     }
 
@@ -93,8 +89,6 @@ impl SATDDetector {
         file_path: &Path,
         line_num: u32,
     ) -> Result<Option<TechnicalDebt>, TemplateError> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // Skip lines that are likely test data or pattern definitions
         if self.is_likely_test_data_or_pattern(line, file_path) {
             return Ok(None);
@@ -135,7 +129,6 @@ impl SATDDetector {
 
     /// Extract comment content from various comment styles
     fn extract_comment_content(&self, line: &str) -> Result<Option<String>, TemplateError> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // Input validation
         if line.len() > 10000 {
             return Err(TemplateError::ValidationError {
@@ -173,7 +166,6 @@ impl SATDDetector {
 
     /// Find the column where the comment starts
     fn find_comment_column(&self, line: &str) -> u32 {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if let Some(pos) = line.find("//") {
             return pos as u32 + 1;
         }
@@ -191,7 +183,6 @@ impl SATDDetector {
 
     /// Generate context hash for debt identity tracking
     fn hash_context(&self, file_path: &Path, line_num: u32, content: &str) -> [u8; 16] {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut hasher = Hasher::new();
 
         // Hash structural elements for stability across refactorings

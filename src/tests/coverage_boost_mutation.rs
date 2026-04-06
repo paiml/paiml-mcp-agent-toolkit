@@ -42,7 +42,6 @@ fn create_test_location(line: usize, column: usize) -> SourceLocation {
 }
 
 fn create_test_mutant(id: &str, status: MutantStatus) -> Mutant {
-    debug_assert!(!id.is_empty(), "id must not be empty");
     Mutant {
         id: id.to_string(),
         original_file: PathBuf::from("test.rs"),
@@ -55,7 +54,6 @@ fn create_test_mutant(id: &str, status: MutantStatus) -> Mutant {
 }
 
 fn create_test_result(status: MutantStatus, file: &str, line: usize) -> MutationResult {
-    debug_assert!(!file.is_empty(), "file must not be empty");
     MutationResult {
         mutant: Mutant {
             id: format!("{}_{}", file.replace(".rs", ""), line),

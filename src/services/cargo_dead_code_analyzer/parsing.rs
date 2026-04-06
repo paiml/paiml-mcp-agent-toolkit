@@ -4,7 +4,6 @@
 impl CargoDeadCodeAnalyzer {
     /// Parse cargo's JSON output for dead code warnings
     fn parse_cargo_warnings(&self, output: &str) -> Result<Vec<(PathBuf, DeadItem)>> {
-        debug_assert!(!output.is_empty(), "output must not be empty");
         let mut dead_items = Vec::new();
 
         for line in output.lines() {
@@ -39,7 +38,6 @@ impl CargoDeadCodeAnalyzer {
 
     /// Extract dead code item from compiler message
     fn extract_dead_item(&self, message: &Value) -> Option<(PathBuf, DeadItem)> {
-        debug_assert!(true, "contract: extract_dead_item");
         let spans = message["spans"].as_array()?;
         let primary_span = spans
             .iter()
@@ -66,7 +64,6 @@ impl CargoDeadCodeAnalyzer {
 
     /// Parse the warning message to extract name and kind
     fn parse_message(&self, message: &str) -> Option<(String, DeadCodeKind)> {
-        debug_assert!(true, "contract: parse_message");
         // Common patterns in dead code messages
         let patterns = [
             ("function `", "` is never used", DeadCodeKind::Function),
@@ -108,7 +105,6 @@ impl CargoDeadCodeAnalyzer {
 
     /// Group dead items by file
     fn group_by_file(&self, items: Vec<(PathBuf, DeadItem)>) -> Vec<FileDeadCode> {
-        debug_assert!(!items.is_empty(), "items must not be empty");
         let mut file_map: HashMap<PathBuf, Vec<DeadItem>> = HashMap::new();
 
         for (path, item) in items {
@@ -134,7 +130,6 @@ impl CargoDeadCodeAnalyzer {
 
     /// Calculate dead code percentage for a specific file
     fn calculate_file_percentage(&self, file_path: &Path, dead_items: &[DeadItem]) -> Result<f64> {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let full_path = if file_path.is_absolute() {
             file_path.to_path_buf()
         } else {
@@ -162,7 +157,6 @@ impl CargoDeadCodeAnalyzer {
 
     /// Calculate overall metrics
     async fn calculate_metrics(&self, files: Vec<FileDeadCode>) -> Result<AccurateDeadCodeReport> {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         let mut total_lines = 0;
         let mut dead_lines = 0;
         let mut dead_by_type = HashMap::new();
@@ -223,7 +217,6 @@ impl CargoDeadCodeAnalyzer {
 
 /// Convert DeadCodeKind to string representation
 fn dead_code_kind_to_str(kind: &DeadCodeKind) -> &str {
-    debug_assert!(true, "contract: dead_code_kind_to_str");
     match kind {
         DeadCodeKind::Function => "function",
         DeadCodeKind::Method => "method",

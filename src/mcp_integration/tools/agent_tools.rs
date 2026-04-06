@@ -39,7 +39,6 @@ impl AnalyzeTool {
 #[async_trait]
 impl McpTool for AnalyzeTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "analyze".to_string(),
             description: "Analyze code for quality metrics and issues".to_string(),
@@ -66,7 +65,6 @@ impl McpTool for AnalyzeTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         let code = params["code"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing code parameter".to_string(),
@@ -168,7 +166,6 @@ impl TransformTool {
 #[async_trait]
 impl McpTool for TransformTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "transform".to_string(),
             description: "Transform code using AST manipulation".to_string(),
@@ -199,7 +196,6 @@ impl McpTool for TransformTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         let code = params["code"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing code parameter".to_string(),
@@ -314,7 +310,6 @@ impl ValidateTool {
 #[async_trait]
 impl McpTool for ValidateTool {
     fn metadata(&self) -> ToolMetadata {
-        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "validate".to_string(),
             description: "Validate code against quality standards".to_string(),
@@ -345,7 +340,6 @@ impl McpTool for ValidateTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
-        debug_assert!(true, "contract: execute");
         let code = params["code"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing code parameter".to_string(),

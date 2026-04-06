@@ -15,12 +15,10 @@ impl Default for MinPhonyRule {
 
 impl MakefileRule for MinPhonyRule {
     fn id(&self) -> &'static str {
-        debug_assert!(true, "contract: id");
         "minphony"
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
-        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
         let phony_targets: HashSet<_> = ast.get_phony_targets().into_iter().collect();
 
@@ -78,17 +76,14 @@ impl Default for PhonyDeclaredRule {
 
 impl MakefileRule for PhonyDeclaredRule {
     fn id(&self) -> &'static str {
-        debug_assert!(true, "contract: id");
         "phonydeclared"
     }
 
     fn default_severity(&self) -> Severity {
-        debug_assert!(true, "contract: default_severity");
         Severity::Info
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
-        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
         let phony_targets: HashSet<_> = ast.get_phony_targets().into_iter().collect();
 

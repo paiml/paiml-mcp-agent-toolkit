@@ -24,7 +24,6 @@ mod cb060_falsification {
 
     #[test]
     fn tp_032_ptx_bra_before_barrier_multiline() {
-        debug_assert!(true, "contract: tp_032_ptx_bra_before_barrier_multiline");
         // Adversarial: Many lines between branch and barrier
         let ptx = r#"
             @%p0 bra skip_section;
@@ -44,7 +43,6 @@ mod cb060_falsification {
 
     #[test]
     fn tp_033_wgsl_barrier_in_if() {
-        debug_assert!(true, "contract: tp_033_wgsl_barrier_in_if");
         let wgsl = r#"
             if (local_id.x < 16u) {
                 workgroupBarrier();
@@ -59,7 +57,6 @@ mod cb060_falsification {
 
     #[test]
     fn tp_034_wgsl_barrier_in_else() {
-        debug_assert!(true, "contract: tp_034_wgsl_barrier_in_else");
         // Adversarial: Barrier in else branch only
         let wgsl = r#"
             if (condition) {
@@ -77,7 +74,6 @@ mod cb060_falsification {
 
     #[test]
     fn tn_035_ptx_barrier_before_branch() {
-        debug_assert!(true, "contract: tn_035_ptx_barrier_before_branch");
         // Barrier BEFORE branch is safe
         let ptx = r#"
             bar.sync 0;
@@ -93,7 +89,6 @@ mod cb060_falsification {
 
     #[test]
     fn tn_036_wgsl_barrier_outside_control_flow() {
-        debug_assert!(true, "contract: tn_036_wgsl_barrier_outside_control_flow");
         // Barrier not in divergent control flow
         let wgsl = r#"
             workgroupBarrier();
@@ -111,7 +106,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_037_ptx_barrier_in_comment() {
-        debug_assert!(true, "contract: edge_037_ptx_barrier_in_comment");
         // Adversarial: bar.sync in comment should NOT trigger
         let ptx = r#"
             // bar.sync 0; -- this is a comment
@@ -126,7 +120,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_038_ptx_nested_predicates() {
-        debug_assert!(true, "contract: edge_038_ptx_nested_predicates");
         // Adversarial: Complex nested predicate structure
         let ptx = r#"
             @%p0 bra check1;
@@ -144,7 +137,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_039_wgsl_barrier_in_loop() {
-        debug_assert!(true, "contract: edge_039_wgsl_barrier_in_loop");
         // Barrier in loop that all threads execute is OK
         let wgsl = r#"
             for (var i = 0u; i < 4u; i++) {
@@ -161,7 +153,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_040_wgsl_barrier_in_divergent_loop() {
-        debug_assert!(true, "contract: edge_040_wgsl_barrier_in_divergent_loop");
         // Barrier in loop with thread-dependent bounds
         let wgsl = r#"
             for (var i = 0u; i < local_id.x; i++) {
@@ -182,7 +173,6 @@ mod cb060_falsification {
 
     #[test]
     fn tp_041_unbounded_shared_load() {
-        debug_assert!(true, "contract: tp_041_unbounded_shared_load");
         // From issue #32: Direct shared memory access without bounds check
         let ptx = r#"
             mul.u32 %r10, %r5, 64;
@@ -197,7 +187,6 @@ mod cb060_falsification {
 
     #[test]
     fn tp_042_unbounded_shared_store() {
-        debug_assert!(true, "contract: tp_042_unbounded_shared_store");
         let ptx = r#"
             mul.u32 %r10, %r5, 64;
             st.shared.f32 [%r10], %f1;
@@ -211,7 +200,6 @@ mod cb060_falsification {
 
     #[test]
     fn tn_043_bounded_shared_load() {
-        debug_assert!(true, "contract: tn_043_bounded_shared_load");
         // Predicated load with bounds check
         let ptx = r#"
             setp.lt.u32 %p1, %r5, 256;
@@ -226,7 +214,6 @@ mod cb060_falsification {
 
     #[test]
     fn tn_044_shared_with_constant_offset() {
-        debug_assert!(true, "contract: tn_044_shared_with_constant_offset");
         // Constant offset is always bounded
         let ptx = r#"
             ld.shared.f32 %f1, [shared_mem + 128];
@@ -240,7 +227,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_045_shared_in_comment() {
-        debug_assert!(true, "contract: edge_045_shared_in_comment");
         let ptx = r#"
             // ld.shared.f32 %f1, [%r10]; -- commented out
             mov.f32 %f1, 0.0;
@@ -254,7 +240,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_046_shared_complex_index() {
-        debug_assert!(true, "contract: edge_046_shared_complex_index");
         // Adversarial: Complex index expression
         let ptx = r#"
             mad.lo.u32 %r10, %r5, 64, %r6;
@@ -271,7 +256,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_047_shared_bounds_far_apart() {
-        debug_assert!(true, "contract: edge_047_shared_bounds_far_apart");
         // Adversarial: Bounds check far from actual load
         let ptx = r#"
             setp.lt.u32 %p1, %r5, 256;
@@ -295,7 +279,6 @@ mod cb060_falsification {
 
     #[test]
     fn tp_048_tiled_no_boundary_check() {
-        debug_assert!(true, "contract: tp_048_tiled_no_boundary_check");
         // From issue #37: Tiled GEMM without boundary check
         let rust_code = r#"
             // Tiled GEMM kernel
@@ -317,7 +300,6 @@ mod cb060_falsification {
 
     #[test]
     fn tn_049_tiled_with_boundary_check() {
-        debug_assert!(true, "contract: tn_049_tiled_with_boundary_check");
         let rust_code = r#"
             // Tiled GEMM with proper bounds
             for tile in 0..k_tiles {
@@ -339,7 +321,6 @@ mod cb060_falsification {
 
     #[test]
     fn tp_050_ptx_tiled_early_exit() {
-        debug_assert!(true, "contract: tp_050_ptx_tiled_early_exit");
         // From PARITY-114: Early exit breaks tile loading
         let ptx = r#"
             setp.ge.u32 %p0, %r_row, %r_m;
@@ -361,12 +342,10 @@ mod cb060_falsification {
 
     #[test]
     fn edge_051_wgsl_tiled_workgroup_size() {
-        debug_assert!(true, "contract: edge_051_wgsl_tiled_workgroup_size");
         // WGSL tiled kernel pattern
         let wgsl = r#"
             @workgroup_size(32, 32)
             fn tiled_matmul() {
-                debug_assert!(true, "contract: tiled_matmul");
                 // No bounds check
                 let a_tile = a[global_id.y * K + local_id.x];
             }
@@ -380,7 +359,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_052_partial_bounds_check() {
-        debug_assert!(true, "contract: edge_052_partial_bounds_check");
         // Only row bounds checked, not column
         let rust_code = r#"
             if row < m {
@@ -397,7 +375,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_053_bounds_in_wrong_place() {
-        debug_assert!(true, "contract: edge_053_bounds_in_wrong_place");
         // Bounds check after store (useless)
         let rust_code = r#"
             c[row * n + col] = acc;
@@ -414,7 +391,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_054_tiled_in_string() {
-        debug_assert!(true, "contract: edge_054_tiled_in_string");
         // Adversarial: Kernel code in string literal
         let rust_code = r#"
             let kernel_src = "c[row * n + col] = acc;";
@@ -428,7 +404,6 @@ mod cb060_falsification {
 
     #[test]
     fn edge_055_complex_bounds_expression() {
-        debug_assert!(true, "contract: edge_055_complex_bounds_expression");
         // Bounds check with complex expression
         let rust_code = r#"
             if (row * stride + offset) < (m * stride) && col < n {

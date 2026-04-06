@@ -20,7 +20,6 @@ impl LoadMonitor {
     }
 
     fn get_cpu_usage(&self) -> f64 {
-        debug_assert!(true, "contract: get_cpu_usage");
         // Placeholder - would use sysinfo or similar
         0.5
     }

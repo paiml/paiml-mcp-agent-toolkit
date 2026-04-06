@@ -64,27 +64,22 @@ impl Default for DeepContextConfig {
 
 // Default value functions for serde
 fn default_dead_code_threshold() -> f64 {
-    debug_assert!(true, "contract: default_dead_code_threshold");
     0.15
 }
 
 fn default_cyclomatic_warning() -> u32 {
-    debug_assert!(true, "contract: default_cyclomatic_warning");
     10
 }
 
 fn default_cyclomatic_error() -> u32 {
-    debug_assert!(true, "contract: default_cyclomatic_error");
     20
 }
 
 fn default_cognitive_warning() -> u32 {
-    debug_assert!(true, "contract: default_cognitive_warning");
     15
 }
 
 fn default_cognitive_error() -> u32 {
-    debug_assert!(true, "contract: default_cognitive_error");
     30
 }
 

@@ -29,7 +29,6 @@ impl CSharpComplexityAnalyzer {
     /// Analyzes complexity of C# source code (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
         self.cognitive_complexity = 1;
 
@@ -44,7 +43,6 @@ impl CSharpComplexityAnalyzer {
 
     /// Helper to analyze complexity for a single line (complexity ≤10)
     fn analyze_complexity_for_line(&mut self, line: &str) {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("if ")
             || line.contains("while ")
             || line.contains("for ")

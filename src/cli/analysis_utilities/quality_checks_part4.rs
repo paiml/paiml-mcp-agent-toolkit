@@ -1,7 +1,6 @@
 
 /// Toyota Way: Extract Method - Get QG violation summary data rows (complexity ≤3)
 fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str, u64); 9] {
-    debug_assert!(true, "contract: get_qg_violation_summary_rows");
     [
         (
             "Complexity",
@@ -43,7 +42,6 @@ fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_toolchain(path: &Path) -> Option<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     super::detect_primary_language(path)
 }
 
@@ -111,7 +109,6 @@ pub async fn analyze_project_files(
     cyclomatic_threshold: u16,
     cognitive_threshold: u16,
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
 
     // CRITICAL FIX: Use ProjectFileDiscovery instead of WalkDir
@@ -258,8 +255,6 @@ pub fn should_analyze_file(
     extensions: &[&str],
     include: &[String],
 ) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
 
     if !extensions.contains(&extension) {
@@ -275,8 +270,6 @@ pub fn should_analyze_file(
 
 /// Check if path matches any of the include patterns
 fn matches_include_patterns(path: &Path, project_path: &Path, include: &[String]) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use glob::Pattern;
 
     let path_str = path.to_string_lossy();
@@ -291,7 +284,6 @@ fn matches_include_patterns(path: &Path, project_path: &Path, include: &[String]
 
 /// Check if path should be excluded from analysis
 fn is_excluded_path(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
 
     if is_excluded_directory(&path_str) {
@@ -309,7 +301,6 @@ fn is_excluded_path(path: &Path) -> bool {
 /// Check if path contains excluded directories
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_excluded_directory(path_str: &str) -> bool {
-    debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     // Normalize path for consistent matching
     let normalized = path_str.replace('\\', "/");
 
@@ -404,7 +395,6 @@ pub fn is_excluded_directory(path_str: &str) -> bool {
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_excluded_filename(filename: &str) -> bool {
-    debug_assert!(!filename.is_empty(), "filename must not be empty");
     is_test_file(filename)
         || is_example_or_demo_file(filename)
         || is_benchmark_file(filename)
@@ -414,7 +404,6 @@ pub fn is_excluded_filename(filename: &str) -> bool {
 /// Check if filename is a test file (cognitive complexity ≤6)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_test_file(filename: &str) -> bool {
-    debug_assert!(!filename.is_empty(), "filename must not be empty");
     const TEST_SUFFIXES: &[&str] = &["_test.rs", "_tests.rs", "tests.rs"];
     const TEST_PREFIXES: &[&str] = &["test_", "tests_"];
     const TEST_CONTAINS: &[&str] = &[
@@ -435,7 +424,6 @@ pub fn is_test_file(filename: &str) -> bool {
 /// Check if filename is an example or demo file (cognitive complexity ≤4)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_example_or_demo_file(filename: &str) -> bool {
-    debug_assert!(!filename.is_empty(), "filename must not be empty");
     const EXAMPLE_DEMO_PREFIXES: &[&str] = &["example_", "demo_"];
     const EXAMPLE_DEMO_CONTAINS: &[&str] = &["_example", "_demo"];
 
@@ -448,7 +436,6 @@ pub fn is_example_or_demo_file(filename: &str) -> bool {
 /// Check if filename is a benchmark file (cognitive complexity ≤4)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_benchmark_file(filename: &str) -> bool {
-    debug_assert!(!filename.is_empty(), "filename must not be empty");
     const BENCH_SUFFIXES: &[&str] = &["_bench.rs", "_benchmark.rs"];
     const BENCH_CONTAINS: &[&str] = &["bench_", "benchmark_"];
 
@@ -459,7 +446,6 @@ pub fn is_benchmark_file(filename: &str) -> bool {
 /// Check if filename is a mock or stub file (cognitive complexity ≤4)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_mock_or_stub_file(filename: &str) -> bool {
-    debug_assert!(!filename.is_empty(), "filename must not be empty");
     const MOCK_STUB_PREFIXES: &[&str] = &["mock_", "stub_", "stubs_"];
     const MOCK_STUB_CONTAINS: &[&str] = &["_mock", "_stub", "_stubs"];
 
@@ -473,7 +459,6 @@ async fn analyze_complexity_file(
     cyclomatic_threshold: u16,
     cognitive_threshold: u16,
 ) -> Result<Option<crate::services::complexity::FileComplexityMetrics>> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // PERFORMANCE OPTIMIZATION: Use async file I/O instead of blocking
     match tokio::fs::read_to_string(path).await {
         Ok(content) => {
@@ -496,7 +481,6 @@ async fn analyze_file_complexity_async(
     _cyclomatic_threshold: u16,
     _cognitive_threshold: u16,
 ) -> Result<crate::services::complexity::FileComplexityMetrics> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     crate::cli::language_analyzer::analyze_file_complexity(path, content).await
 }
 
@@ -506,7 +490,6 @@ pub fn add_top_files_ranking(
     files: Vec<crate::services::complexity::FileComplexityMetrics>,
     top_files: usize,
 ) -> Vec<crate::services::complexity::FileComplexityMetrics> {
-    debug_assert!(!files.is_empty(), "files must not be empty");
     if top_files == 0 {
         files
     } else {

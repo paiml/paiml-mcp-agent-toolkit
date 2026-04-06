@@ -4,7 +4,6 @@ impl TDGCalculator {
     /// Analyze directory and generate TDG summary
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_directory(&self, path: &Path) -> Result<TDGSummary> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let files = self.discover_files(path).await?;
         let scores = self.calculate_batch(files.clone()).await?;
 
@@ -77,7 +76,6 @@ impl TDGCalculator {
     /// Generate detailed TDG analysis with recommendations
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_path(&self, path: &Path) -> Result<TDGAnalysis> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let score = self.calculate_file(path).await?;
         let explanation = self.generate_explanation(&score);
         let recommendations = self.generate_recommendations(&score, path).await?;
@@ -91,7 +89,6 @@ impl TDGCalculator {
 
     /// Identify primary contributing factor
     fn identify_primary_factor(&self, components: &TDGComponents) -> String {
-        debug_assert!(true, "contract: identify_primary_factor");
         let mut factors = [
             (
                 components.complexity * self.config.complexity_weight,
@@ -121,7 +118,6 @@ impl TDGCalculator {
 
     /// Estimate refactoring hours based on TDG score
     fn estimate_refactoring_hours(&self, tdg_score: f64) -> f64 {
-        debug_assert!(true, "contract: estimate_refactoring_hours");
         // Empirical formula: hours = base * multiplier^tdg
         let base_hours: f64 = 2.0;
         let multiplier: f64 = 1.8;
@@ -131,7 +127,6 @@ impl TDGCalculator {
 
     /// Generate human-readable explanation
     fn generate_explanation(&self, score: &TDGScore) -> String {
-        debug_assert!(true, "contract: generate_explanation");
         let mut explanation = format!(
             "Code Quality Gradient: {:.2} ({})\n\n",
             score.value,
@@ -186,7 +181,6 @@ impl TDGCalculator {
         score: &TDGScore,
         _path: &Path,
     ) -> Result<Vec<TDGRecommendation>> {
-        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         let mut recommendations = Vec::new();
 
         // Complexity recommendations
@@ -245,7 +239,6 @@ impl TDGCalculator {
 
     /// Discover files for analysis
     async fn discover_files(&self, path: &Path) -> Result<Vec<PathBuf>> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use the proper file discovery service with external dependency filtering
         let discovery = ProjectFileDiscovery::new(path.to_path_buf());
         discovery.discover_files()
@@ -255,7 +248,6 @@ impl TDGCalculator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_distribution(&self, scores: &[TDGScore]) -> TDGDistribution {
-        debug_assert!(!scores.is_empty(), "scores must not be empty");
         let bucket_size = 0.5;
         let max_value = 5.0;
         let num_buckets = (max_value / bucket_size) as usize;

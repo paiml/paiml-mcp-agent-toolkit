@@ -27,7 +27,6 @@ pub struct Roadmap {
 }
 
 fn default_github_enabled() -> bool {
-    debug_assert!(true, "contract: default_github_enabled");
     true
 }
 
@@ -36,7 +35,6 @@ fn deserialize_bool_lenient<'de, D>(deserializer: D) -> Result<bool, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    debug_assert!(true, "contract: deserialize_bool_lenient");
     use serde::de;
     struct BoolVisitor;
     impl<'de> de::Visitor<'de> for BoolVisitor {
@@ -48,7 +46,6 @@ where
             Ok(v)
         }
         fn visit_str<E: de::Error>(self, v: &str) -> Result<bool, E> {
-            debug_assert!(!v.is_empty(), "v must not be empty");
             match v {
                 "true" => Ok(true),
                 "false" => Ok(false),
@@ -60,7 +57,6 @@ where
 }
 
 fn default_timestamp() -> String {
-    debug_assert!(true, "contract: default_timestamp");
     "1970-01-01T00:00:00Z".to_string()
 }
 
@@ -140,7 +136,6 @@ pub struct RoadmapItem {
 }
 
 fn default_item_type() -> ItemType {
-    debug_assert!(true, "contract: default_item_type");
     ItemType::Task
 }
 
@@ -210,7 +205,6 @@ fn deserialize_phases<'de, D>(deserializer: D) -> Result<Vec<Phase>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    debug_assert!(true, "contract: deserialize_phases");
     use serde::de::{self, SeqAccess, Visitor};
     use std::fmt;
 
@@ -220,7 +214,6 @@ where
         type Value = Vec<Phase>;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            debug_assert!(true, "contract: expecting");
             formatter.write_str("a sequence of Phase structs")
         }
 
@@ -228,7 +221,6 @@ where
         where
             A: SeqAccess<'de>,
         {
-            debug_assert!(true, "contract: visit_seq");
             let mut phases = Vec::new();
             let mut index = 0;
 

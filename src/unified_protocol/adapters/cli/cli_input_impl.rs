@@ -11,7 +11,6 @@ impl CliInput {
 
     /// Create from the parsed CLI arguments
     fn get_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
-        debug_assert!(true, "contract: get_analyze_command_name");
         // Toyota Way Extract Method: Use categorized dispatch for analyze command names
         let category = CliAdapter::get_analyze_command_category(analyze_cmd);
 
@@ -31,7 +30,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Get QDD command name
     fn get_qdd_command_name(qdd_cmd: &QddCommands) -> &'static str {
-        debug_assert!(true, "contract: get_qdd_command_name");
         match qdd_cmd {
             QddCommands::Create { .. } => "qdd-create",
             QddCommands::Refactor { .. } => "qdd-refactor",
@@ -41,7 +39,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Basic analysis command names
     fn get_basic_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
-        debug_assert!(true, "contract: get_basic_analyze_command_name");
         match analyze_cmd {
             AnalyzeCommands::Churn { .. } => "analyze-churn",
             AnalyzeCommands::Complexity { .. } => "analyze-complexity",
@@ -55,7 +52,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Advanced analysis command names
     fn get_advanced_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
-        debug_assert!(true, "contract: get_advanced_analyze_command_name");
         match analyze_cmd {
             AnalyzeCommands::DeepContext { .. } => "analyze-deep-context",
             AnalyzeCommands::Comprehensive { .. } => "analyze-comprehensive",
@@ -68,7 +64,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Structural analysis command names
     fn get_structural_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
-        debug_assert!(true, "contract: get_structural_analyze_command_name");
         match analyze_cmd {
             AnalyzeCommands::Dag { .. } => "analyze-dag",
             AnalyzeCommands::GraphMetrics { .. } => "analyze-graph-metrics",
@@ -80,7 +75,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Specialized analysis command names
     fn get_specialized_analyze_command_name(analyze_cmd: &AnalyzeCommands) -> &'static str {
-        debug_assert!(true, "contract: get_specialized_analyze_command_name");
         match analyze_cmd {
             AnalyzeCommands::Makefile { .. } => "analyze-makefile",
             AnalyzeCommands::Provability { .. } => "analyze-provability",
@@ -110,7 +104,6 @@ impl CliInput {
     /// Toyota Way Extract Method: Get command name using categorized dispatch
     /// Reduces complexity from 23 branches to category-based logic
     fn get_command_name_by_category(command: &Commands) -> String {
-        debug_assert!(true, "contract: get_command_name_by_category");
         match command {
             // Special case: Analyze command needs sub-command delegation
             Commands::Analyze(analyze_cmd) => Self::get_analyze_command_name(analyze_cmd),
@@ -125,7 +118,6 @@ impl CliInput {
     /// Toyota Way Extract Method: Get simple command name for non-analyze commands
     /// Single responsibility: name extraction using category-based dispatch
     fn get_simple_command_name(command: &Commands) -> &'static str {
-        debug_assert!(true, "contract: get_simple_command_name");
         let category = Self::get_command_category(command);
 
         match category {
@@ -142,7 +134,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Determine command category
     fn get_command_category(command: &Commands) -> CommandCategory {
-        debug_assert!(true, "contract: get_command_category");
         match command {
             Commands::Generate { .. } | Commands::Scaffold { .. } => CommandCategory::Generation,
             Commands::QualityGate { .. } | Commands::QualityGates { .. } | Commands::Report { .. } | Commands::RepoScore { .. } | Commands::RustProjectScore { .. } | Commands::BrickScore { .. } | Commands::PopperScore { .. } | Commands::DemoScore { .. } | Commands::ValidateDocs(_) | Commands::ValidateReadme(_) | Commands::RedTeam(_) | Commands::Org(_) | Commands::Prompt(_) | Commands::Embed(_) | Commands::Semantic(_) | Commands::ShowMetrics { .. } | Commands::PredictQuality { .. } | Commands::RecordMetric { .. } | Commands::DepsAudit { .. } => CommandCategory::Analysis,
@@ -230,7 +221,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Generation command names
     fn get_generation_command_name(command: &Commands) -> &'static str {
-        debug_assert!(true, "contract: get_generation_command_name");
         match command {
             Commands::Generate { .. } => "generate",
             Commands::Scaffold { .. } => "scaffold",
@@ -240,7 +230,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Analysis command names (non-analyze)
     fn get_analysis_command_name(command: &Commands) -> &'static str {
-        debug_assert!(true, "contract: get_analysis_command_name");
         match command {
             Commands::QualityGate { .. } => "quality-gate",
             Commands::Report { .. } => "report",
@@ -251,7 +240,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Operations command names
     fn get_operations_command_name(command: &Commands) -> &'static str {
-        debug_assert!(true, "contract: get_operations_command_name");
         match command {
             Commands::Serve { .. } => "serve",
             Commands::Cache { .. } => "cache",
@@ -263,7 +251,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Workflow command names
     fn get_workflow_command_name(command: &Commands) -> &'static str {
-        debug_assert!(true, "contract: get_workflow_command_name");
         match command {
             Commands::Refactor(_) => "refactor",
             Commands::Test { .. } => "test",
@@ -278,7 +265,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: System command names
     fn get_system_command_name(command: &Commands) -> &'static str {
-        debug_assert!(true, "contract: get_system_command_name");
         match command {
             Commands::List { .. } => "list",
             Commands::Search { .. } => "search",
@@ -291,7 +277,6 @@ impl CliInput {
 
     /// Toyota Way Extract Method: Configuration command names
     fn get_configuration_command_name(command: &Commands) -> &'static str {
-        debug_assert!(true, "contract: get_configuration_command_name");
         match command {
             Commands::Config { .. } => "config",
             Commands::Agent { .. } => "agent",
@@ -307,7 +292,6 @@ impl CliAdapter {
     /// Toyota Way Extract Method: Categorize analyze command by type
     /// Single responsibility: classification logic only
     fn get_analyze_command_category(analyze_cmd: &AnalyzeCommands) -> AnalyzeCommandCategory {
-        debug_assert!(true, "contract: get_analyze_command_category");
         match analyze_cmd {
             // Core analysis commands (basic metrics)
             AnalyzeCommands::Churn { .. }

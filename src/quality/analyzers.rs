@@ -272,7 +272,6 @@ mod coverage_tests {
     fn test_analyzers_on_complex_code() {
         let code = r#"
             fn complex_function(n: usize) {
-                debug_assert!(n > 0, "n must be positive");
                 for i in 0..n {
                     for j in 0..n {
                         if i == j {

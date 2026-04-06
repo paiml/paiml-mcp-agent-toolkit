@@ -9,14 +9,12 @@ use std::path::{Path, PathBuf};
 /// Walk directory recursively for `.lua` files, skipping common non-source dirs.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn walkdir_lua_files(dir: &Path) -> Vec<PathBuf> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     walk_lua_recursive(dir, &mut files);
     files
 }
 
 fn walk_lua_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -41,7 +39,6 @@ fn walk_lua_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 /// Check if a file is a Lua test file based on naming conventions.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn is_lua_test_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     if stem.ends_with("_test") || stem.ends_with("_spec") || stem.starts_with("test_") {
         return true;
@@ -56,7 +53,6 @@ pub fn is_lua_test_file(path: &Path) -> bool {
 /// Returns Vec<(1-based line number, trimmed line content)>.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn compute_lua_production_lines(content: &str) -> Vec<(usize, String)> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut result = Vec::new();
     let mut in_block_comment = false;
 
@@ -113,7 +109,6 @@ pub(super) fn is_in_lua_string(line: &str, pattern: &str) -> bool {
 
 /// Strip trailing `--` comment from a line (heuristic: not inside string).
 fn strip_trailing_comment(line: &str) -> String {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     if let Some(pos) = line.find("--") {
         let before = &line[..pos];
         let double_q = before.chars().filter(|c| *c == '"').count();
@@ -148,7 +143,6 @@ pub(super) fn skip_identifier(bytes: &[u8], mut i: usize) -> usize {
 /// on patterns like `tbl["H.N.S.W."]` where dots are inside strings.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn count_consecutive_field_access(line: &str) -> usize {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let mut max_depth = 0;
     let bytes = line.as_bytes();
     let mut i = 0;
@@ -175,7 +169,6 @@ pub fn count_consecutive_field_access(line: &str) -> usize {
 
 /// Measure one access chain starting at an identifier. Returns (depth, new_position).
 fn measure_access_chain(bytes: &[u8], start: usize) -> (usize, usize) {
-    debug_assert!(!bytes.is_empty(), "bytes must not be empty");
     let mut depth = 1;
     let mut i = skip_identifier(bytes, start);
     while i < bytes.len() {
@@ -194,7 +187,6 @@ fn measure_access_chain(bytes: &[u8], start: usize) -> (usize, usize) {
 
 /// Skip past a quoted string (single or double), returning position after closing quote.
 fn skip_lua_string(bytes: &[u8], start: usize) -> usize {
-    debug_assert!(true, "contract: skip_lua_string");
     let quote = bytes[start];
     let mut i = start + 1;
     while i < bytes.len() {
@@ -212,7 +204,6 @@ fn skip_lua_string(bytes: &[u8], start: usize) -> usize {
 
 /// Skip past a bracket expression `[...]`, handling nested brackets and strings.
 fn skip_bracket_expr(bytes: &[u8], start: usize) -> usize {
-    debug_assert!(true, "contract: skip_bracket_expr");
     let mut i = start + 1;
     let mut depth = 1;
     while i < bytes.len() && depth > 0 {

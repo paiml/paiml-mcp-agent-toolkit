@@ -20,7 +20,6 @@ impl DapServer {
     /// Check if AST is cached for a given file path
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_ast_for(&self, path: &str) -> bool {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         let cache = self.ast_cache.lock().expect("Mutex should not be poisoned");
         cache.contains_key(Path::new(path))
     }
@@ -28,7 +27,6 @@ impl DapServer {
     /// Get variables at a specific line in a file using VariableInspector
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_variables_at_line(&self, path: &str, line: usize) -> Result<Vec<Variable>, String> {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         // Read file contents
         let source = std::fs::read_to_string(path)
             .map_err(|e| format!("Failed to read file {}: {}", path, e))?;
@@ -55,7 +53,6 @@ impl DapServer {
     /// Simulate stopping at a specific line (for testing)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn simulate_stop_at_line(&mut self, path: &str, line: usize) {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         let mut stopped_file = self
             .current_stopped_file
             .lock()
@@ -90,7 +87,6 @@ impl DapServer {
 
     /// Detect language from file path
     fn detect_language_from_path(&self, path: &Path) -> Option<Language> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let extension = path.extension()?.to_str()?;
 
         match extension {
@@ -104,7 +100,6 @@ impl DapServer {
 
     /// Parse and cache AST for a file
     fn parse_and_cache_ast(&self, path: &Path) -> Result<(), String> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Read source
         let source =
             std::fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;

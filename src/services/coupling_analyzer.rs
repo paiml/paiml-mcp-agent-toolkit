@@ -142,7 +142,6 @@ impl CouplingAnalyzer {
     /// Extract file path from node key
     #[allow(dead_code)]
     fn extract_file_path(node_key: &str) -> Option<PathBuf> {
-        debug_assert!(!node_key.is_empty(), "node_key must not be empty");
         // Simple extraction - assumes node key contains file path
         if node_key.contains("::") {
             // Format: "file_path::module_name"
@@ -158,7 +157,6 @@ impl CouplingAnalyzer {
         &self,
         file_metrics: &HashMap<PathBuf, CouplingMetrics>,
     ) -> ProjectCouplingMetrics {
-        debug_assert!(true, "contract: calculate_project_metrics");
         if file_metrics.is_empty() {
             return ProjectCouplingMetrics {
                 avg_afferent: 0.0,
@@ -210,7 +208,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }
@@ -237,7 +234,6 @@ mod coverage_tests {
     }
 
     fn create_edge(from: &str, to: &str) -> Edge {
-        debug_assert!(!from.is_empty(), "from must not be empty");
         Edge {
             from: from.to_string(),
             to: to.to_string(),

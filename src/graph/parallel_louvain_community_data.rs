@@ -16,7 +16,6 @@ struct CommunityData {
 impl CommunityData {
     /// Build community data from current assignment.
     fn new(communities: &[usize], graph_data: &GraphData) -> Self {
-        debug_assert!(!communities.is_empty(), "communities must not be empty");
         let node_to_community = communities.to_vec();
         let mut community_degrees: HashMap<usize, f64> = HashMap::new();
         let mut community_internal_weight: HashMap<usize, f64> = HashMap::new();

@@ -205,7 +205,6 @@ impl DataScienceAnalyzer {
 
     /// Build file-based communities when no dependencies are available
     fn build_file_communities(&self, findings: &mut [Finding]) -> Vec<CodeCommunity> {
-        debug_assert!(true, "contract: build_file_communities");
         let mut communities = Vec::new();
         for finding in findings.iter_mut() {
             let file = finding.location.file.to_string_lossy().to_string();

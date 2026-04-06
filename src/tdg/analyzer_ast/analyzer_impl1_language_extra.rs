@@ -5,7 +5,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         #[cfg(feature = "typescript-ast")]
         {
             use swc_common::{sync::Lrc, FileName, SourceMap};
@@ -93,7 +92,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         #[cfg(feature = "go-ast")]
         {
             use tree_sitter::Parser as TsParser;
@@ -162,7 +160,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         // Java requires tree-sitter-java which we don't have yet
         // Use tree-sitter generic parser as fallback
         self.analyze_tree_sitter_generic(source, Language::Java, score, tracker)
@@ -174,7 +171,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         #[cfg(feature = "lua-ast")]
         {
             use tree_sitter::Parser as TsParser;
@@ -242,7 +238,6 @@ impl TdgAnalyzerAst {
         score: &mut TdgScore,
         tracker: &mut PenaltyTracker,
     ) -> Result<()> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         #[cfg(feature = "c-ast")]
         {
             use tree_sitter::{Parser, Query, QueryCursor};

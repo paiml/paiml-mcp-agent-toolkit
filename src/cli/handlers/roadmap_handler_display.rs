@@ -7,8 +7,6 @@ async fn show_health_report(
     tickets_dir: &Path,
     format: &OutputFormat,
 ) -> Result<()> {
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
-    debug_assert!(tickets_dir.exists(), "tickets_dir must exist: {}", tickets_dir.display());
     let roadmap_content = fs::read_to_string(roadmap_path).map_err(|_| {
         let error = crate::cli::error_context::roadmap_not_found(roadmap_path);
         anyhow::anyhow!(error.format_detailed())
@@ -35,7 +33,6 @@ async fn show_health_report(
 
 /// Print health report in console format
 fn print_health_console(sprints: &[SprintInfo]) {
-    debug_assert!(!sprints.is_empty(), "sprints must not be empty");
     use crate::cli::colors as c;
     eprintln!("{}", c::header("Roadmap Health Report"));
     eprintln!();
@@ -69,7 +66,6 @@ fn print_health_console(sprints: &[SprintInfo]) {
 
 /// Print health report in YAML format
 fn print_health_yaml(sprints: &[SprintInfo]) {
-    debug_assert!(!sprints.is_empty(), "sprints must not be empty");
     println!("roadmap_health:");
     for sprint in sprints {
         let progress = if sprint.total_tickets > 0 {

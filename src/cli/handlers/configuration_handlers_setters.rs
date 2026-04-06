@@ -3,8 +3,6 @@
 
 /// Set a specific configuration value
 fn set_config_value(config: &mut PmatConfig, key: &str, value: &str) -> Result<()> {
-    debug_assert!(!key.is_empty(), "key must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     let parts: Vec<&str> = key.split('.').collect();
     if parts.len() != 2 {
         return Err(anyhow::anyhow!(
@@ -34,8 +32,6 @@ fn set_system_value(
     field: &str,
     value: &str,
 ) -> Result<()> {
-    debug_assert!(!field.is_empty(), "field must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     match field {
         "project_name" => system.project_name = value.to_string(),
         "verbose" => system.verbose = value.parse()?,
@@ -53,8 +49,6 @@ fn set_quality_value(
     field: &str,
     value: &str,
 ) -> Result<()> {
-    debug_assert!(!field.is_empty(), "field must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     match field {
         "max_complexity" => quality.max_complexity = value.parse()?,
         "max_cognitive_complexity" => quality.max_cognitive_complexity = value.parse()?,
@@ -74,8 +68,6 @@ fn set_analysis_value(
     field: &str,
     value: &str,
 ) -> Result<()> {
-    debug_assert!(!field.is_empty(), "field must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     match field {
         "max_file_size" => analysis.max_file_size = value.parse()?,
         "max_line_length" => analysis.max_line_length = value.parse()?,
@@ -94,8 +86,6 @@ fn set_performance_value(
     field: &str,
     value: &str,
 ) -> Result<()> {
-    debug_assert!(!field.is_empty(), "field must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     match field {
         "enable_regression_tests" => performance.enable_regression_tests = value.parse()?,
         "enable_memory_tests" => performance.enable_memory_tests = value.parse()?,
@@ -118,8 +108,6 @@ fn set_mcp_value(
     field: &str,
     value: &str,
 ) -> Result<()> {
-    debug_assert!(!field.is_empty(), "field must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     match field {
         "server_name" => mcp.server_name = value.to_string(),
         "server_version" => mcp.server_version = value.to_string(),
@@ -138,8 +126,6 @@ fn set_roadmap_value(
     field: &str,
     value: &str,
 ) -> Result<()> {
-    debug_assert!(!field.is_empty(), "field must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     match field {
         "auto_generate_todos" => roadmap.auto_generate_todos = value.parse()?,
         "enforce_quality_gates" => roadmap.enforce_quality_gates = value.parse()?,
@@ -158,8 +144,6 @@ fn set_telemetry_value(
     field: &str,
     value: &str,
 ) -> Result<()> {
-    debug_assert!(!field.is_empty(), "field must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     match field {
         "enabled" => telemetry.enabled = value.parse()?,
         "collection_interval_seconds" => telemetry.collection_interval_seconds = value.parse()?,
@@ -178,8 +162,6 @@ fn set_semantic_value(
     field: &str,
     value: &str,
 ) -> Result<()> {
-    debug_assert!(!field.is_empty(), "field must not be empty");
-    debug_assert!(!value.is_empty(), "value must not be empty");
     match field {
         "enabled" => semantic.enabled = value.parse()?,
         "vector_db_path" => semantic.vector_db_path = Some(value.to_string()),

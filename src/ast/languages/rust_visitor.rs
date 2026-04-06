@@ -14,7 +14,6 @@ impl<'a> RustAstVisitor<'a> {
 
     #[allow(dead_code)]
     fn add_node(&mut self, kind: AstKind) -> u32 {
-        debug_assert!(true, "contract: add_node");
         let mut node = UnifiedAstNode::new(kind, Language::Rust);
 
         // Set parent if we have one
@@ -28,7 +27,6 @@ impl<'a> RustAstVisitor<'a> {
 
 impl Visit<'_> for RustAstVisitor<'_> {
     fn visit_item_fn(&mut self, node: &ItemFn) {
-        debug_assert!(true, "contract: visit_item_fn");
         let mut ast_node =
             UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), Language::Rust);
 
@@ -48,7 +46,6 @@ impl Visit<'_> for RustAstVisitor<'_> {
     }
 
     fn visit_item_struct(&mut self, node: &ItemStruct) {
-        debug_assert!(true, "contract: visit_item_struct");
         let ast_node = UnifiedAstNode::new(AstKind::Class(ClassKind::Struct), Language::Rust);
 
         let key = self.dag.add_node(ast_node);
@@ -62,7 +59,6 @@ impl Visit<'_> for RustAstVisitor<'_> {
     }
 
     fn visit_item_enum(&mut self, node: &ItemEnum) {
-        debug_assert!(true, "contract: visit_item_enum");
         let ast_node = UnifiedAstNode::new(AstKind::Class(ClassKind::Enum), Language::Rust);
 
         let key = self.dag.add_node(ast_node);
@@ -76,7 +72,6 @@ impl Visit<'_> for RustAstVisitor<'_> {
     }
 
     fn visit_item_trait(&mut self, node: &ItemTrait) {
-        debug_assert!(true, "contract: visit_item_trait");
         let ast_node = UnifiedAstNode::new(AstKind::Class(ClassKind::Trait), Language::Rust);
 
         let key = self.dag.add_node(ast_node);
@@ -90,7 +85,6 @@ impl Visit<'_> for RustAstVisitor<'_> {
     }
 
     fn visit_item_impl(&mut self, node: &ItemImpl) {
-        debug_assert!(true, "contract: visit_item_impl");
         // For impl blocks, we create a special kind
         let ast_node = UnifiedAstNode::new(AstKind::Class(ClassKind::Regular), Language::Rust);
 

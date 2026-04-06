@@ -32,7 +32,6 @@ impl WasmInspector {
     /// Creates a new WASM inspector with custom size limit
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_size_limit(max_size: u64) -> Self {
-        debug_assert!(max_size > 0, "max_size must be positive");
         Self {
             max_module_size: max_size,
         }
@@ -48,7 +47,6 @@ impl WasmInspector {
     /// Inspects WASM binary from bytes
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn inspect_bytes(&self, bytes: &[u8]) -> DeepWasmResult<WasmModuleAnalysis> {
-        debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         // Check size limit
         if bytes.len() as u64 > self.max_module_size {
             return Err(DeepWasmError::QualityGate(format!(
@@ -104,7 +102,6 @@ impl WasmInspector {
         bytes: &'a [u8],
         section_name: &str,
     ) -> DeepWasmResult<Option<&'a [u8]>> {
-        debug_assert!(!section_name.is_empty(), "section_name must not be empty");
         let parser = Parser::new(0);
 
         for payload in parser.parse_all(bytes) {

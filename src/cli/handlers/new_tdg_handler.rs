@@ -23,7 +23,6 @@ pub struct TdgAnalysisConfig {
 /// Check for critical defects in the project (Known Defects v2.1)
 /// Auto-fails TDG analysis if critical defects are found
 async fn check_for_critical_defects(path: &Path) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::defect_detector::{RustDefectDetector, Severity};
     use walkdir::WalkDir;
 
@@ -92,11 +91,6 @@ async fn check_for_critical_defects(path: &Path) -> Result<()> {
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_tdg(config: TdgAnalysisConfig) -> Result<()> {
-    debug_assert!(
-        config.path.exists(),
-        "config.path must exist: {}",
-        config.path.display()
-    );
     eprintln!("🔍 Starting TDG (Technical Debt Grading) analysis...");
 
     let analyzer = TdgAnalyzer::new()?;
@@ -123,7 +117,6 @@ async fn analyze_project_path(
     path: &Path,
     format: &TdgOutputFormat,
 ) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let project_score = analyzer.analyze_project(path).await?;
     format_project_result(&project_score, format)
 }
@@ -133,7 +126,6 @@ async fn analyze_single_file(
     path: &Path,
     format: &TdgOutputFormat,
 ) -> Result<String> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let score = analyzer.analyze_file(path).await?;
     format_file_result(&score, format)
 }
@@ -142,7 +134,6 @@ fn format_project_result(
     project_score: &crate::tdg::ProjectScore,
     format: &TdgOutputFormat,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_project_result");
     let result = match format {
         TdgOutputFormat::Table => format_project(project_score),
         TdgOutputFormat::Json => serde_json::to_string_pretty(project_score)?,
@@ -156,7 +147,6 @@ fn format_project_result(
 }
 
 fn format_file_result(score: &crate::tdg::TdgScore, format: &TdgOutputFormat) -> Result<String> {
-    debug_assert!(true, "contract: format_file_result");
     let result = match format {
         TdgOutputFormat::Table => format_human(score),
         TdgOutputFormat::Json => format_json(score),
@@ -170,7 +160,6 @@ fn format_file_result(score: &crate::tdg::TdgScore, format: &TdgOutputFormat) ->
 }
 
 async fn write_or_print_result(result: &str, output_path: Option<PathBuf>) -> Result<()> {
-    debug_assert!(!result.is_empty(), "result must not be empty");
     if let Some(output_path) = output_path {
         tokio::fs::write(&output_path, result).await?;
         eprintln!("📝 Results written to {}", output_path.display());
@@ -187,8 +176,6 @@ pub async fn handle_tdg_compare(
     format: TdgOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
-    debug_assert!(path1.exists(), "path1 must exist: {}", path1.display());
-    debug_assert!(path2.exists(), "path2 must exist: {}", path2.display());
     eprintln!("🔍 Starting TDG comparison...");
 
     let analyzer = TdgAnalyzer::new()?;
@@ -204,7 +191,6 @@ fn format_comparison_result(
     comparison: &crate::tdg::Comparison,
     format: &TdgOutputFormat,
 ) -> Result<String> {
-    debug_assert!(true, "contract: format_comparison_result");
     let result = match format {
         TdgOutputFormat::Table => format_comparison(comparison),
         TdgOutputFormat::Json => serde_json::to_string_pretty(comparison)?,
@@ -221,7 +207,6 @@ fn format_comparison_result(
 }
 
 fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value {
-    debug_assert!(true, "contract: create_sarif_output");
     let results = project
         .files
         .iter()
@@ -306,7 +291,6 @@ fn create_sarif_output(project: &crate::tdg::ProjectScore) -> serde_json::Value 
 }
 
 fn create_file_sarif_output(score: &crate::tdg::TdgScore) -> serde_json::Value {
-    debug_assert!(true, "contract: create_file_sarif_output");
     let level = if score.total < 50.0 {
         "error"
     } else if score.total < 65.0 {
@@ -438,7 +422,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

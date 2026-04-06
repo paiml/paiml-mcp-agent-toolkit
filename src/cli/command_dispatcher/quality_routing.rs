@@ -6,7 +6,6 @@
 impl CommandDispatcher {
     /// Route quality and analysis commands (extracted to reduce route_command cognitive complexity)
     async fn route_quality_command(command: Commands) -> anyhow::Result<()> {
-        debug_assert!(true, "contract: route_quality_command");
         match command {
             Commands::ProjectDiag {
                 path,

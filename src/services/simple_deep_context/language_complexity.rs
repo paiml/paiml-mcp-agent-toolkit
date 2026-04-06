@@ -7,11 +7,6 @@ use super::types::SimpleDeepContext;
 impl SimpleDeepContext {
     /// Rust complexity via AST
     pub(super) async fn complexity_for_rust(&self, file_path: &Path) -> (usize, usize, f64) {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         use crate::services::ast_rust::analyze_rust_file_with_complexity;
         match analyze_rust_file_with_complexity(file_path).await {
             Ok(file_complexity_metrics) => {
@@ -191,11 +186,6 @@ impl SimpleDeepContext {
 
     /// Go complexity via AST
     pub(super) async fn complexity_for_go(&self, file_path: &Path) -> (usize, usize, f64) {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         use tokio::fs;
         match fs::read_to_string(file_path).await {
             #[allow(unused_variables)]
@@ -233,11 +223,6 @@ impl SimpleDeepContext {
 
     /// C# complexity via AST
     pub(super) async fn complexity_for_csharp(&self, file_path: &Path) -> (usize, usize, f64) {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         use tokio::fs;
         #[allow(unused_variables)]
         match fs::read_to_string(file_path).await {
@@ -277,11 +262,6 @@ impl SimpleDeepContext {
 
     /// Kotlin complexity via AST
     pub(super) async fn complexity_for_kotlin(&self, file_path: &Path) -> (usize, usize, f64) {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         use tokio::fs;
         match fs::read_to_string(file_path).await {
             #[cfg_attr(not(feature = "kotlin-ast"), allow(unused_variables))]
@@ -321,11 +301,6 @@ impl SimpleDeepContext {
 
     /// Bash complexity via AST (function count estimation)
     pub(super) async fn complexity_for_bash(&self, file_path: &Path) -> (usize, usize, f64) {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         use tokio::fs;
         match fs::read_to_string(file_path).await {
             #[allow(unused_variables)]
@@ -359,11 +334,6 @@ impl SimpleDeepContext {
 
     /// PHP complexity via AST (function count estimation)
     pub(super) async fn complexity_for_php(&self, file_path: &Path) -> (usize, usize, f64) {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         use tokio::fs;
         match fs::read_to_string(file_path).await {
             #[allow(unused_variables)]
@@ -397,11 +367,6 @@ impl SimpleDeepContext {
 
     /// Swift complexity via AST (function count estimation)
     pub(super) async fn complexity_for_swift(&self, file_path: &Path) -> (usize, usize, f64) {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         use tokio::fs;
         match fs::read_to_string(file_path).await {
             #[allow(unused_variables)]
@@ -435,11 +400,6 @@ impl SimpleDeepContext {
 
     /// Lua complexity via tree-sitter AST
     pub(super) async fn complexity_for_lua(&self, file_path: &Path) -> (usize, usize, f64) {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         use tokio::fs;
         match fs::read_to_string(file_path).await {
             #[allow(unused_variables)]

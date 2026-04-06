@@ -12,7 +12,6 @@ fn has_bounds_check_nearby(content_lines: &[&str], line_num: usize) -> bool {
 
 /// Check a single WGSL file for array accesses without preceding bounds checks (CB-001).
 fn check_wgsl_file_for_bounds_violations(entry: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let mut violations = Vec::new();
     let content = match fs::read_to_string(entry) {
         Ok(c) => c,
@@ -43,7 +42,6 @@ fn check_wgsl_file_for_bounds_violations(entry: &Path) -> Vec<CbPatternViolation
 /// Scan for CB-001 (WGSL without bounds checking)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb001_wgsl_no_bounds_check(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     // Look for .wgsl files
@@ -66,7 +64,6 @@ pub fn detect_cb001_wgsl_no_bounds_check(project_path: &Path) -> Vec<CbPatternVi
 }
 
 pub(super) fn walkdir_wgsl_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::Error> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
@@ -88,8 +85,6 @@ fn check_line_for_barrier(
     line_num: usize,
     file_path: &str,
 ) -> Option<CbPatternViolation> {
-    debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
-    debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     if in_conditional
         && (trimmed.contains("workgroupBarrier") || trimmed.contains("storageBarrier"))
     {
@@ -108,7 +103,6 @@ fn check_line_for_barrier(
 /// Check a single WGSL file for barrier divergence violations (CB-002).
 /// Reads the file, walks lines tracking conditional depth, and returns violations.
 fn check_wgsl_file_for_barrier_divergence(entry: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(entry.exists(), "entry must exist: {}", entry.display());
     let mut violations = Vec::new();
     let content = match fs::read_to_string(entry) {
         Ok(c) => c,
@@ -145,7 +139,6 @@ fn check_wgsl_file_for_barrier_divergence(entry: &Path) -> Vec<CbPatternViolatio
 /// Scan for CB-002 (WGSL barrier divergence)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb002_wgsl_barrier_divergence(project_path: &Path) -> Vec<CbPatternViolation> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     let src_dir = project_path.join("src");

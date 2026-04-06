@@ -16,7 +16,6 @@ impl CiCdLearningManager {
         results: &[MutationResult],
         metadata: CiCdMetadata,
     ) -> Result<TrainingBatch> {
-        debug_assert!(!results.is_empty(), "results must not be empty");
         // Convert results to training data
         let samples: Vec<TrainingData> = results
             .iter()
@@ -56,7 +55,6 @@ impl CiCdLearningManager {
         &mut self,
         training_data: &[TrainingData],
     ) -> Result<ModelVersion> {
-        debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         // Limit to max_training_samples (keep most recent)
         let samples = if training_data.len() > self.config.max_training_samples {
             &training_data[training_data.len() - self.config.max_training_samples..]
@@ -121,7 +119,6 @@ impl CiCdLearningManager {
 
     /// Save training batch to disk
     async fn save_training_batch(&self, batch: &TrainingBatch) -> Result<()> {
-        debug_assert!(true, "contract: save_training_batch");
         tokio::fs::create_dir_all(&self.config.data_dir).await?;
 
         let file_path = self
@@ -137,7 +134,6 @@ impl CiCdLearningManager {
 
     /// Load all training data from disk
     async fn load_all_training_data(&self) -> Result<Vec<TrainingData>> {
-        debug_assert!(true, "contract: load_all_training_data");
         let mut all_samples = Vec::new();
 
         if !self.config.data_dir.exists() {
@@ -161,7 +157,6 @@ impl CiCdLearningManager {
 
     /// Save model version to disk
     async fn save_model_version(&self, version: &ModelVersion) -> Result<()> {
-        debug_assert!(true, "contract: save_model_version");
         tokio::fs::create_dir_all(&self.config.model_dir).await?;
 
         // Save predictor
@@ -180,7 +175,6 @@ impl CiCdLearningManager {
 
     /// List all model versions
     async fn list_model_versions(&self) -> Result<Vec<ModelVersion>> {
-        debug_assert!(true, "contract: list_model_versions");
         let mut versions = Vec::new();
 
         if !self.config.model_dir.exists() {
@@ -211,7 +205,6 @@ impl CiCdLearningManager {
 
     /// Get next version number
     fn get_next_version(&self) -> u32 {
-        debug_assert!(true, "contract: get_next_version");
         self.current_version
             .as_ref()
             .map(|v| v.version + 1)

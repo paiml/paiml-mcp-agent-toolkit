@@ -19,7 +19,6 @@ const FORBIDDEN_PATTERNS: &[&str] = &[
 /// when files inside are rewritten by --rebuild-index).
 /// Returns (age_hours, is_stale). `is_stale` is true when age exceeds 24 hours.
 fn check_index_age(index_path: &Path) -> (Option<f64>, bool) {
-    debug_assert!(index_path.exists(), "index_path must exist: {}", index_path.display());
     let manifest_path = index_path.join("manifest.json");
     let check_path = if manifest_path.exists() {
         &manifest_path
@@ -43,7 +42,6 @@ fn check_index_age(index_path: &Path) -> (Option<f64>, bool) {
 
 /// Return true when the line appears to be a negative example (e.g. "never do X").
 fn is_negative_example(line: &str) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let lower = line.to_lowercase();
     lower.contains("bad")
         || lower.contains("don't")
@@ -53,7 +51,6 @@ fn is_negative_example(line: &str) -> bool {
 
 /// Scan content for forbidden patterns, excluding lines that are negative examples.
 fn find_forbidden_patterns(content: &str) -> Vec<ForbiddenPatternMatch> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut forbidden = Vec::new();
     for (line_num, line) in content.lines().enumerate() {
         for &pattern in FORBIDDEN_PATTERNS {
@@ -75,7 +72,6 @@ fn find_forbidden_patterns(content: &str) -> Vec<ForbiddenPatternMatch> {
 fn check_claude_md_patterns(
     project_path: &Path,
 ) -> (bool, Vec<String>, Vec<ForbiddenPatternMatch>) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let claude_md_path = project_path.join("CLAUDE.md");
     let content = match fs::read_to_string(&claude_md_path) {
         Ok(c) => c,
@@ -110,7 +106,6 @@ fn check_claude_md_patterns(
 /// 3. CLAUDE.md references pmat_query_code (optional)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb130_agent_context_adoption(project_path: &Path) -> AgentContextReport {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let index_path = project_path.join(".pmat/context.idx");
     let db_path = project_path.join(".pmat/context.db");
 

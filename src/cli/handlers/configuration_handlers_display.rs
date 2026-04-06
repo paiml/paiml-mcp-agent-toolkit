@@ -3,7 +3,6 @@
 
 /// Show configuration overview
 async fn show_configuration_overview(config_service: &ConfigurationService) -> Result<()> {
-    debug_assert!(true, "contract: show_configuration_overview");
     use crate::cli::colors as c;
 
     info!("Generating configuration overview");
@@ -124,7 +123,6 @@ async fn show_configuration(
     config_service: &ConfigurationService,
     section: Option<String>,
 ) -> Result<()> {
-    debug_assert!(true, "contract: show_configuration");
     use crate::cli::colors as c;
 
     let config = config_service.get_config()?;
@@ -149,7 +147,6 @@ async fn show_configuration(
 
 /// Show specific configuration section
 fn show_configuration_section(config: &PmatConfig, section: &str) -> Result<()> {
-    debug_assert!(!section.is_empty(), "section must not be empty");
     use crate::cli::colors as c;
 
     println!("{}", c::header(&format!("Configuration Section: {section}")));

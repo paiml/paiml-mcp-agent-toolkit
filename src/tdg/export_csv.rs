@@ -3,7 +3,6 @@
 
 impl TdgExporter {
     fn score_to_csv(score: &TdgScore, _options: &ExportOptions) -> Result<String> {
-        debug_assert!(true, "contract: score_to_csv");
         let mut csv = String::new();
         csv.push_str("metric,value\n");
         csv.push_str(&format!("total_score,{:.2}\n", score.total));
@@ -37,7 +36,6 @@ impl TdgExporter {
     }
 
     fn project_to_csv(project: &ProjectScore, options: &ExportOptions) -> Result<String> {
-        debug_assert!(true, "contract: project_to_csv");
         let mut csv = String::new();
         csv.push_str("file_path,total_score,grade,structural,semantic,duplication,coupling,documentation,consistency,language\n");
 
@@ -72,7 +70,6 @@ impl TdgExporter {
     }
 
     fn comparison_to_csv(comparison: &Comparison, _options: &ExportOptions) -> Result<String> {
-        debug_assert!(true, "contract: comparison_to_csv");
         let mut csv = String::new();
         csv.push_str("metric,source1,source2,delta\n");
 

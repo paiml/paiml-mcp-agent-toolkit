@@ -72,7 +72,6 @@ pub async fn handle_query(
     extract_candidates: bool,
     max_module_lines: usize,
 ) -> anyhow::Result<()> {
-    debug_assert!(limit > 0, "query limit must be positive");
     debug_assert!(!query.is_empty() || coverage_gaps || extract_candidates,
         "query string required unless --coverage-gaps or --extract-candidates");
 

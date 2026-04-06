@@ -28,7 +28,6 @@ impl TimelineUI {
     /// This method is kept for backward compatibility with Sprint 73 tests.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(snapshots: Vec<ExecutionSnapshot>) -> Self {
-        debug_assert!(!snapshots.is_empty(), "snapshots must not be empty");
         // Create recording and populate with converted snapshots
         let mut recording = super::recording::Recording::new("legacy".to_string(), vec![]);
 
@@ -256,7 +255,6 @@ impl TimelineUI {
 
     /// Handle keyboard input for legacy mode
     fn handle_key_legacy(&mut self, key: char) -> Result<()> {
-        debug_assert!(true, "contract: handle_key_legacy");
         match key {
             '→' => {
                 // Step forward

@@ -17,7 +17,6 @@
 /// M\tfile1.rs
 /// A\tfile2.rs
 fn parse_file_change_line(line: &str) -> Option<FileChange> {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     let parts: Vec<&str> = line.splitn(2, '\t').collect();
     if parts.len() != 2 { return None; }
     let change_type = match parts[0].chars().next() {
@@ -38,7 +37,6 @@ fn parse_header_line(
     hash: &mut String, subject: &mut String,
     author_name: &mut String, author_email: &mut String, timestamp: &mut i64,
 ) {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     if let Some(val) = line.strip_prefix("H:") { *hash = val.to_string(); }
     else if let Some(val) = line.strip_prefix("S:") { *subject = val.to_string(); }
     else if let Some(val) = line.strip_prefix("N:") { *author_name = val.to_string(); }
@@ -47,7 +45,6 @@ fn parse_header_line(
 }
 
 fn parse_commit_block(block: &str) -> Option<CommitInfo> {
-    debug_assert!(!block.is_empty(), "block must not be empty");
     let mut hash = String::new();
     let mut subject = String::new();
     let mut author_name = String::new();
@@ -78,7 +75,6 @@ fn parse_commit_block(block: &str) -> Option<CommitInfo> {
 }
 
 fn classify_commit_type_from_subject(subject: &str) -> (bool, bool, bool) {
-    debug_assert!(!subject.is_empty(), "subject must not be empty");
     let s = subject.to_lowercase();
     let is_fix = s.starts_with("fix") || s.contains("fix:") || s.contains("bugfix");
     let is_feat = s.starts_with("feat") || s.contains("feat:") || s.starts_with("add ");
@@ -87,7 +83,6 @@ fn classify_commit_type_from_subject(subject: &str) -> (bool, bool, bool) {
 }
 
 fn extract_issue_refs_from_subject(subject: &str) -> Vec<String> {
-    debug_assert!(!subject.is_empty(), "subject must not be empty");
     subject
         .split_whitespace()
         .map(|w| w.trim_matches(|c: char| c == '(' || c == ')' || c == ',' || c == '.'))

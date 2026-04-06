@@ -63,11 +63,6 @@ async fn handle_spec_falsification(
     failures_only: bool,
     dry_run: bool,
 ) -> Result<()> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let engine = crate::services::spec_falsification::FalsificationEngine::new(project_path);
 
     // Collect spec files
@@ -190,7 +185,6 @@ async fn handle_spec_falsification(
 
 /// Collect markdown spec files from a directory
 fn collect_spec_files(dir: &Path) -> Result<Vec<PathBuf>> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
@@ -209,7 +203,6 @@ fn collect_spec_files(dir: &Path) -> Result<Vec<PathBuf>> {
 
 /// Print only falsified claims
 fn print_failures_only(report: &crate::services::spec_falsification::SpecFalsificationReport) {
-    debug_assert!(true, "contract: print_failures_only");
     use crate::services::spec_falsification::VerdictStatus;
 
     let falsified: Vec<_> = report
@@ -251,7 +244,6 @@ fn print_failures_only(report: &crate::services::spec_falsification::SpecFalsifi
 }
 
 fn truncate(s: &str, max: usize) -> String {
-    debug_assert!(!s.is_empty(), "s must not be empty");
     if s.len() <= max {
         s.to_string()
     } else {

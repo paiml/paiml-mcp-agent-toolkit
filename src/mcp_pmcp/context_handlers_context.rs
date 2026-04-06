@@ -32,7 +32,6 @@ impl Default for ContextGenerateTool {
 #[async_trait]
 impl ToolHandler for ContextGenerateTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling context.generate with args: {}", args);
 
         let params: ContextGenerateArgs = serde_json::from_value(args)
@@ -88,7 +87,6 @@ impl Default for ContextAnalyzeTool {
 #[async_trait]
 impl ToolHandler for ContextAnalyzeTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling context.analyze with args: {}", args);
 
         let params: ContextAnalyzeArgs = serde_json::from_value(args)
@@ -131,7 +129,6 @@ impl Default for ContextSummaryTool {
 #[async_trait]
 impl ToolHandler for ContextSummaryTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
-        debug_assert!(true, "contract: handle");
         debug!("Handling context.summary with args: {}", args);
 
         let params: ContextSummaryArgs = serde_json::from_value(args)

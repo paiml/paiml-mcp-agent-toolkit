@@ -85,7 +85,6 @@ static DOC_TEST_PATTERN: LazyLock<Regex> =
 /// Vector of violations found
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn detect_cb050_code_stubs_in_str(code: &str) -> Vec<(u32, &'static str, String)> {
-    debug_assert!(!code.is_empty(), "code must not be empty");
     detect_cb050_code_stubs_in_str_with_path(code, "")
 }
 
@@ -103,7 +102,6 @@ pub fn detect_cb050_code_stubs_in_str_with_path(
     code: &str,
     path: &str,
 ) -> Vec<(u32, &'static str, String)> {
-    debug_assert!(!code.is_empty(), "code must not be empty");
     let mut violations = Vec::new();
 
     // Check if this is a test file - stubs in tests are acceptable
@@ -173,7 +171,6 @@ pub fn detect_cb050_code_stubs_in_str_with_path(
 
 /// Check if a path indicates a test file
 fn is_test_path(path: &str) -> bool {
-    debug_assert!(!path.is_empty(), "path must not be empty");
     if path.is_empty() {
         return false;
     }
@@ -192,7 +189,6 @@ fn is_test_path(path: &str) -> bool {
 
 /// Compute a mask of lines to skip (comments, strings, doc tests)
 fn compute_skip_mask(lines: &[&str]) -> Vec<bool> {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut skip = vec![false; lines.len()];
     let mut in_doc_test = false;
     let mut in_multiline_string = false;
@@ -244,7 +240,6 @@ fn compute_skip_mask(lines: &[&str]) -> Vec<bool> {
 
 /// Compute which lines are inside trait blocks
 fn compute_trait_block_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
-    debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut trait_lines = std::collections::HashSet::new();
     let mut brace_depth = 0;
     let mut in_trait = false;
@@ -273,7 +268,6 @@ fn compute_trait_block_lines(lines: &[&str]) -> std::collections::HashSet<usize>
 
 /// Check if the pattern match is inside a string literal on this line
 fn is_in_string_literal(line: &str, pattern: &Regex) -> bool {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     // Find where the pattern matches
     if let Some(m) = pattern.find(line) {
         let before = line.get(..m.start()).unwrap_or_default();
@@ -292,7 +286,6 @@ fn is_in_string_literal(line: &str, pattern: &Regex) -> bool {
 
 /// Check if a function name suggests it's an intentional marker/sentinel
 fn is_marker_function(name: &str) -> bool {
-    debug_assert!(!name.is_empty(), "name must not be empty");
     let lower_name = name.to_lowercase();
 
     // Exact matches

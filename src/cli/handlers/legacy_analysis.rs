@@ -50,12 +50,10 @@ pub async fn analyze_router(cmd: super::super::AnalyzeCommands) -> Result<()> {
 }
 
 async fn route_complexity_command(cmd: super::super::AnalyzeCommands) -> Result<()> {
-    debug_assert!(true, "contract: route_complexity_command");
     complexity::handle_complexity(cmd).await
 }
 
 async fn route_code_quality_command(cmd: super::super::AnalyzeCommands) -> Result<()> {
-    debug_assert!(true, "contract: route_code_quality_command");
     use super::super::AnalyzeCommands;
     match cmd {
         AnalyzeCommands::DeadCode { .. } => code_quality::handle_dead_code(cmd).await,
@@ -68,7 +66,6 @@ async fn route_code_quality_command(cmd: super::super::AnalyzeCommands) -> Resul
 }
 
 async fn route_dependency_command(cmd: super::super::AnalyzeCommands) -> Result<()> {
-    debug_assert!(true, "contract: route_dependency_command");
     use super::super::AnalyzeCommands;
     match cmd {
         AnalyzeCommands::Dag { .. } => dependencies::handle_dag(cmd).await,
@@ -79,7 +76,6 @@ async fn route_dependency_command(cmd: super::super::AnalyzeCommands) -> Result<
 }
 
 async fn route_duplication_command(cmd: super::super::AnalyzeCommands) -> Result<()> {
-    debug_assert!(true, "contract: route_duplication_command");
     use super::super::AnalyzeCommands;
     match cmd {
         AnalyzeCommands::Duplicates { .. } => duplication::handle_duplicates(cmd).await,
@@ -89,7 +85,6 @@ async fn route_duplication_command(cmd: super::super::AnalyzeCommands) -> Result
 }
 
 async fn route_ml_command(cmd: super::super::AnalyzeCommands) -> Result<()> {
-    debug_assert!(true, "contract: route_ml_command");
     use super::super::AnalyzeCommands;
     match cmd {
         AnalyzeCommands::DefectPrediction { .. } => ml_analysis::handle_defect_prediction(cmd).await,
@@ -100,7 +95,6 @@ async fn route_ml_command(cmd: super::super::AnalyzeCommands) -> Result<()> {
 }
 
 async fn route_technical_debt_command(cmd: super::super::AnalyzeCommands) -> Result<()> {
-    debug_assert!(true, "contract: route_technical_debt_command");
     use super::super::AnalyzeCommands;
     match cmd {
         AnalyzeCommands::Tdg { .. } => technical_debt::handle_tdg(cmd).await,
@@ -139,7 +133,6 @@ mod property_tests {
 
         #[test] 
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

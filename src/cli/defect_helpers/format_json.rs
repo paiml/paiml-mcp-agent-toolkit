@@ -29,7 +29,6 @@ use anyhow::Result;
 /// ```
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_defect_json(predictions: &[(String, DefectScore)]) -> Result<String> {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let json_data = serde_json::json!({
         "defect_predictions": predictions.iter().map(|(file, score)| {
             serde_json::json!({

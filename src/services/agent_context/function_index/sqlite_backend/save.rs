@@ -27,7 +27,6 @@ pub(crate) fn save_to_sqlite(
     manifest: &IndexManifest,
     coverage_off_files: &HashSet<String>,
 ) -> Result<(), String> {
-    debug_assert!(!functions.is_empty(), "functions must not be empty");
     let tmp_path = db_path.with_extension("db.tmp");
 
     // Remove stale scratch file from a previous interrupted save

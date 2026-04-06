@@ -44,39 +44,32 @@ where
     type Value = T::Value;
 
     async fn get(&self, key: &Self::Key) -> Option<Arc<Self::Value>> {
-        debug_assert!(true, "contract: get");
         self.inner.read().get(key)
     }
 
     async fn put(&self, key: Self::Key, value: Self::Value) -> Result<()> {
-        debug_assert!(true, "contract: put");
         self.inner.write().put(key, value);
         Ok(())
     }
 
     async fn remove(&self, key: &Self::Key) -> Option<Arc<Self::Value>> {
-        debug_assert!(true, "contract: remove");
         self.inner.write().remove(key)
     }
 
     async fn clear(&self) -> Result<()> {
-        debug_assert!(true, "contract: clear");
         self.inner.write().clear();
         Ok(())
     }
 
     fn stats(&self) -> Arc<CacheStats> {
-        debug_assert!(true, "contract: stats");
         Arc::new(self.inner.read().stats.clone())
     }
 
     fn size_bytes(&self) -> usize {
-        debug_assert!(true, "contract: size_bytes");
         self.inner.read().stats.memory_usage()
     }
 
     fn len(&self) -> usize {
-        debug_assert!(true, "contract: len");
         self.inner.read().len()
     }
 }
@@ -108,39 +101,32 @@ where
     type Value = T::Value;
 
     async fn get(&self, key: &Self::Key) -> Option<Arc<Self::Value>> {
-        debug_assert!(true, "contract: get");
         self.inner.read().get(key)
     }
 
     async fn put(&self, key: Self::Key, value: Self::Value) -> Result<()> {
-        debug_assert!(true, "contract: put");
         self.inner.write().put(key, value)?;
         Ok(())
     }
 
     async fn remove(&self, key: &Self::Key) -> Option<Arc<Self::Value>> {
-        debug_assert!(true, "contract: remove");
         self.inner.write().remove(key)
     }
 
     async fn clear(&self) -> Result<()> {
-        debug_assert!(true, "contract: clear");
         self.inner.write().clear()?;
         Ok(())
     }
 
     fn stats(&self) -> Arc<CacheStats> {
-        debug_assert!(true, "contract: stats");
         Arc::new(self.inner.read().stats.clone())
     }
 
     fn size_bytes(&self) -> usize {
-        debug_assert!(true, "contract: size_bytes");
         self.inner.read().stats.memory_usage()
     }
 
     fn len(&self) -> usize {
-        debug_assert!(true, "contract: len");
         self.inner.read().len()
     }
 }
@@ -176,7 +162,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

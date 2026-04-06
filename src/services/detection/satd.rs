@@ -34,7 +34,6 @@ impl Detector for SATDDetector {
     type Config = DetectionConfig;
 
     async fn detect(&self, input: Self::Input, config: Self::Config) -> Result<Self::Output> {
-        debug_assert!(true, "contract: detect");
         // Extract SATD-specific config
         let satd_config = match config.detector_specific {
             DetectorSpecificConfig::SATD(config) => config,
@@ -61,12 +60,10 @@ impl Detector for SATDDetector {
     }
 
     fn name(&self) -> &'static str {
-        debug_assert!(true, "contract: name");
         "satd"
     }
 
     fn capabilities(&self) -> DetectorCapabilities {
-        debug_assert!(true, "contract: capabilities");
         DetectorCapabilities {
             supports_batch: true,
             supports_streaming: true,
@@ -82,11 +79,6 @@ impl SATDDetector {
         file_path: &Path,
         _config: &SATDConfig,
     ) -> Result<SATDAnalysisResult> {
-        debug_assert!(
-            file_path.exists(),
-            "file_path must exist: {}",
-            file_path.display()
-        );
         // Delegate to the existing satd_detector module functionality
         let detector = crate::services::satd_detector::SATDDetector::new();
 
@@ -103,7 +95,6 @@ impl SATDDetector {
         files: &[std::path::PathBuf],
         _config: &SATDConfig,
     ) -> Result<SATDAnalysisResult> {
-        debug_assert!(!files.is_empty(), "files must not be empty");
         let detector = crate::services::satd_detector::SATDDetector::new();
 
         let mut all_debt_items = Vec::new();
@@ -126,11 +117,6 @@ impl SATDDetector {
         dir_path: &Path,
         _config: &SATDConfig,
     ) -> Result<SATDAnalysisResult> {
-        debug_assert!(
-            dir_path.exists(),
-            "dir_path must exist: {}",
-            dir_path.display()
-        );
         // Scan directory for source files
         let files = self.scan_directory_for_source_files(dir_path)?;
         self.detect_satd_in_files(&files, _config).await
@@ -141,7 +127,6 @@ impl SATDDetector {
         content: &str,
         _config: &SATDConfig,
     ) -> Result<SATDAnalysisResult> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let detector = crate::services::satd_detector::SATDDetector::new();
 
         // Create a temporary path for content analysis
@@ -158,10 +143,6 @@ impl SATDDetector {
         debt_items_collections: Vec<Vec<crate::services::satd_detector::TechnicalDebt>>,
         files_analyzed: usize,
     ) -> Result<SATDAnalysisResult> {
-        debug_assert!(
-            !debt_items_collections.is_empty(),
-            "debt_items_collections must not be empty"
-        );
         // Flatten all debt items
         let mut all_items = Vec::new();
         for collection in debt_items_collections {
@@ -214,7 +195,6 @@ impl SATDDetector {
     }
 
     fn create_summary(&self, items: &[TechnicalDebt], _files_analyzed: usize) -> SATDSummary {
-        debug_assert!(!items.is_empty(), "items must not be empty");
         let mut by_severity = std::collections::HashMap::new();
         let mut by_category = std::collections::HashMap::new();
         let mut files_with_debt = std::collections::HashSet::new();
@@ -254,7 +234,6 @@ impl SATDDetector {
     }
 
     fn scan_directory_for_source_files(&self, dir: &Path) -> Result<Vec<std::path::PathBuf>> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut files = Vec::new();
 
         if dir.is_dir() {
@@ -385,7 +364,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

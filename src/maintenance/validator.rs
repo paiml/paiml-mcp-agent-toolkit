@@ -121,16 +121,6 @@ impl ValidationReport {
 /// - Cyclomatic: 7 (reduced from 11 via Extract Method refactoring)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn validate_project(roadmap_path: &Path, tickets_dir: &Path) -> Result<ValidationReport> {
-    debug_assert!(
-        roadmap_path.exists(),
-        "roadmap_path must exist: {}",
-        roadmap_path.display()
-    );
-    debug_assert!(
-        tickets_dir.exists(),
-        "tickets_dir must exist: {}",
-        tickets_dir.display()
-    );
     use std::collections::HashMap;
 
     // Parse roadmap
@@ -161,7 +151,6 @@ fn validate_roadmap_tickets(
     ticket_map: &std::collections::HashMap<String, &super::ticket::TicketFile>,
     report: &mut ValidationReport,
 ) {
-    debug_assert!(true, "contract: validate_roadmap_tickets");
     for sprint in &roadmap.sprints {
         for ticket in &sprint.tickets {
             if !ticket_map.contains_key(&ticket.id) {
@@ -194,7 +183,6 @@ fn validate_ticket_dependencies(
     ticket_map: &std::collections::HashMap<String, &super::ticket::TicketFile>,
     report: &mut ValidationReport,
 ) {
-    debug_assert!(true, "contract: validate_ticket_dependencies");
     use std::collections::HashSet;
 
     // Check for orphaned tickets
@@ -227,7 +215,6 @@ fn validate_ticket_dependencies(
 /// - Time: O(1)
 /// - Cyclomatic: 3
 fn status_matches(ticket_file: &TicketFile, roadmap_completed: bool) -> bool {
-    debug_assert!(true, "contract: status_matches");
     use super::ticket::TicketStatus;
 
     if roadmap_completed {
@@ -382,7 +369,6 @@ mod tests {
 
     #[test]
     fn integration_validate_pmat_project() {
-        debug_assert!(true, "contract: integration_validate_pmat_project");
         let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
         let roadmap_path = project_root.join("ROADMAP.md");

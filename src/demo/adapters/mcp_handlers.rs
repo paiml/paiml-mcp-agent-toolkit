@@ -13,7 +13,6 @@ impl McpDemoAdapter {
         params: Option<Value>,
         id: Option<Value>,
     ) -> Result<McpResponse, McpDemoError> {
-        debug_assert!(true, "contract: handle_demo_analyze");
         let start_time = std::time::Instant::now();
 
         let params: DemoAnalyzeParams = match params {
@@ -82,7 +81,6 @@ impl McpDemoAdapter {
         params: Option<Value>,
         id: Option<Value>,
     ) -> Result<McpResponse, McpDemoError> {
-        debug_assert!(true, "contract: handle_demo_get_results");
         let params: DemoGetResultsParams = match params {
             Some(p) => serde_json::from_value(p).map_err(|e| {
                 McpDemoError::InvalidParams(format!("Failed to parse demo.getResults params: {e}"))
@@ -147,7 +145,6 @@ impl McpDemoAdapter {
         params: Option<Value>,
         id: Option<Value>,
     ) -> Result<McpResponse, McpDemoError> {
-        debug_assert!(true, "contract: handle_demo_get_api_trace");
         let params: DemoGetApiTraceParams = match params {
             Some(p) => serde_json::from_value(p).map_err(|e| {
                 McpDemoError::InvalidParams(format!("Failed to parse demo.getApiTrace params: {e}"))
@@ -206,7 +203,6 @@ impl McpDemoAdapter {
     }
 
     async fn execute_context_analysis(&self, path: &str) -> Result<Value, McpDemoError> {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         use crate::services::deep_context::{AnalysisType, DeepContextAnalyzer, DeepContextConfig};
         use std::path::PathBuf;
 

@@ -993,7 +993,6 @@ fn append_violation(
     issues: &mut Vec<String>,
     v: &crate::cli::handlers::comply_cb_detect::CbPatternViolation,
 ) {
-    debug_assert!(true, "contract: append_violation");
     issues.push(format!(
         "{}: {} ({}:{})",
         v.pattern_id, v.description, v.file, v.line
@@ -1007,7 +1006,6 @@ fn collect_violations_with_counts(
         bool,
     )],
 ) -> (Vec<String>, usize, usize) {
-    debug_assert!(true, "contract: collect_violations_with_counts");
     let mut all_issues = Vec::new();
     let (mut critical_count, mut warning_count) = (0, 0);
     for (violations, is_critical) in detections {
@@ -1084,7 +1082,6 @@ pub(crate) fn build_cb_result(
     critical_count: usize,
     warning_count: usize,
 ) -> ComplianceCheck {
-    debug_assert!(!all_issues.is_empty(), "all_issues must not be empty");
     if critical_count > 0 {
         ComplianceCheck {
             name: "ComputeBrick Compliance".into(),
@@ -1227,8 +1224,6 @@ fn build_triaged_check(
     warning: usize,
     pass_message: &str,
 ) -> ComplianceCheck {
-    debug_assert!(!name.is_empty(), "name must not be empty");
-    debug_assert!(!pass_message.is_empty(), "pass_message must not be empty");
     if critical > 0 {
         ComplianceCheck {
             name: name.into(),

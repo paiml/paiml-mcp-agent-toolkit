@@ -6,7 +6,6 @@ pub struct CommandSuggester {
 }
 
 fn find_closest(candidate: &str, commands: &[String], max_distance: usize) -> Option<String> {
-    debug_assert!(!candidate.is_empty(), "candidate must not be empty");
     let mut best_match = None;
     let mut best_distance = usize::MAX;
 
@@ -68,7 +67,6 @@ impl CommandSuggester {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn suggest_command(&self, failed_args: &[String]) -> Option<String> {
-        debug_assert!(!failed_args.is_empty(), "failed_args must not be empty");
         if failed_args.is_empty() {
             return None;
         }
@@ -103,7 +101,6 @@ impl CommandSuggester {
     }
 
     fn suggest_single_arg(&self, arg: &str) -> Option<String> {
-        debug_assert!(!arg.is_empty(), "arg must not be empty");
         if self.analyze_subcommands.iter().any(|cmd| cmd == arg) {
             return Some(format!("Did you mean 'pmat analyze {arg}'?"));
         }

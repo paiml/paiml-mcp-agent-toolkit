@@ -13,9 +13,6 @@ use tokio::runtime::Runtime;
 
 /// Helper to create test files with specific content
 fn create_test_file(dir: &Path, name: &str, content: &str) -> std::path::PathBuf {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
-    debug_assert!(!name.is_empty(), "name must not be empty");
-    debug_assert!(!content.is_empty(), "content must not be empty");
     let file_path = dir.join(name);
     std::fs::write(&file_path, content).unwrap();
     file_path

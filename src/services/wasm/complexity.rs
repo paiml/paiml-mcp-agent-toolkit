@@ -81,7 +81,6 @@ impl WasmComplexityAnalyzer {
     /// Analyze text complexity  
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_text(&self, content: &str) -> Result<WasmComplexity> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let line_count = content.lines().count();
         let function_count = content.matches("func").count();
         let complexity_score = (function_count * 2) + (line_count / 10);
@@ -206,7 +205,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

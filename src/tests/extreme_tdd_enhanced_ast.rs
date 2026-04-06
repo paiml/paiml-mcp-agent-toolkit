@@ -194,7 +194,6 @@ async fn test_enhanced_annotations_complete() {
     let code = r#"
 // TODO: Refactor this function
 fn process_data(items: &[u32]) -> u32 {
-    debug_assert!(!items.is_empty(), "items must not be empty");
     items.iter().sum()
 }
 

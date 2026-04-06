@@ -9,7 +9,6 @@ impl HttpDemoAdapter {
         &self,
         request: &HttpRequest,
     ) -> Result<HttpResponseBody, HttpDemoError> {
-        debug_assert!(true, "contract: handle_analyze_request");
         let start_time = std::time::Instant::now();
 
         // Extract path from query parameters
@@ -44,7 +43,6 @@ impl HttpDemoAdapter {
         &self,
         request: &HttpRequest,
     ) -> Result<HttpResponseBody, HttpDemoError> {
-        debug_assert!(true, "contract: handle_status_request");
         // Extract request_id from path
         let path_parts: Vec<&str> = request.path.trim_start_matches('/').split('/').collect();
         if path_parts.len() < 3 || path_parts[1] != "status" {
@@ -73,7 +71,6 @@ impl HttpDemoAdapter {
         &self,
         request: &HttpRequest,
     ) -> Result<HttpResponseBody, HttpDemoError> {
-        debug_assert!(true, "contract: handle_results_request");
         // Extract request_id from path
         let path_parts: Vec<&str> = request.path.trim_start_matches('/').split('/').collect();
         if path_parts.len() < 3 || path_parts[1] != "results" {
@@ -119,7 +116,6 @@ impl HttpDemoAdapter {
     }
 
     async fn handle_api_introspection(&self) -> Result<HttpResponseBody, HttpDemoError> {
-        debug_assert!(true, "contract: handle_api_introspection");
         let endpoints = vec![
             HttpEndpoint {
                 method: "GET".to_string(),
@@ -226,7 +222,6 @@ impl HttpDemoAdapter {
     }
 
     async fn execute_context_analysis(&self, path: &str) -> Result<Value, HttpDemoError> {
-        debug_assert!(!path.is_empty(), "path must not be empty");
         use crate::services::deep_context::{AnalysisType, DeepContextAnalyzer, DeepContextConfig};
         use std::path::PathBuf;
 

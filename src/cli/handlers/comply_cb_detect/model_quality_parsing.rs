@@ -4,14 +4,12 @@
 /// Walk directory for model files (*.gguf, *.apr, *.safetensors).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn walkdir_model_files(dir: &Path) -> Vec<PathBuf> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     walk_model_recursive(dir, &mut files);
     files
 }
 
 fn walk_model_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
@@ -33,7 +31,6 @@ fn walk_model_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 
 /// Parse minimal header from model file (never loads tensor data).
 fn parse_model_header(path: &Path) -> Option<ModelMetadata> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let ext = path.extension()?.to_str()?;
     let format = ModelFormat::from_extension(ext)?;
     let file_size = fs::metadata(path).ok()?.len();
@@ -53,7 +50,6 @@ fn parse_model_header(path: &Path) -> Option<ModelMetadata> {
 }
 
 fn parse_gguf_header(buf: &[u8], file_size: u64) -> Option<ModelMetadata> {
-    debug_assert!(true, "contract: parse_gguf_header");
     // GGUF magic: "GGUF" (0x46554747 LE) at offset 0
     if buf.len() < 16 {
         return None;
@@ -83,7 +79,6 @@ fn parse_gguf_header(buf: &[u8], file_size: u64) -> Option<ModelMetadata> {
 }
 
 fn parse_apr_header(buf: &[u8], file: &mut File, file_size: u64) -> Option<ModelMetadata> {
-    debug_assert!(true, "contract: parse_apr_header");
     if buf.len() < 8 {
         return None;
     }
@@ -133,7 +128,6 @@ fn parse_apr_header(buf: &[u8], file: &mut File, file_size: u64) -> Option<Model
 }
 
 fn parse_safetensors_header(buf: &[u8], file: &mut File, file_size: u64) -> Option<ModelMetadata> {
-    debug_assert!(true, "contract: parse_safetensors_header");
     if buf.len() < 8 {
         return None;
     }

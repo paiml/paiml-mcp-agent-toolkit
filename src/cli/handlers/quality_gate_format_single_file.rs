@@ -19,7 +19,6 @@ pub fn format_single_file_output(
     violations: &[QualityViolation],
     format: QualityGateOutputFormat,
 ) -> Result<String> {
-    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     match format {
         QualityGateOutputFormat::Json => Ok(serde_json::to_string_pretty(&json!({
             "file": single_file,
@@ -56,7 +55,6 @@ pub fn format_single_file_summary(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> String {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let mut output = String::new();
 
     // Header with file path
@@ -85,7 +83,6 @@ pub fn format_single_file_summary(
 
 /// Toyota Way: Extract Method - Add summary section (complexity ≤3)
 fn add_summary_section(output: &mut String, results: &QualityGateResults) {
-    debug_assert!(true, "contract: add_summary_section");
     output.push_str("## Summary\n\n");
     output.push_str(&format!(
         "- Total Violations: {}\n",
@@ -108,7 +105,6 @@ fn add_summary_section(output: &mut String, results: &QualityGateResults) {
 
 /// Toyota Way: Extract Method - Add violations section (complexity ≤8)
 fn add_violations_section(output: &mut String, violations: &[QualityViolation]) {
-    debug_assert!(!violations.is_empty(), "violations must not be empty");
     output.push_str("\n## Violations\n\n");
 
     // Group violations by type for better organization
@@ -137,7 +133,6 @@ fn add_violations_section(output: &mut String, violations: &[QualityViolation]) 
 
 /// Toyota Way: Extract Method - Add single violation entry with file location (complexity ≤5)
 fn add_violation_entry(output: &mut String, violation: &QualityViolation) {
-    debug_assert!(true, "contract: add_violation_entry");
     let severity_icon = get_severity_icon(&violation.severity);
 
     // Format file path - use short relative path for readability
@@ -169,7 +164,6 @@ fn add_violation_entry(output: &mut String, violation: &QualityViolation) {
 
 /// Toyota Way: Extract Method - Get severity icon (complexity ≤2)
 fn get_severity_icon(severity: &str) -> &'static str {
-    debug_assert!(!severity.is_empty(), "severity must not be empty");
     match severity {
         "error" => "🔴",
         "warning" => "🟡",

@@ -2,7 +2,6 @@
 // Each tool schema is a separate function to keep cognitive complexity low.
 
 fn tool_start_quality_monitoring() -> Value {
-    debug_assert!(true, "contract: tool_start_quality_monitoring");
     json!({
         "description": "Start continuous code quality monitoring for a project",
         "inputSchema": {
@@ -25,7 +24,6 @@ fn tool_start_quality_monitoring() -> Value {
 }
 
 fn tool_stop_quality_monitoring() -> Value {
-    debug_assert!(true, "contract: tool_stop_quality_monitoring");
     json!({
         "description": "Stop quality monitoring for a project",
         "inputSchema": {
@@ -39,7 +37,6 @@ fn tool_stop_quality_monitoring() -> Value {
 }
 
 fn tool_get_quality_status() -> Value {
-    debug_assert!(true, "contract: tool_get_quality_status");
     json!({
         "description": "Get current quality status for a monitored project",
         "inputSchema": {
@@ -53,7 +50,6 @@ fn tool_get_quality_status() -> Value {
 }
 
 fn tool_run_quality_gates() -> Value {
-    debug_assert!(true, "contract: tool_run_quality_gates");
     json!({
         "description": "Execute Toyota Way quality gates with detailed reporting",
         "inputSchema": {
@@ -72,7 +68,6 @@ fn tool_run_quality_gates() -> Value {
 }
 
 fn tool_analyze_complexity() -> Value {
-    debug_assert!(true, "contract: tool_analyze_complexity");
     json!({
         "description": "Perform complexity analysis on files or directories",
         "inputSchema": {
@@ -87,7 +82,6 @@ fn tool_analyze_complexity() -> Value {
 }
 
 fn tool_health_check() -> Value {
-    debug_assert!(true, "contract: tool_health_check");
     json!({
         "description": "Comprehensive codebase health assessment",
         "inputSchema": {
@@ -106,7 +100,6 @@ fn tool_health_check() -> Value {
 impl ClaudeCodeAgentMcpServer {
     /// Get tool capabilities for MCP
     fn get_tool_capabilities(&self) -> Value {
-        debug_assert!(true, "contract: get_tool_capabilities");
         json!({
             "start_quality_monitoring": tool_start_quality_monitoring(),
             "stop_quality_monitoring": tool_stop_quality_monitoring(),

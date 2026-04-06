@@ -62,7 +62,6 @@ impl AssetType {
     /// Parse from string (for --asset CLI flag).
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(s: &str) -> Option<Self> {
-        debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
             "readme" => Some(Self::Readme),
             "dockerfile" => Some(Self::Dockerfile),
@@ -87,11 +86,6 @@ pub enum AssetStatus {
 /// Validate all assets in a project and return results.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn validate_all_assets(project_path: &Path) -> Vec<AssetValidationResult> {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     AssetType::all()
         .iter()
         .map(|t| validate_asset(project_path, *t))
@@ -101,11 +95,6 @@ pub fn validate_all_assets(project_path: &Path) -> Vec<AssetValidationResult> {
 /// Validate a specific asset type.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn validate_asset(project_path: &Path, asset_type: AssetType) -> AssetValidationResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     match asset_type {
         AssetType::Readme => validate_readme(project_path),
         AssetType::Dockerfile => validate_dockerfile(project_path),
@@ -118,11 +107,6 @@ pub fn validate_asset(project_path: &Path, asset_type: AssetType) -> AssetValida
 }
 
 fn validate_readme(project_path: &Path) -> AssetValidationResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let readme = project_path.join("README.md");
     if !readme.exists() {
         return AssetValidationResult {
@@ -176,11 +160,6 @@ fn validate_readme(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_dockerfile(project_path: &Path) -> AssetValidationResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let dockerfile = project_path.join("Dockerfile");
     if !dockerfile.exists() {
         return AssetValidationResult {
@@ -218,11 +197,6 @@ fn validate_dockerfile(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_svg(project_path: &Path) -> AssetValidationResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let search_dirs = ["assets", "docs", "static", "."];
     let mut count = 0usize;
     let mut issues = Vec::new();
@@ -277,11 +251,6 @@ fn validate_svg(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_changelog(project_path: &Path) -> AssetValidationResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let path = project_path.join("CHANGELOG.md");
     if !path.exists() {
         return AssetValidationResult {
@@ -318,11 +287,6 @@ fn validate_changelog(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_badges(project_path: &Path) -> AssetValidationResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let readme = project_path.join("README.md");
     if !readme.exists() {
         return AssetValidationResult {
@@ -373,11 +337,6 @@ fn validate_badges(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_mdbook(project_path: &Path) -> AssetValidationResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let summary = project_path.join("book/src/SUMMARY.md");
     if !summary.exists() {
         return AssetValidationResult {
@@ -425,11 +384,6 @@ fn validate_mdbook(project_path: &Path) -> AssetValidationResult {
 }
 
 fn validate_forjar(project_path: &Path) -> AssetValidationResult {
-    debug_assert!(
-        project_path.exists(),
-        "project_path must exist: {}",
-        project_path.display()
-    );
     let yaml = project_path.join("forjar.yaml");
     let toml = project_path.join("forjar.toml");
     let path = if yaml.exists() {

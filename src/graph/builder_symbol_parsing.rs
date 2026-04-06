@@ -5,7 +5,6 @@ impl DependencyGraphBuilder {
     /// Build symbol table for a file
     /// Complexity: 9 (file read + parsing)
     fn build_file_symbols(&mut self, path: &Path) -> Result<()> {
-        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)?;
         let module_name = self.path_to_module(path);
 
@@ -37,7 +36,6 @@ impl DependencyGraphBuilder {
     /// Parse Rust symbols
     /// Complexity: 8
     fn parse_rust_symbols(&self, content: &str) -> Result<Vec<Symbol>> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut symbols = Vec::new();
 
         // Simple regex-based parsing for MVP
@@ -81,7 +79,6 @@ impl DependencyGraphBuilder {
     /// Parse Python symbols
     /// Complexity: 7
     fn parse_python_symbols(&self, content: &str) -> Result<Vec<Symbol>> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut symbols = Vec::new();
 
         for (line_num, line) in content.lines().enumerate() {
@@ -120,7 +117,6 @@ impl DependencyGraphBuilder {
     /// Parse TypeScript/JavaScript symbols
     /// Complexity: 8
     fn parse_typescript_symbols(&self, content: &str) -> Result<Vec<Symbol>> {
-        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut symbols = Vec::new();
 
         for (line_num, line) in content.lines().enumerate() {

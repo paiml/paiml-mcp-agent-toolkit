@@ -5,7 +5,6 @@
 
 impl AdvancedUnifiedContextBuilder {
     async fn add_big_o_analysis(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: add_big_o_analysis");
         self.output.push_str("## Big-O Complexity Analysis\n\n");
 
         match self.run_big_o_analysis().await {
@@ -31,7 +30,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn add_entropy_analysis(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: add_entropy_analysis");
         self.output.push_str("## Entropy Analysis\n\n");
 
         match self.run_entropy_analysis().await {
@@ -67,7 +65,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn add_provability_analysis(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: add_provability_analysis");
         self.output.push_str("## Provability Analysis\n\n");
 
         match self.run_provability_analysis().await {
@@ -108,7 +105,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn add_graph_metrics(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: add_graph_metrics");
         self.output.push_str("## Graph Metrics\n\n");
 
         match self.run_graph_metrics_analysis().await {
@@ -153,7 +149,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn add_tdg_analysis(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: add_tdg_analysis");
         self.output.push_str("## Technical Debt Gradient (TDG)\n\n");
 
         match self.run_tdg_analysis().await {
@@ -199,7 +194,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn add_dead_code_analysis(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: add_dead_code_analysis");
         self.output.push_str("## Dead Code Analysis\n\n");
 
         match self.run_dead_code_analysis().await {
@@ -245,7 +239,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn add_satd_analysis(&mut self) -> Result<()> {
-        debug_assert!(true, "contract: add_satd_analysis");
         self.output
             .push_str("## Self-Admitted Technical Debt (SATD)\n\n");
 
@@ -314,7 +307,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     fn add_quality_insights(&mut self, context: &ProjectContext) {
-        debug_assert!(true, "contract: add_quality_insights");
         self.output.push_str("## Quality Insights\n\n");
 
         let total_functions = context.summary.total_functions;
@@ -360,7 +352,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     fn add_recommendations(&mut self, context: &ProjectContext) {
-        debug_assert!(true, "contract: add_recommendations");
         self.output.push_str("## Recommendations\n\n");
 
         let mut recommendations = Vec::new();
@@ -403,13 +394,11 @@ impl AdvancedUnifiedContextBuilder {
 
     // Analysis execution methods (stubs)
     async fn run_big_o_analysis(&self) -> Result<HashMap<String, String>> {
-        debug_assert!(true, "contract: run_big_o_analysis");
         // Stub - integrate with actual BigOAnalyzer
         Ok(HashMap::new())
     }
 
     async fn run_entropy_analysis(&self) -> Result<EntropyData> {
-        debug_assert!(true, "contract: run_entropy_analysis");
         // Stub - integrate with actual entropy analyzer
         Ok(EntropyData {
             pattern_entropy: 0.75,
@@ -420,7 +409,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn run_provability_analysis(&self) -> Result<ProvabilityData> {
-        debug_assert!(true, "contract: run_provability_analysis");
         // Stub - integrate with actual provability analyzer
         Ok(ProvabilityData {
             invariants: vec![],
@@ -431,7 +419,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn run_graph_metrics_analysis(&self) -> Result<GraphMetricsData> {
-        debug_assert!(true, "contract: run_graph_metrics_analysis");
         // Stub - integrate with actual graph analyzer
         Ok(GraphMetricsData {
             betweenness: 0.0,
@@ -445,7 +432,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn run_tdg_analysis(&self) -> Result<TdgData> {
-        debug_assert!(true, "contract: run_tdg_analysis");
         // Stub - integrate with actual TDG analyzer
         Ok(TdgData {
             overall_score: 0.0,
@@ -456,7 +442,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn run_dead_code_analysis(&self) -> Result<DeadCodeData> {
-        debug_assert!(true, "contract: run_dead_code_analysis");
         // Stub - integrate with actual dead code analyzer
         Ok(DeadCodeData {
             unreachable_functions: vec![],
@@ -466,7 +451,6 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn run_satd_analysis(&self) -> Result<SatdData> {
-        debug_assert!(true, "contract: run_satd_analysis");
         // Stub - integrate with actual SATD analyzer
         Ok(SatdData {
             todos: vec![],

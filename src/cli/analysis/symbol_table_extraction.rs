@@ -14,7 +14,6 @@ pub async fn handle_analyze_symbol_table(
     output: Option<PathBuf>,
     _perf: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🔍 Building symbol table for project...");
 
     // Build the symbol table
@@ -43,7 +42,6 @@ async fn build_symbol_table(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<SymbolTable> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut symbols = Vec::new();
 
     // Get all relevant files
@@ -75,7 +73,6 @@ async fn collect_files(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<Vec<PathBuf>> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut files = Vec::new();
 
     collect_files_recursive(project_path, &mut files, include, exclude).await?;
@@ -90,7 +87,6 @@ async fn collect_files_recursive(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<()> {
-    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut entries = tokio::fs::read_dir(dir).await?;
 
     while let Some(entry) = entries.next_entry().await? {
@@ -107,7 +103,6 @@ async fn process_directory_entry(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<()> {
-    debug_assert!(true, "contract: process_directory_entry");
     let path = entry.path();
 
     if should_skip_path(&path, exclude) {
@@ -123,7 +118,6 @@ async fn process_directory_entry(
 
 /// Check if path should be skipped
 fn should_skip_path(path: &Path, exclude: &Option<String>) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(excl) = exclude {
         let path_str = path.to_string_lossy();
         return path_str.contains(excl);
@@ -138,7 +132,6 @@ async fn process_directory(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if should_process_directory(path) {
         Box::pin(collect_files_recursive(path, files, include, exclude)).await?;
     }
@@ -147,14 +140,12 @@ async fn process_directory(
 
 /// Check if directory should be processed
 fn should_process_directory(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let name = path.file_name().unwrap_or_default().to_string_lossy();
     !name.starts_with('.') && name != "node_modules" && name != "target"
 }
 
 /// Process a file
 fn process_file(path: PathBuf, files: &mut Vec<PathBuf>, include: &Option<String>) -> Result<()> {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !is_source_file(&path) {
         return Ok(());
     }
@@ -167,7 +158,6 @@ fn process_file(path: PathBuf, files: &mut Vec<PathBuf>, include: &Option<String
 
 /// Check if file should be included
 fn should_include_file(path: &Path, include: &Option<String>) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     match include {
         Some(incl) => {
             let path_str = path.to_string_lossy();
@@ -179,7 +169,6 @@ fn should_include_file(path: &Path, include: &Option<String>) -> bool {
 
 // Check if file is a source file
 fn is_source_file(path: &Path) -> bool {
-    debug_assert!(path.exists(), "path must exist: {}", path.display());
     matches!(
         path.extension().and_then(|s| s.to_str()),
         Some("rs" | "js" | "ts" | "py" | "java" | "cpp" | "c" | "h" | "hpp" | "go" | "rb")
@@ -188,7 +177,6 @@ fn is_source_file(path: &Path) -> bool {
 
 // Extract symbols from a single file
 async fn extract_symbols_from_file(file_path: &Path) -> Result<Vec<Symbol>> {
-    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let content = tokio::fs::read_to_string(file_path).await?;
     let file_str = file_path.to_string_lossy().to_string();
 
@@ -198,8 +186,6 @@ async fn extract_symbols_from_file(file_path: &Path) -> Result<Vec<Symbol>> {
 
 // Simple symbol extraction using regex
 fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
-    debug_assert!(!content.is_empty(), "content must not be empty");
-    debug_assert!(!file.is_empty(), "file must not be empty");
     use regex::Regex;
 
     let mut symbols = Vec::new();
@@ -259,7 +245,6 @@ fn extract_symbols_simple(content: &str, file: &str) -> Result<Vec<Symbol>> {
 
 // Detect visibility from line content
 fn detect_visibility(line: &str) -> Visibility {
-    debug_assert!(!line.is_empty(), "line must not be empty");
     if line.contains("pub ") || line.contains("export ") {
         Visibility::Public
     } else if line.contains("private ") {
@@ -273,7 +258,6 @@ fn detect_visibility(line: &str) -> Visibility {
 
 // Find unreferenced symbols
 fn find_unreferenced_symbols(symbols: &[Symbol]) -> Vec<String> {
-    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     symbols
         .iter()
         .filter(|s| s.references.len() <= 1)
@@ -283,7 +267,6 @@ fn find_unreferenced_symbols(symbols: &[Symbol]) -> Vec<String> {
 
 // Find most referenced symbols
 fn find_most_referenced(symbols: &[Symbol]) -> Vec<(String, usize)> {
-    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut refs: Vec<_> = symbols
         .iter()
         .map(|s| (s.name.clone(), s.references.len()))

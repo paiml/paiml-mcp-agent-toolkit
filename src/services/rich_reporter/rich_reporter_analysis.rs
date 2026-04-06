@@ -33,7 +33,6 @@ impl RichReporter {
 
     /// Generate recommendations based on analysis
     fn generate_recommendations(&mut self) {
-        debug_assert!(true, "contract: generate_recommendations");
         // Clear existing recommendations
         self.report.recommendations.clear();
 

@@ -30,7 +30,6 @@ impl McpServer {
     }
 
     async fn register_agent_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(true, "contract: register_agent_tools");
         use crate::mcp_integration::tools::*;
 
         let mut tools = self.context.tools.write();
@@ -70,7 +69,6 @@ impl McpServer {
     async fn register_hallucination_detection_tools(
         &self,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(true, "contract: register_hallucination_detection_tools");
         use crate::mcp_integration::hallucination_detection_tools::*;
 
         let mut tools = self.context.tools.write();
@@ -101,7 +99,6 @@ impl McpServer {
     /// - `analyze_technical_debt`: Analyze quality scores for files/projects
     /// - `get_quality_recommendations`: Get actionable refactoring suggestions
     async fn register_tdg_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(true, "contract: register_tdg_tools");
         use crate::mcp_integration::tdg_tools::*;
 
         let mut tools = self.context.tools.write();
@@ -134,7 +131,6 @@ impl McpServer {
     ///
     /// Both tools are feature-gated behind the "java-ast" and "scala-ast" features.
     async fn register_jvm_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(true, "contract: register_jvm_tools");
         let mut tools = self.context.tools.write();
         let mut registered_tools = 0;
 
@@ -201,7 +197,6 @@ impl McpServer {
     /// - analyze_polyglot: Analyzes cross-language relationships in a project
     /// - detect_language_boundaries: Detects language boundaries and interop points
     async fn register_polyglot_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(true, "contract: register_polyglot_tools");
         use crate::mcp_integration::polyglot_tools::*;
 
         let mut tools = self.context.tools.write();
@@ -261,7 +256,6 @@ impl McpServer {
     ///
     /// NOTE: No API keys required - uses local embeddings via aprender/trueno-rag
     async fn register_semantic_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(true, "contract: register_semantic_tools");
         // Check if semantic search is enabled
         if !self.config.semantic_enabled {
             tracing::info!(
@@ -328,7 +322,6 @@ impl McpServer {
     }
 
     async fn register_agent_resources(&self) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(true, "contract: register_agent_resources");
         use crate::mcp_integration::resources::*;
 
         let mut resources = self.context.resources.write();
@@ -350,7 +343,6 @@ impl McpServer {
     }
 
     async fn register_agent_prompts(&self) -> Result<(), Box<dyn std::error::Error>> {
-        debug_assert!(true, "contract: register_agent_prompts");
         use crate::mcp_integration::prompts::*;
 
         let mut prompts = self.context.prompts.write();

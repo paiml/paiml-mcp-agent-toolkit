@@ -8,7 +8,6 @@ impl DemoScorer {
         repo_path: &Path,
         archetype: RepoArchetype,
     ) -> Result<SubcategoryScore> {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         // Handle N/A state for cookbooks
         if archetype.g2_max_score().is_none() {
             return Ok(SubcategoryScore {
@@ -42,7 +41,6 @@ impl DemoScorer {
         repo_path: &Path,
         max_score: f64,
     ) -> Result<SubcategoryScore> {
-        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let has_error_section = check_readme_error_section(repo_path).await;
         let partial_score: f64 = if has_error_section { 2.0 } else { 1.5 };
 
@@ -67,7 +65,6 @@ impl DemoScorer {
 }
 
 async fn check_readme_error_section(repo_path: &Path) -> bool {
-    debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
     let readme_path = repo_path.join("README.md");
     if !readme_path.exists() {
         return false;

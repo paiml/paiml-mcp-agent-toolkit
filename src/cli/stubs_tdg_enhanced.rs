@@ -28,7 +28,6 @@ pub async fn handle_analyze_tdg_enhanced(
     _include: Vec<String>,
     watch: bool,
 ) -> Result<()> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Handle watch mode
     if watch {
         handle_watch_mode();
@@ -71,7 +70,6 @@ fn handle_watch_mode() {
 
 /// Print analysis header information
 fn print_analysis_header(project_path: &PathBuf, threshold: f64, top: usize, format: &TdgOutputFormat) {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🔍 Analyzing Technical Debt Gradient...");
     eprintln!("📁 Project path: {}", project_path.display());
     eprintln!("📊 Threshold: {threshold}");
@@ -81,7 +79,6 @@ fn print_analysis_header(project_path: &PathBuf, threshold: f64, top: usize, for
 
 /// Prepare files for analysis
 fn prepare_files_for_analysis(file: Option<PathBuf>, files: Vec<PathBuf>) -> Vec<PathBuf> {
-    debug_assert!(true, "contract: prepare_files_for_analysis");
     let files_to_analyze = if let Some(single_file) = file {
         vec![single_file]
     } else if !files.is_empty() {
@@ -99,7 +96,6 @@ fn prepare_files_for_analysis(file: Option<PathBuf>, files: Vec<PathBuf>) -> Vec
 
 /// Perform TDG analysis on the project
 async fn perform_tdg_analysis(project_path: &PathBuf) -> Result<TDGSummary> {
-    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let calculator = TDGCalculator::new();
     calculator.analyze_directory(project_path).await
 }
@@ -111,8 +107,6 @@ fn filter_and_sort_hotspots(
     critical_only: bool,
     top: usize,
 ) -> Vec<crate::models::tdg::TDGHotspot> {
-    debug_assert!(top > 0, "top must be positive");
-    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let mut filtered_hotspots: Vec<_> = summary.hotspots.iter()
         .filter(|h| {
             if critical_only {
@@ -140,7 +134,6 @@ fn generate_output_content(
     include_components: bool,
     verbose: bool,
 ) -> Result<String> {
-    debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     match format {
         TdgOutputFormat::Table => {
             let mut table = String::new();
@@ -314,7 +307,6 @@ fn generate_output_content(
 
 /// Handle output - write to file or print to stdout
 async fn handle_output(output: Option<PathBuf>, output_content: &str) -> Result<()> {
-    debug_assert!(!output_content.is_empty(), "output_content must not be empty");
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, output_content).await?;
         eprintln!("📝 Results written to {}", output_path.display());
@@ -497,7 +489,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

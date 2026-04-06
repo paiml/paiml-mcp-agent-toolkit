@@ -173,7 +173,6 @@ impl TemplateRegistry {
     /// - Cyclomatic: 2 (lookup + error)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, name: &str) -> Result<&Template> {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.templates.get(name).ok_or_else(|| {
             ScaffoldError::InvalidProjectName(format!("Template not found: {}", name))
         })

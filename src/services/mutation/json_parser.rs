@@ -164,7 +164,6 @@ impl CargoMutantsReport {
     /// ```
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_output_dir(dir: &std::path::Path) -> Result<Self> {
-        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         // Read outcomes.json
         let outcomes_path = dir.join("outcomes.json");
         let outcomes_json = std::fs::read_to_string(&outcomes_path)
@@ -220,7 +219,6 @@ impl CargoMutantsReport {
     )]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_json(json: &str) -> Result<Self> {
-        debug_assert!(!json.is_empty(), "json must not be empty");
         serde_json::from_str(json)
             .map_err(|e| format!("Failed to parse cargo-mutants JSON: {}", e).into())
     }
@@ -297,7 +295,6 @@ impl CargoMutantsReport {
     /// # Returns
     /// PMAT Mutant struct
     fn convert_mutant(cargo_mutant: &CargoMutant, idx: usize) -> Mutant {
-        debug_assert!(true, "contract: convert_mutant");
         let status = Self::map_outcome(&cargo_mutant.outcome);
         let id = Self::generate_id(cargo_mutant, idx);
         let location = Self::create_location(cargo_mutant);
@@ -317,7 +314,6 @@ impl CargoMutantsReport {
 
     /// Map cargo-mutants outcome to PMAT status
     fn map_outcome(outcome: &MutantOutcome) -> MutantStatus {
-        debug_assert!(true, "contract: map_outcome");
         match outcome {
             MutantOutcome::Caught => MutantStatus::Killed,
             MutantOutcome::Missed => MutantStatus::Survived,
@@ -328,7 +324,6 @@ impl CargoMutantsReport {
 
     /// Generate unique ID for mutant
     fn generate_id(cargo_mutant: &CargoMutant, idx: usize) -> String {
-        debug_assert!(true, "contract: generate_id");
         format!(
             "cargo-mutants-{}-{}-{}",
             cargo_mutant.file.replace('/', "_").replace(".rs", ""),
@@ -339,7 +334,6 @@ impl CargoMutantsReport {
 
     /// Create source location from cargo mutant
     fn create_location(cargo_mutant: &CargoMutant) -> SourceLocation {
-        debug_assert!(true, "contract: create_location");
         SourceLocation {
             line: cargo_mutant.line,
             column: 0, // cargo-mutants doesn't provide column
@@ -350,7 +344,6 @@ impl CargoMutantsReport {
 
     /// Format mutated source description
     fn format_mutated_source(cargo_mutant: &CargoMutant) -> String {
-        debug_assert!(true, "contract: format_mutated_source");
         if let Some(ref replacement) = cargo_mutant.replacement {
             format!("Replacement: {}", replacement)
         } else {
@@ -360,7 +353,6 @@ impl CargoMutantsReport {
 
     /// Generate hash for mutant
     fn generate_hash(cargo_mutant: &CargoMutant) -> String {
-        debug_assert!(true, "contract: generate_hash");
         let mut hasher = DefaultHasher::new();
         cargo_mutant.file.hash(&mut hasher);
         cargo_mutant.line.hash(&mut hasher);

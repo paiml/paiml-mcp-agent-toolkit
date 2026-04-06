@@ -13,8 +13,6 @@ pub async fn handle_maintain_roadmap(
     config: RoadmapMaintenanceConfig,
     format: OutputFormat,
 ) -> Result<()> {
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
-    debug_assert!(tickets_dir.exists(), "tickets_dir must exist: {}", tickets_dir.display());
     if config.validate {
         validate_roadmap(&roadmap_path, &tickets_dir).await?;
     }
@@ -46,8 +44,6 @@ pub async fn validate_roadmap_internal(
     roadmap_path: &Path,
     tickets_dir: &Path,
 ) -> Result<RoadmapValidation> {
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
-    debug_assert!(tickets_dir.exists(), "tickets_dir must exist: {}", tickets_dir.display());
     let roadmap_content = fs::read_to_string(roadmap_path).map_err(|_| {
         let error = crate::cli::error_context::roadmap_not_found(roadmap_path);
         anyhow::anyhow!(error.format_detailed())
@@ -94,8 +90,6 @@ pub async fn validate_roadmap_internal(
 
 /// Validate roadmap structure and ticket consistency (CLI wrapper)
 async fn validate_roadmap(roadmap_path: &Path, tickets_dir: &Path) -> Result<()> {
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
-    debug_assert!(tickets_dir.exists(), "tickets_dir must exist: {}", tickets_dir.display());
     let validation = validate_roadmap_internal(roadmap_path, tickets_dir).await?;
 
     // Report results
@@ -124,8 +118,6 @@ async fn validate_roadmap(roadmap_path: &Path, tickets_dir: &Path) -> Result<()>
 
 /// Fix roadmap checkbox status based on ticket files
 async fn fix_roadmap_status(roadmap_path: &Path, tickets_dir: &Path, dry_run: bool) -> Result<()> {
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
-    debug_assert!(tickets_dir.exists(), "tickets_dir must exist: {}", tickets_dir.display());
     let roadmap_content = fs::read_to_string(roadmap_path)?;
     let roadmap_tickets = parse_roadmap_tickets(&roadmap_content)?;
 
@@ -172,8 +164,6 @@ pub async fn generate_tickets_internal(
     tickets_dir: &Path,
     dry_run: bool,
 ) -> Result<TicketGenerationResult> {
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
-    debug_assert!(tickets_dir.exists(), "tickets_dir must exist: {}", tickets_dir.display());
     let roadmap_content = fs::read_to_string(roadmap_path)?;
     let roadmap_tickets = parse_roadmap_tickets(&roadmap_content)?;
 
@@ -216,8 +206,6 @@ async fn generate_missing_ticket_files(
     tickets_dir: &Path,
     dry_run: bool,
 ) -> Result<()> {
-    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
-    debug_assert!(tickets_dir.exists(), "tickets_dir must exist: {}", tickets_dir.display());
     eprintln!("📝 Checking for missing ticket files...\n");
 
     let result = generate_tickets_internal(roadmap_path, tickets_dir, dry_run).await?;

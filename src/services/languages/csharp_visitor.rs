@@ -6,7 +6,6 @@ impl CSharpAstVisitor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
@@ -18,7 +17,6 @@ impl CSharpAstVisitor {
     /// Analyzes C# source code and extracts AST items (complexity ≤10)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_csharp_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -38,7 +36,6 @@ impl CSharpAstVisitor {
 
     /// Check basic C# syntax validity (complexity ≤10)
     fn is_valid_csharp_syntax(&self, source: &str) -> bool {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let open_braces = source.chars().filter(|&c| c == '{').count();
         let close_braces = source.chars().filter(|&c| c == '}').count();
 
@@ -48,7 +45,6 @@ impl CSharpAstVisitor {
 
     /// Extracts namespace declaration (complexity ≤10)
     fn extract_namespace_declaration(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -64,7 +60,6 @@ impl CSharpAstVisitor {
 
     /// Extracts class declarations (complexity ≤10)
     fn extract_class_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -92,7 +87,6 @@ impl CSharpAstVisitor {
 
     /// Helper to extract class name from line (complexity ≤10)
     fn extract_class_name_from_line(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("class ") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -107,8 +101,6 @@ impl CSharpAstVisitor {
 
     /// Count methods in a class (complexity ≤10)
     fn count_class_members(&self, source: &str, class_name: &str) -> usize {
-        debug_assert!(!source.is_empty(), "source must not be empty");
-        debug_assert!(!class_name.is_empty(), "class_name must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         let mut count = 0;
         let mut in_class = false;
@@ -153,7 +145,6 @@ impl CSharpAstVisitor {
 
     /// Extracts method declarations (complexity ≤10)
     fn extract_method_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -174,7 +165,6 @@ impl CSharpAstVisitor {
 
     /// Helper to extract method name from line (complexity ≤10)
     fn extract_method_name_from_line(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         // Handle regular methods
         if line.contains('(')
             && line.contains(')')
@@ -207,7 +197,6 @@ impl CSharpAstVisitor {
 
     /// Helper to extract method visibility (complexity ≤10)
     fn extract_method_visibility(&self, line: &str) -> String {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("public") {
             "public".to_string()
         } else if line.contains("private") {
@@ -221,7 +210,6 @@ impl CSharpAstVisitor {
 
     /// Extracts interface declarations (complexity ≤10)
     fn extract_interface_declarations(&mut self, source: &str) -> Result<(), String> {
-        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         for line in lines {
             let trimmed = line.trim();
@@ -245,7 +233,6 @@ impl CSharpAstVisitor {
 
     /// Helper to extract interface name from line (complexity ≤10)
     fn extract_interface_name_from_line(&self, line: &str) -> Option<String> {
-        debug_assert!(!line.is_empty(), "line must not be empty");
         if line.contains("interface ") {
             let parts: Vec<&str> = line.split_whitespace().collect();
             for (i, part) in parts.iter().enumerate() {
@@ -260,7 +247,6 @@ impl CSharpAstVisitor {
 
     /// Gets qualified name for a symbol (complexity ≤10)
     fn get_qualified_name(&self, name: &str) -> String {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         if self.namespace_name.is_empty() {
             name.to_string()
         } else {

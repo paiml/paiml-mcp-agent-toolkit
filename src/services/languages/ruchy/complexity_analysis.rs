@@ -1,7 +1,6 @@
 impl RuchyComplexityAnalyzer {
     /// Analyze a Ruchy AST node for complexity
     fn analyze_node(&mut self, node: &RuchyAst) {
-        debug_assert!(true, "contract: analyze_node");
         match node {
             RuchyAst::Function {
                 name,
@@ -61,7 +60,6 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze function complexity
     fn analyze_function(&mut self, name: &str, body: &RuchyAst, line_start: u32, line_end: u32) {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.defined_functions.insert(name.to_string());
         self.track_operator("fun");
         self.track_operand(name);
@@ -102,7 +100,6 @@ impl RuchyComplexityAnalyzer {
         then_branch: &RuchyAst,
         else_branch: Option<&RuchyAst>,
     ) {
-        debug_assert!(true, "contract: analyze_if");
         self.current_complexity.cyclomatic += 1;
         self.current_complexity.cognitive += 1 + u16::from(self.nesting_level);
         self.track_operator("if");
@@ -124,7 +121,6 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze while loop complexity
     fn analyze_while(&mut self, condition: &RuchyAst, body: &RuchyAst) {
-        debug_assert!(true, "contract: analyze_while");
         self.current_complexity.cyclomatic += 1;
         self.current_complexity.cognitive += 1 + u16::from(self.nesting_level);
 
@@ -140,7 +136,6 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze for loop complexity
     fn analyze_for(&mut self, body: &RuchyAst) {
-        debug_assert!(true, "contract: analyze_for");
         self.current_complexity.cyclomatic += 1;
         self.current_complexity.cognitive += 1 + u16::from(self.nesting_level);
 
@@ -155,7 +150,6 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze match expression complexity
     fn analyze_match(&mut self, expr: &RuchyAst, arms: &[(RuchyAst, RuchyAst)]) {
-        debug_assert!(true, "contract: analyze_match");
         let arm_count = arms.len() as u16;
         self.current_complexity.cyclomatic += arm_count;
         self.current_complexity.cognitive += (arm_count * 2) + u16::from(self.nesting_level);
@@ -177,7 +171,6 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze binary operation complexity
     fn analyze_binary_op(&mut self, left: &RuchyAst, op: &RuchyToken, right: &RuchyAst) {
-        debug_assert!(true, "contract: analyze_binary_op");
         // Toyota Way Extract Method: Separate concerns for operator processing
         let op_str = Self::get_operator_string(op);
         self.track_operator(op_str);
@@ -193,7 +186,6 @@ impl RuchyComplexityAnalyzer {
     /// Toyota Way Extract Method: Get string representation of operator
     /// Single responsibility: operator token to string conversion
     fn get_operator_string(op: &RuchyToken) -> &'static str {
-        debug_assert!(true, "contract: get_operator_string");
         match op {
             RuchyToken::Plus => "+",
             RuchyToken::Minus => "-",
@@ -216,7 +208,6 @@ impl RuchyComplexityAnalyzer {
     /// Toyota Way Extract Method: Handle complexity tracking for logical operators
     /// Single responsibility: complexity increment for short-circuit operators
     fn handle_logical_operator_complexity(&mut self, op: &RuchyToken) {
-        debug_assert!(true, "contract: handle_logical_operator_complexity");
         if matches!(op, RuchyToken::And | RuchyToken::Or) {
             self.current_complexity.cyclomatic += 1;
             self.current_complexity.cognitive += 1;
@@ -232,8 +223,6 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze import statement
     fn analyze_import(&mut self, module: &str, items: &[String], line: u32) {
-        debug_assert!(!module.is_empty(), "module must not be empty");
-        debug_assert!(!items.is_empty(), "items must not be empty");
         self.imports.push(RuchyImport {
             module: module.to_string(),
             items: items.to_vec(),
@@ -245,7 +234,6 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze export statement
     fn analyze_export(&mut self, items: &[String]) {
-        debug_assert!(!items.is_empty(), "items must not be empty");
         for item in items {
             self.exports.insert(item.clone());
         }
@@ -261,7 +249,6 @@ impl RuchyComplexityAnalyzer {
         line_start: u32,
         line_end: u32,
     ) {
-        debug_assert!(!name.is_empty(), "name must not be empty");
         self.track_operator("actor");
         self.track_operand(name);
 

@@ -54,7 +54,6 @@ pub(crate) async fn output_results(
 /// Format predictions as SARIF
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_defect_sarif(predictions: &[(String, DefectScore)]) -> Result<String> {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let sarif = serde_json::json!({
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
         "version": "2.1.0",
@@ -116,7 +115,6 @@ pub(crate) fn format_defect_sarif(predictions: &[(String, DefectScore)]) -> Resu
 /// Format predictions as CSV
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_defect_csv(predictions: &[(String, DefectScore)]) -> Result<String> {
-    debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut csv = String::new();
 
     // Header

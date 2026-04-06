@@ -5,7 +5,6 @@ impl DefectAnalyzer for ComplexityDefectAnalyzer {
     type Config = ComplexityConfig;
 
     async fn analyze(&self, project_path: &Path, config: Self::Config) -> Result<Vec<Defect>> {
-        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut defects = Vec::new();
         let tdg_calculator = crate::services::tdg_calculator::TDGCalculator::new();
 
@@ -25,12 +24,10 @@ impl DefectAnalyzer for ComplexityDefectAnalyzer {
     }
 
     fn category(&self) -> DefectCategory {
-        debug_assert!(true, "contract: category");
         DefectCategory::Complexity
     }
 
     fn supports_incremental(&self) -> bool {
-        debug_assert!(true, "contract: supports_incremental");
         true
     }
 }
@@ -43,7 +40,6 @@ impl ComplexityDefectAnalyzer {
         index: usize,
         config: &ComplexityConfig,
     ) -> Defect {
-        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let severity = match score.severity {
             TDGSeverity::Critical => Severity::Critical,
             TDGSeverity::Warning => Severity::High,
@@ -88,7 +84,6 @@ impl ComplexityDefectAnalyzer {
     }
 
     fn generate_fix_suggestion(&self, score: &TDGScore) -> String {
-        debug_assert!(true, "contract: generate_fix_suggestion");
         let mut suggestions = Vec::new();
 
         if score.components.complexity > 0.7 {

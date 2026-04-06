@@ -38,7 +38,6 @@ use super::types::SymbolInfo;
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
-    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut counts = std::collections::HashMap::with_capacity(64);
     for symbol in symbols {
         *counts.entry(symbol.kind.clone()).or_insert(0) += 1;
@@ -50,7 +49,6 @@ pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn count_by_visibility(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
-    debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut counts = std::collections::HashMap::with_capacity(64);
     for symbol in symbols {
         *counts.entry(symbol.visibility.clone()).or_insert(0) += 1;

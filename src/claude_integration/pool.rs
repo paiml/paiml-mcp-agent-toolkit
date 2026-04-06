@@ -104,24 +104,20 @@ impl ResilientConnectionPool {
     }
 
     fn record_success(&self) {
-        debug_assert!(true, "contract: record_success");
         self.success_count.fetch_add(1, Ordering::Relaxed);
     }
 
     fn record_failure(&self) {
-        debug_assert!(true, "contract: record_failure");
         self.failure_count.fetch_add(1, Ordering::Relaxed);
     }
 
     async fn try_health_check(&self) -> bool {
-        debug_assert!(true, "contract: try_health_check");
         // Simplified health check - always return true for now
         true
     }
 
     #[allow(dead_code)]
     fn should_open_circuit(&self) -> bool {
-        debug_assert!(true, "contract: should_open_circuit");
         let failures = self.failure_count.load(Ordering::Relaxed);
         let successes = self.success_count.load(Ordering::Relaxed);
         let total = failures + successes;

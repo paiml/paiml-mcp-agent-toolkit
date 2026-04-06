@@ -53,7 +53,6 @@ pub async fn resolve_repository_async(
 
 /// Parse different repository specification formats
 fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
-    debug_assert!(!repo_spec.is_empty(), "repo_spec must not be empty");
     // Try each format in order of specificity
     if let Some(result) = try_local_path(repo_spec) {
         return result;
@@ -77,7 +76,6 @@ fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
 
 /// Try to resolve as local path (cognitive complexity ≤2)
 fn try_local_path(repo_spec: &str) -> Option<Result<PathBuf>> {
-    debug_assert!(!repo_spec.is_empty(), "repo_spec must not be empty");
     let path = PathBuf::from(repo_spec);
     if path.exists() {
         Some(detect_repository(Some(path)))
@@ -88,7 +86,6 @@ fn try_local_path(repo_spec: &str) -> Option<Result<PathBuf>> {
 
 /// Try to resolve GitHub shorthand format (gh:owner/repo) (cognitive complexity ≤2)
 fn try_github_shorthand(repo_spec: &str) -> Option<Result<PathBuf>> {
-    debug_assert!(!repo_spec.is_empty(), "repo_spec must not be empty");
     if repo_spec.starts_with("gh:") {
         let repo_name = repo_spec
             .strip_prefix("gh:")
@@ -102,7 +99,6 @@ fn try_github_shorthand(repo_spec: &str) -> Option<Result<PathBuf>> {
 
 /// Try to resolve full GitHub URLs (cognitive complexity ≤2)
 fn try_github_url(repo_spec: &str) -> Option<Result<PathBuf>> {
-    debug_assert!(!repo_spec.is_empty(), "repo_spec must not be empty");
     if repo_spec.starts_with("https://github.com/") || repo_spec.starts_with("git@github.com:") {
         Some(Ok(PathBuf::from(repo_spec)))
     } else {
@@ -112,7 +108,6 @@ fn try_github_url(repo_spec: &str) -> Option<Result<PathBuf>> {
 
 /// Try to resolve owner/repo format (cognitive complexity ≤3)
 fn try_owner_repo_format(repo_spec: &str) -> Option<Result<PathBuf>> {
-    debug_assert!(!repo_spec.is_empty(), "repo_spec must not be empty");
     if repo_spec.contains('/') && !repo_spec.contains('.') {
         let github_url = format!("https://github.com/{repo_spec}");
         Some(Ok(PathBuf::from(github_url)))
@@ -122,7 +117,6 @@ fn try_owner_repo_format(repo_spec: &str) -> Option<Result<PathBuf>> {
 }
 
 fn get_canonical_path(hint: Option<PathBuf>) -> Result<PathBuf> {
-    debug_assert!(true, "contract: get_canonical_path");
     match hint {
         Some(p) => {
             if !p.exists() {
@@ -138,7 +132,6 @@ fn get_canonical_path(hint: Option<PathBuf>) -> Result<PathBuf> {
 }
 
 fn find_git_root(start_path: &Path) -> Option<PathBuf> {
-    debug_assert!(start_path.exists(), "start_path must exist: {}", start_path.display());
     // Fast path: direct .git check
     if start_path.join(".git").is_dir() {
         return Some(start_path.to_path_buf());
@@ -170,13 +163,11 @@ fn find_git_root(start_path: &Path) -> Option<PathBuf> {
 }
 
 fn is_interactive_environment() -> bool {
-    debug_assert!(true, "contract: is_interactive_environment");
     use std::io::IsTerminal;
     std::io::stdout().is_terminal() && env::var("CI").is_err()
 }
 
 fn read_repository_path_from_user() -> Result<PathBuf> {
-    debug_assert!(true, "contract: read_repository_path_from_user");
     eprintln!("No git repository found in current directory");
     eprint!("Enter path to a git repository (or press Enter to cancel): ");
     io::stdout().flush()?;
