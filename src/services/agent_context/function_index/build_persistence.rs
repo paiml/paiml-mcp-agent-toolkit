@@ -1,6 +1,8 @@
 impl AgentContextIndex {
     /// Save index to directory
     pub fn save(&self, index_path: &Path) -> Result<(), String> {
+        debug_assert!(!self.functions.is_empty(), "saving empty index — no functions parsed");
+
         fs::create_dir_all(index_path)
             .map_err(|e| format!("Failed to create index directory: {e}"))?;
 

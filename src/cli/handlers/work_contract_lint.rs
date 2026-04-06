@@ -60,6 +60,7 @@ pub fn lint_contract(
     project_path: &Path,
     min_score: f64,
 ) -> LintReport {
+    debug_assert!((0.0..=1.0).contains(&min_score), "min_score must be 0.0-1.0: {}", min_score);
     let mut findings = Vec::new();
 
     // Gate 1: Validation rules (DBC-VAL-*)
@@ -98,13 +99,16 @@ pub fn lint_contract(
         .filter(|f| f.severity == LintSeverity::Info)
         .count();
 
-    LintReport {
+    let report = LintReport {
         passed: error_count == 0,
         findings,
         error_count,
         warning_count,
         info_count,
-    }
+    };
+    debug_assert_eq!(report.passed, report.error_count == 0,
+        "passed flag inconsistent with error_count");
+    report
 }
 
 // === Gate 1: Validation Rules ===

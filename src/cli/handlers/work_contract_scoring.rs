@@ -102,6 +102,14 @@ pub fn score_contract(contract: &WorkContract, project_path: &Path) -> ContractS
         + weights.subcontracting * subcontracting
         + weights.traceability * traceability;
 
+    // All dimensions must be in [0.0, 1.0]
+    debug_assert!((0.0..=1.0).contains(&spec_depth), "spec_depth out of range: {}", spec_depth);
+    debug_assert!((0.0..=1.0).contains(&falsification_coverage), "falsification out of range: {}", falsification_coverage);
+    debug_assert!((0.0..=1.0).contains(&invariant_health), "invariant_health out of range: {}", invariant_health);
+    debug_assert!((0.0..=1.0).contains(&subcontracting), "subcontracting out of range: {}", subcontracting);
+    debug_assert!((0.0..=1.0).contains(&traceability), "traceability out of range: {}", traceability);
+    debug_assert!((0.0..=1.0).contains(&total), "total score out of range: {}", total);
+
     let grade = ScoreGrade::from_score(total);
 
     ContractScore {

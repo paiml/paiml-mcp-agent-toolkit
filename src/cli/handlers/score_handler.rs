@@ -63,6 +63,12 @@ pub async fn handle_score(
     eprintln!("Computing unified quality score...");
 
     let score = compute_composite(path).await?;
+    debug_assert!(
+        score.composite >= 0.0 && score.composite <= 100.0,
+        "composite score out of range: {}",
+        score.composite
+    );
+    debug_assert!(!score.grade.is_empty(), "grade must not be empty");
 
     // Persist to .pmat-metrics/
     persist_score(path, &score);
@@ -157,12 +163,41 @@ async fn compute_composite(path: &Path) -> Result<CompositeScore> {
     // 8. PV Lint (provable contracts)
     let pv_lint = compute_pv_lint(path);
 
+    // Precondition: all sub-scores in valid range
+    debug_assert!(rps >= 0.0 && rps <= 100.0, "rps out of range: {}", rps);
+    debug_assert!(
+        comply >= 0.0 && comply <= 100.0,
+        "comply out of range: {}",
+        comply
+    );
+    debug_assert!(
+        coverage >= 0.0 && coverage <= 100.0,
+        "coverage out of range: {}",
+        coverage
+    );
+    debug_assert!(
+        muda_inv >= 0.0 && muda_inv <= 100.0,
+        "muda_inv out of range: {}",
+        muda_inv
+    );
+    debug_assert!(dbc >= 0.0 && dbc <= 100.0, "dbc out of range: {}", dbc);
+    debug_assert!(
+        file_health >= 0.0 && file_health <= 100.0,
+        "file_health out of range: {}",
+        file_health
+    );
+
     // Geometric mean — only include active sub-scores (skip neutral 50.0 defaults)
     let mut values = vec![rps, comply, coverage, muda_inv, evoscore, dbc, file_health];
     if pv_lint != 50.0 {
         values.push(pv_lint); // Only include PV Lint when contracts exist
     }
     let composite = geometric_mean(values.as_slice());
+    debug_assert!(
+        composite >= 0.0 && composite <= 100.0,
+        "geometric mean out of range: {}",
+        composite
+    );
 
     let grade = match composite as u32 {
         90..=100 => "A",

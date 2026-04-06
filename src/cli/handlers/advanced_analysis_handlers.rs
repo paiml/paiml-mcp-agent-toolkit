@@ -195,6 +195,19 @@ pub async fn handle_analyze_tdg(
     critical_only: bool,
     verbose: bool,
 ) -> Result<()> {
+    debug_assert!(
+        path.exists(),
+        "TDG analysis path must exist: {}",
+        path.display()
+    );
+    if let Some(t) = threshold {
+        debug_assert!(
+            (0.0..=1.0).contains(&t),
+            "TDG threshold must be 0.0-1.0: {}",
+            t
+        );
+    }
+
     // Use the enhanced implementation from stubs that supports all modes
     use super::new_tdg_handler::TdgAnalysisConfig;
 

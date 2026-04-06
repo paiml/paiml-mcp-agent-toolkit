@@ -102,6 +102,17 @@ pub async fn handle_rust_project_score(
     let project_score = orchestrator
         .score_with_mode(path, mode)
         .context("Failed to calculate Rust project score")?;
+    debug_assert!(project_score.total_earned >= 0.0, "earned score negative");
+    debug_assert!(
+        project_score.total_possible > 0.0,
+        "max score must be positive"
+    );
+    debug_assert!(
+        project_score.total_earned <= project_score.total_possible,
+        "earned {} > max {}",
+        project_score.total_earned,
+        project_score.total_possible
+    );
 
     // Filter recommendations if failures_only
     let recommendations = if failures_only {

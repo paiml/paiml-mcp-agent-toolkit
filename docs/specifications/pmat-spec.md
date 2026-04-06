@@ -440,9 +440,9 @@ placeholder preconditions (507 `!is_empty()` in PMAT-129), zero enforcement
 CB-1338..1343 break the whack-a-mole cycle.
 
 **apr-cli Level A Enforcement (v3.4):** ALL 48 apr-cli commands require Grade A
-TDG (≤0.2) + L3 provable-contracts enforcement. Zero `#[contract]` annotations
-in apr-cli crate currently (paiml/aprender#686). Crate-wide penetration 79.9%
-masks per-crate gaps (paiml/aprender#691). 6 tracking issues filed (#686-691).
+TDG (≤0.2) + L3 provable-contracts. apr-cli at 63% penetration, needs ≥95%
+(#686). #691 closed — per-crate reporting implemented. **pmat self-enforcement:**
+0.4% (53/15073) — Phase 1 done (7 scoring/query handlers), Phase 2 planned.
 
 **O(1) Firm Requirement:** All pre-commit checks < 45ms total from cached data.
 No cold verification in the commit path. Caches populated by `pmat work

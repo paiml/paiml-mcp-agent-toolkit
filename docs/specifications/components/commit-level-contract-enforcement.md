@@ -331,28 +331,13 @@ cuda gate, #560 wgpu fallback), perf (#386 SIMD dequant, #434 OOM quantize,
 #428 online SGD, #540 Grade A refactor, #537 bug-hunter findings, #566
 finetune metrics, #574 tracing, #575 Whisper).
 
-### Five Whys: Why Doesn't pmat comply Catch apr-cli Bugs? (2026-04-06)
+### Five Whys: Why Doesn't pmat comply Catch apr-cli Bugs?
 
-**Context:** 56 bugs fixed on aprender. ~35 (63%) would have been caught by
-provable-contracts postconditions. `pmat comply check` shows 73/14/2 (was
-73/14/0 — 2 new FAILs: File Health grade C, CB-1308 L4 violations).
-
-1. **Why did 35 catchable bugs slip through?** pmat comply checks contract
-   *infrastructure* (do YAMLs exist?) not contract *behavior* (does code obey?).
-2. **Why no behavior checking?** Behavioral checking requires running code.
-   pmat comply is static — reads files, doesn't execute tests.
-3. **Why no debug_assert! calls catching these?** `pv codegen` generates 21
-   macros but only 8 call sites (1.6% penetration). Macros exist, aren't called.
-4. **Why aren't macros inserted?** The pipeline is YAML→codegen→binding→call-site.
-   Step 4 (insertion) is 100% manual. Developer must add `contract_pre_X!()` calls.
-5. **Why isn't insertion automated?** Rust macros can't be auto-inserted. Need
-   proc_macros (`#[contract]` attribute) or `build.rs` injection — not implemented.
-
-**Root cause (UPDATED 2026-04-06):** `#[contract]` proc_macro EXISTS
-(provable-contracts-macros) and IS deployed. Enforcement penetration measured
-at **79.9%** (6157/7707 functions) via CB-1340 — up from 0.7% (51 annotations)
-reported earlier. The pipeline works. Remaining gap: 4 contracts stuck at L4
-(not L5), and the 48 apr-cli command handlers need per-command Level A coverage.
+56 bugs fixed on aprender — 35 (63%) were contract-catchable. Root cause:
+pmat comply checks contract *infrastructure* (YAML existence), not *behavior*
+(does code obey?). `#[contract]` proc_macro exists and works — aprender root
+at 35% penetration (honest, post-falsification). apr-cli at 63% needs 95%.
+Gap: 48 command handlers need per-command Level A coverage (#686).
 
 | Defect Class | Count | Contract Catchable? | Fix |
 |-------------|-------|--------------------|----|
@@ -458,9 +443,26 @@ Phase 6: CB-1354 (contract query readiness).
 
 ---
 
+## pmat Self-Enforcement (Eat Your Own Dogfood)
+
+**Gap:** pmat enforces contracts on other repos but barely on itself — 0.4%
+penetration (53 call sites / 15,073 functions). Target: ≥10%.
+
+**Phase 1 (done):** Added `debug_assert!` to 7 critical scoring/query paths:
+`handle_score` (composite range), `compute_composite` (sub-score ranges),
+`handle_query` (limit/query preconditions), `handle_check` (path exists),
+`handle_analyze_tdg` (threshold range), `score_contract` (5-dim range),
+`lint_contract` (min_score range + passed/error consistency),
+`handle_rust_project_score` (earned ≤ possible), `AgentContextIndex::save`
+(non-empty index).
+
+**Phase 2 (next):** Add contracts to remaining handlers: `handle_five_whys`,
+`handle_work_start`, `handle_work_complete`, `handle_muda`, `handle_evoscore`.
+Target: 150+ call sites (1.0% → 10% requires binding.yaml + `#[contract]`).
+
 ## Implementation Status
 
-**Detection layer: complete.** 26 CB checks (falsified from claimed 29), 165+ tests in check_handlers scope, dogfooded on 4 repos.
+**Detection layer: complete.** 26 CB checks, 165+ tests, dogfooded on 4 repos.
 **Infrastructure: 8/8 phases complete** (R-1..R-10 remediation closed, R-3
 deferred). Phase 3 `asset_validator.rs` (R-10), Phase 6 `contract_index.rs`
 (R-9). HookRegistry deferred — detection via CB-1333..1337 sufficient.

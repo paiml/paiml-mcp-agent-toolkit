@@ -43,6 +43,12 @@ pub(crate) async fn handle_check(
     failures_only: bool,
     format: ComplyOutputFormat,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
+
     eprintln!("Checking PMAT compliance for {}", project_path.display());
 
     let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
