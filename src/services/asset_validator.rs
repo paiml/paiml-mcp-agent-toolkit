@@ -115,8 +115,11 @@ fn validate_readme(project_path: &Path) -> AssetValidationResult {
     let content = std::fs::read_to_string(&readme).unwrap_or_default();
     let mut issues = Vec::new();
 
-    if !content.lines().any(|l| l.starts_with("# ")) {
-        issues.push("missing title (# heading)".into());
+    if !content
+        .lines()
+        .any(|l| l.starts_with("# ") || l.contains("<h1"))
+    {
+        issues.push("missing title (# heading or <h1>)".into());
     }
     let lower = content.to_lowercase();
     for (name, patterns) in &[

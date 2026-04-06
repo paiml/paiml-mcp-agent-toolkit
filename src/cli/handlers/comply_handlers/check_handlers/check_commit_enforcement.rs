@@ -37,10 +37,10 @@ pub(crate) fn check_readme_layout(project_path: &Path) -> ComplianceCheck {
     let lines: Vec<&str> = content.lines().collect();
     let mut issues: Vec<String> = Vec::new();
 
-    // Check for title (# heading)
-    let has_title = lines.iter().any(|l| l.starts_with("# "));
+    // Check for title (# heading or <h1> tag)
+    let has_title = lines.iter().any(|l| l.starts_with("# ") || l.contains("<h1"));
     if !has_title {
-        issues.push("missing title (# heading)".into());
+        issues.push("missing title (# heading or <h1>)".into());
     }
 
     // Check required sections by common heading patterns
