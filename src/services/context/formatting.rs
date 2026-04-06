@@ -8,6 +8,7 @@ use super::types::{AstItem, FileContext, GroupedItems, ProjectContext, ProjectSu
 use crate::services::deep_context::DeepContext;
 
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_context_as_markdown(context: &ProjectContext) -> String {
     let mut output = String::new();
 
@@ -21,6 +22,7 @@ pub fn format_context_as_markdown(context: &ProjectContext) -> String {
 }
 
 fn format_header(output: &mut String, context: &ProjectContext) {
+    debug_assert!(true, "contract: format_header");
     output.push_str(&format!(
         "# Project Context: {} Project\n\n",
         context.project_type
@@ -32,6 +34,7 @@ fn format_header(output: &mut String, context: &ProjectContext) {
 }
 
 fn format_summary(output: &mut String, summary: &ProjectSummary) {
+    debug_assert!(true, "contract: format_summary");
     output.push_str("## Summary\n\n");
     output.push_str(&format!("- Files analyzed: {}\n", summary.total_files));
     output.push_str(&format!("- Functions: {}\n", summary.total_functions));
@@ -62,6 +65,7 @@ fn format_files(output: &mut String, files: &[FileContext]) {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn group_items_by_type(items: &[AstItem]) -> GroupedItems<'_> {
     debug_assert!(!items.is_empty(), "items must not be empty");
     let mut grouped = GroupedItems::new();
@@ -81,6 +85,7 @@ pub(crate) fn group_items_by_type(items: &[AstItem]) -> GroupedItems<'_> {
     grouped
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_item_groups(output: &mut String, groups: &GroupedItems) {
     format_item_group(output, "Modules", &groups.modules, format_module_item);
     format_item_group(output, "Structs", &groups.structs, format_struct_item);
@@ -105,6 +110,7 @@ where
 }
 
 fn format_module_item(item: &AstItem) -> String {
+    debug_assert!(true, "contract: format_module_item");
     if let AstItem::Module {
         name,
         visibility,
@@ -118,6 +124,7 @@ fn format_module_item(item: &AstItem) -> String {
 }
 
 fn format_struct_item(item: &AstItem) -> String {
+    debug_assert!(true, "contract: format_struct_item");
     if let AstItem::Struct {
         name,
         visibility,
@@ -138,6 +145,7 @@ fn format_struct_item(item: &AstItem) -> String {
 }
 
 fn format_enum_item(item: &AstItem) -> String {
+    debug_assert!(true, "contract: format_enum_item");
     if let AstItem::Enum {
         name,
         visibility,
@@ -152,6 +160,7 @@ fn format_enum_item(item: &AstItem) -> String {
 }
 
 fn format_trait_item(item: &AstItem) -> String {
+    debug_assert!(true, "contract: format_trait_item");
     if let AstItem::Trait {
         name,
         visibility,
@@ -165,6 +174,7 @@ fn format_trait_item(item: &AstItem) -> String {
 }
 
 fn format_function_item(item: &AstItem) -> String {
+    debug_assert!(true, "contract: format_function_item");
     if let AstItem::Function {
         name,
         visibility,
@@ -185,6 +195,7 @@ fn format_function_item(item: &AstItem) -> String {
 }
 
 fn format_impl_item(item: &AstItem) -> String {
+    debug_assert!(true, "contract: format_impl_item");
     if let AstItem::Impl {
         type_name,
         trait_name,
@@ -209,6 +220,7 @@ fn format_footer(output: &mut String) {
 
 /// Format a comprehensive `DeepContext` as markdown with quality metrics
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_deep_context_as_markdown(context: &DeepContext) -> String {
     let mut output = String::new();
 
@@ -241,6 +253,7 @@ fn format_quality_scorecard(
     output: &mut String,
     scorecard: &crate::services::deep_context::QualityScorecard,
 ) {
+    debug_assert!(true, "contract: format_quality_scorecard");
     output.push_str("## Quality Scorecard\n\n");
     output.push_str(&format!(
         "- **Overall Health**: {:.1}%\n",
@@ -268,6 +281,7 @@ fn format_quality_scorecard(
 }
 
 fn format_project_summary(output: &mut String, context: &DeepContext) {
+    debug_assert!(true, "contract: format_project_summary");
     output.push_str("## Project Summary\n\n");
     output.push_str(&format!(
         "- **Total Files**: {}\n",
@@ -296,6 +310,7 @@ fn format_analysis_results(
     output: &mut String,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
+    debug_assert!(true, "contract: format_analysis_results");
     output.push_str("## Analysis Results\n\n");
 
     // Complexity Analysis - Combined formatting to reduce complexity

@@ -149,6 +149,7 @@ impl DirectoryAccumulator {
     }
 
     fn accumulate_summary(&mut self, summary: &serde_json::Map<String, Value>) {
+        debug_assert!(true, "contract: accumulate_summary");
         if let Some(v) = summary["class_count"].as_u64() { self.total_classes += v; }
         if let Some(v) = summary["trait_count"].as_u64() { self.total_traits += v; }
         if let Some(v) = summary["object_count"].as_u64() { self.total_objects += v; }
@@ -157,6 +158,7 @@ impl DirectoryAccumulator {
     }
 
     fn accumulate_metrics(&mut self, metrics: &serde_json::Map<String, Value>) {
+        debug_assert!(true, "contract: accumulate_metrics");
         if let Some(v) = metrics["total_complexity"].as_u64() { self.total_complexity += v; }
         if let Some(v) = metrics["max_complexity"].as_u64() {
             self.max_complexity = std::cmp::max(self.max_complexity, v);

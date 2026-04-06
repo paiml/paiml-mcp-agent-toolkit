@@ -17,6 +17,7 @@ pub struct RealContractService {
 }
 
 impl RealContractService {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Result<Self> {
         Ok(Self {
             inner: Arc::new(SimpleContractService::new()?),
@@ -24,30 +25,35 @@ impl RealContractService {
     }
 
     /// Process analyze complexity contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_complexity(&self, contract: AnalyzeComplexityContract) -> Result<Value> {
         // Delegate to working implementation
         self.inner.analyze_complexity(contract).await
     }
 
     /// Process analyze SATD contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_satd(&self, contract: AnalyzeSatdContract) -> Result<Value> {
         // Delegate to working implementation
         self.inner.analyze_satd(contract).await
     }
 
     /// Process analyze dead code contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_dead_code(&self, contract: AnalyzeDeadCodeContract) -> Result<Value> {
         // Delegate to working implementation
         self.inner.analyze_dead_code(contract).await
     }
 
     /// Process analyze TDG contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_tdg(&self, contract: AnalyzeTdgContract) -> Result<Value> {
         // Delegate to working implementation
         self.inner.analyze_tdg(contract).await
     }
 
     /// Process analyze lint hotspot contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_lint_hotspot(
         &self,
         contract: AnalyzeLintHotspotContract,
@@ -57,12 +63,14 @@ impl RealContractService {
     }
 
     /// Process quality gate contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn quality_gate(&self, contract: QualityGateContract) -> Result<Value> {
         // Delegate to working implementation
         self.inner.quality_gate(contract).await
     }
 
     /// Process refactor auto contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn refactor_auto(&self, contract: RefactorAutoContract) -> Result<Value> {
         // Delegate to working implementation
         self.inner.refactor_auto(contract).await

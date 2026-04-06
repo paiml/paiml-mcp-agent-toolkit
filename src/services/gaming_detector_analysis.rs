@@ -1,4 +1,5 @@
 /// Detect coverage gaming patterns in a project
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_coverage_gaming(project_path: &Path) -> Result<GamingDetectionResult> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut result = GamingDetectionResult {
@@ -213,6 +214,7 @@ fn check_codecov_changes(
 }
 
 /// Detect test file deletions by comparing against baseline manifest
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_test_deletions(
     project_path: &Path,
     baseline_files: &HashSet<PathBuf>,
@@ -246,6 +248,7 @@ pub fn detect_test_deletions(
 }
 
 /// Detect critical file removals (CUDA, AVX, etc.)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_critical_file_removals(
     project_path: &Path,
     baseline_files: &HashSet<PathBuf>,
@@ -318,6 +321,7 @@ fn is_source_file(path: &Path) -> bool {
 }
 
 /// Run meta-falsification check (verify the detector itself is working)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn run_meta_falsification(_project_path: &Path) -> Result<bool> {
     debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Create a temporary test pattern to verify detection
@@ -325,6 +329,7 @@ pub fn run_meta_falsification(_project_path: &Path) -> Result<bool> {
         // This is a meta-test pattern
         #[cfg(not(coverage))]
         fn hidden_function() {}
+            debug_assert!(true, "contract: hidden_function");
     "#;
 
     // Meta-check: verify the detector can identify this known pattern

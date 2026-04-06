@@ -12,6 +12,7 @@ struct AnalyzeComplexityArgs {
 }
 
 fn parse_complexity_args(arguments: serde_json::Value) -> Result<AnalyzeComplexityArgs, String> {
+    debug_assert!(true, "contract: parse_complexity_args");
     serde_json::from_value(arguments)
         .map_err(|e| format!("Invalid analyze_complexity arguments: {e}"))
 }
@@ -23,6 +24,7 @@ struct ComplexityAnalysisContext {
 }
 
 fn prepare_complexity_analysis(args: &AnalyzeComplexityArgs) -> ComplexityAnalysisContext {
+    debug_assert!(true, "contract: prepare_complexity_analysis");
     let project_path = resolve_project_path_complexity(args.project_path.clone());
     let toolchain = detect_toolchain(&args.toolchain, &project_path);
     let thresholds = build_complexity_thresholds(args);
@@ -39,6 +41,7 @@ async fn perform_complexity_analysis(
     context: &ComplexityAnalysisContext,
     args: &AnalyzeComplexityArgs,
 ) -> (crate::services::complexity::ComplexityReport, usize) {
+    debug_assert!(true, "contract: perform_complexity_analysis");
     use crate::services::complexity::aggregate_results;
 
     let (file_metrics, file_count) =
@@ -53,6 +56,7 @@ fn generate_complexity_content(
     file_metrics: &[crate::services::complexity::FileComplexityMetrics],
     args: &AnalyzeComplexityArgs,
 ) -> String {
+    debug_assert!(true, "contract: generate_complexity_content");
     if let Some(top_files_count) = args.top_files {
         if top_files_count > 0 {
             generate_ranked_content(file_metrics, top_files_count, args)
@@ -105,6 +109,7 @@ async fn handle_analyze_complexity(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
+    debug_assert!(true, "contract: handle_analyze_complexity");
     let args = match parse_complexity_args(arguments) {
         Ok(args) => args,
         Err(e) => return McpResponse::error(request_id, -32602, e),
@@ -161,6 +166,7 @@ fn detect_toolchain(toolchain_arg: &Option<String>, project_path: &Path) -> Stri
 fn build_complexity_thresholds(
     args: &AnalyzeComplexityArgs,
 ) -> crate::services::complexity::ComplexityThresholds {
+    debug_assert!(true, "contract: build_complexity_thresholds");
     use crate::services::complexity::ComplexityThresholds;
 
     let mut thresholds = ComplexityThresholds::default();
@@ -306,6 +312,7 @@ fn format_complexity_output(
     report: &crate::services::complexity::ComplexityReport,
     args: &AnalyzeComplexityArgs,
 ) -> String {
+    debug_assert!(true, "contract: format_complexity_output");
     use crate::services::complexity::{
         format_as_sarif, format_complexity_report, format_complexity_summary,
     };

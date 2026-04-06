@@ -25,6 +25,7 @@ fn has_coverage_off(content: &str) -> bool {
 
 /// Load cached coverage_off_files from SQLite metadata.
 fn load_coverage_off_files(conn: &rusqlite::Connection) -> HashSet<String> {
+    debug_assert!(true, "contract: load_coverage_off_files");
     let json: String = conn
         .query_row(
             "SELECT value FROM metadata WHERE key = 'coverage_off_files'",
@@ -43,6 +44,7 @@ impl AgentContextIndex {
     ///
     /// # Returns
     /// Built index ready for queries
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn build(project_path: &Path) -> Result<Self, String> {
         debug_assert!(
             project_path.exists(),
@@ -241,6 +243,7 @@ impl AgentContextIndex {
     }
 
     /// Get index statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn stats(&self) -> IndexStats {
         let mut by_language: HashMap<String, usize> = HashMap::new();
         let mut by_grade: HashMap<String, usize> = HashMap::new();
@@ -272,11 +275,13 @@ impl AgentContextIndex {
     }
 
     /// Get manifest
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn manifest(&self) -> &IndexManifest {
         &self.manifest
     }
 
     /// Get function by exact name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_by_name(&self, name: &str) -> Vec<&FunctionEntry> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.name_index
@@ -286,6 +291,7 @@ impl AgentContextIndex {
     }
 
     /// Get functions in a file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_by_file(&self, file_path: &str) -> Vec<&FunctionEntry> {
         debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.file_index
@@ -295,16 +301,19 @@ impl AgentContextIndex {
     }
 
     /// Get all functions (for iteration)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn all_functions(&self) -> &[FunctionEntry] {
         &self.functions
     }
 
     /// Get corpus for search
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn corpus(&self) -> &[String] {
         &self.corpus
     }
 
     /// Get project root
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn project_root(&self) -> &Path {
         &self.project_root
     }

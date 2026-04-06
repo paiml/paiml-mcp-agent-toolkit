@@ -10,11 +10,13 @@ pub struct AstBuilder {
 
 impl AstBuilder {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(profile: QualityProfile) -> Self {
         Self { profile }
     }
 
     /// Build a function from specification
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn build_function(&self, spec: &CreateSpec) -> Result<String> {
         let mut code = String::new();
 
@@ -79,6 +81,7 @@ impl AstBuilder {
     }
 
     /// Generate example value for doctest
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_example_value(&self, param_type: &str) -> String {
         debug_assert!(!param_type.is_empty(), "param_type must not be empty");
         match param_type {

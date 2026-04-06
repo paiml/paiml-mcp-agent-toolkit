@@ -20,6 +20,7 @@ pub struct ScaffoldAgentParams {
 }
 
 /// Handle agent scaffolding command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_scaffold_agent(params: ScaffoldAgentParams) -> Result<()> {
     let ScaffoldAgentParams {
         name,
@@ -225,6 +226,7 @@ pub(super) fn print_dry_run_info(
 }
 
 /// Handle listing available agent templates
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_list_agent_templates() -> Result<()> {
     use crate::scaffold::agent::TemplateRegistry;
 
@@ -245,6 +247,7 @@ pub async fn handle_list_agent_templates() -> Result<()> {
 }
 
 /// Handle validating an agent template
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_validate_agent_template(path: PathBuf) -> Result<()> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::scaffold::agent::TemplateRegistry;

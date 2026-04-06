@@ -27,6 +27,7 @@ pub struct MutantExecutor {
 
 impl MutantExecutor {
     /// Create new executor with default settings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(work_dir: PathBuf) -> Self {
         debug_assert!(
             work_dir.exists(),
@@ -40,6 +41,7 @@ impl MutantExecutor {
     }
 
     /// Create executor with custom timeout
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_timeout(mut self, timeout_secs: u64) -> Self {
         self.timeout = Duration::from_secs(timeout_secs);
         self

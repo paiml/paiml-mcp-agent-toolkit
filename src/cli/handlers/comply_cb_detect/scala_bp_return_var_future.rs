@@ -8,6 +8,7 @@
 // CB-803: Return Statement
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb803_return_statement(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
@@ -75,6 +76,7 @@ fn contains_return_keyword(line: &str) -> bool {
 // CB-804: var Declaration
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb804_var_declaration(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
@@ -142,6 +144,7 @@ const BLOCKING_CALLS: &[&str] = &[
     "synchronized",
 ];
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb805_blocking_in_future(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);

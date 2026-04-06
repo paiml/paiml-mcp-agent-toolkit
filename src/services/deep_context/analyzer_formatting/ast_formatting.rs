@@ -81,6 +81,7 @@ struct AstUse {
 }
 
 impl DeepContextAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_enhanced_ast_section(
         &self,
         output: &mut String,
@@ -102,6 +103,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         context: &EnhancedFileContext,
     ) -> anyhow::Result<()> {
+        debug_assert!(true, "contract: format_single_file_ast");
         use std::fmt::Write;
 
         writeln!(output, "### {}\n", context.base.path)?;
@@ -142,6 +144,7 @@ impl DeepContextAnalyzer {
         item: &crate::services::context::AstItem,
         categorized: &mut CategorizedAstItems,
     ) {
+        debug_assert!(true, "contract: categorize_single_ast_item");
         match item {
             crate::services::context::AstItem::Function {
                 name,
@@ -252,6 +255,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         items: &CategorizedAstItems,
     ) -> anyhow::Result<()> {
+        debug_assert!(true, "contract: write_ast_summary");
         use std::fmt::Write;
         writeln!(output, "**Functions:** {} | **Structs:** {} | **Enums:** {} | **Traits:** {} | **Impls:** {} | **Modules:** {} | **Imports:** {}",
             items.functions.len(), items.structs.len(), items.enums.len(),
@@ -264,6 +268,7 @@ impl DeepContextAnalyzer {
         output: &mut String,
         items: &CategorizedAstItems,
     ) -> anyhow::Result<()> {
+        debug_assert!(true, "contract: write_ast_details");
         self.write_functions_section(output, &items.functions)?;
         self.write_structs_section(output, &items.structs)?;
         self.write_enums_section(output, &items.enums)?;

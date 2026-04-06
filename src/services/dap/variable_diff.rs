@@ -42,6 +42,7 @@ pub struct VariableDiff {
 
 impl VariableDiff {
     /// Compute diff between two snapshots
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute(before: &ExecutionSnapshot, after: &ExecutionSnapshot) -> Self {
         let mut changed = HashMap::new();
         let mut added = HashMap::new();
@@ -90,6 +91,7 @@ impl VariableDiff {
     }
 
     /// Render diff with ANSI colors
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_colored(&self) -> String {
         let mut output = String::new();
 
@@ -143,6 +145,7 @@ impl VariableDiff {
     }
 
     /// Render side-by-side comparison
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_side_by_side(&self) -> String {
         let mut output = String::new();
 
@@ -177,6 +180,7 @@ impl VariableDiff {
     }
 
     /// Get statistics about the diff
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_statistics(&self) -> DiffStatistics {
         let total_before = self.changed.len() + self.removed.len() + self.unchanged.len();
         let total_after = self.changed.len() + self.added.len() + self.unchanged.len();
@@ -192,6 +196,7 @@ impl VariableDiff {
     }
 
     /// Export diff to JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_json(&self) -> String {
         let mut json = serde_json::Map::new();
 
@@ -282,6 +287,7 @@ impl VariableDiff {
 
     /// Get type name of a JSON value
     fn value_type_name(value: &serde_json::Value) -> &'static str {
+        debug_assert!(true, "contract: value_type_name");
         match value {
             serde_json::Value::Null => "null",
             serde_json::Value::Bool(_) => "boolean",

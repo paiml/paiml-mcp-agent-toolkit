@@ -13,6 +13,7 @@ pub struct GitHookManager {
 }
 
 impl GitHookManager {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(repo_path: impl AsRef<Path>) -> Self {
         Self {
             repo_path: repo_path.as_ref().to_path_buf(),

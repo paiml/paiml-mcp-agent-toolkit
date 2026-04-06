@@ -1,4 +1,5 @@
 impl McpServer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         agent_registry: Arc<AgentRegistry>,
         config: ServerConfig,
@@ -46,6 +47,7 @@ impl McpServer {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run_tcp(&self) -> Result<(), Box<dyn std::error::Error>> {
         let listener = TcpListener::bind(&self.config.bind_address).await?;
         println!("MCP Server listening on {}", self.config.bind_address);
@@ -82,6 +84,7 @@ impl McpServer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run_unix(&self) -> Result<(), Box<dyn std::error::Error>> {
         let socket_path = self
             .config
@@ -127,6 +130,7 @@ impl McpServer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run_stdio(&self) -> Result<(), Box<dyn std::error::Error>> {
         let transport = Arc::new(StdioTransport::new());
         let session = McpSession::new(self.context.clone(), transport);
@@ -134,6 +138,7 @@ impl McpServer {
         handle_session(session, self.config.clone()).await
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn shutdown(&self) {
         self.shutdown.notify_waiters();
     }

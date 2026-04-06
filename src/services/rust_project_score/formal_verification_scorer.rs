@@ -43,6 +43,7 @@ pub struct FormalVerificationScorer {
 
 impl FormalVerificationScorer {
     /// Create a new FormalVerificationScorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             name: "Formal Verification".to_string(),

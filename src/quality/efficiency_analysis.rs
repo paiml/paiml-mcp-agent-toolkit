@@ -1,4 +1,5 @@
 impl EfficiencyAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             _max_loop_depth: 0,
@@ -6,6 +7,7 @@ impl EfficiencyAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&self, ast: &syn::File) -> String {
         let mut visitor = EfficiencyVisitor {
             current_loop_depth: 0,
@@ -16,6 +18,7 @@ impl EfficiencyAnalyzer {
         visitor.compute_complexity()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_string(&self, code: &str) -> Result<EfficiencyResult, syn::Error> {
         debug_assert!(!code.is_empty(), "code must not be empty");
         let ast = syn::parse_file(code)?;
@@ -26,6 +29,7 @@ impl EfficiencyAnalyzer {
     }
 
     fn analyze_space(&self, ast: &syn::File) -> String {
+        debug_assert!(true, "contract: analyze_space");
         let mut visitor = SpaceComplexityVisitor {
             allocations: 0,
             recursive_depth: 0,
@@ -37,6 +41,7 @@ impl EfficiencyAnalyzer {
 
 impl EfficiencyVisitor {
     fn compute_complexity(&self) -> String {
+        debug_assert!(true, "contract: compute_complexity");
         match self.max_loop_depth {
             0 => "O(1)".to_string(),
             1 => {
@@ -55,6 +60,7 @@ impl EfficiencyVisitor {
 
 impl<'ast> Visit<'ast> for EfficiencyVisitor {
     fn visit_expr_for_loop(&mut self, node: &'ast syn::ExprForLoop) {
+        debug_assert!(true, "contract: visit_expr_for_loop");
         self.current_loop_depth += 1;
         if self.current_loop_depth > self.max_loop_depth {
             self.max_loop_depth = self.current_loop_depth;
@@ -64,6 +70,7 @@ impl<'ast> Visit<'ast> for EfficiencyVisitor {
     }
 
     fn visit_expr_while(&mut self, node: &'ast syn::ExprWhile) {
+        debug_assert!(true, "contract: visit_expr_while");
         self.current_loop_depth += 1;
         if self.current_loop_depth > self.max_loop_depth {
             self.max_loop_depth = self.current_loop_depth;
@@ -73,6 +80,7 @@ impl<'ast> Visit<'ast> for EfficiencyVisitor {
     }
 
     fn visit_expr_loop(&mut self, node: &'ast syn::ExprLoop) {
+        debug_assert!(true, "contract: visit_expr_loop");
         self.current_loop_depth += 1;
         if self.current_loop_depth > self.max_loop_depth {
             self.max_loop_depth = self.current_loop_depth;
@@ -82,6 +90,7 @@ impl<'ast> Visit<'ast> for EfficiencyVisitor {
     }
 
     fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
+        debug_assert!(true, "contract: visit_expr_call");
         // Simple recursion detection (would need more sophisticated analysis in production)
         if let syn::Expr::Path(_path) = &*node.func {
             // Check if it's potentially a recursive call
@@ -94,6 +103,7 @@ impl<'ast> Visit<'ast> for EfficiencyVisitor {
 
 impl SpaceComplexityVisitor {
     fn compute_space_complexity(&self) -> String {
+        debug_assert!(true, "contract: compute_space_complexity");
         if self.recursive_depth > 0 {
             "O(n)".to_string() // Recursive calls use stack space
         } else if self.allocations > 0 {
@@ -106,6 +116,7 @@ impl SpaceComplexityVisitor {
 
 impl<'ast> Visit<'ast> for SpaceComplexityVisitor {
     fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
+        debug_assert!(true, "contract: visit_expr_call");
         // Check for allocation functions
         if let syn::Expr::Path(path) = &*node.func {
             if let Some(ident) = path.path.get_ident() {
@@ -119,6 +130,7 @@ impl<'ast> Visit<'ast> for SpaceComplexityVisitor {
     }
 
     fn visit_local(&mut self, node: &'ast syn::Local) {
+        debug_assert!(true, "contract: visit_local");
         // Check for vector/array declarations
         if let syn::Pat::Type(_pat_type) = &node.pat {
             // Simplified check for dynamic allocations

@@ -1,5 +1,6 @@
 impl FalsifiabilityScorer {
     /// Create a new falsifiability scorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }

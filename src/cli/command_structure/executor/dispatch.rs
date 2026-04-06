@@ -7,6 +7,7 @@ use anyhow::Result;
 
 impl CommandExecutor {
     /// Execute a command using the modular dispatch architecture
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute(&self, command: Commands) -> Result<()> {
         match command {
             // Generation commands

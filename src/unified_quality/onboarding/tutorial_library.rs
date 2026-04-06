@@ -10,6 +10,7 @@ impl Default for TutorialLibrary {
 impl TutorialLibrary {
     /// Create new tutorial library with built-in content
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let mut tutorials = HashMap::new();
 
@@ -80,12 +81,14 @@ impl TutorialLibrary {
 
     /// Get tutorials for a specific phase
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_tutorials_for_phase(&self, phase: &OnboardingPhase) -> Vec<Tutorial> {
         self.tutorials.get(phase).cloned().unwrap_or_default()
     }
 
     /// Count total tutorials
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn count_tutorials(&self) -> u32 {
         self.tutorials.values().map(|v| v.len() as u32).sum()
     }

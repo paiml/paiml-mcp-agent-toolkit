@@ -31,6 +31,7 @@ pub struct RefactorStartTool {
 }
 
 impl RefactorStartTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(state_manager: Arc<Mutex<StateManager>>) -> Self {
         Self { state_manager }
     }
@@ -41,6 +42,7 @@ pub struct RefactorNextIterationTool {
 }
 
 impl RefactorNextIterationTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(state_manager: Arc<Mutex<StateManager>>) -> Self {
         Self { state_manager }
     }
@@ -51,6 +53,7 @@ pub struct RefactorGetStateTool {
 }
 
 impl RefactorGetStateTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(state_manager: Arc<Mutex<StateManager>>) -> Self {
         Self { state_manager }
     }
@@ -61,6 +64,7 @@ pub struct RefactorStopTool {
 }
 
 impl RefactorStopTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(state_manager: Arc<Mutex<StateManager>>) -> Self {
         Self { state_manager }
     }

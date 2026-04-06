@@ -3,6 +3,7 @@
 
 impl LanguageRules {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn for_language(language: Language) -> Self {
         match language {
             Language::Rust => Self::rust_rules(),
@@ -22,6 +23,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn rust_rules() -> Self {
         LanguageRules {
             language: Language::Rust,
@@ -33,6 +35,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn python_rules() -> Self {
         LanguageRules {
             language: Language::Python,
@@ -44,6 +47,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn javascript_rules() -> Self {
         LanguageRules {
             language: Language::JavaScript,
@@ -55,6 +59,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn typescript_rules() -> Self {
         LanguageRules {
             language: Language::TypeScript,
@@ -66,6 +71,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn go_rules() -> Self {
         LanguageRules {
             language: Language::Go,
@@ -77,6 +83,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn ruchy_rules() -> Self {
         LanguageRules {
             language: Language::Ruchy,
@@ -88,6 +95,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn lua_rules() -> Self {
         LanguageRules {
             language: Language::Lua,
@@ -99,6 +107,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn lean_rules() -> Self {
         LanguageRules {
             language: Language::Lean,
@@ -110,6 +119,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn sql_rules() -> Self {
         LanguageRules {
             language: Language::Sql,
@@ -121,6 +131,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn scala_rules() -> Self {
         LanguageRules {
             language: Language::Scala,
@@ -132,6 +143,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn yaml_rules() -> Self {
         LanguageRules {
             language: Language::Yaml,
@@ -143,6 +155,7 @@ impl LanguageRules {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn markdown_rules() -> Self {
         LanguageRules {
             language: Language::Markdown,

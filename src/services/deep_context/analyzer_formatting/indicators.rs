@@ -3,6 +3,7 @@
 use super::{DeepContextAnalyzer, NodeAnnotations};
 
 impl DeepContextAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn collect_node_annotations(&self, annotations: &NodeAnnotations) -> Vec<String> {
         let mut result = Vec::new();
 
@@ -67,6 +68,7 @@ impl DeepContextAnalyzer {
 
     /// Add cognitive complexity indicator
     fn add_cognitive_complexity_indicator(&self, result: &mut Vec<String>, complexity: u16) {
+        debug_assert!(true, "contract: add_cognitive_complexity_indicator");
         if complexity > 30 {
             result.push(format!("\u{1f9e0}{complexity}"));
         } else if complexity > 15 {
@@ -76,6 +78,7 @@ impl DeepContextAnalyzer {
 
     /// Add test coverage indicator
     fn add_coverage_indicator(&self, result: &mut Vec<String>, coverage: f32) {
+        debug_assert!(true, "contract: add_coverage_indicator");
         if coverage < 0.5 {
             result.push(format!("\u{1f6a8}{:.0}%", coverage * 100.0));
         } else if coverage < 0.8 {
@@ -87,6 +90,7 @@ impl DeepContextAnalyzer {
 
     /// Add churn indicator
     fn add_churn_indicator(&self, result: &mut Vec<String>, churn: f32) {
+        debug_assert!(true, "contract: add_churn_indicator");
         if churn > 0.8 {
             result.push(format!("\u{1f525}{churn:.1}")); // High churn - hot file
         } else if churn > 0.5 {

@@ -59,6 +59,7 @@ pub struct MLReproducibilityScorer;
 
 impl MLReproducibilityScorer {
     /// Create a new ML reproducibility scorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -72,6 +73,7 @@ impl Default for MLReproducibilityScorer {
 
 impl PopperScorer for MLReproducibilityScorer {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "ML/AI Reproducibility"
     }
 

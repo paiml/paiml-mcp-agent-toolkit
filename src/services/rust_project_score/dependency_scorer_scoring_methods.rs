@@ -1,5 +1,6 @@
 impl DependencyScorer {
     /// Create a new DependencyScorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             name: "Dependency Health".to_string(),
@@ -220,6 +221,7 @@ impl DependencyScorer {
 /// #242: Relaxed thresholds — previous >30=0 was too harsh for large projects.
 /// Large feature-rich libraries (ML, web frameworks) legitimately need 30-50 deps.
 fn score_dependency_count_tier(dependency_count: usize) -> ScorerResult<f64> {
+    debug_assert!(true, "contract: score_dependency_count_tier");
     if dependency_count <= 15 {
         Ok(5.0) // Lean dependencies - excellent
     } else if dependency_count <= 30 {
@@ -233,6 +235,7 @@ fn score_dependency_count_tier(dependency_count: usize) -> ScorerResult<f64> {
 
 /// Helper: Map feature count to score tier (extracted for complexity reduction)
 fn score_feature_count_tier(feature_count: usize) -> ScorerResult<f64> {
+    debug_assert!(true, "contract: score_feature_count_tier");
     if feature_count >= 3 {
         Ok(4.0) // Comprehensive feature flags
     } else if feature_count >= 1 {

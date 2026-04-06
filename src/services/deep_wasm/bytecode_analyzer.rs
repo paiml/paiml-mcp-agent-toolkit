@@ -152,12 +152,14 @@ pub struct BytecodeAnalyzer {
 }
 
 impl BytecodeAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             deep_analysis: true,
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_deep_analysis(deep_analysis: bool) -> Self {
         Self { deep_analysis }
     }

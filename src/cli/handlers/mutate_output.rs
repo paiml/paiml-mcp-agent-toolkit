@@ -202,6 +202,7 @@ fn output_markdown(
 
 /// Print the summary statistics block (total, killed, survived, etc.)
 fn output_text_summary(score: &MutationScore) {
+    debug_assert!(true, "contract: output_text_summary");
     use crate::cli::colors as c;
 
     println!("{}: {}", c::label("Total mutants"), c::number(&score.total.to_string()));

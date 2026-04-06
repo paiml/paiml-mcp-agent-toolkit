@@ -3,6 +3,7 @@
 
 impl TdgExporter {
     fn score_to_html(score: &TdgScore, options: &ExportOptions) -> Result<String> {
+        debug_assert!(true, "contract: score_to_html");
         let grade_color = match score.grade {
             Grade::APLus | Grade::A | Grade::AMinus => "#4CAF50",
             Grade::BPlus | Grade::B | Grade::BMinus => "#2196F3",
@@ -105,6 +106,7 @@ impl TdgExporter {
     }
 
     fn project_to_html(project: &ProjectScore, _options: &ExportOptions) -> Result<String> {
+        debug_assert!(true, "contract: project_to_html");
         Ok(format!(
             "<html><body><h1>Project Report</h1><p>Files: {}</p></body></html>",
             project.total_files
@@ -112,6 +114,7 @@ impl TdgExporter {
     }
 
     fn comparison_to_html(comparison: &Comparison, _options: &ExportOptions) -> Result<String> {
+        debug_assert!(true, "contract: comparison_to_html");
         Ok(format!(
             "<html><body><h1>Comparison Report</h1><p>Delta: {:.2}</p></body></html>",
             comparison.delta
@@ -119,6 +122,7 @@ impl TdgExporter {
     }
 
     fn generate_recommendations_html(score: &TdgScore) -> String {
+        debug_assert!(true, "contract: generate_recommendations_html");
         let recommendations = Self::generate_recommendations(score);
 
         if recommendations.is_empty() {

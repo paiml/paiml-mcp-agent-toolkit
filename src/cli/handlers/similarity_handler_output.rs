@@ -1,4 +1,5 @@
 fn print_performance_metrics(report: &ComprehensiveReport, elapsed: std::time::Duration) {
+    debug_assert!(true, "contract: print_performance_metrics");
     use crate::cli::colors as c;
     eprintln!("\n{}", c::subheader("⏱️  Performance Metrics:"));
     eprintln!("  Total time: {}{elapsed:?}{}", c::BOLD_WHITE, c::RESET);
@@ -12,6 +13,7 @@ fn print_performance_metrics(report: &ComprehensiveReport, elapsed: std::time::D
 }
 
 fn format_csv_report(report: &ComprehensiveReport) -> Result<String> {
+    debug_assert!(true, "contract: format_csv_report");
     use std::fmt::Write;
     let mut output = String::new();
 
@@ -55,6 +57,7 @@ fn format_csv_report(report: &ComprehensiveReport) -> Result<String> {
 }
 
 fn format_sarif_report(report: &ComprehensiveReport) -> Result<String> {
+    debug_assert!(true, "contract: format_sarif_report");
     let mut results = Vec::new();
 
     for block in &report.exact_duplicates {
@@ -99,6 +102,7 @@ fn format_sarif_report(report: &ComprehensiveReport) -> Result<String> {
 }
 
 fn print_summary(report: &ComprehensiveReport) {
+    debug_assert!(true, "contract: print_summary");
     use crate::cli::colors as c;
     eprintln!("\n{}", c::pass("Analysis Complete:"));
     let dup_color = if report.metrics.duplication_percentage < 5.0 { c::GREEN } else if report.metrics.duplication_percentage < 15.0 { c::YELLOW } else { c::RED };

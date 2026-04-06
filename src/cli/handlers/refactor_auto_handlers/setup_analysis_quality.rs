@@ -10,6 +10,7 @@
 /// Coordinates all quality analysis activities including lint, complexity, SATD, and coverage.
 /// This function has complexity <5 and follows Toyota Way principles.
 async fn analyze_project_quality(context: &RefactorContext) -> Result<ProjectQualityAnalysis> {
+    debug_assert!(true, "contract: analyze_project_quality");
     eprintln!("🔍 Analyzing project quality comprehensively...");
 
     // Analyze lint violations across the project
@@ -171,6 +172,7 @@ async fn analyze_project_coverage(project_path: &Path) -> Result<CoverageAnalysi
 
 /// Parse coverage percentage from llvm-cov JSON output
 fn parse_coverage_from_output(output: &[u8]) -> Option<f64> {
+    debug_assert!(true, "contract: parse_coverage_from_output");
     let output_str = String::from_utf8_lossy(output);
     // Simple regex to extract coverage percentage (case-insensitive)
     let coverage_regex = regex::Regex::new(r"(?i)coverage.*?(\d+\.\d+)%").ok()?;

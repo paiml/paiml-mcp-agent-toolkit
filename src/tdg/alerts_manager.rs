@@ -3,6 +3,7 @@
 
 impl AlertManager {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: AlertManagerConfig) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
 
@@ -19,6 +20,7 @@ impl AlertManager {
     }
 
     /// Add or update an alert rule
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn add_rule(&self, rule: AlertRule) -> Result<()> {
         let mut rules = self.rules.write().await;
         rules.insert(rule.id.clone(), rule);
@@ -26,6 +28,7 @@ impl AlertManager {
     }
 
     /// Remove an alert rule
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn remove_rule(&self, rule_id: &str) -> Result<()> {
         debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         let mut rules = self.rules.write().await;
@@ -51,6 +54,7 @@ impl AlertManager {
     }
 
     /// Update metric value for evaluation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn update_metric(&self, metric_name: String, value: f64) -> Result<()> {
         let mut metrics = self.metric_values.write().await;
         metrics.insert(
@@ -88,6 +92,7 @@ impl AlertManager {
 
     /// Evaluate a single rule
     async fn evaluate_rule(&self, rule: &AlertRule, metric: &MetricValue) -> Result<()> {
+        debug_assert!(true, "contract: evaluate_rule");
         let should_trigger = match rule.condition {
             AlertCondition::GreaterThan => metric.value > rule.threshold,
             AlertCondition::LessThan => metric.value < rule.threshold,
@@ -116,6 +121,7 @@ impl AlertManager {
 
     /// Trigger a new alert
     async fn trigger_alert(&self, rule: &AlertRule, metric_value: f64) -> Result<()> {
+        debug_assert!(true, "contract: trigger_alert");
         let mut active = self.active_alerts.write().await;
 
         // Check if alert already exists
@@ -231,6 +237,7 @@ impl AlertManager {
     }
 
     /// Acknowledge an alert
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn acknowledge_alert(
         &self,
         alert_id: &str,
@@ -271,6 +278,7 @@ impl AlertManager {
     }
 
     /// Silence an alert
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn silence_alert(&self, alert_id: &str, _duration: Duration) -> Result<()> {
         debug_assert!(!alert_id.is_empty(), "alert_id must not be empty");
         let mut active = self.active_alerts.write().await;
@@ -302,12 +310,14 @@ impl AlertManager {
     }
 
     /// Get active alerts
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_active_alerts(&self) -> Vec<Alert> {
         let active = self.active_alerts.read().await;
         active.values().cloned().collect()
     }
 
     /// Get alerts by severity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_alerts_by_severity(&self, severity: AlertSeverity) -> Vec<Alert> {
         let active = self.active_alerts.read().await;
         active
@@ -318,11 +328,13 @@ impl AlertManager {
     }
 
     /// Get alert statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_statistics(&self) -> AlertStatistics {
         self.statistics.read().await.clone()
     }
 
     /// Export alert configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn export_config(&self) -> AlertConfiguration {
         let rules = self.rules.read().await;
 

@@ -3,6 +3,7 @@
 
 /// Execute cleanup operations
 fn execute_cleanup(result: &mut CleanupResult) -> Result<()> {
+    debug_assert!(true, "contract: execute_cleanup");
     let candidates: Vec<_> = result
         .candidates
         .iter()

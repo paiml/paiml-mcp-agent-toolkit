@@ -22,6 +22,7 @@ pub enum RepoArchetype {
 impl RepoArchetype {
     /// Determine the effective max score for G2 based on archetype
     /// Returns None if G2 should be N/A (removed from denominator)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn g2_max_score(&self) -> Option<f64> {
         match self {
             // Cookbooks are documentation-heavy; G2 is N/A
@@ -34,6 +35,7 @@ impl RepoArchetype {
     }
 
     /// Get human-readable archetype name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn name(&self) -> &'static str {
         match self {
             RepoArchetype::Cookbook => "Cookbook",
@@ -48,12 +50,14 @@ impl RepoArchetype {
 pub struct DemoScorer;
 
 impl DemoScorer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
 
     /// Detect repository archetype for calibrated scoring
     /// Based on Uddin et al. (2017) and Steinmacher et al. (2015)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn detect_archetype(&self, repo_path: &Path) -> RepoArchetype {
         debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         let name = repo_path

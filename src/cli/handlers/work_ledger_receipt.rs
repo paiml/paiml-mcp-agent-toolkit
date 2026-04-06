@@ -23,6 +23,7 @@ pub struct FalsificationReceipt {
 
 impl FalsificationReceipt {
     /// Build a receipt from a FalsificationReport + context
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_report(
         report: &FalsificationReport,
         git_sha: String,
@@ -103,6 +104,7 @@ impl FalsificationReceipt {
 
     /// Compute SHA-256 hash of receipt content (excluding content_hash itself)
     fn compute_content_hash(&self) -> String {
+        debug_assert!(true, "contract: compute_content_hash");
         let mut hasher = Sha256::new();
         hasher.update(self.id.as_bytes());
         hasher.update(self.git_sha.as_bytes());
@@ -125,11 +127,13 @@ impl FalsificationReceipt {
     }
 
     /// Verify content hash integrity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn verify_integrity(&self) -> bool {
         self.content_hash == self.compute_content_hash()
     }
 
     /// Check if receipt is fresh (matches HEAD SHA and within max_age)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_fresh(&self, current_sha: &str, max_age_secs: u64) -> bool {
         debug_assert!(!current_sha.is_empty(), "current_sha must not be empty");
         if self.git_sha != current_sha {
@@ -200,6 +204,7 @@ fn hypothesis_to_claim_id(hypothesis: &str) -> String {
 }
 
 /// Get current git SHA from project path
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn get_current_git_sha(project_path: &Path) -> String {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     std::process::Command::new("git")

@@ -120,6 +120,7 @@ fn create_sync_config<'a>(
     format: ComplexityOutputFormat,
     output: Option<&'a Path>,
 ) -> SyncAnalysisConfig<'a> {
+    debug_assert!(true, "contract: create_sync_config");
     SyncAnalysisConfig {
         path,
         toolchain,
@@ -136,6 +137,7 @@ fn create_sync_config<'a>(
 #[cfg(feature = "watch")]
 /// Run initial complexity analysis
 fn run_initial_analysis(config: &SyncAnalysisConfig) -> Result<()> {
+    debug_assert!(true, "contract: run_initial_analysis");
     eprintln!("📊 Running initial complexity analysis...\n");
     run_complexity_analysis_sync(config.clone())
 }
@@ -148,6 +150,7 @@ fn watch_for_file_changes(
     include: &[String],
     _watcher: &mut RecommendedWatcher,
 ) -> Result<()> {
+    debug_assert!(true, "contract: watch_for_file_changes");
     loop {
         match rx.recv() {
             Ok(event) => {
@@ -167,6 +170,7 @@ fn watch_for_file_changes(
 #[cfg(feature = "watch")]
 /// Handle a file change event by reanalyzing
 fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Result<()> {
+    debug_assert!(true, "contract: handle_file_change_event");
     eprintln!("\n🔄 File change detected, reanalyzing...");
 
     if let Some(paths) = get_changed_paths(event) {
@@ -186,6 +190,7 @@ fn handle_file_change_event(event: &Event, config: &SyncAnalysisConfig) -> Resul
 #[cfg(feature = "watch")]
 /// Check if we should reanalyze based on the event type
 fn should_reanalyze(event: &Event, include_patterns: &[String]) -> bool {
+    debug_assert!(true, "contract: should_reanalyze");
     match event.kind {
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => event
             .paths
@@ -244,6 +249,7 @@ fn should_include_file(path_str: &str, include_patterns: &[String]) -> bool {
 #[cfg(feature = "watch")]
 /// Get the paths that changed from an event
 fn get_changed_paths(event: &Event) -> Option<&Vec<PathBuf>> {
+    debug_assert!(true, "contract: get_changed_paths");
     if event.paths.is_empty() {
         None
     } else {
@@ -259,6 +265,7 @@ async fn format_and_output_watch_results(
     format: ComplexityOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: format_and_output_watch_results");
     use crate::services::complexity::format_complexity_summary;
 
     // For watch mode, we'll use summary format for simplicity
@@ -290,6 +297,7 @@ async fn format_and_output_watch_results(
 #[cfg(feature = "watch")]
 /// Synchronous wrapper for complexity analysis in watch mode
 fn run_complexity_analysis_sync(config: SyncAnalysisConfig) -> Result<()> {
+    debug_assert!(true, "contract: run_complexity_analysis_sync");
     // Create a runtime for the async operation
     let runtime = tokio::runtime::Runtime::new()?;
 

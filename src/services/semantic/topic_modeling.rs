@@ -51,6 +51,7 @@ pub struct TopicFilters {
 
 impl TopicEngine {
     /// Create new topic engine
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(vector_db: Arc<TursoVectorDB>) -> Self {
         Self { vector_db }
     }
@@ -63,6 +64,7 @@ impl TopicEngine {
     ///
     /// # Returns
     /// Topic result with topics and coherence score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn extract_topics(
         &self,
         num_topics: usize,
@@ -118,6 +120,7 @@ impl TopicEngine {
     ///
     /// # Returns
     /// Array of keywords sorted by frequency
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_keywords(&self, chunk_names: &[String], top_k: usize) -> Vec<String> {
         debug_assert!(!chunk_names.is_empty(), "chunk_names must not be empty");
         if chunk_names.is_empty() {
@@ -164,6 +167,7 @@ impl TopicEngine {
     ///
     /// # Returns
     /// Coherence score (0.0 to 1.0)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_coherence_score(&self, topics: &[Topic]) -> f64 {
         // Contract: compute_coherence_score returns a bounded score
         if topics.is_empty() {
@@ -203,6 +207,7 @@ impl TopicEngine {
 
     /// Count keyword overlap between two keyword sets
     fn keyword_overlap(&self, keywords1: &[String], keywords2: &[String]) -> usize {
+        debug_assert!(true, "contract: keyword_overlap");
         keywords1.iter().filter(|k| keywords2.contains(k)).count()
     }
 

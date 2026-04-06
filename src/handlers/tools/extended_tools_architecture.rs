@@ -11,6 +11,7 @@ struct AnalyzeSystemArchitectureArgs {
 fn convert_node_type(
     dag_type: &crate::models::dag::NodeType,
 ) -> crate::services::canonical_query::CallNodeType {
+    debug_assert!(true, "contract: convert_node_type");
     use crate::services::canonical_query::CallNodeType;
     match dag_type {
         crate::models::dag::NodeType::Function => CallNodeType::Function,
@@ -25,6 +26,7 @@ fn convert_node_type(
 fn convert_edge_type(
     dag_type: &crate::models::dag::EdgeType,
 ) -> crate::services::canonical_query::CallEdgeType {
+    debug_assert!(true, "contract: convert_edge_type");
     use crate::services::canonical_query::CallEdgeType;
     match dag_type {
         crate::models::dag::EdgeType::Calls => CallEdgeType::FunctionCall,
@@ -39,6 +41,7 @@ fn convert_edge_type(
 fn build_call_graph(
     dag_result: &crate::models::dag::DependencyGraph,
 ) -> crate::services::canonical_query::CallGraph {
+    debug_assert!(true, "contract: build_call_graph");
     use crate::services::canonical_query::{CallEdge, CallGraph, CallNode};
 
     let call_nodes: Vec<CallNode> = dag_result
@@ -77,6 +80,7 @@ fn build_call_graph(
 fn build_complexity_map(
     complexity_report: Option<&crate::services::complexity::ComplexityReport>,
 ) -> rustc_hash::FxHashMap<String, crate::services::complexity::ComplexityMetrics> {
+    debug_assert!(true, "contract: build_complexity_map");
     use crate::services::complexity::ComplexityMetrics;
     use rustc_hash::FxHashMap;
 
@@ -108,6 +112,7 @@ fn format_architecture_result(
     result: &crate::services::canonical_query::QueryResult,
     format: Option<&str>,
 ) -> String {
+    debug_assert!(true, "contract: format_architecture_result");
     match format {
         Some("json") => serde_json::to_string_pretty(result).unwrap_or_default(),
         _ => format!("# System Architecture Analysis\n\n{}", result.diagram),
@@ -119,6 +124,7 @@ async fn handle_analyze_system_architecture(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
+    debug_assert!(true, "contract: handle_analyze_system_architecture");
     // Parse arguments
     let (args, project_path) = match parse_architecture_analysis_args(arguments) {
         Ok(result) => result,
@@ -161,6 +167,7 @@ async fn handle_analyze_system_architecture(
 fn parse_architecture_analysis_args(
     arguments: serde_json::Value,
 ) -> Result<(AnalyzeSystemArchitectureArgs, PathBuf), Box<dyn std::error::Error>> {
+    debug_assert!(true, "contract: parse_architecture_analysis_args");
     let args: AnalyzeSystemArchitectureArgs = serde_json::from_value(arguments)?;
 
     let project_path = args.project_path.as_ref().map_or_else(
@@ -226,6 +233,7 @@ fn execute_architecture_query_and_respond(
     context: crate::services::canonical_query::AnalysisContext,
     deep_context: &crate::services::deep_context::DeepContext,
 ) -> McpResponse {
+    debug_assert!(true, "contract: execute_architecture_query_and_respond");
     use crate::services::canonical_query::{CanonicalQuery, SystemArchitectureQuery};
 
     let query = SystemArchitectureQuery;

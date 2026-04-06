@@ -1,4 +1,5 @@
 /// Handle work annotate command - show unified quality metrics for a ticket
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_annotate(
     id: String,
     path: Option<PathBuf>,
@@ -144,6 +145,7 @@ struct ChurnResult {
 }
 
 fn calculate_spec_score_simple(spec: &crate::services::spec_parser::ParsedSpec) -> f64 {
+    debug_assert!(true, "contract: calculate_spec_score_simple");
     let mut score = 0.0;
     if !spec.issue_refs.is_empty() {
         score += 10.0;

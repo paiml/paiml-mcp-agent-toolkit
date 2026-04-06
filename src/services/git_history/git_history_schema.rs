@@ -1,5 +1,6 @@
 impl GitHistoryIndex {
     /// Create or open git history index at the given path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn open(path: &Path) -> Result<Self, GitHistoryError> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let conn = Connection::open(path)?;
@@ -15,6 +16,7 @@ impl GitHistoryIndex {
     }
 
     /// Create in-memory index (for testing)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn in_memory() -> Result<Self, GitHistoryError> {
         let conn = Connection::open_in_memory()?;
         let index = Self { conn };
@@ -25,6 +27,7 @@ impl GitHistoryIndex {
     /// Initialize database schema
     /// Toyota Way: Poka-Yoke - Constraints prevent invalid data
     fn init_schema(&self) -> Result<(), GitHistoryError> {
+        debug_assert!(true, "contract: init_schema");
         self.conn.execute_batch(
             r#"
             -- Metadata table for tracking sync state

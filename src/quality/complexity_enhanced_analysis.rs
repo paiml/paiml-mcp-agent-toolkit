@@ -2,6 +2,7 @@
 // Free functions: tokenize, is_operator, is_operand, count_lines, maintainability index
 
 impl ComplexityAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_functions(&self, ast: &File) -> Vec<FunctionMetrics> {
         let mut functions = Vec::new();
 
@@ -34,6 +35,7 @@ impl ComplexityAnalyzer {
         self.calculate_cyclomatic(&file)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_halstead_metrics(&self, code: &str) -> HalsteadMetrics {
         debug_assert!(!code.is_empty(), "code must not be empty");
         let mut operators = HashMap::new();
@@ -154,6 +156,7 @@ fn is_operand(token: &str) -> bool {
 }
 
 // Maintainability Index calculation
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn calculate_maintainability_index(
     halstead_volume: f64,
     cyclomatic_complexity: u32,

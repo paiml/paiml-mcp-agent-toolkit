@@ -22,6 +22,7 @@ pub struct ScaffoldWasmParams {
 /// # Complexity
 /// - Time: O(n) where n is project size
 /// - Cyclomatic: 5
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_scaffold_wasm(params: ScaffoldWasmParams) -> Result<()> {
     use crate::scaffold::config::{
         Feature, QualityGateConfig, ScaffoldConfig, TemplateType, WasmFramework,

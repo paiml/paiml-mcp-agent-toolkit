@@ -33,6 +33,7 @@ pub struct EddViolation {
 }
 
 /// Check if a project is a simulation project (has simular or trueno-sim deps).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn is_simulation_project(project_path: &Path) -> bool {
     debug_assert!(
         project_path.exists(),
@@ -58,6 +59,7 @@ pub fn is_simulation_project(project_path: &Path) -> bool {
 ///
 /// Scans `pub fn` declarations in .rs files and checks if their doc comments
 /// contain LaTeX math notation (`$$...$$`, `$...$`, or ` ```math` blocks).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn check_edd_compliance(project_path: &Path) -> EddReport {
     debug_assert!(
         project_path.exists(),

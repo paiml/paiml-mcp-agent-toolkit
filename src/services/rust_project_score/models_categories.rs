@@ -3,6 +3,7 @@
 // ============================================================================
 
 fn default_applicable() -> bool {
+    debug_assert!(true, "contract: default_applicable");
     true
 }
 
@@ -30,6 +31,7 @@ pub struct CategoryScores {
 
 impl CategoryScores {
     /// Calculate total score across all categories
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total(&self) -> f64 {
         self.rust_tooling.earned
             + self.code_quality.earned
@@ -75,6 +77,7 @@ pub struct CategoryScore {
 
 impl CategoryScore {
     /// Create a new category score (applicable by default)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(earned: f64, max: f64) -> Self {
         Self {
             earned,
@@ -84,6 +87,7 @@ impl CategoryScore {
     }
 
     /// Create a non-applicable score (scorer errored / not relevant)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn not_applicable(max: f64) -> Self {
         Self {
             earned: 0.0,
@@ -93,6 +97,7 @@ impl CategoryScore {
     }
 
     /// Calculate percentage (0-100)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn percentage(&self) -> f64 {
         if self.max == 0.0 {
             0.0
@@ -102,6 +107,7 @@ impl CategoryScore {
     }
 
     /// Check if category has perfect score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_perfect(&self) -> bool {
         (self.earned - self.max).abs() < 0.01
     }

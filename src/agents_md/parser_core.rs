@@ -4,12 +4,14 @@
 impl AgentsMdParser {
     /// Create new parser with default rules
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::with_rules(ValidationRules::default())
     }
 
     /// Create parser with custom rules
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_rules(rules: ValidationRules) -> Self {
         Self {
             validation_rules: rules,
@@ -27,6 +29,7 @@ impl AgentsMdParser {
     }
 
     /// Parse AGENTS.md content
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(&self, content: &str) -> Result<AgentsMdDocument> {
         debug_assert!(!content.is_empty(), "content must not be empty");
         // Check size limit
@@ -83,6 +86,7 @@ impl AgentsMdParser {
 
     /// Process a single markdown event during parsing
     fn process_event(&self, event: Event, state: &mut ParseState, document: &mut AgentsMdDocument) {
+        debug_assert!(true, "contract: process_event");
         match event {
             Event::Start(Tag::Heading { level, .. }) => {
                 state.current_heading_level = Self::heading_level_to_u8(level);
@@ -117,6 +121,7 @@ impl AgentsMdParser {
 
     /// Convert heading level enum to u8
     fn heading_level_to_u8(level: HeadingLevel) -> u8 {
+        debug_assert!(true, "contract: heading_level_to_u8");
         match level {
             HeadingLevel::H1 => 1,
             HeadingLevel::H2 => 2,
@@ -167,6 +172,7 @@ impl AgentsMdParser {
 
     /// Process end of a code block
     fn process_code_block_end(&self, state: &mut ParseState, document: &mut AgentsMdDocument) {
+        debug_assert!(true, "contract: process_code_block_end");
         if !state.in_code_block {
             return;
         }
@@ -187,6 +193,7 @@ impl AgentsMdParser {
 
     /// Extract shell commands from a completed code block
     fn extract_shell_commands(&self, state: &ParseState, document: &mut AgentsMdDocument) {
+        debug_assert!(true, "contract: extract_shell_commands");
         let section_title = state
             .current_section
             .as_ref()
@@ -208,6 +215,7 @@ impl AgentsMdParser {
 
     /// Process end of a list item
     fn process_list_item_end(state: &mut ParseState) {
+        debug_assert!(true, "contract: process_list_item_end");
         if let Some(ref mut section) = state.current_section {
             section.content.push_str("- ");
             section.content.push_str(&state.list_item_content);

@@ -7,6 +7,7 @@ where
     K: Clone + Eq + std::hash::Hash + Send + Sync + 'static,
     V: Clone + Send + Sync + 'static,
 {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_from_tier(&self, key: &K, tier: CacheTier) -> Option<AdaptiveCacheEntry<V>> {
         match tier {
             CacheTier::L1 => self.l1_cache.read().get(key).cloned(),
@@ -15,11 +16,13 @@ where
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn should_promote(&self, pattern: &AccessPattern) -> bool {
         pattern.frequency > 0.5 || pattern.temporal_locality > 0.7
     }
 
     async fn promote_to_l1(&self, key: &K, entry: &AdaptiveCacheEntry<V>) -> Result<()> {
+        debug_assert!(true, "contract: promote_to_l1");
         let mut promoted_entry = entry.clone();
         promoted_entry.tier = CacheTier::L1;
         self.insert_l1(key.clone(), promoted_entry).await
@@ -31,6 +34,7 @@ where
         self.insert_l2(key.clone(), promoted_entry).await
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn determine_initial_tier(&self, _key: &K, size: usize) -> CacheTier {
         debug_assert!(size > 0, "size must be positive");
         // Simple heuristic - could be more sophisticated
@@ -45,6 +49,7 @@ where
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_or_create_pattern(&self, key: &K) -> AccessPattern {
         self.access_patterns
             .read()
@@ -60,6 +65,7 @@ where
             })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_expiration(&self, tier: CacheTier) -> Option<DateTime<Utc>> {
         if matches!(self.config.eviction_policy, EvictionPolicy::TTL) {
             let ttl = match tier {
@@ -74,6 +80,7 @@ where
     }
 
     async fn insert_l1(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
+        debug_assert!(true, "contract: insert_l1");
         let mut cache = self.l1_cache.write();
 
         // Check if we need to evict
@@ -91,6 +98,7 @@ where
     }
 
     async fn insert_l2(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
+        debug_assert!(true, "contract: insert_l2");
         let mut cache = self.l2_cache.write();
 
         let max_size = *self
@@ -107,6 +115,7 @@ where
     }
 
     async fn insert_l3(&self, key: K, entry: AdaptiveCacheEntry<V>) -> Result<()> {
+        debug_assert!(true, "contract: insert_l3");
         let mut cache = self.l3_cache.write();
 
         let max_size = *self
@@ -126,6 +135,7 @@ where
         cache.values().map(|entry| entry.size).sum()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn evict_from_tier(
         &self,
         cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>,
@@ -152,6 +162,7 @@ where
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn evict_lru(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
         if let Some(oldest_key) = cache
             .iter()
@@ -162,6 +173,7 @@ where
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn evict_lfu(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
         if let Some(least_used_key) = cache
             .iter()
@@ -172,6 +184,7 @@ where
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn evict_ttl(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
         let now = Utc::now();
         let expired_keys: Vec<_> = cache
@@ -190,6 +203,7 @@ where
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn evict_fifo(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
         if let Some(oldest_key) = cache
             .iter()
@@ -200,12 +214,14 @@ where
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn evict_random(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
         if let Some(key) = cache.keys().next().cloned() {
             cache.remove(&key);
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn evict_adaptive(&self, cache: &mut FxHashMap<K, AdaptiveCacheEntry<V>>) {
         // Adaptive eviction considers multiple factors
         if let Some(victim_key) = cache
@@ -223,6 +239,7 @@ where
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_eviction_score(&self, pattern: &AccessPattern) -> f64 {
         // Contract: calculate_eviction_score returns a bounded score
         // Lower score = more likely to evict

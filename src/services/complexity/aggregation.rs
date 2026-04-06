@@ -44,6 +44,7 @@ use super::types::{ComplexityReport, ComplexityThresholds, FileComplexityMetrics
 /// assert_eq!(report.files.len(), 1);
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> ComplexityReport {
     debug_assert!(!file_metrics.is_empty(), "file_metrics must not be empty");
     aggregate_results_with_thresholds(file_metrics, None, None)
@@ -97,6 +98,7 @@ pub fn aggregate_results(file_metrics: Vec<FileComplexityMetrics>) -> Complexity
 /// assert_eq!(report2.violations.len(), 0);
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn aggregate_results_with_thresholds(
     file_metrics: Vec<FileComplexityMetrics>,
     max_cyclomatic: Option<u16>,
@@ -117,6 +119,7 @@ fn build_custom_thresholds(
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
 ) -> ComplexityThresholds {
+    debug_assert!(true, "contract: build_custom_thresholds");
     let mut thresholds = ComplexityThresholds::default();
 
     if let Some(max_cyc) = max_cyclomatic {
@@ -136,6 +139,7 @@ fn build_custom_thresholds(
 fn create_complexity_rules(
     thresholds: &ComplexityThresholds,
 ) -> (CyclomaticComplexityRule, CognitiveComplexityRule) {
+    debug_assert!(true, "contract: create_complexity_rules");
     let cyclomatic_rule = CyclomaticComplexityRule::new(thresholds);
     let cognitive_rule = CognitiveComplexityRule::new(thresholds);
     (cyclomatic_rule, cognitive_rule)

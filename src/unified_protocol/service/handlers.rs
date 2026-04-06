@@ -13,6 +13,7 @@ use super::AppState;
 use super::Protocol;
 
 /// List available templates
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn list_templates(
     Extension(state): Extension<Arc<AppState>>,
     Query(query): Query<ListTemplatesQuery>,
@@ -22,6 +23,7 @@ pub async fn list_templates(
 }
 
 /// Get a specific template
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn get_template(
     Extension(state): Extension<Arc<AppState>>,
     Path(template_id): Path<String>,
@@ -31,6 +33,7 @@ pub async fn get_template(
 }
 
 /// Generate a template
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn generate_template(
     Extension(state): Extension<Arc<AppState>>,
     Json(params): Json<GenerateParams>,
@@ -40,6 +43,7 @@ pub async fn generate_template(
 }
 
 /// Analyze code complexity (POST)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_complexity(
     Extension(state): Extension<Arc<AppState>>,
     Json(params): Json<ComplexityParams>,
@@ -49,6 +53,7 @@ pub async fn analyze_complexity(
 }
 
 /// Analyze code complexity (GET with query parameters)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_complexity_get(
     Extension(state): Extension<Arc<AppState>>,
     Query(query): Query<ComplexityQueryParams>,
@@ -68,6 +73,7 @@ pub async fn analyze_complexity_get(
 }
 
 /// Analyze code churn
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_churn(
     Extension(state): Extension<Arc<AppState>>,
     Json(params): Json<ChurnParams>,
@@ -77,6 +83,7 @@ pub async fn analyze_churn(
 }
 
 /// Analyze dependency graph
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_dag(
     Extension(state): Extension<Arc<AppState>>,
     Json(params): Json<DagParams>,
@@ -86,6 +93,7 @@ pub async fn analyze_dag(
 }
 
 /// Generate project context
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn generate_context(
     Extension(state): Extension<Arc<AppState>>,
     Json(params): Json<ContextParams>,
@@ -95,6 +103,7 @@ pub async fn generate_context(
 }
 
 /// Analyze dead code
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_dead_code(
     Extension(state): Extension<Arc<AppState>>,
     Json(params): Json<DeadCodeParams>,
@@ -104,6 +113,7 @@ pub async fn analyze_dead_code(
 }
 
 /// Health check endpoint
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn health_check() -> impl IntoResponse {
     Json(serde_json::json!({
         "status": "healthy",
@@ -113,6 +123,7 @@ pub async fn health_check() -> impl IntoResponse {
 }
 
 /// Metrics endpoint
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn metrics(Extension(state): Extension<Arc<AppState>>) -> impl IntoResponse {
     let requests = state.metrics.requests_total.lock().clone();
     let errors = state.metrics.errors_total.lock().clone();

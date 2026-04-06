@@ -136,6 +136,7 @@ impl DuplicationDetector {
     }
 
     fn calculate_similarity(&self, seq1: &TokenSequence, seq2: &TokenSequence) -> f32 {
+        debug_assert!(true, "contract: calculate_similarity");
         let normalized1: Vec<String> = seq1.tokens.iter().map(|t| t.normalized.clone()).collect();
         let normalized2: Vec<String> = seq2.tokens.iter().map(|t| t.normalized.clone()).collect();
 
@@ -150,6 +151,7 @@ impl DuplicationDetector {
     }
 
     fn longest_common_subsequence(&self, seq1: &[String], seq2: &[String]) -> usize {
+        debug_assert!(true, "contract: longest_common_subsequence");
         let m = seq1.len();
         let n = seq2.len();
         let mut dp = vec![vec![0; n + 1]; m + 1];
@@ -180,6 +182,7 @@ impl DuplicationDetector {
     }
 
     fn hash_normalized(&self, normalized: &[String]) -> u64 {
+        debug_assert!(true, "contract: hash_normalized");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 

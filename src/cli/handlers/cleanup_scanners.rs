@@ -213,6 +213,7 @@ fn is_old_enough(path: &Path, min_age_days: u32) -> bool {
 
 /// Print cleanup results
 fn print_results(result: &CleanupResult, format: OutputFormat) -> Result<()> {
+    debug_assert!(true, "contract: print_results");
     println!();
     println!("📊 Cleanup Summary");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

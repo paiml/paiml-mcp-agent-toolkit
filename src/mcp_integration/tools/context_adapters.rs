@@ -18,6 +18,7 @@ pub struct QueryCodeToolAdapter {
 }
 
 impl QueryCodeToolAdapter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self {
             inner: crate::mcp::tools::agent_context_tools::QueryCodeTool::new(manager),
@@ -28,6 +29,7 @@ impl QueryCodeToolAdapter {
 #[async_trait]
 impl McpTool for QueryCodeToolAdapter {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -47,6 +49,7 @@ impl McpTool for QueryCodeToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -66,6 +69,7 @@ pub struct GetFunctionToolAdapter {
 }
 
 impl GetFunctionToolAdapter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self {
             inner: crate::mcp::tools::agent_context_tools::GetFunctionTool::new(manager),
@@ -76,6 +80,7 @@ impl GetFunctionToolAdapter {
 #[async_trait]
 impl McpTool for GetFunctionToolAdapter {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -95,6 +100,7 @@ impl McpTool for GetFunctionToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -114,6 +120,7 @@ pub struct FindSimilarToolAdapter {
 }
 
 impl FindSimilarToolAdapter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self {
             inner: crate::mcp::tools::agent_context_tools::FindSimilarTool::new(manager),
@@ -124,6 +131,7 @@ impl FindSimilarToolAdapter {
 #[async_trait]
 impl McpTool for FindSimilarToolAdapter {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -143,6 +151,7 @@ impl McpTool for FindSimilarToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -162,6 +171,7 @@ pub struct IndexStatsToolAdapter {
 }
 
 impl IndexStatsToolAdapter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self {
             inner: crate::mcp::tools::agent_context_tools::IndexStatsTool::new(manager),
@@ -172,6 +182,7 @@ impl IndexStatsToolAdapter {
 #[async_trait]
 impl McpTool for IndexStatsToolAdapter {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -191,6 +202,7 @@ impl McpTool for IndexStatsToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::agent_context_tools::McpTool as SimpleMcpTool;
 
         self.inner

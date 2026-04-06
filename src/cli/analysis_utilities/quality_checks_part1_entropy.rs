@@ -44,6 +44,7 @@
 /// # Ok(())
 /// # }
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn check_entropy(
     project_path: &Path,
     min_entropy: f64,
@@ -53,6 +54,7 @@ pub async fn check_entropy(
 }
 
 /// Check entropy with configurable threshold and exclude paths (#194, #195).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn check_entropy_with_excludes(
     project_path: &Path,
     min_entropy: f64,

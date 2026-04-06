@@ -1,4 +1,5 @@
 impl TdgAnalyzerAst {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Result<Self> {
         Ok(Self {
             config: TdgConfig::default(),
@@ -10,6 +11,7 @@ impl TdgAnalyzerAst {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: TdgConfig) -> Result<Self> {
         Ok(Self {
             config,
@@ -21,6 +23,7 @@ impl TdgAnalyzerAst {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_storage(config: TdgConfig) -> Result<Self> {
         let storage = TieredStorageFactory::create_default()?;
         let scheduler = SchedulerFactory::create_balanced();
@@ -54,6 +57,7 @@ impl TdgAnalyzerAst {
     }
 
     /// Create analyzer with full resource management for production
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn with_full_resource_management(config: TdgConfig) -> Result<Self> {
         let storage = TieredStorageFactory::create_default()?;
         let scheduler = SchedulerFactory::create_background_optimized();
@@ -75,16 +79,19 @@ impl TdgAnalyzerAst {
 
     /// Sprint 65: Set git context for commit correlation
     /// This should be called before analyze_file() when --with-git-context flag is enabled
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_git_context(&mut self, git_context: Option<crate::models::git_context::GitContext>) {
         self.git_context = git_context;
     }
 
     /// Sprint 65: Get git context for output formatting
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_git_context(&self) -> Option<&crate::models::git_context::GitContext> {
         self.git_context.as_ref()
     }
 
     /// Sprint 65 Phase 3: Get storage reference for history queries
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn storage(&self) -> Option<&TieredStore> {
         self.storage.as_ref()
     }

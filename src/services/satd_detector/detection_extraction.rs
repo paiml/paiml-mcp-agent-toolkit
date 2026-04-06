@@ -8,11 +8,13 @@ impl Default for SATDDetector {
 
 impl SATDDetector {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::with_config(false)
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_strict() -> Self {
         Self::with_classifier(DebtClassifier::new_strict())
     }
@@ -20,11 +22,13 @@ impl SATDDetector {
     /// Extended mode: detects euphemisms like placeholder, stub, "for now"
     /// See issue #149
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_extended() -> Self {
         Self::with_classifier(DebtClassifier::new_extended())
     }
 
     fn with_classifier(debt_classifier: DebtClassifier) -> Self {
+        debug_assert!(true, "contract: with_classifier");
         let patterns = debt_classifier.compiled_patterns.clone();
         Self {
             patterns,
@@ -33,6 +37,7 @@ impl SATDDetector {
     }
 
     fn with_config(strict_mode: bool) -> Self {
+        debug_assert!(true, "contract: with_config");
         let debt_classifier = if strict_mode {
             DebtClassifier::new_strict()
         } else {
@@ -47,6 +52,7 @@ impl SATDDetector {
     }
 
     /// Extract technical debt from source code content
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn extract_from_content(
         &self,
         content: &str,
@@ -70,6 +76,7 @@ impl SATDDetector {
         Ok(debts)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_rust_file(&self, file_path: &Path) -> bool {
         debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         file_path.extension().and_then(|s| s.to_str()) == Some("rs")

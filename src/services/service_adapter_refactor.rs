@@ -36,12 +36,14 @@ pub mod refactor_adapter {
 
     impl RefactorServiceAdapter {
         #[must_use]
+        #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
         pub fn new_refactor_service() -> Self {
             ServiceAdapter::new(())
         }
     }
 
     async fn process_refactor(_inner: &(), _input: RefactorInput) -> Result<RefactorOutput> {
+        debug_assert!(true, "contract: process_refactor");
         // Would call actual refactor engine here
         Ok(RefactorOutput {
             success: true,

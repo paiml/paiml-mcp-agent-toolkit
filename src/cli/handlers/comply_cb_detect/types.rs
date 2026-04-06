@@ -80,6 +80,7 @@ pub(super) fn find_line_within(
     (start..end).find(|&j| lines[j].contains(needle))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
     debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut test_lines = std::collections::HashSet::new();
@@ -176,6 +177,7 @@ fn has_preceding_safety_comment(lines: &[&str], line_num: usize) -> bool {
 }
 
 /// Helper to walk directory for .rs files
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn walkdir_rs_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::Error> {
     debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
@@ -193,6 +195,7 @@ pub fn walkdir_rs_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::
 
 /// Check if a file is entirely test code based on naming conventions.
 /// Matches: *_tests.rs, *_test.rs, tests.rs, tests_*.rs, *_tests_*.rs (include!() fragments)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn is_test_file(path: &Path) -> bool {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");

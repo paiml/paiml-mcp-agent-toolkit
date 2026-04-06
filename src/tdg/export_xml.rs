@@ -3,6 +3,7 @@
 
 impl TdgExporter {
     fn score_to_xml(score: &TdgScore, _options: &ExportOptions) -> Result<String> {
+        debug_assert!(true, "contract: score_to_xml");
         let mut xml = String::new();
         xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         xml.push_str("<tdg_analysis>\n");

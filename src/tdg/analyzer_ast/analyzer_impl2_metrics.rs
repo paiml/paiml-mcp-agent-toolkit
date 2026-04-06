@@ -41,9 +41,11 @@ impl TdgAnalyzerAst {
 
     #[cfg(any(feature = "c-ast", feature = "cpp-ast"))]
     fn calculate_cognitive_complexity(&self, node: &tree_sitter::Node) -> u32 {
+        debug_assert!(true, "contract: calculate_cognitive_complexity");
         let mut cognitive_score = 0u32;
 
         fn traverse_cognitive(node: tree_sitter::Node, nesting_level: u32, score: &mut u32) {
+            debug_assert!(true, "contract: traverse_cognitive");
             match node.kind() {
                 // Base cognitive load patterns (+1)
                 "if_statement" | "while_statement" | "for_statement" | "do_statement" => {
@@ -161,6 +163,7 @@ impl TdgAnalyzerAst {
         20 // Default approximation
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
         debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let files = self.discover_files(dir)?;
@@ -182,6 +185,7 @@ impl TdgAnalyzerAst {
         Ok(ProjectScore::aggregate(scores))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn compare(&self, path1: &Path, path2: &Path) -> Result<crate::tdg::Comparison> {
         debug_assert!(path1.exists(), "path1 must exist: {}", path1.display());
         debug_assert!(path2.exists(), "path2 must exist: {}", path2.display());

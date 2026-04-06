@@ -1,6 +1,7 @@
 #[async_trait]
 impl McpTool for JavaAnalysisTool {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "analyze_java".to_string(),
             description:
@@ -35,6 +36,7 @@ impl McpTool for JavaAnalysisTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         // Extract parameters
         let path_str = params["path"].as_str().ok_or_else(|| McpError {
             code: crate::mcp_integration::error_codes::INVALID_PARAMS,
@@ -289,6 +291,7 @@ fn accumulate_summary_counts(
     total_interfaces: &mut u64,
     total_methods: &mut u64,
 ) {
+    debug_assert!(true, "contract: accumulate_summary_counts");
     if let Some(summary) = result["summary"].as_object() {
         if let Some(c) = summary["class_count"].as_u64() {
             *total_classes += c;
@@ -308,6 +311,7 @@ fn accumulate_metrics(
     max_complexity: &mut u64,
     total_loc: &mut u64,
 ) {
+    debug_assert!(true, "contract: accumulate_metrics");
     if let Some(metrics) = result["metrics"].as_object() {
         if let Some(c) = metrics["total_complexity"].as_u64() {
             *total_complexity += c;

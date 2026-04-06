@@ -44,6 +44,7 @@ pub struct ClassificationResult {
 
 impl CommitClassifier {
     /// Load classifier from JSON file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, String> {
         let content = std::fs::read_to_string(path.as_ref())
             .map_err(|e| format!("Failed to read model file: {}", e))?;
@@ -51,6 +52,7 @@ impl CommitClassifier {
     }
 
     /// Load the embedded sovereign stack classifier
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn load_sovereign_stack() -> Result<Self, String> {
         // Try multiple locations
         let locations = [
@@ -113,6 +115,7 @@ impl CommitClassifier {
     }
 
     /// Classify a commit message
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn classify(&self, text: &str) -> ClassificationResult {
         debug_assert!(!text.is_empty(), "text must not be empty");
         let tokens = Self::tokenize(text);
@@ -164,6 +167,7 @@ impl CommitClassifier {
     }
 
     /// Get available classes
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn classes(&self) -> &[String] {
         &self.classes
     }

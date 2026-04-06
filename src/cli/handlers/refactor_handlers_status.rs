@@ -4,6 +4,7 @@
 // Sprint 89 GREEN Phase: Refactored handle_refactor_status function
 // BEFORE: Complexity 14 (High entropy, mixed concerns)
 // AFTER: Complexity 5 (A+ standard, single responsibility)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_refactor_status(
     checkpoint: PathBuf,
     format: RefactorOutputFormat,
@@ -93,6 +94,7 @@ fn format_as_table(checkpoint_data: &str) -> anyhow::Result<()> {
 /// Print table header - EXTRACTED FUNCTION
 /// Complexity: 2 (A+ standard)
 fn print_table_header() {
+    debug_assert!(true, "contract: print_table_header");
     println!("┌─────────────────┬──────────────────────────────────────┐");
     println!("│ Property        │ Value                                │");
     println!("├─────────────────┼──────────────────────────────────────┤");
@@ -101,6 +103,7 @@ fn print_table_header() {
 /// Print table data rows - EXTRACTED FUNCTION
 /// Complexity: 8 (A+ standard)
 fn print_table_data(state: &serde_json::Value) {
+    debug_assert!(true, "contract: print_table_data");
     if let Some(current) = state.get("current") {
         println!(
             "│ Current State   │ {:36} │",

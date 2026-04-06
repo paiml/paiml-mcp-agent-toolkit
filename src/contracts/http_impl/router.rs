@@ -18,6 +18,7 @@ use super::handlers::{
 use super::types::AppState;
 
 /// Create HTTP router with all endpoints using uniform contracts
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn create_router() -> Result<Router> {
     let service = Arc::new(ContractService::new()?);
     let state = AppState { service };

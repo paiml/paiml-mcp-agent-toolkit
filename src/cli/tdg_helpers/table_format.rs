@@ -7,6 +7,7 @@ use std::fmt::Write;
 use std::path::Path;
 
 /// Format TDG results as table
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_tdg_table(hotspots: &[TDGHotspot], verbose: bool) -> Result<String> {
     debug_assert!(!hotspots.is_empty(), "hotspots must not be empty");
     let mut output = String::new();

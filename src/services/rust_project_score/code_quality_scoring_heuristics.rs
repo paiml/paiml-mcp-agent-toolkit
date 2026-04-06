@@ -74,6 +74,7 @@ fn score_from_nesting(count: usize) -> f64 {
 }
 
 fn score_from_unsafe(unsafe_blocks: usize, documented: usize) -> f64 {
+    debug_assert!(true, "contract: score_from_unsafe");
     if unsafe_blocks == 0 {
         return 9.0;
     }

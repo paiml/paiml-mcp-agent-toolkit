@@ -15,6 +15,7 @@ pub struct UnifiedContextBuilder {
 }
 
 impl UnifiedContextBuilder {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_path: &Path) -> Self {
         debug_assert!(
             project_path.exists(),

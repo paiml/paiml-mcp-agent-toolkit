@@ -1,5 +1,6 @@
 impl UnifiedNode {
     /// Create a new basic unified node with minimal information
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(kind: NodeKind, name: &str, language: Language) -> Self {
         debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}:{}:{}", language.name(), kind.as_str(), name);
@@ -24,6 +25,7 @@ impl UnifiedNode {
     }
 
     /// Create a new unified node from an AST item
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_ast_item(
         item: &AstItem,
         language: Language,
@@ -157,6 +159,7 @@ impl UnifiedNode {
     }
 
     // Helper to extract name from any AstItem
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_name_from_item(item: &AstItem) -> String {
         match item {
             AstItem::Function { name, .. } => name.clone(),
@@ -171,11 +174,13 @@ impl UnifiedNode {
     }
 
     /// Get the access/visibility modifier of this node
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn access(&self) -> Option<&str> {
         self.attributes.get("access").map(AsRef::as_ref)
     }
 
     /// Check if this node has a specific modifier
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_modifier(&self, modifier: &str) -> bool {
         debug_assert!(!modifier.is_empty(), "modifier must not be empty");
         self.attributes
@@ -183,31 +188,37 @@ impl UnifiedNode {
     }
 
     /// Check if this node is abstract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_abstract(&self) -> bool {
         self.has_modifier("abstract")
     }
 
     /// Check if this node is static
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_static(&self) -> bool {
         self.has_modifier("static")
     }
 
     /// Check if this node is final
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_final(&self) -> bool {
         self.has_modifier("final")
     }
 
     /// Add a child node
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_child(&mut self, child_id: String) {
         self.children.push(child_id);
     }
 
     /// Set the parent node
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_parent(&mut self, parent_id: String) {
         self.parent = Some(parent_id);
     }
 
     /// Add a reference to another node
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_reference(
         &mut self,
         kind: ReferenceKind,
@@ -224,16 +235,19 @@ impl UnifiedNode {
     }
 
     /// Get all references of a specific kind
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_references_by_kind(&self, kind: ReferenceKind) -> Vec<&NodeReference> {
         self.references.iter().filter(|r| r.kind == kind).collect()
     }
 
     /// Set type information
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_type_info(&mut self, type_info: TypeInfo) {
         self.type_info = Some(type_info);
     }
 
     /// Add language-specific metadata
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_metadata(&mut self, key: &str, value: &str) {
         debug_assert!(!key.is_empty(), "key must not be empty");
         self.metadata.insert(key.to_string(), value.to_string());

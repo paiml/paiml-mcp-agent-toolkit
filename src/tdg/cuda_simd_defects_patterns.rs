@@ -3,6 +3,7 @@
 impl DefectTaxonomy {
     /// Create taxonomy with known PAIML Tauranta defect patterns
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_tauranta_patterns() -> Self {
         let mut patterns = HashMap::new();
 

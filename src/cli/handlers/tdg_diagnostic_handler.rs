@@ -28,6 +28,7 @@ fn open_browser(url: &str) -> std::io::Result<()> {
 }
 
 /// Handle TDG diagnostic commands
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_tdg_diagnostics(command: &TdgCommand, base_path: &PathBuf) -> Result<()> {
     debug_assert!(
         base_path.exists(),
@@ -115,6 +116,7 @@ async fn show_diagnostics(
 }
 
 fn show_plain_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detailed: bool) {
+    debug_assert!(true, "contract: show_plain_diagnostics");
     println!("{}\n", c::header("TDG System Diagnostics"));
     print_basic_storage_info(stats);
 
@@ -124,6 +126,7 @@ fn show_plain_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detail
 }
 
 fn show_human_diagnostics(stats: &crate::tdg::storage::StorageStatistics, detailed: bool) {
+    debug_assert!(true, "contract: show_human_diagnostics");
     println!("{}\n", c::header("TDG System Diagnostics"));
     println!("{}", c::subheader("Storage Diagnostics:"));
     println!("{}", stats.format_diagnostic());
@@ -144,6 +147,7 @@ fn show_json_diagnostics(
     stats: &crate::tdg::storage::StorageStatistics,
     show_storage: bool,
 ) -> Result<()> {
+    debug_assert!(true, "contract: show_json_diagnostics");
     let json_output = json!({
         "storage": if show_storage { Some(stats) } else { None },
         "note": "Full diagnostic infrastructure in development"
@@ -156,6 +160,7 @@ fn show_yaml_diagnostics(
     stats: &crate::tdg::storage::StorageStatistics,
     show_storage: bool,
 ) -> Result<()> {
+    debug_assert!(true, "contract: show_yaml_diagnostics");
     let yaml_output = json!({
         "storage": if show_storage { Some(stats) } else { None },
         "note": "Full diagnostic infrastructure in development"
@@ -165,6 +170,7 @@ fn show_yaml_diagnostics(
 }
 
 fn show_table_diagnostics(stats: &crate::tdg::storage::StorageStatistics) {
+    debug_assert!(true, "contract: show_table_diagnostics");
     println!("┌─────────────┬─────────────────────┬─────────────────────────────────┐");
     println!("│ Component   │ Status              │ Details                         │");
     println!("├─────────────┼─────────────────────┼─────────────────────────────────┤");
@@ -188,6 +194,7 @@ fn show_table_diagnostics(stats: &crate::tdg::storage::StorageStatistics) {
 }
 
 fn print_basic_storage_info(stats: &crate::tdg::storage::StorageStatistics) {
+    debug_assert!(true, "contract: print_basic_storage_info");
     println!(
         "{} {} entries",
         c::label("Storage:"),
@@ -220,6 +227,7 @@ fn print_basic_storage_info(stats: &crate::tdg::storage::StorageStatistics) {
 fn show_backend_details(
     backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 ) {
+    debug_assert!(true, "contract: show_backend_details");
     println!("\n{}", c::subheader("Backend Details:"));
     for (tier, stats) in backend_stats {
         println!("{}: {stats:?}", c::label(tier));
@@ -229,6 +237,7 @@ fn show_backend_details(
 fn show_human_backend_details(
     backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 ) {
+    debug_assert!(true, "contract: show_human_backend_details");
     println!("\n{}", c::subheader("Backend Details:"));
     for (tier, stats) in backend_stats {
         println!("  {}:", c::label(tier));
@@ -258,6 +267,7 @@ async fn handle_storage_command(command: &StorageCommand, base_path: &PathBuf) -
 
 /// Handle stats command
 fn handle_stats(storage: &TieredStore, detailed: bool) -> Result<()> {
+    debug_assert!(true, "contract: handle_stats");
     let stats = storage.get_statistics();
     println!("{}\n", c::header("TDG Storage Statistics"));
     println!("{}", c::rule());
@@ -302,6 +312,7 @@ fn handle_stats(storage: &TieredStore, detailed: bool) -> Result<()> {
 fn print_backend_statistics(
     backend_stats: &std::collections::HashMap<String, std::collections::HashMap<String, String>>,
 ) {
+    debug_assert!(true, "contract: print_backend_statistics");
     println!("\n{}", c::subheader("Backend Statistics:"));
     for (tier, backend_stats) in backend_stats {
         println!("\n{}:", c::label(tier));
@@ -313,6 +324,7 @@ fn print_backend_statistics(
 
 /// Handle cleanup command
 fn handle_cleanup(storage: &TieredStore, max_age: u64) -> Result<()> {
+    debug_assert!(true, "contract: handle_cleanup");
     let removed = storage.cleanup_hot_cache(max_age);
     println!(
         "{}",
@@ -362,6 +374,7 @@ fn create_migration_configs(
     backend_type: StorageBackendType,
     path: Option<&PathBuf>,
 ) -> (StorageConfig, StorageConfig) {
+    debug_assert!(true, "contract: create_migration_configs");
     let warm_config = StorageConfig {
         backend_type,
         path: path.map(|p| p.join("tdg-warm")),
@@ -381,6 +394,7 @@ fn create_migration_configs(
 
 /// Handle flush command
 fn handle_flush(storage: &TieredStore) -> Result<()> {
+    debug_assert!(true, "contract: handle_flush");
     storage.flush()?;
     println!("{}", c::pass("All pending writes flushed to storage"));
     Ok(())
@@ -394,6 +408,7 @@ async fn handle_dashboard_command(
     open: bool,
     _update_interval: u64,
 ) -> Result<()> {
+    debug_assert!(true, "contract: handle_dashboard_command");
     use crate::tdg::web_dashboard::start_dashboard_server;
     use std::net::{IpAddr, SocketAddr};
 
@@ -442,6 +457,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

@@ -187,6 +187,7 @@ fn check_trend_regression_violation(
 /// - 3 points: <=40 direct, <=200 transitive
 /// - 2 points: <=50 direct, <=250 transitive
 /// - 0 points: >50 direct or >250 transitive
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountReport {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml_path = project_path.join("Cargo.toml");

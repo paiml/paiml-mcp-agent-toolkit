@@ -9,6 +9,7 @@ use crate::services::deep_context::DeepContextAnalyzer;
 use crate::services::deep_context::{AnnotatedFileTree, AnnotatedNode, NodeAnnotations, NodeType};
 
 impl DeepContextAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn discover_project_structure(
         &self,
         project_path: &PathBuf,
@@ -31,6 +32,7 @@ impl DeepContextAnalyzer {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn build_file_tree_recursive(
         &self,
         path: &PathBuf,
@@ -110,6 +112,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn should_exclude_path(&self, path: &std::path::Path) -> bool {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
@@ -124,6 +127,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Enrich the file tree with centrality scores from the dependency graph
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn enrich_file_tree_with_centrality(
         &self,
         file_tree: &mut AnnotatedFileTree,
@@ -148,6 +152,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Recursively update node centrality scores
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn update_node_centrality(
         node: &mut AnnotatedNode,
         centrality_map: &FxHashMap<PathBuf, f32>,
@@ -166,12 +171,14 @@ impl DeepContextAnalyzer {
     }
 
     /// Collect all file paths from the annotated tree
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn collect_file_paths(&self, node: &AnnotatedNode) -> Vec<String> {
         let mut paths = Vec::new();
         Self::collect_paths_recursive(node, &mut paths);
         paths
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn collect_paths_recursive(node: &AnnotatedNode, paths: &mut Vec<String>) {
         match node.node_type {
             NodeType::File => {

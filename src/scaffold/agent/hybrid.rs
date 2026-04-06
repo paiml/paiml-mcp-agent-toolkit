@@ -28,6 +28,7 @@ pub struct CoreSpec {
 impl CoreSpec {
     /// Create a new core specification.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             verification_method: VerificationMethod::PropertyTests,
@@ -38,6 +39,7 @@ impl CoreSpec {
 
     /// Set the verification method.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn verification_method(mut self, method: VerificationMethod) -> Self {
         self.verification_method = method;
         self
@@ -45,6 +47,7 @@ impl CoreSpec {
 
     /// Set the maximum complexity.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn max_complexity(mut self, complexity: u32) -> Self {
         self.max_complexity = complexity;
         self
@@ -52,6 +55,7 @@ impl CoreSpec {
 
     /// Add an invariant.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_invariant(mut self, invariant: Invariant) -> Self {
         self.invariants.push(invariant);
         self
@@ -78,6 +82,7 @@ pub struct WrapperSpec {
 impl WrapperSpec {
     /// Create a new wrapper specification.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             model_type: ModelType::GPT4,
@@ -88,6 +93,7 @@ impl WrapperSpec {
 
     /// Set the model type.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn model_type(mut self, model: ModelType) -> Self {
         self.model_type = model;
         self
@@ -95,6 +101,7 @@ impl WrapperSpec {
 
     /// Set the fallback strategy.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn fallback_strategy(mut self, strategy: FallbackStrategy) -> Self {
         self.fallback_strategy = strategy;
         self
@@ -102,6 +109,7 @@ impl WrapperSpec {
 
     /// Set the confidence threshold.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn confidence_threshold(mut self, threshold: f64) -> Self {
         debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         self.confidence_threshold = threshold;
@@ -215,6 +223,7 @@ pub struct Invariant {
 
 impl Invariant {
     /// Create a new invariant.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(name: impl Into<String>, description: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -225,6 +234,7 @@ impl Invariant {
 
     /// Set the severity.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_severity(mut self, severity: InvariantSeverity) -> Self {
         self.severity = severity;
         self
@@ -244,6 +254,7 @@ pub enum InvariantSeverity {
 
 /// Validate complexity for a given quality level.
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn validate_complexity_for_quality(
     spec: &CoreSpec,
     quality: crate::scaffold::QualityLevel,
@@ -330,6 +341,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

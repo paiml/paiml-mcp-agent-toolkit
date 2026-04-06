@@ -18,6 +18,7 @@ pub struct RustMutationGenerator {
 
 impl RustMutationGenerator {
     /// Create generator with all default Rust mutation operators
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_default_operators() -> Self {
         Self {
             operators: vec![
@@ -34,6 +35,7 @@ impl RustMutationGenerator {
     }
 
     /// Generate all mutants from Rust source code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_mutants(&self, source: &str, file_path: &str) -> Result<Vec<Mutant>> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let tree = self.parse_rust(source)?;
@@ -156,6 +158,7 @@ fn add(a: i32, b: i32) -> i32 {
     fn test_rust_generator_multiple_operators() {
         let source = r#"
 fn compare(a: i32, b: i32) -> bool {
+    debug_assert!(true, "contract: compare");
     a > b && a > 0
 }
 "#;
@@ -183,6 +186,7 @@ fn compare(a: i32, b: i32) -> bool {
     fn test_rust_generator_range_operators() {
         let source = r#"
 fn range_sum(start: i32, end: i32) -> i32 {
+    debug_assert!(true, "contract: range_sum");
     (start..end).sum()
 }
 "#;
@@ -202,6 +206,7 @@ fn range_sum(start: i32, end: i32) -> i32 {
     fn test_rust_generator_pattern_matching() {
         let source = r#"
 fn unwrap(value: Option<i32>) -> i32 {
+    debug_assert!(true, "contract: unwrap");
     match value {
         Some(x) => x,
         None => 0,

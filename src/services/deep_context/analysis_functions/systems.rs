@@ -16,6 +16,7 @@ use super::metrics::WASM_UNIFIED_CACHE;
 /// Toyota Way Single Responsibility: Handle Go file analysis
 /// TICKET-3004: Now uses unified parser to eliminate double parsing
 #[allow(unused_variables)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_go_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -46,6 +47,7 @@ pub async fn analyze_go_language(
 
 /// Toyota Way Single Responsibility: Handle C language analysis with improved features
 /// Uses the enhanced CAstVisitor from services/ast/languages/c.rs
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_c_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -72,6 +74,7 @@ pub async fn analyze_c_language(
 
 /// Toyota Way Single Responsibility: Handle C++ language analysis with modern features
 /// Uses the enhanced CppAstVisitor from services/ast/languages/cpp.rs
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_cpp_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -97,6 +100,7 @@ pub async fn analyze_cpp_language(
 }
 
 /// Toyota Way Single Responsibility: Handle Kotlin file analysis with debug logging
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_kotlin_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -112,6 +116,7 @@ pub async fn analyze_kotlin_language(
 }
 
 /// Toyota Way Single Responsibility: Handle Java file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_java_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -124,6 +129,7 @@ pub async fn analyze_java_language(
 }
 
 /// Toyota Way Single Responsibility: Handle C# file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_csharp_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -136,6 +142,7 @@ pub async fn analyze_csharp_language(
 }
 
 /// Toyota Way Single Responsibility: Handle Swift file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_swift_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -150,6 +157,7 @@ pub async fn analyze_swift_language(
 /// Toyota Way Single Responsibility: Handle WebAssembly file analysis
 /// TICKET-3005: Now uses unified parser to eliminate double parsing
 #[allow(unused_variables)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_wasm_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -180,6 +188,7 @@ pub async fn analyze_wasm_language(
 
 /// Toyota Way Single Responsibility: Handle Lean 4 file analysis
 #[allow(unused_variables)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_lean_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -264,6 +273,7 @@ async fn analyze_kotlin_file(
 }
 
 /// Simple Java file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_java_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -293,6 +303,7 @@ pub async fn analyze_java_file(
 }
 
 /// Simple C# file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_csharp_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -322,6 +333,7 @@ pub async fn analyze_csharp_file(
 }
 
 /// Simple Swift file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_swift_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {

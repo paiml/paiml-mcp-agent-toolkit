@@ -25,6 +25,7 @@ pub struct PerformanceScorer {
 
 impl PerformanceScorer {
     /// Create a new PerformanceScorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             name: "Performance & Benchmarking".to_string(),

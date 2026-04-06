@@ -50,6 +50,7 @@ fn shell_escape(s: &str) -> String {
 }
 
 /// Wrapper function for TDG hooks installation
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
     let project_root = std::env::current_dir()?;
     install_tdg_hooks(&project_root).await?;
@@ -66,6 +67,7 @@ pub(crate) async fn install_tdg_hooks_wrapper() -> Result<()> {
 }
 
 /// Install TDG enforcement hooks
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
     debug_assert!(
         project_root.exists(),
@@ -107,6 +109,7 @@ pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
 }
 
 /// Install pre-commit hook with TDG enforcement
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Result<()> {
     debug_assert!(
         hooks_dir.exists(),
@@ -159,6 +162,7 @@ pub(crate) fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksCon
 }
 
 /// Install post-commit hook for baseline auto-update
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn install_tdg_post_commit_hook(
     hooks_dir: &Path,
     config: &TdgHooksConfig,

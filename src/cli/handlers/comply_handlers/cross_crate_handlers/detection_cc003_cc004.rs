@@ -45,6 +45,7 @@ fn build_func_by_name<'a>(
     crate_functions: &'a [(CrateInfo, Vec<FunctionEntry>)],
     config: &DetectionConfig,
 ) -> HashMap<&'a str, Vec<CrateFuncRef<'a>>> {
+    debug_assert!(true, "contract: build_func_by_name");
     let mut map: HashMap<&str, Vec<CrateFuncRef<'_>>> = HashMap::new();
     for (crate_info, functions) in crate_functions {
         for func in functions {
@@ -193,6 +194,7 @@ fn precompute_cc003_signatures<'a>(
     crate_functions: &'a [(CrateInfo, Vec<FunctionEntry>)],
     config: &DetectionConfig,
 ) -> HashMap<(&'a str, &'a str, &'a str), MinHashSignature> {
+    debug_assert!(true, "contract: precompute_cc003_signatures");
     let dup_config = DuplicateDetectionConfig {
         normalize_identifiers: true,
         normalize_literals: true,

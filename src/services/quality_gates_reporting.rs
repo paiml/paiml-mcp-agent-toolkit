@@ -3,6 +3,7 @@
 
 impl QAVerification {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn verify(
         &self,
         result: &DeepContextResult,
@@ -14,6 +15,7 @@ impl QAVerification {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_verification_report(&self, result: &DeepContextResult) -> QAVerificationResult {
         let verification_results = self.verify(result);
 

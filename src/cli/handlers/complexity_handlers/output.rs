@@ -217,6 +217,7 @@ pub(super) fn generate_satd_sarif(result: &SATDAnalysisResult) -> serde_json::Va
 /// assert!(summary.contains("SATD items"));
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_satd_summary(result: &SATDAnalysisResult, metrics: bool) -> String {
     use crate::cli::colors as c;
     use std::fmt::Write;

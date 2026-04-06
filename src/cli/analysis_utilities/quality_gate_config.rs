@@ -267,6 +267,7 @@ fn load_entropy_gate_config(project_path: &Path) -> EntropyGateConfig {
 /// - `exclude_paths = [...]`
 /// - `[quality-gates] exclude = [...]`
 fn extract_excludes_from_table(table: &toml::Table) -> Vec<String> {
+    debug_assert!(true, "contract: extract_excludes_from_table");
     let arr = table
         .get("exclude")
         .and_then(|t| t.get("paths"))
@@ -320,6 +321,7 @@ fn load_entropy_exclude_paths(project_path: &Path) -> Vec<String> {
 /// Matches both exact prefix and glob patterns. Violations with `file = "project"`
 /// or other non-path values are kept (project-level metrics).
 fn filter_violations_by_exclude(violations: &mut Vec<QualityViolation>, exclude_paths: &[String]) {
+    debug_assert!(true, "contract: filter_violations_by_exclude");
     violations.retain(|v| {
         // Keep project-level violations (no file path)
         if v.file == "project" || v.file.is_empty() {

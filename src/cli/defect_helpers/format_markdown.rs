@@ -28,6 +28,7 @@ use std::fmt::Write;
 /// assert!(summary.contains("Defect Prediction Summary"));
 /// assert!(summary.contains("**Total files analyzed**: 1"));
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_defect_summary(predictions: &[(String, DefectScore)]) -> Result<String> {
     debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut output = String::new();
@@ -77,6 +78,7 @@ pub fn format_defect_summary(predictions: &[(String, DefectScore)]) -> Result<St
 }
 
 /// Format defect predictions as markdown
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_defect_markdown(
     predictions: &[(String, DefectScore)],
     include_recommendations: bool,
@@ -94,6 +96,7 @@ pub fn format_defect_markdown(
 }
 
 /// Write summary section (cognitive complexity <=3)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_summary_section(
     output: &mut String,
     predictions: &[(String, DefectScore)],
@@ -105,6 +108,7 @@ pub(crate) fn write_summary_section(
 }
 
 /// Write risk distribution table (cognitive complexity <=8)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_risk_distribution_table(
     output: &mut String,
     predictions: &[(String, DefectScore)],
@@ -125,6 +129,7 @@ pub(crate) fn write_risk_distribution_table(
 }
 
 /// Calculate risk counts (cognitive complexity <=6)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub(crate) fn calculate_risk_counts(
     predictions: &[(String, DefectScore)],
 ) -> (usize, usize, usize) {
@@ -148,6 +153,7 @@ pub(crate) fn calculate_risk_counts(
 }
 
 /// Write a single risk row (cognitive complexity <=3)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_risk_row(
     output: &mut String,
     label: &str,
@@ -166,6 +172,7 @@ pub(crate) fn write_risk_row(
 }
 
 /// Write detailed predictions section (cognitive complexity <=7)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_detailed_predictions(
     output: &mut String,
     predictions: &[(String, DefectScore)],
@@ -182,6 +189,7 @@ pub(crate) fn write_detailed_predictions(
 }
 
 /// Write a single prediction (cognitive complexity <=8)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_single_prediction(
     output: &mut String,
     file: &str,
@@ -202,6 +210,7 @@ pub(crate) fn write_single_prediction(
 }
 
 /// Write prediction metrics (cognitive complexity <=4)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_prediction_metrics(output: &mut String, score: &DefectScore) -> Result<()> {
     writeln!(
         output,
@@ -222,6 +231,7 @@ pub(crate) fn write_prediction_metrics(output: &mut String, score: &DefectScore)
 }
 
 /// Write recommendations based on probability (cognitive complexity <=7)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_recommendations(output: &mut String, probability: f64) -> Result<()> {
     debug_assert!(probability >= 0.0, "probability must be non-negative");
     writeln!(output, "\n#### Recommendations:")?;

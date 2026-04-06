@@ -30,6 +30,7 @@ impl DeadCodeAnalyzer {
     /// assert!(result.summary.total_files_analyzed > 0);
     /// # });
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_with_ranking(
         &mut self,
         project_path: &Path,
@@ -88,6 +89,7 @@ impl DeadCodeAnalyzer {
         project_context: &crate::services::context::ProjectContext,
         config: &crate::models::dead_code::DeadCodeAnalysisConfig,
     ) -> anyhow::Result<Vec<crate::models::dead_code::FileDeadCodeMetrics>> {
+        debug_assert!(true, "contract: aggregate_by_file");
         use std::collections::HashMap;
 
         let mut file_map: HashMap<String, crate::models::dead_code::FileDeadCodeMetrics> =

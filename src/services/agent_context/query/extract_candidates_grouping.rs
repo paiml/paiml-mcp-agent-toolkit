@@ -13,6 +13,7 @@ fn extract_prefix(name: &str) -> Option<&str> {
 }
 
 /// Group functions by name prefix (requires 3+ members per group, functions only).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn group_by_prefix(results: &[QueryResult]) -> HashMap<String, Vec<usize>> {
     debug_assert!(!results.is_empty(), "results must not be empty");
     let mut groups: HashMap<String, Vec<usize>> = HashMap::new();
@@ -33,6 +34,7 @@ pub(crate) fn group_by_prefix(results: &[QueryResult]) -> HashMap<String, Vec<us
 ///
 /// Two functions are in the same cluster if they are in the same file
 /// and one calls the other (or they share callees).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn group_by_call_cluster(results: &[QueryResult]) -> HashMap<String, Vec<usize>> {
     debug_assert!(!results.is_empty(), "results must not be empty");
     let mut by_file: HashMap<&str, Vec<usize>> = HashMap::new();
@@ -111,6 +113,7 @@ fn collect_neighbors(
 
 /// Find the longest common prefix among a set of strings, trimmed to underscore boundary.
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn longest_common_prefix(names: &[&str]) -> String {
     debug_assert!(!names.is_empty(), "names must not be empty");
     if names.is_empty() {

@@ -23,6 +23,7 @@ pub struct RoadmapMaintenanceConfig {
 
 impl RoadmapMaintenanceConfig {
     /// Create config from individual flags
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         validate: bool,
         health: bool,
@@ -40,6 +41,7 @@ impl RoadmapMaintenanceConfig {
     }
 
     /// Check if any action flags are set
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_actions(&self) -> bool {
         self.validate || self.health || self.fix || self.generate_tickets
     }

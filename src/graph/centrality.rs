@@ -24,6 +24,7 @@ pub struct CentralityComputer {
 }
 
 impl CentralityComputer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(normalize: bool, weighted: bool) -> Self {
         CentralityComputer {
             normalize,
@@ -46,6 +47,7 @@ impl CentralityComputer {
     /// - Eigenvector: O(k·m) using power iteration
     /// - Katz: O(k·m) using power iteration
     /// - Harmonic: O(n(n+m)) using BFS
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_all(&self, graph: &DependencyGraph) -> CentralityMetrics {
         // Convert to aprender graph (directed by default for dependency graphs)
         let aprender_graph = to_aprender_graph(graph, true);

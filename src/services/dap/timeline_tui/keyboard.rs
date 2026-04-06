@@ -17,6 +17,7 @@ pub struct KeyboardHandler {
 
 impl KeyboardHandler {
     /// Create new keyboard handler with default bindings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let mut bindings = HashMap::new();
 
@@ -32,6 +33,7 @@ impl KeyboardHandler {
     }
 
     /// Check if handler has default bindings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_default_bindings(&self) -> bool {
         self.bindings.contains_key(&KeyCode::Right)
             && self.bindings.contains_key(&KeyCode::Left)
@@ -39,26 +41,31 @@ impl KeyboardHandler {
     }
 
     /// Bind a key to an action
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn bind_key(&mut self, key: KeyCode, action: TuiAction) {
         self.bindings.insert(key, action);
     }
 
     /// Unbind a key
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn unbind_key(&mut self, key: KeyCode) {
         self.bindings.remove(&key);
     }
 
     /// Get action for key
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_action(&self, key: KeyCode) -> Option<TuiAction> {
         self.bindings.get(&key).copied()
     }
 
     /// Check if key is bound
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_key_bound(&self, key: KeyCode) -> bool {
         self.bindings.contains_key(&key)
     }
 
     /// Handle terminal event and return action
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn handle_event(&self, event: &TerminalEvent) -> Option<TuiAction> {
         match event {
             TerminalEvent::Key(key_code) => self.get_action(*key_code),
@@ -67,11 +74,13 @@ impl KeyboardHandler {
     }
 
     /// List all current bindings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn list_bindings(&self) -> Vec<(KeyCode, TuiAction)> {
         self.bindings.iter().map(|(k, a)| (*k, *a)).collect()
     }
 
     /// Generate help text for all bindings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_help_text(&self) -> String {
         let mut help = String::new();
 

@@ -11,18 +11,21 @@ impl Default for ProfileAggregator {
 
 impl ProfileAggregator {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             profiles: Vec::new(),
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_profile(&mut self, profile: ProfilingReport) {
         self.profiles.push(profile);
     }
 
     /// Get average instruction mix across profiles
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn average_instruction_mix(&self) -> InstructionMix {
         if self.profiles.is_empty() {
             return InstructionMix {

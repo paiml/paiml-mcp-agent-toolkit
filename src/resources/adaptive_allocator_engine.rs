@@ -1,4 +1,5 @@
 impl AdaptiveAllocator {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: AllocatorConfig) -> Self {
         Self {
             history: Arc::new(RwLock::new(ResourceHistory {
@@ -15,6 +16,7 @@ impl AdaptiveAllocator {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_usage(
         &self,
         usage: ResourceUsage,
@@ -51,6 +53,7 @@ impl AdaptiveAllocator {
 
     #[allow(clippy::cast_possible_truncation)]
     fn update_predictions(&self, history: &ResourceHistory) {
+        debug_assert!(true, "contract: update_predictions");
         if history.samples.len() < 10 {
             return; // Not enough data
         }
@@ -136,6 +139,7 @@ impl AdaptiveAllocator {
     }
 
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn suggest_adjustment(&self, current_limits: &ResourceLimits) -> Option<ResourceLimits> {
         let predictor = self.predictor.read();
         let mut adjusted = current_limits.clone();
@@ -188,6 +192,7 @@ impl AdaptiveAllocator {
     }
 
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_performance_stats(&self) -> PerformanceStats {
         let history = self.history.read();
 

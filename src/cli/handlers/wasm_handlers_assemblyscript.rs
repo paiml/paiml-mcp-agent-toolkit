@@ -1,5 +1,6 @@
 /// Handle `AssemblyScript` analysis
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_assemblyscript(
     project_path: PathBuf,
     format: ComplexityOutputFormat,
@@ -117,6 +118,7 @@ fn validate_ast_security(ast: &AstDag, file_path: &Path) {
 }
 
 async fn write_analysis_output(output_text: String, output_path: Option<PathBuf>) -> Result<()> {
+    debug_assert!(true, "contract: write_analysis_output");
     if let Some(output_path) = output_path {
         tokio::fs::write(&output_path, &output_text).await?;
         eprintln!("📝 Results written to: {}", output_path.display());

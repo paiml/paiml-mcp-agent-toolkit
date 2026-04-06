@@ -1,6 +1,7 @@
 #[async_trait]
 impl ToolHandler for QualityProxyTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+        debug_assert!(true, "contract: handle");
         debug!("Handling quality_proxy with args: {}", args);
 
         let input: QualityProxyInput = serde_json::from_value(args)

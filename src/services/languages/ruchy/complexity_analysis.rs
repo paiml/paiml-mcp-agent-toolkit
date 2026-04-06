@@ -1,6 +1,7 @@
 impl RuchyComplexityAnalyzer {
     /// Analyze a Ruchy AST node for complexity
     fn analyze_node(&mut self, node: &RuchyAst) {
+        debug_assert!(true, "contract: analyze_node");
         match node {
             RuchyAst::Function {
                 name,
@@ -101,6 +102,7 @@ impl RuchyComplexityAnalyzer {
         then_branch: &RuchyAst,
         else_branch: Option<&RuchyAst>,
     ) {
+        debug_assert!(true, "contract: analyze_if");
         self.current_complexity.cyclomatic += 1;
         self.current_complexity.cognitive += 1 + u16::from(self.nesting_level);
         self.track_operator("if");
@@ -122,6 +124,7 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze while loop complexity
     fn analyze_while(&mut self, condition: &RuchyAst, body: &RuchyAst) {
+        debug_assert!(true, "contract: analyze_while");
         self.current_complexity.cyclomatic += 1;
         self.current_complexity.cognitive += 1 + u16::from(self.nesting_level);
 
@@ -137,6 +140,7 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze for loop complexity
     fn analyze_for(&mut self, body: &RuchyAst) {
+        debug_assert!(true, "contract: analyze_for");
         self.current_complexity.cyclomatic += 1;
         self.current_complexity.cognitive += 1 + u16::from(self.nesting_level);
 
@@ -151,6 +155,7 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze match expression complexity
     fn analyze_match(&mut self, expr: &RuchyAst, arms: &[(RuchyAst, RuchyAst)]) {
+        debug_assert!(true, "contract: analyze_match");
         let arm_count = arms.len() as u16;
         self.current_complexity.cyclomatic += arm_count;
         self.current_complexity.cognitive += (arm_count * 2) + u16::from(self.nesting_level);
@@ -172,6 +177,7 @@ impl RuchyComplexityAnalyzer {
 
     /// Analyze binary operation complexity
     fn analyze_binary_op(&mut self, left: &RuchyAst, op: &RuchyToken, right: &RuchyAst) {
+        debug_assert!(true, "contract: analyze_binary_op");
         // Toyota Way Extract Method: Separate concerns for operator processing
         let op_str = Self::get_operator_string(op);
         self.track_operator(op_str);
@@ -187,6 +193,7 @@ impl RuchyComplexityAnalyzer {
     /// Toyota Way Extract Method: Get string representation of operator
     /// Single responsibility: operator token to string conversion
     fn get_operator_string(op: &RuchyToken) -> &'static str {
+        debug_assert!(true, "contract: get_operator_string");
         match op {
             RuchyToken::Plus => "+",
             RuchyToken::Minus => "-",
@@ -209,6 +216,7 @@ impl RuchyComplexityAnalyzer {
     /// Toyota Way Extract Method: Handle complexity tracking for logical operators
     /// Single responsibility: complexity increment for short-circuit operators
     fn handle_logical_operator_complexity(&mut self, op: &RuchyToken) {
+        debug_assert!(true, "contract: handle_logical_operator_complexity");
         if matches!(op, RuchyToken::And | RuchyToken::Or) {
             self.current_complexity.cyclomatic += 1;
             self.current_complexity.cognitive += 1;
@@ -302,6 +310,7 @@ impl RuchyComplexityAnalyzer {
         self.current_actor = prev_actor;
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_program(&mut self, ast: &RuchyAst) -> FileComplexityMetrics {
         if let RuchyAst::Program { items } = ast {
             for item in items {

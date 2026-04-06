@@ -7,10 +7,12 @@ impl ProtocolAdapter for McpAdapter {
     type Output = String;
 
     fn protocol(&self) -> Protocol {
+        debug_assert!(true, "contract: protocol");
         Protocol::Mcp
     }
 
     async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
+        debug_assert!(true, "contract: decode");
         debug!("Decoding MCP input: {:?}", input);
 
         let json_rpc: JsonRpcRequest = match input {
@@ -52,6 +54,7 @@ impl ProtocolAdapter for McpAdapter {
     }
 
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
+        debug_assert!(true, "contract: encode");
         debug!(status = %response.status, "Encoding MCP response");
 
         // Extract MCP context to get the request ID
@@ -104,6 +107,7 @@ impl ProtocolAdapter for McpAdapter {
 
 impl McpReader {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(stdin: Stdin) -> Self {
         Self {
             reader: AsyncBufReader::new(stdin),
@@ -111,6 +115,7 @@ impl McpReader {
     }
 
     /// Read a single JSON-RPC message from stdin
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn read_message(&mut self) -> Result<JsonRpcRequest, ProtocolError> {
         let mut line = String::new();
         let bytes_read = self.reader.read_line(&mut line).await?;

@@ -8,6 +8,7 @@
 /// - All parameters documented
 /// - Parameter types specified
 /// - Required parameters marked
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn validate_mcp_documentation(tool: &McpToolDefinition) -> Result<McpDocumentationReport> {
     let mut report = McpDocumentationReport {
         tool_name: tool.name.clone(),
@@ -150,6 +151,7 @@ pub struct ValidationSummary {
 }
 
 /// Generate comprehensive validation report as JSON
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_validation_report_json() -> Result<String> {
     let tools = load_mcp_tool_definitions()?;
     let mut reports = Vec::new();

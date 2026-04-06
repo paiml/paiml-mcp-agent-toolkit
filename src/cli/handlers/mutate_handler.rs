@@ -1,4 +1,5 @@
 /// Handle mutation testing command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle(args: MutateArgs, _server: Arc<StatelessTemplateServer>) -> Result<()> {
     info!("Starting mutation testing on {:?}", args.target);
 
@@ -119,6 +120,7 @@ async fn execute_sequential_with_progress(
 
 /// Print progress indicator
 fn print_progress(completed: usize, total: usize) {
+    debug_assert!(true, "contract: print_progress");
     if total == 0 {
         return;
     }

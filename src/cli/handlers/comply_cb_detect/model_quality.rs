@@ -48,6 +48,7 @@ pub enum ModelFormat {
 }
 
 impl ModelFormat {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_extension(ext: &str) -> Option<Self> {
         debug_assert!(!ext.is_empty(), "ext must not be empty");
         match ext {
@@ -58,6 +59,7 @@ impl ModelFormat {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn name(&self) -> &'static str {
         match self {
             Self::Gguf => "GGUF",

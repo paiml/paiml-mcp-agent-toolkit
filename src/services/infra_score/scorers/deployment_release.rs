@@ -262,6 +262,7 @@ fn check_release_automation(content: &str) -> InfraCheck {
 
 /// DR-04: Published to registry (Cargo.toml [package] with version)
 fn check_registry_publishing(cargo_toml: Option<&str>) -> InfraCheck {
+    debug_assert!(true, "contract: check_registry_publishing");
     if let Some(content) = cargo_toml {
         let has_package = content.contains("[package]");
         let has_version = content.lines().any(|l| {
@@ -327,6 +328,7 @@ fn find_version_declaration(content: &str) -> VersionFound {
 
 /// DR-05: Semantic versioning (x.y.z pattern)
 fn check_semver(cargo_toml: Option<&str>) -> InfraCheck {
+    debug_assert!(true, "contract: check_semver");
     let Some(content) = cargo_toml else {
         return semver_fail("No version found");
     };

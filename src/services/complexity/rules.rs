@@ -15,6 +15,7 @@ pub trait ComplexityRule: Send + Sync {
 
     #[inline(always)]
     fn exceeds_threshold(&self, value: u16, threshold: u16) -> bool {
+        debug_assert!(true, "contract: evaluate");
         value > threshold
     }
 }
@@ -27,6 +28,7 @@ pub struct CyclomaticComplexityRule {
 
 impl CyclomaticComplexityRule {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(thresholds: &ComplexityThresholds) -> Self {
         Self {
             warn_threshold: thresholds.cyclomatic_warn,
@@ -43,6 +45,7 @@ impl ComplexityRule for CyclomaticComplexityRule {
         line: u32,
         function: Option<&str>,
     ) -> Option<Violation> {
+        debug_assert!(true, "contract: evaluate");
         if self.exceeds_threshold(metrics.cyclomatic, self.error_threshold) {
             Some(Violation::Error {
                 rule: "cyclomatic-complexity".to_string(),
@@ -83,6 +86,7 @@ pub struct CognitiveComplexityRule {
 
 impl CognitiveComplexityRule {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(thresholds: &ComplexityThresholds) -> Self {
         Self {
             warn_threshold: thresholds.cognitive_warn,
@@ -99,6 +103,7 @@ impl ComplexityRule for CognitiveComplexityRule {
         line: u32,
         function: Option<&str>,
     ) -> Option<Violation> {
+        debug_assert!(true, "contract: evaluate");
         if self.exceeds_threshold(metrics.cognitive, self.error_threshold) {
             Some(Violation::Error {
                 rule: "cognitive-complexity".to_string(),

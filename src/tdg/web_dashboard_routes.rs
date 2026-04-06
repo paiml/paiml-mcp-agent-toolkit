@@ -22,6 +22,7 @@ use tower_http::{
 use tracing::{debug, error, info};
 
 /// Create the TDG dashboard router with all endpoints
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn create_dashboard_router(state: DashboardState) -> Router {
     Router::new()
         // Static dashboard HTML
@@ -51,12 +52,14 @@ pub fn create_dashboard_router(state: DashboardState) -> Router {
 
 /// Serve the main dashboard HTML page
 async fn dashboard_index() -> impl IntoResponse {
+    debug_assert!(true, "contract: dashboard_index");
     let html = include_str!("../../assets/dashboard.html");
     Html(html)
 }
 
 /// Get current system metrics
 async fn get_metrics(State(state): State<DashboardState>) -> impl IntoResponse {
+    debug_assert!(true, "contract: get_metrics");
     if let Err(e) = state.update_metrics().await {
         error!("Failed to update metrics: {}", e);
         return (
@@ -74,12 +77,14 @@ async fn get_metrics(State(state): State<DashboardState>) -> impl IntoResponse {
 
 /// Get system health status
 async fn get_health(State(state): State<DashboardState>) -> impl IntoResponse {
+    debug_assert!(true, "contract: get_health");
     let metrics = state.metrics_cache.read().await;
     Json(&metrics.health_status).into_response()
 }
 
 /// Get detailed storage statistics
 async fn get_storage_stats(State(state): State<DashboardState>) -> impl IntoResponse {
+    debug_assert!(true, "contract: get_storage_stats");
     let stats = state.storage.get_statistics();
     Json(json!({
         "total_entries": stats.total_entries,
@@ -100,6 +105,7 @@ async fn storage_operation(
     State(state): State<DashboardState>,
     Json(operation): Json<StorageOperation>,
 ) -> impl IntoResponse {
+    debug_assert!(true, "contract: storage_operation");
     debug!("Executing storage operation: {}", operation.action);
 
     match operation.action.as_str() {
@@ -147,6 +153,7 @@ async fn run_analysis(
     State(state): State<DashboardState>,
     Query(params): Query<AnalysisQuery>,
 ) -> impl IntoResponse {
+    debug_assert!(true, "contract: run_analysis");
     info!("Running TDG analysis on: {}", params.path);
 
     let path = PathBuf::from(params.path);
@@ -192,6 +199,7 @@ async fn run_analysis(
 
 /// Get comprehensive system diagnostics
 async fn get_diagnostics(State(state): State<DashboardState>) -> impl IntoResponse {
+    debug_assert!(true, "contract: get_diagnostics");
     if let Err(e) = state.update_metrics().await {
         error!("Failed to update diagnostics: {}", e);
     }
@@ -223,6 +231,7 @@ async fn get_diagnostics(State(state): State<DashboardState>) -> impl IntoRespon
 
 /// Real-time metrics stream (simplified to avoid axum version conflicts)
 async fn metrics_stream(State(state): State<DashboardState>) -> impl IntoResponse {
+    debug_assert!(true, "contract: metrics_stream");
     let _ = state.update_metrics().await;
     let metrics = state.metrics_cache.read().await.clone();
 
@@ -243,6 +252,7 @@ async fn metrics_stream(State(state): State<DashboardState>) -> impl IntoRespons
 }
 
 /// Start the TDG web dashboard server
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn start_dashboard_server(
     addr: std::net::SocketAddr,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

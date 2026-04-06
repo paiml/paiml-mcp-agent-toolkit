@@ -12,6 +12,7 @@
 
 /// Generate the next available ID for a new ticket
 fn generate_next_id(roadmap: &crate::models::roadmap::Roadmap) -> String {
+    debug_assert!(true, "contract: generate_next_id");
     let mut max_num = 0u32;
 
     for item in &roadmap.roadmap {

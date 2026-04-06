@@ -7,6 +7,7 @@ impl Detector for PolyglotDetector {
     type Config = DetectionConfig;
 
     async fn detect(&self, input: Self::Input, config: Self::Config) -> Result<Self::Output> {
+        debug_assert!(true, "contract: detect");
         // Extract polyglot-specific config
         let polyglot_config = match config.detector_specific {
             DetectorSpecificConfig::Polyglot(config) => config,
@@ -48,10 +49,12 @@ impl Detector for PolyglotDetector {
     }
 
     fn name(&self) -> &'static str {
+        debug_assert!(true, "contract: name");
         "polyglot"
     }
 
     fn capabilities(&self) -> DetectorCapabilities {
+        debug_assert!(true, "contract: capabilities");
         DetectorCapabilities {
             supports_batch: true,
             supports_streaming: false,

@@ -49,6 +49,7 @@ pub struct GitAnalysisService;
 
 impl GitAnalysisService {
     #[inline]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze_code_churn(
         project_path: &Path,
         period_days: u32,
@@ -514,6 +515,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

@@ -28,6 +28,7 @@ impl Drop for ResourceAllocation {
 impl ResourceEnforcementStats {
     /// Format stats for diagnostic display
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_diagnostic(&self) -> String {
         let success_rate = if self.total_requests > 0 {
             (self.allowed_requests as f64 / self.total_requests as f64) * 100.0
@@ -55,12 +56,14 @@ impl ResourceEnforcementStats {
 impl ResourceControllerFactory {
     /// Create controller with default limits
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_default() -> PlatformResourceController {
         PlatformResourceController::new(ResourceLimits::default())
     }
 
     /// Create controller optimized for development
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_dev_optimized() -> PlatformResourceController {
         let limits = ResourceLimits {
             max_memory_mb: 512.0,   // Lower memory for dev
@@ -73,6 +76,7 @@ impl ResourceControllerFactory {
 
     /// Create controller optimized for production
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_prod_optimized() -> PlatformResourceController {
         let limits = ResourceLimits {
             max_memory_mb: 2048.0,         // Higher memory for prod
@@ -87,6 +91,7 @@ impl ResourceControllerFactory {
 
     /// Create controller for CI/CD environments
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_ci_optimized() -> PlatformResourceController {
         let limits = ResourceLimits {
             max_memory_mb: 1024.0,

@@ -6,6 +6,7 @@ pub struct ResourcePool {
 }
 
 impl ResourcePool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(total_limits: ResourceLimits) -> Self {
         Self {
             available: Arc::new(RwLock::new(total_limits.clone())),
@@ -14,6 +15,7 @@ impl ResourcePool {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn request(
         &self,
         agent_id: uuid::Uuid,
@@ -50,6 +52,7 @@ impl ResourcePool {
         Ok(requested)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn release(&self, agent_id: uuid::Uuid) -> Result<(), ResourceError> {
         let mut allocated = self.allocated.write();
         let mut available = self.available.write();
@@ -67,6 +70,7 @@ impl ResourcePool {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_available(&self) -> ResourceLimits {
         self.available.read().clone()
     }

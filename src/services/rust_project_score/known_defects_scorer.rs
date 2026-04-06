@@ -64,6 +64,7 @@ pub struct KnownDefectsScorer {
 
 impl KnownDefectsScorer {
     /// Create a new KnownDefectsScorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             name: "Known Defects".to_string(),

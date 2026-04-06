@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 /// - Checks for setmetatable(_G) with __index/__newindex
 /// - Flags loadfile/load without "t" mode (bytecode injection risk)
 /// - Reports protection level: full, partial, or none
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb614_global_protection(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -219,6 +220,7 @@ fn report_protection_level(
 /// CB-615: Detect coroutine defect patterns and report usage.
 /// - coroutine.resume without pcall (crashes on error)
 /// - Coroutine usage counts for complexity awareness
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb615_coroutine_checks(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

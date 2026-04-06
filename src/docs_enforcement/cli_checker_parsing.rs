@@ -105,6 +105,7 @@ fn extract_flag_name(line: &str) -> String {
 ///
 /// Compares expected flags (from code) with documented flags (from --help).
 /// Returns flags that are missing from documentation.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn find_undocumented_flags(
     expected_flags: &[&str],
     documented_flags: &[String],

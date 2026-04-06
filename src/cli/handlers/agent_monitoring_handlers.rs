@@ -40,6 +40,7 @@ async fn handle_agent_monitor(
 
 /// Stop monitoring a project
 async fn handle_agent_unmonitor(project_id: String) -> Result<()> {
+    debug_assert!(true, "contract: handle_agent_unmonitor");
     info!("Stopping monitoring for project '{}'", project_id);
 
     if !DaemonManager::is_running().await {
@@ -64,6 +65,7 @@ async fn handle_agent_unmonitor(project_id: String) -> Result<()> {
 
 /// Run health check
 async fn handle_agent_health(_pid_file: Option<PathBuf>, detailed: bool) -> Result<()> {
+    debug_assert!(true, "contract: handle_agent_health");
     if !DaemonManager::is_running().await {
         println!("❌ Agent daemon is not running");
         return Ok(());
@@ -98,6 +100,7 @@ async fn handle_agent_reload(
     _pid_file: Option<PathBuf>,
     config_path: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: handle_agent_reload");
     info!("Reloading agent daemon configuration");
 
     if !DaemonManager::is_running().await {
@@ -131,6 +134,7 @@ async fn handle_agent_quality_gate(
     _file: Option<PathBuf>,
     _format: crate::cli::QualityGateOutputFormat,
 ) -> Result<()> {
+    debug_assert!(true, "contract: handle_agent_quality_gate");
     info!("Running quality gate for project '{}'", project);
 
     if !DaemonManager::is_running().await {

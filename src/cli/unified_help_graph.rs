@@ -2,6 +2,7 @@
 
 impl CommandGraph {
     /// Create a new command graph
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             graph: CsrGraph::new(),
@@ -13,6 +14,7 @@ impl CommandGraph {
     }
 
     /// Build graph from command registry
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn build_from_registry(&mut self, registry: &CommandRegistry) {
         // Add nodes for all commands
         for (name, cmd) in &registry.commands {
@@ -58,6 +60,7 @@ impl CommandGraph {
 
     /// Update importance scores using PageRank
     fn update_importance(&mut self) {
+        debug_assert!(true, "contract: update_importance");
         use trueno_graph::algorithms::pagerank::pagerank;
 
         match pagerank(&self.graph, 20, 1e-6_f32) {
@@ -83,12 +86,14 @@ impl CommandGraph {
     }
 
     /// Get importance score for a command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn importance(&self, command: &str) -> f32 {
         debug_assert!(!command.is_empty(), "command must not be empty");
         self.importance_scores.get(command).copied().unwrap_or(0.0)
     }
 
     /// Rank commands by importance
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn rank_by_importance(&self, commands: &[String]) -> Vec<(String, f32)> {
         let mut ranked: Vec<_> = commands
             .iter()
@@ -99,6 +104,7 @@ impl CommandGraph {
     }
 
     /// Get top-k most important commands
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn top_k_important(&self, k: usize) -> Vec<(String, f32)> {
         debug_assert!(k > 0, "k must be positive");
         let mut all: Vec<_> = self

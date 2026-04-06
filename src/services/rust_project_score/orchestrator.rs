@@ -48,6 +48,7 @@ pub struct RustProjectScoreOrchestrator {
 
 impl RustProjectScoreOrchestrator {
     /// Create a new orchestrator with all 11 scorers (v3.0)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let scorers: Vec<Box<dyn Scorer>> = vec![
             Box::new(RustToolingScorer::new()),
@@ -68,21 +69,25 @@ impl RustProjectScoreOrchestrator {
     }
 
     /// Get orchestrator name with spec version
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn name(&self) -> String {
         format!("Rust Project Score v{}", SPEC_VERSION)
     }
 
     /// Get maximum possible points (sum of all scorer max_points)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn max_points(&self) -> f64 {
         self.scorers.iter().map(|s| s.max_points()).sum()
     }
 
     /// Get all scorer names
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn scorer_names(&self) -> Vec<&str> {
         self.scorers.iter().map(|s| s.name()).collect()
     }
 
     /// Get maximum points by category
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn max_points_by_category(&self) -> HashMap<&str, f64> {
         self.scorers
             .iter()
@@ -91,6 +96,7 @@ impl RustProjectScoreOrchestrator {
     }
 
     /// Calculate grade from score and max
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_grade(&self, earned: f64, _max: f64) -> Grade {
         Grade::from_score(earned, _max)
     }
@@ -98,6 +104,7 @@ impl RustProjectScoreOrchestrator {
     /// Score a Rust project with fast mode (default, <60 seconds)
     ///
     /// Runs all 10 category scorers and aggregates results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn score(&self, project_path: &Path) -> ScorerResult<ProjectScore> {
         debug_assert!(
             project_path.exists(),
@@ -117,6 +124,7 @@ impl RustProjectScoreOrchestrator {
     /// - Quick mode: <10 seconds - Filesystem only
     /// - Fast mode (default): <60 seconds - Skip expensive cargo operations
     /// - Full mode: <5 minutes (300 seconds) - Complete analysis
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn score_with_mode(
         &self,
         project_path: &Path,

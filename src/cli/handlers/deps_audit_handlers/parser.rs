@@ -9,6 +9,7 @@ use super::types::DepEdge;
 
 /// Parse Cargo.toml and extract dependencies
 #[allow(clippy::type_complexity)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn parse_cargo_toml(
     path: &Path,
 ) -> Result<(Vec<(String, String, bool)>, Vec<(String, String, bool)>)> {
@@ -59,6 +60,7 @@ pub fn parse_cargo_toml(
 
 /// Parse Cargo.lock and extract dependency graph
 /// Looks in path, parent, and grandparent (for workspace roots)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn parse_cargo_lock(path: &Path) -> Result<(Vec<String>, Vec<DepEdge>)> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Try path, parent, grandparent (workspace root)

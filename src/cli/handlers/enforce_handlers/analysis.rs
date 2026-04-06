@@ -6,6 +6,7 @@ use anyhow::Result;
 use std::path::Path;
 
 /// Run complexity analysis - extracted from `list_all_violations` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_complexity_analysis(
     project_path: &Path,
     profile: &QualityProfile,
@@ -58,6 +59,7 @@ pub async fn run_complexity_analysis(
 }
 
 /// Run SATD analysis - extracted from `list_all_violations` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_satd_analysis(
     project_path: &Path,
     profile: &QualityProfile,
@@ -102,6 +104,7 @@ pub async fn run_satd_analysis(
 }
 
 /// Run TDG analysis - extracted from `list_all_violations` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_tdg_analysis(
     project_path: &Path,
     profile: &QualityProfile,
@@ -148,6 +151,7 @@ pub async fn run_tdg_analysis(
 }
 
 /// Run dead code analysis - extracted from `list_all_violations` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_dead_code_analysis(
     project_path: &Path,
     _profile: &QualityProfile,
@@ -197,6 +201,7 @@ pub async fn run_dead_code_analysis(
 }
 
 /// Run duplication analysis - extracted from `list_all_violations` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_duplication_analysis(
     project_path: &Path,
     profile: &QualityProfile,
@@ -247,6 +252,7 @@ pub async fn run_duplication_analysis(
 }
 
 /// Run coverage analysis - extracted from `list_all_violations` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_coverage_analysis(
     _project_path: &Path,
     profile: &QualityProfile,

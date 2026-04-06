@@ -3,6 +3,7 @@
 
 impl UnifiedContextBuilder {
     // Add Big-O complexity analysis (async version)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn add_big_o_analysis_async(&mut self) -> &mut Self {
         self.output.push_str("## Big-O Complexity Analysis\n\n");
 
@@ -22,6 +23,7 @@ impl UnifiedContextBuilder {
     }
 
     // Add entropy analysis (async version)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn add_entropy_analysis_async(&mut self) -> &mut Self {
         self.output.push_str("## Entropy Analysis\n\n");
 
@@ -56,6 +58,7 @@ impl UnifiedContextBuilder {
     }
 
     // Add provability analysis
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn add_provability_analysis(&mut self) -> &mut Self {
         self.output.push_str("## Provability Analysis\n\n");
 
@@ -93,6 +96,7 @@ impl UnifiedContextBuilder {
     }
 
     // Add graph metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn add_graph_metrics(&mut self) -> &mut Self {
         self.output.push_str("## Graph Metrics\n\n");
 
@@ -136,6 +140,7 @@ impl UnifiedContextBuilder {
     }
 
     // Add TDG analysis (async version)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn add_tdg_analysis_async(&mut self) -> &mut Self {
         self.output.push_str("## Technical Debt Gradient (TDG)\n\n");
 
@@ -174,6 +179,7 @@ impl UnifiedContextBuilder {
     }
 
     // Add dead code analysis
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn add_dead_code_analysis(&mut self) -> &mut Self {
         self.output.push_str("## Dead Code Analysis\n\n");
 
@@ -220,6 +226,7 @@ impl UnifiedContextBuilder {
     }
 
     // Add SATD analysis
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn add_satd_analysis(&mut self) -> &mut Self {
         self.output
             .push_str("## Self-Admitted Technical Debt (SATD)\n\n");

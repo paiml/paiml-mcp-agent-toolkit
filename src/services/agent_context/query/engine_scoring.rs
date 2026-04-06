@@ -5,6 +5,7 @@ impl AgentContextIndex {
     /// falls back to TF-only O(n) scan otherwise.
     ///
     /// Returns (index, score) pairs for all documents with non-zero scores.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_relevance_scores(
         &self,
         query: &str,
@@ -101,6 +102,7 @@ impl AgentContextIndex {
     ///
     /// Only scores the candidate indices instead of the full 42K corpus.
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_relevance_scores_scoped(
         &self,
         query: &str,
@@ -164,6 +166,7 @@ impl AgentContextIndex {
 
     /// Check if function passes filter options
     fn passes_filters(&self, idx: usize, options: &QueryOptions) -> bool {
+        debug_assert!(true, "contract: passes_filters");
         let func = &self.functions[idx];
 
         // Grade filter

@@ -23,6 +23,7 @@ pub struct ValidateDocumentationTool {
 }
 
 impl ValidateDocumentationTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -36,6 +37,7 @@ pub struct CheckClaimTool {
 }
 
 impl CheckClaimTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,

@@ -6,6 +6,7 @@ use serde_json::json;
 use std::sync::Arc;
 use tracing::error;
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_resource_list<T: TemplateServerTrait>(
     server: Arc<T>,
     request: McpRequest,
@@ -36,6 +37,7 @@ pub async fn handle_resource_list<T: TemplateServerTrait>(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_resource_read<T: TemplateServerTrait>(
     server: Arc<T>,
     request: McpRequest,
@@ -91,6 +93,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

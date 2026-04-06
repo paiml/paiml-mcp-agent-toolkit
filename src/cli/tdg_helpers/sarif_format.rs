@@ -6,6 +6,7 @@ use anyhow::Result;
 use std::path::Path;
 
 /// Format TDG results as SARIF
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn format_tdg_sarif(hotspots: &[TDGHotspot], project_path: &Path) -> Result<String> {
     debug_assert!(
         project_path.exists(),

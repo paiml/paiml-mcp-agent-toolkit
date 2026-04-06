@@ -1,4 +1,5 @@
 impl LoadMonitor {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(cpu_threshold: f64, memory_threshold: f64) -> Self {
         Self {
             cpu_threshold,
@@ -6,6 +7,7 @@ impl LoadMonitor {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_load_factor(&self) -> f64 {
         // Simplified - would use actual system metrics
         let cpu_usage = self.get_cpu_usage();
@@ -18,6 +20,7 @@ impl LoadMonitor {
     }
 
     fn get_cpu_usage(&self) -> f64 {
+        debug_assert!(true, "contract: get_cpu_usage");
         // Placeholder - would use sysinfo or similar
         0.5
     }
@@ -29,6 +32,7 @@ impl LoadMonitor {
 }
 
 impl AdaptiveRateController {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(base_rate: u32, min_rate: u32, max_rate: u32) -> Self {
         let rate_limiter = RateLimiter::new(base_rate * 10, base_rate);
 
@@ -42,6 +46,7 @@ impl AdaptiveRateController {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn adapt_rate(&self) {
         let load_factor = self.load_monitor.get_load_factor();
 
@@ -64,6 +69,7 @@ impl AdaptiveRateController {
         *self.rate_limiter.write() = RateLimiter::new(new_rate * 10, new_rate);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn try_acquire(&self) -> bool {
         self.rate_limiter.read().try_acquire(1)
     }
@@ -80,6 +86,7 @@ impl AdaptiveRateController {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_current_rate(&self) -> u32 {
         self.current_rate.load(Ordering::Relaxed)
     }

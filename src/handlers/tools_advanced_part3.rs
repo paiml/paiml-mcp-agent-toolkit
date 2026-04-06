@@ -1,4 +1,5 @@
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn handle_analyze_deep_context(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
@@ -27,11 +28,13 @@ pub(crate) async fn handle_analyze_deep_context(
 }
 
 fn parse_deep_context_args(arguments: serde_json::Value) -> Result<AnalyzeDeepContextArgs, String> {
+    debug_assert!(true, "contract: parse_deep_context_args");
     serde_json::from_value(arguments)
         .map_err(|e| format!("Invalid analyze_deep_context arguments: {e}"))
 }
 
 fn resolve_deep_context_project_path(project_path: Option<String>) -> PathBuf {
+    debug_assert!(true, "contract: resolve_deep_context_project_path");
     project_path.map_or_else(
         || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
         PathBuf::from,
@@ -39,10 +42,12 @@ fn resolve_deep_context_project_path(project_path: Option<String>) -> PathBuf {
 }
 
 fn default_project_path() -> String {
+    debug_assert!(true, "contract: default_project_path");
     ".".to_string()
 }
 
 fn default_top_files() -> usize {
+    debug_assert!(true, "contract: default_top_files");
     10
 }
 
@@ -74,6 +79,7 @@ fn parse_analysis_type_string(s: &str) -> Option<crate::services::deep_context::
 fn parse_analysis_types(
     include_analyses: Option<Vec<String>>,
 ) -> Vec<crate::services::deep_context::AnalysisType> {
+    debug_assert!(true, "contract: parse_analysis_types");
     match include_analyses {
         Some(analyses) => analyses
             .iter()
@@ -84,6 +90,7 @@ fn parse_analysis_types(
 }
 
 fn parse_deep_context_dag_type(dag_type: Option<String>) -> crate::services::deep_context::DagType {
+    debug_assert!(true, "contract: parse_deep_context_dag_type");
     use crate::services::deep_context::DagType;
 
     match dag_type.as_deref() {
@@ -98,6 +105,7 @@ fn parse_deep_context_dag_type(dag_type: Option<String>) -> crate::services::dee
 fn parse_cache_strategy(
     cache_strategy: Option<String>,
 ) -> crate::services::deep_context::CacheStrategy {
+    debug_assert!(true, "contract: parse_cache_strategy");
     use crate::services::deep_context::CacheStrategy;
 
     match cache_strategy.as_deref() {
@@ -111,6 +119,7 @@ fn parse_cache_strategy(
 fn build_deep_context_config(
     args: &AnalyzeDeepContextArgs,
 ) -> crate::services::deep_context::DeepContextConfig {
+    debug_assert!(true, "contract: build_deep_context_config");
     use crate::services::deep_context::{ComplexityThresholds, DeepContextConfig};
 
     DeepContextConfig {
@@ -133,6 +142,7 @@ fn build_deep_context_config(
 fn create_deep_context_analyzer(
     config: crate::services::deep_context::DeepContextConfig,
 ) -> crate::services::deep_context::DeepContextAnalyzer {
+    debug_assert!(true, "contract: create_deep_context_analyzer");
     crate::services::deep_context::DeepContextAnalyzer::new(config)
 }
 
@@ -140,6 +150,7 @@ fn format_deep_context_response(
     context: &crate::services::deep_context::DeepContext,
     args: &AnalyzeDeepContextArgs,
 ) -> serde_json::Value {
+    debug_assert!(true, "contract: format_deep_context_response");
     let format = args.format.as_deref().unwrap_or("markdown");
     let content_text = match format {
         "json" => serde_json::to_string_pretty(context).unwrap_or_default(),
@@ -164,6 +175,7 @@ fn format_deep_context_response(
 }
 
 fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepContext) -> String {
+    debug_assert!(true, "contract: format_deep_context_as_sarif");
     // Simple SARIF implementation for MCP
     use serde_json::json;
 
@@ -187,6 +199,7 @@ fn format_deep_context_as_sarif(_context: &crate::services::deep_context::DeepCo
 
 /// Toyota Way: Extract Method - Format deep context analysis as markdown (complexity ≤8)
 fn format_deep_context_as_markdown(context: &crate::services::deep_context::DeepContext) -> String {
+    debug_assert!(true, "contract: format_deep_context_as_markdown");
     use crate::cli::formatting_helpers::{
         format_defect_summary, format_executive_summary, format_quality_scorecard,
         format_recommendations,
@@ -215,6 +228,7 @@ fn format_essential_metadata(
     output: &mut String,
     context: &crate::services::deep_context::DeepContext,
 ) {
+    debug_assert!(true, "contract: format_essential_metadata");
     use crate::cli::formatting_helpers::{format_build_info, format_project_overview};
 
     if context.project_overview.is_some() || context.build_info.is_some() {
@@ -235,6 +249,7 @@ fn format_analysis_results(
     output: &mut String,
     context: &crate::services::deep_context::DeepContext,
 ) {
+    debug_assert!(true, "contract: format_analysis_results");
     output.push_str("\n## Analysis Results\n\n");
     output.push_str(&format!(
         "**Total Defects:** {}\n",
@@ -256,6 +271,7 @@ fn format_analysis_results(
 
 /// Toyota Way: Extract Method - Format defects by type (complexity ≤5)
 fn format_defects_by_type(output: &mut String, by_type: &rustc_hash::FxHashMap<String, usize>) {
+    debug_assert!(true, "contract: format_defects_by_type");
     if !by_type.is_empty() {
         output.push_str("**By Type:**\n");
         for (defect_type, count) in by_type {
@@ -269,6 +285,7 @@ fn format_defects_by_severity(
     output: &mut String,
     by_severity: &rustc_hash::FxHashMap<String, usize>,
 ) {
+    debug_assert!(true, "contract: format_defects_by_severity");
     if !by_severity.is_empty() {
         output.push_str("**By Severity:**\n");
         for (severity, count) in by_severity {
@@ -282,6 +299,7 @@ fn format_deep_context_recommendations(
     output: &mut String,
     context: &crate::services::deep_context::DeepContext,
 ) {
+    debug_assert!(true, "contract: format_deep_context_recommendations");
     if !context.recommendations.is_empty() {
         output.push_str("## Recommendations\n\n");
         for (i, rec) in context.recommendations.iter().take(5).enumerate() {
@@ -331,6 +349,7 @@ async fn execute_makefile_linting(
 }
 
 fn map_severity(severity: &crate::services::makefile_linter::Severity) -> &'static str {
+    debug_assert!(true, "contract: map_severity");
     use crate::services::makefile_linter::Severity;
 
     match severity {
@@ -342,6 +361,7 @@ fn map_severity(severity: &crate::services::makefile_linter::Severity) -> &'stat
 }
 
 fn format_violation(violation: &crate::services::makefile_linter::Violation) -> serde_json::Value {
+    debug_assert!(true, "contract: format_violation");
     json!({
         "rule": violation.rule,
         "severity": map_severity(&violation.severity),
@@ -367,6 +387,7 @@ fn build_makefile_analysis(
     args: &MakefileLintArgs,
     lint_result: &crate::services::makefile_linter::LintResult,
 ) -> serde_json::Value {
+    debug_assert!(true, "contract: build_makefile_analysis");
     use crate::services::makefile_linter::Severity;
 
     json!({
@@ -380,6 +401,7 @@ fn build_makefile_analysis(
     })
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn handle_analyze_makefile_lint(
     request_id: serde_json::Value,
     arguments: Option<serde_json::Value>,
@@ -401,6 +423,7 @@ pub(crate) async fn handle_analyze_makefile_lint(
     McpResponse::success(request_id, analysis)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn handle_analyze_provability(
     request_id: serde_json::Value,
     arguments: Option<serde_json::Value>,

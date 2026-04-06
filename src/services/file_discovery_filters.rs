@@ -9,6 +9,7 @@ impl ProjectFileDiscovery {
         filter_external: bool,
         _classifier: &FileClassifier,
     ) -> bool {
+        debug_assert!(true, "contract: should_include_entry");
         // Skip directories
         if entry.file_type().map_or(true, |ft| !ft.is_file()) {
             return false;

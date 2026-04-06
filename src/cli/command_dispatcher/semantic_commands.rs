@@ -17,6 +17,7 @@ impl CommandDispatcher {
     /// Execute embed commands for semantic search (PMAT-SEARCH-011)
     ///
     /// Uses local TF-IDF embeddings - no API keys required.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_embed_command(embed_cmd: EmbedCommands) -> anyhow::Result<()> {
         // Load configuration with environment variable fallbacks
         let config_service = ConfigurationService::new(None);
@@ -104,6 +105,7 @@ impl CommandDispatcher {
     /// Execute semantic search commands (PMAT-SEARCH-011)
     ///
     /// Uses local TF-IDF embeddings - no API keys required.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_semantic_command(semantic_cmd: SemanticCommands) -> anyhow::Result<()> {
         // Load configuration with environment variable fallbacks
         let config_service = ConfigurationService::new(None);

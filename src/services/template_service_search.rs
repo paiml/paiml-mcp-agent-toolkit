@@ -1,6 +1,7 @@
 // Template listing and search functions.
 // Includes list_templates, list_all_resources, search_templates, and relevance scoring helpers.
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn list_templates<T: TemplateServerTrait>(
     server: &T,
     toolchain: Option<&str>,
@@ -30,12 +31,14 @@ pub async fn list_templates<T: TemplateServerTrait>(
     Ok(templates)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn list_all_resources<T: TemplateServerTrait>(
     server: &T,
 ) -> Result<Vec<Arc<TemplateResource>>, TemplateError> {
     list_templates(server, None, None).await
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn search_templates<T: TemplateServerTrait>(
     server: Arc<T>,
     query: &str,

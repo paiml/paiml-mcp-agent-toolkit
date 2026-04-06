@@ -13,6 +13,7 @@ impl NameResolver for JavaKotlinResolver {
         reference: &crate::ast::polyglot::unified_node::NodeReference,
         target: &UnifiedNode,
     ) -> bool {
+        debug_assert!(true, "contract: can_resolve");
         // Only handle Java->Kotlin and Kotlin->Java
         if !((source_language == Language::Java && target_language == Language::Kotlin)
             || (source_language == Language::Kotlin && target_language == Language::Java))
@@ -62,6 +63,7 @@ impl NameResolver for JavaScalaResolver {
         reference: &crate::ast::polyglot::unified_node::NodeReference,
         target: &UnifiedNode,
     ) -> bool {
+        debug_assert!(true, "contract: can_resolve");
         // Only handle Java->Scala and Scala->Java
         if !((source_language == Language::Java && target_language == Language::Scala)
             || (source_language == Language::Scala && target_language == Language::Java))
@@ -111,6 +113,7 @@ impl NameResolver for TypeScriptJavaResolver {
         reference: &crate::ast::polyglot::unified_node::NodeReference,
         target: &UnifiedNode,
     ) -> bool {
+        debug_assert!(true, "contract: can_resolve");
         // Only handle TypeScript->Java and Java->TypeScript
         if !((source_language == Language::TypeScript && target_language == Language::Java)
             || (source_language == Language::Java && target_language == Language::TypeScript))

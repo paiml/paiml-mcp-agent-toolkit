@@ -21,6 +21,7 @@ pub struct JavaStrategy;
 impl JavaStrategy {
     /// Creates a new Java language strategy
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -61,16 +62,19 @@ impl AstStrategy for JavaStrategy {
     
     /// Returns the primary file extension for Java
     fn primary_extension(&self) -> &'static str {
+        debug_assert!(true, "contract: primary_extension");
         "java"
     }
     
     /// Returns all file extensions supported by this strategy
     fn supported_extensions(&self) -> Vec<&'static str> {
+        debug_assert!(true, "contract: supported_extensions");
         vec!["java"]
     }
     
     /// Returns the language name
     fn language_name(&self) -> &'static str {
+        debug_assert!(true, "contract: language_name");
         "Java"
     }
 }

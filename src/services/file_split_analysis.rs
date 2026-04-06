@@ -7,6 +7,7 @@ fn compute_cohesion(
     func_indices: &[usize],
     global_to_local: &HashMap<usize, usize>,
 ) -> f64 {
+    debug_assert!(true, "contract: compute_cohesion");
     if local_indices.len() < 2 {
         return 1.0;
     }
@@ -78,6 +79,7 @@ fn compute_impact(index: &AgentContextIndex, file_path: &str) -> SplitImpact {
 ///
 /// For each cluster, creates `{base}_{cluster_name}.rs` and replaces the
 /// original file with `include!()` directives.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_split(plan: &SplitPlan, project_root: &Path) -> anyhow::Result<Vec<PathBuf>> {
     debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
     use std::fs;

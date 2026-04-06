@@ -24,6 +24,7 @@ pub struct DocumentationScorer {
 
 impl DocumentationScorer {
     /// Create a new DocumentationScorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             name: "Documentation".to_string(),

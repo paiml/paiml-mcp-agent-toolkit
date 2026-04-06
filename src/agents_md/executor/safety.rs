@@ -10,6 +10,7 @@ use anyhow::Result;
 
 impl AgentsMdExecutor {
     /// Validate command safety
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_command(&self, cmd: &Command) -> Result<SafetyReport> {
         let mut report = SafetyReport {
             safe: true,
@@ -81,6 +82,7 @@ impl AgentsMdExecutor {
     }
 
     /// Apply quality gates to output
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn apply_quality_gates(&self, output: &CommandOutput) -> Result<QualityReport> {
         let mut report = QualityReport {
             passed: true,

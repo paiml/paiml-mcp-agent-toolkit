@@ -2,16 +2,19 @@
 // Included by analyzer_simple.rs — shares parent module scope
 
 impl TdgAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Result<Self> {
         Ok(Self {
             config: TdgConfig::default(),
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: TdgConfig) -> Result<Self> {
         Ok(Self { config })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let language = Language::from_extension(path);
@@ -19,6 +22,7 @@ impl TdgAnalyzer {
         self.analyze_source(&source, language, Some(path.to_path_buf()))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze_source(
         &self,
         source: &str,
@@ -57,6 +61,7 @@ impl TdgAnalyzer {
         Ok(score)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
         debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let files = self.discover_files(dir)?;
@@ -88,6 +93,7 @@ impl TdgAnalyzer {
         Ok(ProjectScore::aggregate(scores))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn compare(&self, path1: &Path, path2: &Path) -> Result<Comparison> {
         debug_assert!(path1.exists(), "path1 must exist: {}", path1.display());
         debug_assert!(path2.exists(), "path2 must exist: {}", path2.display());

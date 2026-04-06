@@ -57,6 +57,7 @@ impl Default for AutomationConfig {
 
 impl UnifiedConfig {
     /// Load configuration from file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_file(path: &PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let contents = std::fs::read_to_string(path)?;
@@ -65,6 +66,7 @@ impl UnifiedConfig {
     }
 
     /// Save configuration to file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn to_file(&self, path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let contents = toml::to_string_pretty(self)?;
@@ -74,18 +76,21 @@ impl UnifiedConfig {
 
     /// Get default configuration path
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn default_path() -> PathBuf {
         PathBuf::from(".pmat/config.toml")
     }
 
     /// Check if should auto-progress
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn should_progress(&self, days_in_mode: u32) -> bool {
         self.auto_progress && days_in_mode >= self.progress_after_days
     }
 
     /// Get next quality mode
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn next_mode(&self) -> Option<QualityMode> {
         match self.mode {
             QualityMode::Observe => Some(QualityMode::Advise),

@@ -5,11 +5,13 @@
 
 impl MemoryManager {
     /// Create a new memory manager with default configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Result<Arc<Self>> {
         Self::with_config(MemoryConfig::default())
     }
 
     /// Create a new memory manager with custom configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: MemoryConfig) -> Result<Arc<Self>> {
         let mut pools = FxHashMap::default();
 
@@ -36,6 +38,7 @@ impl MemoryManager {
     }
 
     /// Configure a specific memory pool
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn configure_pool(&self, pool_type: PoolType, _max_size: usize) -> Result<()> {
         if let Some(_pool) = self.pools.get(&pool_type) {
             // Note: Current implementation doesn't support runtime pool resizing
@@ -46,6 +49,7 @@ impl MemoryManager {
     }
 
     /// Allocate a buffer using the appropriate strategy
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn allocate_buffer(
         self: &Arc<Self>,
         pool_type: PoolType,
@@ -80,12 +84,14 @@ impl MemoryManager {
     }
 
     /// Intern a string for memory efficiency
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn intern_string(&self, s: &str) -> Result<Arc<str>> {
         debug_assert!(!s.is_empty(), "s must not be empty");
         self.string_interner.intern(s)
     }
 
     /// Get current memory statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn stats(&self) -> MemoryStats {
         let total_allocated = *self.total_allocated.lock();
         let peak_usage = *self.peak_usage.lock();
@@ -108,6 +114,7 @@ impl MemoryManager {
     }
 
     /// Force cleanup of unused memory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cleanup(&self) -> Result<usize> {
         let mut cleaned = 0;
 
@@ -206,6 +213,7 @@ impl MemoryManager {
 static GLOBAL_MEMORY_MANAGER: std::sync::OnceLock<Arc<MemoryManager>> = std::sync::OnceLock::new();
 
 /// Get the global memory manager instance
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn global_memory_manager() -> Result<Arc<MemoryManager>> {
     GLOBAL_MEMORY_MANAGER
         .get()
@@ -214,6 +222,7 @@ pub fn global_memory_manager() -> Result<Arc<MemoryManager>> {
 }
 
 /// Initialize the global memory manager
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn init_global_memory_manager() -> Result<()> {
     let manager = MemoryManager::new()?;
     GLOBAL_MEMORY_MANAGER
@@ -223,6 +232,7 @@ pub fn init_global_memory_manager() -> Result<()> {
 }
 
 /// Initialize the global memory manager with custom config
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn init_global_memory_manager_with_config(config: MemoryConfig) -> Result<()> {
     let manager = MemoryManager::with_config(config)?;
     GLOBAL_MEMORY_MANAGER

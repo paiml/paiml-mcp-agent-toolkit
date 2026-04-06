@@ -7,6 +7,7 @@
 /// # Complexity
 /// - Time: O(codebase size)
 /// - Cyclomatic: 4
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_clippy(config: &GateConfig, project_dir: &Path) -> Result<GateResult> {
     debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
@@ -57,6 +58,7 @@ pub fn execute_clippy(config: &GateConfig, project_dir: &Path) -> Result<GateRes
 /// # Complexity
 /// - Time: O(test suite size)
 /// - Cyclomatic: 3
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResult> {
     debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
@@ -121,6 +123,7 @@ pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResu
 /// # Complexity
 /// - Time: O(codebase size)
 /// - Cyclomatic: 5
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateResult> {
     debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
@@ -266,6 +269,7 @@ fn parse_coverage_from_output(output: &str) -> f64 {
 /// # Complexity
 /// - Time: O(1) - placeholder implementation
 /// - Cyclomatic: 2
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_complexity(config: &GateConfig, _project_dir: &Path) -> Result<GateResult> {
     debug_assert!(_project_dir.exists(), "_project_dir must exist: {}", _project_dir.display());
     use std::time::Instant;

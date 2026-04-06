@@ -20,6 +20,7 @@ pub enum ChangeCategory {
 
 impl ChangeCategory {
     /// Infer category from GitHub labels
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_labels(labels: &[String]) -> Option<Self> {
         debug_assert!(!labels.is_empty(), "labels must not be empty");
         for label in labels {
@@ -47,6 +48,7 @@ impl ChangeCategory {
     }
 
     /// Get section header for changelog
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn section_header(&self) -> &'static str {
         match self {
             ChangeCategory::Added => "### Added",
@@ -69,6 +71,7 @@ pub struct ChangelogEntry {
 
 impl ChangelogEntry {
     /// Create new changelog entry
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(category: ChangeCategory, description: String, issue_number: Option<u64>) -> Self {
         Self {
             category,
@@ -78,6 +81,7 @@ impl ChangelogEntry {
     }
 
     /// Format entry as markdown line
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_markdown(&self) -> String {
         if let Some(issue) = self.issue_number {
             format!("- {} (#{})", self.description, issue)
@@ -88,6 +92,7 @@ impl ChangelogEntry {
 }
 
 /// Add entry to CHANGELOG.md
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn add_to_changelog(project_path: &PathBuf, entry: ChangelogEntry) -> Result<()> {
     debug_assert!(
         project_path.exists(),

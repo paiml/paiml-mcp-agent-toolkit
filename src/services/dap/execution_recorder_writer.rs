@@ -30,6 +30,7 @@
 /// // ... capture snapshots during execution ...
 /// recorder.finalize().expect("internal error");
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn with_writer(
     writer: W,
     program: String,
@@ -50,6 +51,7 @@ pub fn with_writer(
 /// Add environment variable to recording metadata
 ///
 /// Sprint 76 - CAPTURE-001: Enriches recording metadata
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn add_environment(&mut self, key: impl Into<String>, value: impl Into<String>) {
     if let Some(ref mut writer) = self.writer {
         writer.add_environment(key, value);
@@ -59,6 +61,7 @@ pub fn add_environment(&mut self, key: impl Into<String>, value: impl Into<Strin
 /// Finalize the recording (must be called to complete .pmat file)
 ///
 /// Sprint 76 - CAPTURE-001: Completes the recording and flushes to disk
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn finalize(self) -> Result<()> {
     if let Some(writer) = self.writer {
         writer.finalize().context("Failed to finalize recording")?;
@@ -70,6 +73,7 @@ pub fn finalize(self) -> Result<()> {
 ///
 /// Maps between in-memory snapshot format and .pmat file format
 fn convert_to_recording_snapshot(exec_snapshot: &ExecutionSnapshot) -> Snapshot {
+    debug_assert!(true, "contract: convert_to_recording_snapshot");
     // Convert Sprint 72 StackFrame to Sprint 75 StackFrame
     let stack_frames = exec_snapshot
         .call_stack

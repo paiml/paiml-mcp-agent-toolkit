@@ -14,6 +14,7 @@ impl BigOClass {
     /// assert_eq!(BigOClass::Quadratic.notation(), "O(n²)");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn notation(&self) -> &'static str {
         match self {
             Self::Constant => "O(1)",
@@ -40,6 +41,7 @@ impl BigOClass {
     /// assert!(!BigOClass::Quadratic.is_better_than(&BigOClass::Linear));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_better_than(&self, other: &Self) -> bool {
         (*self as u8) < (*other as u8)
     }
@@ -56,6 +58,7 @@ impl BigOClass {
     /// assert_eq!(BigOClass::Quadratic.growth_factor(10.0), 100.0);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn growth_factor(&self, n: f64) -> f64 {
         match self {
             Self::Constant => 1.0,
@@ -107,6 +110,7 @@ impl ComplexityFlags {
     pub const RECURSIVE: u8 = 0b10000000;
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self(0)
     }
@@ -125,6 +129,7 @@ impl ComplexityFlags {
     /// assert!(flags.has(ComplexityFlags::PROVEN));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with(mut self, flag: u8) -> Self {
         self.0 |= flag;
         self
@@ -142,6 +147,7 @@ impl ComplexityFlags {
     /// assert!(!flags.has(ComplexityFlags::WORST_CASE));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has(&self, flag: u8) -> bool {
         self.0 & flag != 0
     }
@@ -162,6 +168,7 @@ impl ComplexityFlags {
     /// assert!(!avg_case.is_worst_case());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_worst_case(&self) -> bool {
         self.has(Self::WORST_CASE)
     }
@@ -182,6 +189,7 @@ impl ComplexityFlags {
     /// assert!(!empirical.is_proven());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_proven(&self) -> bool {
         self.has(Self::PROVEN)
     }

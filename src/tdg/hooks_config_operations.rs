@@ -3,6 +3,7 @@
 
 impl TdgHooksConfig {
     /// Load configuration from .pmat/tdg-rules.toml
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(project_root: &Path) -> Result<Self> {
         debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let config_path = project_root.join(".pmat").join("tdg-rules.toml");
@@ -22,6 +23,7 @@ impl TdgHooksConfig {
     }
 
     /// Create default configuration file at .pmat/tdg-rules.toml
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn create_default(project_root: &Path) -> Result<()> {
         debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let pmat_dir = project_root.join(".pmat");
@@ -50,6 +52,7 @@ impl TdgHooksConfig {
 
 impl QualityGatesConfig {
     /// Get minimum grade for a language (with fallback to deprecated fields)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_min_grade(&self, language: &str) -> Option<&str> {
         debug_assert!(!language.is_empty(), "language must not be empty");
         // Try new min_grades map first
@@ -67,6 +70,7 @@ impl QualityGatesConfig {
     }
 
     /// Get default minimum grade (B+ for most languages)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_default_min_grade(&self) -> &str {
         "B+"
     }

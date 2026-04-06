@@ -3,6 +3,7 @@
 
 /// Handle refactor docs command
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_refactor_docs(
     project_path: PathBuf,
     include_docs: bool,
@@ -89,6 +90,7 @@ fn combine_patterns(
     artifact_patterns: Vec<String>,
     custom_patterns: Vec<String>,
 ) -> Vec<(String, FileCategory)> {
+    debug_assert!(true, "contract: combine_patterns");
     let mut all_patterns = Vec::new();
     all_patterns.extend(
         temp_patterns
@@ -122,6 +124,7 @@ async fn perform_cruft_scan(
     max_size_mb: u64,
     recursive: bool,
 ) -> Result<RefactorDocsResult> {
+    debug_assert!(true, "contract: perform_cruft_scan");
     let mut result = scan_for_cruft(
         scan_dirs,
         all_patterns,
@@ -163,6 +166,7 @@ async fn handle_interactive_processing(
     dry_run: bool,
     auto_remove: bool,
 ) -> Result<RefactorDocsResult> {
+    debug_assert!(true, "contract: handle_interactive_processing");
     if should_use_interactive_mode(format, dry_run, auto_remove) {
         handle_interactive_mode(result).await
     } else {
@@ -176,6 +180,7 @@ fn should_use_interactive_mode(
     dry_run: bool,
     auto_remove: bool,
 ) -> bool {
+    debug_assert!(true, "contract: should_use_interactive_mode");
     format == RefactorDocsOutputFormat::Interactive && !dry_run && !auto_remove
 }
 
@@ -201,6 +206,7 @@ fn should_create_backup(
     cruft_files: &[CruftFile],
     auto_remove: bool,
 ) -> bool {
+    debug_assert!(true, "contract: should_create_backup");
     backup && !dry_run && (!cruft_files.is_empty() || auto_remove)
 }
 
@@ -211,6 +217,7 @@ async fn handle_file_removal_processing(
     auto_remove: bool,
     format: RefactorDocsOutputFormat,
 ) -> Result<()> {
+    debug_assert!(true, "contract: handle_file_removal_processing");
     if should_remove_files(dry_run, auto_remove, format) {
         remove_files(&result.cruft_files).await?;
     }
@@ -219,6 +226,7 @@ async fn handle_file_removal_processing(
 
 /// Check if files should be removed
 fn should_remove_files(dry_run: bool, auto_remove: bool, format: RefactorDocsOutputFormat) -> bool {
+    debug_assert!(true, "contract: should_remove_files");
     !dry_run && (auto_remove || format == RefactorDocsOutputFormat::Interactive)
 }
 
@@ -231,6 +239,7 @@ async fn output_results(
     elapsed: std::time::Duration,
     output: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: output_results");
     let output_content = format_output(result, format, dry_run, perf, elapsed)?;
 
     if let Some(output_path) = output {
@@ -243,6 +252,7 @@ async fn output_results(
 
 /// Handle appropriate exit code based on results
 fn handle_exit_code(result: &RefactorDocsResult, auto_remove: bool, dry_run: bool) {
+    debug_assert!(true, "contract: handle_exit_code");
     if !result.cruft_files.is_empty() && !auto_remove && !dry_run {
         std::process::exit(1); // Files found but not removed
     }

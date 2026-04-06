@@ -11,10 +11,12 @@ pub struct CppPointerOpMutation;
 
 impl TreeSitterMutationOperator for CppPointerOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "CppPointerOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         match node.kind() {
             "pointer_expression" => true, // * or & in expression context
             "field_expression" => {
@@ -32,6 +34,7 @@ impl TreeSitterMutationOperator for CppPointerOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         if node.kind() == "pointer_expression" {
             // Find the operator (* or &)
             let mut cursor = node.walk();
@@ -96,10 +99,12 @@ pub struct CppMemberAccessMutation;
 
 impl TreeSitterMutationOperator for CppMemberAccessMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "CppMemberAccess"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         match node.kind() {
             "field_expression" => {
                 let mut cursor = node.walk();
@@ -124,6 +129,7 @@ impl TreeSitterMutationOperator for CppMemberAccessMutation {
     }
 
     fn mutate(&self, _node: &Node, _source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Member access mutations are semantically complex
         // . and :: have different meanings (instance vs static/namespace)
         // Can't mutate without type information

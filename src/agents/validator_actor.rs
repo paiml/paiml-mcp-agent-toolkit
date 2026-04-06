@@ -17,6 +17,7 @@ impl Handler<ValidateMessage> for ValidatorActor {
     type Result = ResponseActFuture<Self, Result<AgentResponse, AgentError>>;
 
     fn handle(&mut self, msg: ValidateMessage, _ctx: &mut Context<Self>) -> Self::Result {
+        debug_assert!(true, "contract: handle");
         let validator = self.validator.clone();
         let metrics = msg.metrics.clone();
         let thresholds = msg.thresholds;

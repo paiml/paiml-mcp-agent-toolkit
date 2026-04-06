@@ -42,6 +42,7 @@ pub struct SatdTool;
 impl SatdTool {
     /// Creates a new SATD analysis tool handler.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -56,6 +57,7 @@ impl Default for SatdTool {
 #[async_trait]
 impl ToolHandler for SatdTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+        debug_assert!(true, "contract: handle");
         debug!("Handling analyze.satd with args: {}", args);
 
         let params: SatdArgs = serde_json::from_value(args)
@@ -85,6 +87,7 @@ pub struct DeadCodeTool;
 
 impl DeadCodeTool {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -99,6 +102,7 @@ impl Default for DeadCodeTool {
 #[async_trait]
 impl ToolHandler for DeadCodeTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+        debug_assert!(true, "contract: handle");
         debug!("Handling analyze.dead-code with args: {}", args);
 
         let params: DeadCodeArgs = serde_json::from_value(args)

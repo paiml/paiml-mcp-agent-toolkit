@@ -103,6 +103,7 @@ impl QualityMonitorEngine {
         avg_complexity: f64,
         satd_issues: usize,
     ) -> f64 {
+        debug_assert!(true, "contract: calculate_file_quality_score");
         let mut score = 1.0;
 
         // Penalize high complexity
@@ -132,6 +133,7 @@ impl QualityMonitorEngine {
 
     /// Update aggregate metrics for a project
     fn update_aggregate_metrics(metrics: &mut QualityMetrics) {
+        debug_assert!(true, "contract: update_aggregate_metrics");
         let files_analyzed = metrics.file_metrics.len();
         let functions_analyzed: usize = metrics
             .file_metrics

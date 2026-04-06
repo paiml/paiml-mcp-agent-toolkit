@@ -29,6 +29,7 @@ pub struct ExtractedItem {
 ///
 /// Single-parse approach: parses once, then collects imports, cfg_test boundary,
 /// chunks, and visibility from the same AST.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_file_details(
     path: &str,
     source: &str,
@@ -332,6 +333,7 @@ fn collect_ts_visibility(
     map: &mut HashMap<usize, String>,
     exported: bool,
 ) {
+    debug_assert!(true, "contract: collect_ts_visibility");
     let is_export = node.kind() == "export_statement";
     let currently_exported = exported || is_export;
 

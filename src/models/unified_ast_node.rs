@@ -115,6 +115,7 @@ impl UnifiedAstNode {
     /// assert!(!class_node.is_function());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(kind: AstKind, lang: Language) -> Self {
         Self {
             kind,
@@ -163,6 +164,7 @@ impl UnifiedAstNode {
     /// assert!(!class.is_function());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_function(&self) -> bool {
         matches!(self.kind, AstKind::Function(_))
     }
@@ -211,6 +213,7 @@ impl UnifiedAstNode {
     /// assert!(!function.is_type_definition());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_type_definition(&self) -> bool {
         matches!(
             self.kind,
@@ -220,6 +223,7 @@ impl UnifiedAstNode {
 
     /// Get the complexity score for this node
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn complexity(&self) -> u32 {
         // SAFETY: Accessing the complexity field of the metadata union.
         // This is safe because:
@@ -230,6 +234,7 @@ impl UnifiedAstNode {
     }
 
     /// Set the complexity score for this node
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_complexity(&mut self, complexity: u32) {
         self.metadata.complexity = u64::from(complexity);
     }
@@ -277,6 +282,7 @@ impl UnifiedAstNode {
     /// assert!(node.has_proof_annotations());
     /// assert_eq!(node.proof_annotations().len(), 1);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_proof_annotation(&mut self, annotation: ProofAnnotation) {
         match &mut self.proof_annotations {
             Some(annotations) => annotations.push(annotation),
@@ -286,12 +292,14 @@ impl UnifiedAstNode {
 
     /// Get all proof annotations for this node
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn proof_annotations(&self) -> &[ProofAnnotation] {
         self.proof_annotations.as_deref().unwrap_or(&[])
     }
 
     /// Check if this node has proof annotations
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_proof_annotations(&self) -> bool {
         self.proof_annotations
             .as_ref()
@@ -300,6 +308,7 @@ impl UnifiedAstNode {
 
     /// Get location for this node (requires file path context)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn location(&self, file_path: &Path) -> Location {
         debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Location {

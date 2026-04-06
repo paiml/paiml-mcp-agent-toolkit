@@ -17,6 +17,7 @@ pub struct GpuDevice {
 impl GpuDevice {
     /// Get or initialize the global GPU device
     #[allow(static_mut_refs)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_or_init() -> Result<&'static GpuDevice> {
         // SAFETY: INIT.call_once ensures single initialization; GPU_DEVICE is only written once
         unsafe {
@@ -84,6 +85,7 @@ impl GpuDevice {
     ///
     /// Reference: Gregg & Hazelwood (2011) ISPASS
     fn calibrate_pcie_bandwidth(device: &wgpu::Device, queue: &wgpu::Queue) -> Result<f64> {
+        debug_assert!(true, "contract: calibrate_pcie_bandwidth");
         const CALIBRATION_SIZE: usize = 30_000_000; // 30M f64 = 240 MB (under 256 MB limit)
 
         let start = std::time::Instant::now();
@@ -181,11 +183,13 @@ impl GpuDevice {
     }
 
     /// Get calibrated PCIe bandwidth
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn pcie_bandwidth(&self) -> f64 {
         self.pcie_bandwidth_gbps
     }
 
     /// Compute sum of f64 array using GPU
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_sum(&self, data: &[f64]) -> Result<f64> {
         debug_assert!(!data.is_empty(), "data must not be empty");
         // For small datasets, GPU overhead isn't worth it

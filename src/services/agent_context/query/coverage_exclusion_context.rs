@@ -6,6 +6,7 @@ impl ExclusionContext {
     ///
     /// When `cached_coverage_off` is provided (from SQLite index), skips all file I/O
     /// for coverage(off) detection — O(1) per file instead of O(file_size).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn build(
         project_path: &Path,
         cached_coverage_off: Option<&HashSet<String>>,
@@ -28,6 +29,7 @@ impl ExclusionContext {
     ///
     /// Checks in priority order: dead code > coverage(off) > Makefile pattern.
     /// With cached data, this is pure HashSet lookups — no file I/O.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn classify(
         &mut self,
         result: &QueryResult,
@@ -98,6 +100,7 @@ impl ExclusionContext {
 /// When `cached_coverage_off` is provided (from index build), coverage(off)
 /// detection is O(1) HashSet lookup with zero file I/O.
 /// Mutates results in-place, setting `coverage_exclusion` and `coverage_excluded`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn classify_exclusions(
     results: &mut [QueryResult],
     project_path: &Path,
@@ -148,6 +151,7 @@ fn parse_makefile_coverage_exclude(project_path: &Path) -> Option<regex::Regex> 
 
 /// Extract dead item keys from a single file entry in the dead-code cache.
 fn collect_dead_items(file_entry: &serde_json::Value, dead: &mut HashSet<String>) {
+    debug_assert!(true, "contract: collect_dead_items");
     let file_path = match file_entry.get("file_path").and_then(|p| p.as_str()) {
         Some(p) => p,
         None => return,

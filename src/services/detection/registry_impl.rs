@@ -3,6 +3,7 @@
 
 impl DetectionRegistry {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let mut registry = Self {
             detectors: std::collections::HashMap::new(),
@@ -24,6 +25,7 @@ impl DetectionRegistry {
         self.register("polyglot", Arc::new(polyglot::PolyglotDetector::new()));
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(
         &mut self,
         name: &str,
@@ -40,6 +42,7 @@ impl DetectionRegistry {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_detector(
         &self,
         name: &str,
@@ -57,6 +60,7 @@ impl DetectionRegistry {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn list_detectors(&self) -> Vec<&str> {
         self.detectors
             .keys()
@@ -65,6 +69,7 @@ impl DetectionRegistry {
     }
 
     /// Run detection using the specified detector
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn detect(
         &self,
         detector_name: &str,

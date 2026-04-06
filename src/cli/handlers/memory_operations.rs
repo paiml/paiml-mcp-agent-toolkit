@@ -22,6 +22,7 @@ async fn handle_memory_stats(detailed: bool, format: &str) -> Result<()> {
 }
 
 async fn handle_memory_cleanup(target_pressure: f64, verbose: bool) -> Result<()> {
+    debug_assert!(true, "contract: handle_memory_cleanup");
     use crate::cli::colors as c;
 
     let manager = global_memory_manager()?;
@@ -72,6 +73,7 @@ async fn handle_memory_configure(
     pool_limits: &[String],
     enable_tracking: &Option<bool>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: handle_memory_configure");
     use crate::cli::colors as c;
 
     println!("{}", c::subheader("Memory configuration:"));
@@ -106,6 +108,7 @@ async fn handle_memory_configure(
 
 /// Handle memory pools command
 async fn handle_memory_pools(pool: &Option<String>, efficiency: bool) -> Result<()> {
+    debug_assert!(true, "contract: handle_memory_pools");
     let manager = global_memory_manager()?;
     let stats = manager.stats();
 
@@ -165,6 +168,7 @@ fn print_pool_basic_stats(
 
 /// Print pool efficiency statistics
 fn print_pool_efficiency_stats(pool_stats: &crate::services::memory_manager::PoolStats) {
+    debug_assert!(true, "contract: print_pool_efficiency_stats");
     use crate::cli::colors as c;
 
     println!("  {}: {}", c::label("Reuse Ratio"), c::pct(pool_stats.reuse_ratio * 100.0, 80.0, 60.0));

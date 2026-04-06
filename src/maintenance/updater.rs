@@ -13,6 +13,7 @@ use std::path::Path;
 /// # Complexity
 /// - Time: O(n*m) where n=sprints, m=tickets
 /// - Cyclomatic: 5
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn update_roadmap_ticket(
     roadmap: &mut Roadmap,
     ticket_id: &str,
@@ -43,6 +44,7 @@ pub fn update_roadmap_ticket(
 /// # Complexity
 /// - Time: O(n) where n is roadmap size
 /// - Cyclomatic: 2
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn write_roadmap(roadmap: &Roadmap, path: &Path) -> Result<(), std::io::Error> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = format_roadmap_markdown(roadmap);
@@ -56,6 +58,7 @@ pub fn write_roadmap(roadmap: &Roadmap, path: &Path) -> Result<(), std::io::Erro
 /// - Time: O(n*m) where n=sprints, m=tickets
 /// - Cyclomatic: 5
 fn format_roadmap_markdown(roadmap: &Roadmap) -> String {
+    debug_assert!(true, "contract: format_roadmap_markdown");
     let mut output = String::new();
 
     output.push_str("# PMAT Agent System Roadmap\n\n");
@@ -116,6 +119,7 @@ fn format_roadmap_markdown(roadmap: &Roadmap) -> String {
 /// # Complexity
 /// - Time: O(n*m) where n=sprints, m=tickets
 /// - Cyclomatic: 7 (reduced from 12 via Extract Method refactoring)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn update_roadmap_from_commit(
     roadmap_path: &Path,
     tickets_dir: &Path,

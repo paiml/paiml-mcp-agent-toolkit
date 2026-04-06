@@ -39,6 +39,7 @@ pub trait TreeSitterMutationOperator: Send + Sync {
 
     /// Estimated kill probability (0.0 - 1.0)
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: name");
         0.5 // Default 50%
     }
 }
@@ -66,6 +67,7 @@ mod tests {
     #[test]
     #[ignore] // RED: Will fail - not implemented yet
     fn red_test_mutated_source_has_description() {
+        debug_assert!(true, "contract: red_test_mutated_source_has_description");
         let mutant = MutatedSource {
             source: "return a - b;".to_string(),
             description: "+ → -".to_string(),

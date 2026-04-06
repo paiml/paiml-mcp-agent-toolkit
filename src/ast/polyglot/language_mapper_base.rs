@@ -72,6 +72,7 @@ impl LanguageMapper for BaseLanguageMapper {
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 }

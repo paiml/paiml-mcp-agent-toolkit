@@ -19,6 +19,7 @@ pub struct RankingEngine<R: FileRanker> {
 }
 
 impl<R: FileRanker> RankingEngine<R> {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(ranker: R) -> Self {
         Self {
             ranker,
@@ -27,6 +28,7 @@ impl<R: FileRanker> RankingEngine<R> {
     }
 
     /// Rank files and return the top N results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn rank_files(&self, files: &[PathBuf], limit: usize) -> Vec<(String, R::Metric)> {
         debug_assert!(!files.is_empty(), "files must not be empty");
         if files.is_empty() || limit == 0 {
@@ -71,6 +73,7 @@ impl<R: FileRanker> RankingEngine<R> {
     }
 
     /// Format rankings as a table
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_rankings_table(&self, rankings: &[(String, R::Metric)]) -> String {
         debug_assert!(!rankings.is_empty(), "rankings must not be empty");
         if rankings.is_empty() {
@@ -96,6 +99,7 @@ impl<R: FileRanker> RankingEngine<R> {
     }
 
     /// Format rankings as JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_rankings_json(&self, rankings: &[(String, R::Metric)]) -> serde_json::Value {
         debug_assert!(!rankings.is_empty(), "rankings must not be empty");
         serde_json::json!({
@@ -115,6 +119,7 @@ impl<R: FileRanker> RankingEngine<R> {
     }
 
     /// Clear the cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear_cache(&self) {
         if let Ok(mut cache) = self.cache.write() {
             cache.clear();

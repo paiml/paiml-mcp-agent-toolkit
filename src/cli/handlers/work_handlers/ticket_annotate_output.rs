@@ -1,5 +1,6 @@
 /// Print specification section of text annotations (helper for print_annotations_text)
 fn print_text_spec_section(ann: &TicketAnnotations) {
+    debug_assert!(true, "contract: print_text_spec_section");
     use crate::cli::colors as c;
     println!("{}", c::subheader("📋 SPECIFICATION"));
     if let Some(ref spec) = ann.spec_path {
@@ -20,6 +21,7 @@ fn print_text_spec_section(ann: &TicketAnnotations) {
 
 /// Print TDG section of text annotations (helper for print_annotations_text)
 fn print_text_tdg_section(ann: &TicketAnnotations) {
+    debug_assert!(true, "contract: print_text_tdg_section");
     use crate::cli::colors as c;
     println!("{}", c::subheader("📈 TDG (Technical Debt Gradient)"));
     if let Some(tdg) = ann.avg_tdg {
@@ -50,6 +52,7 @@ fn print_text_tdg_section(ann: &TicketAnnotations) {
 
 /// Print churn section of text annotations (helper for print_annotations_text)
 fn print_text_churn_section(ann: &TicketAnnotations) {
+    debug_assert!(true, "contract: print_text_churn_section");
     use crate::cli::colors as c;
     println!("{}", c::subheader("🔄 CHURN ANALYSIS"));
     if let Some(churn) = ann.total_churn {
@@ -65,6 +68,7 @@ fn print_text_churn_section(ann: &TicketAnnotations) {
 
 /// Print tarantula and coverage sections (helper for print_annotations_text)
 fn print_text_fault_coverage_section(ann: &TicketAnnotations) {
+    debug_assert!(true, "contract: print_text_fault_coverage_section");
     use crate::cli::colors as c;
     println!("{}", c::subheader("🔴 TARANTULA FAULT DETECTION"));
     if ann.repeated_fixes.is_empty() {
@@ -90,6 +94,7 @@ fn print_text_fault_coverage_section(ann: &TicketAnnotations) {
 }
 
 fn print_annotations_text(ann: &TicketAnnotations) {
+    debug_assert!(true, "contract: print_annotations_text");
     use crate::cli::colors as c;
     println!("{} Quality Annotations for {}\n", c::subheader("📊"), c::path(&ann.ticket_id));
     println!("{}", c::rule());
@@ -116,11 +121,13 @@ fn print_annotations_text(ann: &TicketAnnotations) {
 }
 
 fn print_annotations_json(ann: &TicketAnnotations) -> Result<()> {
+    debug_assert!(true, "contract: print_annotations_json");
     println!("{}", serde_json::to_string_pretty(ann)?);
     Ok(())
 }
 
 fn print_annotations_markdown(ann: &TicketAnnotations) {
+    debug_assert!(true, "contract: print_annotations_markdown");
     println!("# Quality Annotations: {}\n", ann.ticket_id);
     println!("**Title:** {}", ann.title);
     println!("**Status:** {} | **Priority:** {}\n", ann.status, ann.priority);

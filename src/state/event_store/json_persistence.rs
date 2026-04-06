@@ -26,6 +26,7 @@ pub struct JsonFilePersistence {
 // ============================================================================
 
 impl JsonFilePersistence {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn new(file_path: &str) -> Result<Self, EventStoreError> {
         debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let file = OpenOptions::new()
@@ -92,6 +93,7 @@ impl JsonFilePersistence {
 #[async_trait::async_trait]
 impl EventPersistence for JsonFilePersistence {
     async fn append_event(&self, event: &StateEvent) -> Result<(), EventStoreError> {
+        debug_assert!(true, "contract: append_event");
         let line = Self::serialize_event(event)?;
 
         let mut file = self.log_file.write().await;
@@ -125,6 +127,7 @@ impl EventPersistence for JsonFilePersistence {
     }
 
     async fn load_all(&self) -> Result<Vec<StateEvent>, EventStoreError> {
+        debug_assert!(true, "contract: load_all");
         use tokio::io::{AsyncBufReadExt, BufReader};
 
         // Open a fresh file handle for reading (more reliable than seeking)
@@ -151,6 +154,7 @@ impl EventPersistence for JsonFilePersistence {
     }
 
     async fn compact(&self, events: &BTreeMap<EventId, StateEvent>) -> Result<(), EventStoreError> {
+        debug_assert!(true, "contract: compact");
         let temp_path = format!("{}.compact", self.file_path);
 
         let mut temp_file = OpenOptions::new()

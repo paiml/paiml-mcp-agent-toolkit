@@ -49,6 +49,7 @@ exit 0
 "#;
 
 /// Install commit-msg hook in git repository
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn install_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
     debug_assert!(
         project_path.exists(),
@@ -96,6 +97,7 @@ pub fn install_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
 }
 
 /// Uninstall commit-msg hook
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn uninstall_commit_msg_hook(project_path: &PathBuf) -> Result<()> {
     debug_assert!(
         project_path.exists(),

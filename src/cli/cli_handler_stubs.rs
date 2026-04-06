@@ -2,6 +2,7 @@
 // These delegate to actual implementations or provide placeholder output.
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_defect_prediction(
     _project_path: PathBuf,
     _confidence_threshold: f32,
@@ -23,6 +24,7 @@ pub async fn handle_analyze_defect_prediction(
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_duplicates(config: DuplicateHandlerConfig) -> anyhow::Result<()> {
     // Use the new advanced similarity handler with entropy detection
     handlers::similarity_handler::handle_analyze_similarity(
@@ -42,6 +44,7 @@ pub async fn handle_analyze_duplicates(config: DuplicateHandlerConfig) -> anyhow
 }
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_graph_metrics(
     _project_path: PathBuf,
     _metrics: Vec<GraphMetricType>,
@@ -67,6 +70,7 @@ pub async fn handle_analyze_graph_metrics(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_name_similarity(
     project_path: PathBuf,
     query: String,
@@ -103,6 +107,7 @@ pub async fn handle_analyze_name_similarity(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_symbol_table(
     _project_path: PathBuf,
     _format: SymbolTableOutputFormat,
@@ -124,6 +129,7 @@ pub async fn handle_analyze_symbol_table(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_comprehensive(
     _project_path: PathBuf,
     _format: ComprehensiveOutputFormat,

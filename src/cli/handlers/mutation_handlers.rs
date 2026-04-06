@@ -28,6 +28,7 @@ pub struct MutationTestConfig {
 impl MutationTestConfig {
     /// Create config from individual parameters
     #[allow(clippy::too_many_arguments)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         operators: Option<Vec<String>>,
         ml_predict: bool,

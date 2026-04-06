@@ -4,6 +4,7 @@
 impl BashComplexityAnalyzer {
     /// Creates a new Bash complexity analyzer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -13,6 +14,7 @@ impl BashComplexityAnalyzer {
     }
 
     /// Analyzes complexity of Bash script (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
@@ -36,6 +38,7 @@ impl BashComplexityAnalyzer {
     }
 
     /// Analyzes pipeline complexity (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_pipeline_complexity(&mut self, pipeline: &str) -> Result<u32, String> {
         debug_assert!(!pipeline.is_empty(), "pipeline must not be empty");
         let pipe_count = pipeline.matches('|').count();
@@ -43,6 +46,7 @@ impl BashComplexityAnalyzer {
     }
 
     /// Analyzes conditional complexity (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_conditional_complexity(&mut self, conditions: &str) -> Result<u32, String> {
         debug_assert!(!conditions.is_empty(), "conditions must not be empty");
         let mut complexity = 1;

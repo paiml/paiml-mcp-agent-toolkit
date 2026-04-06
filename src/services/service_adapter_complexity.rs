@@ -19,12 +19,14 @@ pub mod complexity_adapter {
 
     impl ComplexityServiceAdapter {
         #[must_use]
+        #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
         pub fn new_complexity_service() -> Self {
             ServiceAdapter::new(())
         }
     }
 
     async fn process_complexity(_inner: &(), _input: ComplexityInput) -> Result<ComplexityOutput> {
+        debug_assert!(true, "contract: process_complexity");
         // Would call actual complexity analysis here
         Ok(ComplexityOutput {
             metrics: ComplexityMetrics::default(),

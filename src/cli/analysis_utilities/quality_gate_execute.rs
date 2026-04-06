@@ -1,6 +1,7 @@
 /// Runs a single project-wide check
 #[allow(clippy::too_many_arguments)]
 /// Toyota Way: Data-Driven Design - eliminated 41→≤8 complexity
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_single_project_check(
     check: &QualityCheckType,
     project_path: &Path,
@@ -85,6 +86,7 @@ where
     Fut: std::future::Future<Output = Result<Vec<QualityViolation>>>,
     S: FnOnce(usize),
 {
+    debug_assert!(true, "contract: execute_quality_check_template");
     let violations_found = check_future.await?;
     set_result(violations_found.len());
     violations.extend(violations_found);

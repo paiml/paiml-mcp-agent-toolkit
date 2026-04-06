@@ -5,11 +5,13 @@ pub struct PatternExtractor {
 
 impl PatternExtractor {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: EntropyConfig) -> Self {
         Self { config }
     }
 
     /// Extract patterns from project using pmat context
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn extract_patterns(&self, project_path: &Path) -> Result<PatternCollection> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Get project context with AST

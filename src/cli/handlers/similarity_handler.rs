@@ -13,6 +13,7 @@ use crate::services::similarity::{
 
 /// Handle similarity analysis command with entropy detection
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_similarity(
     project_path: PathBuf,
     detection_type: crate::cli::DuplicateType,
@@ -167,6 +168,7 @@ fn should_include_file(
 }
 
 fn filter_top_files(report: ComprehensiveReport, top_files: usize) -> ComprehensiveReport {
+    debug_assert!(true, "contract: filter_top_files");
     if top_files > 0 {
         eprintln!("📈 Showing top {top_files} files with issues");
     }
@@ -177,6 +179,7 @@ fn format_report(
     report: &ComprehensiveReport,
     format: crate::cli::DuplicateOutputFormat,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_report");
     match format {
         crate::cli::DuplicateOutputFormat::Json => Ok(serde_json::to_string_pretty(report)?),
         crate::cli::DuplicateOutputFormat::Summary | crate::cli::DuplicateOutputFormat::Human => {

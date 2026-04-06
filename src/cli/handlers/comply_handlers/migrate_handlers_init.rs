@@ -61,6 +61,7 @@ async fn handle_init(project_path: &Path, force: bool) -> Result<()> {
 }
 
 fn generate_default_pmat_yaml() -> String {
+    debug_assert!(true, "contract: generate_default_pmat_yaml");
     r#"# PMAT Compliance Configuration
 # See: pmat comply check --help
 
@@ -133,6 +134,7 @@ pmat query --coverage-gaps --limit 30 --exclude-tests
 }
 
 /// Handle upgrade to a specific style (e.g., Popperian)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_upgrade(project_path: &Path, target: &str, dry_run: bool) -> Result<()> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::colors as c;

@@ -4,6 +4,7 @@ use super::handler::SimpleMcpHandler;
 use serde_json::{json, Value};
 
 impl SimpleMcpHandler {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_complexity_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -22,6 +23,7 @@ impl SimpleMcpHandler {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_satd_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -41,6 +43,7 @@ impl SimpleMcpHandler {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_dead_code_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -60,6 +63,7 @@ impl SimpleMcpHandler {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_tdg_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -78,6 +82,7 @@ impl SimpleMcpHandler {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_lint_hotspot_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -98,6 +103,7 @@ impl SimpleMcpHandler {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_quality_gate_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -117,6 +123,7 @@ impl SimpleMcpHandler {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_entropy_schema(&self) -> Value {
         json!({
             "type": "object",
@@ -135,6 +142,7 @@ impl SimpleMcpHandler {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_refactor_schema(&self) -> Value {
         json!({
             "type": "object",

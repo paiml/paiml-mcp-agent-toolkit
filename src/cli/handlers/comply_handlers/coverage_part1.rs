@@ -46,6 +46,7 @@ test-fast = 300000
 
     /// Create a git repository structure
     fn create_git_repo() -> TempDir {
+        debug_assert!(true, "contract: create_git_repo");
         let temp = create_temp_project();
         let hooks_dir = temp.path().join(".git").join("hooks");
         fs::create_dir_all(&hooks_dir).expect("Failed to create .git/hooks");
@@ -54,6 +55,7 @@ test-fast = 300000
 
     /// Create a Rust project with Cargo.toml
     fn create_rust_project(with_msrv: bool, with_lock: bool) -> TempDir {
+        debug_assert!(true, "contract: create_rust_project");
         let temp = create_temp_project();
         let cargo_content = if with_msrv {
             r#"[package]

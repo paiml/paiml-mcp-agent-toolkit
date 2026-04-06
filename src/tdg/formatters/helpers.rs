@@ -1,6 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use super::super::Grade;
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn progress_bar(value: f32, max_value: f32, width: usize) -> String {
     debug_assert!(width > 0, "width must be positive");
     let ratio = (value / max_value).clamp(0.0, 1.0);
@@ -10,6 +11,7 @@ pub(crate) fn progress_bar(value: f32, max_value: f32, width: usize) -> String {
     format!("{}{}", "█".repeat(filled), "░".repeat(empty))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn grade_delta(from: Grade, to: Grade) -> String {
     let from_val = grade_to_number(from);
     let to_val = grade_to_number(to);
@@ -24,6 +26,7 @@ pub(crate) fn grade_delta(from: Grade, to: Grade) -> String {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn grade_to_number(grade: Grade) -> i32 {
     match grade {
         Grade::APLus => 11,
@@ -40,6 +43,7 @@ pub(crate) fn grade_to_number(grade: Grade) -> i32 {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_metric_name(metric: &crate::tdg::MetricCategory) -> &'static str {
     match metric {
         crate::tdg::MetricCategory::StructuralComplexity => "Structural Complexity",
@@ -51,6 +55,7 @@ pub(crate) fn format_metric_name(metric: &crate::tdg::MetricCategory) -> &'stati
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn grade_description(grade: Grade) -> &'static str {
     match grade {
         Grade::APLus => {

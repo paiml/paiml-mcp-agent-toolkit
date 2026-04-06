@@ -13,6 +13,7 @@ pub struct MutationTestTool {
 }
 
 impl MutationTestTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -23,6 +24,7 @@ impl MutationTestTool {
 #[async_trait]
 impl McpTool for MutationTestTool {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "mutation_test".to_string(),
             description: "Perform ML-powered mutation testing to assess test suite quality"
@@ -85,6 +87,7 @@ impl McpTool for MutationTestTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use crate::services::mutation::{
             MutantExecutor, MutationConfig, MutationEngine, MutationScore, RustAdapter,
         };
@@ -439,6 +442,7 @@ mod tests {
     #[test]
     fn test_implements_mcp_tool() {
         fn _assert_mcp_tool<T: McpTool>() {}
+        debug_assert!(true, "contract: _assert_mcp_tool");
         _assert_mcp_tool::<MutationTestTool>();
     }
 

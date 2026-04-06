@@ -89,6 +89,7 @@ pub struct GamingDetectionResult {
 
 impl GamingDetectionResult {
     /// Check if any critical violations were found
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_critical_violations(&self) -> bool {
         self.violations
             .iter()
@@ -96,6 +97,7 @@ impl GamingDetectionResult {
     }
 
     /// Get only critical violations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn critical_violations(&self) -> Vec<&GamingViolation> {
         self.violations
             .iter()
@@ -104,6 +106,7 @@ impl GamingDetectionResult {
     }
 
     /// Count violations by severity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn count_by_severity(&self, severity: Severity) -> usize {
         self.violations
             .iter()

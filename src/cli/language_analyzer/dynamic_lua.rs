@@ -19,6 +19,7 @@ impl LuaAnalyzer {
 
     #[cfg(feature = "lua-ast")]
     fn collect_functions(node: &tree_sitter::Node, source: &str, out: &mut Vec<FunctionInfo>) {
+        debug_assert!(true, "contract: collect_functions");
         match node.kind() {
             "function_declaration" | "function_definition" => {
                 let name = Self::ts_function_name(node, source);
@@ -38,6 +39,7 @@ impl LuaAnalyzer {
 
     #[cfg(feature = "lua-ast")]
     fn ts_function_name(node: &tree_sitter::Node, source: &str) -> String {
+        debug_assert!(true, "contract: ts_function_name");
         if let Some(name_node) = node.child_by_field_name("name") {
             return source[name_node.byte_range()].to_string();
         }
@@ -106,6 +108,7 @@ impl LuaAnalyzer {
         max_nest: &mut u8,
         lines: &mut u16,
     ) {
+        debug_assert!(true, "contract: find_and_analyze_function");
         if (node.kind() == "function_declaration" || node.kind() == "function_definition")
             && node.start_position().row == target_line
         {
@@ -132,6 +135,7 @@ impl LuaAnalyzer {
         cog: &mut u16,
         max_nest: &mut u8,
     ) {
+        debug_assert!(true, "contract: walk_complexity");
         match node.kind() {
             "if_statement" | "for_statement" | "while_statement" | "repeat_statement" => {
                 *cyc += 1;
@@ -267,6 +271,7 @@ impl LuaAnalyzer {
     }
 
     fn find_function_end(&self, lines: &[&str], start: usize) -> usize {
+        debug_assert!(true, "contract: find_function_end");
         let mut depth: i32 = 0;
         let mut found_first = false;
 

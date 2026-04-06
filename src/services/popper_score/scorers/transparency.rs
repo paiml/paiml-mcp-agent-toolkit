@@ -47,6 +47,7 @@ pub struct TransparencyScorer;
 
 impl TransparencyScorer {
     /// Create a new transparency scorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -363,6 +364,7 @@ impl Default for TransparencyScorer {
 
 impl PopperScorer for TransparencyScorer {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "Transparency & Openness"
     }
 

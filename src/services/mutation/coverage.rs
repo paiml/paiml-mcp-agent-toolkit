@@ -24,11 +24,13 @@ pub struct CoverageInfo {
 
 impl CoverageInfo {
     /// Create new empty coverage info
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Calculate coverage percentage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn coverage_percentage(&self, total_lines: u32) -> f64 {
         if total_lines == 0 {
             return 0.0;
@@ -37,6 +39,7 @@ impl CoverageInfo {
     }
 
     /// Check if this coverage is a superset of another
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn covers(&self, other: &CoverageInfo) -> bool {
         other.lines_covered.is_subset(&self.lines_covered)
             && other.blocks_covered.is_subset(&self.blocks_covered)
@@ -44,6 +47,7 @@ impl CoverageInfo {
     }
 
     /// Calculate coverage increase from baseline
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn coverage_increase(&self, baseline: &CoverageInfo) -> f64 {
         let new_lines = self
             .lines_covered
@@ -72,6 +76,7 @@ impl CoverageInfo {
     }
 
     /// Merge with another coverage info
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn merge(&mut self, other: &CoverageInfo) {
         self.lines_covered.extend(&other.lines_covered);
         self.blocks_covered.extend(&other.blocks_covered);
@@ -80,6 +85,7 @@ impl CoverageInfo {
     }
 
     /// Check if this is "interesting" (adds new coverage)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_interesting(&self, corpus: &[CoverageInfo]) -> bool {
         for existing in corpus {
             if existing.covers(self) {
@@ -105,6 +111,7 @@ pub struct CoverageCorpus {
 
 impl CoverageCorpus {
     /// Create new corpus with baseline coverage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(baseline: CoverageInfo) -> Self {
         Self {
             interesting_inputs: Vec::new(),
@@ -114,6 +121,7 @@ impl CoverageCorpus {
     }
 
     /// Add input if it discovers new coverage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_if_interesting(&mut self, input: Vec<u8>, coverage: CoverageInfo) -> bool {
         debug_assert!(!input.is_empty(), "input must not be empty");
         if coverage.is_interesting(
@@ -132,11 +140,13 @@ impl CoverageCorpus {
     }
 
     /// Get total coverage increase from baseline
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_coverage_increase(&self) -> f64 {
         self.max_coverage.coverage_increase(&self.baseline)
     }
 
     /// Get most interesting inputs for mutation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_seeds(&self, count: usize) -> Vec<Vec<u8>> {
         debug_assert!(count > 0, "count must be positive");
         self.interesting_inputs
@@ -162,31 +172,37 @@ pub struct CoverageTracker {
 
 impl CoverageTracker {
     /// Create new coverage tracker
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Record line execution
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_line(&mut self, line: u32) {
         self.current.lines_covered.insert(line);
     }
 
     /// Record block execution
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_block(&mut self, block_id: u64) {
         self.current.blocks_covered.insert(block_id);
     }
 
     /// Record branch taken
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_branch(&mut self, from: u64, to: u64) {
         self.current.branches_taken.insert((from, to));
     }
 
     /// Get current coverage and reset
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn take_coverage(&mut self) -> CoverageInfo {
         std::mem::take(&mut self.current)
     }
 
     /// Simulate coverage for given input (Phase 1)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn simulate_coverage(input: &[u8]) -> CoverageInfo {
         debug_assert!(!input.is_empty(), "input must not be empty");
         let mut coverage = CoverageInfo::new();

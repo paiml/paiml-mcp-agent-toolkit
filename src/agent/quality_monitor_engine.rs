@@ -4,6 +4,7 @@
 impl QualityMonitorEngine {
     /// Create new quality monitor
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: QualityMonitorConfig) -> Self {
         Self {
             config,
@@ -14,6 +15,7 @@ impl QualityMonitorEngine {
     }
 
     /// Start monitoring a project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn start_monitoring(
         &mut self,
         project_id: String,
@@ -87,6 +89,7 @@ impl QualityMonitorEngine {
     }
 
     /// Stop monitoring a project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn stop_monitoring(&mut self, project_id: &str) -> Result<()> {
         debug_assert!(!project_id.is_empty(), "project_id must not be empty");
         info!("Stopping quality monitoring for project: {}", project_id);
@@ -107,6 +110,7 @@ impl QualityMonitorEngine {
     }
 
     /// Get current quality metrics for a project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_metrics(&self, project_id: &str) -> Option<QualityMetrics> {
         debug_assert!(!project_id.is_empty(), "project_id must not be empty");
         let metrics = self.metrics.read().await;
@@ -114,6 +118,7 @@ impl QualityMonitorEngine {
     }
 
     /// Set event sender for quality notifications
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_event_sender(&mut self, sender: mpsc::Sender<QualityEvent>) {
         self.event_sender = Some(sender);
     }

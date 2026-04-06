@@ -61,6 +61,7 @@ pub(super) fn segments_to_line_hits(segments: &[Vec<serde_json::Value>]) -> Hash
 /// Parse full LLVM coverage export into per-file line hit maps.
 ///
 /// File paths are normalized to be relative to the project root.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn build_coverage_map(
     json: &str,
     project_root: &Path,

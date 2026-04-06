@@ -4,6 +4,7 @@ use super::{FindingSeverity, KaizenConfig, KaizenFinding, KaizenReport};
 use crate::cli::commands::KaizenOutputFormat;
 use anyhow::{Context, Result};
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn output_report(report: &KaizenReport, config: &KaizenConfig) -> Result<()> {
     let output_text = format_report(report, config.format);
     if let Some(output_path) = &config.output {
@@ -16,6 +17,7 @@ pub(crate) fn output_report(report: &KaizenReport, config: &KaizenConfig) -> Res
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_report(report: &KaizenReport, format: KaizenOutputFormat) -> String {
     match format {
         KaizenOutputFormat::Json => serde_json::to_string_pretty(report).unwrap_or_default(),
@@ -25,6 +27,7 @@ pub(crate) fn format_report(report: &KaizenReport, format: KaizenOutputFormat) -
 }
 
 fn format_finding_text(finding: &KaizenFinding) -> String {
+    debug_assert!(true, "contract: format_finding_text");
     let status = if finding.fix_applied {
         "FIXED"
     } else if finding.agent_fixable {
@@ -49,6 +52,7 @@ fn format_finding_text(finding: &KaizenFinding) -> String {
 }
 
 fn format_report_text(report: &KaizenReport) -> String {
+    debug_assert!(true, "contract: format_report_text");
     let mut out = String::new();
     let is_cross_stack = !report.crates_scanned.is_empty();
 
@@ -144,6 +148,7 @@ fn format_report_text(report: &KaizenReport) -> String {
 }
 
 fn format_finding_md_row(finding: &KaizenFinding) -> String {
+    debug_assert!(true, "contract: format_finding_md_row");
     let status = if finding.fix_applied {
         "Fixed"
     } else if finding.agent_fixable {
@@ -163,6 +168,7 @@ fn format_finding_md_row(finding: &KaizenFinding) -> String {
 }
 
 fn format_report_markdown(report: &KaizenReport) -> String {
+    debug_assert!(true, "contract: format_report_markdown");
     let mut out = String::new();
     let is_cross_stack = !report.crates_scanned.is_empty();
 

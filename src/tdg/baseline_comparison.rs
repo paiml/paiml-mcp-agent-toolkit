@@ -1,15 +1,18 @@
 impl BaselineComparison {
     /// Check if there are any regressions
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_regressions(&self) -> bool {
         !self.regressed.is_empty()
     }
 
     /// Get total number of changes
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_changes(&self) -> usize {
         self.improved.len() + self.regressed.len() + self.added.len() + self.removed.len()
     }
 
     /// Format comparison as human-readable text
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_text(&self) -> String {
         let mut output = String::new();
 

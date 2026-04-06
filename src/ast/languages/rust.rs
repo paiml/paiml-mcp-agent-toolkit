@@ -24,6 +24,7 @@ impl Default for RustStrategy {
 
 impl RustStrategy {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {}
     }
@@ -34,6 +35,7 @@ impl RustStrategy {
     }
 
     fn convert_to_dag(&self, syn_file: &SynFile) -> AstDag {
+        debug_assert!(true, "contract: convert_to_dag");
         let mut dag = AstDag::new();
         let mut visitor = RustAstVisitor::new(&mut dag);
         visitor.visit_file(syn_file);

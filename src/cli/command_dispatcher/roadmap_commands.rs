@@ -10,6 +10,7 @@ use crate::cli::commands::RoadmapCommands;
 
 impl CommandDispatcher {
     /// Execute roadmap commands using handler pattern (reduces CC)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_roadmap_command(roadmap_cmd: RoadmapCommands) -> anyhow::Result<()> {
         use crate::roadmap::{self, RoadmapConfig};
         use std::path::PathBuf;

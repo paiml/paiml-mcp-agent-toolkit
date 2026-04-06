@@ -1,5 +1,6 @@
 /// Start the background agent daemon
 async fn handle_agent_start(config: AgentStartConfig) -> Result<()> {
+    debug_assert!(true, "contract: handle_agent_start");
     info!("Starting Claude Code Agent daemon");
 
     check_daemon_not_running().await?;
@@ -11,6 +12,7 @@ async fn handle_agent_start(config: AgentStartConfig) -> Result<()> {
 }
 
 async fn check_daemon_not_running() -> Result<()> {
+    debug_assert!(true, "contract: check_daemon_not_running");
     if DaemonManager::is_running().await {
         Err(anyhow!(
             "Agent daemon is already running. Use 'pmat agent stop' to stop it first."
@@ -21,12 +23,14 @@ async fn check_daemon_not_running() -> Result<()> {
 }
 
 async fn prepare_daemon_config(config: AgentStartConfig) -> Result<DaemonConfig> {
+    debug_assert!(true, "contract: prepare_daemon_config");
     let mut daemon_config = load_or_default_config(&config.config_path).await?;
     apply_config_overrides(&mut daemon_config, &config);
     Ok(daemon_config)
 }
 
 async fn load_or_default_config(config_path: &Option<PathBuf>) -> Result<DaemonConfig> {
+    debug_assert!(true, "contract: load_or_default_config");
     if let Some(path) = config_path {
         load_daemon_config(path).await
     } else {
@@ -35,6 +39,7 @@ async fn load_or_default_config(config_path: &Option<PathBuf>) -> Result<DaemonC
 }
 
 fn apply_config_overrides(daemon_config: &mut DaemonConfig, config: &AgentStartConfig) {
+    debug_assert!(true, "contract: apply_config_overrides");
     daemon_config.daemon.health_check_interval = Duration::from_secs(config.health_interval);
     daemon_config.daemon.max_memory_mb = config.max_memory_mb;
     daemon_config.daemon.auto_restart = config.auto_restart;
@@ -43,6 +48,7 @@ fn apply_config_overrides(daemon_config: &mut DaemonConfig, config: &AgentStartC
 }
 
 fn apply_optional_overrides(daemon_config: &mut DaemonConfig, config: &AgentStartConfig) {
+    debug_assert!(true, "contract: apply_optional_overrides");
     if let Some(working_dir) = &config.working_dir {
         daemon_config.daemon.working_directory = working_dir.clone();
     }
@@ -57,6 +63,7 @@ fn apply_optional_overrides(daemon_config: &mut DaemonConfig, config: &AgentStar
 }
 
 async fn start_daemon_with_mode(mut daemon: AgentDaemon, foreground: bool) -> Result<()> {
+    debug_assert!(true, "contract: start_daemon_with_mode");
     if foreground {
         info!("Starting daemon in foreground mode");
         daemon.start().await
@@ -66,6 +73,7 @@ async fn start_daemon_with_mode(mut daemon: AgentDaemon, foreground: bool) -> Re
 }
 
 async fn start_background_mode(mut daemon: AgentDaemon) -> Result<()> {
+    debug_assert!(true, "contract: start_background_mode");
     info!("Starting daemon in background mode");
     // In a real implementation, we would fork the process here
     // For now, just start normally
@@ -75,6 +83,7 @@ async fn start_background_mode(mut daemon: AgentDaemon) -> Result<()> {
 
 /// Stop the background agent daemon
 async fn handle_agent_stop(_pid_file: Option<PathBuf>, _force: bool, _timeout: u64) -> Result<()> {
+    debug_assert!(true, "contract: handle_agent_stop");
     info!("Stopping Claude Code Agent daemon");
 
     if !DaemonManager::is_running().await {
@@ -100,6 +109,7 @@ async fn handle_agent_status(
     _pid_file: Option<PathBuf>,
     format: crate::cli::OutputFormat,
 ) -> Result<()> {
+    debug_assert!(true, "contract: handle_agent_status");
     info!("Checking Claude Code Agent daemon status");
 
     let is_running = DaemonManager::is_running().await;

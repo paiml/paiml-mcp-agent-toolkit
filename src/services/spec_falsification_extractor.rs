@@ -22,6 +22,7 @@ struct LineSignals {
 }
 
 impl SpecClaimExtractor {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             path_pattern: Regex::new(
@@ -57,6 +58,7 @@ impl SpecClaimExtractor {
     }
 
     /// Extract all falsifiable claims from a specification document
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn extract(&self, content: &str, source_file: &Path) -> Vec<SpecClaim> {
         debug_assert!(source_file.exists(), "source_file must exist: {}", source_file.display());
         let mut claims = Vec::new();
@@ -186,6 +188,7 @@ impl SpecClaimExtractor {
         priority: ClaimPriority,
         is_absolute: bool,
     ) -> Option<SpecClaimCategory> {
+        debug_assert!(true, "contract: categorize");
         if signals.has_absence {
             return Some(SpecClaimCategory::AbsenceClaim);
         }

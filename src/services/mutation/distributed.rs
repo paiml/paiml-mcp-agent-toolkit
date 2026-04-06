@@ -76,6 +76,7 @@ impl MutationProgress {
     }
 
     /// Calculate completion percentage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn percentage(&self) -> f64 {
         if self.total == 0 {
             return 100.0;
@@ -84,6 +85,7 @@ impl MutationProgress {
     }
 
     /// Calculate mutation score (killed / total non-equivalent)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn mutation_score(&self) -> f64 {
         let total_tested = self.killed + self.survived;
         if total_tested == 0 {

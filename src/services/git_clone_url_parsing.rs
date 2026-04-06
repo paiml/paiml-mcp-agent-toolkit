@@ -3,6 +3,7 @@
 
 impl GitCloner {
     #[inline]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_github_url(&self, url: &str) -> Result<ParsedGitHubUrl, CloneError> {
         debug_assert!(!url.is_empty(), "url must not be empty");
         // Support various GitHub URL formats
@@ -116,6 +117,7 @@ impl GitCloner {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_cache_key(&self, url: &str) -> String {
         debug_assert!(!url.is_empty(), "url must not be empty");
         // Create a cache key from the URL
@@ -191,6 +193,7 @@ impl GitCloner {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn check_repo_size(&self, parsed_url: &ParsedGitHubUrl) -> Result<u64> {
         use anyhow::anyhow;
         use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, USER_AGENT};

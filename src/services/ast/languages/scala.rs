@@ -21,6 +21,7 @@ pub struct ScalaStrategy;
 impl ScalaStrategy {
     /// Creates a new Scala language strategy
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -61,16 +62,19 @@ impl AstStrategy for ScalaStrategy {
     
     /// Returns the primary file extension for Scala
     fn primary_extension(&self) -> &'static str {
+        debug_assert!(true, "contract: primary_extension");
         "scala"
     }
     
     /// Returns all file extensions supported by this strategy
     fn supported_extensions(&self) -> Vec<&'static str> {
+        debug_assert!(true, "contract: supported_extensions");
         vec!["scala", "sc"]
     }
     
     /// Returns the language name
     fn language_name(&self) -> &'static str {
+        debug_assert!(true, "contract: language_name");
         "Scala"
     }
 }

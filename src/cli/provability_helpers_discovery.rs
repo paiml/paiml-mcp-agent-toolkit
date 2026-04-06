@@ -1,4 +1,5 @@
 /// Discover all functions in project
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn discover_project_functions(project_path: &Path) -> Result<Vec<FunctionId>> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("\u{1f4c2} Discovering functions in project...");

@@ -50,6 +50,7 @@ impl Scorer for CouplingAnalyzer {
     }
 
     fn category(&self) -> MetricCategory {
+        debug_assert!(true, "contract: category");
         MetricCategory::Coupling
     }
 }

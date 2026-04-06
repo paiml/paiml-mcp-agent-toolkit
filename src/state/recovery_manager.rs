@@ -1,6 +1,7 @@
 // RecoveryManager: state recovery orchestrator with adaptive snapshot scheduling
 
 impl<S: AgentState> RecoveryManager<S> {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn new(
         event_store_config: EventStoreConfig,
         snapshot_config: SnapshotConfig,
@@ -31,6 +32,7 @@ impl<S: AgentState> RecoveryManager<S> {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn recover_state(
         &self,
         initial_state: S,
@@ -94,6 +96,7 @@ impl<S: AgentState> RecoveryManager<S> {
         &self,
         initial_state: S,
     ) -> Result<(S, u64), RecoveryError> {
+        debug_assert!(true, "contract: recover_from_global_snapshot");
         if let Some(snapshot) = self.snapshot_store.find_latest_snapshot() {
             let restored = self
                 .snapshot_store
@@ -106,6 +109,7 @@ impl<S: AgentState> RecoveryManager<S> {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn save_snapshot(
         &self,
         state: &S,
@@ -126,11 +130,13 @@ impl<S: AgentState> RecoveryManager<S> {
         Ok(snapshot_id)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn should_snapshot(&self, state: &S) -> bool {
         self.snapshot_scheduler
             .should_snapshot(state.events_since_snapshot(), state.time_since_snapshot())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn compact_events(&self) -> Result<(), RecoveryError> {
         self.event_store
             .compact()
@@ -139,6 +145,7 @@ impl<S: AgentState> RecoveryManager<S> {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn cleanup_old_snapshots(&self) -> Result<usize, RecoveryError> {
         self.snapshot_store
             .cleanup_orphaned_files()
@@ -146,6 +153,7 @@ impl<S: AgentState> RecoveryManager<S> {
             .map_err(|e| RecoveryError::SnapshotError(e.to_string()))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_recovery_stats(&self) -> RecoveryStats {
         let event_stats = self.event_store.get_statistics();
         let snapshot_stats = self.snapshot_store.get_statistics();

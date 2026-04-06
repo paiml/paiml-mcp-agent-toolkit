@@ -20,6 +20,7 @@
 
     /// Create test Evidence with specified source
     fn create_test_evidence(source: EvidenceSource) -> Evidence {
+        debug_assert!(true, "contract: create_test_evidence");
         match source {
             EvidenceSource::Complexity => Evidence::new(
                 source,
@@ -82,6 +83,7 @@
 
     /// Create a Recommendation with specified priority
     fn create_test_recommendation(priority: Priority) -> Recommendation {
+        debug_assert!(true, "contract: create_test_recommendation");
         Recommendation::new(
             priority,
             "Test action".to_string(),

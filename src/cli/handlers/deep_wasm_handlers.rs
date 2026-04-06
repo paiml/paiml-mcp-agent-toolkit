@@ -31,6 +31,7 @@ pub struct DeepWasmOptions {
 
 /// Handles the deep-wasm analysis command
 #[cfg(feature = "deep-wasm")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_deep_wasm(options: DeepWasmOptions) -> Result<()> {
     let DeepWasmOptions {
         source_path,
@@ -141,6 +142,7 @@ fn auto_detect_language(source_path: &PathBuf) -> SourceLanguage {
 /// Converts CLI focus enum to service focus enum
 #[cfg(feature = "deep-wasm")]
 fn convert_analysis_focus(focus: DeepWasmFocus) -> AnalysisFocus {
+    debug_assert!(true, "contract: convert_analysis_focus");
     match focus {
         DeepWasmFocus::Full => AnalysisFocus::Full,
         DeepWasmFocus::Source => AnalysisFocus::Source,
@@ -153,6 +155,7 @@ fn convert_analysis_focus(focus: DeepWasmFocus) -> AnalysisFocus {
 /// Creates service with quality gates based on strict mode
 #[cfg(feature = "deep-wasm")]
 fn create_configured_service(strict: bool) -> DeepWasmService {
+    debug_assert!(true, "contract: create_configured_service");
     let gates = if strict {
         create_strict_quality_gates()
     } else {
@@ -165,6 +168,7 @@ fn create_configured_service(strict: bool) -> DeepWasmService {
 /// Creates strict quality gates
 #[cfg(feature = "deep-wasm")]
 fn create_strict_quality_gates() -> crate::services::deep_wasm::WasmQualityGates {
+    debug_assert!(true, "contract: create_strict_quality_gates");
     use crate::services::deep_wasm::WasmQualityGates;
     WasmQualityGates {
         max_module_size: 5_242_880,    // Stricter 5MB limit
@@ -177,6 +181,7 @@ fn create_strict_quality_gates() -> crate::services::deep_wasm::WasmQualityGates
 /// Creates relaxed quality gates
 #[cfg(feature = "deep-wasm")]
 fn create_relaxed_quality_gates() -> crate::services::deep_wasm::WasmQualityGates {
+    debug_assert!(true, "contract: create_relaxed_quality_gates");
     use crate::services::deep_wasm::WasmQualityGates;
     WasmQualityGates {
         max_module_size: 20_971_520,  // Relaxed 20MB limit
@@ -193,6 +198,7 @@ fn write_analysis_output(
     format: DeepWasmOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_analysis_output");
     let output_content = generate_output_content(report, format)?;
 
     if let Some(output_path) = output {
@@ -210,6 +216,7 @@ fn generate_output_content(
     report: &crate::services::deep_wasm::DeepWasmReport,
     format: DeepWasmOutputFormat,
 ) -> Result<String> {
+    debug_assert!(true, "contract: generate_output_content");
     match format {
         DeepWasmOutputFormat::Markdown => {
             use crate::services::deep_wasm::ReportGenerator;
@@ -227,6 +234,7 @@ fn validate_quality_gates(
     report: &crate::services::deep_wasm::DeepWasmReport,
     strict: bool,
 ) -> Result<()> {
+    debug_assert!(true, "contract: validate_quality_gates");
     if !report.quality_gate_results.passed {
         print_quality_violations(&report.quality_gate_results.violations);
 
@@ -253,6 +261,7 @@ fn print_quality_violations(violations: &[crate::services::deep_wasm::QualityVio
 
 /// Stub handler when feature is disabled
 #[cfg(not(feature = "deep-wasm"))]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_deep_wasm(
     _source_path: PathBuf,
     _wasm_file: Option<PathBuf>,

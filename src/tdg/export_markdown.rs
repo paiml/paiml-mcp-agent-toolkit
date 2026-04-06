@@ -3,6 +3,7 @@
 
 impl TdgExporter {
     fn score_to_markdown(score: &TdgScore, options: &ExportOptions) -> Result<String> {
+        debug_assert!(true, "contract: score_to_markdown");
         let mut md = String::new();
 
         md.push_str("# TDG Analysis Report\n\n");
@@ -55,6 +56,7 @@ impl TdgExporter {
     }
 
     fn project_to_markdown(project: &ProjectScore, _options: &ExportOptions) -> Result<String> {
+        debug_assert!(true, "contract: project_to_markdown");
         let mut md = String::new();
 
         md.push_str("# Project TDG Analysis\n\n");
@@ -87,6 +89,7 @@ impl TdgExporter {
     }
 
     fn comparison_to_markdown(comparison: &Comparison, _options: &ExportOptions) -> Result<String> {
+        debug_assert!(true, "contract: comparison_to_markdown");
         let mut md = String::new();
 
         md.push_str("# TDG Comparison Report\n\n");
@@ -126,6 +129,7 @@ impl TdgExporter {
     }
 
     fn generate_recommendations(score: &TdgScore) -> Vec<String> {
+        debug_assert!(true, "contract: generate_recommendations");
         let mut recommendations = Vec::new();
 
         if score.structural_complexity < 15.0 {

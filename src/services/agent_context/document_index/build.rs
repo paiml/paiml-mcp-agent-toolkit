@@ -32,6 +32,7 @@ pub(crate) struct DocumentBuildResult {
 ///
 /// Walks the project directory, finds document files, extracts text,
 /// and inserts into the SQLite database. Uses checksums for incremental updates.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn build_document_index(
     conn: &Connection,
     project_path: &Path,

@@ -41,6 +41,7 @@ pub struct SubScores {
 }
 
 /// Handle the `pmat score` command.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_score(
     path: &Path,
     gate: Option<f64>,

@@ -12,6 +12,7 @@ pub struct McpOperationResult {
 
 impl McpOperationResult {
     /// Create a success result
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn success(data: Value) -> Self {
         Self {
             success: true,
@@ -22,6 +23,7 @@ impl McpOperationResult {
     }
 
     /// Create an error result
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn error(message: String, details: Option<Vec<String>>) -> Self {
         Self {
             success: false,
@@ -32,6 +34,7 @@ impl McpOperationResult {
     }
 
     /// Create an error result from an anyhow error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_error(err: anyhow::Error) -> Self {
         let error_chain: Vec<String> = err
             .chain()

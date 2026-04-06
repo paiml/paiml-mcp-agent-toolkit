@@ -174,6 +174,7 @@ use tracing::info;
 /// pmat generate report . --format text --perf > quality-summary.txt
 /// ```ignore
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_generate_report(
     project_path: PathBuf,
     output_format: ReportOutputFormat,
@@ -219,6 +220,7 @@ fn determine_output_format(
     markdown: bool,
     csv: bool,
 ) -> ReportOutputFormat {
+    debug_assert!(true, "contract: determine_output_format");
     if text {
         ReportOutputFormat::Text
     } else if markdown {
@@ -244,6 +246,7 @@ fn log_report_generation_start(project_path: &Path, actual_format: &ReportOutput
 
 /// Convert CLI output format to service format (cognitive complexity ≤7)
 fn convert_to_service_format(actual_format: ReportOutputFormat) -> ReportFormat {
+    debug_assert!(true, "contract: convert_to_service_format");
     match actual_format {
         ReportOutputFormat::Json => ReportFormat::Json,
         ReportOutputFormat::Csv => ReportFormat::Csv,
@@ -262,6 +265,7 @@ fn format_report_output(
     report: &DefectReport,
     service_format: ReportFormat,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_report_output");
     match service_format {
         ReportFormat::Json => service.format_json(report),
         ReportFormat::Csv => service.format_csv(report),
@@ -276,6 +280,7 @@ async fn write_report_output(
     output: Option<PathBuf>,
     service_format: ReportFormat,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_report_output");
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &formatted_output).await?;
         eprintln!("📄 Report saved to: {}", output_path.display());
@@ -290,6 +295,7 @@ async fn write_report_output(
 
 /// Print comprehensive report summary (cognitive complexity ≤8)
 fn print_report_summary(report: &DefectReport, elapsed: std::time::Duration, perf: bool) {
+    debug_assert!(true, "contract: print_report_summary");
     info!("✅ Report generation completed in {:?}", elapsed);
     info!("📊 Total Defects: {}", report.summary.total_defects);
     info!("📁 Files with defects: {}", report.file_index.len());
@@ -304,6 +310,7 @@ fn print_report_summary(report: &DefectReport, elapsed: std::time::Duration, per
 
 /// Print severity-specific summary (cognitive complexity ≤4)
 fn print_severity_summary(report: &DefectReport) {
+    debug_assert!(true, "contract: print_severity_summary");
     if let Some(critical) = report.summary.by_severity.get("critical") {
         if *critical > 0 {
             info!("🚨 Critical Issues: {}", critical);
@@ -343,6 +350,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

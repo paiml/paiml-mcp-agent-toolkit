@@ -17,12 +17,14 @@ impl SourceMapHandler {
         Self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_from_file<P: AsRef<Path>>(&self, path: P) -> DeepWasmResult<SourceMap> {
         let contents = std::fs::read_to_string(path)?;
         SourceMap::from_slice(contents.as_bytes())
             .map_err(|e| DeepWasmError::SourceMap(e.to_string()))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_mappings(&self, source_map: &SourceMap) -> Vec<SourceMapEntry> {
         let mut entries = Vec::new();
 
@@ -43,6 +45,7 @@ impl SourceMapHandler {
     }
 
     /// Convenience method to load and parse source map in one step
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn parse_source_map<P: AsRef<Path>>(&self, path: P) -> DeepWasmResult<Vec<SourceMapEntry>> {
         let source_map = self.load_from_file(path)?;
         Ok(self.parse_mappings(&source_map))

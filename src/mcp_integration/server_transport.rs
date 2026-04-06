@@ -2,6 +2,7 @@ async fn handle_session(
     session: McpSession,
     config: ServerConfig,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    debug_assert!(true, "contract: handle_session");
     let transport = session.transport.clone();
 
     loop {
@@ -63,6 +64,7 @@ impl TcpTransport {
 #[async_trait]
 impl McpTransport for TcpTransport {
     async fn send(&self, message: McpMessage) -> Result<(), McpError> {
+        debug_assert!(true, "contract: send");
         let json = serde_json::to_string(&message).map_err(|e| McpError {
             code: error_codes::INTERNAL_ERROR,
             message: format!("Failed to serialize message: {}", e),
@@ -93,6 +95,7 @@ impl McpTransport for TcpTransport {
     }
 
     async fn receive(&self) -> Result<McpMessage, McpError> {
+        debug_assert!(true, "contract: receive");
         let mut stream = self.stream.lock().await;
         let mut reader = BufReader::new(&mut *stream);
         let mut line = String::new();
@@ -119,6 +122,7 @@ impl McpTransport for TcpTransport {
     }
 
     async fn close(&self) -> Result<(), McpError> {
+        debug_assert!(true, "contract: close");
         let mut stream = self.stream.lock().await;
         stream.shutdown().await.map_err(|e| McpError {
             code: error_codes::INTERNAL_ERROR,
@@ -144,6 +148,7 @@ impl UnixTransport {
 #[async_trait]
 impl McpTransport for UnixTransport {
     async fn send(&self, message: McpMessage) -> Result<(), McpError> {
+        debug_assert!(true, "contract: send");
         let json = serde_json::to_string(&message).map_err(|e| McpError {
             code: error_codes::INTERNAL_ERROR,
             message: format!("Failed to serialize message: {}", e),
@@ -174,6 +179,7 @@ impl McpTransport for UnixTransport {
     }
 
     async fn receive(&self) -> Result<McpMessage, McpError> {
+        debug_assert!(true, "contract: receive");
         let mut stream = self.stream.lock().await;
         let mut reader = BufReader::new(&mut *stream);
         let mut line = String::new();
@@ -200,6 +206,7 @@ impl McpTransport for UnixTransport {
     }
 
     async fn close(&self) -> Result<(), McpError> {
+        debug_assert!(true, "contract: close");
         let mut stream = self.stream.lock().await;
         stream.shutdown().await.map_err(|e| McpError {
             code: error_codes::INTERNAL_ERROR,
@@ -221,6 +228,7 @@ impl StdioTransport {
 #[async_trait]
 impl McpTransport for StdioTransport {
     async fn send(&self, message: McpMessage) -> Result<(), McpError> {
+        debug_assert!(true, "contract: send");
         let json = serde_json::to_string(&message).map_err(|e| McpError {
             code: error_codes::INTERNAL_ERROR,
             message: format!("Failed to serialize message: {}", e),
@@ -232,6 +240,7 @@ impl McpTransport for StdioTransport {
     }
 
     async fn receive(&self) -> Result<McpMessage, McpError> {
+        debug_assert!(true, "contract: receive");
         use tokio::io::{self, AsyncBufReadExt};
 
         let stdin = io::stdin();
@@ -260,6 +269,7 @@ impl McpTransport for StdioTransport {
     }
 
     async fn close(&self) -> Result<(), McpError> {
+        debug_assert!(true, "contract: close");
         Ok(())
     }
 }

@@ -16,6 +16,7 @@ pub struct ReplayEngine {
 
 impl ReplayEngine {
     /// Create a new replay engine from a recording
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_recording(snapshots: Vec<ExecutionSnapshot>) -> Self {
         debug_assert!(!snapshots.is_empty(), "snapshots must not be empty");
         Self {
@@ -25,16 +26,19 @@ impl ReplayEngine {
     }
 
     /// Get current position in the recording
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_position(&self) -> usize {
         self.current_position
     }
 
     /// Get total number of snapshots
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_snapshots(&self) -> usize {
         self.snapshots.len()
     }
 
     /// Step forward one snapshot
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn step_forward(&mut self) -> Result<(), String> {
         if self.current_position >= self.snapshots.len() - 1 {
             return Err("Cannot step forward: already at last snapshot".to_string());
@@ -44,6 +48,7 @@ impl ReplayEngine {
     }
 
     /// Step backward one snapshot
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn step_backward(&mut self) -> Result<(), String> {
         if self.current_position == 0 {
             return Err("Cannot step backward: already at first snapshot".to_string());
@@ -53,6 +58,7 @@ impl ReplayEngine {
     }
 
     /// Jump to specific position
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn goto(&mut self, position: usize) -> Result<(), String> {
         if position >= self.snapshots.len() {
             return Err(format!(
@@ -66,6 +72,7 @@ impl ReplayEngine {
     }
 
     /// Get current snapshot
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_snapshot(&self) -> &ExecutionSnapshot {
         &self.snapshots[self.current_position]
     }

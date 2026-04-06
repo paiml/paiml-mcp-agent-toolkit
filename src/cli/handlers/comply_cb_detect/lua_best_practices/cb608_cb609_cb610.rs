@@ -17,6 +17,7 @@ use std::path::Path;
 /// CB-608: Unchecked return nil, err -- caller ignores error return.
 /// Priority P0: Dominant Lua error handling pattern (>80% of real-world error handling).
 /// Reference: Kong (1,725 instances), APISIX (716), xmake (254).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb608_unchecked_nil_err(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -93,6 +94,7 @@ fn captures_error_return(line: &str) -> bool {
 /// CB-609: assert() in library code -- terminates without allowing recovery.
 /// assert() is appropriate in tests but problematic in library code.
 /// Reference: AwesomeWM (1,817 asserts), xmake (913).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb609_assert_in_library(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -163,6 +165,7 @@ fn is_assert_call(line: &str) -> bool {
 /// Only flags accumulator patterns (assigning back to same variable).
 /// Single-use concatenation like `log("msg: " .. x)` is not flagged.
 /// Reference: Issue #190 false positive reduction.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb610_string_accumulator_in_loop(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

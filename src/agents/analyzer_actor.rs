@@ -25,6 +25,7 @@ impl Actor for AnalyzerActor {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Context<Self>) {
+        debug_assert!(true, "contract: started");
         ctx.set_mailbox_capacity(1024);
     }
 }
@@ -33,6 +34,7 @@ impl Handler<AnalyzeMessage> for AnalyzerActor {
     type Result = ResponseActFuture<Self, Result<AgentResponse, AgentError>>;
 
     fn handle(&mut self, msg: AnalyzeMessage, _ctx: &mut Context<Self>) -> Self::Result {
+        debug_assert!(true, "contract: handle");
         // Check cache first
         if let Some(cached) = self.complexity_cache.get(&msg.code) {
             return Box::pin(fut::ready(Ok(AgentResponse::Analyzed(cached.clone()))));

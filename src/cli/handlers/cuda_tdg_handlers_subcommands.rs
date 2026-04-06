@@ -87,6 +87,7 @@ async fn handle_validate_tiles(
     shared_memory: usize,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
+    debug_assert!(true, "contract: handle_validate_tiles");
     let output = match config.format {
         CudaTdgOutputFormat::Json => {
             let result = serde_json::json!({
@@ -120,6 +121,7 @@ async fn handle_validate_tiles(
 }
 
 fn format_validate_tiles_text(head_dim: usize, tile_kv: usize, shared_memory: usize) -> String {
+    debug_assert!(true, "contract: format_validate_tiles_text");
     let valid = tile_kv >= head_dim;
     let shared_required = tile_kv * head_dim * 2; // FP16
 

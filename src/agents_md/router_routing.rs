@@ -7,6 +7,7 @@ impl Default for AgentRouter {
 impl AgentRouter {
     /// Create new router
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             handlers: Arc::new(RwLock::new(Vec::new())),
@@ -15,6 +16,7 @@ impl AgentRouter {
     }
 
     /// Route request to appropriate handler
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn route(&self, request: AgentRequest) -> Result<AgentResponse> {
         let handlers = self.handlers.read().await;
 
@@ -31,6 +33,7 @@ impl AgentRouter {
     }
 
     /// Register protocol handler
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn register_handler(&self, handler: Box<dyn Handler>) {
         let mut handlers = self.handlers.write().await;
         handlers.push(handler);
@@ -38,6 +41,7 @@ impl AgentRouter {
 
     /// Load balance requests
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn balance_load(&self, requests: Vec<AgentRequest>) -> Vec<RouteDecision> {
         debug_assert!(!requests.is_empty(), "requests must not be empty");
         requests
@@ -62,6 +66,7 @@ impl Default for CircuitBreaker {
 impl CircuitBreaker {
     /// Create new circuit breaker
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             failure_threshold: 5,

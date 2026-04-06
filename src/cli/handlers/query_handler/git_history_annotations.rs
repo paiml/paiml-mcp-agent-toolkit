@@ -55,6 +55,7 @@ fn build_code_annotations(
     index: &AgentContextIndex,
     hotspots: &HashMap<String, FileHotspot>,
 ) -> HashMap<String, FileAnnotation> {
+    debug_assert!(true, "contract: build_code_annotations");
     let mut file_annots: HashMap<String, FileAnnotation> = HashMap::new();
     for file_path in hotspots.keys() {
         let funcs = index.get_by_file(file_path);
@@ -169,6 +170,7 @@ fn compute_cochange_pairs(
     cochange_counts: HashMap<(String, String), usize>,
     hotspots: &HashMap<String, FileHotspot>,
 ) -> Vec<CoChangePair> {
+    debug_assert!(true, "contract: compute_cochange_pairs");
     let mut pairs: Vec<CoChangePair> = cochange_counts
         .into_iter()
         .filter(|(_, count)| *count >= 3)

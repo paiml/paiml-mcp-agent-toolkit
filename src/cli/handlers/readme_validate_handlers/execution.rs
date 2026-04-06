@@ -11,6 +11,7 @@ use std::process::ExitCode;
 
 impl ValidateReadmeCmd {
     /// Execute the validate-readme command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn execute(&self) -> Result<ExitCode> {
         if self.verbose {
             eprintln!("🔍 Validating documentation for hallucinations...");

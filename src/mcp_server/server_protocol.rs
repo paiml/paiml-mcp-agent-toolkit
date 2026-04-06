@@ -104,6 +104,7 @@ impl McpServer {
     ///   }
     /// }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
         info!("Starting MCP server on stdin/stdout");
 
@@ -376,6 +377,7 @@ impl McpServer {
     }
 
     /// Get cache metrics for monitoring
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn cache_metrics(&self) -> String {
         let metrics = self.cache.metrics().await;
         format!(

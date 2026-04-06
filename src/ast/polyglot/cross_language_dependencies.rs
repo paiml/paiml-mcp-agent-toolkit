@@ -54,6 +54,7 @@ pub trait NameResolver: Send + Sync {
 
 impl CrossLanguageDependencies {
     /// Create a new instance
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
@@ -64,11 +65,13 @@ impl CrossLanguageDependencies {
     }
 
     /// Add language-specific name resolver
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_name_resolver(&mut self, language: Language, resolver: Box<dyn NameResolver>) {
         self.name_resolvers.insert(language, resolver);
     }
 
     /// Add nodes to the dependency detector
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_nodes(&mut self, nodes: Vec<UnifiedNode>) {
         debug_assert!(!nodes.is_empty(), "nodes must not be empty");
         for node in nodes {
@@ -81,6 +84,7 @@ impl CrossLanguageDependencies {
     }
 
     /// Detect dependencies between two sets of nodes
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect(nodes1: &[UnifiedNode], nodes2: &[UnifiedNode]) -> Vec<CrossLanguageDependency> {
         debug_assert!(!nodes1.is_empty(), "nodes1 must not be empty");
         let mut detector = Self::new();
@@ -91,6 +95,7 @@ impl CrossLanguageDependencies {
     }
 
     /// Detect all cross-language dependencies
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_all(&mut self) -> &Vec<CrossLanguageDependency> {
         self.dependencies.clear();
 
@@ -132,11 +137,13 @@ impl CrossLanguageDependencies {
     }
 
     /// Get all dependencies
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_dependencies(&self) -> &Vec<CrossLanguageDependency> {
         &self.dependencies
     }
 
     /// Filter dependencies by source language
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn filter_by_source_language(&self, language: Language) -> Vec<&CrossLanguageDependency> {
         self.dependencies
             .iter()
@@ -145,6 +152,7 @@ impl CrossLanguageDependencies {
     }
 
     /// Filter dependencies by target language
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn filter_by_target_language(&self, language: Language) -> Vec<&CrossLanguageDependency> {
         self.dependencies
             .iter()
@@ -153,6 +161,7 @@ impl CrossLanguageDependencies {
     }
 
     /// Filter dependencies by type
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn filter_by_kind(&self, kind: ReferenceKind) -> Vec<&CrossLanguageDependency> {
         self.dependencies
             .iter()
@@ -161,6 +170,7 @@ impl CrossLanguageDependencies {
     }
 
     /// Get dependencies between two specific languages
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_dependencies_between(
         &self,
         source_language: Language,

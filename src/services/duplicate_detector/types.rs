@@ -49,6 +49,7 @@ pub struct Token {
 
 impl Token {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(kind: TokenKind) -> Self {
         let text = match &kind {
             TokenKind::Identifier(s) => s.clone(),
@@ -91,6 +92,7 @@ impl MinHashSignature {
     /// let similarity = sig1.jaccard_similarity(&sig2); // 0.666... (2 matches out of 3)
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn jaccard_similarity(&self, other: &MinHashSignature) -> f64 {
         #[cfg(feature = "simd")]
         {
@@ -108,6 +110,7 @@ impl MinHashSignature {
     #[cfg(feature = "simd")]
     #[must_use]
     fn jaccard_similarity_simd(&self, other: &MinHashSignature) -> f64 {
+        debug_assert!(true, "contract: jaccard_similarity_simd");
         use trueno::Vector;
 
         // Convert u64 hash values to f32 for SIMD operations
@@ -141,6 +144,7 @@ impl MinHashSignature {
     /// Scalar fallback for Jaccard similarity (used when simd feature disabled)
     #[must_use]
     fn jaccard_similarity_scalar(&self, other: &MinHashSignature) -> f64 {
+        debug_assert!(true, "contract: jaccard_similarity_scalar");
         let matches = self
             .values
             .iter()

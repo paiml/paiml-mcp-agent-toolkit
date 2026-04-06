@@ -23,6 +23,7 @@ impl Default for LanguageRegistry {
 impl LanguageRegistry {
     /// Create a new language registry with all supported languages
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let supported_languages = vec![
             // Systems Programming (5)
@@ -102,18 +103,21 @@ impl LanguageRegistry {
 
     /// Get all supported languages
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn supported_languages(&self) -> &[Language] {
         &self.supported_languages
     }
 
     /// Get language count
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn language_count(&self) -> usize {
         self.supported_languages.len()
     }
 
     /// Detect language from file path
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect_language(&self, path: &Path) -> Language {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Language::from_path(path)
@@ -121,6 +125,7 @@ impl LanguageRegistry {
 
     /// Get languages that support AST analysis
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn ast_supported_languages(&self) -> Vec<Language> {
         self.supported_languages
             .iter()
@@ -131,6 +136,7 @@ impl LanguageRegistry {
 
     /// Get languages that support complexity analysis
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn complexity_supported_languages(&self) -> Vec<Language> {
         self.supported_languages
             .iter()

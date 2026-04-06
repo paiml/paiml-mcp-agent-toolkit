@@ -394,6 +394,7 @@ async fn run_validation_command(cmd: &str, project_path: &Path) -> Result<String
 
 /// Format spec result as markdown
 fn format_spec_result_markdown(result: &serde_json::Value) -> String {
+    debug_assert!(true, "contract: format_spec_result_markdown");
     format!(
         r#"# Specification Validation Report
 

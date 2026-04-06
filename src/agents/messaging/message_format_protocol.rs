@@ -1,6 +1,7 @@
 // Message extensions implementation
 impl MessageExtensions for AgentMessage {
     fn with_metadata(self, metadata: MessageMetadata) -> MessageWithMetadata {
+        debug_assert!(true, "contract: with_metadata");
         MessageWithMetadata {
             message: self,
             metadata,
@@ -8,6 +9,7 @@ impl MessageExtensions for AgentMessage {
     }
 
     fn is_expired(&self) -> bool {
+        debug_assert!(true, "contract: is_expired");
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("internal error")
@@ -24,6 +26,7 @@ impl MessageExtensions for AgentMessage {
 
 // Binary protocol encode/decode implementation
 impl BinaryProtocol {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn encode(msg: &AgentMessage) -> Result<Bytes, ProtocolError> {
         let mut buf = BytesMut::with_capacity(1024);
 
@@ -47,6 +50,7 @@ impl BinaryProtocol {
         Ok(buf.freeze())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn decode(data: Bytes) -> Result<AgentMessage, ProtocolError> {
         if data.len() < 5 {
             return Err(ProtocolError::InvalidMessage(

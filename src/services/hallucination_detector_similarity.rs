@@ -3,6 +3,7 @@
 
 impl SemanticSimilarity {
     /// Create new similarity calculator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let stopwords = vec![
             "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with",
@@ -23,6 +24,7 @@ impl SemanticSimilarity {
     /// - Stopword filtering
     /// - Weighted matching (exact > partial)
     /// - Semantic keyword boosting
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate(&self, claim: &str, fact: &str) -> f32 {
         debug_assert!(!claim.is_empty(), "claim must not be empty");
         debug_assert!(!fact.is_empty(), "fact must not be empty");

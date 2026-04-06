@@ -95,6 +95,7 @@ fn aggregate_violations(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -177,6 +178,7 @@ pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceChe
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -261,6 +263,7 @@ pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceChe
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -270,6 +273,7 @@ pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck 
     check_rust_best_practices_with_config(project_path, None)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_rust_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
@@ -422,6 +426,7 @@ pub(crate) fn check_rust_best_practices_with_config(
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_lua_best_practices(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -431,6 +436,7 @@ pub(crate) fn check_lua_best_practices(project_path: &Path) -> ComplianceCheck {
     check_lua_best_practices_with_config(project_path, None)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_lua_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
@@ -539,6 +545,7 @@ pub(crate) fn check_lua_best_practices_with_config(
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_sql_best_practices(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -547,6 +554,7 @@ pub(crate) fn check_sql_best_practices(project_path: &Path) -> ComplianceCheck {
     );
     check_sql_best_practices_with_config(project_path, None)
 }
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_sql_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
@@ -599,6 +607,7 @@ pub(crate) fn check_sql_best_practices_with_config(
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_markdown_best_practices(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -607,6 +616,7 @@ pub(crate) fn check_markdown_best_practices(project_path: &Path) -> ComplianceCh
     );
     check_markdown_best_practices_with_config(project_path, None)
 }
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_markdown_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
@@ -655,6 +665,7 @@ pub(crate) fn check_markdown_best_practices_with_config(
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_yaml_best_practices(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -663,6 +674,7 @@ pub(crate) fn check_yaml_best_practices(project_path: &Path) -> ComplianceCheck 
     );
     check_yaml_best_practices_with_config(project_path, None)
 }
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_yaml_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
@@ -711,6 +723,7 @@ pub(crate) fn check_yaml_best_practices_with_config(
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_model_quality(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -719,6 +732,7 @@ pub(crate) fn check_model_quality(project_path: &Path) -> ComplianceCheck {
     );
     check_model_quality_with_config(project_path, None)
 }
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_model_quality_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
@@ -779,6 +793,7 @@ pub(crate) fn check_model_quality_with_config(
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_scala_best_practices(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -787,6 +802,7 @@ pub(crate) fn check_scala_best_practices(project_path: &Path) -> ComplianceCheck
     );
     check_scala_best_practices_with_config(project_path, None)
 }
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_scala_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
@@ -839,6 +855,7 @@ pub(crate) fn check_scala_best_practices_with_config(
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_lean_best_practices(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -847,6 +864,7 @@ pub(crate) fn check_lean_best_practices(project_path: &Path) -> ComplianceCheck 
     );
     check_lean_best_practices_with_config(project_path, None)
 }
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_lean_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,

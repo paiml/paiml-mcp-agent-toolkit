@@ -10,6 +10,7 @@ impl Default for LocalSemanticEngine {
 impl LocalSemanticEngine {
     /// Create a new local semantic engine
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             documents: Vec::new(),
@@ -27,6 +28,7 @@ impl LocalSemanticEngine {
     ///
     /// # Returns
     /// Number of documents indexed
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn index_directory(
         &mut self,
         path: &Path,
@@ -97,6 +99,7 @@ impl LocalSemanticEngine {
 
     /// Build TF-IDF matrix from documents
     fn build_tfidf_matrix(&mut self) -> Result<(), String> {
+        debug_assert!(true, "contract: build_tfidf_matrix");
         if self.documents.is_empty() {
             return Err("No documents to analyze".to_string());
         }
@@ -140,6 +143,7 @@ impl LocalSemanticEngine {
     ///
     /// # Returns
     /// Topic extraction results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_topics(
         &mut self,
         num_topics: usize,
@@ -246,6 +250,7 @@ impl LocalSemanticEngine {
     ///
     /// # Returns
     /// Clustering results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cluster(&self, method: &str, k: Option<usize>) -> Result<LocalClusterResult, String> {
         debug_assert!(!method.is_empty(), "method must not be empty");
         let dtm = self

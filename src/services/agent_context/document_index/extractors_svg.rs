@@ -3,6 +3,7 @@
 /// Extract text content from SVG `<text>` and `<tspan>` elements via regex.
 ///
 /// No XML parser needed — SVG text elements are structurally simple.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn extract_svg(
     path: &Path,
     relative_path: &str,

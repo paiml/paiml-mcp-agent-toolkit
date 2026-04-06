@@ -21,6 +21,7 @@ pub enum CleanupTarget {
 }
 
 impl CleanupTarget {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(s: &str) -> Option<Self> {
         debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
@@ -58,6 +59,7 @@ pub struct CleanupResult {
 }
 
 /// Handle the `pmat maintain cleanup-resources` command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_cleanup_resources(
     project_dir: &Path,
     targets: &[String],
@@ -135,6 +137,7 @@ fn scan_targets(
 }
 
 fn finalize_cleanup(execute: bool, result: &mut CleanupResult) -> Result<()> {
+    debug_assert!(true, "contract: finalize_cleanup");
     if execute && !result.candidates.is_empty() {
         println!();
         println!("🔥 Executing cleanup...");

@@ -1,4 +1,5 @@
 impl PersistentCacheManager {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(config: CacheConfig, cache_dir: PathBuf) -> Result<Self> {
         debug_assert!(cache_dir.exists(), "cache_dir must exist: {}", cache_dir.display());
         // Create individual cache directories
@@ -14,12 +15,14 @@ impl PersistentCacheManager {
     }
 
     /// Create with default cache directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_default_dir(config: CacheConfig) -> Result<Self> {
         let cache_dir = Self::default_cache_dir()?;
         Self::new(config, cache_dir)
     }
 
     /// Get default cache directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn default_cache_dir() -> Result<PathBuf> {
         if let Some(cache_dir) = dirs::cache_dir() {
             Ok(cache_dir.join("paiml-mcp-agent-toolkit"))
@@ -32,6 +35,7 @@ impl PersistentCacheManager {
     }
 
     /// Get or compute AST with caching
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn get_or_compute_ast<F, Fut>(
         &self,
         path: &Path,
@@ -56,11 +60,13 @@ impl PersistentCacheManager {
     }
 
     /// Clean up expired entries
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cleanup_expired(&self) {
         self.ast_cache.cleanup_expired();
     }
 
     /// Clear all caches
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear(&self) {
         let _ = self.ast_cache.clear();
     }

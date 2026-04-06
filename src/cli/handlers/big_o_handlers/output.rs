@@ -76,6 +76,7 @@ pub(super) async fn write_analysis_output(content: &str, output: Option<PathBuf>
 /// assert!(output.contains("utils.rs"));
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_big_o_summary(report: &BigOAnalysisReport) -> String {
     let mut output = String::with_capacity(1024);
 

@@ -11,6 +11,7 @@ use rusqlite::{params, Connection};
 use std::collections::{HashMap, HashSet};
 
 /// Insert all functions into the database within a transaction.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn insert_functions(
     conn: &Connection,
     functions: &[FunctionEntry],
@@ -95,6 +96,7 @@ pub(crate) fn insert_functions(
 }
 
 /// Insert call graph edges into the database.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn insert_call_graph(
     conn: &Connection,
     calls: &HashMap<usize, Vec<usize>>,
@@ -126,6 +128,7 @@ pub(crate) fn insert_call_graph(
 }
 
 /// Insert graph metrics (PageRank, centrality) into the database.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn insert_graph_metrics(
     conn: &Connection,
     metrics: &[GraphMetrics],
@@ -162,6 +165,7 @@ pub(crate) fn insert_graph_metrics(
 }
 
 /// Insert metadata key-value pairs.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn insert_metadata(conn: &Connection, manifest: &IndexManifest) -> Result<(), String> {
     conn.execute(
         "INSERT OR REPLACE INTO metadata (key, value) VALUES ('version', ?1)",
@@ -204,6 +208,7 @@ pub(crate) fn insert_metadata(conn: &Connection, manifest: &IndexManifest) -> Re
 }
 
 /// Store coverage_off_files set as JSON in metadata for O(1) query-time lookup.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn insert_coverage_off_files(
     conn: &Connection,
     files: &HashSet<String>,

@@ -13,6 +13,7 @@ impl Default for AsyncProfiler {
 
 impl AsyncProfiler {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             shadow_stacks: Arc::new(RwLock::new(Vec::new())),
@@ -21,6 +22,7 @@ impl AsyncProfiler {
     }
 
     /// Profile a WASM module
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn profile_module(&self, binary: &[u8]) -> Result<ProfilingReport> {
         debug_assert!(!binary.is_empty(), "binary must not be empty");
         // Parse and analyze the module
@@ -152,6 +154,7 @@ impl AsyncProfiler {
 
     /// Start asynchronous sampling of a running instance
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn start_sampling(&self, sample_interval: Duration) -> JoinHandle<()> {
         let shadow_stacks = self.shadow_stacks.clone();
 

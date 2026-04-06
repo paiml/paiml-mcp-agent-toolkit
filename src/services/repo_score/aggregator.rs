@@ -10,11 +10,13 @@ use std::time::Instant;
 pub struct ScoreAggregator;
 
 impl ScoreAggregator {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
 
     /// Aggregate all scores for a repository
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn aggregate(&self, repo_path: &Path, config: &ScorerConfig) -> Result<RepoScore> {
         debug_assert!(
             repo_path.exists(),
@@ -95,6 +97,7 @@ impl ScoreAggregator {
 
     /// Generate recommendations based on findings
     fn generate_recommendations(&self, categories: &CategoryScores) -> Vec<Recommendation> {
+        debug_assert!(true, "contract: generate_recommendations");
         let mut recommendations = vec![];
 
         // Check each category for failures

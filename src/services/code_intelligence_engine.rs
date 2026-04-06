@@ -38,6 +38,7 @@ impl CodeIntelligence {
     /// # });
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let dag = Arc::new(RwLock::new(AstDag::new()));
 
@@ -81,6 +82,7 @@ impl CodeIntelligence {
     /// // (This example assumes a successful analysis has been run)
     /// # });
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_dag_stats(&self) -> (usize, u32) {
         let dag = self.dag.read().await;
         (dag.nodes.len(), dag.generation())

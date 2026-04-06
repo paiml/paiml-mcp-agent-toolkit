@@ -2,6 +2,7 @@
 // Split from agent_context_tools.rs for maintainability
 
 impl IndexManager {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_path: PathBuf) -> Self {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self {
@@ -11,6 +12,7 @@ impl IndexManager {
     }
 
     /// Get or build the index, using incremental updates when possible
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_index(&self) -> Result<AgentContextIndex, String> {
         // First check if we have a cached index
         {
@@ -64,6 +66,7 @@ impl IndexManager {
     }
 
     /// Force rebuild the index
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn rebuild_index(&self) -> Result<AgentContextIndex, String> {
         let index = AgentContextIndex::build(&self.project_path)?;
 

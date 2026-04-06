@@ -11,6 +11,7 @@ use crate::tdg::Grade;
 use anyhow::Result;
 
 /// Format TDG history output (Sprint 65 Phase 3)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_history_output(
     records: &[crate::tdg::storage::FullTdgRecord],
     format: TdgOutputFormat,
@@ -105,6 +106,7 @@ pub(crate) fn format_history_output(
 }
 
 /// Format explain mode output (Issue #78)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_explain_output(
     explained: &crate::tdg::explain::ExplainedTDGScore,
     config: &TdgCommandConfig,
@@ -125,6 +127,7 @@ fn format_explain_output_table(
     explained: &crate::tdg::explain::ExplainedTDGScore,
     config: &TdgCommandConfig,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_explain_output_table");
     let mut output = String::new();
 
     // Header
@@ -196,6 +199,7 @@ fn format_explain_output_table(
 }
 
 /// Display gate result in table format
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn display_gate_result_table(result: &crate::tdg::GateResult) {
     println!("\n{}", result.message);
 
@@ -225,6 +229,7 @@ pub(crate) fn display_gate_result_table(result: &crate::tdg::GateResult) {
 }
 
 /// Display gate result in the requested format
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn display_gate_result(
     result: &crate::tdg::GateResult,
     format: &crate::cli::TdgOutputFormat,

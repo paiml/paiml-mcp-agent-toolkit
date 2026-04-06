@@ -82,6 +82,7 @@ fn create_single_file_result(
 }
 
 /// Count top lint types from violations
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "lint_valid")]
 pub(crate) fn count_top_lints(violations: &[ViolationDetail]) -> Vec<(String, usize)> {
     debug_assert!(!violations.is_empty(), "violations must not be empty");
     let mut lint_counts: HashMap<String, usize> = HashMap::new();
@@ -97,6 +98,7 @@ pub(crate) fn count_top_lints(violations: &[ViolationDetail]) -> Vec<(String, us
 }
 
 /// Count source lines in a file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn count_source_lines(project_path: &Path, file_path: &Path) -> Result<usize> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
@@ -116,6 +118,7 @@ pub(crate) async fn count_source_lines(project_path: &Path, file_path: &Path) ->
 }
 
 /// Execute clippy command with given flags (cognitive complexity <=3)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn execute_clippy_command(
     project_path: &Path,
     flags: &[&str],
@@ -133,6 +136,7 @@ pub(crate) async fn execute_clippy_command(
 }
 
 /// Check clippy output status (cognitive complexity <=5)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn check_clippy_output(output: &std::process::Output) -> Result<()> {
     if !output.status.success()
         && output.status.code() != Some(101)
@@ -236,6 +240,7 @@ fn log_file_not_found_debug(
 /// # Errors
 ///
 /// Returns an error if the operation fails
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
     debug_assert!(start_path.exists(), "start_path must exist: {}", start_path.display());
     let mut current = start_path;

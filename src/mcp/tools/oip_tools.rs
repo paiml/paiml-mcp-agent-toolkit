@@ -114,6 +114,7 @@ pub struct QualityThresholds {
 /// println!("{}", response.prompt);
 /// # Ok::<(), anyhow::Error>(())
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_defect_aware_prompt(
     request: GenerateDefectAwarePromptRequest,
 ) -> Result<GenerateDefectAwarePromptResponse> {
@@ -144,6 +145,7 @@ pub fn generate_defect_aware_prompt(
 /// # Returns
 ///
 /// A focused prompt for preventing the specified defect category
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_prevention_prompt(
     request: GeneratePreventionPromptRequest,
 ) -> Result<GeneratePreventionPromptResponse> {
@@ -173,6 +175,7 @@ pub fn generate_prevention_prompt(
 /// # Returns
 ///
 /// Summary metrics including top defects and quality thresholds
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn analyze_oip_summary(request: AnalyzeOipSummaryRequest) -> Result<AnalyzeOipSummaryResponse> {
     let generator = DefectAwarePromptGenerator::from_file(&request.summary_path)
         .context("Failed to load OIP summary")?;

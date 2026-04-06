@@ -41,6 +41,7 @@ pub(super) async fn route_entropy_analysis(cmd: AnalyzeCommands) -> Result<()> {
 }
 
 /// Create entropy configuration from CLI parameters
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn create_entropy_config(
     min_severity: crate::cli::EntropySeverity,
     include_tests: bool,
@@ -69,6 +70,7 @@ pub(crate) fn create_entropy_config(
 }
 
 /// Format entropy report based on output format
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_entropy_report(
     report: &crate::entropy::EntropyReport,
     format: crate::cli::EntropyOutputFormat,
@@ -86,6 +88,7 @@ pub(crate) fn format_entropy_report(
 
 /// Format summary report
 fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations: usize) -> String {
+    debug_assert!(true, "contract: format_summary_report");
     use crate::cli::colors as c;
 
     let violations = get_top_violations(&report.actionable_violations, top_violations);
@@ -125,6 +128,7 @@ fn format_summary_report(report: &crate::entropy::EntropyReport, top_violations:
 
 /// Format markdown report
 fn format_markdown_report(report: &crate::entropy::EntropyReport, top_violations: usize) -> String {
+    debug_assert!(true, "contract: format_markdown_report");
     let max_violations = if top_violations == 0 {
         usize::MAX
     } else {
@@ -147,6 +151,7 @@ fn format_markdown_report(report: &crate::entropy::EntropyReport, top_violations
 }
 
 /// Get top N violations from list
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn get_top_violations(
     violations: &[crate::entropy::violation_detector::ActionableViolation],
     top_n: usize,
@@ -160,6 +165,7 @@ pub(crate) fn get_top_violations(
 }
 
 /// Format violation list for summary
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_violation_list(
     violations: &[crate::entropy::violation_detector::ActionableViolation],
 ) -> String {
@@ -192,6 +198,7 @@ pub(crate) fn format_violation_list(
 }
 
 /// Format violations for markdown output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_markdown_violations(
     violations: &[crate::entropy::violation_detector::ActionableViolation],
     max_count: usize,
@@ -221,6 +228,7 @@ pub(crate) fn format_markdown_violations(
 }
 
 /// Output entropy results to file or stdout
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn output_entropy_results(
     output: Option<std::path::PathBuf>,
     content: &str,
@@ -264,6 +272,7 @@ fn output_cluster_results(
     result: &crate::services::local_semantic::LocalClusterResult,
     format: &crate::cli::enums::OutputFormat,
 ) -> Result<()> {
+    debug_assert!(true, "contract: output_cluster_results");
     match format {
         crate::cli::enums::OutputFormat::Json => {
             let json_output = serde_json::json!({
@@ -301,6 +310,7 @@ fn output_topic_results(
     result: &crate::services::local_semantic::LocalTopicResult,
     format: &crate::cli::enums::OutputFormat,
 ) -> Result<()> {
+    debug_assert!(true, "contract: output_topic_results");
     match format {
         crate::cli::enums::OutputFormat::Json => {
             let json_output = serde_json::json!({

@@ -39,6 +39,7 @@ impl GitHubClient {
     /// - GITHUB_TOKEN is not set
     /// - Repo format is invalid (not "owner/name")
     /// - Failed to initialize octocrab client
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(repo: &str) -> Result<Self> {
         debug_assert!(!repo.is_empty(), "repo must not be empty");
         let parts: Vec<&str> = repo.split('/').collect();
@@ -69,6 +70,7 @@ impl GitHubClient {
     ///
     /// # Arguments
     /// * `repo` - Repository in "owner/name" format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_unauthenticated(repo: &str) -> Result<Self> {
         debug_assert!(!repo.is_empty(), "repo must not be empty");
         let parts: Vec<&str> = repo.split('/').collect();
@@ -94,6 +96,7 @@ impl GitHubClient {
     ///
     /// # Returns
     /// Issue details including title, labels, body, and state
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn fetch_issue(&self, issue_num: u64) -> Result<Issue> {
         let issue = self
             .octocrab
@@ -114,6 +117,7 @@ impl GitHubClient {
     ///
     /// # Returns
     /// Created issue with GitHub-assigned number
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn create_issue(
         &self,
         title: &str,
@@ -144,6 +148,7 @@ impl GitHubClient {
     /// * `body` - Optional new body
     /// * `state` - Optional new state ("open" or "closed")
     /// * `labels` - Optional new labels (replaces existing)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn update_issue(
         &self,
         issue_num: u64,
@@ -190,6 +195,7 @@ impl GitHubClient {
     ///
     /// # Arguments
     /// * `issue_num` - GitHub issue number to close
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn close_issue(&self, issue_num: u64) -> Result<Issue> {
         self.update_issue(issue_num, None, None, Some("closed"), None)
             .await
@@ -199,6 +205,7 @@ impl GitHubClient {
     ///
     /// # Arguments
     /// * `issue_num` - GitHub issue number to reopen
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn reopen_issue(&self, issue_num: u64) -> Result<Issue> {
         self.update_issue(issue_num, None, None, Some("open"), None)
             .await
@@ -208,6 +215,7 @@ impl GitHubClient {
     ///
     /// # Returns
     /// Vector of open issues (max 100, paginated)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn list_open_issues(&self) -> Result<Vec<Issue>> {
         let issues = self
             .octocrab
@@ -223,6 +231,7 @@ impl GitHubClient {
     }
 
     /// Get repository full name (owner/name)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn repo_full_name(&self) -> String {
         format!("{}/{}", self.repo_owner, self.repo_name)
     }

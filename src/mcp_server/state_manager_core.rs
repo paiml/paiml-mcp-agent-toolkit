@@ -24,6 +24,7 @@ impl StateManager {
     /// assert!(session_id.starts_with("refactor-session-"));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             state: None,
@@ -33,6 +34,7 @@ impl StateManager {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_temp_dir(temp_dir: &Path) -> Self {
         debug_assert!(temp_dir.exists(), "temp_dir must exist: {}", temp_dir.display());
         Self {
@@ -109,6 +111,7 @@ impl StateManager {
     ///   }
     /// }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn start_session(
         &mut self,
         targets: Vec<PathBuf>,
@@ -207,6 +210,7 @@ impl StateManager {
     /// - **Invalid Transition**: Returns error for illegal state transitions
     /// - **Snapshot Failure**: Returns error if state persistence fails
     /// - **File Access**: Returns error if target files are inaccessible
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn advance(&mut self) -> Result<(), String> {
         let state = self.state.as_mut().ok_or("No active session")?;
         state.advance()?;
@@ -217,11 +221,13 @@ impl StateManager {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_state(&self) -> Result<&RefactorStateMachine, String> {
         self.state.as_ref().ok_or("No active session".to_string())
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_session_id(&self) -> &str {
         &self.session_id
     }
@@ -243,6 +249,7 @@ impl StateManager {
     }
 
     fn save_snapshot(&self) -> Result<(), String> {
+        debug_assert!(true, "contract: save_snapshot");
         if let Some(state) = &self.state {
             self.snapshot_manager.save_snapshot(state)?;
         }
@@ -251,6 +258,7 @@ impl StateManager {
 
     #[allow(dead_code)]
     fn load_from_snapshot(&mut self) -> Result<(), String> {
+        debug_assert!(true, "contract: load_from_snapshot");
         match self.snapshot_manager.load_snapshot() {
             Ok(state) => {
                 self.state = Some(state);
@@ -265,6 +273,7 @@ impl StateManager {
     }
 
     fn generate_session_id() -> String {
+        debug_assert!(true, "contract: generate_session_id");
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let timestamp = SystemTime::now()

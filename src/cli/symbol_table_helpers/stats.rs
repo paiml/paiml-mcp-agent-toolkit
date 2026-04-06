@@ -36,6 +36,7 @@ use super::types::SymbolInfo;
 /// assert_eq!(counts.get("struct"), Some(&1));
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
     debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut counts = std::collections::HashMap::with_capacity(64);
@@ -47,6 +48,7 @@ pub fn count_by_type(symbols: &[SymbolInfo]) -> std::collections::HashMap<String
 
 /// Count symbols by visibility
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn count_by_visibility(symbols: &[SymbolInfo]) -> std::collections::HashMap<String, usize> {
     debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut counts = std::collections::HashMap::with_capacity(64);

@@ -18,6 +18,7 @@ impl Template {
     /// # Complexity
     /// - Time: O(1) - simple construction
     /// - Cyclomatic: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_string(content: impl Into<String>) -> Result<Self> {
         Ok(Self {
             content: content.into(),
@@ -30,6 +31,7 @@ impl Template {
     /// # Complexity
     /// - Time: O(1)
     /// - Cyclomatic: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(name: impl Into<String>, content: impl Into<String>) -> Result<Self> {
         Ok(Self {
             content: content.into(),
@@ -44,6 +46,7 @@ impl Template {
     /// # Complexity
     /// - Time: O(n*m) where n=template size, m=number of variables
     /// - Cyclomatic: 3 (iteration, substitution, validation)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render(&self, vars: &HashMap<String, String>) -> Result<String> {
         let mut result = self.content.clone();
 
@@ -70,29 +73,34 @@ impl Template {
     }
 
     /// Get template name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn name(&self) -> &str {
         &self.name
     }
 
     /// pforge.yaml template
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn pforge_yaml() -> Self {
         Self::new("pforge.yaml", include_str!("templates/pforge.yaml.tmpl"))
             .expect("pforge.yaml template should be valid")
     }
 
     /// Cargo.toml template
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cargo_toml() -> Self {
         Self::new("Cargo.toml", include_str!("templates/Cargo.toml.tmpl"))
             .expect("Cargo.toml template should be valid")
     }
 
     /// Handler template
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn handler_rs() -> Self {
         Self::new("handler.rs", include_str!("templates/handler.rs.tmpl"))
             .expect("handler.rs template should be valid")
     }
 
     /// README template
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn readme_md() -> Self {
         Self::new("README.md", include_str!("templates/README.md.tmpl"))
             .expect("README.md template should be valid")
@@ -101,24 +109,28 @@ impl Template {
     // WASM templates (TICKET-PMAT-5003)
 
     /// WASM Cargo.toml template
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn wasm_cargo_toml() -> Self {
         Self::new("Cargo.toml", include_str!("templates/wasm_Cargo.toml.tmpl"))
             .expect("wasm Cargo.toml template should be valid")
     }
 
     /// WASM Makefile template
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn wasm_makefile() -> Self {
         Self::new("Makefile", include_str!("templates/wasm_Makefile.tmpl"))
             .expect("wasm Makefile template should be valid")
     }
 
     /// WASM lib.rs template
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn wasm_lib_rs() -> Self {
         Self::new("lib.rs", include_str!("templates/wasm_lib.rs.tmpl"))
             .expect("wasm lib.rs template should be valid")
     }
 
     /// WASM VFS template
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn wasm_vfs_rs() -> Self {
         Self::new("vfs.rs", include_str!("templates/wasm_vfs.rs.tmpl"))
             .expect("wasm vfs.rs template should be valid")
@@ -137,6 +149,7 @@ impl TemplateRegistry {
     /// # Complexity
     /// - Time: O(1)
     /// - Cyclomatic: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             templates: HashMap::new(),
@@ -148,6 +161,7 @@ impl TemplateRegistry {
     /// # Complexity
     /// - Time: O(1) average
     /// - Cyclomatic: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&mut self, name: String, template: Template) {
         self.templates.insert(name, template);
     }
@@ -157,6 +171,7 @@ impl TemplateRegistry {
     /// # Complexity
     /// - Time: O(1) average
     /// - Cyclomatic: 2 (lookup + error)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, name: &str) -> Result<&Template> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.templates.get(name).ok_or_else(|| {
@@ -169,6 +184,7 @@ impl TemplateRegistry {
     /// # Complexity
     /// - Time: O(n) where n=number of templates
     /// - Cyclomatic: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn list(&self) -> Vec<String> {
         self.templates.keys().cloned().collect()
     }
@@ -178,6 +194,7 @@ impl TemplateRegistry {
     /// # Complexity
     /// - Time: O(1)
     /// - Cyclomatic: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_pforge_templates() -> Self {
         let mut registry = Self::new();
         registry.register("pforge.yaml".into(), Template::pforge_yaml());
@@ -192,6 +209,7 @@ impl TemplateRegistry {
     /// # Complexity
     /// - Time: O(1)
     /// - Cyclomatic: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_wasm_templates() -> Self {
         let mut registry = Self::new();
         registry.register("Cargo.toml".into(), Template::wasm_cargo_toml());

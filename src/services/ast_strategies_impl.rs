@@ -115,6 +115,7 @@ pub struct StrategyRegistry {
 
 impl StrategyRegistry {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let mut strategies: FxHashMap<String, Arc<dyn AstStrategy>> = FxHashMap::default();
 
@@ -164,6 +165,7 @@ impl StrategyRegistry {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_strategy(&self, extension: &str) -> Option<Arc<dyn AstStrategy>> {
         self.strategies.get(extension).cloned()
     }

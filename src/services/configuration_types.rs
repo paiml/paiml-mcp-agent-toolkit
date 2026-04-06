@@ -286,30 +286,37 @@ pub struct SemanticConfig {
 }
 
 fn default_embedding_model() -> String {
+    debug_assert!(true, "contract: default_embedding_model");
     "aprender-tfidf-local".to_string()
 }
 
 fn default_embedding_dimensions() -> usize {
+    debug_assert!(true, "contract: default_embedding_dimensions");
     256
 }
 
 fn default_search_mode() -> String {
+    debug_assert!(true, "contract: default_search_mode");
     "hybrid".to_string()
 }
 
 fn default_limit() -> usize {
+    debug_assert!(true, "contract: default_limit");
     10
 }
 
 fn default_sync_interval() -> u64 {
+    debug_assert!(true, "contract: default_sync_interval");
     300
 }
 
 fn default_max_chunk_tokens() -> usize {
+    debug_assert!(true, "contract: default_max_chunk_tokens");
     500
 }
 
 fn default_supported_languages() -> Vec<String> {
+    debug_assert!(true, "contract: default_supported_languages");
     vec![
         "rust".to_string(),
         "python".to_string(),
@@ -322,5 +329,6 @@ fn default_supported_languages() -> Vec<String> {
 }
 
 fn default_cache_expiration() -> u32 {
+    debug_assert!(true, "contract: default_cache_expiration");
     30
 }

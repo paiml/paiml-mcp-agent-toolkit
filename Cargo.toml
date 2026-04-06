@@ -282,10 +282,11 @@ sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm so
 # ahash = "0.8"  # REMOVED: cargo-machete verified unused
 prettyplease = { version = "0.2.37", optional = true }
 fs2 = "0.4.3"
+provable-contracts-macros = { version = "0.3", path = "../provable-contracts/crates/provable-contracts-macros" }
 
 
 [dev-dependencies]
-provable-contracts = { version = "0.2", path = "../provable-contracts/crates/provable-contracts" }
+provable-contracts = { version = "0.3", path = "../provable-contracts/crates/provable-contracts" }
 dhat = "0.3"
 tokio-test = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }

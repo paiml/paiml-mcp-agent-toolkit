@@ -30,6 +30,7 @@ const GENERIC_PLACEHOLDERS: &[&str] = &[
 /// Classifies every YAML contract in contracts/ against known contract classes.
 /// WARN on unknown structure. FAIL if >20% unclassified.
 /// Also detects semantic leaks: API-pattern contracts disguised as kernel-math.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_contract_surface_classification(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
@@ -179,6 +180,7 @@ pub(crate) fn check_contract_surface_classification(project_path: &Path) -> Comp
 /// Scans for OutputFormat enum duplication and uncontracted clap arguments.
 /// FAIL if >3 OutputFormat definitions (severe duplication).
 /// WARN if any clap arg structs lack validation contracts.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_cli_arg_contracts(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -273,6 +275,7 @@ pub(crate) fn check_cli_arg_contracts(project_path: &Path) -> ComplianceCheck {
 ///
 /// Checks .github/workflows/ for known required patterns (RUST_MIN_STACK,
 /// --lib flag in cargo test) and Cargo.toml for sovereign dep contracts.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_config_contracts(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut issues: Vec<String> = Vec::new();
@@ -324,6 +327,7 @@ pub(crate) fn check_config_contracts(project_path: &Path) -> ComplianceCheck {
 ///
 /// Checks Cargo.toml for sovereign stack dependencies and verifies they
 /// meet minimum version contracts. Also checks for adapter pattern.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_sovereign_dep_contracts(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
@@ -423,6 +427,7 @@ pub(crate) fn check_sovereign_dep_contracts(project_path: &Path) -> ComplianceCh
 ///
 /// Counts MCP arg structs (Deserialize structs in mcp_pmcp/) and checks
 /// for schema documentation. WARN if >20 arg structs lack doc comments.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_mcp_schema_contracts(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mcp_dir = project_path.join("src").join("mcp_pmcp");
@@ -525,6 +530,7 @@ pub(crate) fn check_mcp_schema_contracts(project_path: &Path) -> ComplianceCheck
 /// Scans for presentar-core contracts/ directory and checks that core
 /// geometry, color, and layout constraint contracts exist with real
 /// preconditions (not placeholders).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_tui_widget_contracts(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
@@ -627,6 +633,7 @@ pub(crate) fn check_tui_widget_contracts(project_path: &Path) -> ComplianceCheck
 ///
 /// Scans for #[wasm_bindgen] annotations and checks that exported
 /// functions use Result<_, JsValue> (not panic) and have doc comments.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check if WASM target exists
@@ -779,6 +786,7 @@ pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
 /// L5 (lean_theorem) is the ONLY acceptable verification level.
 /// Every contract YAML without lean_theorem is a FAIL, listed by name.
 /// Behaves like `pmat tdg` — names every violating file.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_verification_ladder(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {

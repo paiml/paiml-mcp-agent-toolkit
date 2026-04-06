@@ -28,6 +28,7 @@ impl Default for AgentRegistry {
 }
 
 impl AgentRegistry {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             agents: Arc::new(DashMap::new()),
@@ -37,6 +38,7 @@ impl AgentRegistry {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn spawn_agent(&self, spec: AgentSpec) -> Result<AgentId, super::AgentError> {
         let id = spec.id;
         let entry = AgentEntry { spec };
@@ -45,37 +47,44 @@ impl AgentRegistry {
         Ok(id)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_agent(&self, name: &str) -> Option<AgentId> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.agents_by_name.get(name).map(|entry| *entry.value())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn register_agent_with_name(&self, name: &str, agent_id: AgentId) {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.agents_by_name.insert(name.to_string(), agent_id);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn register_agent_with_capability(&self, capability: &str, agent_id: AgentId) {
         debug_assert!(!capability.is_empty(), "capability must not be empty");
         self.agents_by_capability
             .insert(capability.to_string(), agent_id);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn find_agent_for_capability(&self, capability: &str) -> Option<AgentId> {
         self.agents_by_capability
             .get(capability)
             .map(|entry| *entry.value())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_agent_spec(&self, agent_id: AgentId) -> Option<AgentSpec> {
         self.agents.get(&agent_id).map(|entry| entry.spec.clone())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn remove_agent(&self, name: &str) {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.agents_by_name.remove(name);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn mark_agent_healthy(&self, name: &str) {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.agent_health.insert(
@@ -87,6 +96,7 @@ impl AgentRegistry {
         );
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn mark_agent_unhealthy(&self, name: &str, error: &str) {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.agent_health.insert(
@@ -98,6 +108,7 @@ impl AgentRegistry {
         );
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn is_agent_healthy(&self, name: &str) -> bool {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.agent_health
@@ -106,6 +117,7 @@ impl AgentRegistry {
             .unwrap_or(false)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn register(&self, _name: &str, agent: Arc<dyn std::any::Any + Send + Sync>) {
         debug_assert!(!_name.is_empty(), "_name must not be empty");
         // Legacy method - kept for compatibility
@@ -113,6 +125,7 @@ impl AgentRegistry {
                        // Extract AgentId if needed
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn list_agents(&self) -> Vec<String> {
         self.agents_by_name
             .iter()

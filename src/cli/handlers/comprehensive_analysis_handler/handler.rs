@@ -9,6 +9,7 @@ use super::types::ComprehensiveAnalysisConfig;
 use anyhow::Result;
 
 /// Refactored handler for comprehensive analysis using the orchestrator facade.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_comprehensive(config: ComprehensiveAnalysisConfig) -> Result<()> {
     eprintln!("🔍 Running comprehensive analysis...");
     let start = init_timing(config.perf);

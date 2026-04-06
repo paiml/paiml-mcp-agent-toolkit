@@ -49,6 +49,7 @@ pub enum AlertSeverity {
 
 impl AlertSeverity {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn priority(&self) -> u8 {
         match self {
             AlertSeverity::Info => 1,

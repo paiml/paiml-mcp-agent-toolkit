@@ -14,6 +14,7 @@ use std::path::Path;
 /// clears old violations, and inserts the new set. This makes all quality
 /// gate results queryable via `pmat sql`.
 #[allow(clippy::type_complexity)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn persist_quality_violations(
     db_path: &Path,
     violations: &[(
@@ -101,6 +102,7 @@ pub(crate) fn persist_quality_violations(
 /// Each tuple: (file_path, pattern_type, pattern_hash, repetitions, variation_score,
 ///               estimated_loc_reduction, severity, example_code)
 #[allow(clippy::type_complexity)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn persist_entropy_violations(
     db_path: &Path,
     violations: &[(
@@ -188,6 +190,7 @@ pub(crate) fn persist_entropy_violations(
 /// Persist per-function provability scores to the `provability_scores` table (#231).
 ///
 /// Each tuple: (file_path, function_name, provability_score, verified_properties_count)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn persist_provability_scores(
     db_path: &Path,
     scores: &[(String, String, f64, usize)],

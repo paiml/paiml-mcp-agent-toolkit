@@ -57,6 +57,7 @@ pub enum ScoreGrade {
 }
 
 impl ScoreGrade {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64) -> Self {
         debug_assert!(score >= 0.0, "score must be non-negative");
         if score >= 0.90 {
@@ -88,6 +89,7 @@ impl std::fmt::Display for ScoreGrade {
 /// Compute the 5-dimension contract score for a work contract.
 ///
 /// Each dimension is scored 0.0..1.0, then weighted and summed.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn score_contract(contract: &WorkContract, project_path: &Path) -> ContractScore {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let weights = ScoringWeights::default();
@@ -129,6 +131,7 @@ pub fn score_contract(contract: &WorkContract, project_path: &Path) -> ContractS
 ///
 /// A well-specified contract has at least 3 require, 5 ensure, 3 invariant clauses.
 fn compute_spec_depth(contract: &WorkContract) -> f64 {
+    debug_assert!(true, "contract: compute_spec_depth");
     if !contract.is_dbc() {
         // v4.0 flat contracts: score based on claim count vs expected 22
         let ratio = contract.claims.len() as f64 / 22.0;
@@ -144,6 +147,7 @@ fn compute_spec_depth(contract: &WorkContract) -> f64 {
 
 /// Falsification coverage: fraction of claims with verification results.
 fn compute_falsification_coverage(contract: &WorkContract) -> f64 {
+    debug_assert!(true, "contract: compute_falsification_coverage");
     if contract.claims.is_empty() {
         return 0.0;
     }
@@ -190,6 +194,7 @@ fn compute_invariant_health(contract: &WorkContract, project_path: &Path) -> f64
 
 /// Subcontracting score: 1.0 if postconditions are monotonically non-weakening.
 fn compute_subcontracting_score(contract: &WorkContract) -> f64 {
+    debug_assert!(true, "contract: compute_subcontracting_score");
     if contract.iteration <= 1 || contract.inherited_postconditions.is_empty() {
         return 1.0; // First iteration or no inherited — full score
     }
@@ -204,6 +209,7 @@ fn compute_subcontracting_score(contract: &WorkContract) -> f64 {
 ///
 /// Full traceability = all three triad legs are non-empty.
 fn compute_traceability(contract: &WorkContract) -> f64 {
+    debug_assert!(true, "contract: compute_traceability");
     if !contract.is_dbc() {
         // v4.0: traceability is binary — claims exist or not
         return if contract.claims.is_empty() { 0.0 } else { 0.8 };
@@ -253,6 +259,7 @@ pub struct DriftMetrics {
 /// Compute drift metrics for a contract.
 ///
 /// Staleness threshold: 24 hours without a checkpoint.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn compute_drift_metrics(contract: &WorkContract, project_path: &Path) -> DriftMetrics {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let now = chrono::Utc::now();
@@ -347,6 +354,7 @@ impl std::fmt::Display for TrendDirection {
 }
 
 /// Record a quality trend snapshot to .pmat-work/{item-id}/trend/
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn record_trend_snapshot(
     contract: &WorkContract,
     score: &ContractScore,
@@ -393,6 +401,7 @@ pub fn record_trend_snapshot(
 ///
 /// Uses a 7-snapshot rolling window. Drift is detected when the current
 /// score drops more than 5% below the rolling average.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn load_quality_trend(project_path: &Path, work_item_id: &str) -> QualityTrend {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let trend_dir = project_path

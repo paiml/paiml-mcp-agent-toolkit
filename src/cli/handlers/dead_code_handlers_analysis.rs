@@ -163,6 +163,7 @@ fn create_dead_code_ranking_result(
     min_dead_lines: usize,
     config: crate::models::dead_code::DeadCodeAnalysisConfig,
 ) -> crate::models::dead_code::DeadCodeRankingResult {
+    debug_assert!(true, "contract: create_dead_code_ranking_result");
     use crate::models::dead_code::DeadCodeRankingResult;
     use chrono::Utc;
 
@@ -226,6 +227,7 @@ fn count_dead_items_by_kind(
     file: &crate::services::cargo_dead_code_analyzer::FileDeadCode,
     kinds: &[crate::services::cargo_dead_code_analyzer::DeadCodeKind],
 ) -> usize {
+    debug_assert!(true, "contract: count_dead_items_by_kind");
     file.dead_items
         .iter()
         .filter(|i| kinds.contains(&i.kind))
@@ -237,6 +239,7 @@ fn create_dead_code_summary(
     accurate_report: &crate::services::cargo_dead_code_analyzer::AccurateDeadCodeReport,
     files_with_dead_code_count: usize,
 ) -> crate::models::dead_code::DeadCodeSummary {
+    debug_assert!(true, "contract: create_dead_code_summary");
     use crate::models::dead_code::DeadCodeSummary;
 
     DeadCodeSummary {
@@ -256,6 +259,7 @@ fn get_dead_count_by_types(
     report: &crate::services::cargo_dead_code_analyzer::AccurateDeadCodeReport,
     types: &[&str],
 ) -> usize {
+    debug_assert!(true, "contract: get_dead_count_by_types");
     types
         .iter()
         .map(|type_name| report.dead_by_type.get(*type_name).copied().unwrap_or(0))

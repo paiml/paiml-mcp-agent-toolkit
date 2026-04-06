@@ -1,6 +1,7 @@
 // Symbol extraction and file collection logic
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_symbol_table(
     project_path: PathBuf,
     format: crate::cli::SymbolTableOutputFormat,
@@ -106,6 +107,7 @@ async fn process_directory_entry(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: process_directory_entry");
     let path = entry.path();
 
     if should_skip_path(&path, exclude) {

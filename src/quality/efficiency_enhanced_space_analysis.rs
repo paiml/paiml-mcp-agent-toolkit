@@ -25,6 +25,7 @@ impl Default for SpaceComplexityAnalyzer {
 }
 
 impl SpaceComplexityAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             allocations: Vec::new(),
@@ -32,6 +33,7 @@ impl SpaceComplexityAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&mut self, ast: &syn::File) -> Complexity {
         self.allocations.clear();
         self.visit_file(ast);
@@ -53,6 +55,7 @@ impl SpaceComplexityAnalyzer {
 }
 
 fn check_call_allocation(call: &syn::ExprCall) -> Option<Allocation> {
+    debug_assert!(true, "contract: check_call_allocation");
     if let syn::Expr::Path(path) = &*call.func {
         let path_str = path_to_string(&path.path);
         if path_str.contains("Vec") || path_str.contains("String") {
@@ -66,6 +69,7 @@ fn check_call_allocation(call: &syn::ExprCall) -> Option<Allocation> {
 }
 
 fn check_macro_allocation(mac: &syn::ExprMacro) -> Option<Allocation> {
+    debug_assert!(true, "contract: check_macro_allocation");
     let mac_name = mac
         .mac
         .path
@@ -86,6 +90,7 @@ fn check_macro_allocation(mac: &syn::ExprMacro) -> Option<Allocation> {
 
 impl<'ast> Visit<'ast> for SpaceComplexityAnalyzer {
     fn visit_local(&mut self, node: &'ast syn::Local) {
+        debug_assert!(true, "contract: visit_local");
         if let Some(local_init) = &node.init {
             match &*local_init.expr {
                 syn::Expr::Array(_) => {

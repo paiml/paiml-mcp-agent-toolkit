@@ -15,6 +15,7 @@ use walkdir::WalkDir;
 pub struct BonusDetector;
 
 impl BonusDetector {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -242,6 +243,7 @@ impl BonusDetector {
     }
 
     /// Detect all bonus features
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn detect(&self, repo_path: &Path) -> Result<BonusScores> {
         debug_assert!(
             repo_path.exists(),

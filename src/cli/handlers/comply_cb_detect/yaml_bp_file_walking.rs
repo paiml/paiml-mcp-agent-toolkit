@@ -2,6 +2,7 @@
 // Included by yaml_best_practices.rs — do NOT add `use` imports or `#!` attributes.
 
 /// Walk directory recursively for `.yaml`/`.yml` files.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn walkdir_yaml_files(dir: &Path) -> Vec<PathBuf> {
     debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
@@ -34,6 +35,7 @@ fn walk_yaml_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 }
 
 /// Compute production lines (strip YAML comments).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn compute_yaml_production_lines(content: &str) -> Vec<(usize, String)> {
     debug_assert!(!content.is_empty(), "content must not be empty");
     let mut result = Vec::new();

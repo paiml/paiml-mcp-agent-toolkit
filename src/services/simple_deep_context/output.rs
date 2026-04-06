@@ -7,6 +7,7 @@ use super::{SimpleAnalysisReport, SimpleDeepContext};
 
 impl SimpleDeepContext {
     /// Format report as JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_as_json(&self, report: &SimpleAnalysisReport) -> Result<String> {
         let json_report = serde_json::json!({
             "summary": {
@@ -78,6 +79,7 @@ impl SimpleDeepContext {
     /// assert!(output.contains("1. `main.rs` - 5.5 avg complexity"));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_as_markdown(&self, report: &SimpleAnalysisReport, top_files: usize) -> String {
         let mut markdown = String::new();
 

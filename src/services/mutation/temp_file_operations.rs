@@ -12,6 +12,7 @@ impl WorkerTempFile {
     /// # Returns
     ///
     /// A new WorkerTempFile instance
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(worker_id: usize, mutant_id: usize, extension: Option<&str>) -> Self {
         let ext = extension.unwrap_or("rs");
         let filename = format!("pmat_w{}_{}.{}", worker_id, mutant_id, ext);
@@ -33,6 +34,7 @@ impl WorkerTempFile {
     /// # Returns
     ///
     /// A new WorkerTempFile instance
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_path(path: PathBuf) -> Self {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self {
@@ -47,6 +49,7 @@ impl WorkerTempFile {
     /// By default, the Drop implementation uses synchronous file operations
     /// to ensure cleanup even if the async runtime is shutting down.
     /// Set this to false if you want to disable that behavior.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_sync_cleanup(mut self, use_sync: bool) -> Self {
         self.use_sync_cleanup = use_sync;
         self
@@ -65,6 +68,7 @@ impl WorkerTempFile {
     /// # Errors
     ///
     /// Returns an error if writing fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn write(&self, content: impl AsRef<[u8]>) -> Result<()> {
         fs::write(&self.path, content)
             .await
@@ -80,6 +84,7 @@ impl WorkerTempFile {
     /// # Errors
     ///
     /// Returns an error if reading fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn read(&self) -> Result<Vec<u8>> {
         fs::read(&self.path)
             .await
@@ -95,6 +100,7 @@ impl WorkerTempFile {
     /// # Errors
     ///
     /// Returns an error if reading fails or if content is not valid UTF-8
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn read_to_string(&self) -> Result<String> {
         fs::read_to_string(&self.path)
             .await
@@ -106,6 +112,7 @@ impl WorkerTempFile {
     /// # Returns
     ///
     /// true if the file exists, false otherwise
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn exists(&self) -> bool {
         fs::try_exists(&self.path).await.unwrap_or(false)
     }
@@ -119,6 +126,7 @@ impl WorkerTempFile {
     /// # Errors
     ///
     /// Returns an error if cleanup fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn cleanup(&mut self) -> Result<()> {
         if self.cleaned_up || !self.exists().await {
             return Ok(());
@@ -133,6 +141,7 @@ impl WorkerTempFile {
     }
 
     /// Get the path to the temporary file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -141,6 +150,7 @@ impl WorkerTempFile {
     ///
     /// This is useful if you want to keep the file around after the
     /// WorkerTempFile is dropped.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mark_cleaned_up(&mut self) {
         self.cleaned_up = true;
     }
@@ -158,6 +168,7 @@ impl WorkerTempFile {
     /// # Errors
     ///
     /// Returns an error if copying fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn copy_to(&self, dest: &Path) -> Result<()> {
         debug_assert!(dest.exists(), "dest must exist: {}", dest.display());
         fs::copy(&self.path, dest).await.with_context(|| {
@@ -212,6 +223,7 @@ impl Drop for WorkerTempFile {
 /// # Errors
 ///
 /// Returns an error if directory creation fails
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn create_temp_dir(prefix: &str) -> Result<PathBuf> {
     let temp_dir = std::env::temp_dir().join(format!("{}_{}", prefix, uuid::Uuid::new_v4()));
 

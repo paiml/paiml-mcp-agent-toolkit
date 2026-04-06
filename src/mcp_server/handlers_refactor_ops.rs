@@ -71,6 +71,7 @@
 /// assert!(response.get("state").is_some());
 /// # });
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_refactor_start(
     state_manager: &Arc<Mutex<StateManager>>,
     params: Value,
@@ -142,6 +143,7 @@ pub async fn handle_refactor_start(
 /// assert!(new_state.is_object());
 /// # });
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_refactor_next_iteration(
     state_manager: &Arc<Mutex<StateManager>>,
 ) -> Result<Value, Box<dyn std::error::Error>> {
@@ -205,6 +207,7 @@ pub async fn handle_refactor_next_iteration(
 /// assert!(state.is_object());
 /// # });
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_refactor_get_state(
     state_manager: &Arc<Mutex<StateManager>>,
 ) -> Result<Value, Box<dyn std::error::Error>> {
@@ -266,6 +269,7 @@ pub async fn handle_refactor_get_state(
 /// assert_eq!(response["message"], "Refactoring session stopped successfully");
 /// # });
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_refactor_stop(
     state_manager: &Arc<Mutex<StateManager>>,
 ) -> Result<Value, Box<dyn std::error::Error>> {

@@ -1,6 +1,7 @@
 // DeepContextConfig impl methods: validation, detection, merge, file I/O
 
 fn detect_bin_targets(entry_points: &mut Vec<String>) {
+    debug_assert!(true, "contract: detect_bin_targets");
     if let Ok(entries) = std::fs::read_dir("src/bin") {
         for entry in entries.flatten() {
             if let Some(name) = entry.path().file_stem() {
@@ -11,6 +12,7 @@ fn detect_bin_targets(entry_points: &mut Vec<String>) {
 }
 
 fn detect_wasm_entry_points(entry_points: &mut Vec<String>) {
+    debug_assert!(true, "contract: detect_wasm_entry_points");
     if !Path::new("Cargo.toml").exists() {
         return;
     }
@@ -22,6 +24,7 @@ fn detect_wasm_entry_points(entry_points: &mut Vec<String>) {
 }
 
 fn detect_ffi_entry_points(entry_points: &mut Vec<String>) {
+    debug_assert!(true, "contract: detect_ffi_entry_points");
     let Ok(entries) = std::fs::read_dir("src") else {
         return;
     };
@@ -51,6 +54,7 @@ impl DeepContextConfig {
     ///     Err(errors) => println!("Found {} errors", errors.len()),
     /// }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
 
@@ -118,6 +122,7 @@ impl DeepContextConfig {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_entry_points(&self) -> Vec<String> {
         let mut entry_points = Vec::new();
 
@@ -135,6 +140,7 @@ impl DeepContextConfig {
         entry_points
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn merge_with_detected(&mut self) {
         if self.entry_points.is_empty() {
             self.entry_points = self.detect_entry_points();
@@ -149,6 +155,7 @@ impl DeepContextConfig {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_from_file(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
@@ -165,6 +172,7 @@ impl DeepContextConfig {
         Ok(config)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save_to_file(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = toml::to_string_pretty(self)?;

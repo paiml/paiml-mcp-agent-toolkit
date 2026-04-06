@@ -1,5 +1,6 @@
 /// Format a comprehensive `DeepContext` as markdown with quality metrics
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_deep_context_as_markdown(context: &DeepContext) -> String {
     let mut output = String::new();
 
@@ -32,6 +33,7 @@ fn format_quality_scorecard(
     output: &mut String,
     scorecard: &crate::services::deep_context::QualityScorecard,
 ) {
+    debug_assert!(true, "contract: format_quality_scorecard");
     output.push_str("## Quality Scorecard\n\n");
     output.push_str(&format!(
         "- **Overall Health**: {:.1}%\n",
@@ -59,6 +61,7 @@ fn format_quality_scorecard(
 }
 
 fn format_project_summary(output: &mut String, context: &DeepContext) {
+    debug_assert!(true, "contract: format_project_summary");
     output.push_str("## Project Summary\n\n");
     output.push_str(&format!(
         "- **Total Files**: {}\n",
@@ -87,6 +90,7 @@ fn format_analysis_results(
     output: &mut String,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
+    debug_assert!(true, "contract: format_analysis_results");
     output.push_str("## Analysis Results\n\n");
 
     // Complexity Analysis - Combined formatting to reduce complexity

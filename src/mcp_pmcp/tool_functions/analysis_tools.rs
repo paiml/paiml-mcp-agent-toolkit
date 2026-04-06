@@ -1,3 +1,4 @@
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_complexity(
     paths: &[PathBuf],
     top_files: Option<usize>,
@@ -91,6 +92,7 @@ pub async fn analyze_complexity(
     }))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<Value> {
     debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::services::satd_detector::SATDDetector;
@@ -156,6 +158,7 @@ pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<
     }))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_dead_code(paths: &[PathBuf], _include_tests: bool) -> Result<Value> {
     debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::services::dead_code_multi_language::analyze_dead_code_multi_language;
@@ -203,6 +206,7 @@ pub async fn analyze_dead_code(paths: &[PathBuf], _include_tests: bool) -> Resul
     }))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_lint_hotspots(paths: &[PathBuf], top_files: Option<usize>) -> Result<Value> {
     debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::tdg::analyzer_simple::TdgAnalyzer;
@@ -266,6 +270,7 @@ pub async fn analyze_lint_hotspots(paths: &[PathBuf], top_files: Option<usize>) 
     }))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_churn(
     paths: &[PathBuf],
     days: Option<u32>,
@@ -319,6 +324,7 @@ pub async fn analyze_churn(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_coupling(paths: &[PathBuf], threshold: Option<f64>) -> Result<Value> {
     debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};

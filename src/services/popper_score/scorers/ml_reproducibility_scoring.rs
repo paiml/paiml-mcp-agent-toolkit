@@ -1,5 +1,6 @@
 impl MLReproducibilityScorer {
     /// Detect if the project is an ML project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn is_ml_project(&self, project_path: &Path) -> bool {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         has_ml_files(project_path)

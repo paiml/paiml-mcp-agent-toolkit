@@ -17,6 +17,7 @@ impl Default for SpecParser {
 }
 
 impl SpecParser {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             frontmatter_regex: Regex::new(r"(?s)^---\n(.*?)\n---").expect("internal error"),
@@ -29,6 +30,7 @@ impl SpecParser {
     }
 
     /// Parse a specification file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn parse_file(&self, path: &Path) -> Result<ParsedSpec> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)
@@ -238,6 +240,7 @@ impl SpecParser {
     }
 
     /// Parse specification content
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn parse_content(&self, content: &str, path: &Path) -> Result<ParsedSpec> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut spec = ParsedSpec {
@@ -476,6 +479,7 @@ impl SpecParser {
     }
 
     /// Find all specifications in a directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn find_specs(&self, dir: &Path) -> Result<Vec<PathBuf>> {
         debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut specs = Vec::new();

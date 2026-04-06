@@ -126,6 +126,7 @@ impl AgentContextIndex {
     /// Uses a two-tier change detection strategy:
     /// 1. **Mtime fast path**: If file mtime < index built_at, skip read+SHA256 entirely
     /// 2. **SHA256 fallback**: For files with newer mtime, read and compare checksums
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn build_incremental(project_path: &Path, existing: &Self) -> Result<Self, String> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let project_root = project_path

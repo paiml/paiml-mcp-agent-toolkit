@@ -11,6 +11,7 @@ use crate::cli::OutputFormat;
 
 impl CommandDispatcher {
     /// Execute show-metrics command (Phase 3.1 O(1) Quality Gates)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn execute_show_metrics_command(
         trend: bool,
         days: usize,
@@ -151,6 +152,7 @@ impl CommandDispatcher {
     }
 
     /// Execute record-metric command (Phase 3.4 O(1) Quality Gates - CI/CD)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn execute_record_metric_command(
         metric: String,
         value: f64,
@@ -180,6 +182,7 @@ impl CommandDispatcher {
     }
 
     /// Generate metric-specific recommendations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_metric_recommendations(metric: &str, slope_per_day: f64) -> Vec<String> {
         debug_assert!(!metric.is_empty(), "metric must not be empty");
         let mut recommendations = Vec::new();

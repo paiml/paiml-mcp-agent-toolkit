@@ -2,6 +2,7 @@
 
 impl RequestContext {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(protocol: &str) -> Self {
         debug_assert!(!protocol.is_empty(), "protocol must not be empty");
         Self {
@@ -13,6 +14,7 @@ impl RequestContext {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_json_rpc(request: &JsonRpcRequest) -> Self {
         Self {
             request_id: request.id.to_string(),
@@ -23,6 +25,7 @@ impl RequestContext {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_http(request: &HttpRequest) -> Self {
         Self {
             request_id: request

@@ -19,6 +19,7 @@ include!("extractors_tests.rs");
 // ── Dispatcher ──────────────────────────────────────────────────
 
 /// Dispatch to the appropriate extractor based on file extension.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn extract_document(
     path: &Path,
     relative_path: &str,
@@ -43,6 +44,7 @@ pub(crate) fn extract_document(
 }
 
 /// Check if a file extension is a supported document type.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn is_document_file(path: &Path) -> bool {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     matches!(

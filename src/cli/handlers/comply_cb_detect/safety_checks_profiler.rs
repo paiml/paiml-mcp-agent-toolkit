@@ -26,6 +26,7 @@ fn check_brick_file_for_assertions(entry: &Path) -> Option<CbPatternViolation> {
     })
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_bricks_without_assertions(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let brick_dir = project_path.join("src").join("brick");
@@ -103,6 +104,7 @@ fn check_profiler_file(content: &str) -> Vec<ProfilerAnomaly> {
 }
 
 /// Parse BrickProfiler JSON output and detect anomalies
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_profiler_anomalies(project_path: &Path) -> Vec<ProfilerAnomaly> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check standard profiler output locations
@@ -128,6 +130,7 @@ pub fn detect_profiler_anomalies(project_path: &Path) -> Vec<ProfilerAnomaly> {
 }
 
 /// Helper to extract numeric value from JSON line like `"cv": 0.18,`
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_json_number(line: &str) -> Option<f64> {
     debug_assert!(!line.is_empty(), "line must not be empty");
     line.split(':')
@@ -150,6 +153,7 @@ fn find_name_field_backwards(lines: &[&str], from: usize) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_brick_name(content: &str, target_line: &str) -> String {
     debug_assert!(!content.is_empty(), "content must not be empty");
     let lines: Vec<&str> = content.lines().collect();

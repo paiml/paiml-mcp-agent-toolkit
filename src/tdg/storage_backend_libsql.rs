@@ -6,6 +6,7 @@ pub struct LibsqlBackend {
 }
 
 impl LibsqlBackend {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Create database directory if needed
@@ -38,6 +39,7 @@ impl LibsqlBackend {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_temporary() -> Result<Self> {
         // Use in-memory database for ephemeral storage
         let conn = rusqlite::Connection::open_in_memory()?;

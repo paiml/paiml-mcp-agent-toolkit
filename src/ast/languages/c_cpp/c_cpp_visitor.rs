@@ -18,6 +18,7 @@ pub struct CTreeSitterVisitor<'a> {
 
 #[allow(dead_code)]
 impl<'a> CTreeSitterVisitor<'a> {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(dag: &'a mut AstDag, content: &'a str, language: Language) -> Self {
         Self {
             dag,
@@ -27,6 +28,7 @@ impl<'a> CTreeSitterVisitor<'a> {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_node(&mut self, kind: AstKind) -> u32 {
         let mut node = UnifiedAstNode::new(kind, self.language);
 
@@ -37,6 +39,7 @@ impl<'a> CTreeSitterVisitor<'a> {
         self.dag.add_node(node)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn visit_node(&mut self, node: &tree_sitter::Node, parent: Option<u32>) {
         let old_parent = self.current_parent;
         self.current_parent = parent;

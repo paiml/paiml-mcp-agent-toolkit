@@ -15,6 +15,7 @@ use std::path::Path;
 use std::process::Command;
 
 /// Run automated QA validation
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_validate(
     task_id: &str,
     project_path: &Path,

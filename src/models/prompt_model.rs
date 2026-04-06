@@ -100,12 +100,14 @@ pub struct WorkflowPrompt {
 
 impl WorkflowPrompt {
     /// Load a prompt from YAML string
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_yaml(yaml_str: &str) -> Result<Self, serde_yaml_ng::Error> {
         debug_assert!(!yaml_str.is_empty(), "yaml_str must not be empty");
         serde_yaml_ng::from_str(yaml_str)
     }
 
     /// Render the prompt with variable substitution
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render(&self, variables: &HashMap<String, String>) -> String {
         let mut rendered = self.prompt.clone();
 
@@ -119,6 +121,7 @@ impl WorkflowPrompt {
     }
 
     /// Extract variable names from the prompt text
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_variables(&self) -> Vec<String> {
         let re = regex::Regex::new(r"\$\{([^}]+)\}").expect("internal error");
         re.captures_iter(&self.prompt)
@@ -127,16 +130,19 @@ impl WorkflowPrompt {
     }
 
     /// Serialize to YAML format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_yaml(&self) -> Result<String, serde_yaml_ng::Error> {
         serde_yaml_ng::to_string(self)
     }
 
     /// Serialize to JSON format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(self)
     }
 
     /// Render to plain text format (just the prompt text)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_text(&self, variables: &HashMap<String, String>) -> String {
         self.render(variables)
     }

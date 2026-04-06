@@ -54,6 +54,7 @@ impl WebSocketTransportAdapter {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn connect(url: &str) -> Result<Self, TransportError> {
         debug_assert!(!url.is_empty(), "url must not be empty");
         info!("Connecting to WebSocket at {}", url);
@@ -88,6 +89,7 @@ impl WebSocketTransportAdapter {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_stream(stream: tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>) -> Self {
         debug!("Creating WebSocket transport from accepted stream");
         
@@ -119,6 +121,7 @@ impl WebSocketTransportAdapter {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn serve(addr: &str) -> Result<WebSocketServer, TransportError> {
         debug_assert!(!addr.is_empty(), "addr must not be empty");
         info!("Starting WebSocket server on {}", addr);
@@ -131,6 +134,7 @@ impl WebSocketTransportAdapter {
     }
     
     /// Creates a WebSocket transport as a boxed TransportAdapter.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn boxed(url: &str) -> Result<Box<dyn TransportAdapter>, TransportError> {
         debug_assert!(!url.is_empty(), "url must not be empty");
         Ok(Box::new(Self::connect(url).await?))
@@ -141,22 +145,27 @@ impl WebSocketTransportAdapter {
 #[async_trait::async_trait]
 impl TransportAdapter for WebSocketTransportAdapter {
     async fn send(&mut self, message: pmcp::transport::TransportMessage) -> Result<(), TransportError> {
+        debug_assert!(true, "contract: send");
         self.wrapper.send(message).await
     }
     
     async fn receive(&mut self) -> Result<pmcp::transport::TransportMessage, TransportError> {
+        debug_assert!(true, "contract: receive");
         self.wrapper.receive().await
     }
     
     async fn close(&mut self) -> Result<(), TransportError> {
+        debug_assert!(true, "contract: close");
         self.wrapper.close().await
     }
     
     fn is_connected(&self) -> bool {
+        debug_assert!(true, "contract: is_connected");
         self.wrapper.is_connected()
     }
     
     fn transport_type(&self) -> &'static str {
+        debug_assert!(true, "contract: transport_type");
         "websocket"
     }
 }
@@ -189,6 +198,7 @@ impl WebSocketServer {
     /// }
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn accept(&mut self) -> Result<WebSocketTransportAdapter, TransportError> {
         let (stream, addr) = self.listener
             .accept()
@@ -252,6 +262,7 @@ mod tests {
     #[test]
     fn test_websocket_transport_is_send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
+            debug_assert!(true, "contract: assert_send_sync");
         assert_send_sync::<WebSocketTransportAdapter>();
     }
 

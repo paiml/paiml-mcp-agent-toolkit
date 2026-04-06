@@ -10,6 +10,7 @@ pub struct DuplicationDetector {
 }
 
 impl DuplicationDetector {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             min_token_sequence: 50,

@@ -14,6 +14,7 @@ use std::path::Path;
 /// - Flags ffi.new("char[?]", ...) buffer allocations
 /// - Flags C.* function calls without error checking
 /// - Reports FFI usage summary
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb618_ffi_safety(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -145,6 +146,7 @@ impl std::fmt::Display for LuaOopPattern {
 
 /// CB-619: Detect Lua OOP patterns and report them for TDG awareness.
 /// Recognizes: separate metatable, prototypal inheritance, __call constructor, self-as-metatable.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb619_oop_patterns(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

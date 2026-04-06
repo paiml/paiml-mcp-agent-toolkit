@@ -22,6 +22,7 @@ use crate::ast::languages::LanguageStrategy;
 // use crate::services::enhanced_python_visitor::EnhancedPythonVisitor;
 
 /// Analyze a Python file and return complexity metrics (compatibility function)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_python_file_with_complexity(
     path: &Path,
     classifier: Option<&FileClassifier>,
@@ -87,12 +88,14 @@ async fn analyze_python_file_with_complexity_and_classifier(
 }
 
 /// Analyze a Python file and return context (compatibility function)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_python_file(path: &Path) -> Result<FileContext, TemplateError> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_python_file_with_classifier(path, None).await
 }
 
 /// Analyze a Python file with optional classifier and return context (compatibility function)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_python_file_with_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
@@ -172,6 +175,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

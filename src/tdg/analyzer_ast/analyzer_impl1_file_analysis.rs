@@ -1,10 +1,12 @@
 impl TdgAnalyzerAst {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.analyze_file_with_priority(path, OperationPriority::Medium)
             .await
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_file_with_priority(
         &self,
         path: &Path,
@@ -177,6 +179,7 @@ impl TdgAnalyzerAst {
     }
 
     /// Analyze file with commit priority (for git hooks, CI/CD)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_file_commit(&self, path: &Path) -> Result<TdgScore> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let _guard = if let Some(scheduler) = &self.scheduler {
@@ -195,6 +198,7 @@ impl TdgAnalyzerAst {
     }
 
     /// Analyze file with background priority (for daemon, IDE plugins)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_file_background(&self, path: &Path) -> Result<TdgScore> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let _guard = if let Some(scheduler) = &self.scheduler {

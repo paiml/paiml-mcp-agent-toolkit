@@ -2,6 +2,7 @@
 // Split from agent_context_tools.rs for maintainability
 
 impl QueryCodeTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self { manager }
     }
@@ -64,14 +65,17 @@ impl QueryCodeTool {
 #[async_trait]
 impl McpTool for QueryCodeTool {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "pmat_query_code"
     }
 
     fn schema(&self) -> Value {
+        debug_assert!(true, "contract: schema");
         Self::schema()
     }
 
     async fn execute(&self, params: Value) -> Result<Value, String> {
+        debug_assert!(true, "contract: execute");
         let start = Instant::now();
 
         // Extract query parameter

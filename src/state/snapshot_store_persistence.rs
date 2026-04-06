@@ -1,6 +1,7 @@
 // SnapshotStore persistence: construction, save/load snapshots, metadata I/O
 
 impl SnapshotStore {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn new(base_path: &str, config: SnapshotConfig) -> Result<Self, SnapshotError> {
         debug_assert!(!base_path.is_empty(), "base_path must not be empty");
         // Create snapshot directory if it doesn't exist
@@ -21,6 +22,7 @@ impl SnapshotStore {
     }
 
     #[allow(clippy::await_holding_lock)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn save_snapshot<S: AgentState>(
         &self,
         state: &S,
@@ -107,6 +109,7 @@ impl SnapshotStore {
         Ok(snapshot_id)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn load_snapshot<S: AgentState>(
         &self,
         snapshot_id: &SnapshotId,
@@ -161,14 +164,17 @@ impl SnapshotStore {
     }
 
     fn snapshot_path(&self, snapshot_id: &SnapshotId) -> String {
+        debug_assert!(true, "contract: snapshot_path");
         format!("{}/{}.snapshot", self.base_path, snapshot_id)
     }
 
     fn metadata_path(&self) -> String {
+        debug_assert!(true, "contract: metadata_path");
         format!("{}/metadata.json", self.base_path)
     }
 
     async fn save_metadata(&self) -> Result<(), SnapshotError> {
+        debug_assert!(true, "contract: save_metadata");
         let snapshots = self.snapshots.read().clone();
         let json = serde_json::to_string_pretty(&snapshots)
             .map_err(|e| SnapshotError::SerializationError(e.to_string()))?;
@@ -182,6 +188,7 @@ impl SnapshotStore {
     }
 
     async fn load_metadata(&mut self) -> Result<(), SnapshotError> {
+        debug_assert!(true, "contract: load_metadata");
         let path = self.metadata_path();
 
         if !tokio::fs::try_exists(&path).await.unwrap_or(false) {

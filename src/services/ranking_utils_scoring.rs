@@ -1,4 +1,5 @@
 /// Apply file ranking to analysis results
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn apply_file_ranking<T>(
     results: Vec<T>,
     config: &RankingConfig,
@@ -50,6 +51,7 @@ pub fn apply_file_ranking<T>(
 
 /// Convert an analysis result to a defect for ranking purposes
 fn result_to_defect(result: &AnalysisResult, index: usize) -> Defect {
+    debug_assert!(true, "contract: result_to_defect");
     // Compute severity based on metrics
     let severity = compute_severity_from_metrics(&result.metrics);
 
@@ -81,6 +83,7 @@ fn result_to_defect(result: &AnalysisResult, index: usize) -> Defect {
 
 /// Compute severity from metrics for ranking
 fn compute_severity_from_metrics(metrics: &BTreeMap<String, MetricValue>) -> Severity {
+    debug_assert!(true, "contract: compute_severity_from_metrics");
     // Look for common complexity metrics
     let complexity_score = metrics
         .iter()

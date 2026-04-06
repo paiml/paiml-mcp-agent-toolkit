@@ -20,6 +20,7 @@ pub struct DefectAnalysisResult {
 }
 
 /// Discover source files for defect analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn discover_source_files_for_defect_analysis(
     project_path: &Path,
     config: &DefectPredictionConfig,
@@ -64,6 +65,7 @@ pub async fn discover_source_files_for_defect_analysis(
 
 /// Calculate simple complexity metric from source code
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_simple_complexity(content: &str) -> u32 {
     debug_assert!(!content.is_empty(), "content must not be empty");
     let mut complexity = 1u32;
@@ -119,6 +121,7 @@ fn count_exception_handling(line: &str) -> u32 {
 
 /// Calculate simple churn score based on file content
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 {
     debug_assert!(!content.is_empty(), "content must not be empty");
     // Simple heuristic based on comments and file size
@@ -140,6 +143,7 @@ pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 
 
 /// Collect metrics for all files
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn collect_file_metrics(analyzed_files: &[(PathBuf, String, usize)]) -> Vec<FileMetrics> {
     debug_assert!(!analyzed_files.is_empty(), "analyzed_files must not be empty");
     let mut file_metrics = Vec::new();
@@ -178,6 +182,7 @@ pub fn collect_file_metrics(analyzed_files: &[(PathBuf, String, usize)]) -> Vec<
 
 /// Filter predictions based on configuration
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn filter_predictions(
     predictions: Vec<(String, DefectScore)>,
     config: &DefectPredictionConfig,
@@ -211,6 +216,7 @@ pub struct RiskDistribution {
 }
 
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_risk_distribution(predictions: &[(String, DefectScore)]) -> RiskDistribution {
     debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     RiskDistribution {

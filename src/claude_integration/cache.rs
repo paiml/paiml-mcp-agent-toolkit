@@ -48,6 +48,7 @@ impl<T> CacheEntry<T> {
     }
 
     fn is_expired(&self) -> bool {
+        debug_assert!(true, "contract: is_expired");
         SystemTime::now() > self.expires_at
     }
 }

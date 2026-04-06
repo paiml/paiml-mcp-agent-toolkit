@@ -74,6 +74,7 @@ impl DocumentationScorer {
     }
 
     fn changelog_version_score(version_count: usize) -> f64 {
+        debug_assert!(true, "contract: changelog_version_score");
         match () {
             _ if version_count >= 2 => 3.0,
             _ if version_count >= 1 => 2.0,

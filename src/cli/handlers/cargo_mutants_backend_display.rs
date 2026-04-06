@@ -2,6 +2,7 @@
 // Display mutation testing statistics
 
 /// Display mutation testing statistics
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn display_statistics(report: &CargoMutantsReport) {
     eprintln!("📊 Mutation Testing Results:");
     eprintln!();

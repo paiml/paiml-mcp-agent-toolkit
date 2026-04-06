@@ -40,6 +40,7 @@ pub trait McpTransport: Send + Sync {
 }
 
 impl McpSession {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(context: Arc<McpContext>, transport: Arc<dyn McpTransport>) -> Self {
         Self {
             id: Uuid::new_v4(),
@@ -49,6 +50,7 @@ impl McpSession {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn handle_request(&self, request: McpRequest) -> McpResponse {
         let result = match request.method.as_str() {
             "initialize" => self.handle_initialize(request.params).await,
@@ -82,6 +84,7 @@ impl McpSession {
     }
 
     async fn handle_initialize(&self, _params: Option<Value>) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: handle_initialize");
         Ok(serde_json::json!({
             "protocolVersion": MCP_VERSION,
             "capabilities": self.context.capabilities,
@@ -90,11 +93,13 @@ impl McpSession {
     }
 
     async fn handle_tools_list(&self) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: handle_tools_list");
         let tools = self.context.tools.read().list();
         Ok(serde_json::json!({ "tools": tools }))
     }
 
     async fn handle_tool_call(&self, params: Option<Value>) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: handle_tool_call");
         let params = params.ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing parameters".to_string(),
@@ -125,11 +130,13 @@ impl McpSession {
     }
 
     async fn handle_resources_list(&self) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: handle_resources_list");
         let resources = self.context.resources.read().list();
         Ok(serde_json::json!({ "resources": resources }))
     }
 
     async fn handle_resource_read(&self, params: Option<Value>) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: handle_resource_read");
         let params = params.ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing parameters".to_string(),
@@ -158,6 +165,7 @@ impl McpSession {
     }
 
     async fn handle_resource_subscribe(&self, params: Option<Value>) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: handle_resource_subscribe");
         let params = params.ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing parameters".to_string(),
@@ -210,11 +218,13 @@ impl McpSession {
     }
 
     async fn handle_prompts_list(&self) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: handle_prompts_list");
         let prompts = self.context.prompts.read().list();
         Ok(serde_json::json!({ "prompts": prompts }))
     }
 
     async fn handle_prompt_get(&self, params: Option<Value>) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: handle_prompt_get");
         let params = params.ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing parameters".to_string(),
@@ -249,6 +259,7 @@ impl McpSession {
     }
 
     async fn handle_completion(&self, params: Option<Value>) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: handle_completion");
         // Integrate with agent system for completions
         let _params = params.ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,

@@ -18,6 +18,7 @@ use std::path::Path;
 ///
 /// Uses atomic write: builds a temporary DB, then renames into place.
 /// This prevents concurrent readers from seeing a partial/empty file.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn save_to_sqlite(
     db_path: &Path,
     functions: &[FunctionEntry],
@@ -61,6 +62,7 @@ pub(crate) fn save_to_sqlite(
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn humanize_bytes(bytes: u64) -> String {
     if bytes < 1024 {
         format!("{bytes} B")

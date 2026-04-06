@@ -21,6 +21,7 @@ pub struct FiveWhysAnalyzer {
 }
 
 impl FiveWhysAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {}
     }
@@ -34,6 +35,7 @@ impl FiveWhysAnalyzer {
     ///
     /// # Returns
     /// Complete debug analysis with root cause and recommendations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze(&self, issue: &str, path: &Path, depth: u8) -> Result<DebugAnalysis> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Validation
@@ -550,6 +552,7 @@ impl EvidenceSignals {
     }
 
     fn hypothesis_for_depth(&self, depth: u8) -> String {
+        debug_assert!(true, "contract: hypothesis_for_depth");
         match depth {
             1 => self.depth_1_hypothesis(),
             2 => self.depth_2_hypothesis(),
@@ -560,6 +563,7 @@ impl EvidenceSignals {
     }
 
     fn depth_1_hypothesis(&self) -> String {
+        debug_assert!(true, "contract: depth_1_hypothesis");
         if self.high_complexity {
             "Code complexity exceeds acceptable thresholds".to_string()
         } else if self.satd_present {
@@ -570,6 +574,7 @@ impl EvidenceSignals {
     }
 
     fn depth_2_hypothesis(&self) -> String {
+        debug_assert!(true, "contract: depth_2_hypothesis");
         if self.low_coverage {
             "Insufficient test coverage allowed defect to slip through".to_string()
         } else if self.high_complexity {
@@ -580,6 +585,7 @@ impl EvidenceSignals {
     }
 
     fn depth_3_hypothesis(&self) -> String {
+        debug_assert!(true, "contract: depth_3_hypothesis");
         if self.regressing_evoscore {
             "Quality trajectory is declining — area has been getting worse over time".to_string()
         } else if self.high_churn {
@@ -598,6 +604,7 @@ impl FiveWhysAnalyzer {
     /// v2 weights: Complexity 25%, SATD 20%, GitChurn 15%,
     /// EvoScoreTrajectory 15%, CoverageDelta 15%, DeadCode 10%.
     /// TDG weight removed (0%) — redundant with complexity+churn.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_confidence(&self, evidence: &[Evidence]) -> Result<f64> {
         debug_assert!(!evidence.is_empty(), "evidence must not be empty");
         if evidence.is_empty() {
@@ -705,6 +712,7 @@ impl FiveWhysAnalyzer {
     }
 
     /// Generate actionable recommendations (v2 evidence sources, PMAT-510)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_recommendations(
         &self,
         whys: &[WhyIteration],

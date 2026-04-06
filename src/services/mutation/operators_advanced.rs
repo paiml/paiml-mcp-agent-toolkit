@@ -4,18 +4,22 @@ pub struct ConditionalReturnOperator;
 
 impl MutationOperator for ConditionalReturnOperator {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "CRO"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::ConditionalReturn
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         matches!(expr, Expr::Return(_))
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         if let Expr::Return(_) = expr {
             // Generate early return mutant
             let early_return: Expr = syn::parse_quote!(return);
@@ -25,6 +29,7 @@ impl MutationOperator for ConditionalReturnOperator {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.70
     }
 }
@@ -36,14 +41,17 @@ pub struct StatementDeletionOperator;
 
 impl MutationOperator for StatementDeletionOperator {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "SDL"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::StatementDeletion
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         // Can delete assignments, method calls, and function calls
         matches!(
             expr,
@@ -52,6 +60,7 @@ impl MutationOperator for StatementDeletionOperator {
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         // For statement deletion, we return a unit expression ()
         // This represents removing the statement
         match expr {
@@ -63,6 +72,7 @@ impl MutationOperator for StatementDeletionOperator {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.75 // Statement deletions often caught by tests
     }
 }
@@ -73,18 +83,22 @@ pub struct ReturnValueReplacement;
 
 impl MutationOperator for ReturnValueReplacement {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "RVR"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::ReturnValueReplacement
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         matches!(expr, Expr::Return(_))
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         if let Expr::Return(_) = expr {
             // Generate alternative return values
             let mutants = vec![
@@ -98,6 +112,7 @@ impl MutationOperator for ReturnValueReplacement {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.80
     }
 }
@@ -108,23 +123,28 @@ pub struct VariableReplacementOperator;
 
 impl MutationOperator for VariableReplacementOperator {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "VRO"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::VariableReplacement
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         matches!(expr, Expr::Path(_))
     }
 
     fn mutate(&self, _expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         // Minimal: variable replacement requires scope analysis
         Ok(vec![])
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.75
     }
 }
@@ -135,14 +155,17 @@ pub struct BoundaryValueOperator;
 
 impl MutationOperator for BoundaryValueOperator {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "BVO"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::BoundaryValue
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         matches!(
             expr,
             Expr::Lit(syn::ExprLit {
@@ -153,6 +176,7 @@ impl MutationOperator for BoundaryValueOperator {
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         if let Expr::Lit(syn::ExprLit {
             lit: syn::Lit::Int(lit_int),
             ..
@@ -170,6 +194,7 @@ impl MutationOperator for BoundaryValueOperator {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.85
     }
 }
@@ -181,14 +206,17 @@ pub struct ConstantReplacementOperator;
 
 impl MutationOperator for ConstantReplacementOperator {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "CRR"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::ConstantReplacement
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         matches!(
             expr,
             Expr::Lit(syn::ExprLit {
@@ -199,6 +227,7 @@ impl MutationOperator for ConstantReplacementOperator {
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         if let Expr::Lit(lit_expr) = expr {
             return mutate_constant_lit(&lit_expr.lit);
         }
@@ -206,11 +235,13 @@ impl MutationOperator for ConstantReplacementOperator {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.82 // Constants are often in critical logic
     }
 }
 
 fn mutate_constant_lit(lit: &syn::Lit) -> Result<Vec<Expr>> {
+    debug_assert!(true, "contract: mutate_constant_lit");
     match lit {
         syn::Lit::Int(lit_int) => mutate_integer_constant(lit_int),
         syn::Lit::Bool(lit_bool) => {
@@ -224,6 +255,7 @@ fn mutate_constant_lit(lit: &syn::Lit) -> Result<Vec<Expr>> {
 }
 
 fn mutate_integer_constant(lit_int: &syn::LitInt) -> Result<Vec<Expr>> {
+    debug_assert!(true, "contract: mutate_integer_constant");
     if let Ok(value) = lit_int.base10_parse::<i64>() {
         let mutants = match value {
             0 => vec![syn::parse_quote!(1), syn::parse_quote!(-1)],
@@ -246,6 +278,7 @@ fn mutate_integer_constant(lit_int: &syn::LitInt) -> Result<Vec<Expr>> {
 }
 
 fn mutate_string_constant(lit_str: &syn::LitStr) -> Result<Vec<Expr>> {
+    debug_assert!(true, "contract: mutate_string_constant");
     let value = lit_str.value();
     let mutants = if value.is_empty() {
         vec![syn::parse_quote!("null"), syn::parse_quote!("undefined")]
@@ -256,6 +289,7 @@ fn mutate_string_constant(lit_str: &syn::LitStr) -> Result<Vec<Expr>> {
 }
 
 fn mutate_float_constant(lit_float: &syn::LitFloat) -> Result<Vec<Expr>> {
+    debug_assert!(true, "contract: mutate_float_constant");
     if let Ok(value) = lit_float.base10_parse::<f64>() {
         let plus = value + 1.0;
         let minus = value - 1.0;
@@ -276,18 +310,22 @@ pub struct ExceptionHandlerRemoval;
 
 impl MutationOperator for ExceptionHandlerRemoval {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "EHR"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::ExceptionHandlerRemoval
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         matches!(expr, Expr::Try(_))
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         if let Expr::Try(try_expr) = expr {
             // Remove the ? operator
             return Ok(vec![(*try_expr.expr).clone()]);
@@ -296,6 +334,7 @@ impl MutationOperator for ExceptionHandlerRemoval {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.90
     }
 }

@@ -11,6 +11,7 @@ impl BytecodeAnalyzer {
         StackDepthAnalysis,
         Vec<ControlFlowPattern>,
     )> {
+        debug_assert!(true, "contract: analyze_function_body");
         let mut instruction_count = 0u32;
         let mut branch_count = 0u32;
         let mut loop_count = 0u32;
@@ -107,6 +108,7 @@ impl BytecodeAnalyzer {
         StackDepthAnalysis,
         Vec<ControlFlowPattern>,
     )> {
+        debug_assert!(true, "contract: analyze_function_body_shallow");
         let mut instruction_count = 0u32;
         let mut branch_count = 0u32;
         let mut loop_count = 0u32;
@@ -181,6 +183,7 @@ fn process_control_flow_op(
     call_count: &mut u32,
     control_flow_patterns: &mut Vec<ControlFlowPattern>,
 ) {
+    debug_assert!(true, "contract: process_control_flow_op");
     match op {
         Operator::Block { .. } | Operator::Loop { .. } | Operator::If { .. } => {
             *nesting_depth += 1;
@@ -225,6 +228,7 @@ fn process_control_flow_op(
 
 /// Compute average stack depth from recorded depths
 fn compute_avg_stack_depth(stack_depths: &[u32]) -> f64 {
+    debug_assert!(true, "contract: compute_avg_stack_depth");
     if stack_depths.is_empty() {
         0.0
     } else {

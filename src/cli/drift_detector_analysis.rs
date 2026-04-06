@@ -2,6 +2,7 @@
 
 impl DriftDetector {
     /// Create a new drift detector
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: CommandRegistry) -> Self {
         Self {
             registry,
@@ -14,6 +15,7 @@ impl DriftDetector {
     }
 
     /// Detect drift in a markdown file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect_in_file(&self, path: &Path) -> Result<Vec<DriftError>, std::io::Error> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
@@ -22,6 +24,7 @@ impl DriftDetector {
     }
 
     /// Detect drift in markdown content
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_in_content(&self, content: &str, file_name: &str) -> Vec<DriftError> {
         debug_assert!(!content.is_empty(), "content must not be empty");
         debug_assert!(!file_name.is_empty(), "file_name must not be empty");
@@ -72,6 +75,7 @@ impl DriftDetector {
     }
 
     /// Generate full drift report for multiple files
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn generate_report(&self, paths: &[&Path]) -> DriftReport {
         debug_assert!(!paths.is_empty(), "paths must not be empty");
         let mut all_errors = Vec::new();

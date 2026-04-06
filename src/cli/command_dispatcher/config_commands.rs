@@ -10,6 +10,7 @@ use std::path::PathBuf;
 
 impl CommandDispatcher {
     /// Execute configuration command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_config_command(
         show: bool,
         edit: bool,

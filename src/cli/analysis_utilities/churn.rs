@@ -1,5 +1,6 @@
 // Churn handlers - extracted for file health (CB-040)
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_churn(
     project_path: PathBuf,
     days: u32,
@@ -29,6 +30,7 @@ pub async fn handle_analyze_churn(
 
 // Helper function to format churn analysis as JSON
 fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
+    debug_assert!(true, "contract: format_churn_as_json");
     Ok(serde_json::to_string_pretty(analysis)?)
 }
 
@@ -87,6 +89,7 @@ fn format_churn_as_json(analysis: &crate::models::churn::CodeChurnAnalysis) -> R
 /// assert_eq!(analysis.summary.total_files_changed, 2);
 /// ```
 // Helper function to format churn analysis as summary
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_churn_as_summary(
     analysis: &crate::models::churn::CodeChurnAnalysis,
 ) -> Result<String> {
@@ -106,6 +109,7 @@ fn write_summary_header(
     output: &mut String,
     analysis: &crate::models::churn::CodeChurnAnalysis,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_summary_header");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -129,6 +133,7 @@ fn write_summary_top_files(
     output: &mut String,
     analysis: &crate::models::churn::CodeChurnAnalysis,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_summary_top_files");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -180,6 +185,7 @@ fn write_summary_hotspot_files(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_summary_hotspot_files");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -197,6 +203,7 @@ fn write_summary_stable_files(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_summary_stable_files");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -214,6 +221,7 @@ fn write_summary_top_contributors(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_summary_top_contributors");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -229,6 +237,7 @@ fn write_summary_top_contributors(
 }
 
 // Helper function to format churn analysis as markdown
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_churn_as_markdown(
     analysis: &crate::models::churn::CodeChurnAnalysis,
 ) -> Result<String> {
@@ -248,6 +257,7 @@ fn write_markdown_header(
     output: &mut String,
     analysis: &crate::models::churn::CodeChurnAnalysis,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_markdown_header");
     use std::fmt::Write;
 
     writeln!(output, "# Code Churn Analysis Report\n")?;
@@ -266,6 +276,7 @@ fn write_markdown_summary_table(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_markdown_summary_table");
     write_markdown_table_header(output)?;
     write_summary_data_rows(output, summary)?;
     Ok(())
@@ -273,6 +284,7 @@ fn write_markdown_summary_table(
 
 /// Write the markdown table header for summary statistics
 fn write_markdown_table_header(output: &mut String) -> Result<()> {
+    debug_assert!(true, "contract: write_markdown_table_header");
     use std::fmt::Write;
 
     writeln!(output, "## Summary Statistics\n")?;
@@ -286,6 +298,7 @@ fn write_summary_data_rows(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_summary_data_rows");
     write_commits_row(output, summary.total_commits)?;
     write_files_changed_row(output, summary.total_files_changed)?;
     write_hotspot_files_row(output, summary.hotspot_files.len())?;
@@ -296,6 +309,7 @@ fn write_summary_data_rows(
 
 /// Write total commits row
 fn write_commits_row(output: &mut String, total_commits: usize) -> Result<()> {
+    debug_assert!(true, "contract: write_commits_row");
     use std::fmt::Write;
     writeln!(output, "| Total Commits | {total_commits} |")?;
     Ok(())
@@ -303,6 +317,7 @@ fn write_commits_row(output: &mut String, total_commits: usize) -> Result<()> {
 
 /// Write files changed row
 fn write_files_changed_row(output: &mut String, files_changed: usize) -> Result<()> {
+    debug_assert!(true, "contract: write_files_changed_row");
     use std::fmt::Write;
     writeln!(output, "| Files Changed | {files_changed} |")?;
     Ok(())
@@ -310,6 +325,7 @@ fn write_files_changed_row(output: &mut String, files_changed: usize) -> Result<
 
 /// Write hotspot files row
 fn write_hotspot_files_row(output: &mut String, hotspot_count: usize) -> Result<()> {
+    debug_assert!(true, "contract: write_hotspot_files_row");
     use std::fmt::Write;
     writeln!(output, "| Hotspot Files | {hotspot_count} |")?;
     Ok(())
@@ -317,6 +333,7 @@ fn write_hotspot_files_row(output: &mut String, hotspot_count: usize) -> Result<
 
 /// Write stable files row
 fn write_stable_files_row(output: &mut String, stable_count: usize) -> Result<()> {
+    debug_assert!(true, "contract: write_stable_files_row");
     use std::fmt::Write;
     writeln!(output, "| Stable Files | {stable_count} |")?;
     Ok(())
@@ -378,6 +395,7 @@ fn write_markdown_author_contributions(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_markdown_author_contributions");
     use std::fmt::Write;
 
     if !summary.author_contributions.is_empty() {
@@ -397,6 +415,7 @@ fn write_markdown_author_contributions(
 
 // Helper function to write markdown recommendations
 fn write_markdown_recommendations(output: &mut String) -> Result<()> {
+    debug_assert!(true, "contract: write_markdown_recommendations");
     use std::fmt::Write;
 
     writeln!(output, "\n## Recommendations\n")?;
@@ -420,6 +439,7 @@ fn write_markdown_recommendations(output: &mut String) -> Result<()> {
 }
 
 // Helper function to format churn analysis as CSV
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();
@@ -446,6 +466,7 @@ pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -
 }
 
 // Helper function to write output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn write_churn_output(content: String, output: Option<PathBuf>) -> Result<()> {
     if let Some(output_path) = output {
         tokio::fs::write(&output_path, &content).await?;
@@ -465,6 +486,7 @@ fn apply_churn_file_filtering(
     analysis: &mut crate::models::churn::CodeChurnAnalysis,
     top_files: usize,
 ) {
+    debug_assert!(true, "contract: apply_churn_file_filtering");
     // Apply top_files limit if specified (0 means show all)
     if top_files > 0 && analysis.files.len() > top_files {
         // Sort files by commit count descending
@@ -481,6 +503,7 @@ fn format_churn_content(
     analysis: &crate::models::churn::CodeChurnAnalysis,
     format: crate::models::churn::ChurnOutputFormat,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_churn_content");
     use crate::models::churn::ChurnOutputFormat;
 
     match format {

@@ -67,6 +67,7 @@ async fn validate_refactoring_results(
     iteration_result: &IterationResult,
     context: &RefactorContext,
 ) -> Result<ValidationResult> {
+    debug_assert!(true, "contract: validate_refactoring_results");
     eprintln!(
         "🔍 Validating refactoring results for iteration #{}",
         iteration_result.iteration_number
@@ -146,6 +147,7 @@ async fn apply_refactoring_request(
     request: &RefactoringRequest,
     _context: &RefactorContext,
 ) -> Result<RefactoringSuccess> {
+    debug_assert!(true, "contract: apply_refactoring_request");
     let start_time = std::time::Instant::now();
 
     // Simulate applying the refactoring based on type

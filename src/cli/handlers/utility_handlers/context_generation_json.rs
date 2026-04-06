@@ -43,6 +43,7 @@ fn build_json_file(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) -> ContextJsonFile {
+    debug_assert!(true, "contract: build_json_file");
     let file_metrics = find_file_metrics(file, analyses);
 
     let items: Vec<ContextJsonItem> = file
@@ -62,6 +63,7 @@ fn build_json_item(
     item: &crate::services::context::AstItem,
     file_metrics: Option<&crate::services::complexity::FileComplexityMetrics>,
 ) -> Option<ContextJsonItem> {
+    debug_assert!(true, "contract: build_json_item");
     use crate::services::context::AstItem;
     match item {
         AstItem::Function { name, line, .. } => {

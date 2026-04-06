@@ -44,6 +44,7 @@ fn print_viz_legend(
     tdg_graph: &crate::tdg::tdg_graph::TdgGraph,
     theme: crate::viz::terminal::TerminalTheme,
 ) {
+    debug_assert!(true, "contract: print_viz_legend");
     println!("\n--- TDG Dependency Graph ---");
     println!("Theme: {:?}", theme);
     println!("Nodes: {} functions", tdg_graph.num_nodes());

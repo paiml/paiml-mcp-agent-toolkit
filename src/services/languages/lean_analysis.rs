@@ -6,6 +6,7 @@
 /// Handles: line comments (--), nested block comments (/- ... -/),
 /// and word-boundary checking to avoid false positives from identifiers
 /// containing "sorry" as a substring.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn count_sorry(source: &str) -> usize {
     debug_assert!(!source.is_empty(), "source must not be empty");
     let mut count = 0;
@@ -94,6 +95,7 @@ fn is_ident_char(b: u8) -> bool {
 }
 
 /// Count theorem and lemma declarations in Lean source
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn count_theorems(source: &str) -> usize {
     debug_assert!(!source.is_empty(), "source must not be empty");
     source
@@ -117,6 +119,7 @@ impl Default for LeanComplexityAnalyzer {
 impl LeanComplexityAnalyzer {
     /// Creates a new Lean complexity analyzer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -125,6 +128,7 @@ impl LeanComplexityAnalyzer {
     }
 
     /// Analyzes complexity of Lean source code (complexity <=10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
@@ -150,6 +154,7 @@ impl LeanComplexityAnalyzer {
 }
 
 /// Public async function to analyze a Lean file and return FileContext
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_lean_file(
     path: &Path,
 ) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {

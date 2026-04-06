@@ -25,6 +25,7 @@ use super::helpers::grade_delta;
 /// assert!(output.contains("improvement"));
 /// ```ignore
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_comparison(comparison: &Comparison) -> String {
     let mut output = String::new();
 

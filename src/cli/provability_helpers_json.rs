@@ -1,4 +1,5 @@
 /// Format provability results as JSON
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_provability_json(
     function_ids: &[FunctionId],
     summaries: &[ProofSummary],

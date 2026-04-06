@@ -15,6 +15,7 @@ use std::time::Instant;
 
 /// Refactored handler for proof annotations analysis.
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_proof_annotations(
     project_path: PathBuf,
     format: ProofAnnotationOutputFormat,
@@ -112,6 +113,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

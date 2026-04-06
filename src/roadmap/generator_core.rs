@@ -4,6 +4,7 @@
 impl RoadmapTodoGenerator {
     /// Create new generator with quality configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(quality_config: QualityGateConfig) -> Self {
         Self {
             pdmt_service: PdmtService::new(),
@@ -12,6 +13,7 @@ impl RoadmapTodoGenerator {
     }
 
     /// Generate todos from a single task
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_todos_from_task(
         &mut self,
         task: &RoadmapTask,
@@ -42,6 +44,7 @@ impl RoadmapTodoGenerator {
     }
 
     /// Generate todos from entire sprint
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_todos_from_sprint(
         &mut self,
         sprint: &Sprint,
@@ -75,6 +78,7 @@ impl RoadmapTodoGenerator {
 
     /// Create quality-enforced todo from task
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_quality_enforced_todo(
         &self,
         task: &RoadmapTask,
@@ -95,6 +99,7 @@ impl RoadmapTodoGenerator {
 
     /// Generate validation commands for task
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_validation_commands(&self, task: &RoadmapTask) -> Vec<String> {
         let mut commands = vec![
             "cargo test".to_string(),
@@ -115,6 +120,7 @@ impl RoadmapTodoGenerator {
 
     /// Generate success criteria for task
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_success_criteria(&self, task: &RoadmapTask) -> Vec<String> {
         let mut criteria = vec![
             "All tests pass".to_string(),

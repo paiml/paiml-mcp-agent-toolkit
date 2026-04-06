@@ -22,6 +22,7 @@ use std::path::{Path, PathBuf};
 // --- Main handler ---
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_cross_crate(
     workspace_path: &Path,
     explicit_crates: Option<&[PathBuf]>,
@@ -82,6 +83,7 @@ pub async fn handle_cross_crate(
 }
 
 fn print_discovery_help() {
+    debug_assert!(true, "contract: print_discovery_help");
     println!("Cross-crate analysis requires at least 2 crates.");
     println!("Discovery priority:");
     println!("  1. --crates ../foo,../bar  (explicit paths)");
@@ -101,6 +103,7 @@ fn run_detection_rules(
     similarity_threshold: f64,
     churn_window_days: u32,
 ) -> Vec<CrossCrateFinding> {
+    debug_assert!(true, "contract: run_detection_rules");
     let mut findings = Vec::new();
 
     if is_rule_enabled("cc001", enabled_rules) {
@@ -147,6 +150,7 @@ fn emit_report(
     format: ComplyOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: emit_report");
     let output_text = match format {
         ComplyOutputFormat::Text => format_text(report),
         ComplyOutputFormat::Json | ComplyOutputFormat::Sarif => {

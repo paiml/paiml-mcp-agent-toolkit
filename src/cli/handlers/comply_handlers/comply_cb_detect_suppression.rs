@@ -46,11 +46,13 @@ pub struct SuppressionResult {
 
 impl SuppressionConfig {
     /// Create a new empty suppression config
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Add a suppression rule
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_rule(&mut self, rule: SuppressionRule) {
         let rule_idx = self.rules.len();
 
@@ -80,6 +82,7 @@ impl SuppressionConfig {
 
     /// Check if a violation should be suppressed
     /// Returns (suppressed, reason) - O(1) for file-specific rules
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn should_suppress(&self, check_id: &str, file_path: &str, line: u32) -> SuppressionResult {
         debug_assert!(!check_id.is_empty(), "check_id must not be empty");
         debug_assert!(!file_path.is_empty(), "file_path must not be empty");

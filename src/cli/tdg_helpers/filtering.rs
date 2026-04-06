@@ -5,6 +5,7 @@ use crate::models::tdg::TDGHotspot;
 
 /// Filter TDG hotspots based on criteria
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn filter_tdg_hotspots(
     mut hotspots: Vec<TDGHotspot>,
     threshold: f64,

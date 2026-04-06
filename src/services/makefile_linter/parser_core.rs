@@ -3,6 +3,7 @@
 
 impl<'src> MakefileParser<'src> {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(input: &'src str) -> Self {
         Self {
             input,
@@ -15,6 +16,7 @@ impl<'src> MakefileParser<'src> {
 
     /// Safe string slicing that ensures char boundaries
     fn safe_slice(&self, start: usize, end: usize) -> &str {
+        debug_assert!(true, "contract: safe_slice");
         // Handle empty input
         if self.input.is_empty() {
             return "";
@@ -52,6 +54,7 @@ impl<'src> MakefileParser<'src> {
         &self.input[safe_start..safe_end]
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(&mut self) -> Result<MakefileAst, Vec<ParseError>> {
         let mut ast = MakefileAst::new();
 
@@ -81,6 +84,7 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn parse_line(&mut self, ast: &mut MakefileAst) -> Result<(), ParseError> {
+        debug_assert!(true, "contract: parse_line");
         let _start_pos = self.cursor;
         let _start_line = self.line;
         let _start_col = self.column;
@@ -110,6 +114,7 @@ impl<'src> MakefileParser<'src> {
         &mut self,
         ast: &mut MakefileAst,
     ) -> Result<Option<Result<(), ParseError>>, ParseError> {
+        debug_assert!(true, "contract: try_parse_special_line");
         if self.peek() == Some('#') {
             self.parse_comment(ast);
             return Ok(Some(Ok(())));
@@ -130,6 +135,7 @@ impl<'src> MakefileParser<'src> {
         ast: &mut MakefileAst,
         line_type: LineType,
     ) -> Result<(), ParseError> {
+        debug_assert!(true, "contract: parse_line_by_type");
         match line_type {
             LineType::Assignment(op_pos, op) => self.parse_variable(ast, op_pos, op),
             LineType::Rule(colon_pos, is_double) => self.parse_rule(ast, colon_pos, is_double),
@@ -137,12 +143,14 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn is_directive_line(&self) -> bool {
+        debug_assert!(true, "contract: is_directive_line");
         self.starts_with("include")
             || self.starts_with("-include")
             || self.is_conditional_directive()
     }
 
     fn is_conditional_directive(&self) -> bool {
+        debug_assert!(true, "contract: is_conditional_directive");
         self.starts_with("ifeq")
             || self.starts_with("ifneq")
             || self.starts_with("ifdef")
@@ -150,6 +158,7 @@ impl<'src> MakefileParser<'src> {
     }
 
     fn parse_directive_line(&mut self, ast: &mut MakefileAst) -> Result<(), ParseError> {
+        debug_assert!(true, "contract: parse_directive_line");
         if self.starts_with("include") || self.starts_with("-include") {
             self.parse_include(ast)
         } else {

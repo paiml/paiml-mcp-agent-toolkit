@@ -12,6 +12,7 @@ impl Default for DebtClassifier {
 
 impl DebtClassifier {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         // Default mode includes all patterns
         let patterns = vec![
@@ -95,6 +96,7 @@ impl DebtClassifier {
     /// Detects: placeholder, stub, simplified, demo, mock, dummy, fake, hardcoded, "for now", WIP
     /// See issue #149: https://github.com/paiml/paiml-mcp-agent-toolkit/issues/149
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_extended() -> Self {
         // Extended mode includes standard patterns PLUS euphemism patterns
         let mut patterns = vec![
@@ -242,6 +244,7 @@ impl DebtClassifier {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_strict() -> Self {
         // Strict mode only includes explicit SATD markers
         let patterns = vec![
@@ -310,6 +313,7 @@ impl DebtClassifier {
     /// assert_eq!(result, None);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn classify_comment(&self, text: &str) -> Option<(DebtCategory, Severity)> {
         debug_assert!(!text.is_empty(), "text must not be empty");
         let matches = self.compiled_patterns.matches(text);
@@ -326,6 +330,7 @@ impl DebtClassifier {
 
     /// Adjust severity based on context
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn adjust_severity(&self, base_severity: Severity, context: &AstContext) -> Severity {
         match context.node_type {
             // Critical paths escalate severity

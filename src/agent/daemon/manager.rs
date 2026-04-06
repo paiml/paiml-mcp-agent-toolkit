@@ -13,12 +13,14 @@ pub struct DaemonManager;
 
 impl DaemonManager {
     /// Check if daemon is running
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn is_running() -> bool {
         // Check PID file or process status via platform-specific APIs
         false
     }
 
     /// Get daemon status
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_status() -> Result<DaemonState> {
         // Return default state when daemon is not accessible
         // IPC connection would be established here in production
@@ -35,6 +37,7 @@ impl DaemonManager {
     }
 
     /// Send command to running daemon
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn send_command(command: DaemonCommand) -> Result<()> {
         // Command processing in standalone mode
         // In production, this would send commands via IPC
@@ -73,6 +76,7 @@ impl DaemonManager {
     }
 
     /// Shutdown the daemon
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn shutdown() -> Result<()> {
         info!("Shutting down daemon...");
         // Implementation would send shutdown command to running daemon
@@ -80,6 +84,7 @@ impl DaemonManager {
     }
 
     /// Start monitoring a project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn start_monitoring(_project_path: &Path, _project_id: &str) -> Result<()> {
         debug_assert!(
             _project_path.exists(),
@@ -92,6 +97,7 @@ impl DaemonManager {
     }
 
     /// Stop monitoring a project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn stop_monitoring(_project_id: &str) -> Result<()> {
         debug_assert!(!_project_id.is_empty(), "_project_id must not be empty");
         info!("Stopping monitoring for project {}", _project_id);
@@ -100,6 +106,7 @@ impl DaemonManager {
     }
 
     /// Get detailed health information
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_health_info() -> Result<serde_json::Value> {
         info!("Getting detailed health information");
         // Implementation would query daemon for detailed health metrics
@@ -114,6 +121,7 @@ impl DaemonManager {
     }
 
     /// Reload daemon configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn reload_config(_config_path: Option<&PathBuf>) -> Result<()> {
         info!("Reloading daemon configuration");
         // Implementation would send reload config command to daemon
@@ -121,6 +129,7 @@ impl DaemonManager {
     }
 
     /// Run quality gate through daemon
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run_quality_gate(_project: &str) -> Result<QualityGateResult> {
         debug_assert!(!_project.is_empty(), "_project must not be empty");
         info!("Running quality gate for project {}", _project);

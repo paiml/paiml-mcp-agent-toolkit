@@ -157,18 +157,22 @@ pub enum EnforcementMode {
 
 // Default value functions for serde
 fn default_max_score_drop() -> f32 {
+    debug_assert!(true, "contract: default_max_score_drop");
     5.0
 }
 
 fn default_mode() -> EnforcementMode {
+    debug_assert!(true, "contract: default_mode");
     EnforcementMode::Strict
 }
 
 fn default_true() -> bool {
+    debug_assert!(true, "contract: default_true");
     true
 }
 
 fn default_baseline_path() -> String {
+    debug_assert!(true, "contract: default_baseline_path");
     ".pmat/baseline.json".to_string()
 }
 

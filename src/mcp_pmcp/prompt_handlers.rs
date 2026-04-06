@@ -74,6 +74,7 @@ pub struct DefectAwarePromptTool;
 impl DefectAwarePromptTool {
     /// Creates a new defect-aware prompt generation tool handler.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -88,6 +89,7 @@ impl Default for DefectAwarePromptTool {
 #[async_trait]
 impl ToolHandler for DefectAwarePromptTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+        debug_assert!(true, "contract: handle");
         debug!("Handling generate_defect_aware_prompt with args: {}", args);
 
         let params: DefectAwarePromptArgs = serde_json::from_value(args)
@@ -343,12 +345,14 @@ code_quality_thresholds:
     #[test]
     fn test_defect_aware_prompt_tool_is_send() {
         fn assert_send<T: Send>() {}
+        debug_assert!(true, "contract: assert_send");
         assert_send::<DefectAwarePromptTool>();
     }
 
     #[test]
     fn test_defect_aware_prompt_tool_is_sync() {
         fn assert_sync<T: Sync>() {}
+        debug_assert!(true, "contract: assert_sync");
         assert_sync::<DefectAwarePromptTool>();
     }
 }

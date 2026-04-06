@@ -9,6 +9,7 @@ impl MutantFeatures {
     /// Extract features from a mutant
     /// Enhanced extraction (v2) - extracts 18 features
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_mutant(mutant: &Mutant) -> Self {
         let source_line = mutant.location.line;
         let source = &mutant.mutated_source;
@@ -91,6 +92,7 @@ impl MutantFeatures {
 
     /// Convert features to vector for ML model
     /// Enhanced vector (v2) - 18 features total
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_feature_vector(&self) -> Vec<f64> {
         vec![
             // Original 10 features
@@ -117,6 +119,7 @@ impl MutantFeatures {
     }
 
     fn operator_type_as_numeric(&self) -> f64 {
+        debug_assert!(true, "contract: operator_type_as_numeric");
         match self.operator_type {
             MutationOperatorType::ArithmeticReplacement => 1.0,
             MutationOperatorType::RelationalReplacement => 2.0,

@@ -9,6 +9,7 @@ impl ReadmeCompressor {
         sections: &mut Vec<Section>,
         text_buffer: &mut String,
     ) {
+        debug_assert!(true, "contract: handle_heading");
         // Save previous section if exists
         if let Some(mut section) = current_section.take() {
             if !text_buffer.is_empty() {
@@ -48,6 +49,7 @@ impl ReadmeCompressor {
     }
 
     fn handle_list_end(&self, current_section: &mut Option<Section>, list_items: &mut Vec<String>) {
+        debug_assert!(true, "contract: handle_list_end");
         if let Some(ref mut section) = current_section {
             if !list_items.is_empty() {
                 section.lists.push(List {

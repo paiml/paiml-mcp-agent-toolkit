@@ -1,4 +1,5 @@
 impl RustDefectDetector {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             unwrap_regex: Regex::new(r"\.unwrap\(\)").expect("internal error"),
@@ -65,6 +66,7 @@ impl RustDefectDetector {
 
     /// Detect all defects in Rust source code
     /// Returns vector of detected defect patterns with instances
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect(&self, content: &str, file_path: &Path) -> Vec<DefectPattern> {
         debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut defects = Vec::new();
@@ -184,6 +186,7 @@ impl RustDefectDetector {
 
     /// Count unwrap() calls (used by rust-project-score)
     /// Skips comments and string literal contents to avoid false positives.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn count_unwraps(&self, content: &str) -> usize {
         debug_assert!(!content.is_empty(), "content must not be empty");
         content

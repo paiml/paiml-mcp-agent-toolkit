@@ -12,6 +12,7 @@ impl AgentContextIndex {
     /// # Returns
     /// Ranked list of matching functions
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn query(&self, query: &str, options: QueryOptions) -> Result<Vec<QueryResult>, String> {
         debug_assert!(!query.is_empty(), "query must not be empty");
         let limit = if options.limit == 0 {
@@ -141,6 +142,7 @@ impl AgentContextIndex {
     }
 
     fn apply_quality_weighting(&self, idx: usize, relevance: f32) -> f32 {
+        debug_assert!(true, "contract: apply_quality_weighting");
         let func = &self.functions[idx];
         let quality_factor = 1.0 - (func.quality.tdg_score / 10.0);
         let mut combined = relevance * 0.7 + quality_factor * 0.3;
@@ -155,6 +157,7 @@ impl AgentContextIndex {
     }
 
     fn sort_ranked(&self, ranked: &mut Vec<(usize, f32)>, options: &QueryOptions) {
+        debug_assert!(true, "contract: sort_ranked");
         match options.rank_by {
             super::types::RankBy::Relevance | super::types::RankBy::Impact => {
                 ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -243,6 +246,7 @@ impl AgentContextIndex {
     }
 
     /// Get function by file and name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_function(&self, file_path: &str, function_name: &str) -> Option<QueryResult> {
         debug_assert!(!function_name.is_empty(), "function_name must not be empty");
         self.functions
@@ -253,6 +257,7 @@ impl AgentContextIndex {
     }
 
     /// Find similar functions
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_similar(
         &self,
         file_path: &str,

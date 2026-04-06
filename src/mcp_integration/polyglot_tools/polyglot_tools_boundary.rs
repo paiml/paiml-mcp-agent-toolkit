@@ -4,6 +4,7 @@
 #[async_trait]
 impl McpTool for LanguageBoundaryTool {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "analyze_language_boundaries".to_string(),
             description: "Detects language boundaries and interoperability points in a project"
@@ -35,6 +36,7 @@ impl McpTool for LanguageBoundaryTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         let (path, max_depth, source_language, target_language) = parse_boundary_params(&params)?;
         let languages = resolve_languages(source_language, target_language);
         let all_nodes = collect_language_nodes(&path, max_depth, &languages).await;
@@ -81,6 +83,7 @@ fn parse_language_param(value: &Value, key: &str) -> Option<Language> {
 }
 
 fn parse_boundary_params(params: &Value) -> Result<(PathBuf, usize, Option<Language>, Option<Language>), McpError> {
+    debug_assert!(true, "contract: parse_boundary_params");
     let path_str = params["path"].as_str().ok_or_else(|| McpError {
         code: crate::mcp_integration::error_codes::INVALID_PARAMS,
         message: "Missing path parameter".to_string(),
@@ -106,6 +109,7 @@ fn parse_boundary_params(params: &Value) -> Result<(PathBuf, usize, Option<Langu
 }
 
 fn resolve_languages(source: Option<Language>, target: Option<Language>) -> Vec<Language> {
+    debug_assert!(true, "contract: resolve_languages");
     if source.is_none() && target.is_none() {
         vec![Language::Java, Language::Kotlin, Language::Scala, Language::TypeScript, Language::JavaScript]
     } else {

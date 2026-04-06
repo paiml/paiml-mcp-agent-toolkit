@@ -10,11 +10,13 @@ pub struct DocGenerator {
 
 impl DocGenerator {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(profile: QualityProfile) -> Self {
         Self { profile }
     }
 
     /// Generate documentation for a function
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_for_function(&self, _code: &str, spec: &CreateSpec) -> Result<String> {
         debug_assert!(!_code.is_empty(), "_code must not be empty");
         let mut docs = String::new();
@@ -61,6 +63,7 @@ impl DocGenerator {
         Ok(docs)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_example_value(&self, param_type: &str) -> String {
         debug_assert!(!param_type.is_empty(), "param_type must not be empty");
         match param_type {
@@ -74,6 +77,7 @@ impl DocGenerator {
     }
 
     /// Generate documentation for any code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_documentation(&self, code: &str) -> Result<String> {
         debug_assert!(!code.is_empty(), "code must not be empty");
         let mut docs = String::new();

@@ -1,4 +1,5 @@
 impl DeadCodeAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn classify_dead_code(&self, dag: &AstDag) -> DeadCodeReport {
         let reachable = self.reachability.read();
         let mut dead_functions = Vec::new();
@@ -74,6 +75,7 @@ impl DeadCodeAnalyzer {
     }
 
     /// Classify dead code from dependency graph
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn classify_dead_code_from_dep_graph(&self, dag: &DependencyGraph) -> DeadCodeReport {
         let reachable = self.reachability.read();
         let mut dead_functions = Vec::new();

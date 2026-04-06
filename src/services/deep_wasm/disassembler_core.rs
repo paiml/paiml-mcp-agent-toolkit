@@ -4,6 +4,7 @@
 
 impl Disassembler {
     /// Create a new disassembler
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             detect_patterns: true,
@@ -11,11 +12,13 @@ impl Disassembler {
     }
 
     /// Create disassembler with custom settings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_pattern_detection(detect_patterns: bool) -> Self {
         Self { detect_patterns }
     }
 
     /// Disassemble a function
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn disassemble_function(
         &self,
         function_index: u32,
@@ -63,6 +66,7 @@ impl Disassembler {
     }
 
     /// Detect instruction patterns
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_patterns(
         &self,
         instructions: &[DisassembledInstruction],

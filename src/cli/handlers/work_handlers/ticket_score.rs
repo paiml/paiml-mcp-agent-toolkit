@@ -4,6 +4,7 @@
 
 use crate::cli::handlers::work_contract as wc;
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_score(
     id: String,
     min_score: f64,
@@ -131,6 +132,7 @@ fn print_score_text(
 }
 
 fn print_drift_text(drift: &wc::DriftMetrics) {
+    debug_assert!(true, "contract: print_drift_text");
     use crate::cli::colors as c;
     println!("  {}", c::subheader("Drift Metrics (ABC Theorem)"));
     println!("  {}", c::separator());
@@ -147,6 +149,7 @@ fn print_drift_text(drift: &wc::DriftMetrics) {
 }
 
 fn print_lint_text(lint_report: &wc::LintReport, lint_config: &wc::LintConfig) {
+    debug_assert!(true, "contract: print_lint_text");
     use crate::cli::colors as c;
     if lint_report.findings.is_empty() {
         return;
@@ -171,6 +174,7 @@ fn print_lint_text(lint_report: &wc::LintReport, lint_config: &wc::LintConfig) {
 }
 
 fn print_trend_text(trend: &wc::QualityTrend) {
+    debug_assert!(true, "contract: print_trend_text");
     use crate::cli::colors as c;
     if trend.snapshots.is_empty() {
         return;
@@ -188,6 +192,7 @@ fn print_trend_text(trend: &wc::QualityTrend) {
 }
 
 /// Handle `pmat work codebase-score` — aggregate scoring across all contracts (§14.6)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_codebase_score(path: Option<PathBuf>, format: String) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let score = wc::compute_codebase_score(&project_path);

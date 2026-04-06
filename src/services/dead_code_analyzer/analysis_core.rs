@@ -16,6 +16,7 @@ impl DeadCodeAnalyzer {
     /// // Analyzer is ready to analyze up to 1000 nodes
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(total_nodes: usize) -> Self {
         Self {
             reachability: Arc::new(RwLock::new(HierarchicalBitSet::new(total_nodes))),
@@ -45,6 +46,7 @@ impl DeadCodeAnalyzer {
     /// let analyzer = DeadCodeAnalyzer::new(100).with_coverage(coverage);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_coverage(mut self, coverage: CoverageData) -> Self {
         self.coverage_map = Some(Arc::new(coverage));
         self
@@ -52,6 +54,7 @@ impl DeadCodeAnalyzer {
 
     /// Perform complete dead code analysis
     #[inline]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&mut self, dag: &AstDag) -> DeadCodeReport {
         debug_assert!(!dag.nodes.is_empty(), "AST DAG must have at least one node");
         // Phase 1: Build reference graph from AST
@@ -69,6 +72,7 @@ impl DeadCodeAnalyzer {
 
     #[inline]
     /// Perform dead code analysis on a dependency graph
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_dependency_graph(&mut self, dag: &DependencyGraph) -> DeadCodeReport {
         // Phase 1: Build reference graph from dependency graph
         self.build_reference_graph_from_dep_graph(dag);

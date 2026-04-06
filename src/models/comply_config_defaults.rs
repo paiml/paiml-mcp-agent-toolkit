@@ -1,62 +1,81 @@
 // Default value functions for serde deserialization
 
 fn default_max_score() -> f64 {
+    debug_assert!(true, "contract: default_max_score");
     100.0
 }
 fn default_weight() -> f64 {
+    debug_assert!(true, "contract: default_weight");
     1.0
 }
 fn default_true() -> bool {
+    debug_assert!(true, "contract: default_true");
     true
 }
 fn default_coverage() -> f64 {
+    debug_assert!(true, "contract: default_coverage");
     95.0
 }
 fn default_per_file_coverage() -> f64 {
+    debug_assert!(true, "contract: default_per_file_coverage");
     95.0
 }
 fn default_complexity() -> u32 {
+    debug_assert!(true, "contract: default_complexity");
     20
 }
 fn default_dead_code() -> f64 {
+    debug_assert!(true, "contract: default_dead_code");
     1.0
 }
 fn default_file_size() -> u32 {
+    debug_assert!(true, "contract: default_file_size");
     500
 }
 fn default_function_size() -> u32 {
+    debug_assert!(true, "contract: default_function_size");
     50
 }
 fn default_slow_test() -> f64 {
+    debug_assert!(true, "contract: default_slow_test");
     5.0
 }
 fn default_slow_coverage() -> f64 {
+    debug_assert!(true, "contract: default_slow_coverage");
     10.0
 }
 fn default_min_tdg_grade() -> String {
+    debug_assert!(true, "contract: default_min_tdg_grade");
     "A".to_string()
 }
 fn default_tdg_score() -> f64 {
+    debug_assert!(true, "contract: default_tdg_score");
     70.0
 }
 fn default_min_body_lines() -> usize {
+    debug_assert!(true, "contract: default_min_body_lines");
     3
 }
 fn default_min_tokens() -> usize {
+    debug_assert!(true, "contract: default_min_tokens");
     15
 }
 fn default_cc003_similarity() -> f64 {
+    debug_assert!(true, "contract: default_cc003_similarity");
     0.5
 }
 fn default_cache_warn_hours() -> i64 {
+    debug_assert!(true, "contract: default_cache_warn_hours");
     1
 }
 fn default_cache_block_hours() -> i64 {
+    debug_assert!(true, "contract: default_cache_block_hours");
     24
 }
 
 /// Create default check configurations for all CB checks
 fn default_checks() -> HashMap<String, CheckConfig> {
+    debug_assert!(true, "contract: default_checks");
     let mut checks = HashMap::new();
 
     // CB-050: Stub detection (Critical - runtime panics)

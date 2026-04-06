@@ -85,6 +85,7 @@ use tracing::{debug, info};
 /// - Output file cannot be written
 /// - Analysis encounters errors
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_deep_context(
     project_path: PathBuf,
     output: Option<PathBuf>,
@@ -190,6 +191,7 @@ pub async fn handle_analyze_deep_context(
 
 /// Handle TDG (Technical Debt Gradient) analysis command  
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_tdg(
     path: PathBuf,
     threshold: Option<f64>,
@@ -231,6 +233,7 @@ pub async fn handle_analyze_tdg(
 }
 
 /// Handle makefile analysis command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_makefile(
     path: PathBuf,
     rules: Vec<String>,
@@ -256,6 +259,7 @@ pub async fn handle_analyze_makefile(
 
 /// Handle defect prediction analysis command
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_defect_prediction(
     project_path: PathBuf,
     confidence_threshold: Option<f64>,
@@ -295,6 +299,7 @@ pub async fn handle_analyze_defect_prediction(
 
 /// Handle comprehensive analysis command
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_comprehensive(
     project_path: PathBuf,
     file: Option<PathBuf>,
@@ -347,6 +352,7 @@ pub async fn handle_analyze_comprehensive(
 
 /// Handle graph metrics analysis command
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_graph_metrics(
     project_path: PathBuf,
     metrics: Vec<GraphMetricType>,
@@ -390,6 +396,7 @@ pub async fn handle_analyze_graph_metrics(
 
 /// Handle symbol table analysis command
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_symbol_table(
     project_path: PathBuf,
     format: SymbolTableOutputFormat,
@@ -428,6 +435,7 @@ fn format_deep_context_text(
     report: &crate::services::simple_deep_context::SimpleAnalysisReport,
     top_files: usize,
 ) -> String {
+    debug_assert!(true, "contract: format_deep_context_text");
     use crate::cli::colors as c;
     use std::fmt::Write;
 

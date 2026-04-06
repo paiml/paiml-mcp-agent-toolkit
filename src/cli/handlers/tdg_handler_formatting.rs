@@ -7,6 +7,7 @@ fn format_output_from_summary(
     include_components: bool,
     verbose: bool,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_output_from_summary");
     match format {
         TdgOutputFormat::Table => Ok(format_table_output(summary, include_components, verbose)),
         TdgOutputFormat::Json => Ok(format_json_output(summary, include_components)),
@@ -48,6 +49,7 @@ fn format_single_file_output(
 
 /// Format empty results when no files meet criteria
 fn format_empty_results(format: TdgOutputFormat) -> String {
+    debug_assert!(true, "contract: format_empty_results");
     match format {
         TdgOutputFormat::Table => "No files found matching the specified criteria.\n".to_string(),
         TdgOutputFormat::Json => r#"{"summary": {"total_files": 0}, "hotspots": []}"#.to_string(),
@@ -57,6 +59,7 @@ fn format_empty_results(format: TdgOutputFormat) -> String {
 }
 
 fn format_table_output(summary: &TDGSummary, include_components: bool, verbose: bool) -> String {
+    debug_assert!(true, "contract: format_table_output");
     let mut table = String::new();
     table.push_str("\n# Technical Debt Gradient Analysis\n\n");
     table.push_str(&format!("📊 **Total Files Analyzed**: {}\n", summary.total_files));
@@ -108,6 +111,7 @@ fn format_table_output(summary: &TDGSummary, include_components: bool, verbose: 
 }
 
 fn format_json_output(summary: &TDGSummary, include_components: bool) -> String {
+    debug_assert!(true, "contract: format_json_output");
     let json_output = serde_json::json!({
         "summary": {
             "total_files": summary.total_files,
@@ -136,6 +140,7 @@ fn format_json_output(summary: &TDGSummary, include_components: bool) -> String 
 }
 
 fn format_markdown_output(summary: &TDGSummary, include_components: bool) -> String {
+    debug_assert!(true, "contract: format_markdown_output");
     let mut md = String::new();
     md.push_str("# Technical Debt Gradient Analysis\n\n");
     md.push_str("## Summary\n\n");
@@ -181,12 +186,14 @@ fn format_markdown_output(summary: &TDGSummary, include_components: bool) -> Str
 }
 
 fn format_sarif_output(summary: &TDGSummary) -> String {
+    debug_assert!(true, "contract: format_sarif_output");
     let results: Vec<_> = summary.hotspots.iter().map(create_sarif_result).collect();
     let sarif = build_sarif_document(results);
     serde_json::to_string_pretty(&sarif).unwrap_or_else(|_| "{}".to_string())
 }
 
 fn create_sarif_result(hotspot: &crate::models::tdg::TDGHotspot) -> serde_json::Value {
+    debug_assert!(true, "contract: create_sarif_result");
     serde_json::json!({
         "ruleId": "TDG001",
         "level": if hotspot.tdg_score > 2.5 { "error" } else { "warning" },

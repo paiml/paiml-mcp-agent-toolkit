@@ -3,6 +3,7 @@
 
 impl CodeFactDatabase {
     /// Create empty fact database
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             functions: HashMap::new(),
@@ -12,6 +13,7 @@ impl CodeFactDatabase {
     }
 
     /// Load facts from deep context markdown
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_markdown(content: &str) -> Result<Self> {
         debug_assert!(!content.is_empty(), "content must not be empty");
         let mut db = Self::new();
@@ -41,18 +43,21 @@ impl CodeFactDatabase {
     }
 
     /// Check if database contains a function
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_function(&self, name: &str) -> bool {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.functions.contains_key(name)
     }
 
     /// Check if database supports a language
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_language_support(&self, language: &str) -> bool {
         debug_assert!(!language.is_empty(), "language must not be empty");
         self.languages.iter().any(|l| l == language)
     }
 
     /// Add capability to database
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_capability(&mut self, capability: String) {
         if !self.capabilities.contains(&capability) {
             self.capabilities.push(capability);
@@ -60,6 +65,7 @@ impl CodeFactDatabase {
     }
 
     /// Check if database has a capability
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_capability(&self, capability: &str) -> bool {
         debug_assert!(!capability.is_empty(), "capability must not be empty");
         self.capabilities.iter().any(|c| c == capability)

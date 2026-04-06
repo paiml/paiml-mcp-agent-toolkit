@@ -3,6 +3,7 @@ fn format_output(
     report: &DuplicateReport,
     format: crate::cli::DuplicateOutputFormat,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_output");
     match format {
         crate::cli::DuplicateOutputFormat::Json => format_json_output(report),
         crate::cli::DuplicateOutputFormat::Human
@@ -15,6 +16,7 @@ fn format_output(
 
 /// Format output as JSON
 fn format_json_output(report: &DuplicateReport) -> Result<String> {
+    debug_assert!(true, "contract: format_json_output");
     // Create enhanced JSON with test-expected fields
     let enhanced_json = serde_json::json!({
         "total_duplicates": report.total_duplicates,
@@ -76,6 +78,7 @@ fn format_json_output(report: &DuplicateReport) -> Result<String> {
 /// assert!(output.contains("Top Files by Duplication"));
 /// assert!(output.contains("main.rs"));
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_human_output(report: &DuplicateReport) -> Result<String> {
     let mut output = String::new();
 
@@ -89,6 +92,7 @@ pub fn format_human_output(report: &DuplicateReport) -> Result<String> {
 
 /// Write the header section
 fn write_header(output: &mut String) -> Result<()> {
+    debug_assert!(true, "contract: write_header");
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(output, "{}", c::header("Duplicate Code Analysis"))?;
@@ -98,6 +102,7 @@ fn write_header(output: &mut String) -> Result<()> {
 
 /// Write the summary section
 fn write_summary(output: &mut String, report: &DuplicateReport) -> Result<()> {
+    debug_assert!(true, "contract: write_summary");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -124,6 +129,7 @@ fn write_summary(output: &mut String, report: &DuplicateReport) -> Result<()> {
 
 /// Write the top files by duplication section
 fn write_top_files_section(output: &mut String, report: &DuplicateReport) -> Result<()> {
+    debug_assert!(true, "contract: write_top_files_section");
     if report.file_statistics.is_empty() {
         return Ok(());
     }
@@ -142,6 +148,7 @@ fn write_top_files_section(output: &mut String, report: &DuplicateReport) -> Res
 fn get_sorted_file_stats(
     file_stats: &std::collections::HashMap<String, FileStats>,
 ) -> Vec<(&String, &FileStats)> {
+    debug_assert!(true, "contract: get_sorted_file_stats");
     let mut sorted_files: Vec<_> = file_stats.iter().collect();
     sorted_files.sort_by(|a, b| {
         b.1.duplication_percentage
@@ -187,6 +194,7 @@ fn extract_filename(file_path: &str) -> &str {
 
 /// Write the duplicate blocks section
 fn write_duplicate_blocks_section(output: &mut String, report: &DuplicateReport) -> Result<()> {
+    debug_assert!(true, "contract: write_duplicate_blocks_section");
     if report.duplicate_blocks.is_empty() {
         return Ok(());
     }
@@ -214,6 +222,7 @@ fn write_block_details(output: &mut String, duplicate_blocks: &[DuplicateBlock])
 
 /// Write block header with summary info
 fn write_block_header(output: &mut String, block_num: usize, block: &DuplicateBlock) -> Result<()> {
+    debug_assert!(true, "contract: write_block_header");
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(
@@ -230,6 +239,7 @@ fn write_block_header(output: &mut String, block_num: usize, block: &DuplicateBl
 
 /// Write block location information
 fn write_block_locations(output: &mut String, block: &DuplicateBlock) -> Result<()> {
+    debug_assert!(true, "contract: write_block_locations");
     use crate::cli::colors as c;
     use std::fmt::Write;
     for loc in &block.locations {
@@ -246,6 +256,7 @@ fn write_block_locations(output: &mut String, block: &DuplicateBlock) -> Result<
 
 /// Write block content preview
 fn write_block_preview(output: &mut String, block: &DuplicateBlock) -> Result<()> {
+    debug_assert!(true, "contract: write_block_preview");
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(output, "    {}Preview:{}", c::DIM, c::RESET)?;
@@ -256,6 +267,7 @@ fn write_block_preview(output: &mut String, block: &DuplicateBlock) -> Result<()
 
 /// Write count of remaining blocks if there are more than 20
 fn write_remaining_blocks_count(output: &mut String, total_blocks: usize) -> Result<()> {
+    debug_assert!(true, "contract: write_remaining_blocks_count");
     if total_blocks > 20 {
         use crate::cli::colors as c;
         use std::fmt::Write;
@@ -272,6 +284,7 @@ fn write_remaining_blocks_count(output: &mut String, total_blocks: usize) -> Res
 
 /// Format output as SARIF
 fn format_sarif_output(report: &DuplicateReport) -> Result<String> {
+    debug_assert!(true, "contract: format_sarif_output");
     let sarif = serde_json::json!({
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
         "version": "2.1.0",
@@ -314,6 +327,7 @@ fn format_sarif_output(report: &DuplicateReport) -> Result<String> {
 
 /// Format output as CSV
 fn format_csv_output(report: &DuplicateReport) -> Result<String> {
+    debug_assert!(true, "contract: format_csv_output");
     let mut csv = String::new();
     csv.push_str("Type,File1,Start1,End1,File2,Start2,End2\n");
 

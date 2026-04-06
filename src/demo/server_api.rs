@@ -1,4 +1,5 @@
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_summary_json(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
     let results = &state.analysis_results;
@@ -24,6 +25,7 @@ pub(crate) fn serve_summary_json(state: &Arc<RwLock<DemoState>>) -> Response<Byt
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_metrics_json(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
     let metrics = serde_json::json!({
@@ -42,6 +44,7 @@ pub(crate) fn serve_metrics_json(state: &Arc<RwLock<DemoState>>) -> Response<Byt
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_recommendations_json(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -65,6 +68,7 @@ pub(crate) fn serve_recommendations_json(state: &Arc<RwLock<DemoState>>) -> Resp
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_polyglot_analysis(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -108,6 +112,7 @@ pub(crate) fn serve_polyglot_analysis(state: &Arc<RwLock<DemoState>>) -> Respons
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_showcase_gallery(_state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let gallery = ShowcaseGallery::new();
     let showcase_data = serde_json::json!({
@@ -139,6 +144,7 @@ struct HotspotEntry {
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_hotspots_table(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 

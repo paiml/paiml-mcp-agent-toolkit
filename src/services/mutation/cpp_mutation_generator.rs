@@ -18,6 +18,7 @@ pub struct CppMutationGenerator {
 
 impl CppMutationGenerator {
     /// Create generator with all default C++ mutation operators
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_default_operators() -> Self {
         Self {
             operators: vec![
@@ -33,6 +34,7 @@ impl CppMutationGenerator {
     }
 
     /// Generate all mutants from C++ source code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_mutants(&self, source: &str, file_path: &str) -> Result<Vec<Mutant>> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let tree = self.parse_cpp(source)?;

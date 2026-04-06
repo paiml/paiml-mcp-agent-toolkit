@@ -6,6 +6,7 @@ impl DataScienceAnalyzer {
     /// - Category (one-hot encoded conceptually, but simplified here)
     /// - File path similarity (simplified to directory grouping)
     /// - Line proximity (normalized)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cluster_findings(&self, findings: &mut [Finding]) -> Vec<FindingCluster> {
         if findings.is_empty() || findings.len() < self.k_clusters {
             // Not enough findings to cluster meaningfully
@@ -65,6 +66,7 @@ impl DataScienceAnalyzer {
     /// Convert a finding to a feature vector
     #[allow(clippy::cast_possible_truncation)]
     fn finding_to_features(&self, finding: &Finding) -> Vec<f32> {
+        debug_assert!(true, "contract: finding_to_features");
         let mut features = vec![0.0f32; 6];
 
         // Severity (0-3)

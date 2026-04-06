@@ -19,6 +19,7 @@ pub enum Language {
 
 impl Language {
     /// Returns the name of the language as a string
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn name(&self) -> &'static str {
         match self {
             Language::Java => "Java",
@@ -39,6 +40,7 @@ impl Language {
     }
 
     /// Returns the language from a file extension
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_extension(ext: &str) -> Option<Self> {
         debug_assert!(!ext.is_empty(), "ext must not be empty");
         match ext.to_lowercase().as_str() {
@@ -60,6 +62,7 @@ impl Language {
     }
 
     /// Returns the language from a file path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_path(path: &Path) -> Option<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
@@ -68,6 +71,7 @@ impl Language {
     }
 
     /// Returns common file extensions for this language
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn file_extensions(&self) -> Vec<&'static str> {
         match self {
             Language::Java => vec!["java"],

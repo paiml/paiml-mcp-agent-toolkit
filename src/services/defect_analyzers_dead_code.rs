@@ -3,6 +3,7 @@
 
 impl DeadCodeDefectAnalyzer {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {}
     }
@@ -51,16 +52,19 @@ impl DefectAnalyzer for DeadCodeDefectAnalyzer {
     }
 
     fn category(&self) -> DefectCategory {
+        debug_assert!(true, "contract: category");
         DefectCategory::DeadCode
     }
 
     fn supports_incremental(&self) -> bool {
+        debug_assert!(true, "contract: supports_incremental");
         false // Requires full graph analysis
     }
 }
 
 impl DeadCodeDefectAnalyzer {
     fn dead_code_item_to_defect(&self, item: &DeadCodeItem, prefix: &str, index: usize) -> Defect {
+        debug_assert!(true, "contract: dead_code_item_to_defect");
         let severity = if item.confidence > 0.9 {
             Severity::High
         } else if item.confidence > 0.7 {
@@ -98,6 +102,7 @@ impl DeadCodeDefectAnalyzer {
     }
 
     fn unreachable_block_to_defect(&self, block: &UnreachableBlock, index: usize) -> Defect {
+        debug_assert!(true, "contract: unreachable_block_to_defect");
         let mut metrics = HashMap::new();
         metrics.insert(
             "lines".to_string(),

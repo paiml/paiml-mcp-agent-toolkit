@@ -12,17 +12,20 @@ pub struct MutationScorer {
 
 impl MutationScorer {
     /// Create new scorer from results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(results: Vec<MutationResult>) -> Self {
         debug_assert!(!results.is_empty(), "results must not be empty");
         Self { results }
     }
 
     /// Calculate mutation score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_score(&self) -> MutationScore {
         MutationScore::from_results(&self.results)
     }
 
     /// Identify weak spots in test coverage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn weak_spots(&self) -> Vec<WeakSpot> {
         let mut file_survivors: HashMap<PathBuf, Vec<&MutationResult>> = HashMap::new();
 
@@ -74,6 +77,7 @@ impl MutationScorer {
     }
 
     /// Get summary statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn summary(&self) -> MutationSummary {
         let score = self.calculate_score();
         let weak_spots = self.weak_spots();

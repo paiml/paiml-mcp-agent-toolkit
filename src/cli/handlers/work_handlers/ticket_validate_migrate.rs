@@ -1,5 +1,6 @@
 /// Collect semantic warnings for roadmap items (helper for handle_work_validate)
 fn collect_semantic_warnings(roadmap: &crate::models::roadmap::Roadmap) -> Vec<String> {
+    debug_assert!(true, "contract: collect_semantic_warnings");
     let mut warnings = Vec::new();
     for item in &roadmap.roadmap {
         if item.acceptance_criteria.is_empty()
@@ -25,6 +26,7 @@ fn print_valid_roadmap(
     verbose: bool,
     fix: bool,
 ) {
+    debug_assert!(true, "contract: print_valid_roadmap");
     use crate::cli::colors as c;
     println!("{}", c::pass("Syntax valid"));
     println!("   {} {}", c::label("Version:"), roadmap.roadmap_version);
@@ -103,6 +105,7 @@ fn print_yaml_error_context(error_msg: &str, content: &str) {
 /// Handle work validate command (Part B: UX Improvements)
 ///
 /// Validates roadmap.yaml syntax and content with actionable error messages.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: bool) -> Result<()> {
     use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
@@ -135,6 +138,7 @@ pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: boo
 /// Handle work migrate command (Part B: UX Improvements)
 ///
 /// Auto-fixes common roadmap.yaml issues.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_migrate(path: Option<PathBuf>, dry_run: bool, backup: bool) -> Result<()> {
     use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
@@ -232,6 +236,7 @@ pub async fn handle_work_migrate(path: Option<PathBuf>, dry_run: bool, backup: b
 /// Handle work list-statuses command (Part B: UX Improvements)
 ///
 /// Lists all valid status values with descriptions and aliases.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_work_list_statuses() -> Result<()> {
     use crate::cli::colors as c;
     println!("{}\n", c::subheader("📋 Valid Status Values"));

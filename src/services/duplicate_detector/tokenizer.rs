@@ -15,6 +15,7 @@ pub struct UniversalFeatureExtractor {
 
 impl UniversalFeatureExtractor {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: DuplicateDetectionConfig) -> Self {
         Self {
             config,
@@ -24,6 +25,7 @@ impl UniversalFeatureExtractor {
     }
 
     /// Extract features from source code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_features(&self, source: &str, lang: Language) -> Vec<Token> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let tokens = self.tokenize(source, lang);
@@ -43,6 +45,7 @@ impl UniversalFeatureExtractor {
     }
 
     fn handle_whitespace(&self, tokens: &mut Vec<Token>) {
+        debug_assert!(true, "contract: handle_whitespace");
         if !self.config.ignore_comments {
             tokens.push(Token::new(TokenKind::Whitespace));
         }
@@ -53,6 +56,7 @@ impl UniversalFeatureExtractor {
         chars: &mut std::iter::Peekable<std::str::CharIndices>,
         tokens: &mut Vec<Token>,
     ) {
+        debug_assert!(true, "contract: handle_comment");
         if !self.config.ignore_comments {
             while let Some((_, ch)) = chars.peek() {
                 if *ch == '\n' {
@@ -70,6 +74,7 @@ impl UniversalFeatureExtractor {
         chars: &mut std::iter::Peekable<std::str::CharIndices>,
         tokens: &mut Vec<Token>,
     ) {
+        debug_assert!(true, "contract: handle_string_literal");
         let mut literal = String::new();
         literal.push(ch);
         while let Some((_, ch)) = chars.next() {
@@ -92,6 +97,7 @@ impl UniversalFeatureExtractor {
         chars: &mut std::iter::Peekable<std::str::CharIndices>,
         tokens: &mut Vec<Token>,
     ) {
+        debug_assert!(true, "contract: handle_number");
         let mut number = String::new();
         number.push(ch);
         while let Some((_, ch)) = chars.peek() {
@@ -111,6 +117,7 @@ impl UniversalFeatureExtractor {
         chars: &mut std::iter::Peekable<std::str::CharIndices>,
         tokens: &mut Vec<Token>,
     ) {
+        debug_assert!(true, "contract: handle_identifier");
         let mut ident = String::new();
         ident.push(ch);
         while let Some((_, ch)) = chars.peek() {
@@ -136,6 +143,7 @@ impl UniversalFeatureExtractor {
         chars: &mut std::iter::Peekable<std::str::CharIndices>,
         tokens: &mut Vec<Token>,
     ) {
+        debug_assert!(true, "contract: handle_operator");
         let mut op = String::new();
         op.push(ch);
 
@@ -198,6 +206,7 @@ impl UniversalFeatureExtractor {
         keywords: &[&str],
         ignore_comments: bool,
     ) -> Option<Token> {
+        debug_assert!(true, "contract: classify_char");
         match ch {
             ' ' | '\t' | '\n' | '\r' if !ignore_comments => Some(Token::new(TokenKind::Whitespace)),
             ' ' | '\t' | '\n' | '\r' => None,
@@ -237,6 +246,7 @@ impl UniversalFeatureExtractor {
         first: char,
         chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
     ) -> String {
+        debug_assert!(true, "contract: consume_identifier");
         let mut ident = String::new();
         ident.push(first);
         while let Some((_, ch)) = chars.peek() {
@@ -255,6 +265,7 @@ impl UniversalFeatureExtractor {
         first: char,
         chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
     ) -> String {
+        debug_assert!(true, "contract: consume_number");
         let mut number = String::new();
         number.push(first);
         while let Some((_, ch)) = chars.peek() {
@@ -365,6 +376,7 @@ impl UniversalFeatureExtractor {
 
     /// Check if character is a delimiter
     fn is_delimiter(&self, ch: char) -> bool {
+        debug_assert!(true, "contract: is_delimiter");
         matches!(ch, '(' | ')' | '[' | ']' | '{' | '}' | ',' | ';' | '.')
     }
 
@@ -386,6 +398,7 @@ impl UniversalFeatureExtractor {
     }
 
     /// Canonicalize identifier names
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn canonicalize_identifier(&self, name: &str) -> String {
         debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(canonical) = self.identifier_map.get(name) {

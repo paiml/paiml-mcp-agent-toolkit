@@ -49,6 +49,7 @@
 
     /// Build a simple call graph for testing
     fn build_simple_call_graph() -> ProjectContextGraph {
+        debug_assert!(true, "contract: build_simple_call_graph");
         let mut graph = ProjectContextGraph::new();
 
         graph
@@ -70,6 +71,7 @@
 
     /// Build a larger graph with multiple components
     fn build_complex_graph() -> ProjectContextGraph {
+        debug_assert!(true, "contract: build_complex_graph");
         let mut graph = ProjectContextGraph::new();
 
         // Component 1: Main entry points

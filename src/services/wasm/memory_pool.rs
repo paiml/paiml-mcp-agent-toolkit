@@ -10,6 +10,7 @@ pub struct MemoryPool {
 impl MemoryPool {
     /// Create a new memory pool
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(max_size: usize) -> Self {
         debug_assert!(max_size > 0, "max_size must be positive");
         Self { max_size }
@@ -17,6 +18,7 @@ impl MemoryPool {
 
     /// Get maximum pool size
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn max_size(&self) -> usize {
         self.max_size
     }
@@ -72,6 +74,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

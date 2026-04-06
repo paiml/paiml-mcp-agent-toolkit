@@ -11,6 +11,7 @@ impl KnownDefectsScorer {
     /// - 300-399 unwraps: 5 points (-15)
     /// - 400+ unwraps: 0 points (-20)
     fn calculate_unwrap_score(&self, production_unwraps: usize) -> f64 {
+        debug_assert!(true, "contract: calculate_unwrap_score");
         let penalty = (production_unwraps / 100) as f64 * 5.0;
         let score = self.max_points - penalty;
         score.max(0.0) // Cannot go negative

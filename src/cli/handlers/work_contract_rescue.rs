@@ -76,6 +76,7 @@ pub struct RescueDiagnosis {
 
 impl RescueRecord {
     /// Save rescue record to .pmat-work/{item-id}/rescue/
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, project_path: &Path) -> Result<PathBuf> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let rescue_dir = project_path
@@ -92,6 +93,7 @@ impl RescueRecord {
     }
 
     /// Load all rescue records for a work item
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_all(project_path: &Path, work_item_id: &str) -> Vec<Self> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let rescue_dir = project_path
@@ -118,6 +120,7 @@ impl RescueRecord {
 ///
 /// Each postcondition violation type has a recommended rescue approach.
 /// Returns None if no rescue is available for this method.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn rescue_strategy_for(method: &FalsificationMethod) -> Option<RescueStrategy> {
     match method {
         FalsificationMethod::AbsoluteCoverage
@@ -172,6 +175,7 @@ pub fn rescue_strategy_for(method: &FalsificationMethod) -> Option<RescueStrateg
 /// This is the Phase 4 implementation: produces a structured diagnosis
 /// with suggested actions. Rescue never modifies source code directly —
 /// it only generates diagnostics and stubs.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_rescue(
     _project_path: &Path,
     work_item_id: &str,
@@ -257,6 +261,7 @@ pub fn execute_rescue(
 /// Check if rescue is enabled for a given contract profile.
 ///
 /// Per DbC §6.5: Pmat = enabled by default, others = opt-in via config.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_rescue_enabled(profile: &Option<ContractProfile>, config: &DbcConfig) -> bool {
     // Check config override first
     if config.rescue_enabled == Some(true) {

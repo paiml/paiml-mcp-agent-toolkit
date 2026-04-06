@@ -1,4 +1,5 @@
 /// Format analysis as Markdown
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_markdown(analysis: &DebugAnalysis) -> Result<String> {
     let mut output = String::new();
 

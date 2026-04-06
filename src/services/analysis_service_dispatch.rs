@@ -8,6 +8,7 @@ impl Service for AnalysisService {
     type Error = anyhow::Error;
 
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
+        debug_assert!(true, "contract: process");
         let start = std::time::Instant::now();
 
         let results = match input.operation {
@@ -76,6 +77,7 @@ impl Service for AnalysisService {
     }
 
     fn validate_input(&self, input: &Self::Input) -> Result<(), ValidationError> {
+        debug_assert!(true, "contract: validate_input");
         if !input.path.exists() {
             return Err(ValidationError::InvalidValue {
                 field: "path".to_string(),
@@ -96,11 +98,13 @@ impl Service for AnalysisService {
     }
 
     fn metrics(&self) -> ServiceMetrics {
+        debug_assert!(true, "contract: metrics");
         // Return a clone of current metrics
         self.metrics.blocking_read().clone()
     }
 
     fn name(&self) -> &'static str {
+        debug_assert!(true, "contract: name");
         "AnalysisService"
     }
 }

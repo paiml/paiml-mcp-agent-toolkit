@@ -176,6 +176,7 @@ fn process_satd_match(
 }
 
 /// Extract Method: Determine SATD severity based on type
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn determine_satd_severity(satd_type: &str) -> &'static str {
     match satd_type {
         "HACK" | "XXX" => "high",

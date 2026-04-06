@@ -26,6 +26,7 @@ impl Default for PerfectionScoreCalculator {
 }
 
 impl PerfectionScoreCalculator {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             weights: CategoryWeights::default(),
@@ -33,6 +34,7 @@ impl PerfectionScoreCalculator {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn fast_mode(mut self, fast: bool) -> Self {
         self.fast_mode = fast;
         self
@@ -43,6 +45,7 @@ impl PerfectionScoreCalculator {
     /// Categories 1-4 (TDG, repo-score, rust-project-score, popper-score) run in
     /// parallel via `tokio::join!`. The entire calculation is wrapped in a 120-second
     /// timeout to prevent runaway CPU usage from unbounded `git log` subprocesses.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn calculate(&self, project_path: &Path) -> anyhow::Result<PerfectionScoreResult> {
         debug_assert!(
             project_path.exists(),

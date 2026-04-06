@@ -18,6 +18,7 @@ pub struct GoMutationGenerator {
 
 impl GoMutationGenerator {
     /// Create generator with all default Go mutation operators
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_default_operators() -> Self {
         Self {
             operators: vec![
@@ -32,6 +33,7 @@ impl GoMutationGenerator {
     }
 
     /// Generate all mutants from Go source code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_mutants(&self, source: &str, file_path: &str) -> Result<Vec<Mutant>> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let tree = self.parse_go(source)?;

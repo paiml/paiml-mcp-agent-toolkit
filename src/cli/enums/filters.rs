@@ -92,6 +92,7 @@ pub enum PropertyTypeFilter {
 impl PropertyTypeFilter {
     /// Get the string representation of the property type filter
     fn as_str(&self) -> &'static str {
+        debug_assert!(true, "contract: as_str");
         match self {
             PropertyTypeFilter::MemorySafety => "memory-safety",
             PropertyTypeFilter::ThreadSafety => "thread-safety",

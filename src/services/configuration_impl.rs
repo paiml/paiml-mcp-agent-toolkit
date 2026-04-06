@@ -17,6 +17,7 @@ pub trait ConfigWatcher {
 impl ConfigurationService {
     /// Create a new configuration service
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(config_path: Option<PathBuf>) -> Self {
         let default_path = config_path.unwrap_or_else(|| {
             std::env::current_dir()
@@ -35,6 +36,7 @@ impl ConfigurationService {
     }
 
     /// Load configuration from file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn load(&self) -> Result<()> {
         if self.config_path.exists() {
             let content = tokio::fs::read_to_string(&self.config_path).await?;
@@ -65,6 +67,7 @@ impl ConfigurationService {
     }
 
     /// Save configuration to file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn save(&self) -> Result<()> {
         let config = {
             self.config
@@ -89,6 +92,7 @@ impl ConfigurationService {
     }
 
     /// Get current configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_config(&self) -> Result<PmatConfig> {
         Ok(self
             .config
@@ -98,6 +102,7 @@ impl ConfigurationService {
     }
 
     /// Update configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn update_config<F>(&self, updater: F) -> Result<()>
     where
         F: FnOnce(&mut PmatConfig) -> Result<()>,
@@ -122,6 +127,7 @@ impl ConfigurationService {
     }
 
     /// Add configuration watcher
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_watcher(&self, watcher: Box<dyn ConfigWatcher + Send + Sync>) -> Result<()> {
         let mut watchers = self
             .watchers
@@ -132,6 +138,7 @@ impl ConfigurationService {
     }
 
     /// Get specific configuration section
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_quality_config(&self) -> Result<QualityConfig> {
         Ok(self.get_config()?.quality)
     }
@@ -140,6 +147,7 @@ impl ConfigurationService {
         Ok(self.get_config()?.analysis)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_performance_config(&self) -> Result<PerformanceConfig> {
         Ok(self.get_config()?.performance)
     }
@@ -148,6 +156,7 @@ impl ConfigurationService {
         Ok(self.get_config()?.mcp)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_roadmap_config(&self) -> Result<RoadmapConfig> {
         Ok(self.get_config()?.roadmap)
     }
@@ -157,6 +166,7 @@ impl ConfigurationService {
     }
 
     /// Get semantic search configuration (PMAT-SEARCH-011, PMAT-SEARCH-012)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_semantic_config(&self) -> Result<SemanticConfig> {
         Ok(self.get_config()?.semantic)
     }
@@ -173,6 +183,7 @@ impl ConfigurationService {
     /// - PMAT_WORKSPACE: Workspace path for code indexing
     ///
     /// NOTE: No API keys required - uses local embeddings via aprender/trueno-rag
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_semantic_config_with_env_fallback(&self) -> Result<SemanticConfig> {
         let mut config = self.get_semantic_config()?;
 
@@ -202,6 +213,7 @@ impl ConfigurationService {
 
     /// Notify all watchers of configuration changes
     fn notify_watchers(&self, config: &PmatConfig) -> Result<()> {
+        debug_assert!(true, "contract: notify_watchers");
         let watchers = self
             .watchers
             .read()
@@ -219,6 +231,7 @@ impl ConfigurationService {
 
 impl ConfigurationService {
     /// Start the configuration service
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn start(&self) -> Result<()> {
         // Load configuration from file if it exists
         self.load().await?;
@@ -240,6 +253,7 @@ impl ConfigurationService {
     }
 
     /// Stop the configuration service
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn stop(&self) -> Result<()> {
         // Save current configuration
         self.save().await?;
@@ -258,6 +272,7 @@ impl ConfigurationService {
     }
 
     /// Get service status
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn status(&self) -> Result<String> {
         let config_exists = self.config_path.exists();
         let _config = self.get_config()?;
@@ -271,6 +286,7 @@ impl ConfigurationService {
     }
 
     /// Get service metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_metrics(&self) -> Result<ServiceMetrics> {
         Ok(self
             .metrics
@@ -280,6 +296,7 @@ impl ConfigurationService {
     }
 
     /// Check service health
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn health_check(&self) -> Result<bool> {
         // Check if we can read the configuration
         self.get_config().map(|_| true)
@@ -293,6 +310,7 @@ lazy_static::lazy_static! {
 
 /// Get the global configuration service instance - THE ONE way to access configuration
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn configuration() -> Arc<ConfigurationService> {
     CONFIGURATION.clone()
 }

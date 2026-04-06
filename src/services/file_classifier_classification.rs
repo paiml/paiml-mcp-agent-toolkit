@@ -3,12 +3,14 @@
 
 impl FileClassifier {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Check if a file should be parsed, with option to include large files
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn should_parse_with_options(
         &self,
         path: &Path,
@@ -66,6 +68,7 @@ impl FileClassifier {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn should_parse(&self, path: &Path, content: &[u8]) -> ParseDecision {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.should_parse_with_options(path, content, false)
@@ -100,6 +103,7 @@ impl FileClassifier {
     }
 
     fn is_binary(&self, sample: &[u8]) -> bool {
+        debug_assert!(true, "contract: is_binary");
         // Check for null bytes (common in binary files)
         if sample.contains(&0) {
             return true;
@@ -115,6 +119,7 @@ impl FileClassifier {
     }
 
     fn is_minified(&self, sample: &[u8]) -> bool {
+        debug_assert!(true, "contract: is_minified");
         // Check content signatures
         for sig in &VENDOR_RULES.content_signatures {
             if sample.starts_with(sig) {

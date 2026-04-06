@@ -3,6 +3,7 @@
 
 /// Format summary output
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_summary_output(
     file_metrics_len: usize,
     filtered_predictions: &[(String, DefectScore)],
@@ -96,6 +97,7 @@ pub fn format_summary_output(
 /// Generate recommendations for high-risk files
 #[allow(dead_code)]
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_recommendations(predictions: &[(String, DefectScore)]) -> Vec<String> {
     debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut recommendations = Vec::new();
@@ -147,6 +149,7 @@ pub fn generate_recommendations(predictions: &[(String, DefectScore)]) -> Vec<St
 
 /// Format detailed output
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_detailed_output(
     filtered_predictions: &[(String, DefectScore)],
     include_recommendations: bool,
@@ -207,6 +210,7 @@ pub fn format_detailed_output(
 }
 
 /// Format JSON output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_json_output(
     file_metrics_len: usize,
     filtered_predictions: &[(String, DefectScore)],
@@ -249,6 +253,7 @@ pub fn format_json_output(
 /// Format markdown output
 #[allow(dead_code)]
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_markdown_output(
     filtered_predictions: &[(String, DefectScore)],
     include_recommendations: bool,
@@ -320,6 +325,7 @@ pub fn format_markdown_output(
 
 /// Format CSV output
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_csv_output(filtered_predictions: &[(String, DefectScore)]) -> String {
     debug_assert!(!filtered_predictions.is_empty(), "filtered_predictions must not be empty");
     let mut output = String::new();
@@ -357,6 +363,7 @@ pub fn format_csv_output(filtered_predictions: &[(String, DefectScore)]) -> Stri
 }
 
 /// Format SARIF output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_sarif_output(filtered_predictions: &[(String, DefectScore)]) -> Result<String> {
     debug_assert!(!filtered_predictions.is_empty(), "filtered_predictions must not be empty");
     let sarif = serde_json::json!({

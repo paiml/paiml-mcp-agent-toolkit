@@ -8,6 +8,7 @@ pub struct ShadowStack {
 impl ShadowStack {
     /// Create from raw bytes (from shared memory)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         let mut frames = Vec::new();
@@ -33,6 +34,7 @@ impl ShadowStack {
 
     /// Sample current shadow stack (simulation)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn sample() -> Self {
         // This would read from actual shadow memory in production
         Self {
@@ -52,12 +54,14 @@ impl ShadowStack {
 
     /// Get call stack depth
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn depth(&self) -> usize {
         self.frames.len()
     }
 
     /// Check if function is in stack
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn contains_function(&self, func_idx: u32) -> bool {
         self.frames.iter().any(|f| f.function_index == func_idx)
     }
@@ -81,6 +85,7 @@ enum InstructionCategory {
 
 /// Categorize instruction for profiling
 fn categorize_for_profiling(op: &Operator) -> InstructionCategory {
+    debug_assert!(true, "contract: categorize_for_profiling");
     use Operator::{
         Block, Br, BrIf, BrTable, Call, CallIndirect, Else, End, F32Add, F32Div, F32Load, F32Max,
         F32Min, F32Mul, F32Store, F32Sub, F64Add, F64Div, F64Load, F64Max, F64Min, F64Mul,

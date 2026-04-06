@@ -2,6 +2,7 @@
 // Verifies that detected libraries are actually used in source code, not just in manifest
 
 fn build_usage_patterns() -> std::collections::HashMap<&'static str, &'static [&'static str]> {
+    debug_assert!(true, "contract: build_usage_patterns");
     [
         ("indicatif", &["ProgressBar", "MultiProgress", "ProgressStyle"][..]),
         ("console", &["Term", "Style", "Color"][..]),

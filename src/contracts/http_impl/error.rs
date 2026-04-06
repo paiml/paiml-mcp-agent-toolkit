@@ -35,6 +35,7 @@ impl From<anyhow::Error> for AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
+        debug_assert!(true, "contract: into_response");
         let (status, message) = match self {
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::Internal(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),

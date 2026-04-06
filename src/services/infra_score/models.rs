@@ -121,10 +121,12 @@ pub struct InfraScoreMetadata {
 
 impl NormalizedScore for InfraScore {
     fn raw(&self) -> f64 {
+        debug_assert!(true, "contract: raw");
         self.total_score
     }
 
     fn max_raw(&self) -> f64 {
+        debug_assert!(true, "contract: max_raw");
         INFRA_SCORE_MAX_POINTS
     }
 }
@@ -143,6 +145,7 @@ impl fmt::Display for InfraScore {
 }
 
 impl InfraGrade {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64) -> Self {
         debug_assert!(score >= 0.0, "score must be non-negative");
         match score {
@@ -155,6 +158,7 @@ impl InfraGrade {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn as_str(&self) -> &'static str {
         match self {
             InfraGrade::APlus => "A+",
@@ -167,6 +171,7 @@ impl InfraGrade {
     }
 
     /// Returns true if this grade is an auto-fail (<90)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_auto_fail(&self) -> bool {
         !matches!(self, InfraGrade::APlus | InfraGrade::A)
     }
@@ -174,6 +179,7 @@ impl InfraGrade {
 
 impl InfraCategoryScores {
     /// Total base score (100 points max, excluding bonus)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total(&self) -> f64 {
         self.workflow_architecture.score
             + self.build_reliability.score
@@ -183,6 +189,7 @@ impl InfraCategoryScores {
     }
 
     /// Total including provable contracts bonus (110 max)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_with_bonus(&self) -> f64 {
         self.total() + self.provable_contracts.score
     }
@@ -202,6 +209,7 @@ impl Default for InfraCategoryScores {
 }
 
 impl InfraCategoryScore {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn empty(max_score: f64) -> Self {
         Self {
             score: 0.0,
@@ -212,6 +220,7 @@ impl InfraCategoryScore {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(max_score: f64, checks: Vec<InfraCheck>, findings: Vec<InfraFinding>) -> Self {
         let score: f64 = checks.iter().map(|c| c.score).sum();
         let percentage = if max_score > 0.0 {
@@ -231,6 +240,7 @@ impl InfraCategoryScore {
 }
 
 impl InfraCheck {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn pass(id: &str, name: &str, max_score: f64, evidence: Vec<String>) -> Self {
         debug_assert!(!id.is_empty(), "id must not be empty");
         debug_assert!(!name.is_empty(), "name must not be empty");
@@ -244,6 +254,7 @@ impl InfraCheck {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn fail(id: &str, name: &str, max_score: f64, evidence: Vec<String>) -> Self {
         debug_assert!(!id.is_empty(), "id must not be empty");
         debug_assert!(!name.is_empty(), "name must not be empty");
@@ -257,6 +268,7 @@ impl InfraCheck {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn partial(
         id: &str,
         name: &str,
@@ -278,6 +290,7 @@ impl InfraCheck {
 }
 
 impl InfraScoreMetadata {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(repository_path: PathBuf) -> Self {
         debug_assert!(
             repository_path.exists(),

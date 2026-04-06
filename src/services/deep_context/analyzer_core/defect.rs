@@ -14,6 +14,7 @@ use crate::services::deep_context::{
 use crate::services::tdg_calculator::TDGCalculator;
 
 impl DeepContextAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn correlate_defects(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -35,6 +36,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Collect file TDG scores from all available analyses
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn collect_file_tdg_scores(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -84,6 +86,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Calculate TDG summary from individual file scores
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_tdg_summary(
         &self,
         file_scores: &FxHashMap<String, TDGScore>,
@@ -159,6 +162,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Build defect summary based on actual defect enumeration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn build_tdg_defect_summary(
         &self,
         tdg_summary: &TDGSummary,
@@ -206,6 +210,7 @@ impl DeepContextAnalyzer {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn process_complexity_violations(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -233,6 +238,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn process_satd_violations(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -257,6 +263,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn process_dead_code_violations(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -274,6 +281,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn process_tdg_violations(
         &self,
         tdg_summary: &TDGSummary,
@@ -288,6 +296,7 @@ impl DeepContextAnalyzer {
         *by_severity.entry("Warning".to_string()).or_insert(0) += tdg_summary.warning_files;
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_defect_density(&self, total_defects: usize, total_loc: usize) -> f64 {
         // Contract: calculate_defect_density returns a bounded score
         if total_loc > 0 {
@@ -298,6 +307,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Generate hotspots from TDG scores
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_tdg_hotspots(
         &self,
         file_scores: &FxHashMap<String, TDGScore>,

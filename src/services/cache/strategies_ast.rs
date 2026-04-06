@@ -101,10 +101,12 @@ impl CacheStrategy for AstCacheStrategy {
     }
 
     fn ttl(&self) -> Option<Duration> {
+        debug_assert!(true, "contract: ttl");
         Some(Duration::from_secs(300)) // 5 minutes
     }
 
     fn max_size(&self) -> usize {
+        debug_assert!(true, "contract: max_size");
         100 // Max 100 AST entries
     }
 }

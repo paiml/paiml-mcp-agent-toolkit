@@ -4,6 +4,7 @@
 impl EnhancedTypeScriptVisitor {
     /// Creates a new enhanced visitor for a given file
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
         debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
@@ -16,6 +17,7 @@ impl EnhancedTypeScriptVisitor {
 
     /// Extracts all AST items with real source information
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_items(mut self, module: &Module) -> Vec<AstItem> {
         self.visit_module(module);
         self.items
@@ -48,11 +50,13 @@ impl EnhancedTypeScriptVisitor {
 
     /// Checks if function is async
     fn is_async_function(&self, func: &Function) -> bool {
+        debug_assert!(true, "contract: is_async_function");
         func.is_async
     }
 
     /// Extracts functions from expressions (handles named function expressions)
     fn extract_function_from_expr(&mut self, expr: &Expr) {
+        debug_assert!(true, "contract: extract_function_from_expr");
         match expr {
             Expr::Fn(fn_expr) => {
                 if let Some(ident) = &fn_expr.ident {

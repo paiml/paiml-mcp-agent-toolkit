@@ -19,6 +19,7 @@ use crate::services::quality_gates::{QAVerification, QAVerificationResult};
 
 impl DeepContextAnalyzer {
     // New helper methods for phases that didn't exist before
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) async fn calculate_quality_scorecard(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -48,6 +49,7 @@ impl DeepContextAnalyzer {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn generate_recommendations(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -63,6 +65,7 @@ impl DeepContextAnalyzer {
         Ok(recommendations)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn add_complexity_recommendations(
         &self,
         recommendations: &mut Vec<PrioritizedRecommendation>,
@@ -77,6 +80,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn create_complexity_recommendation(
         &self,
         violation: &crate::services::complexity::Violation,
@@ -112,6 +116,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn determine_complexity_priority(&self, value: u16) -> Priority {
         if value > 25 {
             Priority::Critical
@@ -122,6 +127,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn add_defect_recommendations(
         &self,
         recommendations: &mut Vec<PrioritizedRecommendation>,
@@ -142,6 +148,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn add_satd_recommendations(
         &self,
         recommendations: &mut Vec<PrioritizedRecommendation>,
@@ -165,6 +172,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Analyze project metadata (Makefile and README)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn analyze_project_metadata(
         &self,
         project_path: &Path,
@@ -211,6 +219,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Run QA verification on the deep context analysis results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn run_qa_verification(
         &self,
         context: &DeepContext,
@@ -231,6 +240,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Convert complexity report to QA format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn convert_complexity_report_to_qa(
         &self,
         report: &ComplexityReport,
@@ -266,6 +276,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Create fallback complexity metrics from file discovery
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn create_fallback_complexity_metrics(
         &self,
         context: &DeepContext,
@@ -300,6 +311,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Process single file for fallback metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn process_file_for_fallback(
         &self,
         path_str: &str,
@@ -336,6 +348,7 @@ impl DeepContextAnalyzer {
         None
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn create_qa_compatible_result(
         &self,
         context: &DeepContext,

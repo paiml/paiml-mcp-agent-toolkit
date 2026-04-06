@@ -65,6 +65,7 @@ impl Default for ManifestManager {
 impl ManifestManager {
     /// Create new manager
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             manifests: Vec::new(),
@@ -72,18 +73,21 @@ impl ManifestManager {
     }
 
     /// Register manifest
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&mut self, manifest: AgentManifest) {
         self.manifests.push(manifest);
     }
 
     /// Get all manifests
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_manifests(&self) -> &[AgentManifest] {
         &self.manifests
     }
 
     /// Find manifest by name
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_by_name(&self, name: &str) -> Option<&AgentManifest> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.manifests.iter().find(|m| m.name == name)

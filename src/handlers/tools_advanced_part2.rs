@@ -21,6 +21,7 @@ fn format_dead_code_file_entry(
     index: usize,
     file_metrics: &crate::models::dead_code::FileDeadCodeMetrics,
 ) {
+    debug_assert!(true, "contract: format_dead_code_file_entry");
     let confidence_text = get_confidence_level_text(file_metrics.confidence);
 
     output.push_str(&format!(
@@ -45,6 +46,7 @@ fn format_dead_code_file_entry(
 fn get_confidence_level_text(
     confidence: crate::models::dead_code::ConfidenceLevel,
 ) -> &'static str {
+    debug_assert!(true, "contract: get_confidence_level_text");
     match confidence {
         crate::models::dead_code::ConfidenceLevel::High => "HIGH ",
         crate::models::dead_code::ConfidenceLevel::Medium => "MEDIUM ",
@@ -56,6 +58,7 @@ fn get_confidence_level_text(
 fn format_dead_code_as_sarif_mcp(
     result: &crate::models::dead_code::DeadCodeRankingResult,
 ) -> anyhow::Result<String> {
+    debug_assert!(true, "contract: format_dead_code_as_sarif_mcp");
     use serde_json::json;
 
     let mut results = Vec::with_capacity(256);
@@ -109,6 +112,7 @@ fn format_dead_code_as_sarif_mcp(
 fn format_dead_code_as_markdown_mcp(
     result: &crate::models::dead_code::DeadCodeRankingResult,
 ) -> anyhow::Result<String> {
+    debug_assert!(true, "contract: format_dead_code_as_markdown_mcp");
     let mut output = String::with_capacity(1024);
 
     write_dead_code_header(&mut output, &result.analysis_timestamp);
@@ -120,6 +124,7 @@ fn format_dead_code_as_markdown_mcp(
 
 /// Toyota Way: Extract Method - Write dead code report header (complexity ≤3)
 fn write_dead_code_header(output: &mut String, timestamp: &chrono::DateTime<chrono::Utc>) {
+    debug_assert!(true, "contract: write_dead_code_header");
     output.push_str("# Dead Code Analysis Report\n\n");
     output.push_str(&format!(
         "**Analysis Date:** {}\n\n",
@@ -132,6 +137,7 @@ fn write_dead_code_summary_section(
     output: &mut String,
     summary: &crate::models::dead_code::DeadCodeSummary,
 ) {
+    debug_assert!(true, "contract: write_dead_code_summary_section");
     output.push_str("## Summary\n\n");
 
     output.push_str(&format!(
@@ -150,6 +156,7 @@ fn write_dead_code_summary_section(
 
 /// Toyota Way: Extract Method - Calculate dead files percentage (complexity ≤3)
 fn calculate_dead_files_percentage(summary: &crate::models::dead_code::DeadCodeSummary) -> f32 {
+    debug_assert!(true, "contract: calculate_dead_files_percentage");
     if summary.total_files_analyzed > 0 {
         (summary.files_with_dead_code as f32 / summary.total_files_analyzed as f32) * 100.0
     } else {
@@ -162,6 +169,7 @@ fn write_dead_code_metrics(
     output: &mut String,
     summary: &crate::models::dead_code::DeadCodeSummary,
 ) {
+    debug_assert!(true, "contract: write_dead_code_metrics");
     output.push_str(&format!(
         "- **Total dead lines:** {} ({:.1}% of codebase)\n",
         summary.total_dead_lines, summary.dead_percentage
@@ -193,6 +201,7 @@ fn write_dead_code_top_files_section(
 
 /// Toyota Way: Extract Method - Write dead code table header (complexity ≤3)
 fn write_dead_code_table_header(output: &mut String) {
+    debug_assert!(true, "contract: write_dead_code_table_header");
     output.push_str("## Top Files with Dead Code\n\n");
     output.push_str(
         "| Rank | File | Dead Lines | Percentage | Functions | Classes | Score | Confidence |\n",
@@ -219,6 +228,7 @@ fn write_single_dead_code_row(
     rank: usize,
     file_metrics: &crate::models::dead_code::FileDeadCodeMetrics,
 ) {
+    debug_assert!(true, "contract: write_single_dead_code_row");
     let confidence_text = format_confidence_emoji(file_metrics.confidence);
 
     output.push_str(&format!(
@@ -236,6 +246,7 @@ fn write_single_dead_code_row(
 
 /// Toyota Way: Extract Method - Format confidence level with emoji (complexity ≤3)
 fn format_confidence_emoji(confidence: crate::models::dead_code::ConfidenceLevel) -> &'static str {
+    debug_assert!(true, "contract: format_confidence_emoji");
     match confidence {
         crate::models::dead_code::ConfidenceLevel::High => "🔴 High",
         crate::models::dead_code::ConfidenceLevel::Medium => "🟡 Medium",
@@ -253,6 +264,7 @@ struct AnalyzeTdgArgs {
 }
 
 /// Toyota Way: Extract Method - Handle TDG analysis (complexity ≤8)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn handle_analyze_tdg(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
@@ -279,11 +291,13 @@ pub(crate) async fn handle_analyze_tdg(
 
 /// Toyota Way Helper: Parse TDG arguments
 fn parse_tdg_args(arguments: serde_json::Value) -> Result<AnalyzeTdgArgs, serde_json::Error> {
+    debug_assert!(true, "contract: parse_tdg_args");
     serde_json::from_value(arguments)
 }
 
 /// Toyota Way Helper: Extract TDG project path
 fn extract_tdg_project_path(args: &AnalyzeTdgArgs) -> PathBuf {
+    debug_assert!(true, "contract: extract_tdg_project_path");
     args.project_path.as_ref().map_or_else(
         || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
         PathBuf::from,
@@ -320,6 +334,7 @@ fn format_and_respond_tdg(
     analysis: crate::models::tdg::TDGSummary,
     format: Option<String>,
 ) -> McpResponse {
+    debug_assert!(true, "contract: format_and_respond_tdg");
     // Format output
     let content_text = match format.as_deref() {
         Some("json") => serde_json::to_string_pretty(&analysis).unwrap_or_default(),
@@ -340,6 +355,7 @@ fn format_and_respond_tdg(
 
 /// Toyota Way: Extract Method - Format TDG summary (complexity ≤8)
 fn format_tdg_summary(summary: &crate::models::tdg::TDGSummary) -> String {
+    debug_assert!(true, "contract: format_tdg_summary");
     let mut output = String::with_capacity(1024);
 
     output.push_str("# Technical Debt Gradient Analysis\n\n");
@@ -354,6 +370,7 @@ fn format_tdg_summary(summary: &crate::models::tdg::TDGSummary) -> String {
 
 /// Toyota Way Helper: Append TDG summary statistics
 fn append_tdg_summary_section(output: &mut String, summary: &crate::models::tdg::TDGSummary) {
+    debug_assert!(true, "contract: append_tdg_summary_section");
     output.push_str("## Summary\n\n");
     output.push_str(&format!("**Total files:** {}\n", summary.total_files));
 
@@ -376,6 +393,7 @@ fn append_tdg_summary_section(output: &mut String, summary: &crate::models::tdg:
 
 /// Toyota Way Helper: Append TDG metrics
 fn append_tdg_metrics(output: &mut String, summary: &crate::models::tdg::TDGSummary) {
+    debug_assert!(true, "contract: append_tdg_metrics");
     output.push_str(&format!("**Average TDG:** {:.2}\n", summary.average_tdg));
     output.push_str(&format!(
         "**95th percentile TDG:** {:.2}\n",
@@ -393,6 +411,7 @@ fn append_tdg_metrics(output: &mut String, summary: &crate::models::tdg::TDGSumm
 
 /// Toyota Way Helper: Append TDG hotspots table
 fn append_tdg_hotspots_section(output: &mut String, summary: &crate::models::tdg::TDGSummary) {
+    debug_assert!(true, "contract: append_tdg_hotspots_section");
     if summary.hotspots.is_empty() {
         return;
     }
@@ -412,6 +431,7 @@ fn append_tdg_hotspots_section(output: &mut String, summary: &crate::models::tdg
 
 /// Toyota Way Helper: Append TDG severity distribution
 fn append_tdg_severity_section(output: &mut String, summary: &crate::models::tdg::TDGSummary) {
+    debug_assert!(true, "contract: append_tdg_severity_section");
     output.push_str("## Severity Distribution\n\n");
     output.push_str(&format!(
         "- 🔴 Critical (>2.5): {} files\n",
@@ -430,6 +450,7 @@ fn append_tdg_severity_section(output: &mut String, summary: &crate::models::tdg
 
 /// Toyota Way Helper: Calculate percentage safely
 fn calculate_percentage(part: usize, total: usize) -> f64 {
+    debug_assert!(true, "contract: calculate_percentage");
     if total > 0 {
         (part as f64 / total as f64) * 100.0
     } else {

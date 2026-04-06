@@ -147,6 +147,7 @@ fn print_coverage_gaps_text(results: &[QueryResult]) {
 
 /// Print the excluded summary footer
 fn print_exclusion_summary(summary: &crate::services::agent_context::ExclusionSummary) {
+    debug_assert!(true, "contract: print_exclusion_summary");
     println!("{DIM}Excluded from coverage (not shown):{RESET}");
     if summary.coverage_off_count > 0 {
         println!(
@@ -239,6 +240,7 @@ fn output_coverage_gaps(
     excluded: Vec<QueryResult>,
     include_excluded: bool,
 ) -> anyhow::Result<()> {
+    debug_assert!(true, "contract: output_coverage_gaps");
     let excluded_refs: Vec<&QueryResult> = excluded.iter().collect();
     let excl_summary =
         crate::services::agent_context::ExclusionSummary::from_results(&excluded_refs);
@@ -280,6 +282,7 @@ fn print_coverage_gaps_text_with_exclusions(
     summary: &crate::services::agent_context::ExclusionSummary,
     include_excluded: bool,
 ) {
+    debug_assert!(true, "contract: print_coverage_gaps_text_with_exclusions");
     if include_excluded && !excluded.is_empty() {
         println!(
             "{BOLD}{UNDERLINE}Coverage Gaps{RESET} ({} testable + {} excluded)\n",

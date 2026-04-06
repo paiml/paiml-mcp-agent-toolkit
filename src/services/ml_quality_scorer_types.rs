@@ -21,6 +21,7 @@ pub struct ComplexityFeatures {
 
 impl ComplexityFeatures {
     /// Extract features from source code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_source(source: &str, language: &str) -> Self {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
@@ -102,6 +103,7 @@ impl ComplexityFeatures {
     }
 
     /// Convert to feature vector for ML model
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_vector(&self) -> Vec<f64> {
         vec![
             self.loc / 100.0,               // Normalize LOC
@@ -139,6 +141,7 @@ pub struct TDGFeatures {
 
 impl TDGFeatures {
     /// Convert to feature vector for ML model
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_vector(&self) -> Vec<f64> {
         vec![
             self.complexity / 5.0,

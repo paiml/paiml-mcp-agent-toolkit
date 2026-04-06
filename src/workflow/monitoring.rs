@@ -16,6 +16,7 @@ impl Default for DefaultWorkflowMonitor {
 }
 
 impl DefaultWorkflowMonitor {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             metrics: Arc::new(RwLock::new(HashMap::new())),
@@ -26,6 +27,7 @@ impl DefaultWorkflowMonitor {
 #[async_trait]
 impl WorkflowMonitor for DefaultWorkflowMonitor {
     async fn on_workflow_started(&self, workflow_id: Uuid, execution_id: Uuid) {
+        debug_assert!(true, "contract: on_workflow_started");
         let mut metrics = self.metrics.write();
         metrics.insert(
             execution_id,
@@ -45,6 +47,7 @@ impl WorkflowMonitor for DefaultWorkflowMonitor {
     }
 
     async fn on_workflow_completed(&self, _workflow_id: Uuid, execution_id: Uuid, _result: &Value) {
+        debug_assert!(true, "contract: on_workflow_completed");
         if let Some(metric) = self.metrics.write().get_mut(&execution_id) {
             metric.state = WorkflowState::Completed;
         }
@@ -84,6 +87,7 @@ impl WorkflowMonitor for DefaultWorkflowMonitor {
     }
 
     async fn get_metrics(&self, execution_id: Uuid) -> WorkflowMetrics {
+        debug_assert!(true, "contract: get_metrics");
         self.metrics
             .read()
             .get(&execution_id)

@@ -1,6 +1,7 @@
 // Interactive and resume refactor command handlers.
 // Handles `pmat refactor interactive` and `pmat refactor resume` workflows.
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_refactor_interactive(
     project_path: PathBuf,
     explain: ExplainLevel,
@@ -58,6 +59,7 @@ pub async fn handle_refactor_interactive(
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_refactor_resume(
     checkpoint: PathBuf,
     steps: u32,

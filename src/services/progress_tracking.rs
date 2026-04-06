@@ -5,17 +5,20 @@
 impl SimpleProgressStyle {
     /// Create default spinner style
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn default_spinner() -> Self {
         Self
     }
 
     /// Create default bar style
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn default_bar() -> Self {
         Self
     }
 
     /// Set template (no-op)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn template(self, _template: &str) -> Result<Self, std::convert::Infallible> {
         debug_assert!(!_template.is_empty(), "_template must not be empty");
         Ok(self)
@@ -23,6 +26,7 @@ impl SimpleProgressStyle {
 
     /// Set tick characters (no-op) - compat with indicatif tick_chars()
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn tick_chars(self, _chars: &str) -> Self {
         debug_assert!(!_chars.is_empty(), "_chars must not be empty");
         self
@@ -30,12 +34,14 @@ impl SimpleProgressStyle {
 
     /// Set tick strings (no-op)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn tick_strings(self, _strings: &[&str]) -> Self {
         self
     }
 
     /// Set progress characters (no-op)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn progress_chars(self, _chars: &str) -> Self {
         debug_assert!(!_chars.is_empty(), "_chars must not be empty");
         self
@@ -45,6 +51,7 @@ impl SimpleProgressStyle {
 impl ProgressTracker {
     /// Create a new progress tracker
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(enable_progress: bool) -> Self {
         Self { enable_progress }
     }
@@ -61,6 +68,7 @@ impl ProgressTracker {
     /// assert!(spinner.is_hidden());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_spinner(&self, message: &str) -> SimpleProgressBar {
         if !self.enable_progress {
             return SimpleProgressBar::hidden();
@@ -75,6 +83,7 @@ impl ProgressTracker {
 
     /// Create a progress bar for file processing
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_file_progress(&self, total_files: u64, message: &str) -> SimpleProgressBar {
         if !self.enable_progress {
             return SimpleProgressBar::hidden();
@@ -88,6 +97,7 @@ impl ProgressTracker {
 
     /// Create a bytes progress bar
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_bytes_progress(&self, total_bytes: u64, message: &str) -> SimpleProgressBar {
         if !self.enable_progress {
             return SimpleProgressBar::hidden();
@@ -100,6 +110,7 @@ impl ProgressTracker {
     }
 
     /// Log a skipped file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn log_skipped_file(&self, file_path: &std::path::Path, reason: &str) {
         debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         if self.enable_progress {
@@ -109,6 +120,7 @@ impl ProgressTracker {
 
     /// Create a sub-progress for parallel operations
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_sub_progress(&self, message: &str, total: u64) -> SimpleProgressBar {
         if !self.enable_progress {
             return SimpleProgressBar::hidden();
@@ -120,6 +132,7 @@ impl ProgressTracker {
     }
 
     /// Clear all progress bars (no-op without indicatif)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear(&self) {
         // No-op - nothing to clear with println-based progress
     }
@@ -128,6 +141,7 @@ impl ProgressTracker {
 impl FileClassificationReporter {
     /// Create a new file classification reporter
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(tracker: ProgressTracker) -> Self {
         Self {
             tracker,
@@ -137,6 +151,7 @@ impl FileClassificationReporter {
     }
 
     /// Report a skipped file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn report_skipped(
         &self,
         path: &std::path::Path,
@@ -168,6 +183,7 @@ impl FileClassificationReporter {
     }
 
     /// Get summary of skipped files
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_summary(&self) -> (u64, Vec<std::path::PathBuf>) {
         let count = self.skipped_count.load(Ordering::Relaxed);
         let files = self
@@ -182,17 +198,20 @@ impl FileClassificationReporter {
 impl SimpleMultiProgress {
     /// Create a new multi-progress
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
 
     /// Add a progress bar to the multi-progress
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add(&self, pb: SimpleProgressBar) -> SimpleProgressBar {
         pb
     }
 
     /// Clear all progress bars (no-op)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear(&self) -> std::io::Result<()> {
         Ok(())
     }

@@ -126,6 +126,7 @@ impl BigOAnalyzer {
     /// // Analyzer is ready to analyze code complexity
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             pattern_matcher: ComplexityPatternMatcher::new(),

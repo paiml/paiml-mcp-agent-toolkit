@@ -3,6 +3,7 @@
 
 impl IncrementalChurnAnalyzer {
     /// Get churn metrics for a specific file (lazy evaluation)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn get_file_churn(
         &self,
         file_path: &Path,
@@ -37,6 +38,7 @@ impl IncrementalChurnAnalyzer {
     }
 
     /// Get churn analysis for multiple files (incremental)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_incremental(
         &self,
         files: Vec<PathBuf>,

@@ -18,6 +18,7 @@ impl Default for DemoCommandGroup {
 impl DemoCommandGroup {
     /// Handle demo command with comprehensive parameter support
     #[allow(clippy::too_many_arguments)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn handle_demo(
         &self,
         server: Arc<StatelessTemplateServer>,
@@ -63,6 +64,7 @@ impl DemoCommandGroup {
 
     /// Handle quality gate command
     #[allow(clippy::too_many_arguments)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn handle_quality_gate(
         &self,
         project_path: std::path::PathBuf,
@@ -99,6 +101,7 @@ impl DemoCommandGroup {
 impl DemoCommandGroup {
     /// Handle demo command - feature not enabled
     #[allow(clippy::too_many_arguments)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn handle_demo(
         &self,
         _server: Arc<StatelessTemplateServer>,
@@ -124,6 +127,7 @@ impl DemoCommandGroup {
 
     /// Handle quality gate command - feature not enabled
     #[allow(clippy::too_many_arguments)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn handle_quality_gate(
         &self,
         _project_path: std::path::PathBuf,
@@ -148,6 +152,7 @@ pub struct CommandExecutorFactory;
 impl CommandExecutorFactory {
     /// Create a new command executor instance
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create(server: Arc<StatelessTemplateServer>) -> super::CommandExecutor {
         super::CommandExecutor::new(server)
     }

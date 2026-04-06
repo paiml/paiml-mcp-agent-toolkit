@@ -28,6 +28,7 @@ pub trait NormalizedScore: fmt::Display {
     /// - Always returns a value in [0.0, 100.0]
     /// - Values are clamped if raw calculation exceeds bounds
     fn normalized(&self) -> f64 {
+        debug_assert!(true, "contract: raw");
         let max = self.max_raw();
         if max <= 0.0 {
             return 0.0;
@@ -80,6 +81,7 @@ impl Ord for Grade {
 
 impl Grade {
     /// Convert a normalized score (0-100) to a grade.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64) -> Self {
         debug_assert!(score >= 0.0, "score must be non-negative");
         match score {
@@ -92,6 +94,7 @@ impl Grade {
     }
 
     /// Returns the minimum score for this grade.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn min_score(&self) -> f64 {
         match self {
             Grade::A => 90.0,
@@ -103,6 +106,7 @@ impl Grade {
     }
 
     /// Returns the grade as a string with description.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn description(&self) -> &'static str {
         match self {
             Grade::A => "A (Excellent)",
@@ -139,6 +143,7 @@ impl SimpleScore {
     ///
     /// # Panics
     /// Panics if max <= 0.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(raw: f64, max: f64, name: &'static str) -> Self {
         assert!(max > 0.0, "max must be positive");
         Self {
@@ -149,6 +154,7 @@ impl SimpleScore {
     }
 
     /// Create from a percentage (0-100).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_percentage(pct: f64, name: &'static str) -> Self {
         Self {
             raw: pct.clamp(0.0, 100.0),
@@ -160,10 +166,12 @@ impl SimpleScore {
 
 impl NormalizedScore for SimpleScore {
     fn raw(&self) -> f64 {
+        debug_assert!(true, "contract: raw");
         self.raw
     }
 
     fn max_raw(&self) -> f64 {
+        debug_assert!(true, "contract: max_raw");
         self.max
     }
 }

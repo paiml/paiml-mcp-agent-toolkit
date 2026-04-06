@@ -14,6 +14,7 @@ use super::ComplexityConfig;
 /// **Issue #67 Fix**: When analyzing a single file with `--file` parameter,
 /// we ALWAYS use uncached analysis to ensure line numbers reflect the CURRENT
 /// file location, not stale cached data from when the function was in a different file.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_single_file(
     file_path: &Path,
     config: &ComplexityConfig,
@@ -55,6 +56,7 @@ pub(crate) async fn analyze_single_file(
 ///
 /// This helper function processes a list of files, maintaining consistency
 /// with single file analysis and proper error handling for missing files.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_multiple_files(
     files: &[PathBuf],
     config: &ComplexityConfig,
@@ -247,6 +249,7 @@ pub(super) fn check_complexity_violations(
 }
 
 /// Check if any files have complexity violations
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn has_complexity_violations(
     file_metrics: &[FileComplexityMetrics],
     max_cyclomatic: Option<u16>,

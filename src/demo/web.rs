@@ -11,6 +11,7 @@ use super::server::{DemoContent, Hotspot, LocalDemoServer};
 /// Open URL in default browser using platform-specific command
 /// Replaces webbrowser crate to reduce transitive dependencies
 #[allow(dead_code)] // Used only when "demo" feature is enabled
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn open_browser(url: &str) -> std::io::Result<()> {
     debug_assert!(!url.is_empty(), "url must not be empty");
     #[cfg(target_os = "macos")]
@@ -31,6 +32,7 @@ pub(crate) fn open_browser(url: &str) -> std::io::Result<()> {
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn run_web_demo(
     repo_path: std::path::PathBuf,
     server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
@@ -147,6 +149,7 @@ pub(crate) async fn run_web_demo(
 
 /// TUI demo runner function
 #[cfg(feature = "tui")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn run_tui_demo(repo_path: std::path::PathBuf) -> Result<()> {
     use super::adapters::tui::TuiDemoAdapter;
 

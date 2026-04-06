@@ -3,6 +3,7 @@
 
 impl ProofAnnotator {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(symbol_table: Arc<SymbolTable>) -> Self {
         Self {
             sources: Vec::new(),
@@ -12,11 +13,13 @@ impl ProofAnnotator {
     }
 
     /// Add a proof source to the annotator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_source<T: ProofSource + 'static>(&mut self, source: T) {
         self.sources.push(Box::new(source));
     }
 
     /// Collect proof annotations from all sources in parallel
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn collect_proofs(&self, project_root: &Path) -> ProofMap {
         debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let start = Instant::now();
@@ -155,6 +158,7 @@ impl ProofAnnotator {
 
     /// Get cache statistics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cache_stats(&self) -> CacheStats {
         let cache = self.cache.read();
         CacheStats {
@@ -164,6 +168,7 @@ impl ProofAnnotator {
     }
 
     /// Clear the cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear_cache(&self) {
         self.cache.write().clear();
     }

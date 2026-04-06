@@ -40,6 +40,7 @@ impl DefectCategory {
     /// assert!(categories.contains(&DefectCategory::TestCoverage));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn all() -> Vec<Self> {
         vec![
             Self::Complexity,
@@ -69,6 +70,7 @@ impl Defect {
     /// assert_eq!(id2, "BUG-100");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_id(prefix: &str, index: usize) -> DefectId {
         format!("{}-{:03}", prefix, index + 1)
     }
@@ -100,6 +102,7 @@ impl Defect {
     /// assert_eq!(defect.severity_weight(), 5.0);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn severity_weight(&self) -> f64 {
         match self.severity {
             Severity::Critical => 10.0,

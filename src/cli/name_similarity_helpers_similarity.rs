@@ -1,5 +1,6 @@
 /// Calculate similarity scores for all names
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn calculate_similarities(
     all_names: &[NameInfo],
     query: &str,

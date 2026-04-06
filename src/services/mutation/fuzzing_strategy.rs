@@ -9,6 +9,7 @@ pub struct FuzzMutationStrategy {
 
 impl FuzzMutationStrategy {
     /// Create new fuzzing strategy
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(mutation_engine: MutationEngine, fuzz_config: FuzzConfig) -> Self {
         Self {
             mutation_engine,
@@ -17,16 +18,19 @@ impl FuzzMutationStrategy {
     }
 
     /// Get fuzzing configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn config(&self) -> &FuzzConfig {
         &self.fuzz_config
     }
 
     /// Get mutation engine
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn engine(&self) -> &MutationEngine {
         &self.mutation_engine
     }
 
     /// Generate random inputs
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_inputs(&self, count: usize) -> Vec<Vec<u8>> {
         debug_assert!(count > 0, "count must be positive");
         use rand::Rng;
@@ -41,6 +45,7 @@ impl FuzzMutationStrategy {
     }
 
     /// Generate grammar-based inputs for specific format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_grammar_based_inputs(&self, count: usize, _format: &str) -> Vec<Vec<u8>> {
         debug_assert!(count > 0, "count must be positive");
         // Minimal implementation: generate simple JSON structures
@@ -58,6 +63,7 @@ impl FuzzMutationStrategy {
     }
 
     /// Fuzz a single mutant
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn fuzz_mutant(&self, mutant: &Mutant) -> Result<FuzzResult> {
         use std::panic;
         use std::time::Instant;
@@ -179,6 +185,7 @@ impl FuzzMutationStrategy {
     }
 
     /// Execute fuzzing from source code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_from_source(&self, source: &str) -> Result<FuzzMutationReport> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         use std::time::Instant;
@@ -222,6 +229,7 @@ impl FuzzMutationStrategy {
     }
 
     /// Execute fuzzing in parallel
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_from_source_parallel(
         &self,
         source: &str,

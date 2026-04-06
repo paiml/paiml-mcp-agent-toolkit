@@ -24,6 +24,7 @@ pub struct RefactorServeParams {
     pub max_runtime: Option<u64>,
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn route_refactor_command(refactor_cmd: RefactorCommands) -> anyhow::Result<()> {
     match refactor_cmd {
         RefactorCommands::Serve {

@@ -66,6 +66,7 @@ fn find_file_metrics<'a>(
     file: &crate::services::context::FileContext,
     analyses: &'a crate::services::deep_context::AnalysisResults,
 ) -> Option<&'a crate::services::complexity::FileComplexityMetrics> {
+    debug_assert!(true, "contract: find_file_metrics");
     analyses.complexity_report.as_ref().and_then(|report| {
         report.files.iter().find(|f| {
             use std::path::Path;

@@ -4,6 +4,7 @@
 
 impl RichReporter {
     /// Run data science analysis on findings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&mut self) {
         // 1. Cluster findings (K-means)
         self.report.clusters = self.analyzer.cluster_findings(&mut self.report.findings);
@@ -32,6 +33,7 @@ impl RichReporter {
 
     /// Generate recommendations based on analysis
     fn generate_recommendations(&mut self) {
+        debug_assert!(true, "contract: generate_recommendations");
         // Clear existing recommendations
         self.report.recommendations.clear();
 

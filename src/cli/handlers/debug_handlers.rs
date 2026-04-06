@@ -3,6 +3,7 @@
 // Stub: Not yet implemented
 
 // Placeholder for DAP server handler
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_debug_serve(
     _port: u16,
     _host: String,
@@ -12,6 +13,7 @@ pub async fn handle_debug_serve(
 }
 
 // Placeholder for DAP replay handler
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_debug_replay(
     _recording: std::path::PathBuf,
     _position: Option<usize>,
@@ -21,11 +23,13 @@ pub async fn handle_debug_replay(
 }
 
 // Placeholder for DAP compare handler
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_debug_compare() -> anyhow::Result<()> {
     anyhow::bail!("Debug compare command not yet implemented")
 }
 
 // Placeholder for DAP timeline handler
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_debug_timeline() -> anyhow::Result<()> {
     anyhow::bail!("Debug timeline command not yet implemented")
 }

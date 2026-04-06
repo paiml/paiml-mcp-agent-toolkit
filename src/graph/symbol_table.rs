@@ -30,6 +30,7 @@ pub struct SymbolEntry {
 impl SymbolTable {
     /// Create new empty symbol table
     /// Complexity: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         SymbolTable {
             symbols: FxHashMap::default(),
@@ -40,6 +41,7 @@ impl SymbolTable {
 
     /// Insert a symbol into the table
     /// Complexity: 3 (hashmap operations)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn insert(&mut self, name: String, entry: SymbolEntry) {
         // Add to main symbol map
         self.symbols
@@ -60,6 +62,7 @@ impl SymbolTable {
 
     /// Resolve a symbol by name
     /// Complexity: 4 (lookup + visibility check)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn resolve(&self, name: &str, from_module: &str) -> Option<&SymbolEntry> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.symbols.get(name).and_then(|entries| {
@@ -89,6 +92,7 @@ impl SymbolTable {
 
     /// Get all symbols for a file
     /// Complexity: 2
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_file_symbols(&self, path: &Path) -> Vec<&SymbolEntry> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.file_symbols
@@ -108,6 +112,7 @@ impl SymbolTable {
 
     /// Increment usage count for a symbol
     /// Complexity: 3
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn increment_usage(&mut self, name: &str, from_module: &str) {
         debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(entries) = self.symbols.get_mut(name) {
@@ -129,12 +134,14 @@ impl SymbolTable {
 
     /// Get total symbol count
     /// Complexity: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn len(&self) -> usize {
         self.symbols.len()
     }
 
     /// Check if empty
     /// Complexity: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_empty(&self) -> bool {
         self.symbols.is_empty()
     }

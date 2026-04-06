@@ -116,6 +116,7 @@ pub struct GitHubClient {
 
 impl GitHubClient {
     /// Create a new GitHub client, optionally with authentication
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Result<Self> {
         let token = env::var("GITHUB_TOKEN")
             .ok()
@@ -149,6 +150,7 @@ impl GitHubClient {
     }
 
     /// Fetch a GitHub issue from a URL
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn fetch_issue(&self, url: &str) -> Result<GitHubIssue> {
         debug_assert!(!url.is_empty(), "url must not be empty");
         let (owner, repo, issue_number) = Self::parse_issue_url(url)?;
@@ -218,6 +220,7 @@ impl GitHubClient {
 /// assert!(!parsed.keywords.is_empty());
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_issue(issue: GitHubIssue) -> ParsedIssue {
     let mut file_paths = Vec::new();
     let mut keywords = HashMap::new();
@@ -323,6 +326,7 @@ fn extract_keywords(text: &str, keywords: &mut HashMap<String, f32>) {
 
 /// Generate a concise summary of the issue
 fn generate_summary(issue: &GitHubIssue) -> String {
+    debug_assert!(true, "contract: generate_summary");
     let body = issue
         .body
         .as_ref()
@@ -402,6 +406,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

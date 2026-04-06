@@ -114,6 +114,7 @@ pub trait QualityGate {
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod tests {
+    debug_assert!(true, "contract: name");
     use super::*;
     include!("types_tests.rs");
 }

@@ -8,6 +8,7 @@ impl TdgAnalyzerAst {
         method_length: usize,
         tracker: &mut PenaltyTracker,
     ) -> f32 {
+        debug_assert!(true, "contract: score_structural_complexity");
         let mut points = self.config.weights.structural_complexity;
 
         // Penalize high cyclomatic complexity
@@ -80,6 +81,7 @@ impl TdgAnalyzerAst {
         abstraction_levels: u32,
         tracker: &mut PenaltyTracker,
     ) -> f32 {
+        debug_assert!(true, "contract: score_semantic_complexity");
         let mut points = self.config.weights.semantic_complexity;
 
         // Penalize too many parameters
@@ -185,6 +187,7 @@ impl TdgAnalyzerAst {
         _interface_implementations: u32,
         tracker: &mut PenaltyTracker,
     ) -> f32 {
+        debug_assert!(true, "contract: score_coupling");
         let mut points = self.config.weights.coupling;
 
         // Penalize too many imports
@@ -227,6 +230,7 @@ impl TdgAnalyzerAst {
         total_lines: u32,
         _tracker: &mut PenaltyTracker,
     ) -> f32 {
+        debug_assert!(true, "contract: score_documentation");
         if total_public_items == 0 {
             return self.config.weights.documentation;
         }

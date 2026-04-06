@@ -2,6 +2,7 @@
 // Included from coverage_exclusion.rs — do NOT add `use` imports or `#!` attributes here.
 
 impl ExclusionSummary {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_results(excluded: &[&QueryResult]) -> Self {
         debug_assert!(!excluded.is_empty(), "excluded must not be empty");
         let mut summary = Self::default();
@@ -32,6 +33,7 @@ impl ExclusionSummary {
         summary
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total(&self) -> usize {
         self.coverage_off_count + self.dead_code_count + self.makefile_count
     }

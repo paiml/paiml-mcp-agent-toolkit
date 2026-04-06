@@ -61,6 +61,7 @@ fn try_load_coverage_from_env(
 /// 3. `.pmat/coverage-cache.json` (if git HEAD matches)
 /// 4. Run `cargo llvm-cov report --json` to generate fresh data
 #[cfg_attr(coverage_nightly, coverage(off))]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn enrich_results_with_coverage(
     results: &mut [QueryResult],
     project_root: &Path,
@@ -137,6 +138,7 @@ pub async fn enrich_results_with_coverage(
 /// Each sibling's `.pmat/coverage-cache.json` is loaded independently.
 /// File paths are prefixed with the project name (matching `load_with_prefix()`).
 /// Siblings without a cache are silently skipped.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn load_workspace_coverage(
     siblings: &[(std::path::PathBuf, String)],
 ) -> HashMap<String, HashMap<usize, u64>> {

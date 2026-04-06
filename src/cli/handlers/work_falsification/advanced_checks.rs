@@ -270,6 +270,7 @@ fn is_excluded_from_per_file_coverage(filename: &str) -> bool {
 
 /// Extract the line coverage percentage from a single llvm-cov file entry.
 fn extract_file_line_coverage(file_entry: &serde_json::Value) -> f64 {
+    debug_assert!(true, "contract: extract_file_line_coverage");
     file_entry
         .get("summary")
         .and_then(|s| s.get("lines"))

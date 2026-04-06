@@ -4,6 +4,7 @@
 impl CComplexityAnalyzer {
     /// Creates a new C complexity analyzer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -12,6 +13,7 @@ impl CComplexityAnalyzer {
     }
 
     /// Analyzes complexity of C source code (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
@@ -65,6 +67,7 @@ impl CComplexityAnalyzer {
 /// Public async function to analyze a C file and return FileContext
 #[cfg(feature = "c-ast")]
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_c_file(
     path: &Path,
 ) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {

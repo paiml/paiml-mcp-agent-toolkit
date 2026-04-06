@@ -8,6 +8,7 @@ impl DapServer {
     // TRACE-004: DAP-PMAT Integration Methods
 
     /// Get the current detected language
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_language(&self) -> Option<Language> {
         let lang = self
             .current_language
@@ -17,6 +18,7 @@ impl DapServer {
     }
 
     /// Check if AST is cached for a given file path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_ast_for(&self, path: &str) -> bool {
         debug_assert!(!path.is_empty(), "path must not be empty");
         let cache = self.ast_cache.lock().expect("Mutex should not be poisoned");
@@ -24,6 +26,7 @@ impl DapServer {
     }
 
     /// Get variables at a specific line in a file using VariableInspector
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_variables_at_line(&self, path: &str, line: usize) -> Result<Vec<Variable>, String> {
         debug_assert!(!path.is_empty(), "path must not be empty");
         // Read file contents
@@ -50,6 +53,7 @@ impl DapServer {
     }
 
     /// Simulate stopping at a specific line (for testing)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn simulate_stop_at_line(&mut self, path: &str, line: usize) {
         debug_assert!(!path.is_empty(), "path must not be empty");
         let mut stopped_file = self
@@ -67,6 +71,7 @@ impl DapServer {
     }
 
     /// Get current stopped file (TRACE-005)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_stopped_file(&self) -> Option<String> {
         self.current_stopped_file
             .lock()
@@ -75,6 +80,7 @@ impl DapServer {
     }
 
     /// Get current stopped line (TRACE-005)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_stopped_line(&self) -> Option<usize> {
         *self
             .current_stopped_line

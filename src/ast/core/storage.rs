@@ -13,6 +13,7 @@ pub struct ColumnStore<T> {
 
 impl<T: Clone> ColumnStore<T> {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(capacity: usize) -> Self {
         debug_assert!(capacity > 0, "capacity must be positive");
         Self {
@@ -21,6 +22,7 @@ impl<T: Clone> ColumnStore<T> {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn push(&mut self, item: T) -> NodeKey {
         let key = self.data.len() as NodeKey;
         self.data.push(item);
@@ -28,6 +30,7 @@ impl<T: Clone> ColumnStore<T> {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, key: NodeKey) -> Option<&T> {
         self.data.get(key as usize)
     }
@@ -36,16 +39,19 @@ impl<T: Clone> ColumnStore<T> {
         self.data.get_mut(key as usize)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.data.iter()
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
@@ -114,6 +120,7 @@ impl AstDag {
     /// assert!(dag.dirty_nodes().any(|k| k == key));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             nodes: ColumnStore::new(10000), // Initial capacity
@@ -173,6 +180,7 @@ impl AstDag {
     /// assert!(dag.nodes.get(func_key).expect("internal error").is_function());
     /// assert!(dag.nodes.get(class_key).expect("internal error").is_type_definition());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_node(&mut self, node: UnifiedAstNode) -> NodeKey {
         let key = self.nodes.push(node);
         self.dirty_nodes.insert(key);
@@ -218,6 +226,7 @@ impl AstDag {
     /// // Node still exists in the DAG
     /// assert!(dag.nodes.get(key).is_some());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mark_clean(&mut self, key: NodeKey) {
         self.dirty_nodes.remove(key);
     }
@@ -265,6 +274,7 @@ impl AstDag {
     /// assert_eq!(dirty.len(), 1);
     /// assert_eq!(dirty[0], keys[1]);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn dirty_nodes(&self) -> impl Iterator<Item = NodeKey> + '_ {
         self.dirty_nodes.iter()
     }
@@ -308,6 +318,7 @@ impl AstDag {
     /// dag.mark_clean(0);
     /// assert_eq!(dag.generation(), 2);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generation(&self) -> u32 {
         self.generation.load(std::sync::atomic::Ordering::Relaxed)
     }

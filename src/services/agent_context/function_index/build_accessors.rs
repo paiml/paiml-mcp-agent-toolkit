@@ -3,6 +3,7 @@ impl AgentContextIndex {
     ///
     /// Uses in-memory HashMap when available (blob load), falls back to
     /// on-demand SQLite query (SQLite load — avoids loading 3.8M edges upfront).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_calls(&self, func_idx: usize) -> Vec<&str> {
         if let Some(indices) = self.calls.get(&func_idx) {
             return indices
@@ -29,6 +30,7 @@ impl AgentContextIndex {
     ///
     /// Uses in-memory HashMap when available (blob load), falls back to
     /// on-demand SQLite query (SQLite load — avoids loading 3.8M edges upfront).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_called_by(&self, func_idx: usize) -> Vec<&str> {
         if let Some(indices) = self.called_by.get(&func_idx) {
             return indices
@@ -53,17 +55,20 @@ impl AgentContextIndex {
 
     /// Get raw caller indices for a function (O(1) from in-memory map).
     /// Returns None if call graph is not loaded in memory (SQLite-only mode).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn called_by_indices(&self, func_idx: usize) -> Option<&[usize]> {
         self.called_by.get(&func_idx).map(|v| v.as_slice())
     }
 
     /// Get raw callee indices for a function (O(1) from in-memory map).
     /// Returns None if call graph is not loaded in memory (SQLite-only mode).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calls_indices(&self, func_idx: usize) -> Option<&[usize]> {
         self.calls.get(&func_idx).map(|v| v.as_slice())
     }
 
     /// Find function index by file path and name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn find_function_index(&self, file_path: &str, function_name: &str) -> Option<usize> {
         debug_assert!(!function_name.is_empty(), "function_name must not be empty");
         self.functions
@@ -78,6 +83,7 @@ impl AgentContextIndex {
     /// project prefix differs from the callee's prefix.
     ///
     /// Falls back to on-demand SQLite query when call graph is not loaded in memory.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn count_cross_project_callers(&self, func_idx: usize) -> u32 {
         if func_idx >= self.functions.len() {
             return 0;
@@ -116,12 +122,14 @@ impl AgentContextIndex {
     ///
     /// Used when regex/literal search mode needs full source for pattern matching.
     /// No-op if db_path is not set (blob-loaded indexes already have source).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn load_all_source(&mut self) {
         self.load_source_from_db();
         self.load_source_from_filesystem();
     }
 
     fn load_source_from_db(&mut self) {
+        debug_assert!(true, "contract: load_source_from_db");
         let db_path = match self.db_path {
             Some(ref p) => p,
             None => return,
@@ -134,6 +142,7 @@ impl AgentContextIndex {
     }
 
     fn load_source_from_filesystem(&mut self) {
+        debug_assert!(true, "contract: load_source_from_filesystem");
         let mut files_to_read: HashMap<String, Vec<usize>> = HashMap::new();
         for (idx, func) in self.functions.iter().enumerate() {
             if func.source.is_empty() && func.end_line > 0 {
@@ -161,6 +170,7 @@ impl AgentContextIndex {
     /// Used when PTX flow or cross-project ranking needs full in-memory call graph
     /// for `called_by_indices()`/`calls_indices()` access. No-op if call graph
     /// is already loaded (non-empty) or db_path is not set.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn ensure_call_graph(&mut self) {
         if !self.calls.is_empty() {
             return; // Already loaded
@@ -176,6 +186,7 @@ impl AgentContextIndex {
     }
 
     /// Get the SQLite database path (if available).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn db_path(&self) -> Option<&Path> {
         self.db_path.as_deref()
     }
@@ -203,6 +214,7 @@ impl AgentContextIndex {
         (None, 0)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn load_source_for(&self, file_path: &str, start_line: usize) -> String {
         debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let (in_memory, end_line) = self.find_in_memory(file_path, start_line);

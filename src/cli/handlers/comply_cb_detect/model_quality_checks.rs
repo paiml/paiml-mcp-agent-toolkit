@@ -5,6 +5,7 @@
 // CB-1000: Missing Model Card
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1000_missing_model_card(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
@@ -59,6 +60,7 @@ pub fn detect_cb1000_missing_model_card(project_path: &Path) -> Vec<CbPatternVio
 // CB-1001: Oversized Tensor Count
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1001_oversized_tensor_count(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
@@ -100,6 +102,7 @@ pub fn detect_cb1001_oversized_tensor_count(project_path: &Path) -> Vec<CbPatter
 // CB-1002: Missing Tokenizer
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1002_missing_tokenizer(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
@@ -159,6 +162,7 @@ pub fn detect_cb1002_missing_tokenizer(project_path: &Path) -> Vec<CbPatternViol
 // CB-1006: Sharded SafeTensors Without Index
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1006_sharded_without_index(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
@@ -215,6 +219,7 @@ pub fn detect_cb1006_sharded_without_index(project_path: &Path) -> Vec<CbPattern
 // CB-1007: Excessive File Size
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1007_excessive_file_size(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
@@ -254,6 +259,7 @@ pub fn detect_cb1007_excessive_file_size(project_path: &Path) -> Vec<CbPatternVi
 // CB-1004: Missing Architecture (GGUF)
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1004_missing_architecture(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
@@ -308,6 +314,7 @@ const QUANT_NAMES: &[&str] = &[
     "q2_k_s", "iq4_xs", "iq4_nl",
 ];
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1005_quantization_mismatch(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
@@ -363,6 +370,7 @@ pub fn detect_cb1005_quantization_mismatch(project_path: &Path) -> Vec<CbPattern
 // CB-1008: APR Missing CRC
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1008_apr_missing_crc(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);

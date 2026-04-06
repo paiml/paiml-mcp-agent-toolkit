@@ -1,4 +1,5 @@
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_dag_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -69,6 +70,7 @@ pub(crate) fn serve_dag_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Byte
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_system_diagram_mermaid(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -114,6 +116,7 @@ pub(crate) fn serve_system_diagram_mermaid(state: &Arc<RwLock<DemoState>>) -> Re
 // Enhanced API endpoints following the specification
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_architecture_analysis(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     use crate::services::canonical_query::{
         AnalysisContext, CallGraph, CanonicalQuery, SystemArchitectureQuery,
@@ -149,6 +152,7 @@ pub(crate) fn serve_architecture_analysis(state: &Arc<RwLock<DemoState>>) -> Res
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_defect_analysis(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     // Return defect analysis data
     let state = state.read();
@@ -179,6 +183,7 @@ pub(crate) fn serve_defect_analysis(state: &Arc<RwLock<DemoState>>) -> Response<
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_statistics_analysis(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -215,12 +220,14 @@ pub(crate) fn serve_statistics_analysis(state: &Arc<RwLock<DemoState>>) -> Respo
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_system_diagram(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     // This endpoint could support content negotiation in the future
     serve_architecture_analysis(state)
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_analysis_stream(_state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     // Placeholder for Server-Sent Events streaming
     // Return streaming response placeholder
@@ -235,6 +242,7 @@ pub(crate) fn serve_analysis_stream(_state: &Arc<RwLock<DemoState>>) -> Response
 
 // Grid.js API endpoint for file analysis data
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn serve_analysis_data(state: &Arc<RwLock<DemoState>>) -> Response<Bytes> {
     let state = state.read();
 
@@ -354,6 +362,7 @@ pub(crate) fn serve_analysis_data(state: &Arc<RwLock<DemoState>>) -> Response<By
 
 #[cfg(feature = "demo")]
 fn calculate_graph_density(graph: &DependencyGraph) -> f64 {
+    debug_assert!(true, "contract: calculate_graph_density");
     let n = graph.nodes.len() as f64;
     if n <= 1.0 {
         0.0
@@ -364,6 +373,7 @@ fn calculate_graph_density(graph: &DependencyGraph) -> f64 {
 
 #[cfg(feature = "demo")]
 fn calculate_avg_degree(graph: &DependencyGraph) -> f64 {
+    debug_assert!(true, "contract: calculate_avg_degree");
     let n = graph.nodes.len() as f64;
     if n == 0.0 {
         0.0

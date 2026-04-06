@@ -45,6 +45,7 @@ fn process_file_functions(
     thresholds: &ComplexityThresholds,
     data: &mut AnalysisData,
 ) {
+    debug_assert!(true, "contract: process_file_functions");
     let (cyclomatic_rule, cognitive_rule) = rules;
 
     for func in &file.functions {
@@ -69,6 +70,7 @@ fn process_file_classes(
     rules: &(CyclomaticComplexityRule, CognitiveComplexityRule),
     data: &mut AnalysisData,
 ) {
+    debug_assert!(true, "contract: process_file_classes");
     let (cyclomatic_rule, cognitive_rule) = rules;
 
     for class in &file.classes {
@@ -96,6 +98,7 @@ fn check_function_violations(
     cognitive_rule: &CognitiveComplexityRule,
     violations: &mut Vec<Violation>,
 ) {
+    debug_assert!(true, "contract: check_function_violations");
     if let Some(violation) =
         cyclomatic_rule.evaluate(&func.metrics, &file.path, func.line_start, Some(&func.name))
     {
@@ -117,6 +120,7 @@ fn check_method_violations(
     cognitive_rule: &CognitiveComplexityRule,
     violations: &mut Vec<Violation>,
 ) {
+    debug_assert!(true, "contract: check_method_violations");
     if let Some(violation) = cyclomatic_rule.evaluate(
         &method.metrics,
         &file.path,
@@ -143,6 +147,7 @@ fn check_function_hotspots(
     thresholds: &ComplexityThresholds,
     hotspots: &mut Vec<ComplexityHotspot>,
 ) {
+    debug_assert!(true, "contract: check_function_hotspots");
     if func.metrics.cyclomatic > thresholds.cyclomatic_warn {
         hotspots.push(ComplexityHotspot {
             file: file.path.clone(),

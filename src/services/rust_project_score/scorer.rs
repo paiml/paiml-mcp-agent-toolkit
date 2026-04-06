@@ -31,26 +31,31 @@ pub enum ScorerError {
 
 impl ScorerError {
     /// Returns true if this error indicates a missing tool
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_tool_not_found(&self) -> bool {
         matches!(self, ScorerError::ToolNotFound(_))
     }
 
     /// Returns true if this error is an IO error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_io_error(&self) -> bool {
         matches!(self, ScorerError::IoError(_))
     }
 
     /// Returns true if this error is a command execution error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_command_error(&self) -> bool {
         matches!(self, ScorerError::CommandError(_))
     }
 
     /// Returns true if this error is a parse error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_parse_error(&self) -> bool {
         matches!(self, ScorerError::ParseError(_))
     }
 
     /// Returns true if this error indicates an invalid project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_invalid_project(&self) -> bool {
         matches!(self, ScorerError::InvalidProject(_))
     }

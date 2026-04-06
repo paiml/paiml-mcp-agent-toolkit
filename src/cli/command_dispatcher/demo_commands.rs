@@ -12,6 +12,7 @@ use std::sync::Arc;
 impl CommandDispatcher {
     /// Execute demo command with protocol conversion (reduces complexity)
     #[allow(clippy::too_many_arguments)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_demo_command(
         path: Option<PathBuf>,
         url: Option<String>,
@@ -57,6 +58,7 @@ impl CommandDispatcher {
     }
 
     /// Convert CLI `DemoProtocol` to demo module Protocol
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn convert_demo_protocol(
         protocol: DemoProtocol,
         cli: bool,
@@ -77,6 +79,7 @@ impl CommandDispatcher {
 
     /// Create demo arguments structure
     #[allow(clippy::too_many_arguments)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn create_demo_args(
         path: Option<PathBuf>,
         url: Option<String>,

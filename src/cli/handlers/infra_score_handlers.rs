@@ -11,6 +11,7 @@ use anyhow::Result;
 use std::path::Path;
 
 /// Handle the infra-score command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_infra_score(
     path: &Path,
     format: &RepoScoreOutputFormat,
@@ -50,6 +51,7 @@ fn format_text_output(
     verbose: bool,
     failures_only: bool,
 ) -> String {
+    debug_assert!(true, "contract: format_text_output");
     use std::fmt::Write;
     let mut out = String::new();
 

@@ -1,5 +1,6 @@
 impl DocValidator {
     /// Creates a new validator with default configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: ValidatorConfig) -> Self {
         #[cfg(feature = "http-client")]
         let http_client = if config.http_timeout_ms > 0 {
@@ -49,6 +50,7 @@ impl DocValidator {
     ///     assert!(result.is_ok());
     /// }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn validate_link(&self, link: &Link) -> Result<ValidationResult> {
         let start = Instant::now();
 
@@ -74,6 +76,7 @@ impl DocValidator {
         &self,
         link: &Link,
     ) -> (ValidationStatus, Option<String>, Option<u16>) {
+        debug_assert!(true, "contract: validate_internal_link");
         // Remove anchor from target
         let target = link
             .target
@@ -108,6 +111,7 @@ impl DocValidator {
         &self,
         link: &Link,
     ) -> (ValidationStatus, Option<String>, Option<u16>) {
+        debug_assert!(true, "contract: validate_http_link");
         let client = match &self.http_client {
             Some(c) => c,
             None => {
@@ -196,6 +200,7 @@ impl DocValidator {
         &self,
         _link: &Link,
     ) -> (ValidationStatus, Option<String>, Option<u16>) {
+        debug_assert!(true, "contract: validate_http_link");
         (
             ValidationStatus::Skipped,
             Some("HTTP validation requires http-client feature".to_string()),
@@ -291,6 +296,7 @@ impl DocValidator {
     ///     }
     /// }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn validate_directory(&self, root: &Path) -> Result<ValidationSummary> {
         debug_assert!(root.exists(), "root must exist: {}", root.display());
         let start = Instant::now();

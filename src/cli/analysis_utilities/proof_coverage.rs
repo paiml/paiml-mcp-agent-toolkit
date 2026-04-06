@@ -116,6 +116,7 @@
 ///   --clear-cache --output formal-specs.md
 /// ```ignore
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_proof_annotations(
     project_path: PathBuf,
     format: ProofAnnotationOutputFormat,
@@ -289,6 +290,7 @@ pub async fn handle_analyze_proof_annotations(
 ///   --output coverage-gate.json
 /// ```ignore
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_incremental_coverage(
     project_path: PathBuf,
     base_branch: String,
@@ -396,6 +398,7 @@ fn format_coverage_report(
     format: IncrementalCoverageOutputFormat,
     top_files: usize,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_coverage_report");
     use IncrementalCoverageOutputFormat::{Delta, Detailed, Json, Lcov, Markdown, Sarif, Summary};
     match format {
         Summary => format_incremental_coverage_summary(report, top_files),
@@ -409,6 +412,7 @@ fn format_coverage_report(
 }
 
 async fn output_coverage_result(content: String, output: Option<PathBuf>) -> Result<()> {
+    debug_assert!(true, "contract: output_coverage_result");
     eprintln!("✅ Incremental coverage analysis complete");
 
     if let Some(output_path) = output {

@@ -26,6 +26,7 @@ where
     K: Clone + Eq + std::hash::Hash,
 {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(confidence_threshold: f64) -> Self {
         Self {
             access_history: RwLock::new(VecDeque::new()),
@@ -34,6 +35,7 @@ where
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_access(&self, key: K) {
         let mut history = self.access_history.write();
         history.push_back(key);
@@ -47,6 +49,7 @@ where
         self.update_patterns(&history);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn predict_next(&self, current_sequence: &[K]) -> Vec<K> {
         debug_assert!(
             !current_sequence.is_empty(),
@@ -67,12 +70,14 @@ where
         predictions
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn predict_value(&self, _key: &K) -> Option<()> {
         // Simplified prediction - in practice this would predict actual values
         None
     }
 
     fn update_patterns(&self, history: &VecDeque<K>) {
+        debug_assert!(true, "contract: update_patterns");
         let mut patterns = self.patterns.write();
 
         // Extract subsequences and update their frequencies

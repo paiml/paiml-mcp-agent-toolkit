@@ -1,4 +1,5 @@
 /// Discover and filter source files based on configuration
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn discover_source_files(
     project_path: PathBuf,
     include: &Option<String>,
@@ -34,6 +35,7 @@ pub fn discover_source_files(
 
 /// Extract all identifiers from analyzed files
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn extract_all_identifiers(
     analyzed_files: &[(PathBuf, String)],
     _scope: &SearchScope,

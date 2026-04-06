@@ -2,6 +2,7 @@
 // Included by protocols.rs — shares parent module scope (no `use` imports here).
 
 /// Convert Protocol enum to string
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn protocol_to_string(protocol: &Protocol) -> String {
     match protocol {
         Protocol::Cli => "cli".to_string(),
@@ -14,6 +15,7 @@ pub(crate) fn protocol_to_string(protocol: &Protocol) -> String {
 }
 
 /// Print protocol-specific banner
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn print_protocol_banner(protocol: &Protocol) {
     match protocol {
         Protocol::Cli => println!("🚀 CLI Protocol Demo"),
@@ -26,6 +28,7 @@ pub(crate) fn print_protocol_banner(protocol: &Protocol) {
 }
 
 /// Helper to build protocol-specific requests
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn build_protocol_request(
     protocol: &str,
     repo_path: &std::path::Path,
@@ -59,6 +62,7 @@ pub(crate) fn build_protocol_request(
 }
 
 /// Format and print output based on format type
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_and_print_output(
     response: &serde_json::Value,
     format: &crate::cli::OutputFormat,
@@ -78,6 +82,7 @@ pub(crate) fn format_and_print_output(
 }
 
 /// Print API metadata for a protocol
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn print_api_metadata(protocol_name: &str) -> Result<()> {
     debug_assert!(!protocol_name.is_empty(), "protocol_name must not be empty");
     println!("\n📊 API Introspection");

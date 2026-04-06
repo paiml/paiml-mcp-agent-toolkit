@@ -5,6 +5,7 @@
 // CB-700: SELECT * Usage
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb700_select_star(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
@@ -62,6 +63,7 @@ pub fn detect_cb700_select_star(project_path: &Path) -> Vec<CbPatternViolation> 
 // CB-701: Missing WHERE on UPDATE/DELETE
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb701_missing_where(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
@@ -157,6 +159,7 @@ fn has_implicit_join(lower: &str) -> bool {
         && parts[1].trim().chars().any(|c| c.is_alphanumeric())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb702_implicit_join(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
@@ -197,6 +200,7 @@ pub fn detect_cb702_implicit_join(project_path: &Path) -> Vec<CbPatternViolation
 // CB-703: SQL Injection Pattern
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb703_sql_injection(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
@@ -256,6 +260,7 @@ pub fn detect_cb703_sql_injection(project_path: &Path) -> Vec<CbPatternViolation
 // CB-704: Missing Index Hint (placeholder — Info only)
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb704_missing_index_hint(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
@@ -312,6 +317,7 @@ pub fn detect_cb704_missing_index_hint(project_path: &Path) -> Vec<CbPatternViol
 
 /// Detect SQL queries embedded inside loops in co-located code files.
 /// Looks for patterns like `for row in results: cursor.execute("SELECT ...")`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb705_n_plus_1_query(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let code_extensions = ["py", "rb", "php", "java", "js", "ts"];

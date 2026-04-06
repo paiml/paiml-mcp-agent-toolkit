@@ -7,6 +7,7 @@
 
 impl PopperFinding {
     /// Create a positive finding
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn positive(message: &str) -> Self {
         Self {
             severity: FindingSeverity::Positive,
@@ -17,6 +18,7 @@ impl PopperFinding {
     }
 
     /// Create an informational finding
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn info(message: &str) -> Self {
         Self {
             severity: FindingSeverity::Info,
@@ -27,6 +29,7 @@ impl PopperFinding {
     }
 
     /// Create a warning finding
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn warning(message: &str, impact: f64) -> Self {
         Self {
             severity: FindingSeverity::Warning,
@@ -37,6 +40,7 @@ impl PopperFinding {
     }
 
     /// Create a critical finding
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn critical(message: &str, impact: f64) -> Self {
         Self {
             severity: FindingSeverity::Critical,
@@ -53,6 +57,7 @@ impl PopperFinding {
 
 impl PopperRecommendation {
     /// Create a new recommendation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         category: &str,
         description: &str,
@@ -70,6 +75,7 @@ impl PopperRecommendation {
     }
 
     /// Add command to recommendation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_command(mut self, cmd: &str) -> Self {
         debug_assert!(!cmd.is_empty(), "cmd must not be empty");
         self.command = Some(cmd.to_string());
@@ -97,6 +103,7 @@ impl fmt::Display for AnalysisStatus {
 
 impl PopperMetadata {
     /// Create new metadata
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(project_name: String) -> Self {
         Self {
             timestamp: chrono::Utc::now().to_rfc3339(),
@@ -107,6 +114,7 @@ impl PopperMetadata {
     }
 
     /// Set project path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_path(mut self, path: PathBuf) -> Self {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.project_path = Some(path);

@@ -108,6 +108,7 @@ pub struct ComprehensiveConfig {
 /// # }
 /// ```
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_comprehensive(
     project_path: PathBuf,
     file: Option<PathBuf>,

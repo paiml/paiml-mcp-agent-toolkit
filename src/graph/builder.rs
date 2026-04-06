@@ -27,6 +27,7 @@ impl Default for DependencyGraphBuilder {
 impl DependencyGraphBuilder {
     /// Create new builder
     /// Complexity: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         DependencyGraphBuilder {
             graph: DependencyGraph::new(),
@@ -38,6 +39,7 @@ impl DependencyGraphBuilder {
 
     /// Build from workspace path
     /// Complexity: 8 (file collection + analysis loop)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_workspace(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut builder = Self::new();
@@ -61,12 +63,14 @@ impl DependencyGraphBuilder {
 
     /// Build the final graph
     /// Complexity: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn build(self) -> Result<DependencyGraph> {
         Ok(self.graph)
     }
 
     /// Get symbol table
     /// Complexity: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn symbol_table(&self) -> &SymbolTable {
         &self.symbol_table
     }

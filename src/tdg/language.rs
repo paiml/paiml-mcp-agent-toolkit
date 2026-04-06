@@ -23,6 +23,7 @@ pub enum Language {
 }
 
 impl Language {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_extension(path: &Path) -> Self {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         match path.extension().and_then(|s| s.to_str()) {
@@ -42,6 +43,7 @@ impl Language {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn confidence(&self) -> f32 {
         match self {
             Language::Rust => 1.0,

@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 
 /// Format confidence level statistics
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_confidence_stats(
     annotations: &[(Location, ProofAnnotation)],
     output: &mut String,
@@ -30,6 +31,7 @@ pub fn format_confidence_stats(
 }
 
 /// Format verification method statistics
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_method_stats(
     annotations: &[(Location, ProofAnnotation)],
     output: &mut String,
@@ -59,6 +61,7 @@ pub fn format_method_stats(
 }
 
 /// Format property type statistics
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_property_stats(
     annotations: &[(Location, ProofAnnotation)],
     output: &mut String,
@@ -80,6 +83,7 @@ pub fn format_property_stats(
 }
 
 /// Group annotations by file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn group_by_file(
     annotations: &[(Location, ProofAnnotation)],
 ) -> HashMap<std::path::PathBuf, Vec<(Location, ProofAnnotation)>> {
@@ -101,6 +105,7 @@ pub fn group_by_file(
 }
 
 /// Format a single proof annotation
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_single_proof(
     location: &Location,
     annotation: &ProofAnnotation,
@@ -119,6 +124,7 @@ pub fn format_single_proof(
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_proof_header(location: &Location, output: &mut String) -> Result<()> {
     writeln!(
         output,
@@ -128,6 +134,7 @@ pub(crate) fn format_proof_header(location: &Location, output: &mut String) -> R
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_proof_metadata(annotation: &ProofAnnotation, output: &mut String) -> Result<()> {
     writeln!(output, "**Property**: {:?}", annotation.property_proven)?;
     writeln!(output, "**Method**: {:?}", annotation.method)?;
@@ -145,6 +152,7 @@ pub(crate) fn format_proof_metadata(annotation: &ProofAnnotation, output: &mut S
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_proof_assumptions(assumptions: &[String], output: &mut String) -> Result<()> {
     debug_assert!(!assumptions.is_empty(), "assumptions must not be empty");
     if !assumptions.is_empty() {
@@ -156,6 +164,7 @@ pub(crate) fn format_proof_assumptions(assumptions: &[String], output: &mut Stri
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_proof_evidence(annotation: &ProofAnnotation, output: &mut String) -> Result<()> {
     writeln!(output, "\n**Evidence**: {:?}", annotation.evidence_type)?;
     if let Some(ref spec_id) = annotation.specification_id {
@@ -165,6 +174,7 @@ pub(crate) fn format_proof_evidence(annotation: &ProofAnnotation, output: &mut S
 }
 
 /// Format provability-specific output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_provability_summary(
     summaries: &[crate::services::lightweight_provability_analyzer::ProofSummary],
     output: &mut String,
@@ -215,6 +225,7 @@ pub fn format_provability_summary(
 
 /// Generate SARIF rules for proof annotations
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_proof_sarif_rules() -> Vec<serde_json::Value> {
     vec![
         serde_json::json!({

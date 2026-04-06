@@ -34,6 +34,7 @@
 /// assert!(!passes_type_filter("function", &Some(SymbolTypeFilter::Classes)));
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn passes_type_filter(kind: &str, filter: &Option<super::super::SymbolTypeFilter>) -> bool {
     debug_assert!(!kind.is_empty(), "kind must not be empty");
     match filter {
@@ -58,6 +59,7 @@ pub fn passes_type_filter(kind: &str, filter: &Option<super::super::SymbolTypeFi
 /// assert!(passes_query_filter("anything", &None));
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn passes_query_filter(name: &str, query: &Option<String>) -> bool {
     debug_assert!(!name.is_empty(), "name must not be empty");
     match query {

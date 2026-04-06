@@ -8,6 +8,7 @@ pub struct UnifiedDetectionProcessor {
 
 impl UnifiedDetectionProcessor {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             registry: DetectionRegistry::new(),
@@ -15,6 +16,7 @@ impl UnifiedDetectionProcessor {
     }
 
     /// Detect duplicates in files
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn detect_duplicates(
         &self,
         files: Vec<std::path::PathBuf>,
@@ -37,6 +39,7 @@ impl UnifiedDetectionProcessor {
     }
 
     /// Detect SATD in project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn detect_satd(&self, project_path: &Path) -> Result<satd::SATDAnalysisResult> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let input = DetectionInput::ProjectDirectory(project_path.to_path_buf());
@@ -52,6 +55,7 @@ impl UnifiedDetectionProcessor {
     }
 
     /// Analyze polyglot architecture
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_polyglot(
         &self,
         project_path: &Path,
@@ -70,6 +74,7 @@ impl UnifiedDetectionProcessor {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn available_detectors(&self) -> Vec<&str> {
         self.registry.list_detectors()
     }

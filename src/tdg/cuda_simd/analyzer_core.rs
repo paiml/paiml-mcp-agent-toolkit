@@ -35,6 +35,7 @@ include!("analyzer_core_traversal.rs");
 impl CudaSimdAnalyzer {
     /// Create new analyzer with default configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             taxonomy: DefectTaxonomy::with_tauranta_patterns(),
@@ -44,6 +45,7 @@ impl CudaSimdAnalyzer {
 
     /// Create analyzer with custom configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: CudaSimdConfig) -> Self {
         Self {
             taxonomy: DefectTaxonomy::with_tauranta_patterns(),
@@ -52,6 +54,7 @@ impl CudaSimdAnalyzer {
     }
 
     /// Analyze a file or directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze(&self, path: &Path) -> anyhow::Result<CudaSimdTdgResult> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut defects = Vec::new();

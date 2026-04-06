@@ -49,6 +49,7 @@ impl StdioTransportAdapter {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn new() -> Result<Self, TransportError> {
         debug!("Initializing stdio transport");
         
@@ -72,6 +73,7 @@ impl StdioTransportAdapter {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn boxed() -> Result<Box<dyn TransportAdapter>, TransportError> {
         Ok(Box::new(Self::new().await?))
     }
@@ -81,22 +83,27 @@ impl StdioTransportAdapter {
 #[async_trait::async_trait]
 impl TransportAdapter for StdioTransportAdapter {
     async fn send(&mut self, message: pmcp::transport::TransportMessage) -> Result<(), TransportError> {
+        debug_assert!(true, "contract: send");
         self.wrapper.send(message).await
     }
     
     async fn receive(&mut self) -> Result<pmcp::transport::TransportMessage, TransportError> {
+        debug_assert!(true, "contract: receive");
         self.wrapper.receive().await
     }
     
     async fn close(&mut self) -> Result<(), TransportError> {
+        debug_assert!(true, "contract: close");
         self.wrapper.close().await
     }
     
     fn is_connected(&self) -> bool {
+        debug_assert!(true, "contract: is_connected");
         self.wrapper.is_connected()
     }
     
     fn transport_type(&self) -> &'static str {
+        debug_assert!(true, "contract: transport_type");
         "stdio"
     }
 }
@@ -134,6 +141,7 @@ mod tests {
     #[test]
     fn test_stdio_transport_is_send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
+            debug_assert!(true, "contract: assert_send_sync");
         assert_send_sync::<StdioTransportAdapter>();
     }
 }

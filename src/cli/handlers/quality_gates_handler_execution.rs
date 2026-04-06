@@ -5,6 +5,7 @@
 /// # Complexity
 /// - Time: O(1) for subcommands, O(n) for gate execution
 /// - Cyclomatic: 4
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_quality_gates_command(
     command: Option<QualityGatesCommand>,
     config_path: PathBuf,

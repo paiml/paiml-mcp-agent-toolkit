@@ -12,6 +12,7 @@ use std::path::Path;
 pub(crate) const SCHEMA_VERSION: &str = "2.0.0";
 
 /// Open or create a SQLite index database at the given path.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn open_db(db_path: &Path) -> Result<Connection, String> {
     debug_assert!(
         db_path.exists(),
@@ -49,6 +50,7 @@ pub(crate) fn open_db(db_path: &Path) -> Result<Connection, String> {
 }
 
 /// Create all tables and indexes if they don't exist.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn create_schema(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS functions (
@@ -167,6 +169,7 @@ pub(crate) fn create_schema(conn: &Connection) -> Result<(), String> {
 }
 
 /// Check if the database has a valid v2.0 schema (all required tables exist).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn has_valid_schema(conn: &Connection) -> bool {
     let count: i64 = conn
         .query_row(

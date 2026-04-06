@@ -11,6 +11,7 @@ use serde_json::{json, Value};
 /// Auto-fix clippy warnings with confidence-based filtering
 ///
 /// Complexity: 8 (within A+ standard <=10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn auto_clippy_fix(
     project_path: Option<String>,
     confidence_level: Option<String>,

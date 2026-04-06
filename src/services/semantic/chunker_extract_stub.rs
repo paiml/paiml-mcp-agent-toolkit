@@ -26,6 +26,7 @@ pub struct ExtractedItem {
 }
 
 /// Stub: Extract rich file details (requires tree-sitter feature).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_file_details(
     path: &str,
     _source: &str,

@@ -10,12 +10,14 @@ impl Default for DemoEngine {
 impl DemoEngine {
     /// Create a new demo engine with default configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Create a new demo engine with custom configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: DemoConfig) -> Self {
         Self {
             context_cache: Arc::new(RwLock::new(ContextCache::new(config.clone()))),
@@ -26,6 +28,7 @@ impl DemoEngine {
     }
 
     /// Register a protocol adapter
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register_protocol<P>(&mut self, name: String, protocol: P) -> &mut Self
     where
         P: DemoProtocol + 'static,
@@ -39,11 +42,13 @@ impl DemoEngine {
 
     /// Get list of registered protocols
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn list_protocols(&self) -> Vec<String> {
         self.protocols.keys().cloned().collect()
     }
 
     /// Get metadata for a specific protocol
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_protocol_metadata(&self, name: &str) -> Result<ProtocolMetadata, DemoError> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         let protocol = self
@@ -55,6 +60,7 @@ impl DemoEngine {
     }
 
     /// Execute demo analysis through specified protocol
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_demo(
         &self,
         protocol_name: &str,
@@ -130,11 +136,13 @@ impl DemoEngine {
     }
 
     /// Get API trace by ID
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_trace(&self, trace_id: Uuid) -> Option<ApiTrace> {
         self.trace_store.get_trace(trace_id).await
     }
 
     /// Get all traces for introspection
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_all_traces(&self) -> Vec<ApiTrace> {
         self.trace_store.get_all_traces().await
     }

@@ -225,6 +225,7 @@ pub enum AstItem {
 
 impl AstItem {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn display_name(&self) -> &str {
         match self {
             AstItem::Function { name, .. } => name,

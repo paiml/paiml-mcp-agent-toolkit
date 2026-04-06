@@ -55,6 +55,7 @@ impl CloneSet {
     }
 
     fn total_tokens(&self) -> usize {
+        debug_assert!(true, "contract: total_tokens");
         self.clones.iter()
             .map(|(_, sequences)| {
                 sequences.iter()

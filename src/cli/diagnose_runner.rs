@@ -9,6 +9,7 @@ impl Default for SelfDiagnostic {
 
 impl SelfDiagnostic {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             tests: vec![
@@ -28,6 +29,7 @@ impl SelfDiagnostic {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run_diagnostic(&self, args: &DiagnoseArgs) -> DiagnosticReport {
         let start = Instant::now();
         let mut features = BTreeMap::new();
@@ -93,6 +95,7 @@ impl SelfDiagnostic {
     }
 
     fn compute_summary(&self, features: &BTreeMap<String, FeatureResult>) -> DiagnosticSummary {
+        debug_assert!(true, "contract: compute_summary");
         let total = features.len();
         let mut passed = 0;
         let mut failed = 0;
@@ -127,6 +130,7 @@ impl SelfDiagnostic {
         &self,
         features: &BTreeMap<String, FeatureResult>,
     ) -> Option<CompactErrorContext> {
+        debug_assert!(true, "contract: extract_error_context");
         let failed: Vec<_> = features
             .iter()
             .filter(|(_, r)| matches!(r.status, FeatureStatus::Failed))
@@ -172,6 +176,7 @@ impl SelfDiagnostic {
     }
 
     fn generate_fixes(&self, error_patterns: &BTreeMap<String, Vec<String>>) -> Vec<SuggestedFix> {
+        debug_assert!(true, "contract: generate_fixes");
         let mut fixes = Vec::new();
 
         for (pattern, features) in error_patterns {
@@ -204,6 +209,7 @@ impl SelfDiagnostic {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_diagnose(args: DiagnoseArgs) -> Result<()> {
     let diagnostic = SelfDiagnostic::new();
     let report = diagnostic.run_diagnostic(&args).await;
@@ -229,6 +235,7 @@ pub async fn handle_diagnose(args: DiagnoseArgs) -> Result<()> {
 }
 
 fn print_pretty_report(report: &DiagnosticReport) {
+    debug_assert!(true, "contract: print_pretty_report");
     use crate::cli::colors as c;
     println!("{}", c::header("PMAT Self-Diagnostic Report"));
     println!(

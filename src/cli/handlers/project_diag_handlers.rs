@@ -87,6 +87,7 @@ pub struct CategorySummary {
 }
 
 /// Handle the project-diag command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_project_diag(config: ProjectDiagConfig) -> Result<()> {
     debug_assert!(
         config.path.exists(),

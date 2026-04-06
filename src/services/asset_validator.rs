@@ -32,6 +32,7 @@ pub enum AssetType {
 
 impl AssetType {
     /// CB check ID for this asset type.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cb_id(&self) -> &'static str {
         match self {
             Self::Readme => "CB-1320",
@@ -45,6 +46,7 @@ impl AssetType {
     }
 
     /// All asset types in spec order.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn all() -> &'static [AssetType] {
         &[
             Self::Readme,
@@ -58,6 +60,7 @@ impl AssetType {
     }
 
     /// Parse from string (for --asset CLI flag).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(s: &str) -> Option<Self> {
         debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
@@ -82,6 +85,7 @@ pub enum AssetStatus {
 }
 
 /// Validate all assets in a project and return results.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn validate_all_assets(project_path: &Path) -> Vec<AssetValidationResult> {
     debug_assert!(
         project_path.exists(),
@@ -95,6 +99,7 @@ pub fn validate_all_assets(project_path: &Path) -> Vec<AssetValidationResult> {
 }
 
 /// Validate a specific asset type.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn validate_asset(project_path: &Path, asset_type: AssetType) -> AssetValidationResult {
     debug_assert!(
         project_path.exists(),

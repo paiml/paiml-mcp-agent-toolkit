@@ -8,6 +8,7 @@ pub struct AgentStateResource {
 }
 
 impl AgentStateResource {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -49,6 +50,7 @@ pub struct MetricsResource {
 }
 
 impl MetricsResource {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -94,6 +96,7 @@ impl Default for QualityReportResource {
 }
 
 impl QualityReportResource {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }

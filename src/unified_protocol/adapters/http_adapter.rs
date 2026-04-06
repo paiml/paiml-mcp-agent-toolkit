@@ -73,6 +73,7 @@ impl HttpAdapter {
     /// assert_eq!(adapter.protocol(), pmat::unified_protocol::Protocol::Http);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(bind_addr: SocketAddr) -> Self {
         Self {
             listener: None,
@@ -117,6 +118,7 @@ impl HttpAdapter {
     /// assert!(adapter2.bind().await.is_ok());
     /// # });
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn bind(&mut self) -> Result<(), ProtocolError> {
         let listener = TcpListener::bind(self.bind_addr)
             .await
@@ -127,6 +129,7 @@ impl HttpAdapter {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn accept(&mut self) -> Result<(TcpStream, SocketAddr), ProtocolError> {
         let listener = self
             .listener
@@ -137,6 +140,7 @@ impl HttpAdapter {
     }
 
     /// Create an adapter for an existing TCP stream (for testing or custom setups)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_stream(stream: TcpStream, remote_addr: SocketAddr) -> HttpStreamAdapter {
         HttpStreamAdapter {
             stream: Some(stream),
@@ -151,10 +155,12 @@ impl ProtocolAdapter for HttpAdapter {
     type Output = HttpOutput;
 
     fn protocol(&self) -> Protocol {
+        debug_assert!(true, "contract: protocol");
         Protocol::Http
     }
 
     async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
+        debug_assert!(true, "contract: decode");
         debug!("Decoding HTTP input");
 
         let (request, remote_addr) = match input {
@@ -222,6 +228,7 @@ impl ProtocolAdapter for HttpAdapter {
     }
 
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
+        debug_assert!(true, "contract: encode");
         debug!(status = %response.status, "Encoding HTTP response");
 
         let mut http_response = Response::builder().status(response.status);

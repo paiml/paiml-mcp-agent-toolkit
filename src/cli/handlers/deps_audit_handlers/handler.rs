@@ -12,6 +12,7 @@ use super::parser::{parse_cargo_lock, parse_cargo_toml};
 use super::types::{DepCategory, DepsAuditReport, SortMode};
 
 /// Handle the deps-audit command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_deps_audit(
     path: &Path,
     format: &str,

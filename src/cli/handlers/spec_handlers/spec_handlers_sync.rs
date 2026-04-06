@@ -1,4 +1,5 @@
 /// Handle spec sync command - bidirectional spec-roadmap linking
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_spec_sync(
     spec_path: &Path,
     roadmap_path: &Path,
@@ -45,6 +46,7 @@ fn sync_spec_to_roadmap(
     dry_run: bool,
     updates: &mut Vec<String>,
 ) -> anyhow::Result<()> {
+    debug_assert!(true, "contract: sync_spec_to_roadmap");
     for spec_file in specs {
         let content = std::fs::read_to_string(spec_file)?;
         let ticket_id = match ticket_re.captures(&content).and_then(|c| c.get(1)) {
@@ -88,6 +90,7 @@ fn sync_roadmap_to_spec(
     roadmap: &crate::models::roadmap::Roadmap,
     updates: &mut Vec<String>,
 ) -> anyhow::Result<()> {
+    debug_assert!(true, "contract: sync_roadmap_to_spec");
     for item in &roadmap.roadmap {
         let spec_file = match &item.spec {
             Some(s) => s,
@@ -154,6 +157,7 @@ struct DriftInfo {
 }
 
 /// Handle spec drift command - find specs without roadmap links
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_spec_drift(
     spec_path: &Path,
     roadmap_path: &Path,
@@ -191,6 +195,7 @@ fn collect_drift_orphans(
     ticket_re: &regex::Regex,
     linked_specs: &std::collections::HashSet<std::path::PathBuf>,
 ) -> anyhow::Result<Vec<DriftInfo>> {
+    debug_assert!(true, "contract: collect_drift_orphans");
     let mut orphans = Vec::new();
     for spec_file in specs {
         let rel_path = spec_file

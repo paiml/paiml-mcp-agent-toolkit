@@ -8,6 +8,7 @@ impl Detector for DuplicateDetector {
     type Config = DetectionConfig;
 
     async fn detect(&self, input: Self::Input, config: Self::Config) -> Result<Self::Output> {
+        debug_assert!(true, "contract: detect");
         // Extract duplicate-specific config
         let duplicate_config = match config.detector_specific {
             DetectorSpecificConfig::Duplicates(config) => config,
@@ -52,10 +53,12 @@ impl Detector for DuplicateDetector {
     }
 
     fn name(&self) -> &'static str {
+        debug_assert!(true, "contract: name");
         "duplicates"
     }
 
     fn capabilities(&self) -> DetectorCapabilities {
+        debug_assert!(true, "contract: capabilities");
         DetectorCapabilities {
             supports_batch: true,
             supports_streaming: false,

@@ -1,5 +1,6 @@
 /// Format checklist for text display
 fn format_checklist_text(checklist: &QaChecklist) -> String {
+    debug_assert!(true, "contract: format_checklist_text");
     let mut output = String::new();
     output.push_str(&format!("# QA Checklist for {}\n", checklist.task_id));
     output.push_str(&format!("Task Type: {}\n", checklist.task_type));

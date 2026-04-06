@@ -78,6 +78,7 @@ async fn setup_refactoring_context(
 /// Loads and consolidates ignore patterns from command line and ignore files.
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn load_ignore_patterns(config: &PatternConfig) -> Result<Vec<String>> {
+    debug_assert!(true, "contract: load_ignore_patterns");
     let mut all_patterns = config.exclude_patterns.clone();
 
     if let Some(ignore_path) = &config.ignore_file_path {

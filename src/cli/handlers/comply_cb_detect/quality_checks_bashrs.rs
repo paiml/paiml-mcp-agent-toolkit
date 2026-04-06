@@ -2,6 +2,7 @@
 // Included from quality_checks.rs - shares parent module scope (no `use` imports)
 
 /// CB-400: Check git hooks with bashrs
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb400_git_hooks_quality(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let hooks_dir = project_path.join(".git/hooks");
@@ -48,6 +49,7 @@ fn lint_single_hook(hooks_dir: &Path, hook_name: &str) -> Vec<CbPatternViolation
 }
 
 /// CB-401: Check Makefile with bashrs
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb401_makefile_quality(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
@@ -92,6 +94,7 @@ pub fn detect_cb401_makefile_quality(project_path: &Path) -> Vec<CbPatternViolat
 }
 
 /// CB-402: Check shell scripts with bashrs
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();

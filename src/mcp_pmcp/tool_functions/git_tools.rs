@@ -1,3 +1,4 @@
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn git_clone(
     url: &str,
     target_dir: Option<&Path>,
@@ -19,6 +20,7 @@ pub async fn git_clone(
         }))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn git_status(path: &Path) -> Result<Value> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::git_context::GitContext;

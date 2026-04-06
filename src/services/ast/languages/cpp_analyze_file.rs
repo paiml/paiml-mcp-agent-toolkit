@@ -1,6 +1,7 @@
 /// Public async function to analyze a C++ file and return FileContext
 #[cfg(feature = "cpp-ast")]
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_cpp_file(
     path: &Path,
 ) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {

@@ -21,6 +21,7 @@ impl<T> RingBuffer<T> {
     /// assert!(buffer.is_empty());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(capacity: usize) -> Self {
         debug_assert!(capacity > 0, "capacity must be positive");
         Self {
@@ -52,6 +53,7 @@ impl<T> RingBuffer<T> {
     /// let items = buffer.drain();
     /// assert_eq!(items, vec![2, 3]); // First item (1) was evicted
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn push(&mut self, item: T) {
         if self.buffer.len() >= self.capacity {
             self.buffer.pop_front();
@@ -78,16 +80,19 @@ impl<T> RingBuffer<T> {
     /// assert_eq!(items, vec!["first", "second", "third"]);
     /// assert!(buffer.is_empty());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn drain(&mut self) -> Vec<T> {
         self.buffer.drain(..).collect()
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn len(&self) -> usize {
         self.buffer.len()
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }

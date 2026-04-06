@@ -14,11 +14,13 @@ impl RustVisitor {
     }
 
     fn get_line<T: syn::spanned::Spanned>(&self, _span: T) -> usize {
+        debug_assert!(true, "contract: get_line");
         // For simplicity, return 1. In production, use a proper source map
         1
     }
 
     fn get_visibility(&self, vis: &syn::Visibility) -> String {
+        debug_assert!(true, "contract: get_visibility");
         match vis {
             syn::Visibility::Public(_) => "pub".to_string(),
             syn::Visibility::Restricted(r) => format!(
@@ -43,6 +45,7 @@ impl RustVisitor {
 
 impl<'ast> Visit<'ast> for RustVisitor {
     fn visit_item_fn(&mut self, node: &'ast ItemFn) {
+        debug_assert!(true, "contract: visit_item_fn");
         self.items.push(AstItem::Function {
             name: node.sig.ident.to_string(),
             visibility: self.get_visibility(&node.vis),
@@ -52,6 +55,7 @@ impl<'ast> Visit<'ast> for RustVisitor {
     }
 
     fn visit_item_struct(&mut self, node: &'ast ItemStruct) {
+        debug_assert!(true, "contract: visit_item_struct");
         let fields_count = match &node.fields {
             syn::Fields::Named(fields) => fields.named.len(),
             syn::Fields::Unnamed(fields) => fields.unnamed.len(),
@@ -68,6 +72,7 @@ impl<'ast> Visit<'ast> for RustVisitor {
     }
 
     fn visit_item_enum(&mut self, node: &'ast ItemEnum) {
+        debug_assert!(true, "contract: visit_item_enum");
         self.items.push(AstItem::Enum {
             name: node.ident.to_string(),
             visibility: self.get_visibility(&node.vis),
@@ -77,6 +82,7 @@ impl<'ast> Visit<'ast> for RustVisitor {
     }
 
     fn visit_item_trait(&mut self, node: &'ast ItemTrait) {
+        debug_assert!(true, "contract: visit_item_trait");
         self.items.push(AstItem::Trait {
             name: node.ident.to_string(),
             visibility: self.get_visibility(&node.vis),
@@ -85,6 +91,7 @@ impl<'ast> Visit<'ast> for RustVisitor {
     }
 
     fn visit_item_impl(&mut self, node: &'ast ItemImpl) {
+        debug_assert!(true, "contract: visit_item_impl");
         let type_name = if let syn::Type::Path(type_path) = &*node.self_ty {
             type_path
                 .path
@@ -109,6 +116,7 @@ impl<'ast> Visit<'ast> for RustVisitor {
     }
 
     fn visit_item_mod(&mut self, node: &'ast ItemMod) {
+        debug_assert!(true, "contract: visit_item_mod");
         self.items.push(AstItem::Module {
             name: node.ident.to_string(),
             visibility: self.get_visibility(&node.vis),
@@ -117,6 +125,7 @@ impl<'ast> Visit<'ast> for RustVisitor {
     }
 
     fn visit_item_use(&mut self, node: &'ast ItemUse) {
+        debug_assert!(true, "contract: visit_item_use");
         let path = match &node.tree {
             syn::UseTree::Path(p) => p.ident.to_string(),
             syn::UseTree::Name(n) => n.ident.to_string(),
@@ -132,11 +141,13 @@ impl<'ast> Visit<'ast> for RustVisitor {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_rust_file(path: &Path) -> Result<FileContext, TemplateError> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_rust_file_with_cache(path, None).await
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_rust_file_with_cache(
     path: &Path,
     cache_manager: Option<Arc<SessionCacheManager>>,
@@ -187,6 +198,7 @@ pub async fn analyze_rust_file_with_cache(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_project(
     root_path: &Path,
     toolchain: &str,
@@ -196,6 +208,7 @@ pub async fn analyze_project(
 }
 
 // Persistent cache version
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_rust_file_with_persistent_cache(
     path: &Path,
     cache_manager: Option<Arc<PersistentCacheManager>>,
@@ -247,6 +260,7 @@ pub async fn analyze_rust_file_with_persistent_cache(
 }
 
 /// Optimized project analysis for dead code detection - focuses only on source files
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_project_for_dead_code(
     root_path: &Path,
     toolchain: &str,
@@ -264,6 +278,7 @@ pub async fn analyze_project_for_dead_code(
     })
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_project_with_cache(
     root_path: &Path,
     toolchain: &str,

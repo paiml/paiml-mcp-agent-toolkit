@@ -1,4 +1,5 @@
 /// Find package.json by traversing up from source file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn find_package_json_root(start: &Path) -> Option<&Path> {
     debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
@@ -13,6 +14,7 @@ pub fn find_package_json_root(start: &Path) -> Option<&Path> {
 }
 
 /// Parse test failures from npm test or jest output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
     debug_assert!(!stdout.is_empty(), "stdout must not be empty");
     debug_assert!(!stderr.is_empty(), "stderr must not be empty");
@@ -30,6 +32,7 @@ pub fn parse_test_failures(stdout: &str, stderr: &str) -> Vec<String> {
 }
 
 /// Extract test name from failure line
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_test_name(line: &str) -> Option<String> {
     debug_assert!(!line.is_empty(), "line must not be empty");
     let trimmed = line.trim();
@@ -58,6 +61,7 @@ pub fn extract_test_name(line: &str) -> Option<String> {
 }
 
 /// Detect test command from package.json
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn detect_test_command(package_json: &str) -> Result<String> {
     debug_assert!(!package_json.is_empty(), "package_json must not be empty");
     use serde_json::Value;

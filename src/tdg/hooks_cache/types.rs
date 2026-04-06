@@ -143,6 +143,7 @@ pub struct GateDefinition {
 
 impl GateDefinition {
     /// Create a new gate definition
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(name: impl Into<String>, files: Vec<PathBuf>) -> Self {
         Self {
             name: name.into(),
@@ -152,6 +153,7 @@ impl GateDefinition {
     }
 
     /// Create with file patterns
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_patterns(name: impl Into<String>, patterns: Vec<String>) -> Self {
         Self {
             name: name.into(),

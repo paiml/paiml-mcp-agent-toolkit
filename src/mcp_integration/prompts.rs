@@ -11,6 +11,7 @@ impl Default for CodeAnalysisPrompt {
 }
 
 impl CodeAnalysisPrompt {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -26,6 +27,7 @@ impl Default for RefactoringPrompt {
 }
 
 impl RefactoringPrompt {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -41,6 +43,7 @@ impl Default for QualityAssessmentPrompt {
 }
 
 impl QualityAssessmentPrompt {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -56,6 +59,7 @@ impl Default for RepoScorePrompt {
 }
 
 impl RepoScorePrompt {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }

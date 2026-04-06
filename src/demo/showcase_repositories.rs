@@ -3,11 +3,13 @@
 
 impl ShowcaseGallery {
     fn initialize_showcase_repositories(&mut self) {
+        debug_assert!(true, "contract: initialize_showcase_repositories");
         self.add_systems_and_web_repositories();
         self.add_cloud_and_tools_repositories();
     }
 
     fn add_systems_and_web_repositories(&mut self) {
+        debug_assert!(true, "contract: add_systems_and_web_repositories");
         // Rust - Systems Programming
         self.add_repository(ShowcaseRepository {
             name: "Tokio".to_string(),
@@ -147,6 +149,7 @@ impl ShowcaseGallery {
     }
 
     fn add_cloud_and_tools_repositories(&mut self) {
+        debug_assert!(true, "contract: add_cloud_and_tools_repositories");
         // TypeScript - Developer Tools
         self.add_repository(ShowcaseRepository {
             name: "VS Code".to_string(),
@@ -292,6 +295,7 @@ impl ShowcaseGallery {
     }
 
     fn add_repository(&mut self, repo: ShowcaseRepository) {
+        debug_assert!(true, "contract: add_repository");
         let category = repo.category.clone();
         let name = repo.name.clone();
 

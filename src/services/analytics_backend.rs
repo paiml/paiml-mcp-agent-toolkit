@@ -54,6 +54,7 @@ impl BackendSelector {
     /// let backend = BackendSelector::auto_select();
     /// println!("Selected backend: {:?}", backend);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn auto_select() -> Backend {
         #[cfg(feature = "analytics-gpu")]
         {
@@ -71,6 +72,7 @@ impl BackendSelector {
 
     /// Check if GPU backend is available
     #[cfg(feature = "analytics-gpu")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_gpu_available() -> bool {
         // TODO: Implement GPU device detection
         false
@@ -78,6 +80,7 @@ impl BackendSelector {
 
     /// Check if SIMD backend is available
     #[cfg(feature = "analytics-simd")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_simd_available() -> bool {
         true // Always available when feature is enabled
     }

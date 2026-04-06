@@ -12,6 +12,7 @@ use std::process::Command;
 /// Scan a single crate for all finding types, tagging each with crate_name.
 /// Lint scans (clippy/fmt) run first sequentially (they need cargo lock),
 /// then analysis scans (comply/defects/github/custom) run in parallel threads.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn scan_crate(
     path: &Path,
     crate_name: Option<&str>,
@@ -90,6 +91,7 @@ pub(crate) fn scan_crate(
 // Helpers
 // ---------------------------------------------------------------------------
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn extract_file_from_message(message: &serde_json::Value) -> Option<String> {
     message
         .get("spans")
@@ -100,12 +102,14 @@ pub(crate) fn extract_file_from_message(message: &serde_json::Value) -> Option<S
         .map(String::from)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn first_line(s: &str) -> String {
     debug_assert!(!s.is_empty(), "s must not be empty");
     s.lines().next().unwrap_or(s).to_string()
 }
 
 /// Extract a numeric score from command output (JSON {"score": N} or "SCORE: N")
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub(crate) fn extract_score_from_command_output(output: &str) -> Option<f64> {
     debug_assert!(!output.is_empty(), "output must not be empty");
     for line in output.lines() {

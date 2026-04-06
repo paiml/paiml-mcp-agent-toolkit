@@ -16,6 +16,7 @@ pub struct EquivalentMutantDetector {
 
 impl EquivalentMutantDetector {
     /// Create new detector
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             equivalence_patterns: HashMap::new(),
@@ -26,6 +27,7 @@ impl EquivalentMutantDetector {
     }
 
     /// Train the detector on labeled data
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn train(&mut self, training_data: &[EquivalenceTrainingData]) -> Result<()> {
         debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         if training_data.is_empty() {
@@ -66,6 +68,7 @@ impl EquivalentMutantDetector {
     }
 
     /// Update detector with new patterns
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update(&mut self, new_data: &[EquivalenceTrainingData]) -> Result<()> {
         debug_assert!(!new_data.is_empty(), "new_data must not be empty");
         if !self.trained {
@@ -100,6 +103,7 @@ impl EquivalentMutantDetector {
     }
 
     /// Detect if a mutant is equivalent to the original
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_equivalent(&self, mutant: &Mutant, original: &str) -> Result<EquivalenceResult> {
         debug_assert!(!original.is_empty(), "original must not be empty");
         if !self.trained {
@@ -169,6 +173,7 @@ impl EquivalentMutantDetector {
     }
 
     /// Detect with human-readable explanation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_with_explanation(
         &self,
         mutant: &Mutant,
@@ -195,6 +200,7 @@ impl EquivalentMutantDetector {
     }
 
     /// Filter out equivalent mutants from a list
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn filter_equivalents(
         &self,
         mutants: &[Mutant],
@@ -222,6 +228,7 @@ impl EquivalentMutantDetector {
     }
 
     /// Get accuracy estimate based on training data
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_accuracy_estimate(&self) -> f64 {
         if !self.trained {
             return 0.0;
@@ -233,11 +240,13 @@ impl EquivalentMutantDetector {
     }
 
     /// Check if detector is trained
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_trained(&self) -> bool {
         self.trained
     }
 
     /// Save detector to file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: &Path) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let serialized = bincode::serialize(self)?;
@@ -246,6 +255,7 @@ impl EquivalentMutantDetector {
     }
 
     /// Load detector from file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let data = std::fs::read(path)?;

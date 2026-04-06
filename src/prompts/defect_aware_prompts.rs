@@ -69,6 +69,7 @@ pub struct DefectAwarePromptGenerator {
 
 impl DefectAwarePromptGenerator {
     /// Load OIP analysis summary from file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let content =
             std::fs::read_to_string(path.as_ref()).context("Failed to read OIP summary file")?;
@@ -84,6 +85,7 @@ impl DefectAwarePromptGenerator {
     }
 
     /// Generate context-aware prompt for a specific task
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_prompt(&self, task: &str, context: &str) -> String {
         debug_assert!(!task.is_empty(), "task must not be empty");
         let mut prompt = String::new();
@@ -172,6 +174,7 @@ impl DefectAwarePromptGenerator {
     }
 
     /// Generate prompt for preventing a specific defect category
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_prevention_prompt(&self, defect_category: &str) -> Option<String> {
         debug_assert!(
             !defect_category.is_empty(),

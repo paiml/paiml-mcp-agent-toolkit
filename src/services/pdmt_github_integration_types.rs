@@ -28,6 +28,7 @@ pub enum IssueType {
 
 impl IssueType {
     /// Get the default labels for this issue type
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn default_labels(&self) -> Vec<String> {
         match self {
             IssueType::Feature => vec!["enhancement".to_string(), "feature".to_string()],
@@ -40,6 +41,7 @@ impl IssueType {
     }
 
     /// Get the issue type prefix for titles
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn title_prefix(&self) -> &'static str {
         match self {
             IssueType::Feature => "feat:",
@@ -64,6 +66,7 @@ pub enum Priority {
 
 impl Priority {
     /// Get the priority label
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn label(&self) -> String {
         match self {
             Priority::Low => "priority:low".to_string(),

@@ -8,6 +8,7 @@ use std::fmt::Write;
 use std::path::Path;
 
 /// Parse function specification string into `FunctionId`
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn parse_function_spec(spec: &str, project_path: &Path) -> Result<FunctionId> {
     debug_assert!(
         project_path.exists(),
@@ -49,6 +50,7 @@ fn extract_function_name(line: &str) -> Option<String> {
 
 /// Filter function summaries based on confidence
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn filter_summaries(
     summaries: &[ProofSummary],
     high_confidence_only: bool,

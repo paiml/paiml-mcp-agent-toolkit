@@ -35,14 +35,17 @@ struct EdgeRef<'a, E> {
 
 impl<'a, E> EdgeRef<'a, E> {
     fn source(&self) -> NodeIndex {
+        debug_assert!(true, "contract: source");
         self.source
     }
 
     fn target(&self) -> NodeIndex {
+        debug_assert!(true, "contract: target");
         self.target
     }
 
     fn weight(&self) -> &E {
+        debug_assert!(true, "contract: weight");
         self.weight
     }
 }
@@ -90,6 +93,7 @@ impl Default for DeterministicMermaidEngine {
 
 impl DeterministicMermaidEngine {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             pagerank_iterations: 100,

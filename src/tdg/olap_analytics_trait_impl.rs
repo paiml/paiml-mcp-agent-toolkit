@@ -92,6 +92,7 @@ impl OlapAnalytics for TruenoOlapAnalytics {
         language: Language,
         limit: Option<usize>,
     ) -> Result<Vec<TdgScore>> {
+        debug_assert!(true, "contract: query_by_language");
         // Use SQL WHERE filtering
         let lang_str = format!("{:?}", language);
         let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
@@ -112,6 +113,7 @@ impl OlapAnalytics for TruenoOlapAnalytics {
     }
 
     async fn count(&self) -> Result<usize> {
+        debug_assert!(true, "contract: count");
         let storage = self
             .storage
             .lock()
@@ -123,6 +125,7 @@ impl OlapAnalytics for TruenoOlapAnalytics {
     }
 
     async fn clear(&self) -> Result<()> {
+        debug_assert!(true, "contract: clear");
         let mut storage = self
             .storage
             .lock()

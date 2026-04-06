@@ -4,12 +4,14 @@ pub struct AdaptiveThresholdFactory;
 impl AdaptiveThresholdFactory {
     /// Create manager with default configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_default() -> AdaptiveThresholdManager {
         AdaptiveThresholdManager::new(AdaptiveConfig::default())
     }
 
     /// Create manager optimized for development (fast feedback)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_dev_optimized() -> AdaptiveThresholdManager {
         let config = AdaptiveConfig {
             target_analysis_time_ms: 50, // Faster target for dev
@@ -22,6 +24,7 @@ impl AdaptiveThresholdFactory {
 
     /// Create manager optimized for production (stable)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_prod_optimized() -> AdaptiveThresholdManager {
         let config = AdaptiveConfig {
             target_analysis_time_ms: 200, // More conservative target

@@ -142,6 +142,7 @@ fn format_iteration_result(
     format: &OracleOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: format_iteration_result");
     let formatted = match format {
         OracleOutputFormat::Text => format!(
             "Defects found: {}\nDefects that would be fixed: {}\nSkipped: {}\n",
@@ -174,6 +175,7 @@ fn format_status(
     status: &crate::services::oracle::ConvergenceStatus,
     format: OracleOutputFormat,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_status");
     match format {
         OracleOutputFormat::Text => {
             let mut output = String::new();
@@ -285,6 +287,7 @@ fn format_single_result(
     result: &crate::services::oracle::PdcaIterationResult,
     format: OracleOutputFormat,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_single_result");
     match format {
         OracleOutputFormat::Text => Ok(format!(
             "=== Single PDCA Iteration ===\n\n\

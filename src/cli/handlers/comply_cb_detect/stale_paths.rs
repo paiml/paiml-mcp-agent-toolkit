@@ -6,6 +6,7 @@ use super::types::{CbPatternViolation, Severity};
 use std::path::Path;
 
 /// CB-533: Detect stale path references in Makefiles and CI workflows.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb533_stale_path_references(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

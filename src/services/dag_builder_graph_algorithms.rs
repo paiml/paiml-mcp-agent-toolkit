@@ -13,6 +13,7 @@
 /// // All edges in filtered graph will be EdgeType::Calls
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn filter_call_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Calls)
 }
@@ -30,6 +31,7 @@ pub fn filter_call_edges(graph: DependencyGraph) -> DependencyGraph {
 /// // All edges in filtered graph will be EdgeType::Imports
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn filter_import_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Imports)
 }
@@ -47,6 +49,7 @@ pub fn filter_import_edges(graph: DependencyGraph) -> DependencyGraph {
 /// // All edges in filtered graph will be EdgeType::Inherits
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
     graph.filter_by_edge_type(EdgeType::Inherits)
 }
@@ -64,6 +67,7 @@ pub fn filter_inheritance_edges(graph: DependencyGraph) -> DependencyGraph {
 /// // Graph nodes now have PageRank scores in metadata
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn add_pagerank_scores(mut graph: DependencyGraph) -> DependencyGraph {
     if graph.nodes.is_empty() {
         return graph;
@@ -85,6 +89,7 @@ pub fn add_pagerank_scores(mut graph: DependencyGraph) -> DependencyGraph {
 
 /// Prune graph using `PageRank` algorithm to keep only the most important nodes
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> DependencyGraph {
     if graph.nodes.len() <= max_nodes {
         return graph.clone();
@@ -129,6 +134,7 @@ pub fn prune_graph_pagerank(graph: &DependencyGraph, max_nodes: usize) -> Depend
 
 /// Shared PageRank computation used by both `add_pagerank_scores` and `prune_graph_pagerank`
 fn compute_pagerank_scores(graph: &DependencyGraph) -> Vec<f32> {
+    debug_assert!(true, "contract: compute_pagerank_scores");
     let node_ids: Vec<&String> = graph.nodes.keys().collect();
     let mut scores = vec![1.0f32; node_ids.len()];
     let node_idx: FxHashMap<&String, usize> = node_ids

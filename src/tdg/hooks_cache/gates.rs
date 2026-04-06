@@ -21,6 +21,7 @@ impl HooksCacheManager {
     // =========================================================================
 
     /// Check if a specific gate can be skipped (Level 1 cache)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn check_gate(&self, gate_name: &str, files: &[PathBuf]) -> Result<Option<GateCacheEntry>> {
         debug_assert!(!gate_name.is_empty(), "gate_name must not be empty");
         debug_assert!(!files.is_empty(), "files must not be empty");
@@ -46,6 +47,7 @@ impl HooksCacheManager {
     }
 
     /// Update a specific gate's cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn update_gate(
         &self,
         gate_name: &str,
@@ -75,6 +77,7 @@ impl HooksCacheManager {
     }
 
     /// Check which gates need to run (partial cache check)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_gates(&self, gates: &[GateDefinition]) -> Result<GateCheckResult> {
         debug_assert!(!gates.is_empty(), "gates must not be empty");
         let mut cached = Vec::new();
@@ -95,6 +98,7 @@ impl HooksCacheManager {
     // =========================================================================
 
     /// Run gates in parallel using rayon
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn run_gates_parallel<F>(
         &self,
         gates: Vec<GateDefinition>,
@@ -144,6 +148,7 @@ impl HooksCacheManager {
     }
 
     /// Run gates with smart scheduling (cached gates skip, uncached run in parallel)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn run_gates_smart<F>(
         &self,
         gates: Vec<GateDefinition>,

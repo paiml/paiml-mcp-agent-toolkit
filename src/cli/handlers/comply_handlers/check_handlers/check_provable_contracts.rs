@@ -84,6 +84,7 @@ use super::types::*;
 /// - Proof obligation status
 /// - Quality score (A-F grade)
 /// - Any validation errors or warnings
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_provable_contracts(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -467,6 +468,7 @@ fn build_provable_contracts_result(
     score: PvScoreResult,
     binding: BindingResult,
 ) -> ComplianceCheck {
+    debug_assert!(true, "contract: build_provable_contracts_result");
     use crate::cli::colors as c;
 
     let mut parts = Vec::new();

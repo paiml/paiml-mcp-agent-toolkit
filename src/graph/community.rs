@@ -23,6 +23,7 @@ impl Default for LouvainDetector {
 }
 
 impl LouvainDetector {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::default()
     }
@@ -43,6 +44,7 @@ impl LouvainDetector {
     /// # Algorithm
     /// - aprender Louvain with Newman-Girvan modularity
     /// - Output converted from Vec<Vec<NodeId>> to Vec<usize>
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_communities(&mut self, graph: &UndirectedGraph) -> Vec<usize> {
         let n = graph.node_count();
         if n == 0 {
@@ -72,6 +74,7 @@ impl LouvainDetector {
 
     /// Calculate modularity of community assignment
     /// Complexity: 9 (edge iteration + community mapping)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_modularity(&self, graph: &UndirectedGraph, communities: &[usize]) -> f64 {
         // Contract: calculate_modularity returns a bounded score
         if graph.node_count() == 0 {

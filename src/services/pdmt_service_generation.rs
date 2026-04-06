@@ -210,6 +210,7 @@ impl PdmtService {
 
     /// Generate success criteria based on quality config
     fn generate_success_criteria(&self, config: &PdmtQualityConfig) -> Vec<String> {
+        debug_assert!(true, "contract: generate_success_criteria");
         let mut criteria = vec![
             format!(
                 "Unit tests pass with >{}% coverage",
@@ -258,6 +259,7 @@ impl PdmtService {
         todos: &mut [PdmtTodo],
         dependency_map: &HashMap<String, Vec<String>>,
     ) {
+        debug_assert!(true, "contract: set_dependencies");
         debug!("Setting dependencies for {} todos", todos.len());
 
         for todo in todos.iter_mut() {

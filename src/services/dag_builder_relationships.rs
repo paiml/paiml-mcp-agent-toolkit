@@ -2,6 +2,7 @@
 
 impl DagBuilder {
     fn process_relationships(&mut self, file: &FileContext) {
+        debug_assert!(true, "contract: process_relationships");
         // Create module node for the file itself
         let file_module_id = self.normalize_path(&file.path);
         let node = NodeInfo {
@@ -118,15 +119,18 @@ impl DagBuilder {
     }
 
     fn add_node(&mut self, node: NodeInfo) {
+        debug_assert!(true, "contract: add_node");
         self.graph.add_node(node);
     }
 
     fn add_edge(&mut self, edge: Edge) {
+        debug_assert!(true, "contract: add_edge");
         self.graph.add_edge(edge);
     }
 
     /// Enrich node with semantic naming and metadata
     fn enrich_node(&self, mut node: NodeInfo) -> NodeInfo {
+        debug_assert!(true, "contract: enrich_node");
         // Apply semantic naming
         let semantic_name = self.namer.get_semantic_name(&node.id, &node);
         if semantic_name != node.id && !semantic_name.is_empty() {

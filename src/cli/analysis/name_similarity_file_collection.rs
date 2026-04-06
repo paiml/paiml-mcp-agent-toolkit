@@ -59,6 +59,7 @@ async fn process_entry(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: process_entry");
     let path = entry.path();
 
     if should_skip(&path, exclude) {

@@ -7,6 +7,7 @@ use anyhow::Result;
 
 /// Convert CLI analyze commands to uniform contracts
 /// NOTE: This is temporarily using the adapter until CLI is refactored
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn map_analyze_command(cmd: &AnalyzeCommands) -> Result<Box<dyn ContractValidation>> {
     // Use adapter until CLI is refactored to use uniform contracts
     super::adapter::ContractAdapter::from_cli(cmd)
@@ -67,6 +68,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

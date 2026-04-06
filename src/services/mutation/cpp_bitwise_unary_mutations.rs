@@ -12,10 +12,12 @@ pub struct CppBitwiseOpMutation;
 
 impl TreeSitterMutationOperator for CppBitwiseOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "CppBitwiseOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         match node.kind() {
             "binary_expression" => {
                 let mut cursor = node.walk();
@@ -41,6 +43,7 @@ impl TreeSitterMutationOperator for CppBitwiseOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         if node.kind() == "unary_expression" {
             // Handle unary ~ operator
             let mut cursor = node.walk();
@@ -117,10 +120,12 @@ pub struct CppUnaryOpMutation;
 
 impl TreeSitterMutationOperator for CppUnaryOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "CppUnaryOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         match node.kind() {
             "unary_expression" => {
                 let mut cursor = node.walk();
@@ -147,6 +152,7 @@ impl TreeSitterMutationOperator for CppUnaryOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         let mut cursor = node.walk();
         let mut operator_node = None;
 

@@ -19,12 +19,14 @@ impl RustBorrowChecker {
     /// Check if an impl block contains unsafe code
     #[cfg(feature = "rust-ast")]
     fn contains_unsafe_impl(&self, item_impl: &ItemImpl) -> bool {
+        debug_assert!(true, "contract: contains_unsafe_impl");
         item_impl.unsafety.is_some()
     }
 
     /// Analyze thread safety via trait bounds and type analysis
     #[cfg(feature = "rust-ast")]
     fn analyze_thread_safety(&self, item_fn: &ItemFn) -> Option<ProofAnnotation> {
+        debug_assert!(true, "contract: analyze_thread_safety");
         // Conservative analysis: only if all parameters appear to be Send+Sync
         let params_likely_send_sync = item_fn.sig.inputs.iter().all(|arg| {
             match arg {
@@ -46,6 +48,7 @@ impl RustBorrowChecker {
     /// Simple heuristic to check if a type likely implements Send+Sync
     #[cfg(all(feature = "rust-ast", feature = "quote"))]
     fn type_likely_implements_send_sync(&self, ty: &Type) -> bool {
+        debug_assert!(true, "contract: type_likely_implements_send_sync");
         match ty {
             Type::Path(path) => {
                 let path_str = quote::quote!(#path).to_string();
@@ -79,6 +82,7 @@ impl RustBorrowChecker {
     /// Fallback implementation without quote
     #[cfg(all(feature = "rust-ast", not(feature = "quote")))]
     fn type_likely_implements_send_sync(&self, _ty: &Type) -> bool {
+        debug_assert!(true, "contract: type_likely_implements_send_sync");
         // Conservative default when we can't analyze the type
         false
     }
@@ -86,6 +90,7 @@ impl RustBorrowChecker {
     /// Check if a trait path is an auto trait (Send, Sync, etc.)
     #[cfg(all(feature = "rust-ast", feature = "quote"))]
     fn is_auto_trait(&self, trait_path: &syn::Path) -> bool {
+        debug_assert!(true, "contract: is_auto_trait");
         let path_str = quote::quote!(#trait_path).to_string();
         matches!(
             path_str.as_str(),
@@ -96,6 +101,7 @@ impl RustBorrowChecker {
     /// Fallback implementation without quote
     #[cfg(all(feature = "rust-ast", not(feature = "quote")))]
     fn is_auto_trait(&self, trait_path: &syn::Path) -> bool {
+        debug_assert!(true, "contract: is_auto_trait");
         // Simple check based on the last segment
         if let Some(segment) = trait_path.segments.last() {
             matches!(

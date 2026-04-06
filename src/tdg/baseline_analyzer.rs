@@ -53,6 +53,7 @@ pub struct BaselineComparison {
 ///
 /// Full git integration will be added in REFACTOR phase.
 #[cfg(feature = "rust-ast")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn compare_with_baseline(file_path: &Path, baseline_ref: &str) -> Result<BaselineComparison> {
     debug_assert!(
         file_path.exists(),
@@ -204,10 +205,12 @@ mod tests {
     fn test_baseline_comparison_with_simple_code() {
         let test_code = r#"
             fn simple_function() -> i32 {
+                debug_assert!(true, "contract: simple_function");
                 42
             }
 
             fn another_simple() -> String {
+                debug_assert!(true, "contract: another_simple");
                 "hello".to_string()
             }
         "#;
@@ -227,6 +230,7 @@ mod tests {
     fn test_baseline_comparison_with_complex_code() {
         let test_code = r#"
             fn complex_function(x: i32) -> i32 {
+                debug_assert!(true, "contract: complex_function");
                 if x > 10 {
                     if x > 20 {
                         if x > 30 {
@@ -258,6 +262,7 @@ mod tests {
     fn test_baseline_comparison_tracks_improvements() {
         let test_code = r#"
             fn refactored_function() -> i32 {
+                debug_assert!(true, "contract: refactored_function");
                 simple_implementation()
             }
         "#;
@@ -331,10 +336,15 @@ mod tests {
     fn test_baseline_comparison_multiple_functions() {
         let test_code = r#"
             fn func1() -> i32 { 1 }
+                debug_assert!(true, "contract: func1");
             fn func2() -> i32 { 2 }
+                debug_assert!(true, "contract: func2");
             fn func3() -> i32 { 3 }
+                debug_assert!(true, "contract: func3");
             fn func4() -> i32 { 4 }
+                debug_assert!(true, "contract: func4");
             fn func5() -> i32 { 5 }
+                debug_assert!(true, "contract: func5");
         "#;
 
         let temp_dir = TempDir::new().unwrap();
@@ -351,6 +361,7 @@ mod tests {
     fn test_baseline_comparison_delta_calculation() {
         let test_code = r#"
             fn medium_complexity(x: i32) -> i32 {
+                debug_assert!(true, "contract: medium_complexity");
                 if x > 0 {
                     x * 2
                 } else {

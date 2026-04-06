@@ -14,6 +14,7 @@ impl TempDir {
     /// # Errors
     ///
     /// Returns an error if directory creation fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn new(prefix: &str) -> Result<Self> {
         let path = create_temp_dir(prefix).await?;
 
@@ -24,6 +25,7 @@ impl TempDir {
     }
 
     /// Get the path to the temporary directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -37,6 +39,7 @@ impl TempDir {
     /// # Errors
     ///
     /// Returns an error if cleanup fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn cleanup(&mut self) -> Result<()> {
         if self.cleaned_up {
             return Ok(());
@@ -56,6 +59,7 @@ impl TempDir {
     }
 
     /// Mark the directory as cleaned up without actually cleaning it up
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mark_cleaned_up(&mut self) {
         self.cleaned_up = true;
     }
@@ -69,6 +73,7 @@ impl TempDir {
     /// # Returns
     ///
     /// PathBuf to the created path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn child<P: AsRef<Path>>(&self, name: P) -> PathBuf {
         self.path.join(name)
     }

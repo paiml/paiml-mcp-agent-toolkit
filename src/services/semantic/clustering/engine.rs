@@ -18,11 +18,13 @@ pub struct ClusteringEngine {
 
 impl ClusteringEngine {
     /// Create new clustering engine
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(vector_db: Arc<TursoVectorDB>) -> Self {
         Self { vector_db }
     }
 
     /// Perform clustering
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn cluster(
         &self,
         method: ClusteringMethod,
@@ -46,6 +48,7 @@ impl ClusteringEngine {
 
     /// Convert Vec<Vec<f32>> to aprender Matrix
     /// Helper for Phase 2 migration to aprender
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn vectors_to_matrix(vectors: &[Vec<f32>]) -> Result<Matrix<f32>, String> {
         debug_assert!(!vectors.is_empty(), "vectors must not be empty");
         if vectors.is_empty() {
@@ -70,6 +73,7 @@ impl ClusteringEngine {
     ///
     /// # Returns
     /// Array of cluster labels (0 to k-1)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn kmeans(
         &self,
         vectors: &[Vec<f32>],
@@ -112,6 +116,7 @@ impl ClusteringEngine {
     }
 
     /// K-means with seed for deterministic results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn kmeans_with_seed(
         &self,
         vectors: &[Vec<f32>],
@@ -161,6 +166,7 @@ impl ClusteringEngine {
     /// Note: This uses a custom implementation (not aprender) because it returns
     /// a Dendrogram structure showing the merge history, which is useful for
     /// visualization. aprender's HierarchicalClustering returns cluster labels only.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn hierarchical(
         &self,
         vectors: &[Vec<f32>],
@@ -238,6 +244,7 @@ impl ClusteringEngine {
     }
 
     /// Compute distance between two clusters
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn cluster_distance(
         &self,
         cluster1: &[usize],
@@ -283,6 +290,7 @@ impl ClusteringEngine {
     ///
     /// # Returns
     /// Array of cluster labels (-1 for noise, 0+ for clusters)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn dbscan(
         &self,
         vectors: &[Vec<f32>],
@@ -311,6 +319,7 @@ impl ClusteringEngine {
     }
 
     /// Compute silhouette score for clustering quality
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_silhouette_score(&self, vectors: &[Vec<f32>], labels: &[usize]) -> f64 {
         debug_assert!(!vectors.is_empty(), "vectors must not be empty");
         debug_assert!(!labels.is_empty(), "labels must not be empty");
@@ -341,6 +350,7 @@ impl ClusteringEngine {
     }
 
     /// Average distance to points in same cluster
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn intra_cluster_distance(
         &self,
         vectors: &[Vec<f32>],
@@ -368,6 +378,7 @@ impl ClusteringEngine {
     }
 
     /// Average distance to nearest cluster
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn nearest_cluster_distance(
         &self,
         vectors: &[Vec<f32>],
@@ -411,6 +422,7 @@ impl ClusteringEngine {
     }
 
     /// Compute Euclidean distance between two vectors
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn euclidean_distance(&self, v1: &[f32], v2: &[f32]) -> f64 {
         if v1.len() != v2.len() {
             return f64::MAX;

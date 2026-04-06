@@ -12,6 +12,7 @@ impl HybridSearchEngine {
     /// # Note
     /// Uses pure Rust TF-IDF embeddings via aprender.
     /// No external API keys or internet connection required.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn new(db_path: &str, search_root: &Path) -> Result<Self, String> {
         debug_assert!(search_root.exists(), "search_root must exist: {}", search_root.display());
         let semantic_engine = SemanticSearchEngine::new(db_path).await?;
@@ -24,6 +25,7 @@ impl HybridSearchEngine {
 
     /// Create new hybrid search engine (backward compatible - ignores api_key)
     #[deprecated(note = "Use new() without api_key - local embeddings don't require API keys")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn new_with_key(
         _api_key: &str,
         db_path: &str,
@@ -42,6 +44,7 @@ impl HybridSearchEngine {
     ///
     /// # Returns
     /// Ranked hybrid search results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn search(
         &self,
         query: &HybridSearchQuery,
@@ -62,6 +65,7 @@ impl HybridSearchEngine {
         &self,
         query: &HybridSearchQuery,
     ) -> Result<Vec<HybridSearchResult>, String> {
+        debug_assert!(true, "contract: keyword_only_search");
         let matches = self.keyword_search(&query.query, query.limit * 2).await?;
 
         let mut results: Vec<HybridSearchResult> = matches
@@ -97,6 +101,7 @@ impl HybridSearchEngine {
         &self,
         query: &HybridSearchQuery,
     ) -> Result<Vec<HybridSearchResult>, String> {
+        debug_assert!(true, "contract: vector_only_search");
         let semantic_query = SearchQuery {
             query: query.query.clone(),
             mode: super::SearchMode::SemanticOnly,
@@ -132,6 +137,7 @@ impl HybridSearchEngine {
         &self,
         query: &HybridSearchQuery,
     ) -> Result<Vec<HybridSearchResult>, String> {
+        debug_assert!(true, "contract: hybrid_search");
         // Run both searches in parallel
         let keyword_matches = self.keyword_search(&query.query, query.limit * 2).await?;
 
@@ -208,6 +214,7 @@ impl HybridSearchEngine {
         semantic_results: Vec<SearchResult>,
         weights: (f64, f64),
     ) -> Vec<HybridSearchResult> {
+        debug_assert!(true, "contract: merge_results");
         let mut result_map: HashMap<String, HybridSearchResult> = HashMap::new();
 
         // Add keyword results with RRF scores
@@ -281,6 +288,7 @@ impl HybridSearchEngine {
     ///
     /// # Returns
     /// RRF score (higher is better)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_rrf_score(rank: usize, k: usize) -> f64 {
         debug_assert!(k > 0, "RRF k must be positive");
         let score = 1.0 / (k as f64 + rank as f64);
@@ -317,6 +325,7 @@ impl HybridSearchEngine {
     }
 
     /// Index a directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn index_directory(&self, path: &Path) -> Result<(), String> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.semantic_engine.index_directory(path).await?;

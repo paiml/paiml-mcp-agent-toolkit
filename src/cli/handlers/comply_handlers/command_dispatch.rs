@@ -4,6 +4,7 @@
 // where it has access to both check_handlers (re-exported) and migrate_handlers items.
 
 /// Handle all comply subcommands
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_comply_command(command: ComplyCommands) -> Result<()> {
     match command {
         ComplyCommands::Check {

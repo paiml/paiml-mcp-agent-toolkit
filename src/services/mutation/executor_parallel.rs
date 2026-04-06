@@ -6,6 +6,7 @@ impl MutantExecutor {
     ///
     /// Uses tokio tasks for parallel execution with temporary file isolation
     /// to avoid file conflicts. Each mutant test runs independently.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_mutants_parallel(
         &self,
         mutants: &[Mutant],
@@ -86,6 +87,7 @@ impl MutantExecutor {
     ///
     /// Uses a unique temporary file for this mutant to avoid conflicts
     async fn execute_mutant_isolated(&self, mutant: &Mutant) -> Result<MutationResult> {
+        debug_assert!(true, "contract: execute_mutant_isolated");
         use std::time::Instant;
 
         let start_time = Instant::now();

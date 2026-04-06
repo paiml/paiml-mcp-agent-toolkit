@@ -127,16 +127,19 @@ pub struct DriftReport {
 
 impl DriftReport {
     /// Check if the report has any errors
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_errors(&self) -> bool {
         !self.errors.is_empty()
     }
 
     /// Get error count
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn error_count(&self) -> usize {
         self.errors.len()
     }
 
     /// Format as human-readable report
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_string_report(&self) -> String {
         let mut report = String::new();
 

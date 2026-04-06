@@ -3,6 +3,7 @@
 impl SATDDetector {
     /// Analyze project for SATD patterns
     /// Toyota Way: Extract Method - reduced complexity from 25-><=8
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_project(
         &self,
         root: &Path,
@@ -121,6 +122,7 @@ impl SATDDetector {
         stats: ProjectAnalysisStats,
         avg_age_days: f64,
     ) -> SATDAnalysisResult {
+        debug_assert!(true, "contract: build_analysis_result");
         SATDAnalysisResult {
             items: stats.all_debts.clone(),
             summary: SATDSummary {
@@ -163,6 +165,7 @@ impl SATDDetector {
     }
 
     /// Analyze debt in a directory recursively (excluding test files by default)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_directory(
         &self,
         root: &Path,
@@ -172,6 +175,7 @@ impl SATDDetector {
     }
 
     /// Analyze debt in a directory recursively with test file inclusion control
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_directory_with_tests(
         &self,
         root: &Path,

@@ -2,6 +2,7 @@
 
 impl CodeQualityScorer {
     /// Create a new CodeQualityScorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             name: "Code Quality".to_string(),

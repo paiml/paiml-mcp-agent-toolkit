@@ -244,6 +244,7 @@ struct DeadCodeAnalysis {
 
 impl DeadCodeAnalysis {
     fn is_empty(&self) -> bool {
+        debug_assert!(true, "contract: is_empty");
         self.unreachable_functions.is_empty()
             && self.unused_variables.is_empty()
             && self.unused_imports.is_empty()

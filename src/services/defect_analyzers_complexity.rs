@@ -25,10 +25,12 @@ impl DefectAnalyzer for ComplexityDefectAnalyzer {
     }
 
     fn category(&self) -> DefectCategory {
+        debug_assert!(true, "contract: category");
         DefectCategory::Complexity
     }
 
     fn supports_incremental(&self) -> bool {
+        debug_assert!(true, "contract: supports_incremental");
         true
     }
 }
@@ -86,6 +88,7 @@ impl ComplexityDefectAnalyzer {
     }
 
     fn generate_fix_suggestion(&self, score: &TDGScore) -> String {
+        debug_assert!(true, "contract: generate_fix_suggestion");
         let mut suggestions = Vec::new();
 
         if score.components.complexity > 0.7 {

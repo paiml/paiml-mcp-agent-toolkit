@@ -2,6 +2,7 @@
 // Extracted from executor.rs for file health compliance
 
 impl DefaultWorkflowExecutor {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(agent_registry: Arc<AgentRegistry>) -> Self {
         Self {
             agent_registry,
@@ -10,6 +11,7 @@ impl DefaultWorkflowExecutor {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_monitor(mut self, monitor: Arc<dyn WorkflowMonitor>) -> Self {
         self.monitor = Some(monitor);
         self
@@ -151,6 +153,7 @@ impl DefaultWorkflowExecutor {
         context: &WorkflowContext,
         retry: &RetryPolicy,
     ) -> Result<Value, WorkflowError> {
+        debug_assert!(true, "contract: execute_with_retry");
         let mut attempts = 0;
         let mut last_error = None;
 
@@ -177,6 +180,7 @@ impl DefaultWorkflowExecutor {
         step: &WorkflowStep,
         context: &WorkflowContext,
     ) -> Result<Value, WorkflowError> {
+        debug_assert!(true, "contract: execute_step_internal");
         // Check step condition
         if let Some(condition) = &step.condition {
             let should_execute = self

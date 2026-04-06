@@ -3,6 +3,7 @@
 impl BytecodeAnalyzer {
     /// Convert ExternalKind to string
     fn external_kind_str(kind: wasmparser::ExternalKind) -> &'static str {
+        debug_assert!(true, "contract: external_kind_str");
         match kind {
             wasmparser::ExternalKind::Func => "function",
             wasmparser::ExternalKind::Memory => "memory",
@@ -14,6 +15,7 @@ impl BytecodeAnalyzer {
 
     /// Convert TypeRef to kind string
     fn type_ref_kind_str(ty: &TypeRef) -> &'static str {
+        debug_assert!(true, "contract: type_ref_kind_str");
         match ty {
             TypeRef::Func(_) => "function",
             TypeRef::Memory(_) => "memory",
@@ -70,6 +72,7 @@ impl BytecodeAnalyzer {
         name_map: &HashMap<u32, String>,
         export_section: &[(String, u32, String)],
     ) -> DeepWasmResult<Option<FunctionAnalysis>> {
+        debug_assert!(true, "contract: analyze_single_function");
         let func_type = match type_section.get(type_idx as usize) {
             Some(ft) => ft,
             None => return Ok(None),
@@ -110,6 +113,7 @@ impl BytecodeAnalyzer {
 
     /// First pass: parse all WASM sections
     fn parse_sections<'a>(parser: Parser, bytes: &'a [u8]) -> WasmSections<'a> {
+        debug_assert!(true, "contract: parse_sections");
         let mut sections = WasmSections {
             type_section: Vec::new(),
             function_section: Vec::new(),
@@ -211,6 +215,7 @@ impl BytecodeAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&self, bytes: &[u8]) -> DeepWasmResult<ModuleBytecodeAnalysis> {
         debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         let parser = Parser::new(0);

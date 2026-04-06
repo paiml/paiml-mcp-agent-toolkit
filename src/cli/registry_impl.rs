@@ -1,5 +1,6 @@
 impl CommandRegistry {
     /// Create a new empty registry
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(version: impl Into<String>) -> Self {
         Self {
             version: version.into(),
@@ -10,18 +11,21 @@ impl CommandRegistry {
     }
 
     /// Register a command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&mut self, command: CommandMetadata) -> &mut Self {
         self.commands.insert(command.name.clone(), command);
         self
     }
 
     /// Register a global flag
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register_global_flag(&mut self, flag: FlagMetadata) -> &mut Self {
         self.global_flags.push(flag);
         self
     }
 
     /// Find a command by path (e.g., "analyze complexity")
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_command(&self, path: &str) -> Option<&CommandMetadata> {
         debug_assert!(!path.is_empty(), "path must not be empty");
         // First try exact match
@@ -50,6 +54,7 @@ impl CommandRegistry {
     }
 
     /// Find commands by semantic tags
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_by_tag(&self, tag: &str) -> Vec<&CommandMetadata> {
         self.commands
             .values()
@@ -58,6 +63,7 @@ impl CommandRegistry {
     }
 
     /// Find commands by category
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_by_category(&self, category: &str) -> Vec<&CommandMetadata> {
         debug_assert!(!category.is_empty(), "category must not be empty");
         self.commands
@@ -67,6 +73,7 @@ impl CommandRegistry {
     }
 
     /// Get all command names (including subcommand paths)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn all_command_paths(&self) -> Vec<String> {
         let mut paths = Vec::new();
         for (name, cmd) in &self.commands {
@@ -80,6 +87,7 @@ impl CommandRegistry {
     }
 
     /// Validate registry consistency
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate(&self) -> Result<(), Vec<RegistryError>> {
         let mut errors = Vec::new();
 
@@ -135,11 +143,13 @@ impl CommandRegistry {
     }
 
     /// Serialize to JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string_pretty(self)
     }
 
     /// Deserialize from JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
         debug_assert!(!json.is_empty(), "json must not be empty");
         serde_json::from_str(json)
@@ -148,11 +158,13 @@ impl CommandRegistry {
 
 impl CommandMetadata {
     /// Create a new command metadata builder
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn builder(name: impl Into<String>) -> CommandMetadataBuilder {
         CommandMetadataBuilder::new(name)
     }
 
     /// Find a subcommand by name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_subcommand(&self, name: &str) -> Option<&CommandMetadata> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.subcommands
@@ -161,6 +173,7 @@ impl CommandMetadata {
     }
 
     /// Get full command path from root
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn full_path(&self, parent: Option<&str>) -> String {
         match parent {
             Some(p) => format!("{} {}", p, self.name),

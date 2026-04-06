@@ -178,6 +178,7 @@ fn grade_to_color(grade: &str) -> &'static str {
 
 /// Format the hotspot section showing top changed files
 fn format_hotspot_section(out: &mut String, hotspots: &HashMap<String, FileHotspot>, total_commits: usize) {
+    debug_assert!(true, "contract: format_hotspot_section");
     let mut sorted: Vec<(&String, &FileHotspot)> = hotspots.iter().collect();
     sorted.sort_by(|a, b| b.1.commit_count.cmp(&a.1.commit_count));
 
@@ -214,6 +215,7 @@ fn format_hotspot_entry(out: &mut String, path: &str, hotspot: &FileHotspot, tot
 
 #[allow(clippy::cast_possible_truncation)]
 fn format_fix_indicator(hotspot: &FileHotspot) -> String {
+    debug_assert!(true, "contract: format_fix_indicator");
     let fix_ratio = if hotspot.commit_count > 0 { hotspot.fix_count as f32 / hotspot.commit_count as f32 } else { 0.0 };
     if fix_ratio > 0.5 { format!(" {BRIGHT_RED}!!{} fixes{RESET}", hotspot.fix_count) }
     else if hotspot.fix_count > 0 { format!(" {RED}{} fixes{RESET}", hotspot.fix_count) }
@@ -221,12 +223,14 @@ fn format_fix_indicator(hotspot: &FileHotspot) -> String {
 }
 
 fn format_decay_indicator(decay: f32) -> String {
+    debug_assert!(true, "contract: format_decay_indicator");
     if decay > 0.5 { format!(" {BRIGHT_RED}decay:{:.2}{RESET}", decay) }
     else if decay > 0.2 { format!(" {YELLOW}decay:{:.2}{RESET}", decay) }
     else { String::new() }
 }
 
 fn format_risk_indicator(impact_risk: f32) -> String {
+    debug_assert!(true, "contract: format_risk_indicator");
     if impact_risk > 10.0 { format!(" {BRIGHT_RED}risk:{:.1}{RESET}", impact_risk) }
     else if impact_risk > 1.0 { format!(" {YELLOW}risk:{:.1}{RESET}", impact_risk) }
     else { String::new() }
@@ -234,6 +238,7 @@ fn format_risk_indicator(impact_risk: f32) -> String {
 
 #[allow(clippy::cast_possible_truncation)]
 fn format_top_author(hotspot: &FileHotspot) -> String {
+    debug_assert!(true, "contract: format_top_author");
     hotspot.authors.iter().max_by_key(|(_, count)| *count)
         .map(|(name, count)| {
             let pct = *count as f32 / hotspot.commit_count as f32 * 100.0;
@@ -244,6 +249,7 @@ fn format_top_author(hotspot: &FileHotspot) -> String {
 
 /// Format defect introduction tracking section
 fn format_defect_introductions(out: &mut String, all_commits: &[CommitInfo]) {
+    debug_assert!(true, "contract: format_defect_introductions");
     let feat_commits: Vec<&CommitInfo> = all_commits.iter().filter(|c| c.is_feat).collect();
     let mut defect_introductions: Vec<(String, String, usize)> = Vec::new();
 
@@ -279,6 +285,7 @@ fn format_defect_introductions(out: &mut String, all_commits: &[CommitInfo]) {
 /// Format churn velocity section
 #[allow(clippy::cast_possible_truncation)]
 fn format_churn_velocity(out: &mut String, sorted_hotspots: &[(&String, &FileHotspot)], all_commits: &[CommitInfo]) {
+    debug_assert!(true, "contract: format_churn_velocity");
     let (newest, oldest) = match (
         all_commits.iter().map(|c| c.timestamp).max(),
         all_commits.iter().map(|c| c.timestamp).min(),
@@ -305,6 +312,7 @@ fn format_churn_velocity(out: &mut String, sorted_hotspots: &[(&String, &FileHot
 
 /// Format co-change coupling section
 fn format_cochange_section(out: &mut String, cochange_pairs: &[CoChangePair]) {
+    debug_assert!(true, "contract: format_cochange_section");
     if cochange_pairs.is_empty() { return; }
     out.push_str(&format!(
         "\n  {BOLD}{UNDERLINE}Co-Change Coupling{RESET} {DIM}(files that always change together){RESET}\n"

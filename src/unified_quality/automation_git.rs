@@ -41,6 +41,7 @@ impl RollbackManager {
 
     #[allow(dead_code)]
     fn add_rollback_point(&mut self, branch: String, commit: String, files: Vec<PathBuf>) {
+        debug_assert!(true, "contract: add_rollback_point");
         let point = RollbackPoint {
             timestamp: std::time::SystemTime::now(),
             branch,
@@ -57,6 +58,7 @@ impl RollbackManager {
     }
 
     fn rollback_last(&mut self) -> Result<()> {
+        debug_assert!(true, "contract: rollback_last");
         if let Some(point) = self.rollback_points.pop() {
             Command::new("git")
                 .args(["checkout", &point.branch])

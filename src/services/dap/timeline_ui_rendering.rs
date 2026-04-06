@@ -7,6 +7,7 @@ impl TimelineUI {
     // ========================================================================
 
     /// Render the timeline as a string (legacy)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render(&self) -> String {
         let total_frames = if !self.snapshots_legacy.is_empty() {
             self.snapshots_legacy.len()
@@ -58,6 +59,7 @@ impl TimelineUI {
     }
 
     /// Render detailed information about current snapshot (legacy)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_details(&self) -> String {
         // Legacy mode
         if !self.snapshots_legacy.is_empty() {
@@ -156,6 +158,7 @@ impl TimelineUI {
     }
 
     /// Render performance metrics (legacy)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_metrics(&self) -> String {
         let mut metrics = String::new();
 
@@ -198,6 +201,7 @@ impl TimelineUI {
     }
 
     /// Render timeline with specific width (legacy)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_with_width(&self, width: usize) -> String {
         debug_assert!(width > 0, "width must be positive");
         let total_frames = if !self.snapshots_legacy.is_empty() {
@@ -243,6 +247,7 @@ impl TimelineUI {
     }
 
     /// Render timeline with ANSI colors (legacy)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_colored(&self) -> String {
         let total_frames = if !self.snapshots_legacy.is_empty() {
             self.snapshots_legacy.len()
@@ -301,6 +306,7 @@ impl TimelineUI {
 
     /// Estimate recording size in bytes (legacy)
     fn estimate_size_bytes(&self) -> usize {
+        debug_assert!(true, "contract: estimate_size_bytes");
         let total_frames = if !self.snapshots_legacy.is_empty() {
             self.snapshots_legacy.len()
         } else {

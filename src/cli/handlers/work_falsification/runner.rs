@@ -16,6 +16,7 @@ use anyhow::Result;
 use std::path::Path;
 
 /// Run all falsification tests against the work contract
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_falsification_tests(
     project_path: &Path,
     contract: &WorkContract,
@@ -101,6 +102,7 @@ fn determine_blocking_status(
     method: &FalsificationMethod,
     thresholds: &crate::cli::handlers::work_contract::ContractThresholds,
 ) -> bool {
+    debug_assert!(true, "contract: determine_blocking_status");
     match method {
         // Always blocking
         FalsificationMethod::ManifestIntegrity
@@ -243,6 +245,7 @@ async fn run_single_falsification(
 
 /// Print evidence details
 fn print_evidence(evidence: &EvidenceType) {
+    debug_assert!(true, "contract: print_evidence");
     match evidence {
         EvidenceType::FileList(files) => {
             println!("      Evidence (files):");

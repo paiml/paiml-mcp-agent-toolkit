@@ -1,6 +1,7 @@
 impl PersistentCacheManager {
     /// Get cache diagnostics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_diagnostics(&self) -> CacheDiagnostics {
         let uptime = self.created.elapsed();
         let ast_size = self.ast_cache.stats.memory_usage();

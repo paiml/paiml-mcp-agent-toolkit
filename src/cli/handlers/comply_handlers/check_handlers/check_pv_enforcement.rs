@@ -381,6 +381,7 @@ pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
 /// CB-1205: Provability Invariant — kernel contracts with proof_obligations
 /// MUST have kani_harnesses and sufficient falsification_tests.
 /// pv-compatibility spec §2.2
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
@@ -478,6 +479,7 @@ pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceChec
 /// CB-1206: Verification Level Distribution — report L1-L5 proof depth.
 /// Reads proof-status.json from provable-contracts sibling repo.
 /// pv-compatibility spec §2.3
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_verification_levels(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Resolve to absolute path so .parent() works correctly from "."
@@ -709,6 +711,7 @@ fn collect_stems_recursive(dir: &Path, stems: &mut std::collections::HashSet<Str
 /// CB-1207: Contract drift — are contracts stale relative to source changes?
 /// A contract YAML older than its bound source files by >30 days = drift.
 /// pv-compatibility spec CD5.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
@@ -989,6 +992,7 @@ fn detect_buildrs_enforcement(project_path: &Path) -> bool {
 /// 1. tests/contract_traits.rs exists
 /// 2. Count trait impl blocks (`impl XxxV1 for`)
 /// 3. Count provable-contracts trait imports
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_contract_trait_enforcement(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Look for contract_traits.rs in tests/ or tests/contract_traits/
@@ -1338,6 +1342,7 @@ fn parse_binding_entries(
 }
 
 /// CB-1202: Contract coverage — do repos with critical functions have contracts?
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -1473,6 +1478,7 @@ pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
 /// CB-1201: PV Lint + contract fulfillment gate.
 /// Checks: (1) pv lint passes, (2) referenced tests EXIST, (3) they PASS.
 /// Missing test = unfalsifiable claim = FAIL (like TDG grade F).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_pv_lint(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {

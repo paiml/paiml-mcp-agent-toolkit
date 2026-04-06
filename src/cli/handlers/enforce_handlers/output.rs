@@ -16,6 +16,7 @@ use crate::cli::EnforceOutputFormat;
 use anyhow::Result;
 
 /// Output enforcement result in requested format
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn output_result(
     result: &EnforcementResult,
     format: EnforceOutputFormat,
@@ -108,6 +109,7 @@ pub fn output_result(
 }
 
 /// Print visual progress bar
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_progress_bar(result: &EnforcementResult) {
     let percentage = (result.score * 100.0) as u32;
     let filled = (percentage as f32 / 5.0) as usize;
@@ -136,6 +138,7 @@ pub fn print_progress_bar(result: &EnforcementResult) {
 }
 
 /// Print enforcement header
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn print_enforcement_header(project_path: &std::path::Path) {
     debug_assert!(
         project_path.exists(),
@@ -151,6 +154,7 @@ pub fn print_enforcement_header(project_path: &std::path::Path) {
 }
 
 /// Print enforcement summary
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_enforcement_summary(
     current_score: f64,
     iteration: u32,
@@ -172,6 +176,7 @@ pub fn print_enforcement_summary(
 }
 
 /// Handle CI mode exit
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn handle_ci_mode_exit(ci_mode: bool, current_state: EnforcementState) {
     if ci_mode && current_state != EnforcementState::Complete {
         std::process::exit(1);
@@ -179,6 +184,7 @@ pub fn handle_ci_mode_exit(ci_mode: bool, current_state: EnforcementState) {
 }
 
 /// Format violations output - extracted from `list_all_violations` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_violations_output(
     violations: &[QualityViolation],
     profile: &QualityProfile,

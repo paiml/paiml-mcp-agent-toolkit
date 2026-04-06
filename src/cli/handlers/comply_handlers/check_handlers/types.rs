@@ -88,6 +88,7 @@ impl From<ConfigSeverity> for Severity {
 
 /// Filter a check result based on YAML configuration.
 /// Returns Skip status if the check is disabled in .pmat.yaml
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn filter_check_by_config(
     check: ComplianceCheck,
     check_id: &str,
@@ -117,6 +118,7 @@ pub(crate) struct BreakingChange {
 }
 
 /// Format a list of violations for display (indented, one per line).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_violation_list(issues: &[String]) -> String {
     issues
         .iter()
@@ -126,6 +128,7 @@ pub(crate) fn format_violation_list(issues: &[String]) -> String {
 }
 
 /// Helper: Create skip check result
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn skip_check(name: &str, message: &str) -> ComplianceCheck {
     debug_assert!(!name.is_empty(), "name must not be empty");
     ComplianceCheck {
@@ -136,6 +139,7 @@ pub(crate) fn skip_check(name: &str, message: &str) -> ComplianceCheck {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
     debug_assert!(
         !project_version.is_empty(),
@@ -166,6 +170,7 @@ pub(crate) fn calculate_versions_behind(project_version: &str) -> u32 {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn get_breaking_changes_since(_from_version: &str) -> Vec<BreakingChange> {
     debug_assert!(!_from_version.is_empty(), "_from_version must not be empty");
     vec![]
@@ -178,6 +183,7 @@ pub(crate) struct ChangelogEntry {
     pub breaking: bool,
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntry> {
     debug_assert!(!_from.is_empty(), "_from must not be empty");
     debug_assert!(!_to.is_empty(), "_to must not be empty");
@@ -200,6 +206,7 @@ pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntr
     ]
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Result<ProjectConfig> {
     debug_assert!(
         project_path.exists(),
@@ -222,6 +229,7 @@ pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Resu
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result<()> {
     debug_assert!(
         project_path.exists(),
@@ -237,6 +245,7 @@ pub(crate) fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     println!("\n{}", c::rule());
     println!("{}", c::header("PMAT Compliance Report"));
@@ -272,6 +281,7 @@ pub(crate) fn print_compliance_text(report: &ComplianceReport) {
     println!("\n{}", c::rule());
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
     println!("# PMAT Compliance Report\n");
     println!("| Property | Value |");
@@ -298,6 +308,7 @@ pub(crate) fn print_compliance_markdown(report: &ComplianceReport) {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn migrate_project_version(
     project_path: &Path,
     target: &str,
@@ -322,6 +333,7 @@ pub(crate) fn migrate_project_version(
     Ok(true)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
     debug_assert!(
         project_path.exists(),
@@ -363,6 +375,7 @@ pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> anyhow::R
     Ok(needs_update)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn update_project_config(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
     debug_assert!(
         project_path.exists(),
@@ -373,6 +386,7 @@ pub(crate) fn update_project_config(project_path: &Path, dry_run: bool) -> anyho
 }
 
 /// Update project hooks to latest templates
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn update_project_hooks(
     project_path: &Path,
     dry_run: bool,
@@ -419,6 +433,7 @@ pub(crate) enum HookAction {
     UpToDate,
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn determine_hook_action(
     hooks_cmd: &crate::cli::handlers::hooks_command_handlers::HooksCommand,
     status: &crate::cli::handlers::hooks_command_handlers::HookStatus,

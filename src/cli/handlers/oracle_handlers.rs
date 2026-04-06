@@ -8,6 +8,7 @@ use anyhow::Result;
 use std::path::Path;
 
 /// Handle oracle command dispatch
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_oracle_command(command: OracleCommands) -> Result<()> {
     match command {
         OracleCommands::Fix {

@@ -24,6 +24,7 @@ pub struct HealthCheckConfig {
 
 impl HealthCheckConfig {
     /// Create config from individual flags
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         quick: bool,
         all: bool,
@@ -96,6 +97,7 @@ enum CheckType {
 /// # Complexity
 /// - Time: O(n) where n is project size
 /// - Cyclomatic: 7
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_health_checks_internal(
     project_dir: &PathBuf,
     config: &HealthCheckConfig,
@@ -149,6 +151,7 @@ pub async fn run_health_checks_internal(
 
 /// Handle project health check command (CLI wrapper)
 /// (TICKET-PMAT-6001, PMAT-6010)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_maintain_health(
     project_dir: PathBuf,
     format: OutputFormat,

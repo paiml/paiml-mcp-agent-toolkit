@@ -3,6 +3,7 @@
 /// Extract image metadata (filename, directory context, file size).
 ///
 /// No OCR — just structural metadata for discoverability.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn extract_image_metadata(
     path: &Path,
     relative_path: &str,
@@ -39,6 +40,7 @@ pub(crate) fn extract_image_metadata(
 }
 
 /// Extract plaintext content (.txt, .rst, .adoc).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn extract_plaintext(
     path: &Path,
     relative_path: &str,

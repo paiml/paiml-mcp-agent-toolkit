@@ -35,6 +35,7 @@ include!("kotlin_complexity.rs");
 
 /// Analyze a Kotlin file and return AST items
 #[cfg(feature = "kotlin-ast")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_kotlin_file(file_path: &Path) -> anyhow::Result<Vec<AstItem>> {
     debug_assert!(
         file_path.exists(),
@@ -50,6 +51,7 @@ pub async fn analyze_kotlin_file(file_path: &Path) -> anyhow::Result<Vec<AstItem
 
 /// Stub when kotlin-ast feature is disabled
 #[cfg(not(feature = "kotlin-ast"))]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_kotlin_file(
     _file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {

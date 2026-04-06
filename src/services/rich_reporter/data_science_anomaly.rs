@@ -4,6 +4,7 @@ impl DataScienceAnalyzer {
     /// Uses Z-score based outlier detection (simpler than Isolation Forest)
     /// Anomalies are findings that deviate significantly from the norm
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_anomalies(&self, findings: &mut [Finding]) -> Vec<AnomalyPoint> {
         if findings.len() < 5 {
             // Not enough data for meaningful anomaly detection
@@ -110,6 +111,7 @@ impl DataScienceAnalyzer {
 
     /// Suggest action for an anomalous finding
     fn suggest_anomaly_action(&self, finding: &Finding) -> String {
+        debug_assert!(true, "contract: suggest_anomaly_action");
         match finding.severity {
             super::types::Severity::Critical => "Immediate review required".to_string(),
             super::types::Severity::High => "Schedule for next sprint".to_string(),

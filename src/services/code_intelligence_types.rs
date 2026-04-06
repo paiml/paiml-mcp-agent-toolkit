@@ -58,6 +58,7 @@ impl AnalysisRequest {
     /// assert_ne!(key1, different_request.cache_key());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cache_key(&self) -> String {
         use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();

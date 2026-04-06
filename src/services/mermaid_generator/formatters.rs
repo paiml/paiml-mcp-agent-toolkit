@@ -19,6 +19,7 @@ impl MermaidGenerator {
     /// assert_eq!(generator.get_edge_arrow(&EdgeType::Imports), "-.->");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_edge_arrow(&self, edge_type: &EdgeType) -> &'static str {
         match edge_type {
             EdgeType::Calls => "-->",
@@ -44,6 +45,7 @@ impl MermaidGenerator {
     /// assert_eq!(generator.get_complexity_color(15), "#FF6347"); // Tomato
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_complexity_color(&self, complexity: u32) -> &'static str {
         match complexity {
             1..=3 => "#90EE90",  // Light green for low complexity
@@ -64,6 +66,7 @@ impl MermaidGenerator {
 
     #[inline]
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn sanitize_id(&self, id: &str) -> String {
         debug_assert!(!id.is_empty(), "id must not be empty");
         // First replace common multi-character patterns
@@ -98,6 +101,7 @@ impl MermaidGenerator {
 
     #[inline]
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn escape_mermaid_label(&self, label: &str) -> String {
         // For IntelliJ compatibility, use simple character replacements instead of HTML entities
         label

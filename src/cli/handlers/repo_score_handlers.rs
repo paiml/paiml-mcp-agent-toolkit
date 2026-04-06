@@ -17,6 +17,7 @@ use std::fs;
 use std::path::Path;
 
 /// Handle the repo-score command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_repo_score(
     path: &Path,
     format: RepoScoreOutputFormat,

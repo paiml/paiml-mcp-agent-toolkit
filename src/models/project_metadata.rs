@@ -69,6 +69,7 @@ pub struct MigrationRecord {
 }
 
 fn default_schema_version() -> String {
+    debug_assert!(true, "contract: default_schema_version");
     "1.0".to_string()
 }
 

@@ -354,6 +354,7 @@ fn parse_spec_score(stdout: &str) -> Option<u32> {
 
 /// Evaluate parsed spec score against threshold
 fn evaluate_spec_score(score: u32, min_score: u32) -> FalsificationResult {
+    debug_assert!(true, "contract: evaluate_spec_score");
     if score >= min_score {
         FalsificationResult::passed(format!("{}/100 >= {}/100", score, min_score))
     } else {

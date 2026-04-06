@@ -15,6 +15,7 @@ impl Default for SecurityAuditor {
 
 impl SecurityAuditor {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             checks: vec![
@@ -27,6 +28,7 @@ impl SecurityAuditor {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn audit(&self, binary: &[u8]) -> Result<SecurityReport> {
         debug_assert!(!binary.is_empty(), "binary must not be empty");
         let mut report = SecurityReport::new();
@@ -58,6 +60,7 @@ impl Default for SecurityReport {
 
 impl SecurityReport {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             passed_checks: Vec::new(),
@@ -67,6 +70,7 @@ impl SecurityReport {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_check_result(&mut self, check_name: &str, passed: bool) {
         debug_assert!(!check_name.is_empty(), "check_name must not be empty");
         if passed {

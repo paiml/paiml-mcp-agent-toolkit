@@ -17,6 +17,7 @@ use super::resolution::{resolve_github_issue, resolve_yaml_ticket};
 use crate::cli::handlers::work_ledger::FalsificationLedger;
 
 /// Handle work init command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_init(
     github_repo: Option<String>,
     no_github: bool,
@@ -128,6 +129,7 @@ pub async fn handle_work_init(
 
 /// Handle work start command
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_start(
     id: String,
     with_spec: bool,
@@ -281,6 +283,7 @@ fn print_work_start_next_steps(id: &str) {
 }
 
 /// Handle work continue command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_continue(id: String, path: Option<PathBuf>) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
@@ -377,6 +380,7 @@ pub async fn handle_work_continue(id: String, path: Option<PathBuf>) -> Result<(
 /// Results are persisted to `.pmat-work/{id}/checkpoints/` for audit trail.
 /// Invariant failures are reported but do not halt work — they accumulate
 /// and block completion at `work complete`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
 
@@ -481,6 +485,7 @@ pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result
 /// Runs the full Popperian falsification protocol and produces a receipt,
 /// but does not mark the item as completed or update the roadmap.
 /// Use `pmat work complete` to both falsify AND close the item.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_falsify(
     id: String,
     override_claims: Option<Vec<String>>,
@@ -506,6 +511,7 @@ pub async fn handle_work_falsify(
 /// - Quality gates can be skipped (--skip-quality)
 /// - Falsification ALWAYS runs (cannot be skipped)
 /// - Overrides require accountability (--override-claims + --ticket)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_complete(
     id: String,
     skip_quality: bool,
@@ -640,6 +646,7 @@ pub async fn handle_work_complete(
 }
 
 /// Handle work status command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_status(
     id: Option<String>,
     path: Option<PathBuf>,
@@ -744,6 +751,7 @@ pub async fn handle_work_status(
 }
 
 /// Handle work sync command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_sync(
     direction: SyncDirection,
     path: Option<PathBuf>,

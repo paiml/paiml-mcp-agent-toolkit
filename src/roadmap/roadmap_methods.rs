@@ -2,6 +2,7 @@
 
 impl Roadmap {
     /// Load roadmap from a markdown file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_file(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)
@@ -10,6 +11,7 @@ impl Roadmap {
     }
 
     /// Save roadmap to a markdown file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn to_file(&self, path: &Path) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = parser::roadmap_to_markdown(self)?;
@@ -20,6 +22,7 @@ impl Roadmap {
 
     /// Get a specific sprint
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_sprint(&self, sprint_id: &str) -> Option<&Sprint> {
         debug_assert!(!sprint_id.is_empty(), "sprint_id must not be empty");
         self.sprints.get(sprint_id)
@@ -27,6 +30,7 @@ impl Roadmap {
 
     /// Get a specific task across all sprints
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_task(&self, task_id: &str) -> Option<&Task> {
         debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         for sprint in self.sprints.values() {
@@ -38,6 +42,7 @@ impl Roadmap {
     }
 
     /// Update task status
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update_task_status(&mut self, task_id: &str, status: TaskStatus) -> Result<()> {
         debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         // Update in sprints

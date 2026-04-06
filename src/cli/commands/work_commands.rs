@@ -42,6 +42,7 @@ pub enum WorkPriority {
 
 impl WorkPriority {
     /// Convert to roadmap Priority
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_roadmap_priority(self) -> crate::models::roadmap::Priority {
         match self {
             WorkPriority::Low => crate::models::roadmap::Priority::Low,

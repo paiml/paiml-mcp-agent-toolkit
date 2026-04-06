@@ -110,6 +110,7 @@ impl HttpResponseBuilder {
     /// assert_eq!(response.status, StatusCode::OK);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn ok() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::OK)
     }
@@ -130,6 +131,7 @@ impl HttpResponseBuilder {
     /// assert_eq!(response.status, StatusCode::NOT_FOUND);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn not_found() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::NOT_FOUND)
     }
@@ -150,6 +152,7 @@ impl HttpResponseBuilder {
     /// assert_eq!(response.status, StatusCode::INTERNAL_SERVER_ERROR);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn internal_error() -> UnifiedResponse {
         UnifiedResponse::new(StatusCode::INTERNAL_SERVER_ERROR)
     }
@@ -192,6 +195,7 @@ impl HttpResponseBuilder {
     /// });
     /// let user_response = HttpResponseBuilder::json(&user_data).expect("valid json");
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn json<T: Serialize>(data: &T) -> Result<UnifiedResponse, serde_json::Error> {
         UnifiedResponse::ok().with_json(data)
     }
@@ -230,6 +234,7 @@ impl HttpResponseBuilder {
     /// );
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn text(content: &str) -> UnifiedResponse {
         debug_assert!(!content.is_empty(), "content must not be empty");
         UnifiedResponse::ok()
@@ -275,6 +280,7 @@ impl HttpResponseBuilder {
     /// "#);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn html(content: &str) -> UnifiedResponse {
         debug_assert!(!content.is_empty(), "content must not be empty");
         UnifiedResponse::ok()

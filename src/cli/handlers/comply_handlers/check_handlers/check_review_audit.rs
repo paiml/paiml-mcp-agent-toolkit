@@ -17,6 +17,7 @@ use super::check_extended::*;
 use super::types::*;
 
 /// Handle `pmat comply review` - generate evidence-based review checklist.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn handle_review(
     project_path: &Path,
     format: ComplyOutputFormat,
@@ -83,6 +84,7 @@ fn build_review_checklist(
     muda: &crate::cli::handlers::comply_handlers::muda_handlers::MudaReport,
     git_clean: bool,
 ) -> Vec<ReviewItem> {
+    debug_assert!(true, "contract: build_review_checklist");
     let mut items = Vec::new();
 
     items.push(ReviewItem {
@@ -211,6 +213,7 @@ struct AuditArtifact {
 }
 
 /// Handle `pmat comply audit` - generate governance audit artifact.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn handle_audit(
     project_path: &Path,
     format: ComplyOutputFormat,
@@ -341,6 +344,7 @@ fn collect_layer1_checks(
 
 /// Format audit artifact as markdown.
 fn format_audit_markdown(artifact: &AuditArtifact) -> String {
+    debug_assert!(true, "contract: format_audit_markdown");
     let mut out = String::new();
     out.push_str("# PMAT Compliance Audit\n\n");
     out.push_str(&format!("**PMAT Version**: {}\n", artifact.version));

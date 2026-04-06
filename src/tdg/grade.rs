@@ -23,6 +23,7 @@ pub enum Grade {
 
 impl Grade {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f32) -> Self {
         debug_assert!(score >= 0.0, "score must be non-negative");
         match score {

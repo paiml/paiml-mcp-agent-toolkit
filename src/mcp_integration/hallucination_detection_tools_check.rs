@@ -1,6 +1,7 @@
 #[async_trait]
 impl McpTool for CheckClaimTool {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "check_claim".to_string(),
             description: "Verify a single documentation claim against the codebase using semantic entropy analysis".to_string(),
@@ -27,6 +28,7 @@ impl McpTool for CheckClaimTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         let claim_text = params["claim"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing claim parameter".to_string(),

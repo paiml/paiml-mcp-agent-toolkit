@@ -1,5 +1,6 @@
 /// Vectorized SIMD-accelerated tool definitions.
 fn vectorized_tool_definitions() -> Vec<serde_json::Value> {
+    debug_assert!(true, "contract: vectorized_tool_definitions");
     vec![
         json!({
             "name": "analyze_duplicates_vectorized",

@@ -1,11 +1,13 @@
 // Rust-specific file analysis: analyze_rust_file, analyze_rust_file_with_cache,
 // and analyze_rust_file_with_persistent_cache.
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_rust_file(path: &Path) -> Result<FileContext, TemplateError> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_rust_file_with_cache(path, None).await
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_rust_file_with_cache(
     path: &Path,
     cache_manager: Option<Arc<SessionCacheManager>>,
@@ -57,6 +59,7 @@ pub async fn analyze_rust_file_with_cache(
 }
 
 // Persistent cache version
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_rust_file_with_persistent_cache(
     path: &Path,
     cache_manager: Option<Arc<PersistentCacheManager>>,

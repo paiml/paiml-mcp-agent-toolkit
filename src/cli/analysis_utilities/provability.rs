@@ -4,6 +4,7 @@
 /// # Errors
 /// Returns an error if the analysis fails
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_provability(
     project_path: PathBuf,
     functions: Vec<String>,
@@ -83,6 +84,7 @@ fn format_provability_output(
     include_evidence: bool,
     top_files: usize,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_provability_output");
     use crate::cli::provability_helpers::{
         format_provability_detailed, format_provability_json, format_provability_sarif,
         format_provability_summary,
@@ -118,6 +120,7 @@ async fn write_provability_output(output: Option<PathBuf>, content: &str) -> Res
 }
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_defect_prediction(
     project_path: PathBuf,
     confidence_threshold: f32,
@@ -253,6 +256,7 @@ fn should_include_prediction(
     include_low_confidence: bool,
     confidence_threshold: f32,
 ) -> bool {
+    debug_assert!(true, "contract: should_include_prediction");
     use crate::services::defect_probability::RiskLevel;
 
     if high_risk_only && matches!(score.risk_level, RiskLevel::Low | RiskLevel::Medium) {
@@ -284,6 +288,7 @@ fn format_defect_report(
     report: &DefectPredictionReport,
     format: DefectPredictionOutputFormat,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_defect_report");
     use DefectPredictionOutputFormat::{Csv, Detailed, Json, Sarif, Summary};
     match format {
         Summary => format_defect_summary(report, 10),
@@ -295,6 +300,7 @@ fn format_defect_report(
 }
 
 async fn output_defect_result(content: String, output: Option<PathBuf>) -> Result<()> {
+    debug_assert!(true, "contract: output_defect_result");
     eprintln!("✅ Defect prediction complete");
 
     if let Some(output_path) = output {

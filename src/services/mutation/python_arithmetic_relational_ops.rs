@@ -3,14 +3,17 @@
 
 impl TreeSitterMutationOperator for PythonBinaryOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "PythonBinaryOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         node.kind() == "binary_operator"
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Find operator child node (middle child in binary_operator)
         let mut cursor = node.walk();
         let mut operator_node = None;
@@ -63,14 +66,17 @@ fn python_binary_op_replacements(op_text: &str) -> Vec<&'static str> {
 
 impl TreeSitterMutationOperator for PythonRelationalOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "PythonRelationalOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         node.kind() == "comparison_operator"
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Find comparison operator child node
         let mut cursor = node.walk();
         let mut operator_node = None;

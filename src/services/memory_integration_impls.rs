@@ -3,6 +3,7 @@
 
 impl<T> MemoryVec<T> {
     /// Create a new memory-aware vector
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(pool_type: PoolType) -> Result<Self> {
         let memory_manager = global_memory_manager()?;
         Ok(Self {
@@ -13,6 +14,7 @@ impl<T> MemoryVec<T> {
     }
 
     /// Create with pre-allocated capacity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_capacity(pool_type: PoolType, capacity: usize) -> Result<Self> {
         debug_assert!(capacity > 0, "capacity must be positive");
         let memory_manager = global_memory_manager()?;
@@ -24,6 +26,7 @@ impl<T> MemoryVec<T> {
     }
 
     /// Push an item with memory tracking
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn push(&mut self, item: T) -> Result<()> {
         let old_capacity = self.data.capacity();
         self.data.push(item);
@@ -43,6 +46,7 @@ impl<T> MemoryVec<T> {
     }
 
     /// Reserve additional capacity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn reserve(&mut self, additional: usize) -> Result<()> {
         let old_capacity = self.data.capacity();
         self.data.reserve(additional);
@@ -62,11 +66,13 @@ impl<T> MemoryVec<T> {
 
     /// Get memory usage estimate
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn memory_usage(&self) -> usize {
         self.data.capacity() * std::mem::size_of::<T>()
     }
 
     /// Process data with memory awareness
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn process_with_memory_awareness<F, R>(&self, f: F) -> Result<R>
     where
         F: FnOnce(&[T]) -> R,
@@ -101,6 +107,7 @@ impl<T> DerefMut for MemoryVec<T> {
 
 impl MemoryString {
     /// Create a new memory-aware string with interning
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(content: &str) -> Result<Self> {
         debug_assert!(!content.is_empty(), "content must not be empty");
         let memory_manager = global_memory_manager()?;
@@ -113,18 +120,21 @@ impl MemoryString {
 
     /// Get the string content
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn as_str(&self) -> &str {
         &self.content
     }
 
     /// Check if this string shares memory with another
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn shares_memory_with(&self, other: &MemoryString) -> bool {
         Arc::ptr_eq(&self.content, &other.content)
     }
 
     /// Get memory statistics for this string
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn memory_stats(&self) -> super::memory_manager::MemoryStats {
         self.memory_manager.stats()
     }
@@ -152,6 +162,7 @@ impl std::fmt::Debug for MemoryString {
 
 impl AstBufferPool {
     /// Create a new AST buffer pool
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(pool_type: PoolType) -> Result<Self> {
         let memory_manager = global_memory_manager()?;
         Ok(Self {
@@ -161,12 +172,14 @@ impl AstBufferPool {
     }
 
     /// Get a buffer for AST parsing
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_buffer(&self, min_size: usize) -> Result<PooledBuffer> {
         self.memory_manager
             .allocate_buffer(self.pool_type, min_size)
     }
 
     /// Get buffer sized for specific file content
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_buffer_for_content(&self, content: &str) -> Result<PooledBuffer> {
         debug_assert!(!content.is_empty(), "content must not be empty");
         // Size buffer based on content with some overhead for parsing structures
@@ -177,6 +190,7 @@ impl AstBufferPool {
 
 impl InternedStringSet {
     /// Create a new interned string set
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Result<Self> {
         let memory_manager = global_memory_manager()?;
         Ok(Self {
@@ -186,6 +200,7 @@ impl InternedStringSet {
     }
 
     /// Insert a string with interning
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn insert(&mut self, s: &str) -> Result<bool> {
         debug_assert!(!s.is_empty(), "s must not be empty");
         let interned = self.memory_manager.intern_string(s)?;
@@ -194,6 +209,7 @@ impl InternedStringSet {
 
     /// Check if string exists
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn contains(&self, s: &str) -> bool {
         debug_assert!(!s.is_empty(), "s must not be empty");
         // Note: This requires interning the string to check, which is not ideal
@@ -206,12 +222,14 @@ impl InternedStringSet {
     }
 
     /// Get all strings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn iter(&self) -> impl Iterator<Item = &str> {
         self.strings.iter().map(std::convert::AsRef::as_ref)
     }
 
     /// Get memory usage
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn memory_usage(&self) -> usize {
         // Rough estimate - doesn't account for interning savings
         self.strings.len() * std::mem::size_of::<Arc<str>>()
@@ -224,6 +242,7 @@ where
     V: Clone,
 {
     /// Create a new memory-aware cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(pool_type: PoolType, max_items: usize) -> Result<Self> {
         let memory_manager = global_memory_manager()?;
         Ok(Self {
@@ -235,6 +254,7 @@ where
     }
 
     /// Insert with memory pressure checking
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn insert(&mut self, key: K, value: V) -> Result<Option<V>> {
         // Check memory pressure
         let stats = self.memory_manager.stats();
@@ -256,12 +276,14 @@ where
     }
 
     /// Get cached value
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, key: &K) -> Option<&V> {
         self.cache.get(key)
     }
 
     /// Get cache statistics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn stats(&self) -> CacheStats {
         CacheStats {
             item_count: self.cache.len(),
@@ -273,6 +295,7 @@ where
 
     /// Get the memory pool type used by this cache
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn pool_type(&self) -> PoolType {
         self.pool_type
     }

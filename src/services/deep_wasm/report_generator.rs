@@ -13,6 +13,7 @@ impl ReportGenerator {
         Self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_markdown(&self, report: &DeepWasmReport) -> DeepWasmResult<String> {
         let mut output = String::new();
 

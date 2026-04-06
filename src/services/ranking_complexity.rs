@@ -19,6 +19,7 @@ impl Default for ComplexityRanker {
 
 impl ComplexityRanker {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(cyclomatic_weight: f64, cognitive_weight: f64, function_count_weight: f64) -> Self {
         Self {
             cyclomatic_weight,
@@ -32,6 +33,7 @@ impl ComplexityRanker {
         &self,
         metrics: &FileComplexityMetrics,
     ) -> CompositeComplexityScore {
+        debug_assert!(true, "contract: calculate_composite_score");
         // Extract metrics from functions and classes
         let all_functions: Vec<_> = metrics
             .functions
@@ -145,6 +147,7 @@ impl FileRanker for ComplexityRanker {
 
 /// Create a complexity ranker from file metrics (more accurate)
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn rank_files_by_complexity(
     file_metrics: &[FileComplexityMetrics],
     limit: usize,

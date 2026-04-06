@@ -6,6 +6,7 @@
 /// - Time: O(1)
 /// - Cyclomatic: 1
 fn output_json(report: &QualityReport) -> Result<()> {
+    debug_assert!(true, "contract: output_json");
     let json = serde_json::to_string_pretty(report)?;
     println!("{}", json);
     Ok(())
@@ -17,6 +18,7 @@ fn output_json(report: &QualityReport) -> Result<()> {
 /// - Time: O(n) where n is number of gates
 /// - Cyclomatic: 1
 fn output_markdown(report: &QualityReport) -> Result<()> {
+    debug_assert!(true, "contract: output_markdown");
     let markdown = format_report(report);
     println!("{}", markdown);
     Ok(())
@@ -28,6 +30,7 @@ fn output_markdown(report: &QualityReport) -> Result<()> {
 /// - Time: O(n) where n is number of gates
 /// - Cyclomatic: 3
 fn output_summary(report: &QualityReport) -> Result<()> {
+    debug_assert!(true, "contract: output_summary");
     println!(
         "\n{} Quality Gate Results",
         if report.passed { "✅" } else { "❌" }

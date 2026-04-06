@@ -78,6 +78,7 @@ impl ClaudeCodeAgentMcpServer {
     /// Handle quality gates request
     #[allow(dead_code)]
     async fn handle_quality_gates(&self, params: &Value) -> Result<Value> {
+        debug_assert!(true, "contract: handle_quality_gates");
         let target_path = params["target_path"]
             .as_str()
             .ok_or_else(|| anyhow::anyhow!("target_path parameter required"))?;
@@ -117,6 +118,7 @@ impl ClaudeCodeAgentMcpServer {
         mut self,
         mut rx: mpsc::Receiver<QualityMonitorCommand>,
     ) -> Result<()> {
+        debug_assert!(true, "contract: run_quality_monitor");
         info!("Starting quality monitoring background task");
 
         let mut monitoring_tasks: HashMap<String, tokio::task::JoinHandle<()>> = HashMap::new();

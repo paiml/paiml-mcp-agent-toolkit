@@ -10,6 +10,7 @@
 /// let links = extract_links(content, &PathBuf::from("test.md"));
 /// assert_eq!(links.len(), 2);
 /// ```ignore
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn extract_links(content: &str, source_file: &Path) -> Vec<Link> {
     debug_assert!(source_file.exists(), "source_file must exist: {}", source_file.display());
     let mut links = Vec::new();
@@ -51,6 +52,7 @@ pub fn extract_links(content: &str, source_file: &Path) -> Vec<Link> {
 /// assert_eq!(classify_link("#anchor"), LinkType::Anchor);
 /// assert_eq!(classify_link("mailto:user@example.com"), LinkType::Email);
 /// ```ignore
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn classify_link(target: &str) -> LinkType {
     debug_assert!(!target.is_empty(), "target must not be empty");
     if target.starts_with("http://") || target.starts_with("https://") {

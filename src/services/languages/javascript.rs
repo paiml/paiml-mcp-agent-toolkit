@@ -19,6 +19,7 @@ pub struct JavaScriptAstVisitor {
 
 impl JavaScriptAstVisitor {
     /// Create a new JavaScript AST visitor
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(path: &Path) -> Self {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self {
@@ -32,6 +33,7 @@ impl JavaScriptAstVisitor {
     /// It creates a temporary file to leverage the existing TypeScript parser
     /// (which also handles JavaScript).
     #[cfg(feature = "typescript-ast")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_javascript_source(&self, source: &str) -> Result<Vec<AstItem>> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         // Create temporary file with .js extension (builder pattern)
@@ -58,6 +60,7 @@ impl JavaScriptAstVisitor {
 
     /// Analyze JavaScript source code (feature not enabled)
     #[cfg(not(feature = "typescript-ast"))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_javascript_source(&self, _source: &str) -> Result<Vec<AstItem>> {
         debug_assert!(!_source.is_empty(), "_source must not be empty");
         // Return empty result when TypeScript AST feature is not enabled

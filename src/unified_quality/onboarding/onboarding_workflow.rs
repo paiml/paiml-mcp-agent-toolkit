@@ -4,6 +4,7 @@
 impl TeamOnboarding {
     /// Create new onboarding system
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: OnboardingConfig) -> Self {
         Self {
             sessions: HashMap::new(),
@@ -13,6 +14,7 @@ impl TeamOnboarding {
     }
 
     /// Start onboarding for a new team
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn start_onboarding(
         &mut self,
         team_id: TeamId,
@@ -40,6 +42,7 @@ impl TeamOnboarding {
     }
 
     /// Get personalized tutorial recommendations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_recommendations(&self, team_id: &TeamId) -> Result<Vec<Tutorial>> {
         let session = self
             .sessions
@@ -79,6 +82,7 @@ impl TeamOnboarding {
     }
 
     /// Complete a tutorial and update progress
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn complete_tutorial(
         &mut self,
         team_id: &TeamId,
@@ -150,6 +154,7 @@ impl TeamOnboarding {
     }
 
     /// Generate onboarding report
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_progress_report(&self, team_id: &TeamId) -> Result<OnboardingReport> {
         let session = self
             .sessions

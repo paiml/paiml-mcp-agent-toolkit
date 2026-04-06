@@ -1,4 +1,5 @@
 impl CircuitBreaker {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: CircuitBreakerConfig) -> Self {
         Self {
             failure_count: AtomicU32::new(0),
@@ -9,6 +10,7 @@ impl CircuitBreaker {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn call<F, T, E>(
         &self,
         operation: F,
@@ -50,6 +52,7 @@ impl CircuitBreaker {
     }
 
     fn should_attempt_reset(&self) -> bool {
+        debug_assert!(true, "contract: should_attempt_reset");
         let last_failure = self.last_failure_time.load(Ordering::Relaxed);
         if last_failure == 0 {
             return true;
@@ -64,6 +67,7 @@ impl CircuitBreaker {
     }
 
     fn on_success(&self) {
+        debug_assert!(true, "contract: on_success");
         let current_state = *self.state.read();
 
         match current_state {
@@ -87,6 +91,7 @@ impl CircuitBreaker {
     }
 
     fn on_failure(&self) {
+        debug_assert!(true, "contract: on_failure");
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("internal error")
@@ -112,6 +117,7 @@ impl CircuitBreaker {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_state(&self) -> CircuitState {
         *self.state.read()
     }
@@ -125,6 +131,7 @@ impl CircuitBreaker {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn reset(&self) {
         *self.state.write() = CircuitState::Closed;
         self.failure_count.store(0, Ordering::SeqCst);
@@ -134,6 +141,7 @@ impl CircuitBreaker {
 }
 
 impl CircuitBreakerManager {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(default_config: CircuitBreakerConfig) -> Self {
         Self {
             breakers: dashmap::DashMap::new(),
@@ -141,6 +149,7 @@ impl CircuitBreakerManager {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_or_create(&self, name: &str) -> Arc<CircuitBreaker> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.breakers
@@ -149,6 +158,7 @@ impl CircuitBreakerManager {
             .clone()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_all_metrics(&self) -> HashMap<String, CircuitMetrics> {
         self.breakers
             .iter()
@@ -156,6 +166,7 @@ impl CircuitBreakerManager {
             .collect()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn reset_all(&self) {
         for breaker in self.breakers.iter() {
             breaker.value().reset();

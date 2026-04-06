@@ -29,6 +29,7 @@ impl Default for TypeScriptParser {
 
 impl TypeScriptParser {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {}
     }
@@ -60,6 +61,7 @@ pub enum SymbolKind {
 }
 
 // Keep the analyze_typescript_file_with_complexity_cached function for backward compat
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_typescript_file_with_complexity_cached(
     path: &std::path::Path,
     _cache_manager: Option<

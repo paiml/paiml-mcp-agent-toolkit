@@ -1,4 +1,5 @@
 impl WorkflowContext {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         workflow_id: Uuid,
         agent_registry: Arc<crate::agents::registry::AgentRegistry>,
@@ -14,24 +15,29 @@ impl WorkflowContext {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_variable(&self, name: String, value: Value) {
         self.variables.write().insert(name, value);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_variable(&self, name: &str) -> Option<Value> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.variables.read().get(name).cloned()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_step_result(&self, step_id: String, result: StepResult) {
         self.step_results.write().insert(step_id, result);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_step_result(&self, step_id: &str) -> Option<StepResult> {
         debug_assert!(!step_id.is_empty(), "step_id must not be empty");
         self.step_results.read().get(step_id).cloned()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_state(&self, state: WorkflowState) {
         *self.state.write() = state;
     }
@@ -40,6 +46,7 @@ impl WorkflowContext {
         *self.state.read()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_elapsed(&self) -> Duration {
         self.started_at.elapsed()
     }

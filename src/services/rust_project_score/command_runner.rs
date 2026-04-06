@@ -28,6 +28,7 @@ pub const DEFAULT_TIMEOUT_SECS: u64 = 30;
 /// * `Ok(Some(Output))` - Command completed successfully within timeout
 /// * `Ok(None)` - Command timed out
 /// * `Err(io::Error)` - Command failed to execute
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn run_with_timeout(
     program: &str,
     args: &[&str],
@@ -78,6 +79,7 @@ pub fn run_with_timeout(
 }
 
 /// Run cargo clippy with timeout
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn run_clippy(project_path: &Path, _timeout_secs: Option<u64>) -> io::Result<Option<Output>> {
     debug_assert!(
         project_path.exists(),
@@ -100,6 +102,7 @@ pub fn run_clippy(project_path: &Path, _timeout_secs: Option<u64>) -> io::Result
 }
 
 /// Run rustfmt check with timeout
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn run_rustfmt_check(
     project_path: &Path,
     _timeout_secs: Option<u64>,
@@ -123,6 +126,7 @@ pub fn run_rustfmt_check(
 }
 
 /// Run cargo-audit with timeout
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn run_cargo_audit(
     project_path: &Path,
     _timeout_secs: Option<u64>,

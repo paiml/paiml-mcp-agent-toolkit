@@ -3,6 +3,7 @@
 
 /// Format file path for display, truncating long paths
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn format_display_path(path: &std::path::Path, max_len: usize) -> String {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
@@ -20,6 +21,7 @@ pub fn format_display_path(path: &std::path::Path, max_len: usize) -> String {
 
 /// Validate output format string and return canonical form
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn normalize_output_format(format: &str) -> &'static str {
     debug_assert!(!format.is_empty(), "format must not be empty");
     match format.to_lowercase().as_str() {
@@ -35,6 +37,7 @@ pub fn normalize_output_format(format: &str) -> &'static str {
 
 /// Calculate severity level from numeric score
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn score_to_severity(score: f64) -> &'static str {
     debug_assert!(score >= 0.0, "score must be non-negative");
     match score {
@@ -47,6 +50,7 @@ pub fn score_to_severity(score: f64) -> &'static str {
 
 /// Get top N items from a slice, or all items if limit is 0
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_top_n<T: Clone>(items: &[T], limit: usize) -> Vec<T> {
     debug_assert!(limit > 0, "limit must be positive");
     if limit == 0 {
@@ -61,6 +65,7 @@ pub fn get_top_n<T: Clone>(items: &[T], limit: usize) -> Vec<T> {
 /// # Errors
 ///
 /// Returns error if file write fails
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn output_to_file_or_stdout(
     output: Option<&std::path::Path>,
     content: &str,
@@ -76,6 +81,7 @@ pub fn output_to_file_or_stdout(
 
 /// Format a count with appropriate pluralization
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn pluralize(count: usize, singular: &str, plural: &str) -> String {
     debug_assert!(count > 0, "count must be positive");
     if count == 1 {
@@ -87,6 +93,7 @@ pub fn pluralize(count: usize, singular: &str, plural: &str) -> String {
 
 /// Format a duration in a human-readable way
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_duration(duration: std::time::Duration) -> String {
     let secs = duration.as_secs();
     let millis = duration.subsec_millis();
@@ -104,6 +111,7 @@ pub fn format_duration(duration: std::time::Duration) -> String {
 
 /// Calculate percentage with bounds (0-100)
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn calculate_percentage(numerator: usize, denominator: usize) -> f64 {
     // Contract: calculate_percentage returns a bounded score
     if denominator == 0 {

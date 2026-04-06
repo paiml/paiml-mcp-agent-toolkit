@@ -79,6 +79,7 @@ async fn check_provability(
 /// # Ok(())
 /// # }
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn calculate_provability_score(project_path: &Path) -> Result<f64> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
@@ -319,6 +320,7 @@ fn parse_fn_declaration(trimmed: &str) -> Option<String> {
 /// let summary = format_quality_gate_output(&results, &violations, QualityGateOutputFormat::Summary).unwrap();
 /// assert!(summary.contains("Status: FAILED"));
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_quality_gate_output(
     results: &QualityGateResults,
     violations: &[QualityViolation],

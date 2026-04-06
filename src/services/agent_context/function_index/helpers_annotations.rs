@@ -71,6 +71,7 @@ pub(super) fn populate_cached_annotations(
 
 /// Match a git log file path against the known file set, handling path migrations.
 fn match_git_path<'a>(line: &'a str, files: &std::collections::HashSet<&str>) -> Option<&'a str> {
+    debug_assert!(true, "contract: match_git_path");
     let trimmed = line.trim();
     if trimmed.is_empty() {
         return None;
@@ -530,6 +531,7 @@ pub(super) fn link_declarations_to_definitions(functions: &mut [FunctionEntry]) 
 /// Returns a map of function_name -> fraction of total functions with that name.
 /// High-frequency names like `new`, `default`, `from` get demoted in search results.
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub(crate) fn compute_name_frequency(
     name_index: &HashMap<String, Vec<usize>>,
     total: usize,

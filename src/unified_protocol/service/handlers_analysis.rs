@@ -8,6 +8,7 @@ fn parse_deep_context_params(
     ),
     AppError,
 > {
+    debug_assert!(true, "contract: parse_deep_context_params");
     use crate::services::deep_context::{AnalysisType, DeepContextConfig};
     use std::path::PathBuf;
 
@@ -62,6 +63,7 @@ fn parse_deep_context_params(
 }
 
 /// Analyze deep context
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_deep_context(
     Extension(_state): Extension<Arc<AppState>>,
     Json(params): Json<Value>,
@@ -86,6 +88,7 @@ pub async fn analyze_deep_context(
 }
 
 /// Analyze Makefile quality and compliance
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_makefile_lint(
     Extension(_state): Extension<Arc<AppState>>,
     Json(params): Json<MakefileLintParams>,
@@ -125,6 +128,7 @@ pub async fn analyze_makefile_lint(
 }
 
 /// Analyze provability properties
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_provability(
     Extension(_state): Extension<Arc<AppState>>,
     Json(params): Json<ProvabilityParams>,
@@ -178,6 +182,7 @@ pub async fn analyze_provability(
 }
 
 /// Analyze Self-Admitted Technical Debt (SATD)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_satd(
     Extension(_state): Extension<Arc<AppState>>,
     Json(params): Json<SatdParams>,

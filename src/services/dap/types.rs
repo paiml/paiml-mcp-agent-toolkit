@@ -35,6 +35,7 @@ pub struct DapResponse {
 
 impl DapResponse {
     /// Create a successful response
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn success(
         request_seq: i64,
         seq: i64,
@@ -53,6 +54,7 @@ impl DapResponse {
     }
 
     /// Create an error response
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn error(request_seq: i64, seq: i64, command: String, message: String) -> Self {
         Self {
             seq,
@@ -234,6 +236,7 @@ pub struct SnapshotDelta {
 
 impl SnapshotDelta {
     /// Compute delta between two snapshots (TRACE-006)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute(previous: &ExecutionSnapshot, current: &ExecutionSnapshot) -> Self {
         let mut changed_vars = HashMap::new();
         let mut removed_vars = HashSet::new();
@@ -289,6 +292,7 @@ pub struct ExecutionSnapshot {
 
 impl ExecutionSnapshot {
     /// Apply delta to create new snapshot (TRACE-006)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn apply_delta(&self, delta: &SnapshotDelta) -> Self {
         let mut new_variables = self.variables.clone();
 

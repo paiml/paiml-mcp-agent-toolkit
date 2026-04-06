@@ -69,6 +69,7 @@ pub struct TdgExporter;
 
 impl TdgExporter {
     /// Export TDG score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn export_score(score: &TdgScore, options: &ExportOptions) -> Result<String> {
         match options.format {
             ExportFormat::Json => Self::score_to_json(score, options),
@@ -82,6 +83,7 @@ impl TdgExporter {
     }
 
     /// Export project scores
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn export_project(project: &ProjectScore, options: &ExportOptions) -> Result<String> {
         match options.format {
             ExportFormat::Json => Self::project_to_json(project, options),
@@ -94,6 +96,7 @@ impl TdgExporter {
     }
 
     /// Export comparison results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn export_comparison(comparison: &Comparison, options: &ExportOptions) -> Result<String> {
         match options.format {
             ExportFormat::Json => Self::comparison_to_json(comparison, options),

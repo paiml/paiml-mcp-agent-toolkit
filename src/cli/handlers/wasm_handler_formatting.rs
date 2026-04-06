@@ -8,6 +8,7 @@ fn format_results(
     baseline: Option<&QualityAssessment>,
     verbose: bool,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_results");
     match format {
         WasmOutputFormat::Summary => {
             format_summary(analysis, verification, security, profiling, baseline)
@@ -35,6 +36,7 @@ fn format_summary(
     profiling: Option<&ProfilingReport>,
     baseline: Option<&QualityAssessment>,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_summary");
     let mut output = String::new();
 
     append_summary_header(&mut output);
@@ -49,12 +51,14 @@ fn format_summary(
 
 /// Append summary header (Complexity: 1)
 fn append_summary_header(output: &mut String) {
+    debug_assert!(true, "contract: append_summary_header");
     output.push_str("WASM Analysis Summary\n");
     output.push_str("====================\n\n");
 }
 
 /// Append basic metrics (Complexity: 1)
 fn append_basic_metrics(output: &mut String, analysis: &AnalysisResult) {
+    debug_assert!(true, "contract: append_basic_metrics");
     output.push_str(&format!("Functions: {}\n", analysis.function_count));
     output.push_str(&format!("Instructions: {}\n", analysis.instruction_count));
     output.push_str(&format!("Binary Size: {} bytes\n", analysis.binary_size));
@@ -64,6 +68,7 @@ fn append_basic_metrics(output: &mut String, analysis: &AnalysisResult) {
 
 /// Append verification status (Complexity: 3)
 fn append_verification_status(output: &mut String, verification: Option<&VerificationResult>) {
+    debug_assert!(true, "contract: append_verification_status");
     if let Some(ver) = verification {
         output.push_str(&format!(
             "\nVerification: {}\n",
@@ -78,6 +83,7 @@ fn append_verification_status(output: &mut String, verification: Option<&Verific
 
 /// Append security summary (Complexity: 5)
 fn append_security_summary(output: &mut String, security: Option<&Vec<VulnerabilityMatch>>) {
+    debug_assert!(true, "contract: append_security_summary");
     use crate::wasm::security::Severity;
 
     if let Some(sec) = security {
@@ -99,6 +105,7 @@ fn count_by_severity(
     vulnerabilities: &[VulnerabilityMatch],
     severity: crate::wasm::security::Severity,
 ) -> usize {
+    debug_assert!(true, "contract: count_by_severity");
     vulnerabilities
         .iter()
         .filter(|v| v.severity == severity)
@@ -107,6 +114,7 @@ fn count_by_severity(
 
 /// Append profiling summary (Complexity: 3)
 fn append_profiling_summary(output: &mut String, profiling: Option<&ProfilingReport>) {
+    debug_assert!(true, "contract: append_profiling_summary");
     if let Some(prof) = profiling {
         output.push_str("\nPerformance Profile:\n");
 
@@ -136,6 +144,7 @@ fn append_profiling_summary(output: &mut String, profiling: Option<&ProfilingRep
 
 /// Calculate percentage safely (Complexity: 2)
 fn calculate_percentage(part: usize, total: usize) -> usize {
+    debug_assert!(true, "contract: calculate_percentage");
     if total == 0 {
         return 0;
     }
@@ -144,6 +153,7 @@ fn calculate_percentage(part: usize, total: usize) -> usize {
 
 /// Append baseline summary (Complexity: 3)
 fn append_baseline_summary(output: &mut String, baseline: Option<&QualityAssessment>) {
+    debug_assert!(true, "contract: append_baseline_summary");
     if let Some(base) = baseline {
         output.push_str("\nQuality Assessment:\n");
         output.push_str(&format!("  Health Score: {:.1}%\n", base.overall_health));
@@ -167,6 +177,7 @@ fn format_json(
     profiling: Option<&ProfilingReport>,
     baseline: Option<&QualityAssessment>,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_json");
     let json_output = serde_json::json!({
         "analysis": analysis,
         "verification": verification,
@@ -186,6 +197,7 @@ fn format_detailed(
     baseline: Option<&QualityAssessment>,
     verbose: bool,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_detailed");
     let mut output = format_summary(analysis, verification, security, profiling, baseline)?;
 
     if verbose {
@@ -201,6 +213,7 @@ fn append_detailed_information(
     profiling: Option<&ProfilingReport>,
     security: Option<&Vec<VulnerabilityMatch>>,
 ) {
+    debug_assert!(true, "contract: append_detailed_information");
     output.push_str("\n\nDetailed Analysis\n");
     output.push_str("=================\n\n");
 
@@ -210,6 +223,7 @@ fn append_detailed_information(
 
 /// Append detailed profiling info (Complexity: 4)
 fn append_detailed_profiling(output: &mut String, profiling: Option<&ProfilingReport>) {
+    debug_assert!(true, "contract: append_detailed_profiling");
     if let Some(prof) = profiling {
         output.push_str("Instruction Breakdown:\n");
         output.push_str(&format!(
@@ -236,6 +250,7 @@ fn append_detailed_profiling(output: &mut String, profiling: Option<&ProfilingRe
 
 /// Append hot functions list (Complexity: 3)
 fn append_hot_functions(output: &mut String, prof: &ProfilingReport) {
+    debug_assert!(true, "contract: append_hot_functions");
     if !prof.hot_functions.is_empty() {
         output.push_str("\nHot Functions:\n");
         for func in &prof.hot_functions {
@@ -252,6 +267,7 @@ fn append_detailed_vulnerabilities(
     output: &mut String,
     security: Option<&Vec<VulnerabilityMatch>>,
 ) {
+    debug_assert!(true, "contract: append_detailed_vulnerabilities");
     if let Some(sec) = security {
         if !sec.is_empty() {
             output.push_str("\nVulnerability Details:\n");

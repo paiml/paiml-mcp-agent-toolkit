@@ -9,6 +9,7 @@ use std::fs;
 use std::path::Path;
 
 /// CB-606: Missing Module Return -- `local M = {}` pattern without final `return M`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb606_missing_module_return(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -61,6 +62,7 @@ pub fn detect_cb606_missing_module_return(project_path: &Path) -> Vec<CbPatternV
 
 /// CB-607: Colon/Dot Confusion -- mixed `:` and `.` method calls on same table.
 /// Based on Luau type system research.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb607_colon_dot_confusion(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

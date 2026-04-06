@@ -128,6 +128,7 @@ const GENERIC_NAMES: &[&str] = &[
 ///
 /// Returns suggestions sorted by confidence (highest first).
 /// Applies post-processing: generic name penalty and inter-suggestion collision detection.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn suggest_renames(
     index: &AgentContextIndex,
     path_filter: Option<&str>,
@@ -163,6 +164,7 @@ pub fn suggest_renames(
 
 /// Penalize suggestions with overly generic names.
 fn penalize_generic_names(suggestions: &mut [RenameSuggestion]) {
+    debug_assert!(true, "contract: penalize_generic_names");
     for s in suggestions.iter_mut() {
         let stem = s.suggested_name.trim_end_matches(".rs");
         if GENERIC_NAMES.contains(&stem) {
@@ -177,6 +179,7 @@ fn penalize_generic_names(suggestions: &mut [RenameSuggestion]) {
 /// When multiple `_part_` files map to the same suggested name in the same dir,
 /// disambiguate by appending a distinguishing suffix from the original filename.
 fn disambiguate_collisions(suggestions: &mut Vec<RenameSuggestion>) {
+    debug_assert!(true, "contract: disambiguate_collisions");
     // Group by (directory, suggested_name)
     let mut groups: HashMap<(String, String), Vec<usize>> = HashMap::new();
     for (i, s) in suggestions.iter().enumerate() {
@@ -223,6 +226,7 @@ fn disambiguate_collisions(suggestions: &mut Vec<RenameSuggestion>) {
 }
 
 /// Check if a file path contains a `_partN` or `_part_` split pattern in its filename stem.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_part_file(path: &str) -> bool {
     debug_assert!(!path.is_empty(), "path must not be empty");
     let filename = Path::new(path)

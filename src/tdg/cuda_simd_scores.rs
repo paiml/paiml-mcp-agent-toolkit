@@ -23,6 +23,7 @@ pub struct FalsifiabilityScore {
 impl FalsifiabilityScore {
     /// Calculate total for Category A
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total(&self) -> f64 {
         self.barrier_safety
             + self.bounds_verification
@@ -56,6 +57,7 @@ pub struct ReproducibilityScore {
 impl ReproducibilityScore {
     /// Calculate total for Category B
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total(&self) -> f64 {
         self.deterministic_output
             + self.version_pinning
@@ -84,6 +86,7 @@ pub struct TransparencyScore {
 impl TransparencyScore {
     /// Calculate total for Category C
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total(&self) -> f64 {
         self.ptx_inspection
             + self.register_allocation
@@ -111,6 +114,7 @@ pub struct StatisticalRigorScore {
 impl StatisticalRigorScore {
     /// Calculate total for Category D
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total(&self) -> f64 {
         self.warmup_iterations
             + self.sample_count
@@ -136,6 +140,7 @@ pub struct HistoricalIntegrityScore {
 impl HistoricalIntegrityScore {
     /// Calculate total for Category E
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total(&self) -> f64 {
         self.fault_lineage + self.regression_tests + self.root_cause_documentation
     }
@@ -158,6 +163,7 @@ pub struct GpuSimdSpecificScore {
 impl GpuSimdSpecificScore {
     /// Calculate total for Category F
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total(&self) -> f64 {
         self.warp_efficiency + self.memory_throughput + self.instruction_mix
     }
@@ -192,6 +198,7 @@ pub struct PopperScore {
 impl PopperScore {
     /// Calculate total score with gateway rule
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate(
         falsifiability: FalsifiabilityScore,
         reproducibility: ReproducibilityScore,
@@ -251,6 +258,7 @@ pub enum CudaTdgGrade {
 impl CudaTdgGrade {
     /// Convert score to grade
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64, gateway_passed: bool) -> Self {
         debug_assert!(score >= 0.0, "score must be non-negative");
         if !gateway_passed {

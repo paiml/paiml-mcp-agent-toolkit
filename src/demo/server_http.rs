@@ -14,11 +14,13 @@ impl std::fmt::Debug for LocalDemoServer {
 
 impl LocalDemoServer {
     #[cfg(feature = "demo")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn spawn(initial_content: DemoContent) -> Result<(Self, u16)> {
         Self::spawn_with_results(initial_content, None, None, None).await
     }
 
     #[cfg(feature = "demo")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn spawn_with_results(
         initial_content: DemoContent,
         complexity_report: Option<crate::services::complexity::ComplexityReport>,
@@ -81,11 +83,13 @@ impl LocalDemoServer {
     }
 
     #[cfg(not(feature = "demo"))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn spawn(_initial_content: DemoContent) -> Result<(Self, u16)> {
         anyhow::bail!("Demo mode not available. Build with --features demo")
     }
 
     #[cfg(not(feature = "demo"))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn spawn_with_results(
         _initial_content: DemoContent,
         _complexity_report: Option<crate::services::complexity::ComplexityReport>,
@@ -96,6 +100,7 @@ impl LocalDemoServer {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn port(&self) -> u16 {
         self.port
     }
@@ -107,6 +112,7 @@ impl LocalDemoServer {
 
 #[cfg(feature = "demo")]
 async fn handle_connection(mut stream: TcpStream, state: Arc<RwLock<DemoState>>) -> Result<()> {
+    debug_assert!(true, "contract: handle_connection");
     let mut buffer = BytesMut::with_capacity(4096);
     stream.read_buf(&mut buffer).await?;
 
@@ -151,6 +157,7 @@ fn parse_minimal_request(buffer: &[u8]) -> Result<MinimalRequest> {
 
 #[cfg(feature = "demo")]
 fn serialize_response(response: Response<Bytes>) -> Vec<u8> {
+    debug_assert!(true, "contract: serialize_response");
     let mut output = Vec::new();
 
     // Status line

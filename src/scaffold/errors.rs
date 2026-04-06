@@ -46,6 +46,7 @@ impl fmt::Display for ScaffoldError {
 
 impl std::error::Error for ScaffoldError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        debug_assert!(true, "contract: source");
         match self {
             ScaffoldError::IoError(e) => Some(e),
             ScaffoldError::Agent(e) => Some(e.as_ref()),

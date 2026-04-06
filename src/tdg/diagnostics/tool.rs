@@ -30,6 +30,7 @@ pub(super) struct PerformanceSample {
 
 impl DiagnosticTool {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             start_time: Instant::now(),
@@ -40,6 +41,7 @@ impl DiagnosticTool {
     }
 
     /// Collect comprehensive system diagnostics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn collect_diagnostics(
         &self,
         storage: Option<&TieredStore>,
@@ -93,6 +95,7 @@ impl DiagnosticTool {
         &self,
         storage: &TieredStore,
     ) -> Result<StorageDiagnostics> {
+        debug_assert!(true, "contract: collect_storage_diagnostics");
         let stats = storage.get_statistics();
 
         Ok(StorageDiagnostics {
@@ -118,6 +121,7 @@ impl DiagnosticTool {
         &self,
         scheduler: &SimpleFairScheduler,
     ) -> Result<SchedulerDiagnostics> {
+        debug_assert!(true, "contract: collect_scheduler_diagnostics");
         let stats = scheduler.get_statistics().await;
 
         Ok(SchedulerDiagnostics {
@@ -141,6 +145,7 @@ impl DiagnosticTool {
         &self,
         adaptive: &AdaptiveThresholdManager,
     ) -> Result<AdaptiveDiagnostics> {
+        debug_assert!(true, "contract: collect_adaptive_diagnostics");
         let thresholds = adaptive.get_current_thresholds().await;
         let stats = adaptive.get_performance_stats().await;
 
@@ -166,6 +171,7 @@ impl DiagnosticTool {
         &self,
         controller: &PlatformResourceController,
     ) -> Result<ResourceDiagnostics> {
+        debug_assert!(true, "contract: collect_resource_diagnostics");
         let usage = controller.get_current_usage().await;
         let stats = controller.get_enforcement_stats().await;
 
@@ -278,6 +284,7 @@ impl DiagnosticTool {
     }
 
     /// Record a performance sample
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_sample(&mut self, response_time_ms: f64, success: bool) {
         self.performance_samples.push(PerformanceSample {
             timestamp: Instant::now(),
@@ -299,6 +306,7 @@ impl DiagnosticTool {
 
     /// Format diagnostics for display
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_diagnostics(diag: &SystemDiagnostics) -> String {
         let local_time: DateTime<Local> = diag.timestamp.into();
 

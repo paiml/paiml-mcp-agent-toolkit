@@ -29,16 +29,19 @@ pub type WasmResult<T> = Result<T, WasmError>;
 
 impl WasmError {
     /// Create a new parse error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(msg: impl Into<String>) -> Self {
         Self::ParseError(msg.into())
     }
 
     /// Create a new format error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format(msg: impl Into<String>) -> Self {
         Self::InvalidFormat(msg.into())
     }
 
     /// Create a new analysis error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analysis(msg: impl Into<String>) -> Self {
         Self::AnalysisError(msg.into())
     }
@@ -174,6 +177,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

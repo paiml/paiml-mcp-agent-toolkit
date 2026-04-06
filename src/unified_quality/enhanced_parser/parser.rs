@@ -25,6 +25,7 @@ impl Default for EnhancedParser {
 impl EnhancedParser {
     /// Create a new enhanced parser
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             cache: Arc::new(dashmap::DashMap::new()),
@@ -32,6 +33,7 @@ impl EnhancedParser {
     }
 
     /// Parse file with incremental updates
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn parse_incremental(&mut self, path: &PathBuf, content: &str) -> Result<Metrics> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content_hash = self.calculate_hash(content);
@@ -87,6 +89,7 @@ impl EnhancedParser {
     }
 
     /// Calculate content hash for caching
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_hash(&self, content: &str) -> u64 {
         debug_assert!(!content.is_empty(), "content must not be empty");
         use std::collections::hash_map::DefaultHasher;
@@ -99,24 +102,28 @@ impl EnhancedParser {
 
     /// Get cached metrics if available
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_cached_metrics(&self, path: &PathBuf) -> Option<Metrics> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.cache.get(path)?.metrics.clone()
     }
 
     /// Clear cache for a file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn clear_cache(&self, path: &PathBuf) {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.cache.remove(path);
     }
 
     /// Clear entire cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear_all_cache(&self) {
         self.cache.clear();
     }
 
     /// Get cache statistics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cache_stats(&self) -> CacheStats {
         CacheStats {
             total_entries: self.cache.len(),

@@ -36,6 +36,7 @@ impl ItemStatus {
     /// Parse status from string with alias support
     ///
     /// Returns helpful error messages with suggestions for typos
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_string(s: &str) -> Result<Self, String> {
         debug_assert!(!s.is_empty(), "s must not be empty");
         // Normalize: lowercase, remove hyphens/underscores, trim whitespace
@@ -97,6 +98,7 @@ impl ItemStatus {
     ///   Review     → InProgress, Completed
     ///   Completed  → (terminal, no outgoing)
     ///   Cancelled  → (terminal, no outgoing)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn can_transition_to(self, target: Self) -> bool {
         matches!(
             (self, target),
@@ -112,6 +114,7 @@ impl ItemStatus {
     }
 
     /// Human-readable name for display
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn display_name(self) -> &'static str {
         match self {
             Self::Planned => "Planned",
@@ -124,6 +127,7 @@ impl ItemStatus {
     }
 
     /// Get all valid status strings for help text
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn valid_values() -> &'static [&'static str] {
         &[
             "completed",

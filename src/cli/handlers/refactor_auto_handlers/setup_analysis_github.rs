@@ -9,6 +9,7 @@
 /// Routes to appropriate handlers for single file, bug reports, and GitHub issues.
 /// This function has complexity <3 and follows Toyota Way principles.
 async fn handle_special_modes(context: &RefactorContext) -> Result<Option<()>> {
+    debug_assert!(true, "contract: handle_special_modes");
     match &context.config.mode {
         RefactorMode::SingleFile(file_path) => {
             handle_single_file_refactor(
@@ -111,6 +112,7 @@ fn parse_github_issue_url(url: &str) -> Result<GitHubIssueRef> {
 /// This function has complexity <3 and follows Toyota Way principles.
 #[cfg(feature = "http-client")]
 async fn fetch_github_issue_content(issue_ref: &GitHubIssueRef) -> Result<GitHubIssueContent> {
+    debug_assert!(true, "contract: fetch_github_issue_content");
     use crate::services::github_integration::GitHubClient;
 
     let client = GitHubClient::new()?;

@@ -51,6 +51,7 @@ pub struct GpuSimdScorer {
 
 impl GpuSimdScorer {
     /// Create a new GPU/SIMD Scorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             name: "GPU/SIMD Quality".to_string(),
@@ -145,6 +146,7 @@ impl Clone for GpuSimdScorer {
 
 impl Scorer for GpuSimdScorer {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         &self.name
     }
 

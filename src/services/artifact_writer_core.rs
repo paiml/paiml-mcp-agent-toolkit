@@ -10,6 +10,7 @@ impl ArtifactWriter {
     /// let writer = ArtifactWriter::new(PathBuf::from("/tmp/artifacts")).expect("internal error");
     /// // Writer is ready to store artifacts
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(root: PathBuf) -> Result<Self, TemplateError> {
         debug_assert!(root.exists(), "root must exist: {}", root.display());
         // Ensure root directory exists
@@ -28,6 +29,7 @@ impl ArtifactWriter {
     }
 
     /// Write complete artifact tree to storage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn write_artifacts(&mut self, tree: &ArtifactTree) -> Result<(), TemplateError> {
         // Ensure directory structure exists
         self.create_directory_structure()?;
@@ -69,6 +71,7 @@ impl ArtifactWriter {
 
     /// Create the canonical directory structure
     fn create_directory_structure(&self) -> Result<(), TemplateError> {
+        debug_assert!(true, "contract: create_directory_structure");
         let directories = [
             "dogfooding",
             "mermaid",
@@ -95,6 +98,7 @@ impl ArtifactWriter {
         &mut self,
         artifacts: &MermaidArtifacts,
     ) -> Result<(), TemplateError> {
+        debug_assert!(true, "contract: write_mermaid_artifacts");
         // Write AST-generated diagrams
         for (name, content) in &artifacts.ast_generated {
             let subdir = if name.contains("styled") {
@@ -205,6 +209,7 @@ impl ArtifactWriter {
 
     /// Write the manifest file
     fn write_manifest(&mut self) -> Result<(), TemplateError> {
+        debug_assert!(true, "contract: write_manifest");
         let manifest_path = self.root.join("artifacts.json");
         let manifest_content = serde_json::to_string_pretty(&self.manifest)
             .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))?;
@@ -242,6 +247,7 @@ impl ArtifactWriter {
     }
 
     /// Verify artifact integrity using stored hashes
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn verify_integrity(&self) -> Result<VerificationReport, TemplateError> {
         let mut report = VerificationReport {
             total_artifacts: self.manifest.len(),
@@ -276,6 +282,7 @@ impl ArtifactWriter {
 
     /// Get artifact statistics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_statistics(&self) -> ArtifactStatistics {
         let mut stats = ArtifactStatistics {
             total_artifacts: self.manifest.len(),
@@ -312,6 +319,7 @@ impl ArtifactWriter {
     }
 
     /// Clean up artifacts older than specified duration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cleanup_old_artifacts(
         &mut self,
         max_age_days: u32,

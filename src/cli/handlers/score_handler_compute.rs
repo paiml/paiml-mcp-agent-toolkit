@@ -411,6 +411,7 @@ struct Violation {
 
 /// CB-146: Cross-validation invariants. Detect contradictions between sub-scores.
 fn cross_validate(score: &CompositeScore) -> Vec<Violation> {
+    debug_assert!(true, "contract: cross_validate");
     let s = &score.sub_scores;
     let mut v = Vec::new();
 

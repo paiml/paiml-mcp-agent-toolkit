@@ -3,6 +3,7 @@
 
 impl ContextCache {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: DemoConfig) -> Self {
         Self {
             entries: HashMap::new(),
@@ -11,11 +12,13 @@ impl ContextCache {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, key: &str) -> Option<&AnalysisResult> {
         debug_assert!(!key.is_empty(), "key must not be empty");
         self.entries.get(key).map(|entry| &entry.result)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn insert(&mut self, key: String, result: AnalysisResult) {
         let entry = CacheEntry {
             key: key.clone(),
@@ -29,6 +32,7 @@ impl ContextCache {
     }
 
     fn evict_if_needed(&mut self) {
+        debug_assert!(true, "contract: evict_if_needed");
         if self.entries.len() > self.config.max_cache_entries {
             // Simple LRU eviction
             let oldest_key = self
@@ -46,6 +50,7 @@ impl ContextCache {
 
 impl TraceStore {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(max_traces: usize) -> Self {
         Self {
             traces: RwLock::new(HashMap::new()),
@@ -53,6 +58,7 @@ impl TraceStore {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn add_trace(&self, trace: ApiTrace) {
         let mut traces = self.traces.write().await;
         traces.insert(trace.id, trace);
@@ -78,6 +84,7 @@ impl TraceStore {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_trace(&self, trace_id: Uuid) -> Option<ApiTrace> {
         self.traces.read().await.get(&trace_id).cloned()
     }

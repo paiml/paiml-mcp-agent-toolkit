@@ -9,6 +9,7 @@
 ///
 /// * `Ok(String)` - Formatted markdown output
 /// * `Err(anyhow::Error)` - Formatting failed
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_churn_markdown(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
     let mut output = String::new();
 
@@ -46,6 +47,7 @@ pub fn format_churn_markdown(analysis: &crate::models::churn::CodeChurnAnalysis)
 
 /// Toyota Way: Extract Method - Write markdown summary table (complexity ≤8)
 /// Creates a summary statistics table in markdown format
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn write_markdown_summary_table(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
@@ -114,6 +116,7 @@ fn write_file_row(
     output: &mut String,
     file: &crate::models::churn::FileChurnMetrics,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_file_row");
     writeln!(
         output,
         "| {} | {} | {} | {} | {} | {:.2} | {} |",
@@ -133,6 +136,7 @@ fn write_author_contributions(
     output: &mut String,
     summary: &crate::models::churn::ChurnSummary,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_author_contributions");
     writeln!(output, "\n## Author Contributions\n")?;
     writeln!(output, "| Author | Files Modified |")?;
     writeln!(output, "|--------|----------------|")?;

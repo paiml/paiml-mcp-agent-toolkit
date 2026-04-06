@@ -99,6 +99,7 @@ impl NodeFlags {
     /// assert!(!flags.has(NodeFlags::EXPORTED));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self(0)
     }
@@ -118,6 +119,7 @@ impl NodeFlags {
     /// assert!(flags.has(NodeFlags::EXPORTED));
     /// assert!(flags.has(NodeFlags::CONST));
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set(&mut self, flag: u8) {
         self.0 |= flag;
     }
@@ -137,6 +139,7 @@ impl NodeFlags {
     /// assert!(!flags.has(NodeFlags::ASYNC));
     /// assert!(flags.has(NodeFlags::EXPORTED)); // Other flags preserved
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn unset(&mut self, flag: u8) {
         self.0 &= !flag;
     }
@@ -157,6 +160,7 @@ impl NodeFlags {
     /// assert!(flags.has(NodeFlags::ASYNC | NodeFlags::EXPORTED));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has(&self, flag: u8) -> bool {
         self.0 & flag != 0
     }

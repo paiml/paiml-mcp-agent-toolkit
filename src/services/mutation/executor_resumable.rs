@@ -58,6 +58,7 @@ impl MutantExecutor {
     ///
     /// This function saves the state to disk periodically to allow
     /// resuming an interrupted test run.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn execute_mutants_resumable(
         &self,
         mutants: &[Mutant],
@@ -205,6 +206,7 @@ impl MutantExecutor {
     }
 
     /// Get default state path for a project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_default_state_path(&self) -> PathBuf {
         self.work_dir.join(".pmat").join("mutation_state.json")
     }

@@ -68,6 +68,7 @@ fn add_provability_annotation(
     annotations: &mut String,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
+    debug_assert!(true, "contract: add_provability_annotation");
     let score = analyses
         .provability_results
         .as_ref()
@@ -85,6 +86,7 @@ fn add_satd_annotation(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
+    debug_assert!(true, "contract: add_satd_annotation");
     let satd_count = analyses
         .satd_results
         .as_ref()
@@ -130,6 +132,7 @@ fn add_pagerank_annotation(
 }
 
 fn calculate_pagerank_value(incoming: usize, outgoing: usize) -> f64 {
+    debug_assert!(true, "contract: calculate_pagerank_value");
     match (incoming, outgoing) {
         (0, _) => 0.0,
         (1, 0) => 0.25,
@@ -146,6 +149,7 @@ fn add_churn_annotation(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
+    debug_assert!(true, "contract: add_churn_annotation");
     let churn_added = analyses
         .churn_analysis
         .as_ref()

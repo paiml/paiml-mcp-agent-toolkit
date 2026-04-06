@@ -12,6 +12,7 @@ use super::output::{format_analysis_output, write_analysis_output};
 
 /// Handle Big-O complexity analysis command
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_big_o(
     project_path: PathBuf,
     format: BigOOutputFormat,

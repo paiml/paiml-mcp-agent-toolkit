@@ -187,12 +187,14 @@ async fn run_individual_project_checks(
 
 /// Print performance timing for a quality check
 fn print_check_performance(check: &QualityCheckType, elapsed_secs: f64) {
+    debug_assert!(true, "contract: print_check_performance");
     let check_name = get_check_display_name(check);
     eprintln!("    ⏱️  {check_name} check: {elapsed_secs:.3}s");
 }
 
 /// Get display name for a quality check type
 fn get_check_display_name(check: &QualityCheckType) -> &'static str {
+    debug_assert!(true, "contract: get_check_display_name");
     match check {
         QualityCheckType::Complexity => "Complexity",
         QualityCheckType::DeadCode => "Dead code",

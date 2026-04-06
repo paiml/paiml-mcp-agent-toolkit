@@ -13,6 +13,7 @@ use std::path::PathBuf;
 /// # Errors
 ///
 /// Returns an error if the operation fails
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn route_enforce_command(cmd: EnforceCommands) -> Result<()> {
     match cmd {
         EnforceCommands::Extreme {

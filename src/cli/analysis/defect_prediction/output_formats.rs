@@ -9,6 +9,7 @@ use super::detailed_format::{format_defect_detailed, format_defect_json};
 use super::summary_format::format_defect_summary;
 
 /// Toyota Way: Extract Method - Format defect output based on format type
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_defect_output(
     format: DefectPredictionOutputFormat,
     predictions: &[(String, DefectScore)],
@@ -27,6 +28,7 @@ pub(crate) fn format_defect_output(
 }
 
 /// Toyota Way: Extract Method - Output results to file or stdout
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn output_results(
     content: String,
     output: Option<PathBuf>,
@@ -50,6 +52,7 @@ pub(crate) async fn output_results(
 }
 
 /// Format predictions as SARIF
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_defect_sarif(predictions: &[(String, DefectScore)]) -> Result<String> {
     debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let sarif = serde_json::json!({
@@ -111,6 +114,7 @@ pub(crate) fn format_defect_sarif(predictions: &[(String, DefectScore)]) -> Resu
 }
 
 /// Format predictions as CSV
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_defect_csv(predictions: &[(String, DefectScore)]) -> Result<String> {
     debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let mut csv = String::new();

@@ -27,6 +27,7 @@ pub struct FileCache {
 
 impl FileCache {
     /// Create empty cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             files: FxHashMap::default(),
@@ -35,6 +36,7 @@ impl FileCache {
     }
 
     /// Insert a file into the cache (useful for testing)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn insert(&mut self, path: PathBuf, content: String) {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.files.insert(path, content);
@@ -49,6 +51,7 @@ impl FileCache {
     /// - Cargo.toml
     /// - README.md
     /// - CHANGELOG.md
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn populate(project_path: &Path) -> std::io::Result<Self> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut cache = Self::new();
@@ -183,6 +186,7 @@ impl FileCache {
     /// Get file contents from cache
     ///
     /// Returns None if file not in cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get(&self, path: &Path) -> Option<&String> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.files.get(path)
@@ -191,6 +195,7 @@ impl FileCache {
     /// Iterate over all files in cache
     ///
     /// Returns iterator over (path, content) pairs
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn iter(&self) -> impl Iterator<Item = (&PathBuf, &String)> {
         self.files.iter()
     }
@@ -198,6 +203,7 @@ impl FileCache {
     /// Get all .rs files in a specific directory from cache
     ///
     /// Returns iterator over (path, content) pairs
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_rust_files_in_dir(&self, dir: &Path) -> Vec<(&PathBuf, &String)> {
         debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         self.files
@@ -211,6 +217,7 @@ impl FileCache {
     /// Get cache statistics
     ///
     /// Returns (file_count, total_bytes)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn stats(&self) -> (usize, usize) {
         let file_count = self.files.len();
         let total_bytes: usize = self.files.values().map(|s| s.len()).sum();
@@ -218,6 +225,7 @@ impl FileCache {
     }
 
     /// Get cache age in milliseconds
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn age_ms(&self) -> u128 {
         self.created_at.elapsed().as_millis()
     }

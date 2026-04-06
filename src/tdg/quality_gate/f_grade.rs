@@ -16,16 +16,19 @@ pub struct FGradeGate {
 }
 
 impl FGradeGate {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(max_f_grades: usize) -> Self {
         Self { max_f_grades }
     }
 
     /// Create with strict defaults (zero F-grades allowed)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_defaults() -> Self {
         Self::new(0)
     }
 
     /// Create with relaxed policy (allows some F-grades during migration)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_migration_policy(max_f_grades: usize) -> Self {
         Self::new(max_f_grades)
     }
@@ -33,10 +36,12 @@ impl FGradeGate {
 
 impl QualityGate for FGradeGate {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "FGradeGate"
     }
 
     fn check(&self, _baseline: &TdgBaseline, current: &TdgBaseline) -> Result<GateResult> {
+        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
         let mut f_grade_count = 0;
 

@@ -66,12 +66,14 @@ pub struct SimpleFairScheduler {
 impl SimpleFairScheduler {
     /// Create new scheduler with default configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::with_limits(10, 2)
     }
 
     /// Create scheduler with custom limits
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_limits(high_permits: usize, low_permits: usize) -> Self {
         let high = Arc::new(Semaphore::new(high_permits));
         let low = Arc::new(Semaphore::new(low_permits));
@@ -84,6 +86,7 @@ impl SimpleFairScheduler {
     }
 
     /// Schedule high-priority commit operation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn schedule_commit(&self, path: PathBuf) -> Result<ScheduleGuard, ScheduleError> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Commits always get immediate priority
@@ -133,6 +136,7 @@ impl SimpleFairScheduler {
     }
 
     /// Schedule background operation (preemptible)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn schedule_background(&self, path: PathBuf) -> Result<ScheduleGuard, ScheduleError> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check if commit is active on this path
@@ -176,6 +180,7 @@ impl SimpleFairScheduler {
     }
 
     /// Get current scheduling statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_statistics(&self) -> SchedulingStatistics {
         let ops = self.active_ops.read().await;
         let high_available = self.high_priority.available_permits();
@@ -216,6 +221,7 @@ impl SimpleFairScheduler {
     }
 
     /// Force preemption of background operations for a specific path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn preempt_background(&self, path: &PathBuf) -> bool {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut ops = self.active_ops.write().await;
@@ -251,6 +257,7 @@ pub struct SchedulingStatistics {
 impl SchedulingStatistics {
     /// Format statistics for diagnostic display
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_diagnostic(&self) -> String {
         let status = if self.total_active_operations == 0 {
             "IDLE"
@@ -286,18 +293,21 @@ pub struct SchedulerFactory;
 impl SchedulerFactory {
     /// Create scheduler with balanced configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_balanced() -> SimpleFairScheduler {
         SimpleFairScheduler::with_limits(10, 2)
     }
 
     /// Create scheduler optimized for commits
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_commit_optimized() -> SimpleFairScheduler {
         SimpleFairScheduler::with_limits(20, 1)
     }
 
     /// Create scheduler optimized for background processing
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_background_optimized() -> SimpleFairScheduler {
         SimpleFairScheduler::with_limits(5, 8)
     }
@@ -437,6 +447,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

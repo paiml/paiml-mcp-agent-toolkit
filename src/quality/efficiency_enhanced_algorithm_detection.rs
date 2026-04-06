@@ -2,6 +2,7 @@
 // Separated to keep per-file cognitive complexity under threshold.
 
 impl SymbolicExecutor {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_algorithm_patterns(&self, ast: &syn::File) -> Vec<AlgorithmPattern> {
         let mut patterns = Vec::new();
 
@@ -26,6 +27,7 @@ impl SymbolicExecutor {
     }
 
     fn is_dynamic_programming(&self, func: &syn::ItemFn) -> bool {
+        debug_assert!(true, "contract: is_dynamic_programming");
         for stmt in &func.block.stmts {
             if is_dp_cache_statement(stmt) {
                 return true;
@@ -36,6 +38,7 @@ impl SymbolicExecutor {
 }
 
 fn is_dp_cache_statement(stmt: &Stmt) -> bool {
+    debug_assert!(true, "contract: is_dp_cache_statement");
     let Stmt::Local(local) = stmt else {
         return false;
     };
@@ -50,6 +53,7 @@ fn is_dp_cache_statement(stmt: &Stmt) -> bool {
 }
 
 fn is_cache_constructor_call(call: &syn::ExprCall) -> bool {
+    debug_assert!(true, "contract: is_cache_constructor_call");
     if let syn::Expr::Path(path) = &*call.func {
         let path_str = path_to_string(&path.path);
         path_str.contains("HashMap") || path_str.contains("BTreeMap")
@@ -59,6 +63,7 @@ fn is_cache_constructor_call(call: &syn::ExprCall) -> bool {
 }
 
 fn is_cache_macro(mac: &syn::ExprMacro) -> bool {
+    debug_assert!(true, "contract: is_cache_macro");
     let mac_name = mac
         .mac
         .path

@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use std::path::Path;
 use std::process::Command;
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn commit_changes(path: &Path, message: &str) -> Result<Option<String>> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let add = Command::new("git")
@@ -39,6 +40,7 @@ pub(crate) fn commit_changes(path: &Path, message: &str) -> Result<Option<String
     Ok(Some(hash))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn push_changes(path: &Path) -> Result<bool> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let branch = detect_default_branch(path);
@@ -53,6 +55,7 @@ pub(crate) fn push_changes(path: &Path) -> Result<bool> {
 
 /// Detect the current branch name for pushing.
 /// Falls back to "master" if detection fails.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn detect_default_branch(path: &Path) -> String {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Try to get the current branch name
@@ -78,6 +81,7 @@ pub(crate) fn detect_default_branch(path: &Path) -> String {
 // ---------------------------------------------------------------------------
 
 /// Create GitHub issues for unfixed findings via `gh issue create`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn create_github_issues(
     path: &Path,
     findings: &[&KaizenFinding],
@@ -136,6 +140,7 @@ pub(crate) fn create_github_issues(
     refs
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn truncate(s: &str, max: usize) -> String {
     debug_assert!(!s.is_empty(), "s must not be empty");
     if s.len() <= max {
@@ -146,6 +151,7 @@ pub(crate) fn truncate(s: &str, max: usize) -> String {
 }
 
 fn format_issue_body(finding: &KaizenFinding) -> String {
+    debug_assert!(true, "contract: format_issue_body");
     let mut body = String::new();
     body.push_str(&format!("**Severity**: {:?}\n", finding.severity));
     body.push_str(&format!("**Source**: {:?}\n", finding.source));
@@ -161,6 +167,7 @@ fn format_issue_body(finding: &KaizenFinding) -> String {
     body
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn severity_to_labels(severity: FindingSeverity, source: FindingSource) -> Vec<String> {
     let mut labels = vec!["kaizen".to_string()];
     labels.push(match severity {
@@ -180,6 +187,7 @@ pub(crate) fn severity_to_labels(severity: FindingSeverity, source: FindingSourc
     labels
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn extract_issue_number(url: &str) -> u64 {
     debug_assert!(!url.is_empty(), "url must not be empty");
     // URL format: https://github.com/org/repo/issues/123

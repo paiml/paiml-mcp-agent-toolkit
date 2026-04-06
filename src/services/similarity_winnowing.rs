@@ -4,6 +4,7 @@
 
 impl Winnowing {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(window_size: usize, k_gram_size: usize) -> Self {
         debug_assert!(window_size > 0, "window_size must be positive");
         Self {
@@ -13,6 +14,7 @@ impl Winnowing {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn fingerprint(&self, text: &str) -> Vec<u64> {
         debug_assert!(!text.is_empty(), "text must not be empty");
         let k_grams = self.extract_k_grams(text);
@@ -20,6 +22,7 @@ impl Winnowing {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn similarity(&self, fp1: &[u64], fp2: &[u64]) -> f64 {
         let set1: HashSet<_> = fp1.iter().collect();
         let set2: HashSet<_> = fp2.iter().collect();
@@ -35,6 +38,7 @@ impl Winnowing {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_matches(&self, text_fp: &[u64], sub_fp: &[u64]) -> Vec<usize> {
         debug_assert!(!text_fp.is_empty(), "text_fp must not be empty");
         let mut matches = Vec::new();

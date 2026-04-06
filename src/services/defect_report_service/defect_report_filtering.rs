@@ -33,6 +33,7 @@ impl DefectReportService {
     ///     50
     /// );
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn filter_by_pattern(
         report: &DefectReport,
         include: Option<String>,

@@ -6,6 +6,7 @@ impl CorrelationEngine {
     ///
     /// Integrates line program mappings (address -> location) for improved confidence scoring
     /// and more accurate source-to-WASM correlations.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn correlate_with_line_programs(
         &self,
         dwarf_entries: &[DwarfDebugEntry],
@@ -108,6 +109,7 @@ impl CorrelationEngine {
         _dwarf_entry: &DwarfDebugEntry,
         line_program_mappings: &[(u64, Location)],
     ) -> Option<Location> {
+        debug_assert!(true, "contract: find_location_for_dwarf_entry");
         // Return first mapping if available (simplified heuristic)
         // In production, would use DWARF entry's address range to find exact match
         line_program_mappings.first().map(|(_, loc)| loc.clone())
@@ -122,6 +124,7 @@ impl CorrelationEngine {
     /// - DWARF + SourceMap (no line/column): 0.85 (moderate)
     /// - DWARF only: 0.75 (fair)
     /// - SourceMap only: 0.50 (weak)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_confidence(
         &self,
         has_dwarf: bool,

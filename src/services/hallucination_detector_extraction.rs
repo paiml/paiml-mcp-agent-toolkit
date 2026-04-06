@@ -3,6 +3,7 @@
 
 impl ClaimExtractor {
     /// Create new claim extractor with default patterns
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let capability_patterns = vec![
             // Positive capabilities: "PMAT can analyze X"
@@ -45,6 +46,7 @@ impl ClaimExtractor {
     }
 
     /// Extract all claims from documentation text
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_claims(&self, documentation: &str) -> Vec<Claim> {
         debug_assert!(!documentation.is_empty(), "documentation must not be empty");
         let mut claims = Vec::new();

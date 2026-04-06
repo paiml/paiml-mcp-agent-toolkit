@@ -59,6 +59,7 @@ pub enum LifecycleEvent {
 pub trait ManagedService: Service {
     /// Initialize the service
     async fn initialize(&self) -> Result<()> {
+        debug_assert!(true, "contract: initialize");
         Ok(())
     }
 
@@ -67,11 +68,13 @@ pub trait ManagedService: Service {
 
     /// Gracefully shutdown the service
     async fn shutdown(&self) -> Result<()> {
+        debug_assert!(true, "contract: health_check");
         Ok(())
     }
 
     /// Handle lifecycle event
     fn handle_event(&mut self, event: LifecycleEvent) {
+        debug_assert!(true, "contract: handle_event");
         if let LifecycleEvent::Error(msg) = event {
             error!("Service error: {}", msg);
         }

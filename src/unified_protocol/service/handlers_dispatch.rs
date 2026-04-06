@@ -1,4 +1,5 @@
 /// Analyze lint hotspots
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_lint_hotspot(
     Extension(_state): Extension<Arc<AppState>>,
     Json(params): Json<LintHotspotParams>,
@@ -132,6 +133,7 @@ async fn route_mcp_method(
 }
 
 /// MCP protocol endpoint
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn mcp_endpoint(
     Extension(state): Extension<Arc<AppState>>,
     Path(method): Path<String>,

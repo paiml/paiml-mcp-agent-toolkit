@@ -21,6 +21,7 @@ pub const SOVEREIGN_PACKAGES: &[&str] = &[
 ];
 
 /// Replaceable dependencies with Sovereign alternatives
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_replacements() -> HashMap<&'static str, (&'static str, &'static str)> {
     let mut map = HashMap::new();
     // (dependency, (replacement, reason))
@@ -49,6 +50,7 @@ pub fn get_replacements() -> HashMap<&'static str, (&'static str, &'static str)>
 }
 
 /// Heavy dependencies that add significant compile time/binary size
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_heavy_deps() -> HashMap<&'static str, (&'static str, usize)> {
     let mut map = HashMap::new();
     // (dependency, (reason, estimated_kb))
@@ -96,6 +98,7 @@ pub const DEV_ONLY: &[&str] = &[
 ];
 
 /// Potentially removable dependencies
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_removable() -> HashMap<&'static str, &'static str> {
     let mut map = HashMap::new();
     map.insert("prettytable-rs", "Use simple formatting instead");
@@ -113,6 +116,7 @@ pub fn get_removable() -> HashMap<&'static str, &'static str> {
 }
 
 /// Analyze a single dependency (graph metrics populated later)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn analyze_dep(name: &str, version: &str, is_dev: bool) -> DepAnalysis {
     debug_assert!(!name.is_empty(), "name must not be empty");
     debug_assert!(!version.is_empty(), "version must not be empty");

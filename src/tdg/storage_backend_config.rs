@@ -7,6 +7,7 @@ pub struct StorageBackendFactory;
 
 impl StorageBackendFactory {
     /// Create default backend (libsql)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn create_default(path: &Path) -> Result<Box<dyn StorageBackend>> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Ok(Box::new(LibsqlBackend::new(path)?))
@@ -14,22 +15,26 @@ impl StorageBackendFactory {
 
     /// Create in-memory backend for testing
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_in_memory() -> Box<dyn StorageBackend> {
         Box::new(InMemoryBackend::new())
     }
 
     /// Create libsql backend
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn create_libsql(path: &Path) -> Result<Box<dyn StorageBackend>> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Ok(Box::new(LibsqlBackend::new(path)?))
     }
 
     /// Create temporary libsql backend
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_libsql_temporary() -> Result<Box<dyn StorageBackend>> {
         Ok(Box::new(LibsqlBackend::new_temporary()?))
     }
 
     /// Create backend from configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_from_config(config: &StorageConfig) -> Result<Box<dyn StorageBackend>> {
         match config.backend_type {
             StorageBackendType::Libsql => {

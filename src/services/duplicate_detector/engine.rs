@@ -26,6 +26,7 @@ pub struct DuplicateDetectionEngine {
 
 impl DuplicateDetectionEngine {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: DuplicateDetectionConfig) -> Self {
         let minhash_generator = MinHashGenerator::new(config.num_hash_functions);
         let feature_extractor = UniversalFeatureExtractor::new(config.clone());
@@ -40,6 +41,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Detect duplicates in a set of files
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect_duplicates(&self, files: &[(PathBuf, String, Language)]) -> Result<CloneReport> {
         debug_assert!(!files.is_empty(), "files must not be empty");
         // Phase 1: Extract fragments from all files
@@ -67,6 +69,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Extract code fragments from a single file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn extract_fragments(
         &self,
         path: &Path,
@@ -197,6 +200,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Check if line starts a function
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn is_function_start(&self, line: &str, lang: Language) -> bool {
         debug_assert!(!line.is_empty(), "line must not be empty");
         match lang {
@@ -216,6 +220,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Check if line ends a function
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn is_function_end(&self, line: &str, lang: Language) -> bool {
         debug_assert!(!line.is_empty(), "line must not be empty");
         match lang {
@@ -237,6 +242,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Find clone pairs using LSH for efficient similarity search
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn find_clone_pairs(
         &self,
         fragments: &[CodeFragment],
@@ -305,6 +311,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Group similar fragments into clone groups
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn group_clones(
         &self,
         clone_pairs: Vec<(FragmentId, FragmentId, f64)>,
@@ -391,6 +398,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Find representative in Union-Find structure
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn find_representative(
         representative: &HashMap<FragmentId, FragmentId>,
         id: FragmentId,
@@ -407,6 +415,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Compute summary statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn compute_summary(
         &self,
         fragments: &[CodeFragment],
@@ -440,6 +449,7 @@ impl DuplicateDetectionEngine {
     }
 
     /// Compute duplication hotspots
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn compute_hotspots(&self, groups: &[CloneGroup]) -> Vec<DuplicationHotspot> {
         debug_assert!(!groups.is_empty(), "groups must not be empty");
         let mut file_stats: HashMap<PathBuf, (usize, HashSet<usize>)> = HashMap::new();

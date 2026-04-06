@@ -134,6 +134,7 @@ impl DemoRunner {
     }
 
     fn render_system_mermaid(&self, _components: &HashMap<String, Component>) -> Result<String> {
+        debug_assert!(true, "contract: render_system_mermaid");
         let mut output = String::with_capacity(1024);
         output.push_str("graph TD\n");
 

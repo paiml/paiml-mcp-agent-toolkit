@@ -136,6 +136,7 @@ async fn execute_single_file_check(
 
 /// Extract Method: Handle unsupported single file check types
 fn handle_unsupported_single_file_check(check: &QualityCheckType) {
+    debug_assert!(true, "contract: handle_unsupported_single_file_check");
     eprintln!("⚠️  Skipping {check} check - not applicable to single file");
 }
 

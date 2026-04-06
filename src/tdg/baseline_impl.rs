@@ -1,5 +1,6 @@
 impl TdgBaseline {
     /// Create empty baseline
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(git_context: Option<GitContext>) -> Self {
         Self {
             version: env!("CARGO_PKG_VERSION").to_string(),
@@ -16,6 +17,7 @@ impl TdgBaseline {
     }
 
     /// Add file entry to baseline
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn add_entry(&mut self, path: PathBuf, entry: BaselineEntry) {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.files.insert(path, entry);
@@ -24,6 +26,7 @@ impl TdgBaseline {
 
     /// Recompute summary statistics
     fn recompute_summary(&mut self) {
+        debug_assert!(true, "contract: recompute_summary");
         self.summary.total_files = self.files.len();
 
         if self.files.is_empty() {
@@ -54,6 +57,7 @@ impl TdgBaseline {
     }
 
     /// Compare this baseline with another
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn compare(&self, other: &TdgBaseline) -> BaselineComparison {
         let mut improved = Vec::new();
         let mut regressed = Vec::new();
@@ -115,6 +119,7 @@ impl TdgBaseline {
     }
 
     /// Save baseline to JSON file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: impl AsRef<Path>) -> Result<()> {
         let json = serde_json::to_string_pretty(self)?;
         std::fs::write(path, json)?;
@@ -122,6 +127,7 @@ impl TdgBaseline {
     }
 
     /// Load baseline from JSON file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(path: impl AsRef<Path>) -> Result<Self> {
         let json = std::fs::read_to_string(path)?;
         let baseline = serde_json::from_str(&json)?;

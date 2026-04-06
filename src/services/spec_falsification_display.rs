@@ -1,5 +1,6 @@
 impl SpecFalsificationReport {
     /// Format the report for terminal output
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn display(&self) {
         use crate::cli::colors as c;
         let file_display = self.target_file.display();
@@ -84,6 +85,7 @@ impl SpecFalsificationReport {
     }
 
     /// Format as JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_json(&self) -> Result<String> {
         serde_json::to_string_pretty(self).context("Failed to serialize report")
     }

@@ -13,6 +13,7 @@ const PLACEHOLDER_PRECONDITIONS: &[&str] = &[
 /// Checks YAML precondition diversity and flags known placeholder patterns.
 /// FAIL if >70% of preconditions are identical or contain known placeholders
 /// without accompanying domain constraints.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
@@ -237,6 +238,7 @@ fn check_equation_preconditions(
 /// Runs `pv codegen` (if available) to generate assertions, then compares
 /// the generated assertion count against YAML precondition count. Falls back
 /// to checking for known placeholder patterns in any generated_contracts.rs file.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
@@ -457,6 +459,7 @@ fn find_generated_contracts(project_path: &Path) -> Option<std::path::PathBuf> {
 ///
 /// Runs `pv coverage --enforcement <src> --binding <binding.yaml>` and parses
 /// the enforcement score (penetration × quality). E0=0.1, E1=0.5, E2=1.0.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_enforcement_quality(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if resolve_contracts_dir(project_path).is_none() {

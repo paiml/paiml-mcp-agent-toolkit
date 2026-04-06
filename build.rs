@@ -29,6 +29,9 @@ fn main() {
         return;
     }
 
+    // Emit CONTRACT_* env vars from binding.yaml for #[contract] proc macro
+    emit_contract_env_vars();
+
     // Verify critical dependencies at build time
     verify_dependency_versions();
 
@@ -1453,4 +1456,65 @@ pub static COMPRESSED_TEMPLATES: LazyLock<HashMap<&'static str, Vec<u8>>> = Lazy
             }
         }
     }
+}
+
+/// Emit CONTRACT_* env vars from contracts/binding.yaml.
+///
+/// Each binding with status=implemented generates a
+/// `CONTRACT_<CONTRACT>_<EQUATION>=bound` env var that the
+/// `#[contract]` proc macro reads at compile time.
+fn emit_contract_env_vars() {
+    let binding_path = Path::new("contracts/binding.yaml");
+    println!("cargo:rerun-if-changed=contracts/binding.yaml");
+
+    if !binding_path.exists() {
+        return;
+    }
+
+    let content = match fs::read_to_string(binding_path) {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+
+    // Parse YAML manually (no serde_yaml in build.rs)
+    let mut current_contract = String::new();
+    let mut current_equation = String::new();
+    let mut current_status = String::new();
+
+    for line in content.lines() {
+        let t = line.trim();
+        if t.starts_with("- contract:") {
+            // Emit previous if complete
+            if !current_contract.is_empty()
+                && !current_equation.is_empty()
+                && current_status == "implemented"
+            {
+                let key = make_contract_env_key(&current_contract, &current_equation);
+                println!("cargo:rustc-env={key}=bound");
+            }
+            current_contract = t.trim_start_matches("- contract:").trim().to_string();
+            current_equation.clear();
+            current_status.clear();
+        } else if t.starts_with("equation:") {
+            current_equation = t.trim_start_matches("equation:").trim().to_string();
+        } else if t.starts_with("status:") {
+            current_status = t.trim_start_matches("status:").trim().to_string();
+        }
+    }
+    // Emit last
+    if !current_contract.is_empty()
+        && !current_equation.is_empty()
+        && current_status == "implemented"
+    {
+        let key = make_contract_env_key(&current_contract, &current_equation);
+        println!("cargo:rustc-env={key}=bound");
+    }
+}
+
+fn make_contract_env_key(contract: &str, equation: &str) -> String {
+    let c = contract.to_uppercase().replace(['-', '.', ' '], "_");
+    let e = equation.to_uppercase().replace(['-', '.', ' '], "_");
+    // Strip .yaml suffix
+    let c = c.trim_end_matches("_YAML");
+    format!("CONTRACT_{c}_{e}")
 }

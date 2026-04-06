@@ -109,6 +109,7 @@ impl IncrementalChurnAnalyzer {
 
     /// Get current git commit hash
     async fn get_current_commit_hash(&self) -> Result<String, TemplateError> {
+        debug_assert!(true, "contract: get_current_commit_hash");
         let output = tokio::process::Command::new("git")
             .arg("rev-parse")
             .arg("HEAD")

@@ -5,6 +5,7 @@ impl EnhancedReportingService {
         results: &AnalysisResults,
         _config: &ReportConfig,
     ) -> Result<Vec<ReportSection>> {
+        debug_assert!(true, "contract: build_sections");
         let mut sections = Vec::new();
 
         // Complexity section
@@ -37,6 +38,7 @@ impl EnhancedReportingService {
 
     /// Build complexity analysis section
     fn build_complexity_section(&self, complexity: &ComplexityAnalysis) -> Result<ReportSection> {
+        debug_assert!(true, "contract: build_complexity_section");
         let mut metrics = HashMap::new();
 
         metrics.insert(
@@ -86,6 +88,7 @@ impl EnhancedReportingService {
 
     /// Build dead code section
     fn build_dead_code_section(&self, dead_code: &DeadCodeAnalysis) -> Result<ReportSection> {
+        debug_assert!(true, "contract: build_dead_code_section");
         let mut metrics = HashMap::new();
 
         metrics.insert(
@@ -112,6 +115,7 @@ impl EnhancedReportingService {
         &self,
         duplication: &DuplicationAnalysis,
     ) -> Result<ReportSection> {
+        debug_assert!(true, "contract: build_duplication_section");
         let mut metrics = HashMap::new();
 
         metrics.insert(
@@ -135,6 +139,7 @@ impl EnhancedReportingService {
 
     /// Build TDG section
     fn build_tdg_section(&self, tdg: &TdgAnalysis) -> Result<ReportSection> {
+        debug_assert!(true, "contract: build_tdg_section");
         let mut metrics = HashMap::new();
 
         metrics.insert(
@@ -158,6 +163,7 @@ impl EnhancedReportingService {
 
     /// Build Big-O analysis section
     fn build_big_o_section(&self, big_o: &BigOAnalysis) -> Result<ReportSection> {
+        debug_assert!(true, "contract: build_big_o_section");
         let mut metrics = HashMap::new();
 
         metrics.insert(
@@ -185,6 +191,7 @@ impl EnhancedReportingService {
         results: &AnalysisResults,
         _sections: &[ReportSection],
     ) -> Result<Vec<Recommendation>> {
+        debug_assert!(true, "contract: generate_recommendations");
         let mut recommendations = Vec::new();
 
         // Complexity recommendations

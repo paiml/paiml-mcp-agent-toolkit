@@ -28,11 +28,13 @@ impl DemoRunner {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn execute(&mut self, repo_path: PathBuf) -> Result<DemoReport> {
         debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         self.execute_with_diagram(&repo_path, None).await
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn execute_with_diagram(
         &mut self,
         repo_path: &Path,

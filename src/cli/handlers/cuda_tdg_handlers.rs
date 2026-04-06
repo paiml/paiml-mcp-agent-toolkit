@@ -37,6 +37,7 @@ pub struct CudaTdgCommandConfig {
 }
 
 /// Main handler for cuda-tdg command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_cuda_tdg_command(config: CudaTdgCommandConfig) -> Result<()> {
     if let Some(ref cmd) = config.command {
         return handle_cuda_tdg_subcommand(cmd, &config).await;
@@ -67,6 +68,7 @@ async fn handle_cuda_tdg_subcommand(
     cmd: &CudaTdgCommand,
     config: &CudaTdgCommandConfig,
 ) -> Result<()> {
+    debug_assert!(true, "contract: handle_cuda_tdg_subcommand");
     match cmd {
         CudaTdgCommand::Analyze { path } => handle_analyze(path, config).await,
         CudaTdgCommand::Score { path, breakdown } => handle_score(path, *breakdown, config).await,

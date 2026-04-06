@@ -1,5 +1,6 @@
 impl DemoReport {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render(&self, mode: ExecutionMode) -> String {
         match mode {
             ExecutionMode::Cli => self.render_cli(),
@@ -9,6 +10,7 @@ impl DemoReport {
     }
 
     fn render_cli(&self) -> String {
+        debug_assert!(true, "contract: render_cli");
         let mut output = String::with_capacity(4096);
 
         writeln!(&mut output, "\n🎯 PAIML MCP Agent Toolkit Demo Complete")

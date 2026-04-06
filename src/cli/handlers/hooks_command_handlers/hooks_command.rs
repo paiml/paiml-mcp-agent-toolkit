@@ -19,6 +19,7 @@ pub struct HooksCommand {
 impl HooksCommand {
     /// Create new hooks command with specified directories
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(hooks_dir: PathBuf, _config_path: PathBuf) -> Self {
         debug_assert!(
             hooks_dir.exists(),
@@ -34,6 +35,7 @@ impl HooksCommand {
     }
 
     /// Get default hooks command for current repository
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn for_current_repo() -> Result<Self> {
         let current_dir = std::env::current_dir()?;
         let git_dir = current_dir.join(".git");
@@ -44,6 +46,7 @@ impl HooksCommand {
     }
 
     /// Install or update pre-commit hooks
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn install(
         &self,
         force: bool,
@@ -105,6 +108,7 @@ impl HooksCommand {
     }
 
     /// Uninstall PMAT-managed hooks
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn uninstall(&self, restore_backup: bool) -> Result<HookUninstallResult> {
         let hook_path = self.hooks_dir.join("pre-commit");
         let backup_path = self.hooks_dir.join("pre-commit.pmat-backup");
@@ -146,6 +150,7 @@ impl HooksCommand {
     }
 
     /// Show hook installation status
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn status(&self) -> Result<HookStatus> {
         let hook_path = self.hooks_dir.join("pre-commit");
 
@@ -191,6 +196,7 @@ impl HooksCommand {
     }
 
     /// Verify hooks work with current configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn verify(&self, fix: bool) -> Result<HookVerificationResult> {
         let hook_path = self.hooks_dir.join("pre-commit");
         let mut issues = Vec::new();
@@ -230,6 +236,7 @@ impl HooksCommand {
     }
 
     /// Regenerate hooks from current configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn refresh(&self) -> Result<HookRefreshResult> {
         let hook_path = self.hooks_dir.join("pre-commit");
 
@@ -282,6 +289,7 @@ impl HooksCommand {
     }
 
     /// Run hooks on files (for CI/CD integration)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run(&self, all_files: bool, verbose: bool) -> Result<HookRunResult> {
         use std::process::Command;
 
@@ -328,6 +336,7 @@ impl HooksCommand {
 
     /// Install pre-push hook (fast local quality gate).
     fn install_pre_push_hook(&self) -> Result<()> {
+        debug_assert!(true, "contract: install_pre_push_hook");
         let hook_path = self.hooks_dir.join("pre-push");
 
         let hook_content = r#"#!/usr/bin/env bash

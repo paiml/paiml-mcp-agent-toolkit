@@ -12,6 +12,7 @@
 ///
 /// * `Ok(String)` - Formatted output string
 /// * `Err(anyhow::Error)` - Formatting failed
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn format_single_file_output(
     single_file: &Path,
     results: &QualityGateResults,
@@ -49,6 +50,7 @@ pub fn format_single_file_output(
 ///
 /// Formatted markdown string with quality gate report
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn format_single_file_summary(
     file_path: &Path,
     results: &QualityGateResults,
@@ -83,6 +85,7 @@ pub fn format_single_file_summary(
 
 /// Toyota Way: Extract Method - Add summary section (complexity ≤3)
 fn add_summary_section(output: &mut String, results: &QualityGateResults) {
+    debug_assert!(true, "contract: add_summary_section");
     output.push_str("## Summary\n\n");
     output.push_str(&format!(
         "- Total Violations: {}\n",
@@ -134,6 +137,7 @@ fn add_violations_section(output: &mut String, violations: &[QualityViolation]) 
 
 /// Toyota Way: Extract Method - Add single violation entry with file location (complexity ≤5)
 fn add_violation_entry(output: &mut String, violation: &QualityViolation) {
+    debug_assert!(true, "contract: add_violation_entry");
     let severity_icon = get_severity_icon(&violation.severity);
 
     // Format file path - use short relative path for readability

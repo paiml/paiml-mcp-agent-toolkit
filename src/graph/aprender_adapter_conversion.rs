@@ -12,6 +12,7 @@
 /// let aprender_graph = to_aprender_graph(&dependency_graph, true);
 /// let pagerank = aprender_graph.pagerank(0.85, 100, 1e-6)?;
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn to_aprender_graph(graph: &DependencyGraph, is_directed: bool) -> AprenderGraph {
     // Build edge list from trueno-graph
     let mut edges = Vec::new();
@@ -40,6 +41,7 @@ pub fn to_aprender_graph(graph: &DependencyGraph, is_directed: bool) -> Aprender
 /// let aprender_graph = to_aprender_graph_undirected(&undirected_graph);
 /// let communities = aprender_graph.louvain();
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn to_aprender_graph_undirected(graph: &UndirectedGraph) -> AprenderGraph {
     // Build edge list from trueno-graph
     let mut edges = Vec::new();
@@ -63,6 +65,7 @@ pub fn to_aprender_graph_undirected(graph: &UndirectedGraph) -> AprenderGraph {
 /// - TypeDependency: strength as weight
 /// - DataFlow: confidence as weight
 /// - Inheritance: inverse of depth (closer = higher weight)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_edge_weight(edge_data: &EdgeData) -> f64 {
     match edge_data {
         EdgeData::Import { weight, .. } => *weight,
@@ -83,6 +86,7 @@ pub fn extract_edge_weight(edge_data: &EdgeData) -> f64 {
 ///
 /// aprender uses contiguous node IDs starting from 0.
 /// PMAT's trueno-graph nodes may have gaps, so we need a mapping.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn create_node_mapping(graph: &DependencyGraph) -> Vec<usize> {
     graph
         .node_references()

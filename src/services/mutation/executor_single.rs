@@ -8,6 +8,7 @@ impl MutantExecutor {
     /// even if process is interrupted (SIGINT/Ctrl+C)
     ///
     /// BUG-064 FIX: Uses atomic write operations to prevent file corruption
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_mutant(&self, mutant: &Mutant) -> Result<MutationResult> {
         let start_time = Instant::now();
 
@@ -61,6 +62,7 @@ impl MutantExecutor {
     }
 
     /// Execute tests on multiple mutants sequentially
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_mutants(&self, mutants: &[Mutant]) -> Result<Vec<MutationResult>> {
         debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         let mut results = Vec::new();

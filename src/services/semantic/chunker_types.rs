@@ -12,6 +12,7 @@ pub enum Language {
 }
 
 impl Language {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn as_str(&self) -> &'static str {
         match self {
             Language::Rust => "rust",
@@ -48,6 +49,7 @@ pub enum ChunkType {
 }
 
 impl ChunkType {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn as_str(&self) -> &'static str {
         match self {
             ChunkType::Function => "function",
@@ -93,6 +95,7 @@ pub struct CodeChunk {
 ///
 /// # Returns
 /// Vector of code chunks (functions, classes, modules)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn chunk_code(source: &str, language: Language) -> Result<Vec<CodeChunk>, String> {
     debug_assert!(!source.is_empty(), "source must not be empty");
     // Handle empty input

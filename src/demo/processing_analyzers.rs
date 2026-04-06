@@ -1,5 +1,6 @@
 // Helper functions for web demo analyses
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_context(
     repo_path: &std::path::Path,
 ) -> Result<crate::services::context::ProjectContext> {
@@ -9,6 +10,7 @@ pub(crate) async fn analyze_context(
         .map_err(|e| anyhow::anyhow!("Error analyzing project: {e}"))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_complexity(
     repo_path: &std::path::Path,
 ) -> Result<crate::services::complexity::ComplexityReport> {
@@ -35,6 +37,7 @@ pub(crate) async fn analyze_complexity(
     Ok(aggregate_results(file_metrics))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_dag(
     repo_path: &std::path::Path,
 ) -> Result<crate::models::dag::DependencyGraph> {
@@ -50,6 +53,7 @@ pub(crate) async fn analyze_dag(
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_churn(
     repo_path: &std::path::Path,
 ) -> Result<crate::models::churn::CodeChurnAnalysis> {
@@ -59,6 +63,7 @@ pub(crate) async fn analyze_churn(
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_system_architecture(
     repo_path: &std::path::Path,
 ) -> Result<crate::services::canonical_query::QueryResult> {
@@ -97,6 +102,7 @@ pub(crate) async fn analyze_system_architecture(
 }
 
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_defect_probability(
     repo_path: &std::path::Path,
 ) -> Result<crate::services::defect_probability::ProjectDefectAnalysis> {

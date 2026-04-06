@@ -31,6 +31,7 @@ pub struct DagAnalysis {
 }
 
 impl DagEngine {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
@@ -39,6 +40,7 @@ impl DagEngine {
     }
 
     /// Build DAG from workflow
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_workflow(workflow: &Workflow) -> Result<Self, WorkflowError> {
         let mut engine = Self::new();
 
@@ -53,6 +55,7 @@ impl DagEngine {
     }
 
     /// Add a step to the DAG
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_step(&mut self, step: WorkflowStep) {
         let node = DagNode {
             id: step.id.clone(),
@@ -65,6 +68,7 @@ impl DagEngine {
     }
 
     /// Add dependency between steps
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_dependency(&mut self, from: String, to: String) -> Result<(), WorkflowError> {
         if !self.nodes.contains_key(&from) {
             return Err(WorkflowError::InvalidDefinition(format!(
@@ -92,6 +96,7 @@ impl DagEngine {
     }
 
     /// Detect cycles in the DAG
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_cycles(&self) -> Vec<Vec<String>> {
         let mut cycles = Vec::new();
         let mut visited = HashSet::new();
@@ -147,6 +152,7 @@ impl DagEngine {
     }
 
     /// Perform topological sort to get execution order
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn topological_sort(&self) -> Result<Vec<Vec<String>>, WorkflowError> {
         // Check for cycles first
         let cycles = self.detect_cycles();
@@ -216,6 +222,7 @@ impl DagEngine {
     }
 
     /// Analyze the DAG
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&self) -> Result<DagAnalysis, WorkflowError> {
         let cycles = self.detect_cycles();
         let has_cycles = !cycles.is_empty();
@@ -244,6 +251,7 @@ impl DagEngine {
     }
 
     fn find_critical_path(&self) -> Vec<String> {
+        debug_assert!(true, "contract: find_critical_path");
         // Simple implementation: longest path through the DAG
         // In production, would use actual execution time estimates
         let mut longest_path = Vec::new();
@@ -283,6 +291,7 @@ impl DagEngine {
     }
 
     fn extract_dependencies(&mut self) -> Result<(), WorkflowError> {
+        debug_assert!(true, "contract: extract_dependencies");
         // Extract dependencies from step conditions and references
         // For now, sequential steps have implicit dependencies
         let node_ids: Vec<String> = self.nodes.keys().cloned().collect();

@@ -4,6 +4,7 @@ impl Roadmap {
     /// # Complexity
     /// - Time: O(n) where n is number of lines
     /// - Cyclomatic: 2
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_file(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
@@ -15,6 +16,7 @@ impl Roadmap {
     /// # Complexity
     /// - Time: O(n) where n is number of lines
     /// - Cyclomatic: 9
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_content(content: &str) -> Result<Self> {
         debug_assert!(!content.is_empty(), "content must not be empty");
         let mut state = ParseState {
@@ -44,6 +46,7 @@ impl Roadmap {
     /// # Complexity
     /// - Time: O(n) where n is number of sprints
     /// - Cyclomatic: 2
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn completion_percentage(&self, sprint_number: u32) -> Option<f64> {
         self.sprints
             .iter()
@@ -60,6 +63,7 @@ impl Roadmap {
     /// # Note
     /// Modern sprints (38+) may not use ticket format - they use narrative structure.
     /// This is acceptable as roadmap evolved. Only validate ticket IDs if tickets exist.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate(&self) -> Result<()> {
         for sprint in &self.sprints {
             // Validate ticket IDs only if sprint uses ticket format
@@ -77,6 +81,7 @@ impl Sprint {
     /// # Complexity
     /// - Time: O(n) where n is number of tickets
     /// - Cyclomatic: 2
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn completion_percentage(&self) -> f64 {
         if self.tickets.is_empty() {
             return 0.0;
@@ -91,6 +96,7 @@ impl Sprint {
     /// # Complexity
     /// - Time: O(n) where n is number of tickets
     /// - Cyclomatic: 1
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_complete(&self) -> bool {
         !self.tickets.is_empty() && self.tickets.iter().all(|t| t.completed)
     }

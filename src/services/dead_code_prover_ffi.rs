@@ -3,6 +3,7 @@
 
 impl FFIReferenceTracker {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             no_mangle_symbols: HashSet::new(),
@@ -26,6 +27,7 @@ impl FFIReferenceTracker {
     }
 
     /// Scan AST for FFI exports
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn scan_for_ffi_exports(&mut self, content: &str, file_path: &str) {
         debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
@@ -75,6 +77,7 @@ impl FFIReferenceTracker {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_function_name_from_line(&self, line: &str) -> Option<String> {
         debug_assert!(!line.is_empty(), "line must not be empty");
         // Extract function name from "pub fn name(" or "fn name("
@@ -109,6 +112,7 @@ impl FFIReferenceTracker {
 
     /// Check if a symbol is externally visible
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_externally_visible(&self, symbol: &SymbolId) -> bool {
         self.no_mangle_symbols.contains(symbol)
             || self.export_name_symbols.contains_key(symbol)
@@ -119,6 +123,7 @@ impl FFIReferenceTracker {
 
     /// Get count of detected FFI exports for testing
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn ffi_export_count(&self) -> usize {
         self.no_mangle_symbols.len()
             + self.export_name_symbols.len()

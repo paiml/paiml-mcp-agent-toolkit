@@ -3,6 +3,7 @@
 
 impl CorrelationEngine {
     /// Look up source location for a given WASM address
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn lookup_source_location(
         &self,
         wasm_address: u64,
@@ -15,6 +16,7 @@ impl CorrelationEngine {
     }
 
     /// Look up WASM addresses for a given source line
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn lookup_wasm_addresses(
         &self,
         source_line: u32,

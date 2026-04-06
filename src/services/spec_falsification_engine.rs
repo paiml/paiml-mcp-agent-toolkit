@@ -4,6 +4,7 @@ pub struct FalsificationEngine {
 }
 
 impl FalsificationEngine {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_path: &Path) -> Self {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self {
@@ -12,6 +13,7 @@ impl FalsificationEngine {
     }
 
     /// Falsify all claims in a specification file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn falsify_spec(&self, spec_path: &Path) -> Result<SpecFalsificationReport> {
         debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
         let content = std::fs::read_to_string(spec_path)

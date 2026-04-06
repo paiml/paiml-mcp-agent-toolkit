@@ -177,6 +177,7 @@ fn try_incremental_update(
 /// Save the index only when changes exceed 50 files or 5% of index size.
 /// Avoids rewriting 660MB SQLite for a handful of changes (#212).
 fn maybe_save_incremental(index: &AgentContextIndex, index_path: &PathBuf, quiet: bool) {
+    debug_assert!(true, "contract: maybe_save_incremental");
     let changes = index.manifest().last_incremental_changes;
     if changes == 0 {
         return;

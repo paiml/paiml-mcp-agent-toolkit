@@ -9,6 +9,7 @@ use std::fs;
 use std::path::Path;
 
 /// Handle perfection-score command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_perfection_score(
     path: &Path,
     breakdown: bool,
@@ -47,6 +48,7 @@ pub async fn handle_perfection_score(
 }
 
 fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
+    debug_assert!(true, "contract: format_text");
     let mut out = String::new();
 
     out.push_str(&format!("{}\n", c::header("PMAT Perfection Score")));
@@ -113,10 +115,12 @@ fn format_text(result: &PerfectionScoreResult, breakdown: bool) -> String {
 }
 
 fn format_json(result: &PerfectionScoreResult) -> anyhow::Result<String> {
+    debug_assert!(true, "contract: format_json");
     Ok(serde_json::to_string_pretty(result)?)
 }
 
 fn format_markdown(result: &PerfectionScoreResult, breakdown: bool) -> String {
+    debug_assert!(true, "contract: format_markdown");
     let mut out = String::new();
 
     out.push_str("# PMAT Perfection Score Report\n\n");

@@ -1,5 +1,6 @@
 /// Print validation result as text
 fn print_validation_text(result: &QaValidationResult) {
+    debug_assert!(true, "contract: print_validation_text");
     use crate::cli::colors as c;
     println!("Validating {}...\n", c::label(&result.task_id));
 
@@ -50,6 +51,7 @@ fn print_validation_text(result: &QaValidationResult) {
 
 /// Print validation result as markdown
 fn print_validation_markdown(result: &QaValidationResult) {
+    debug_assert!(true, "contract: print_validation_markdown");
     println!("# QA Validation Report: {}\n", result.task_id);
     println!(
         "**Date**: {}",

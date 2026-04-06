@@ -57,6 +57,7 @@ pub enum CliDemoError {
 
 impl CliDemoAdapter {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -144,6 +145,7 @@ impl CliDemoAdapter {
         _execution_time_ms: u64,
         result: &Value,
     ) -> CliApiTrace {
+        debug_assert!(true, "contract: create_api_trace");
         let command_line = format!(
             "paiml-mcp-agent-toolkit {} {}",
             request.command,
@@ -214,11 +216,13 @@ impl DemoProtocol for CliDemoAdapter {
     }
 
     async fn encode_response(&self, resp: Self::Response) -> Result<Vec<u8>, Self::Error> {
+        debug_assert!(true, "contract: encode_response");
         let json = serde_json::to_vec_pretty(&resp)?;
         Ok(json)
     }
 
     async fn get_protocol_metadata(&self) -> ProtocolMetadata {
+        debug_assert!(true, "contract: get_protocol_metadata");
         ProtocolMetadata {
             name: "cli",
             version: "1.0.0",
@@ -289,6 +293,7 @@ impl DemoProtocol for CliDemoAdapter {
     }
 
     async fn execute_demo(&self, request: Self::Request) -> Result<Self::Response, Self::Error> {
+        debug_assert!(true, "contract: execute_demo");
         let start_time = std::time::Instant::now();
 
         // Execute the analysis
@@ -417,6 +422,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

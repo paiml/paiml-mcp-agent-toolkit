@@ -21,6 +21,7 @@ impl TimelinePlayer {
     /// assert!(!player.is_playing());
     /// # Ok::<(), anyhow::Error>(())
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(recording: Recording) -> Self {
         let total_frames = recording.snapshot_count();
 
@@ -46,6 +47,7 @@ impl TimelinePlayer {
     /// player.next_frame();
     /// assert_eq!(player.current_frame(), 1);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_frame(&self) -> usize {
         self.current_frame
     }
@@ -61,6 +63,7 @@ impl TimelinePlayer {
     /// let player = TimelinePlayer::new(recording);
     /// assert_eq!(player.total_frames(), 10);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_frames(&self) -> usize {
         self.total_frames
     }
@@ -82,6 +85,7 @@ impl TimelinePlayer {
     /// let at_end = player.next_frame();           // None (already at end)
     /// assert!(at_end.is_none());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn next_frame(&mut self) -> Option<&Snapshot> {
         if self.current_frame < self.total_frames - 1 {
             self.current_frame += 1;
@@ -109,6 +113,7 @@ impl TimelinePlayer {
     /// let at_start = player.prev_frame();         // None (already at start)
     /// assert!(at_start.is_none());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn prev_frame(&mut self) -> Option<&Snapshot> {
         if self.current_frame > 0 {
             self.current_frame -= 1;
@@ -144,6 +149,7 @@ impl TimelinePlayer {
     /// assert!(result.is_err());  // Out of bounds
     /// # Ok::<(), anyhow::Error>(())
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn jump_to(&mut self, frame: usize) -> Result<&Snapshot> {
         if frame < self.total_frames {
             self.current_frame = frame;
@@ -175,6 +181,7 @@ impl TimelinePlayer {
     /// println!("Variables: {:?}", snapshot.variables);
     /// println!("Stack: {:?}", snapshot.stack_frames);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_snapshot(&self) -> &Snapshot {
         &self.recording.snapshots()[self.current_frame]
     }

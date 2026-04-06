@@ -1,3 +1,4 @@
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn generate_context(
     paths: &[PathBuf],
     _max_depth: Option<usize>,
@@ -60,6 +61,7 @@ pub async fn generate_context(
     }))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn generate_deep_context(paths: &[PathBuf], _format: Option<&str>) -> Result<Value> {
     debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
@@ -103,6 +105,7 @@ pub async fn generate_deep_context(paths: &[PathBuf], _format: Option<&str>) -> 
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Result<Value> {
     debug_assert!(!paths.is_empty(), "paths must not be empty");
     use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
@@ -182,6 +185,7 @@ pub async fn analyze_context(paths: &[PathBuf], analysis_types: &[String]) -> Re
     }))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn context_summary(paths: &[PathBuf], _level: Option<&str>) -> Result<Value> {
     debug_assert!(!paths.is_empty(), "paths must not be empty");
     use std::collections::HashSet;

@@ -17,6 +17,7 @@ pub enum TimelineMode {
 
 impl TimelineMode {
     /// Parse mode from command-line arguments
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_args(args: &[&str]) -> Self {
         debug_assert!(!args.is_empty(), "args must not be empty");
         if args.contains(&"--interactive") || args.contains(&"-i") {
@@ -27,21 +28,25 @@ impl TimelineMode {
     }
 
     /// Check if this is interactive mode
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_interactive(&self) -> bool {
         matches!(self, TimelineMode::Interactive)
     }
 
     /// Check if this is non-interactive mode
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_non_interactive(&self) -> bool {
         matches!(self, TimelineMode::NonInteractive)
     }
 
     /// Check if mode requires a terminal (TTY)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn requires_terminal(&self) -> bool {
         self.is_interactive()
     }
 
     /// Validate terminal availability for this mode
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_terminal_availability(&self, has_tty: bool) -> Result<()> {
         if self.requires_terminal() && !has_tty {
             anyhow::bail!("Interactive mode requires a TTY (terminal). Run without --interactive flag for batch mode.");
@@ -50,6 +55,7 @@ impl TimelineMode {
     }
 
     /// Get human-readable description
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn description(&self) -> &str {
         match self {
             TimelineMode::Interactive => "Interactive TUI mode",
@@ -58,6 +64,7 @@ impl TimelineMode {
     }
 
     /// Validate arguments for conflicting flags
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_args(args: &[&str]) -> Result<()> {
         debug_assert!(!args.is_empty(), "args must not be empty");
         let has_interactive = args.contains(&"--interactive") || args.contains(&"-i");
@@ -72,12 +79,14 @@ impl TimelineMode {
 
     /// Check if TUI feature is available
     #[cfg(feature = "tui")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_feature_availability(&self) -> Result<()> {
         Ok(())
     }
 
     /// Check if TUI feature is available
     #[cfg(not(feature = "tui"))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_feature_availability(&self) -> Result<()> {
         if self.is_interactive() {
             anyhow::bail!(
@@ -90,12 +99,14 @@ impl TimelineMode {
 
 /// Placeholder for handle_timeline function
 /// This will be properly implemented when integrating with existing timeline command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn handle_timeline(_args: &[&str]) -> Result<()> {
     debug_assert!(!_args.is_empty(), "_args must not be empty");
     Ok(())
 }
 
 /// Get timeline command help text
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_timeline_help_text() -> String {
     r#"USAGE:
     pmat timeline <recording.pmat> [OPTIONS]

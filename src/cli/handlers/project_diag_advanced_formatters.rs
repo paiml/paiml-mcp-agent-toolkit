@@ -164,6 +164,7 @@ fn has_test_annotations(dir: &Path) -> bool {
 // ============================================================================
 
 fn format_summary(report: &DiagnosticReport, failures_only: bool) -> String {
+    debug_assert!(true, "contract: format_summary");
     let mut output = String::new();
 
     // Header
@@ -223,10 +224,12 @@ fn format_summary(report: &DiagnosticReport, failures_only: bool) -> String {
 }
 
 fn format_json(report: &DiagnosticReport) -> Result<String> {
+    debug_assert!(true, "contract: format_json");
     serde_json::to_string_pretty(report).map_err(|e| anyhow::anyhow!(e))
 }
 
 fn format_markdown(report: &DiagnosticReport, failures_only: bool) -> String {
+    debug_assert!(true, "contract: format_markdown");
     let mut output = String::new();
 
     output.push_str(&format!(
@@ -283,6 +286,7 @@ fn format_markdown(report: &DiagnosticReport, failures_only: bool) -> String {
 }
 
 fn format_andon(report: &DiagnosticReport) -> String {
+    debug_assert!(true, "contract: format_andon");
     let mut output = String::new();
 
     // Andon-style visualization (Toyota Way)

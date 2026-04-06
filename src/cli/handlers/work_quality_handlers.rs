@@ -209,6 +209,7 @@ fn run_clippy_check(project_path: &PathBuf) -> Result<bool> {
 /// Run quality gates (tests, clippy, etc.)
 ///
 /// Returns Ok(true) if all gates pass, Ok(false) if any fail, or Err on execution failure.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
     debug_assert!(
         project_path.exists(),
@@ -478,6 +479,7 @@ fn falsify_binary_bloat(project_path: &PathBuf, step: usize, total: usize) -> (b
 ///
 /// Scientific method: attempt to falsify work claims.
 /// Pass only if all falsification attempts fail (work is valid).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<FalsificationResult> {
     debug_assert!(
         project_path.exists(),

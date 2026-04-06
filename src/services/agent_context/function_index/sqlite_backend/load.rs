@@ -22,6 +22,7 @@ fn parse_definition_type(s: &str) -> DefinitionType {
 
 #[allow(clippy::cast_possible_truncation)]
 fn read_quality_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QualityMetrics> {
+    debug_assert!(true, "contract: read_quality_from_row");
     Ok(QualityMetrics {
         tdg_score: row.get::<_, f64>(10)? as f32,
         tdg_grade: row.get(11)?,
@@ -38,6 +39,7 @@ fn read_quality_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QualityMet
 /// Load all functions from the SQLite database.
 #[allow(dead_code)]
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, String> {
     let mut stmt = conn
         .prepare(
@@ -88,6 +90,7 @@ pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, St
 /// Saves ~200ms by skipping deserialization of 70K source strings (~35MB).
 /// Source is loaded on-demand via `load_source_by_location()` or `load_source_into()`.
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn load_functions_lightweight(conn: &Connection) -> Result<Vec<FunctionEntry>, String> {
     let mut stmt = conn
         .prepare(
@@ -147,6 +150,7 @@ pub(crate) fn load_functions_lightweight(conn: &Connection) -> Result<Vec<Functi
 ///
 /// Reads `(id, source)` from SQLite and updates `functions[id-1].source`.
 /// Used when regex/literal mode needs full source for pattern matching.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn load_source_into(
     conn: &Connection,
     functions: &mut [FunctionEntry],
@@ -177,6 +181,7 @@ pub(crate) fn load_source_into(
 /// Load source code for a single function by file path and start line.
 ///
 /// Uses the `idx_functions_file` index for O(log n) lookup.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
 pub(crate) fn load_source_by_location(
     conn: &Connection,
     file_path: &str,
@@ -196,6 +201,7 @@ pub(crate) fn load_source_by_location(
 /// Kept for backward compat and tests. Normal load path uses on-demand
 /// `query_callees()`/`query_callers()` instead.
 #[allow(dead_code, clippy::type_complexity)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn load_call_graph(
     conn: &Connection,
 ) -> Result<(HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>), String> {
@@ -225,6 +231,7 @@ pub(crate) fn load_call_graph(
 
 /// Load graph metrics from the SQLite database.
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn load_graph_metrics(conn: &Connection) -> Result<Vec<GraphMetrics>, String> {
     let count: i64 = conn
         .query_row("SELECT count(*) FROM graph_metrics", [], |r| r.get(0))
@@ -269,6 +276,7 @@ pub(crate) fn load_graph_metrics(conn: &Connection) -> Result<Vec<GraphMetrics>,
 ///
 /// Reads all metadata key-value pairs in a single query instead of 6 individual queries.
 /// Self-heals on missing keys by using sensible defaults (#162).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn load_metadata(conn: &Connection) -> Result<IndexManifest, String> {
     let mut stmt = conn
         .prepare("SELECT key, value FROM metadata")

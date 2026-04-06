@@ -4,6 +4,7 @@
 impl ComplexityBound {
     /// Create a new complexity bound
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(class: BigOClass, coefficient: u16, input_var: InputVariable) -> Self {
         Self {
             class,
@@ -28,6 +29,7 @@ impl ComplexityBound {
     /// assert_eq!(bound.notation(), "O(1)");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn constant() -> Self {
         Self::new(BigOClass::Constant, 1, InputVariable::N)
             .with_confidence(100)
@@ -46,6 +48,7 @@ impl ComplexityBound {
     /// assert_eq!(bound.notation(), "O(n)");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn linear() -> Self {
         Self::new(BigOClass::Linear, 1, InputVariable::N)
     }
@@ -62,6 +65,7 @@ impl ComplexityBound {
     /// assert_eq!(bound.notation(), "O(n²)");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn quadratic() -> Self {
         Self::new(BigOClass::Quadratic, 1, InputVariable::N)
     }
@@ -78,6 +82,7 @@ impl ComplexityBound {
     /// assert_eq!(bound.notation(), "O(log n)");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn logarithmic() -> Self {
         Self::new(BigOClass::Logarithmic, 1, InputVariable::N)
     }
@@ -94,6 +99,7 @@ impl ComplexityBound {
     /// assert_eq!(bound.notation(), "O(n log n)");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn linearithmic() -> Self {
         Self::new(BigOClass::Linearithmic, 1, InputVariable::N)
     }
@@ -113,6 +119,7 @@ impl ComplexityBound {
     /// assert_eq!(cubic.coefficient, 2);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn polynomial(exponent: u32, coefficient: u16) -> Self {
         let class = match exponent {
             0 => BigOClass::Constant,
@@ -126,6 +133,7 @@ impl ComplexityBound {
 
     /// Create a polynomial-logarithmic bound
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn polynomial_log(degree: u32, log_power: u32) -> Self {
         match (degree, log_power) {
             (1, 1) => Self::linearithmic(),
@@ -146,6 +154,7 @@ impl ComplexityBound {
     /// assert_eq!(unknown.notation(), "O(?)");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn unknown() -> Self {
         Self::new(BigOClass::Unknown, 0, InputVariable::N).with_confidence(0)
     }
@@ -167,6 +176,7 @@ impl ComplexityBound {
     /// assert_eq!(clamped.confidence, 100);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_confidence(mut self, confidence: u8) -> Self {
         self.confidence = confidence.min(100);
         self
@@ -185,6 +195,7 @@ impl ComplexityBound {
     /// assert!(bound.flags.has(ComplexityFlags::TIGHT_BOUND));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_flags(mut self, flags: u8) -> Self {
         self.flags = self.flags.with(flags);
         self
@@ -204,6 +215,7 @@ impl ComplexityBound {
     /// assert_eq!(complex.notation(), "5·O(n)");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn notation(&self) -> String {
         if self.coefficient <= 1 {
             format!("{}", self.class)
@@ -226,6 +238,7 @@ impl ComplexityBound {
     /// assert_eq!(quadratic.estimate_operations(10.0), 100.0);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn estimate_operations(&self, n: f64) -> f64 {
         f64::from(self.coefficient) * self.class.growth_factor(n)
     }
@@ -247,6 +260,7 @@ impl ComplexityBound {
     /// assert!(fast.is_better_than(&slow));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_better_than(&self, other: &Self) -> bool {
         if self.class == other.class {
             self.coefficient < other.coefficient
@@ -270,6 +284,7 @@ impl fmt::Display for ComplexityBound {
 
 impl CacheComplexity {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(hit_ratio: u8, miss_penalty: u8, working_set: BigOClass) -> Self {
         Self {
             hit_ratio: hit_ratio.min(100),
@@ -290,6 +305,7 @@ impl Default for CacheComplexity {
 impl RecurrenceRelation {
     /// Attempt to solve using the Master Theorem
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn solve_master_theorem(&self) -> Option<ComplexityBound> {
         // Check if recurrence fits Master Theorem form: T(n) = aT(n/b) + f(n)
         if self.recursive_calls.len() != 1 {

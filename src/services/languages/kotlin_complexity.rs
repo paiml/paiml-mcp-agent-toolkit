@@ -9,6 +9,7 @@ impl Default for KotlinComplexityAnalyzer {
 impl KotlinComplexityAnalyzer {
     /// Creates a new Kotlin complexity analyzer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -18,6 +19,7 @@ impl KotlinComplexityAnalyzer {
     }
 
     /// Analyzes complexity of Kotlin source code (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
@@ -49,6 +51,7 @@ impl KotlinComplexityAnalyzer {
     }
 
     /// Analyzes coroutine complexity (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_coroutine_complexity(&mut self, source: &str) -> Result<u32, String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.coroutine_complexity = 0;

@@ -47,6 +47,7 @@ use super::types::{ComplexityReport, Violation};
 /// assert!(summary.contains("lib.rs"));  // Second file (in cyan)
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_complexity_summary(report: &ComplexityReport) -> String {
     use crate::cli::colors as c;
 
@@ -223,6 +224,7 @@ pub fn format_complexity_summary(report: &ComplexityReport) -> String {
 
 /// Format full complexity report for CLI output
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_complexity_report(report: &ComplexityReport) -> String {
     use crate::cli::colors as c;
 
@@ -314,6 +316,7 @@ pub fn format_complexity_report(report: &ComplexityReport) -> String {
 /// assert!(sarif.contains("\"version\": \"2.1.0\""));
 /// assert!(sarif.contains("cyclomatic-complexity"));
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_as_sarif(report: &ComplexityReport) -> Result<String, serde_json::Error> {
     use serde_json::json;
 

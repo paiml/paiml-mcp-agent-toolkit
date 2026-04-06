@@ -8,6 +8,7 @@ impl Default for UndirectedGraph {
 }
 
 impl UndirectedGraph {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             graph: CsrGraph::new(),
@@ -17,6 +18,7 @@ impl UndirectedGraph {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_node(&mut self, data: NodeData) -> NodeId {
         let id = TruenoNodeId(self.next_id);
         self.next_id += 1;
@@ -24,6 +26,7 @@ impl UndirectedGraph {
         id
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_edge(&mut self, from: NodeId, to: NodeId, weight: f64) {
         debug_assert!(weight >= 0.0, "weight must be non-negative");
         // Store both directions for undirected access
@@ -34,6 +37,7 @@ impl UndirectedGraph {
         let _ = self.graph.add_edge(to, from, weight as f32);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn node_count(&self) -> usize {
         self.node_data.len()
     }
@@ -43,6 +47,7 @@ impl UndirectedGraph {
         self.edge_weights.len() / 2
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn node_weight(&self, id: NodeId) -> Option<&NodeData> {
         self.node_data.get(&id)
     }
@@ -51,6 +56,7 @@ impl UndirectedGraph {
         self.edge_weights.get(&(from, to)).copied()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn node_indices(&self) -> impl Iterator<Item = NodeId> + '_ {
         self.node_data.keys().copied()
     }
@@ -62,6 +68,7 @@ impl UndirectedGraph {
             .unwrap_or_default()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn edge_references(&self) -> impl Iterator<Item = UndirectedEdgeRef<'_>> + '_ {
         // Only return each edge once (from < to)
         self.edge_weights
@@ -75,6 +82,7 @@ impl UndirectedGraph {
             })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn inner(&self) -> &CsrGraph {
         &self.graph
     }
@@ -85,6 +93,7 @@ impl UndirectedGraph {
 }
 
 impl UndirectedEdgeRef<'_> {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn source(&self) -> NodeId {
         self.source
     }
@@ -93,6 +102,7 @@ impl UndirectedEdgeRef<'_> {
         self.target
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn weight(&self) -> f64 {
         self.weight
     }

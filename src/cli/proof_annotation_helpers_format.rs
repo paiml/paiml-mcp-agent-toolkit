@@ -1,6 +1,7 @@
 // Formatting functions: JSON output, table output, summary output, annotator setup, and annotation collection.
 
 /// Format proof annotations as JSON
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_as_json(
     annotations: &[(Location, ProofAnnotation)],
     elapsed: std::time::Duration,
@@ -39,6 +40,7 @@ pub fn format_as_json(
 
 /// Setup proof annotator with mock sources
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn setup_proof_annotator(clear_cache: bool) -> ProofAnnotator {
     use crate::services::{proof_annotator::MockProofSource, symbol_table::SymbolTable};
 
@@ -58,6 +60,7 @@ pub fn setup_proof_annotator(clear_cache: bool) -> ProofAnnotator {
 }
 
 /// Filter and collect proof annotations
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn collect_and_filter_annotations(
     annotator: &ProofAnnotator,
     project_path: &Path,
@@ -79,6 +82,7 @@ pub async fn collect_and_filter_annotations(
 }
 
 /// Format annotations as table output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_as_table(
     annotations: &[(Location, ProofAnnotation)],
     _elapsed: std::time::Duration,
@@ -117,6 +121,7 @@ pub fn format_as_table(
 }
 
 /// Format annotations as summary output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_as_summary(
     annotations: &[(Location, ProofAnnotation)],
     elapsed: std::time::Duration,

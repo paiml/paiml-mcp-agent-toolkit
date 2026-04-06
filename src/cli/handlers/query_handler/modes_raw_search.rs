@@ -83,6 +83,7 @@ fn print_raw_search_output(
     format: &QueryOutputFormat,
     quiet: bool,
 ) -> anyhow::Result<()> {
+    debug_assert!(true, "contract: print_raw_search_output");
     match output {
         RawSearchOutput::Files(files) => {
             for f in files {

@@ -136,6 +136,7 @@ impl McpServer {
     /// - Custom MCP clients
     /// - CI/CD pipeline integrations
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let cache_config = CacheConfig {
             max_entries: 5000,

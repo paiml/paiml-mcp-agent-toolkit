@@ -7,6 +7,7 @@ use std::path::Path;
 
 /// Scan source files for dead code indicators.
 /// Returns (total_items, dead_items, total_lines, estimated_dead_lines).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize, usize) {
     debug_assert!(
         src_dir.exists(),
@@ -39,6 +40,7 @@ pub(crate) fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize,
 }
 
 /// Check if a file is heavily cfg-gated (SIMD, arch-specific code).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_heavily_cfg_gated(content: &str) -> bool {
     debug_assert!(!content.is_empty(), "content must not be empty");
     let cfg_count = content.matches("#[cfg(target").count()
@@ -48,6 +50,7 @@ pub(crate) fn is_heavily_cfg_gated(content: &str) -> bool {
 }
 
 /// Collect production .rs files (skip test files, falsification modules, SIMD code).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
     debug_assert!(
         src_dir.exists(),
@@ -76,6 +79,7 @@ pub(crate) fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::Path
 
 /// Analyze a single file for dead code indicators.
 /// Returns (total_items, dead_items, prod_lines, estimated_dead_lines).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn analyze_file_dead_code(lines: &[&str]) -> (usize, usize, usize, usize) {
     debug_assert!(!lines.is_empty(), "lines must not be empty");
     let prod_lines: Vec<&str> = filter_production_lines(lines);
@@ -92,6 +96,7 @@ pub(crate) fn analyze_file_dead_code(lines: &[&str]) -> (usize, usize, usize, us
 }
 
 /// Filter out test module lines, returning only production lines.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn filter_production_lines<'a>(lines: &[&'a str]) -> Vec<&'a str> {
     debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut result = Vec::new();
@@ -111,6 +116,7 @@ pub(crate) fn filter_production_lines<'a>(lines: &[&'a str]) -> Vec<&'a str> {
 
 /// Count total items and dead items from production lines.
 /// Returns (total_items, dead_items, annotation_count).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn count_dead_items(lines: &[&str]) -> (usize, usize, usize) {
     debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut total = 0usize;
@@ -136,6 +142,7 @@ pub(crate) fn count_dead_items(lines: &[&str]) -> (usize, usize, usize) {
 }
 
 /// Classify a single line for item counting.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn classify_item_line(
     trimmed: &str,
     total: &mut usize,
@@ -159,6 +166,7 @@ pub(crate) fn classify_item_line(
 }
 
 /// Track brace depth inside macro_rules! blocks.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn update_macro_depth(trimmed: &str, current: Option<i32>) -> Option<i32> {
     debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let mut depth = if trimmed.starts_with("macro_rules!") {
@@ -182,12 +190,14 @@ pub(crate) fn update_macro_depth(trimmed: &str, current: Option<i32>) -> Option<
 }
 
 /// Check if a line is a dead code annotation.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_dead_code_annotation(trimmed: &str) -> bool {
     debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     trimmed.starts_with("#[allow(dead_code)]") || trimmed.starts_with("#[allow(unused")
 }
 
 /// Check if a line declares a code item (fn, struct, enum, trait, const, static).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_code_item_declaration(trimmed: &str) -> bool {
     debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     const ITEM_PREFIXES: &[&str] = &[
@@ -209,6 +219,7 @@ pub(crate) fn is_code_item_declaration(trimmed: &str) -> bool {
 }
 
 /// Count lines inside `/* ... */` block comments that look like code.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn count_block_comment_code_lines(lines: &[&str]) -> usize {
     debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut dead_lines = 0usize;
@@ -264,6 +275,7 @@ fn handle_inside_block(trimmed: &str, block_lines: usize) -> (bool, usize, usize
 }
 
 /// Check if text contains code-like markers.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn has_code_markers(text: &str) -> bool {
     debug_assert!(!text.is_empty(), "text must not be empty");
     const MARKERS: &[&str] = &[
@@ -273,6 +285,7 @@ pub(crate) fn has_code_markers(text: &str) -> bool {
 }
 
 /// Count lines in large blocks of `//` commented-out code (3+ consecutive lines).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn count_commented_code_lines(lines: &[&str]) -> usize {
     debug_assert!(!lines.is_empty(), "lines must not be empty");
     let mut dead_lines = 0usize;
@@ -289,6 +302,7 @@ pub(crate) fn count_commented_code_lines(lines: &[&str]) -> usize {
 }
 
 /// Flush a run of consecutive code comments (count if >= 3).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn flush_comment_run(run: usize) -> usize {
     if run >= 3 {
         run
@@ -298,6 +312,7 @@ pub(crate) fn flush_comment_run(run: usize) -> usize {
 }
 
 /// Check if a comment line looks like commented-out code.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_commented_out_code(trimmed: &str) -> bool {
     debug_assert!(!trimmed.is_empty(), "trimmed must not be empty");
     let body = if let Some(b) = trimmed.strip_prefix("// ") {

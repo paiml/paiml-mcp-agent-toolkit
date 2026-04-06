@@ -1,6 +1,7 @@
 // Handler and file collection logic
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_graph_metrics(
     project_path: PathBuf,
     metrics: Vec<crate::cli::GraphMetricType>,

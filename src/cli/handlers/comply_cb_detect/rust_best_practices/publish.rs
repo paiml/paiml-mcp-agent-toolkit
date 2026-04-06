@@ -14,6 +14,7 @@ use std::fs;
 use std::path::Path;
 
 /// CB-500: Publish Hygiene - missing `exclude` in Cargo.toml
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb500_publish_hygiene(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -84,6 +85,7 @@ pub fn detect_cb500_publish_hygiene(project_path: &Path) -> Vec<CbPatternViolati
 }
 
 /// CB-503: Clippy Configuration - missing .clippy.toml
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb503_clippy_config(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -129,6 +131,7 @@ pub fn detect_cb503_clippy_config(project_path: &Path) -> Vec<CbPatternViolation
 }
 
 /// CB-504: Deny Configuration - missing deny.toml for supply chain security
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb504_deny_config(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -149,6 +152,7 @@ pub fn detect_cb504_deny_config(project_path: &Path) -> Vec<CbPatternViolation> 
 }
 
 /// CB-505: Workspace Lint Hygiene - missing [lints] or [workspace.lints]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb505_workspace_lint_hygiene(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -179,6 +183,7 @@ pub fn detect_cb505_workspace_lint_hygiene(project_path: &Path) -> Vec<CbPattern
 }
 
 /// CB-509: Feature Gate Coverage - features defined but never tested
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb509_feature_gate_coverage(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -244,6 +249,7 @@ pub fn detect_cb509_feature_gate_coverage(project_path: &Path) -> Vec<CbPatternV
 /// Detects `.pmat/` directories tracked in git, including in workspace subcrate dirs.
 /// These are build artifacts (context.db, context.idx, dead-code-cache.json, etc.)
 /// that bloat published crates and leak local development state.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb529_pmat_tracked_in_git(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

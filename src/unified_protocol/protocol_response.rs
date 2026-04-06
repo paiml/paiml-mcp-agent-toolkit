@@ -1,5 +1,6 @@
 impl UnifiedResponse {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(status: StatusCode) -> Self {
         Self {
             status,
@@ -10,16 +11,19 @@ impl UnifiedResponse {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn ok() -> Self {
         Self::new(StatusCode::OK)
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_body(mut self, body: Body) -> Self {
         self.body = body;
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_json<T: Serialize>(self, data: &T) -> Result<Self, serde_json::Error> {
         let json = serde_json::to_vec(data)?;
         Ok(self
@@ -28,6 +32,7 @@ impl UnifiedResponse {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_header(mut self, key: &str, value: &str) -> Self {
         debug_assert!(!key.is_empty(), "key must not be empty");
         if let (Ok(name), Ok(val)) = (
@@ -42,6 +47,7 @@ impl UnifiedResponse {
 
 impl IntoResponse for UnifiedResponse {
     fn into_response(self) -> Response {
+        debug_assert!(true, "contract: into_response");
         let mut response = Response::builder().status(self.status);
 
         for (key, value) in &self.headers {

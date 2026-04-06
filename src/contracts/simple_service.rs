@@ -20,6 +20,7 @@ impl SimpleContractService {
     }
 
     /// Process analyze complexity contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_complexity(&self, contract: AnalyzeComplexityContract) -> Result<Value> {
         contract.validate()?;
 
@@ -49,6 +50,7 @@ impl SimpleContractService {
     }
 
     /// Process analyze SATD contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_satd(&self, contract: AnalyzeSatdContract) -> Result<Value> {
         contract.validate()?;
 
@@ -72,6 +74,7 @@ impl SimpleContractService {
     }
 
     /// Process analyze dead code contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_dead_code(&self, contract: AnalyzeDeadCodeContract) -> Result<Value> {
         contract.validate()?;
 
@@ -95,6 +98,7 @@ impl SimpleContractService {
     }
 
     /// Process analyze TDG contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_tdg(&self, contract: AnalyzeTdgContract) -> Result<Value> {
         contract.validate()?;
 
@@ -125,6 +129,7 @@ impl SimpleContractService {
     }
 
     /// Process analyze lint hotspot contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_lint_hotspot(
         &self,
         contract: AnalyzeLintHotspotContract,
@@ -147,6 +152,7 @@ impl SimpleContractService {
     }
 
     /// Process analyze entropy contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_entropy(&self, contract: AnalyzeEntropyContract) -> Result<Value> {
         contract.validate()?;
 
@@ -218,6 +224,7 @@ impl SimpleContractService {
     }
 
     /// Process quality gate contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn quality_gate(&self, contract: QualityGateContract) -> Result<Value> {
         contract.validate()?;
 
@@ -297,6 +304,7 @@ impl SimpleContractService {
     }
 
     /// Process refactor auto contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn refactor_auto(&self, contract: RefactorAutoContract) -> Result<Value> {
         contract.validate()?;
 
@@ -327,6 +335,7 @@ impl SimpleContractService {
     }
 
     fn create_metadata(&self, base: &BaseAnalysisContract) -> AnalysisMetadata {
+        debug_assert!(true, "contract: create_metadata");
         AnalysisMetadata {
             path: base.path.display().to_string(),
             format: base.format,

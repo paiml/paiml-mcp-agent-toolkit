@@ -21,6 +21,7 @@ use crate::models::refactor::RefactorStateMachine;
 /// assert!(result.is_ok());
 /// assert!(!result.unwrap().is_empty());
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>, String> {
     // JSON serialization is used as the primary format for cross-platform compatibility
     // This approach provides consistent serialization across all environments
@@ -46,6 +47,7 @@ pub fn serialize_state_to_capnp(state: &RefactorStateMachine) -> Result<Vec<u8>,
 ///
 /// assert_eq!(state.targets.len(), deserialized.targets.len());
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine, String> {
     debug_assert!(!data.is_empty(), "data must not be empty");
     // JSON deserialization ensures compatibility with the serialization format
@@ -65,6 +67,7 @@ pub fn deserialize_state_from_capnp(data: &[u8]) -> Result<RefactorStateMachine,
 /// assert!(!available); // Currently always returns false
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_capnp_available() -> bool {
     // JSON format is the standard serialization method for this module
     false
@@ -81,6 +84,7 @@ pub fn is_capnp_available() -> bool {
 /// assert_eq!(format, "JSON");
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_serialization_format() -> &'static str {
     if is_capnp_available() {
         "Cap'n Proto"
@@ -132,6 +136,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

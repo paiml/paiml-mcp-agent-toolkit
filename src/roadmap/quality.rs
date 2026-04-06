@@ -36,6 +36,7 @@ pub struct QualityReport {
 
 impl QualityReport {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(task_id: &str) -> Self {
         debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         Self {
@@ -46,6 +47,7 @@ impl QualityReport {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_check_result(&mut self, _check: QualityCheck, result: CheckResult) {
         if !result.passed {
             self.overall_passed = false;
@@ -54,6 +56,7 @@ impl QualityReport {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn passed(&self) -> bool {
         self.overall_passed
     }

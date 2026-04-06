@@ -12,6 +12,7 @@ use rusqlite::{params, Connection};
 ///
 /// Returns (function_id (0-based), bm25_score) pairs sorted by relevance.
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn fts5_search(
     conn: &Connection,
     query: &str,
@@ -63,6 +64,7 @@ pub(crate) fn fts5_search(
 /// Convert a natural language query to FTS5 match syntax.
 ///
 /// Splits into tokens, filters keywords/stop words, joins with implicit AND.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn tokenize_query_for_fts5(query: &str) -> String {
     debug_assert!(!query.is_empty(), "query must not be empty");
     query
@@ -76,6 +78,7 @@ pub(crate) fn tokenize_query_for_fts5(query: &str) -> String {
 /// Query call graph for a single function from SQLite (on-demand).
 ///
 /// Returns 0-based callee indices for `get_calls()`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn query_callees(conn: &Connection, func_idx: usize) -> Result<Vec<usize>, String> {
     let caller_id = (func_idx + 1) as i64;
     let mut stmt = conn
@@ -94,6 +97,7 @@ pub(crate) fn query_callees(conn: &Connection, func_idx: usize) -> Result<Vec<us
 /// Query call graph for a single function from SQLite (on-demand).
 ///
 /// Returns 0-based caller indices for `get_called_by()`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn query_callers(conn: &Connection, func_idx: usize) -> Result<Vec<usize>, String> {
     let callee_id = (func_idx + 1) as i64;
     let mut stmt = conn

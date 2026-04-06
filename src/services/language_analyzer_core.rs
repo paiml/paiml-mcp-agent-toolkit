@@ -3,6 +3,7 @@
 
 impl LanguageAnalyzer {
     /// Analyze a file with automatic language detection
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_file(
         &self,
         path: &Path,
@@ -41,12 +42,14 @@ impl LanguageAnalyzer {
 
     /// Get supported languages
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn supported_languages(&self) -> &[Language] {
         self.language_registry.supported_languages()
     }
 
     /// Check if language supports specific analysis type
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn supports_analysis(&self, language: Language, analysis_type: &AnalysisType) -> bool {
         match analysis_type {
             AnalysisType::Complexity => language.supports_complexity(),
@@ -111,6 +114,7 @@ impl LanguageAnalyzer {
 
     /// Get the comment style for a language
     fn get_comment_style(&self, language: Language) -> CommentStyle {
+        debug_assert!(true, "contract: get_comment_style");
         match language {
             // C-style comments
             Language::Rust

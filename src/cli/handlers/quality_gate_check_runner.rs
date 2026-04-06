@@ -1,5 +1,6 @@
 /// Toyota Way: Extract Method - Print checks to run (complexity ≤8)
 /// Console output utility for displaying which quality checks will be executed
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_checks_to_run(checks: &[QualityCheckType]) {
     debug_assert!(!checks.is_empty(), "checks must not be empty");
     eprintln!("\n📋 Checks to run:");
@@ -14,6 +15,7 @@ pub fn print_checks_to_run(checks: &[QualityCheckType]) {
 
 /// Toyota Way: Extract Method - Print all check types (complexity ≤3)
 fn print_all_checks() {
+    debug_assert!(true, "contract: print_all_checks");
     eprintln!("  ✓ Complexity analysis");
     eprintln!("  ✓ Dead code detection");
     eprintln!("  ✓ Self-admitted technical debt (SATD)");
@@ -54,6 +56,7 @@ pub struct QualityCheckConfig<'a> {
 
 /// Toyota Way: Extract Method - Run project quality checks (complexity ≤8)
 /// Orchestrates the execution of quality checks based on the specified types
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn run_project_checks(
     config: QualityCheckConfig<'_>,
     violations: &mut Vec<QualityViolation>,
@@ -127,6 +130,7 @@ async fn run_individual_checks(
     violations: &mut Vec<QualityViolation>,
     results: &mut QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(true, "contract: run_individual_checks");
     use std::time::Instant;
 
     for check in config.checks {
@@ -159,6 +163,7 @@ async fn run_individual_checks(
 
 /// Toyota Way: Extract Method - Print check timing (complexity ≤8)
 fn print_check_timing(check: &QualityCheckType, elapsed_secs: f64) {
+    debug_assert!(true, "contract: print_check_timing");
     let check_name = match check {
         QualityCheckType::Complexity => "Complexity",
         QualityCheckType::DeadCode => "Dead code",

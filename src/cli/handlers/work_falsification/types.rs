@@ -60,6 +60,7 @@ pub struct ClaimResult {
 
 impl FalsificationReport {
     /// Check if any blocking failures occurred
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_blocking_failures(&self) -> bool {
         self.claim_results
             .iter()
@@ -67,6 +68,7 @@ impl FalsificationReport {
     }
 
     /// Get all blocking failures
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn blocking_failures(&self) -> Vec<&ClaimResult> {
         self.claim_results
             .iter()
@@ -75,6 +77,7 @@ impl FalsificationReport {
     }
 
     /// Get all warnings (non-blocking failures)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn warning_failures(&self) -> Vec<&ClaimResult> {
         self.claim_results
             .iter()

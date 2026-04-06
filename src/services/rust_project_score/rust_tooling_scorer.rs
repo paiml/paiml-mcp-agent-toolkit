@@ -40,6 +40,7 @@ pub struct RustToolingScorer {
 
 impl RustToolingScorer {
     /// Create a new RustToolingScorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             name: "Rust Tooling & CI/CD".to_string(),

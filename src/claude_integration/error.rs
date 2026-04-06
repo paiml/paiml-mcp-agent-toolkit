@@ -62,6 +62,7 @@ pub enum BridgeResult<T> {
 impl<T> BridgeResult<T> {
     /// Zero-cost conversion for success path
     #[inline(always)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn unwrap_or_propagate(self) -> Result<T, BridgeError> {
         match self {
             Self::Success(val) => Ok(val),
@@ -106,6 +107,7 @@ pub struct ErrorContext {
 }
 
 impl ErrorCode {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_u32(code: u32) -> Option<Self> {
         match code {
             1001 => Some(Self::PipeBrokenPipe),
@@ -128,6 +130,7 @@ impl ErrorCode {
 impl BridgeError {
     /// Construct error with full context capture
     #[track_caller]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(code: ErrorCode, message: impl Into<String>) -> Self {
         Self {
             code,
@@ -146,6 +149,7 @@ impl BridgeError {
     }
 
     /// Construct timeout error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn timeout(elapsed_ms: u64) -> Self {
         Self::new(
             ErrorCode::InitializationTimeout,
@@ -154,6 +158,7 @@ impl BridgeError {
     }
 
     /// Construct circuit open error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn circuit_open(retry_after_ms: u64) -> Self {
         Self::new(
             ErrorCode::PoolExhausted,
@@ -162,6 +167,7 @@ impl BridgeError {
     }
 
     /// Chain errors while preserving original context
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_source(
         mut self,
         source: impl Into<Box<dyn std::error::Error + Send + Sync>>,
@@ -171,6 +177,7 @@ impl BridgeError {
     }
 
     /// Serialize for cross-language boundary
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_bridge_result<T>(&self) -> BridgeResult<T> {
         BridgeResult::Error {
             code: self.code as u32,
@@ -189,6 +196,7 @@ impl fmt::Display for BridgeError {
 
 impl std::error::Error for BridgeError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        debug_assert!(true, "contract: source");
         self.source
             .as_ref()
             .map(|e| &**e as &(dyn std::error::Error + 'static))

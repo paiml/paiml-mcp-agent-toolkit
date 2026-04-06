@@ -14,6 +14,7 @@ use super::types::*;
 use crate::services::file_health::FileHealthMetrics;
 
 /// Check Sovereign AI Stack compliance patterns (CB-040 complexity refactor)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -38,12 +39,14 @@ pub(crate) fn check_sovereign_stack_patterns(project_path: &Path) -> ComplianceC
     build_sovereign_result(&issues, &good_patterns)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_sovereign_stack_project(content: &str) -> bool {
     debug_assert!(!content.is_empty(), "content must not be empty");
     const SOVEREIGN_DEPS: &[&str] = &["trueno", "aprender", "realizar", "batuta", "renacer"];
     SOVEREIGN_DEPS.iter().any(|dep| content.contains(dep))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_five_whys_patterns(
     project_path: &Path,
     issues: &mut Vec<String>,
@@ -78,6 +81,7 @@ pub(crate) fn check_five_whys_patterns(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_falsification_tests(project_path: &Path, good_patterns: &mut Vec<String>) {
     debug_assert!(
         project_path.exists(),
@@ -103,6 +107,7 @@ pub(crate) fn check_falsification_tests(project_path: &Path, good_patterns: &mut
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_apr_models(project_path: &Path, good_patterns: &mut Vec<String>) {
     debug_assert!(
         project_path.exists(),
@@ -124,6 +129,7 @@ pub(crate) fn check_apr_models(project_path: &Path, good_patterns: &mut Vec<Stri
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_ticket_refs(
     project_path: &Path,
     issues: &mut Vec<String>,
@@ -158,6 +164,7 @@ pub(crate) fn check_ticket_refs(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_ml_commit_classification(project_path: &Path, good_patterns: &mut Vec<String>) {
     debug_assert!(
         project_path.exists(),
@@ -211,6 +218,7 @@ pub(crate) fn check_ml_commit_classification(project_path: &Path, good_patterns:
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn build_sovereign_result(
     issues: &[String],
     good_patterns: &[String],
@@ -280,6 +288,7 @@ fn classify_local_deps(src_dir: &Path, paiml_deps: &[&str]) -> (Vec<String>, Vec
     (dirty, clean)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -392,6 +401,7 @@ pub(crate) fn check_paiml_deps_workspace(project_path: &Path) -> ComplianceCheck
 }
 
 /// Generate file health baseline for ratchet enforcement.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn generate_file_health_baseline(project_path: &Path, dry_run: bool) -> Result<()> {
     debug_assert!(
         project_path.exists(),
@@ -448,6 +458,7 @@ pub(crate) fn generate_file_health_baseline(project_path: &Path, dry_run: bool) 
 }
 
 /// Cross-stack file health check across multiple projects.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_file_health_multi(
     primary_path: &Path,
     include_projects: &[std::path::PathBuf],

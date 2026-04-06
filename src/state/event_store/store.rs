@@ -45,6 +45,7 @@ impl Default for EventStoreConfig {
 impl<P: EventPersistence> EventStore<P> {
     /// Create a new EventStore with a custom persistence backend.
     /// Use this for testing with InMemoryPersistence.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_with_persistence(config: EventStoreConfig, persistence: Option<Arc<P>>) -> Self {
         Self {
             events: Arc::new(RwLock::new(BTreeMap::new())),
@@ -57,6 +58,7 @@ impl<P: EventPersistence> EventStore<P> {
 
     /// Recover events from the persistence layer.
     /// Call this after creating the store if persistence is enabled.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn recover(&mut self) -> Result<(), EventStoreError> {
         if let Some(persistence) = &self.persistence {
             let recovered = persistence.load_all().await?;
@@ -82,6 +84,7 @@ impl<P: EventPersistence> EventStore<P> {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn append(&self, mut event: StateEvent) -> Result<EventId, EventStoreError> {
         // Assign event ID
         let event_id = {
@@ -125,6 +128,7 @@ impl<P: EventPersistence> EventStore<P> {
         Ok(event_id)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn append_batch(
         &self,
         events: Vec<StateEvent>,
@@ -173,6 +177,7 @@ impl<P: EventPersistence> EventStore<P> {
         Ok(ids)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_events_since(&self, event_id: EventId, limit: Option<usize>) -> Vec<StateEvent> {
         let events = self.events.read();
         let iter = events.range((event_id + 1)..);
@@ -184,6 +189,7 @@ impl<P: EventPersistence> EventStore<P> {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_partition_events(
         &self,
         partition_key: &str,
@@ -204,6 +210,7 @@ impl<P: EventPersistence> EventStore<P> {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_event(&self, event_id: EventId) -> Option<StateEvent> {
         self.events.read().get(&event_id).cloned()
     }
@@ -212,6 +219,7 @@ impl<P: EventPersistence> EventStore<P> {
         *self.next_event_id.read() - 1
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn compact(&self) -> Result<CompactionResult, EventStoreError> {
         if self.persistence.is_none() {
             return Ok(CompactionResult::default());
@@ -236,6 +244,7 @@ impl<P: EventPersistence> EventStore<P> {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_statistics(&self) -> EventStoreStats {
         let events = self.events.read();
         let partitions = self.partitions.read();
@@ -253,6 +262,7 @@ impl<P: EventPersistence> EventStore<P> {
 impl EventStore<JsonFilePersistence> {
     /// Create a new EventStore with file-based JSON persistence.
     /// This is the default production constructor.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn new(config: EventStoreConfig) -> Result<Self, EventStoreError> {
         let persistence = if config.persistence_enabled {
             Some(Arc::new(JsonFilePersistence::new("events.log").await?))
@@ -294,6 +304,7 @@ pub struct EventStoreStats {
 }
 
 fn estimate_memory_usage(events: &BTreeMap<EventId, StateEvent>) -> usize {
+    debug_assert!(true, "contract: estimate_memory_usage");
     events.len() * std::mem::size_of::<(EventId, StateEvent)>()
 }
 

@@ -3,6 +3,7 @@
 
 impl MockProofSource {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(name: String, delay_ms: u64, annotation_count: usize) -> Self {
         Self {
             name,
@@ -14,6 +15,7 @@ impl MockProofSource {
 
 impl ProofSource for MockProofSource {
     fn clone_box(&self) -> Box<dyn ProofSource> {
+        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 

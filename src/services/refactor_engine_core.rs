@@ -51,6 +51,7 @@ impl UnifiedEngine {
     /// // Engine is ready for analysis and refactoring
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(
         ast_engine: Arc<UnifiedAstEngine>,
         cache: Arc<UnifiedCacheManager>,
@@ -133,6 +134,7 @@ impl UnifiedEngine {
     /// }
     /// # });
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run(&mut self) -> Result<Summary, EngineError> {
         match &self.mode {
             EngineMode::Server { .. } => self.run_server().await,
@@ -141,6 +143,7 @@ impl UnifiedEngine {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn save_checkpoint(&self) -> Result<(), EngineError> {
         if let EngineMode::Interactive {
             checkpoint_file, ..
@@ -155,6 +158,7 @@ impl UnifiedEngine {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn save_checkpoint_to(&self, dir: &Path) -> Result<(), EngineError> {
         debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let state_machine = self.state_machine.read().await;
@@ -164,6 +168,7 @@ impl UnifiedEngine {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn load_checkpoint(&mut self, dir: &Path) -> Result<(), EngineError> {
         debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let checkpoint_path = dir.join("checkpoint.json");
@@ -175,6 +180,7 @@ impl UnifiedEngine {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn analyze_incremental(
         &self,
         path: &Path,
@@ -248,6 +254,7 @@ impl UnifiedEngine {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn should_emit(&self, metrics: &ComplexityInfo) -> bool {
         // Emit if complexity exceeds thresholds
         metrics.complexity[0] > 15 || // Cyclomatic > 15
@@ -255,6 +262,7 @@ impl UnifiedEngine {
         metrics.tdg > 2.0 // TDG > 2.0
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn create_payload(
         &self,
         _path: &Path,

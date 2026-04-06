@@ -11,6 +11,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 impl ValidateReadmeCmd {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn print_text_summary(
         &self,
         results: &[(PathBuf, Vec<ValidationResult>)],
@@ -119,6 +120,7 @@ impl ValidateReadmeCmd {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn print_json_summary(
         &self,
         results: &[(PathBuf, Vec<ValidationResult>)],
@@ -189,6 +191,7 @@ impl ValidateReadmeCmd {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn print_junit_summary(
         &self,
         results: &[(PathBuf, Vec<ValidationResult>)],
@@ -264,6 +267,7 @@ impl ValidateReadmeCmd {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn xml_escape(s: &str) -> String {
     debug_assert!(!s.is_empty(), "s must not be empty");
     s.replace('&', "&amp;")

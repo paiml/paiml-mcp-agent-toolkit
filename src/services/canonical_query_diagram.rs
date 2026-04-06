@@ -29,6 +29,7 @@ fn render_component_nodes(
     components: &[Component],
     metrics: &FxHashMap<String, ComponentMetrics>,
 ) {
+    debug_assert!(true, "contract: render_component_nodes");
     for component in components {
         let complexity_class = if let Some(m) = metrics.get(&component.id) {
             match m.avg_complexity {
@@ -118,11 +119,13 @@ fn merge_coupled_components(
     _components: &mut [Component],
     _dag: &crate::models::dag::DependencyGraph,
 ) {
+    debug_assert!(true, "contract: merge_coupled_components");
     // TRACKED: Implement coupling analysis and merge highly coupled components
     // For now, this is a placeholder
 }
 
 fn calculate_graph_diameter(_components: &[Component], _edges: &[ComponentEdge]) -> usize {
+    debug_assert!(true, "contract: calculate_graph_diameter");
     // TRACKED: Implement graph diameter calculation
     // For now, return a placeholder value
     5

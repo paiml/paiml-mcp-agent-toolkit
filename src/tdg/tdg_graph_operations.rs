@@ -1,6 +1,7 @@
 impl TdgGraph {
     /// Create new TDG graph
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             graph: CsrGraph::new(),
@@ -24,6 +25,7 @@ impl TdgGraph {
     /// # Errors
     ///
     /// Returns error if function already exists (duplicate name)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_function(&mut self, name: String) -> Result<()> {
         // Check for duplicates
         if self.node_map.contains_key(&name) {
@@ -58,6 +60,7 @@ impl TdgGraph {
     /// # Errors
     ///
     /// Returns error if CSR graph operation fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_edge(&mut self, from: &str, to: &str) -> Result<()> {
         debug_assert!(!from.is_empty(), "from must not be empty");
         debug_assert!(!to.is_empty(), "to must not be empty");
@@ -79,6 +82,7 @@ impl TdgGraph {
     ///
     /// true if function exists, false otherwise
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_function(&self, name: &str) -> bool {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.node_map.contains_key(name)
@@ -92,6 +96,7 @@ impl TdgGraph {
     /// # Errors
     ///
     /// Returns error if PageRank computation fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update_criticality(&mut self) -> Result<()> {
         if self.graph.num_nodes() == 0 {
             return Ok(());
@@ -120,6 +125,7 @@ impl TdgGraph {
     ///
     /// Vec<(function_name, criticality_score)> sorted by score (highest first)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn critical_functions(&self) -> Vec<(String, f32)> {
         let mut functions: Vec<_> = self
             .criticality_scores
@@ -134,12 +140,14 @@ impl TdgGraph {
     ///
     /// Returns the count of functions we've added to the graph.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn num_nodes(&self) -> usize {
         self.node_map.len()
     }
 
     /// Get number of edges in graph
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn num_edges(&self) -> usize {
         self.graph.num_edges()
     }

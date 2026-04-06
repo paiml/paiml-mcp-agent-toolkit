@@ -12,6 +12,7 @@ use crate::models::debug_analysis::*;
 use anyhow::Result;
 
 /// Format analysis as JSON
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_json(analysis: &DebugAnalysis) -> Result<String> {
     let json = serde_json::to_string_pretty(analysis)?;
     Ok(json)

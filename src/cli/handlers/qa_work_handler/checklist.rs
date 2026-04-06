@@ -10,6 +10,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Generate a QA checklist for a task
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_generate_checklist(
     task_id: &str,
     task_type: QaTaskType,
@@ -42,6 +43,7 @@ pub async fn handle_generate_checklist(
 }
 
 /// Generate checklist based on task type
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_checklist(task_id: &str, task_type: QaTaskType) -> QaChecklist {
     debug_assert!(!task_id.is_empty(), "task_id must not be empty");
     let type_str = match task_type {
@@ -248,6 +250,7 @@ pub fn generate_checklist(task_id: &str, task_type: QaTaskType) -> QaChecklist {
 }
 
 /// Format checklist for text display
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_checklist_text(checklist: &QaChecklist) -> String {
     let mut output = String::new();
     output.push_str(&format!("# QA Checklist for {}\n", checklist.task_id));

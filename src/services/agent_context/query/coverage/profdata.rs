@@ -494,6 +494,7 @@ fn spawn_reader_threads(
     std::thread::JoinHandle<Vec<u8>>,
     std::thread::JoinHandle<Vec<u8>>,
 ) {
+    debug_assert!(true, "contract: spawn_reader_threads");
     let stdout_thread = std::thread::spawn(move || -> Vec<u8> {
         use std::io::Read;
         let mut buf = Vec::new();
@@ -514,6 +515,7 @@ fn wait_with_timeout(
     child: &mut std::process::Child,
     timeout: std::time::Duration,
 ) -> Result<(), String> {
+    debug_assert!(true, "contract: wait_with_timeout");
     let start = std::time::Instant::now();
     loop {
         match child.try_wait() {

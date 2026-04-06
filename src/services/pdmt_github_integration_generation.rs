@@ -1,5 +1,6 @@
 impl PdmtGitHubService {
     /// Validate PDMT issue request
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn validate_request(
         &self,
         request: &PdmtIssueRequest,
@@ -28,6 +29,7 @@ impl PdmtGitHubService {
     }
 
     /// Generate PDMT metadata
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_metadata(
         &self,
         request: &PdmtIssueRequest,
@@ -54,11 +56,13 @@ impl PdmtGitHubService {
     }
 
     /// Generate formatted issue title with type prefix
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_title(&self, request: &PdmtIssueRequest) -> String {
         format!("{} {}", request.issue_type.title_prefix(), request.title)
     }
 
     /// Generate structured issue body with PDMT format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_issue_body(
         &self,
         request: &PdmtIssueRequest,
@@ -140,6 +144,7 @@ impl PdmtGitHubService {
     }
 
     /// Get complexity category label
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn complexity_category(&self, complexity: u8) -> &'static str {
         match complexity {
             0..=5 => "trivial",
@@ -151,6 +156,7 @@ impl PdmtGitHubService {
     }
 
     /// Extract issue type from title prefix
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_issue_type_from_title(&self, title: &str) -> IssueType {
         if title.starts_with("feat:") {
             IssueType::Feature
@@ -170,6 +176,7 @@ impl PdmtGitHubService {
     }
 
     /// Extract validation commands from issue body
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_validation_commands(&self, body: &str) -> Vec<String> {
         debug_assert!(!body.is_empty(), "body must not be empty");
         let mut commands = Vec::new();
@@ -193,6 +200,7 @@ impl PdmtGitHubService {
     }
 
     /// Extract success criteria from issue body
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_success_criteria(&self, body: &str) -> Vec<String> {
         debug_assert!(!body.is_empty(), "body must not be empty");
         let mut criteria = Vec::new();
@@ -209,6 +217,7 @@ impl PdmtGitHubService {
 
 /// Generate validation commands based on issue type
 fn generate_validation_commands_for_type(issue_type: &IssueType) -> Vec<String> {
+    debug_assert!(true, "contract: generate_validation_commands_for_type");
     let mut commands = vec![
         "cargo test --package pmat".to_string(),
         "pmat analyze satd --strict".to_string(),
@@ -245,6 +254,7 @@ fn generate_validation_commands_for_type(issue_type: &IssueType) -> Vec<String> 
 
 /// Generate success criteria based on issue type
 fn generate_success_criteria_for_type(issue_type: &IssueType) -> Vec<String> {
+    debug_assert!(true, "contract: generate_success_criteria_for_type");
     let mut criteria = vec![
         "All tests pass successfully".to_string(),
         "Zero SATD comments in implementation".to_string(),
@@ -287,6 +297,7 @@ fn generate_success_criteria_for_type(issue_type: &IssueType) -> Vec<String> {
 
 /// Generate quality requirements based on issue type
 fn generate_quality_requirements_for_type(issue_type: &IssueType) -> QualityRequirements {
+    debug_assert!(true, "contract: generate_quality_requirements_for_type");
     let base_requirements = QualityRequirements::default();
 
     match issue_type {

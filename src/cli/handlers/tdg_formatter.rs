@@ -15,6 +15,7 @@
 ///
 /// Formatted markdown string
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_markdown_output(
     summary: &crate::models::tdg::TDGSummary,
     include_components: bool,

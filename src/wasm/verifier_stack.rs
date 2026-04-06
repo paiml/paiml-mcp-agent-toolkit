@@ -28,6 +28,7 @@ impl StackAnalyzer {
     }
 
     fn update_stack(&self, stack: &mut Vec<ValType>, op: &Operator) -> Result<()> {
+        debug_assert!(true, "contract: update_stack");
         match op {
             // Constants push their type
             Operator::I32Const { .. } => stack.push(ValType::I32),
@@ -99,6 +100,7 @@ impl StackAnalyzer {
 
 /// Pop two i32 operands, push i32 result. Returns Err on stack underflow.
 fn pop_binary_i32(stack: &mut Vec<ValType>) -> Result<()> {
+    debug_assert!(true, "contract: pop_binary_i32");
     if stack.len() < 2 {
         return Err(anyhow!("Stack underflow"));
     }
@@ -110,6 +112,7 @@ fn pop_binary_i32(stack: &mut Vec<ValType>) -> Result<()> {
 
 /// Pop two i64 operands, push i64 result. Returns Err on stack underflow.
 fn pop_binary_i64(stack: &mut Vec<ValType>) -> Result<()> {
+    debug_assert!(true, "contract: pop_binary_i64");
     if stack.len() < 2 {
         return Err(anyhow!("Stack underflow"));
     }
@@ -121,6 +124,7 @@ fn pop_binary_i64(stack: &mut Vec<ValType>) -> Result<()> {
 
 /// Pop two i32 operands for comparison, push i32 result. Returns Err on stack underflow or type error.
 fn pop_comparison_i32(stack: &mut Vec<ValType>) -> Result<()> {
+    debug_assert!(true, "contract: pop_comparison_i32");
     if stack.len() < 2 {
         return Err(anyhow!("Stack underflow"));
     }

@@ -46,6 +46,7 @@ impl Language {
     /// let lang = Language::from_extension(Path::new("bar.py"));
     /// assert_eq!(lang, Language::Python);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_extension(path: &Path) -> Self {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         match path.extension().and_then(|e| e.to_str()) {
@@ -75,6 +76,7 @@ impl Language {
     /// assert_eq!(Language::Python.name(), "Python");
     /// assert_eq!(Language::TypeScript.name(), "TypeScript");
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn name(&self) -> &'static str {
         match self {
             Language::Rust => "Rust",
@@ -99,6 +101,7 @@ impl Language {
     /// assert!(Language::Rust.is_supported());
     /// assert!(!Language::Unsupported.is_supported());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_supported(&self) -> bool {
         !matches!(self, Language::Unsupported)
     }
@@ -116,6 +119,7 @@ impl Language {
     /// assert_eq!(Language::Python.extensions(), vec!["py"]);
     /// assert!(Language::TypeScript.extensions().contains(&"ts"));
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extensions(&self) -> Vec<&'static str> {
         match self {
             Language::Rust => vec!["rs"],

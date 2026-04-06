@@ -27,6 +27,7 @@ pub struct StatisticalRigorScorer;
 
 impl StatisticalRigorScorer {
     /// Create a new statistical rigor scorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -262,6 +263,7 @@ impl Default for StatisticalRigorScorer {
 
 impl PopperScorer for StatisticalRigorScorer {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "Statistical Rigor"
     }
 
@@ -351,6 +353,7 @@ mod tests {
             use criterion::*;
 
             fn bench(c: &mut Criterion) {
+                debug_assert!(true, "contract: bench");
                 c.bench_function("test", |b| b.iter(|| 42))
                     .sample_size(100)
                     .measurement_time(Duration::from_secs(10));

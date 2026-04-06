@@ -8,6 +8,7 @@ fn build_pool_stats_output(
         crate::services::memory_manager::PoolStats,
     >,
 ) -> HashMap<String, PoolStatsOutput> {
+    debug_assert!(true, "contract: build_pool_stats_output");
     let mut pool_stats_output = HashMap::new();
 
     for (pool_type, pool_stats) in pool_stats {
@@ -33,6 +34,7 @@ fn build_pool_stats_output(
 fn generate_memory_recommendations(
     stats: &crate::services::memory_manager::MemoryStats,
 ) -> Vec<String> {
+    debug_assert!(true, "contract: generate_memory_recommendations");
     let mut recommendations = Vec::new();
 
     add_pressure_recommendations(&mut recommendations, stats.allocation_pressure);
@@ -47,6 +49,7 @@ fn generate_memory_recommendations(
 
 /// Add memory pressure recommendations
 fn add_pressure_recommendations(recommendations: &mut Vec<String>, allocation_pressure: f64) {
+    debug_assert!(true, "contract: add_pressure_recommendations");
     if allocation_pressure > 0.9 {
         recommendations.push(
             "CRITICAL: Memory pressure very high. Consider reducing workload or increasing limits."
@@ -65,6 +68,7 @@ fn add_pool_efficiency_recommendations(
         crate::services::memory_manager::PoolStats,
     >,
 ) {
+    debug_assert!(true, "contract: add_pool_efficiency_recommendations");
     for (pool_type, pool_stats) in pool_stats {
         if pool_stats.reuse_ratio < 0.3 {
             recommendations.push(format!(
@@ -89,12 +93,14 @@ fn output_memory_stats(output: &MemoryStatsOutput, format: &str, detailed: bool)
 
 /// Output statistics in JSON format
 fn output_json_format(output: &MemoryStatsOutput) -> Result<()> {
+    debug_assert!(true, "contract: output_json_format");
     println!("{}", serde_json::to_string_pretty(output)?);
     Ok(())
 }
 
 /// Output statistics in CSV format
 fn output_csv_format(output: &MemoryStatsOutput) -> Result<()> {
+    debug_assert!(true, "contract: output_csv_format");
     println!("metric,value");
     println!("total_allocated,{}", output.total_allocated);
     println!("peak_usage,{}", output.peak_usage);
@@ -104,6 +110,7 @@ fn output_csv_format(output: &MemoryStatsOutput) -> Result<()> {
 }
 
 fn print_memory_stats_table(stats: &MemoryStatsOutput, detailed: bool) -> Result<()> {
+    debug_assert!(true, "contract: print_memory_stats_table");
     print_header();
     print_overall_stats(stats);
 
@@ -118,6 +125,7 @@ fn print_memory_stats_table(stats: &MemoryStatsOutput, detailed: bool) -> Result
 
 /// Print the memory statistics header
 fn print_header() {
+    debug_assert!(true, "contract: print_header");
     use crate::cli::colors as c;
 
     println!("{}", c::header("PMAT Memory Statistics"));
@@ -126,6 +134,7 @@ fn print_header() {
 
 /// Print overall memory usage statistics
 fn print_overall_stats(stats: &MemoryStatsOutput) {
+    debug_assert!(true, "contract: print_overall_stats");
     use crate::cli::colors as c;
 
     println!("{}", c::subheader("Overall Memory Usage:"));
@@ -198,6 +207,7 @@ fn print_recommendations(recommendations: &[String]) {
 
 /// Calculate efficiency rating from reuse ratio
 fn calculate_pool_efficiency_rating(reuse_ratio: f64) -> &'static str {
+    debug_assert!(true, "contract: calculate_pool_efficiency_rating");
     if reuse_ratio > 0.8 {
         "Excellent"
     } else if reuse_ratio > 0.6 {
@@ -211,5 +221,6 @@ fn calculate_pool_efficiency_rating(reuse_ratio: f64) -> &'static str {
 
 /// Format bytes in human-readable format (delegates to batuta-common)
 fn format_bytes(bytes: usize) -> String {
+    debug_assert!(true, "contract: format_bytes");
     batuta_common::fmt::format_bytes(bytes as u64)
 }

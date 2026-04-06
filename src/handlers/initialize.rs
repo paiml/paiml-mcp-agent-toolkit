@@ -4,6 +4,7 @@ use crate::TemplateServerTrait;
 use serde_json::json;
 use std::sync::Arc;
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_initialize<T: TemplateServerTrait>(
     _server: Arc<T>,
     request: McpRequest,
@@ -67,6 +68,7 @@ include!("initialize_tools_reporting.rs");
 // Assembler function that combines all analysis tools
 include!("initialize_tools_analysis.rs");
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_tools_list<T: TemplateServerTrait>(
     _server: Arc<T>,
     request: McpRequest,

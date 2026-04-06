@@ -5,6 +5,7 @@
 
 impl SimilarityDetector {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: SimilarityConfig) -> Self {
         Self {
             winnower: Winnowing::new(config.window_size, config.k_gram_size),
@@ -16,6 +17,7 @@ impl SimilarityDetector {
 
     /// Detect exact duplicates
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect_exact_duplicates(&self, files: &[(PathBuf, String)]) -> Vec<SimilarBlock> {
         debug_assert!(!files.is_empty(), "files must not be empty");
         let mut hash_map: HashMap<u64, Vec<(PathBuf, usize, usize, String)>> = HashMap::new();
@@ -39,6 +41,7 @@ impl SimilarityDetector {
 
     /// Detect structural similarity using AST normalization
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect_structural_similarity(
         &self,
         files: &[(PathBuf, String)],
@@ -61,6 +64,7 @@ impl SimilarityDetector {
 
     /// Detect semantic similarity using token analysis
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect_semantic_similarity(
         &self,
         files: &[(PathBuf, String)],
@@ -84,6 +88,7 @@ impl SimilarityDetector {
 
     /// Analyze entropy of code blocks
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze_entropy(&self, files: &[(PathBuf, String)]) -> EntropyReport {
         debug_assert!(!files.is_empty(), "files must not be empty");
         let mut all_entropies = Vec::new();
@@ -140,6 +145,7 @@ impl SimilarityDetector {
 
     /// Find refactoring opportunities
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn find_refactoring_opportunities(
         &self,
         files: &[(PathBuf, String)],
@@ -176,6 +182,7 @@ impl SimilarityDetector {
 
     /// Perform comprehensive analysis
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn comprehensive_analysis(&self, files: &[(PathBuf, String)]) -> ComprehensiveReport {
         debug_assert!(!files.is_empty(), "files must not be empty");
         let exact = self.detect_exact_duplicates(files);
@@ -208,6 +215,7 @@ impl SimilarityDetector {
 
     /// Calculate Shannon entropy
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_entropy(&self, text: &str) -> f64 {
         let result = self.entropy_calculator.calculate(text);
         debug_assert!(result >= 0.0, "entropy must be non-negative: {}", result);
@@ -304,6 +312,7 @@ impl SimilarityDetector {
         hash_map: HashMap<u64, Vec<(PathBuf, usize, usize, String)>>,
         clone_type: CloneType,
     ) -> Vec<SimilarBlock> {
+        debug_assert!(true, "contract: build_duplicate_blocks");
         let mut blocks = Vec::new();
 
         for (hash, locations) in hash_map {

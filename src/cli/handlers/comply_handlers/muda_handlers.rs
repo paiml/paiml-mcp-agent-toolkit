@@ -91,6 +91,7 @@ impl MudaGrade {
 ///
 /// Inventory (SATD) elevated to 20% — stale TODO/FIXME/HACK accumulation
 /// is a primary signal of unmaintained code and must not be masked.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
     debug_assert!(
         project_path.exists(),

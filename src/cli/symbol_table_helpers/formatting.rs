@@ -9,6 +9,7 @@ use super::types::SymbolInfo;
 
 /// Format symbol table summary
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_symbol_table_summary(symbols: &[SymbolInfo], deep_context: &DeepContext) -> String {
     debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut output = String::with_capacity(1024);
@@ -56,6 +57,7 @@ pub fn format_symbol_table_summary(symbols: &[SymbolInfo], deep_context: &DeepCo
 
 /// Format symbol table detailed output
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_symbol_table_detailed(symbols: &[SymbolInfo]) -> String {
     debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut output = String::with_capacity(1024);
@@ -95,6 +97,7 @@ pub fn format_symbol_table_detailed(symbols: &[SymbolInfo]) -> String {
 
 /// Format symbol table as CSV
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_symbol_table_csv(symbols: &[SymbolInfo]) -> String {
     debug_assert!(!symbols.is_empty(), "symbols must not be empty");
     let mut output = String::with_capacity(1024);

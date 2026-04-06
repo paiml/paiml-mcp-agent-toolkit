@@ -16,6 +16,7 @@ impl Default for UtilityCommandGroup {
 
 impl UtilityCommandGroup {
     /// Handle list command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn handle_list(
         &self,
         server: Arc<StatelessTemplateServer>,
@@ -28,6 +29,7 @@ impl UtilityCommandGroup {
     }
 
     /// Handle search command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn handle_search(
         &self,
         server: Arc<StatelessTemplateServer>,
@@ -41,6 +43,7 @@ impl UtilityCommandGroup {
 
     /// Handle context command
     #[allow(clippy::too_many_arguments)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn handle_context(
         &self,
         toolchain: Option<String>,
@@ -66,6 +69,7 @@ impl UtilityCommandGroup {
     }
 
     /// Handle serve command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn handle_serve(
         &self,
         host: String,
@@ -77,6 +81,7 @@ impl UtilityCommandGroup {
     }
 
     /// Handle diagnose command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn handle_diagnose(&self, args: crate::cli::diagnose::DiagnoseArgs) -> Result<()> {
         crate::cli::handlers::utility_handlers::handle_diagnose(args).await
     }

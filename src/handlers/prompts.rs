@@ -4,6 +4,7 @@ use crate::TemplateServerTrait;
 use serde_json::json;
 use std::sync::Arc;
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_prompts_list<T: TemplateServerTrait>(
     _server: Arc<T>,
     request: McpRequest,
@@ -90,6 +91,7 @@ pub async fn handle_prompts_list<T: TemplateServerTrait>(
     )
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_prompt_get<T: TemplateServerTrait>(
     _server: Arc<T>,
     request: McpRequest,

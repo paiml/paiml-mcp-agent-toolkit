@@ -218,6 +218,7 @@ fn find_lua_var_name(node: Node, source: &str) -> Option<String> {
 
 /// Check if a node or its children contain a function_definition
 fn has_function_definition(node: Node) -> bool {
+    debug_assert!(true, "contract: has_function_definition");
     if node.kind() == "function_definition" {
         return true;
     }

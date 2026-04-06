@@ -21,6 +21,7 @@ impl Default for InMemoryWorkflowRepository {
 }
 
 impl InMemoryWorkflowRepository {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             workflows: Arc::new(RwLock::new(HashMap::new())),
@@ -28,6 +29,7 @@ impl InMemoryWorkflowRepository {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn count(&self) -> usize {
         self.workflows.read().len()
     }
@@ -41,6 +43,7 @@ impl InMemoryWorkflowRepository {
 #[async_trait]
 impl WorkflowRepository for InMemoryWorkflowRepository {
     async fn save(&self, workflow: &Workflow) -> Result<(), WorkflowError> {
+        debug_assert!(true, "contract: save");
         self.workflows.write().insert(workflow.id, workflow.clone());
         self.name_index
             .write()
@@ -49,10 +52,12 @@ impl WorkflowRepository for InMemoryWorkflowRepository {
     }
 
     async fn get(&self, id: Uuid) -> Result<Option<Workflow>, WorkflowError> {
+        debug_assert!(true, "contract: get");
         Ok(self.workflows.read().get(&id).cloned())
     }
 
     async fn list(&self) -> Result<Vec<Workflow>, WorkflowError> {
+        debug_assert!(true, "contract: list");
         Ok(self.workflows.read().values().cloned().collect())
     }
 

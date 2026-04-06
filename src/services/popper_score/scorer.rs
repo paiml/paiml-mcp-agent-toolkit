@@ -62,6 +62,7 @@ pub mod workspace {
     ///
     /// # Returns
     /// * `WorkspaceInfo` - Information about the workspace
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect_workspace(project_path: &Path) -> WorkspaceInfo {
         debug_assert!(
             project_path.exists(),
@@ -135,6 +136,7 @@ pub mod workspace {
     ///
     /// For workspaces: returns all member paths
     /// For single crates: returns just the project path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_code_paths(project_path: &Path) -> Vec<PathBuf> {
         debug_assert!(
             project_path.exists(),
@@ -146,6 +148,7 @@ pub mod workspace {
     }
 
     /// Check if any workspace member has a specific directory (e.g., "tests", "benches")
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn any_member_has_dir(project_path: &Path, dir_name: &str) -> bool {
         debug_assert!(
             project_path.exists(),
@@ -161,6 +164,7 @@ pub mod workspace {
     }
 
     /// Check if any workspace member has a file matching a pattern
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn any_member_has_file(project_path: &Path, file_name: &str) -> bool {
         debug_assert!(
             project_path.exists(),
@@ -176,6 +180,7 @@ pub mod workspace {
     }
 
     /// Read content from a specific directory across all workspace members
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn read_member_dir_content(project_path: &Path, dir_name: &str, extension: &str) -> String {
         debug_assert!(
             project_path.exists(),
@@ -229,6 +234,7 @@ pub trait PopperScorer: Send + Sync {
 
     /// Whether this category is the gateway (Category A)
     fn is_gateway(&self) -> bool {
+        debug_assert!(true, "contract: name");
         self.category_id() == 'A'
     }
 
@@ -260,6 +266,7 @@ mod tests {
 
     impl PopperScorer for MockScorer {
         fn name(&self) -> &str {
+            debug_assert!(true, "contract: name");
             &self.name
         }
 

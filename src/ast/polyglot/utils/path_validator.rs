@@ -22,6 +22,7 @@ impl PolyglotPathValidator {
     /// # Returns
     /// * `Ok(())` if path exists and is a directory
     /// * `Err` with descriptive message otherwise
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn validate_directory_path(path: &Path) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         PathValidator::validate_directory_anyhow(path)
@@ -36,6 +37,7 @@ impl PolyglotPathValidator {
     /// # Returns
     /// * `Ok(())` if path exists and is a file
     /// * `Err` with descriptive message otherwise
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn validate_file_path(path: &Path) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         PathValidator::validate_file_anyhow(path)
@@ -51,6 +53,7 @@ impl PolyglotPathValidator {
     /// # Returns
     /// * `true` if path is a valid file for the specified language (or any supported language if None)
     /// * `false` otherwise
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn is_valid_language_file(path: &Path, language: Option<Language>) -> bool {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !PathValidator::is_valid_file(path) {
@@ -72,6 +75,7 @@ impl PolyglotPathValidator {
     /// # Returns
     /// * `true` if the file extension matches the language
     /// * `false` otherwise
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn is_file_for_language(path: &Path, language: Language) -> bool {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
@@ -93,6 +97,7 @@ impl PolyglotPathValidator {
     /// # Returns
     /// * `true` if the file extension matches any supported language
     /// * `false` otherwise
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn is_any_supported_language_file(path: &Path) -> bool {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Language::from_path(path).is_some()
@@ -107,6 +112,7 @@ impl PolyglotPathValidator {
     ///
     /// # Returns
     /// * Vector of paths to files matching the language
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_language_files_in_dir(
         directory: &Path,
         language: Language,

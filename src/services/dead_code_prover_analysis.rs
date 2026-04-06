@@ -3,6 +3,7 @@
 
 impl DynamicDispatchAnalyzer {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             trait_impls: HashMap::new(),
@@ -13,6 +14,7 @@ impl DynamicDispatchAnalyzer {
 
     /// Find trait object usage for a symbol
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_trait_object_usage(&self, symbol: &SymbolId) -> Option<Usage> {
         // Check if symbol implements trait used in dyn Trait
         for (trait_name, impls) in &self.trait_impls {
@@ -32,6 +34,7 @@ impl DynamicDispatchAnalyzer {
 
 impl DeadCodeProver {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             reachability: ReachabilityAnalyzer::new(),
@@ -42,11 +45,13 @@ impl DeadCodeProver {
 
     /// Get access to FFI tracker for testing
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn ffi_tracker(&self) -> &FFIReferenceTracker {
         &self.ffi_tracker
     }
 
     /// Analyze file for dead code with FFI awareness
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze_file(&mut self, file_path: &Path, content: &str) -> Vec<DeadCodeProof> {
         debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let file_path_str = file_path.to_string_lossy().to_string();
@@ -125,6 +130,7 @@ impl DeadCodeProver {
 
     /// Generate comprehensive dead code report
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_report(&self, proofs: &[DeadCodeProof]) -> DeadCodeReport {
         debug_assert!(!proofs.is_empty(), "proofs must not be empty");
         let mut dead_functions = Vec::new();

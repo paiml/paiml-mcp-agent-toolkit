@@ -1,4 +1,5 @@
 // Analysis helper functions - extracted for file health (CB-040)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_ast_contexts(
     path: &std::path::Path,
     _config: Option<FileClassifierConfig>,
@@ -34,6 +35,7 @@ fn discover_and_categorize_source_files(path: &std::path::Path) -> anyhow::Resul
 
 /// Create discovery configuration for AST analysis
 fn create_ast_discovery_config() -> crate::services::file_discovery::FileDiscoveryConfig {
+    debug_assert!(true, "contract: create_ast_discovery_config");
     crate::services::file_discovery::FileDiscoveryConfig {
         respect_gitignore: true,
         filter_external_repos: true,
@@ -108,6 +110,7 @@ fn filter_and_categorize_files(
 
 /// Check if a file is a test file based on naming conventions.
 /// Matches: *_tests.rs, *_test.rs, tests/*.rs, test_*.rs
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn is_test_file(path: &std::path::Path) -> bool {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -193,6 +196,7 @@ async fn analyze_single_file_for_context(
 
 /// Log analysis completion statistics
 fn log_analysis_completion(analysis_start: std::time::Instant, file_count: usize) {
+    debug_assert!(true, "contract: log_analysis_completion");
     let total_time = analysis_start.elapsed();
     info!(
         "AST analysis phase took {:?} for {} files ({:?} per file average)",

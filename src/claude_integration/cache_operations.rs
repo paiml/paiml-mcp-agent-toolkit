@@ -2,6 +2,7 @@
 // Included by cache.rs via include!()
 
 impl TwoTierCache {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             l1: Arc::new(RwLock::new(HashMap::new())),
@@ -16,6 +17,7 @@ impl TwoTierCache {
     }
 
     /// Get value from cache or load it
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub async fn get_with_loader<F, Fut>(&self, key: &str, loader: F) -> Arc<AnalysisResult>
     where
         F: FnOnce() -> Fut,
@@ -74,6 +76,7 @@ impl TwoTierCache {
 
     /// Hash key using FNV-1a
     #[inline(always)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn hash_key(&self, key: &str) -> u64 {
         debug_assert!(!key.is_empty(), "key must not be empty");
         let mut hasher = FnvHasher::default();
@@ -82,6 +85,7 @@ impl TwoTierCache {
     }
 
     /// Get cache hit rate metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn hit_rate(&self) -> CacheMetrics {
         let l1_total =
             self.l1_hits.load(Ordering::Relaxed) + self.l1_misses.load(Ordering::Relaxed);
@@ -119,12 +123,14 @@ impl TwoTierCache {
     }
 
     /// Clear all caches
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn clear(&self) {
         self.l1.write().await.clear();
         self.l2.write().await.clear();
     }
 
     /// Evict expired entries
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn evict_expired(&self) {
         {
             let mut l1_guard = self.l1.write().await;

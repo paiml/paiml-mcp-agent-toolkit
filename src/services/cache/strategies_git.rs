@@ -58,12 +58,14 @@ impl CacheStrategy for ChurnCacheStrategy {
     type Value = CodeChurnAnalysis;
 
     fn cache_key(&self, (repo, period_days): &(PathBuf, u32)) -> String {
+        debug_assert!(true, "contract: cache_key");
         // Include HEAD commit SHA for invalidation
         let head = self.get_git_head(repo).unwrap_or_default();
         format!("churn:{}:{}:{}", repo.display(), period_days, head)
     }
 
     fn validate(&self, (repo, _): &(PathBuf, u32), _cached: &CodeChurnAnalysis) -> bool {
+        debug_assert!(true, "contract: validate");
         // Check if HEAD has moved
         if let Some(_current_head) = self.get_git_head(repo) {
             // The cache key includes the HEAD commit, so if we get here

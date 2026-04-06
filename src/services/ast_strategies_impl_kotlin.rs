@@ -31,6 +31,7 @@ impl KotlinAstStrategy {
     }
 
     /// Extract function name from Kotlin source text
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_function_name(source_text: &str) -> Option<String> {
         debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for pattern: fun name(...)
@@ -49,6 +50,7 @@ impl KotlinAstStrategy {
     }
 
     /// Extract class/interface/object name from source text
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_class_name(source_text: &str) -> Option<String> {
         debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for patterns like "class Name", "interface Name", "object Name",
@@ -94,6 +96,7 @@ impl KotlinAstStrategy {
     }
 
     /// Convert byte position to line number
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn byte_pos_to_line(byte_pos: usize, content_lines: &[&str]) -> usize {
         let mut current_pos = 0;
         for (line_idx, line) in content_lines.iter().enumerate() {

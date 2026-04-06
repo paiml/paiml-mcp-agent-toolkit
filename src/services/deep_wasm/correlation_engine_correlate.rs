@@ -9,6 +9,7 @@ impl CorrelationEngine {
     /// 2. Use source map entries as fallback
     /// 3. Match by function name where possible
     /// 4. Assign confidence scores based on matching quality
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn correlate(
         &self,
         dwarf_entries: &[DwarfDebugEntry],

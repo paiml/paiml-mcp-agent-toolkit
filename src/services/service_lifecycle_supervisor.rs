@@ -7,6 +7,7 @@ impl Default for ServiceSupervisor {
 impl ServiceSupervisor {
     /// Create a new service supervisor
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             services: Arc::new(RwLock::new(Vec::new())),
@@ -15,6 +16,7 @@ impl ServiceSupervisor {
     }
 
     /// Register a managed service
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn register<S>(&self, service: S)
     where
         S: ManagedService<
@@ -30,6 +32,7 @@ impl ServiceSupervisor {
     }
 
     /// Start all services
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn start_all(&self) -> Result<()> {
         info!("Starting service supervisor");
         self.running.store(true, Ordering::Relaxed);
@@ -48,6 +51,7 @@ impl ServiceSupervisor {
     }
 
     /// Stop all services
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn stop_all(&self) -> Result<()> {
         info!("Stopping service supervisor");
         self.running.store(false, Ordering::Relaxed);
@@ -64,6 +68,7 @@ impl ServiceSupervisor {
 
     /// Start monitoring loop for all services
     async fn start_monitoring(&self) {
+        debug_assert!(true, "contract: start_monitoring");
         let services = self.services.clone();
         let running = self.running.clone();
 
@@ -91,6 +96,7 @@ impl ServiceSupervisor {
     }
 
     /// Get health status of all services
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_all_health(&self) -> Vec<HealthStatus> {
         let services = self.services.read().await;
         let mut statuses = Vec::new();

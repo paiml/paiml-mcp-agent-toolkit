@@ -1,6 +1,7 @@
 impl DemoContent {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_analysis_results(
         dag: &DependencyGraph,
         files_analyzed: usize,
@@ -55,6 +56,7 @@ impl DemoContent {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn with_ai_recommendations(
         mut self,
         project_path: &std::path::Path,
@@ -78,6 +80,7 @@ impl DemoContent {
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn with_polyglot_analysis(mut self, project_path: &std::path::Path) -> Self {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let polyglot_analyzer = PolyglotAnalyzer::new();
@@ -92,6 +95,7 @@ impl DemoContent {
 
 // For backwards compatibility with synchronous API
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn spawn_sync(initial_content: DemoContent) -> Result<LocalDemoServer> {
     // Create a tokio runtime for the synchronous API
     let runtime = tokio::runtime::Runtime::new()?;

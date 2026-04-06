@@ -4,6 +4,7 @@ fn check_for_failures(
     security: Option<&Vec<VulnerabilityMatch>>,
     baseline: Option<&QualityAssessment>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: check_for_failures");
     check_verification_failure(verification)?;
     check_security_failures(security)?;
     check_baseline_failure(baseline)?;
@@ -12,6 +13,7 @@ fn check_for_failures(
 
 /// Check verification result for failures (Complexity: 3)
 fn check_verification_failure(verification: Option<&VerificationResult>) -> Result<()> {
+    debug_assert!(true, "contract: check_verification_failure");
     if let Some(verification) = verification {
         if !verification.is_safe() {
             anyhow::bail!("❌ Verification failed: {verification:?}");
@@ -22,6 +24,7 @@ fn check_verification_failure(verification: Option<&VerificationResult>) -> Resu
 
 /// Check security results for critical vulnerabilities (Complexity: 4)
 fn check_security_failures(security: Option<&Vec<VulnerabilityMatch>>) -> Result<()> {
+    debug_assert!(true, "contract: check_security_failures");
     if let Some(security) = security {
         let critical_count = security
             .iter()
@@ -37,6 +40,7 @@ fn check_security_failures(security: Option<&Vec<VulnerabilityMatch>>) -> Result
 
 /// Check baseline comparison for quality regression (Complexity: 3)
 fn check_baseline_failure(baseline: Option<&QualityAssessment>) -> Result<()> {
+    debug_assert!(true, "contract: check_baseline_failure");
     if let Some(baseline_comp) = baseline {
         if !baseline_comp.is_passing() {
             anyhow::bail!("❌ Quality regression detected");
@@ -47,6 +51,7 @@ fn check_baseline_failure(baseline: Option<&QualityAssessment>) -> Result<()> {
 
 /// Create metrics from analysis result for baseline comparison (Complexity: 1)
 fn create_metrics_from_analysis(analysis: &AnalysisResult) -> Metrics {
+    debug_assert!(true, "contract: create_metrics_from_analysis");
     Metrics {
         timestamp: chrono::Utc::now(),
         complexity_p90: analysis.max_complexity.saturating_sub(2),

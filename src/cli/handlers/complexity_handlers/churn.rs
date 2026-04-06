@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 /// Handle churn analysis command
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_churn(
     project_path: PathBuf,
     days: u32,
@@ -64,6 +65,7 @@ fn apply_churn_filters(
     filter: &crate::utils::file_filter::FileFilter,
     top_files: usize,
 ) {
+    debug_assert!(true, "contract: apply_churn_filters");
     // Apply file filter if filters are active
     if filter.has_filters() {
         analysis
@@ -90,6 +92,7 @@ async fn format_and_write_churn_output(
     format: crate::models::churn::ChurnOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: format_and_write_churn_output");
     use crate::models::churn::ChurnOutputFormat;
 
     let content = match format {

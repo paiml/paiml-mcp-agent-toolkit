@@ -3,6 +3,7 @@
 
 impl ExportService {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let mut exporters: std::collections::HashMap<String, Box<dyn Exporter>> =
             std::collections::HashMap::new();
@@ -14,6 +15,7 @@ impl ExportService {
         Self { exporters }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn export(&self, format: &str, report: &ExportReport) -> Result<String> {
         self.exporters
             .get(format)
@@ -21,6 +23,7 @@ impl ExportService {
             .export(report)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save_to_file(&self, format: &str, report: &ExportReport, path: &Path) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = self.export(format, report)?;
@@ -29,6 +32,7 @@ impl ExportService {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn supported_formats(&self) -> Vec<&str> {
         self.exporters
             .keys()
@@ -45,6 +49,7 @@ impl Default for ExportService {
 
 // Helper to create ExportReport from analysis results
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn create_export_report(
     repo_name: &str,
     dag: &DependencyGraph,
@@ -73,6 +78,7 @@ pub fn create_export_report(
 // Full helper to create comprehensive ExportReport
 #[allow(clippy::too_many_arguments)]
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn create_full_export_report(
     repo_name: &str,
     dag: &DependencyGraph,

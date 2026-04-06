@@ -5,6 +5,7 @@ use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 
 /// Toyota Way Single Responsibility: Handle Rust file analysis
 /// OPTIMIZATION: Uses UnifiedRustAnalyzer to parse file once and extract both AST and complexity
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_rust_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {

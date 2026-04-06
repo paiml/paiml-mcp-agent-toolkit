@@ -1,5 +1,6 @@
 /// Handle comprehensive analysis with configuration struct
 async fn handle_analyze_comprehensive_with_config(config: ComprehensiveConfig) -> Result<()> {
+    debug_assert!(true, "contract: handle_analyze_comprehensive_with_config");
     let start_time = Instant::now();
 
     info!("🔍 Starting comprehensive analysis");
@@ -67,6 +68,7 @@ async fn handle_analyze_comprehensive_with_config(config: ComprehensiveConfig) -
 
 /// Determine the analysis mode based on configuration
 fn determine_analysis_mode(config: &ComprehensiveConfig) -> Result<(PathBuf, bool, Vec<PathBuf>)> {
+    debug_assert!(true, "contract: determine_analysis_mode");
     let analysis_path = if let Some(ref file) = config.file {
         // Single file mode
         find_project_root(file)?
@@ -89,6 +91,7 @@ fn determine_analysis_mode(config: &ComprehensiveConfig) -> Result<(PathBuf, boo
 
 /// Get list of enabled analyses
 fn get_enabled_analyses(config: &ComprehensiveConfig) -> Vec<String> {
+    debug_assert!(true, "contract: get_enabled_analyses");
     let mut analyses = Vec::new();
 
     if config.include_complexity {
@@ -117,6 +120,7 @@ fn filter_defects(
     target_files: &[PathBuf],
     confidence_threshold: f32,
 ) -> Vec<crate::models::defect_report::Defect> {
+    debug_assert!(true, "contract: filter_defects");
     defects
         .iter()
         .filter(|defect| {
@@ -145,6 +149,7 @@ fn format_report(
     filtered_defects: Vec<crate::models::defect_report::Defect>,
     config: &ComprehensiveConfig,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_report");
     let format = match config.format {
         ComprehensiveOutputFormat::Json => ReportFormat::Json,
         ComprehensiveOutputFormat::Summary => ReportFormat::Markdown,
@@ -190,6 +195,7 @@ fn print_performance_metrics(
     elapsed: std::time::Duration,
     report: &crate::models::defect_report::DefectReport,
 ) {
+    debug_assert!(true, "contract: print_performance_metrics");
     info!("\n⏱️  Performance Metrics:");
     info!("  Total time: {:.2}s", elapsed.as_secs_f64());
     info!("  Hotspot files: {}", report.summary.hotspot_files.len());

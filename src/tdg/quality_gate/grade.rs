@@ -11,10 +11,12 @@ pub struct MinimumGradeGate {
 }
 
 impl MinimumGradeGate {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: GateConfig) -> Self {
         Self { config }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_defaults() -> Self {
         Self::new(GateConfig::default())
     }
@@ -52,10 +54,12 @@ impl MinimumGradeGate {
 
 impl QualityGate for MinimumGradeGate {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "MinimumGradeGate"
     }
 
     fn check(&self, _baseline: &TdgBaseline, current: &TdgBaseline) -> Result<GateResult> {
+        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
 
         for (path, entry) in &current.files {

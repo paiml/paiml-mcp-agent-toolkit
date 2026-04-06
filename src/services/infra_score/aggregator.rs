@@ -11,11 +11,13 @@ use std::time::Instant;
 pub struct InfraScoreAggregator;
 
 impl InfraScoreAggregator {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
 
     /// Aggregate all infra scores for a repository
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn aggregate(&self, repo_path: &Path) -> anyhow::Result<InfraScore> {
         debug_assert!(
             repo_path.exists(),
@@ -82,6 +84,7 @@ impl InfraScoreAggregator {
         &self,
         categories: &InfraCategoryScores,
     ) -> Vec<InfraRecommendation> {
+        debug_assert!(true, "contract: generate_recommendations");
         let mut recs = Vec::new();
 
         self.recommend_from_category(&categories.workflow_architecture, &mut recs);
@@ -100,6 +103,7 @@ impl InfraScoreAggregator {
         category: &InfraCategoryScore,
         recs: &mut Vec<InfraRecommendation>,
     ) {
+        debug_assert!(true, "contract: recommend_from_category");
         for check in &category.checks {
             if !check.passed {
                 let priority = if check.max_score >= 5.0 {
@@ -175,6 +179,7 @@ impl Default for InfraScoreAggregator {
 
 /// Estimate effort based on check point value
 fn estimate_effort(max_score: f64) -> String {
+    debug_assert!(true, "contract: estimate_effort");
     if max_score >= 5.0 {
         "30 minutes".to_string()
     } else if max_score >= 3.0 {

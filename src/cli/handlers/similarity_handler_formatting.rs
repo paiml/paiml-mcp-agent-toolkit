@@ -1,4 +1,5 @@
 fn format_summary_report(report: &ComprehensiveReport) -> Result<String> {
+    debug_assert!(true, "contract: format_summary_report");
     use std::fmt::Write;
     let mut output = String::new();
 
@@ -12,6 +13,7 @@ fn format_summary_report(report: &ComprehensiveReport) -> Result<String> {
 }
 
 fn format_summary_metrics(output: &mut String, metrics: &Metrics) -> Result<()> {
+    debug_assert!(true, "contract: format_summary_metrics");
     use std::fmt::Write;
 
     writeln!(output, "## Metrics")?;
@@ -28,6 +30,7 @@ fn format_summary_metrics(output: &mut String, metrics: &Metrics) -> Result<()> 
 }
 
 fn format_summary_clone_types(output: &mut String, report: &ComprehensiveReport) -> Result<()> {
+    debug_assert!(true, "contract: format_summary_clone_types");
     use std::fmt::Write;
 
     writeln!(output, "## Clone Types")?;
@@ -69,6 +72,7 @@ fn format_summary_refactoring_opportunities(
 }
 
 fn format_detailed_report(report: &ComprehensiveReport) -> Result<String> {
+    debug_assert!(true, "contract: format_detailed_report");
     use std::fmt::Write;
     let mut output = String::new();
 
@@ -88,6 +92,7 @@ fn format_detailed_report(report: &ComprehensiveReport) -> Result<String> {
 
 /// Format metrics section (cognitive complexity ≤5)
 fn format_metrics_section(output: &mut String, metrics: &Metrics) -> Result<()> {
+    debug_assert!(true, "contract: format_metrics_section");
     use std::fmt::Write;
 
     writeln!(output, "## Overall Metrics")?;
@@ -125,6 +130,7 @@ fn format_exact_duplicates_section(
 
 /// Format a single duplicate block (cognitive complexity ≤6)
 fn format_single_duplicate_block(output: &mut String, block: &SimilarBlock) -> Result<()> {
+    debug_assert!(true, "contract: format_single_duplicate_block");
     use std::fmt::Write;
 
     writeln!(output, "\n### Block {}", block.id)?;
@@ -170,6 +176,7 @@ fn format_structural_similarities_section(
 
 /// Format a single structural similarity block (cognitive complexity ≤6)
 fn format_single_structural_block(output: &mut String, block: &SimilarBlock) -> Result<()> {
+    debug_assert!(true, "contract: format_single_structural_block");
     use std::fmt::Write;
 
     writeln!(output, "\n### Similarity {}", block.id)?;
@@ -195,6 +202,7 @@ fn format_entropy_analysis_section(
     output: &mut String,
     entropy_analysis: &Option<EntropyReport>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: format_entropy_analysis_section");
     use std::fmt::Write;
 
     let Some(entropy) = entropy_analysis else {
@@ -212,6 +220,7 @@ fn format_entropy_analysis_section(
 
 /// Format high entropy blocks (cognitive complexity ≤7)
 fn format_high_entropy_blocks(output: &mut String, entropy: &EntropyReport) -> Result<()> {
+    debug_assert!(true, "contract: format_high_entropy_blocks");
     use std::fmt::Write;
 
     if entropy.high_entropy_blocks.is_empty() {
@@ -229,6 +238,7 @@ fn format_high_entropy_blocks(output: &mut String, entropy: &EntropyReport) -> R
 
 /// Format low entropy patterns (cognitive complexity ≤7)
 fn format_low_entropy_patterns(output: &mut String, entropy: &EntropyReport) -> Result<()> {
+    debug_assert!(true, "contract: format_low_entropy_patterns");
     use std::fmt::Write;
 
     if entropy.low_entropy_patterns.is_empty() {
@@ -246,6 +256,7 @@ fn format_low_entropy_patterns(output: &mut String, entropy: &EntropyReport) -> 
 
 /// Format single entropy block item (cognitive complexity ≤4)
 fn format_entropy_block_item(output: &mut String, block: &EntropyBlock) -> Result<()> {
+    debug_assert!(true, "contract: format_entropy_block_item");
     use std::fmt::Write;
 
     writeln!(
@@ -283,6 +294,7 @@ fn format_refactoring_opportunities_section(
 
 /// Format single refactoring hint (cognitive complexity ≤7)
 fn format_single_refactoring_hint(output: &mut String, hint: &RefactoringHint) -> Result<()> {
+    debug_assert!(true, "contract: format_single_refactoring_hint");
     use std::fmt::Write;
 
     writeln!(output, "\n### {}", hint.pattern)?;

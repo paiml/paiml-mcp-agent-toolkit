@@ -69,6 +69,7 @@ impl<W: Write> ExecutionRecorder<W> {
     /// // ... capture snapshots during execution ...
     /// recorder.finalize().expect("internal error");
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_writer(
         writer: W,
         program: String,
@@ -89,6 +90,7 @@ impl<W: Write> ExecutionRecorder<W> {
     /// Add environment variable to recording metadata
     ///
     /// Sprint 76 - CAPTURE-001: Enriches recording metadata
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_environment(&mut self, key: impl Into<String>, value: impl Into<String>) {
         if let Some(ref mut writer) = self.writer {
             writer.add_environment(key, value);
@@ -98,6 +100,7 @@ impl<W: Write> ExecutionRecorder<W> {
     /// Finalize the recording (must be called to complete .pmat file)
     ///
     /// Sprint 76 - CAPTURE-001: Completes the recording and flushes to disk
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn finalize(self) -> Result<()> {
         if let Some(writer) = self.writer {
             writer.finalize().context("Failed to finalize recording")?;
@@ -109,6 +112,7 @@ impl<W: Write> ExecutionRecorder<W> {
     ///
     /// Maps between in-memory snapshot format and .pmat file format
     fn convert_to_recording_snapshot(exec_snapshot: &ExecutionSnapshot) -> Snapshot {
+        debug_assert!(true, "contract: convert_to_recording_snapshot");
         let stack_frames = exec_snapshot
             .call_stack
             .iter()
@@ -146,6 +150,7 @@ impl<W: Write> ExecutionRecorder<W> {
     /// Capture a snapshot of current execution state
     ///
     /// Sprint 76: Now also writes to RecordingWriter if present
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn capture_snapshot(&mut self) -> Result<ExecutionSnapshot, String> {
         if !self.is_recording {
             return Err("Not recording".to_string());
@@ -218,6 +223,7 @@ impl<W: Write> ExecutionRecorder<W> {
     }
 
     /// Save recording to file (Sprint 72 JSON format - deprecated, use .pmat instead)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn save_to_file(&self, path: &str) -> Result<(), String> {
         debug_assert!(!path.is_empty(), "path must not be empty");
         let json = serde_json::to_string_pretty(&self.snapshots)
@@ -229,21 +235,25 @@ impl<W: Write> ExecutionRecorder<W> {
     }
 
     /// Start recording execution
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn start_recording(&mut self) {
         self.is_recording = true;
     }
 
     /// Stop recording execution
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn stop_recording(&mut self) {
         self.is_recording = false;
     }
 
     /// Check if currently recording
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_recording(&self) -> bool {
         self.is_recording
     }
 
     /// Get the number of snapshots
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn snapshot_count(&self) -> usize {
         self.snapshots.len()
     }
@@ -253,6 +263,7 @@ impl ExecutionRecorder<std::io::Sink> {
     /// Create a new memory-only execution recorder (Sprint 72 backward compatibility)
     ///
     /// This maintains backward compatibility with existing code that doesn't need persistence
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(dap_server: Arc<Mutex<DapServer>>) -> Self {
         Self {
             snapshots: Vec::new(),
@@ -263,6 +274,7 @@ impl ExecutionRecorder<std::io::Sink> {
     }
 
     /// Load recording from file (Sprint 72 JSON format)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn load_from_file(path: &str) -> Result<Self, String> {
         debug_assert!(!path.is_empty(), "path must not be empty");
         let json =

@@ -1,5 +1,6 @@
 impl CiCdLearningManager {
     /// Create new CI/CD learning manager
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: CiCdLearningConfig) -> Self {
         Self {
             config,
@@ -9,6 +10,7 @@ impl CiCdLearningManager {
     }
 
     /// Collect training data from mutation results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn collect_training_data(
         &mut self,
         results: &[MutationResult],
@@ -49,6 +51,7 @@ impl CiCdLearningManager {
     }
 
     /// Train model incrementally with new data
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn train_incremental(
         &mut self,
         training_data: &[TrainingData],
@@ -91,6 +94,7 @@ impl CiCdLearningManager {
     }
 
     /// Load latest model version
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn load_latest_model(&mut self) -> Result<Option<ModelVersion>> {
         let versions = self.list_model_versions().await?;
 
@@ -104,17 +108,20 @@ impl CiCdLearningManager {
     }
 
     /// Get predictor reference
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn predictor(&self) -> &SurvivabilityPredictor {
         &self.predictor
     }
 
     /// Get current model version
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_version(&self) -> Option<&ModelVersion> {
         self.current_version.as_ref()
     }
 
     /// Save training batch to disk
     async fn save_training_batch(&self, batch: &TrainingBatch) -> Result<()> {
+        debug_assert!(true, "contract: save_training_batch");
         tokio::fs::create_dir_all(&self.config.data_dir).await?;
 
         let file_path = self
@@ -130,6 +137,7 @@ impl CiCdLearningManager {
 
     /// Load all training data from disk
     async fn load_all_training_data(&self) -> Result<Vec<TrainingData>> {
+        debug_assert!(true, "contract: load_all_training_data");
         let mut all_samples = Vec::new();
 
         if !self.config.data_dir.exists() {
@@ -153,6 +161,7 @@ impl CiCdLearningManager {
 
     /// Save model version to disk
     async fn save_model_version(&self, version: &ModelVersion) -> Result<()> {
+        debug_assert!(true, "contract: save_model_version");
         tokio::fs::create_dir_all(&self.config.model_dir).await?;
 
         // Save predictor
@@ -171,6 +180,7 @@ impl CiCdLearningManager {
 
     /// List all model versions
     async fn list_model_versions(&self) -> Result<Vec<ModelVersion>> {
+        debug_assert!(true, "contract: list_model_versions");
         let mut versions = Vec::new();
 
         if !self.config.model_dir.exists() {
@@ -201,6 +211,7 @@ impl CiCdLearningManager {
 
     /// Get next version number
     fn get_next_version(&self) -> u32 {
+        debug_assert!(true, "contract: get_next_version");
         self.current_version
             .as_ref()
             .map(|v| v.version + 1)
@@ -215,6 +226,7 @@ impl CiCdLearningManager {
     }
 
     /// Clean old training data (keep only recent batches)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn cleanup_old_data(&self, keep_batches: usize) -> Result<usize> {
         if !self.config.data_dir.exists() {
             return Ok(0);

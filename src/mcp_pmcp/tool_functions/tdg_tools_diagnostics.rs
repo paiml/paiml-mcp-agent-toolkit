@@ -1,6 +1,7 @@
 // ==================== SPRINT 30 TDG SYSTEM MCP TOOLS ====================
 
 /// Get comprehensive TDG system diagnostics
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn tdg_system_diagnostics(
     detailed: bool,
     components: Vec<String>, // ["storage", "scheduler", "adaptive", "resources"]
@@ -41,6 +42,7 @@ pub async fn tdg_system_diagnostics(
 }
 
 /// Get TDG performance metrics and adaptive threshold status
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn tdg_performance_metrics() -> Result<Value> {
     // Create adaptive threshold manager to get performance stats
     let adaptive = AdaptiveThresholdFactory::create_default();
@@ -80,6 +82,7 @@ pub async fn tdg_performance_metrics() -> Result<Value> {
 }
 
 /// Get TDG system health status with recommendations
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn tdg_health_check() -> Result<Value> {
     let mut health_issues = Vec::new();
     let mut recommendations = Vec::new();

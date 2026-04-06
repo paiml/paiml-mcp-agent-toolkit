@@ -10,6 +10,7 @@
 use crate::services::context::AstItem;
 
 /// Extract the name from an AstItem
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_name(item: &AstItem) -> String {
     match item {
         AstItem::Function { name, .. } => name.clone(),
@@ -24,6 +25,7 @@ pub fn extract_name(item: &AstItem) -> String {
 }
 
 /// Extract the kind/type as a string from an AstItem
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_kind(item: &AstItem) -> String {
     match item {
         AstItem::Function { .. } => "function".to_string(),
@@ -38,6 +40,7 @@ pub fn extract_kind(item: &AstItem) -> String {
 }
 
 /// Extract the visibility from an AstItem
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_visibility(item: &AstItem) -> String {
     match item {
         AstItem::Function { visibility, .. } => visibility.clone(),
@@ -52,6 +55,7 @@ pub fn extract_visibility(item: &AstItem) -> String {
 }
 
 /// Extract the line number from an AstItem
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_line(item: &AstItem) -> usize {
     match item {
         AstItem::Function { line, .. } => *line,
@@ -67,6 +71,7 @@ pub fn extract_line(item: &AstItem) -> usize {
 
 /// Calculate a simple complexity score for an AstItem
 /// This is a basic heuristic; real complexity should come from analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_complexity(item: &AstItem) -> u32 {
     match item {
         AstItem::Function { .. } => 5,
@@ -82,6 +87,7 @@ pub fn extract_complexity(item: &AstItem) -> u32 {
 
 /// Extract all common information from an AstItem as a tuple
 /// Returns: (name, kind, visibility, line, complexity)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_all_info(item: &AstItem) -> (String, String, String, usize, u32) {
     (
         extract_name(item),
@@ -93,36 +99,43 @@ pub fn extract_all_info(item: &AstItem) -> (String, String, String, usize, u32) 
 }
 
 /// Check if an AstItem is a function
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_function(item: &AstItem) -> bool {
     matches!(item, AstItem::Function { .. })
 }
 
 /// Check if an AstItem is a struct
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_struct(item: &AstItem) -> bool {
     matches!(item, AstItem::Struct { .. })
 }
 
 /// Check if an AstItem is an enum
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_enum(item: &AstItem) -> bool {
     matches!(item, AstItem::Enum { .. })
 }
 
 /// Check if an AstItem is a trait
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_trait(item: &AstItem) -> bool {
     matches!(item, AstItem::Trait { .. })
 }
 
 /// Check if an AstItem is an impl block
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_impl(item: &AstItem) -> bool {
     matches!(item, AstItem::Impl { .. })
 }
 
 /// Check if an AstItem is a module
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_module(item: &AstItem) -> bool {
     matches!(item, AstItem::Module { .. })
 }
 
 /// Check if an AstItem is async (only applicable to functions)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_async(item: &AstItem) -> bool {
     match item {
         AstItem::Function { is_async, .. } => *is_async,

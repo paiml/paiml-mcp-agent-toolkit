@@ -1,6 +1,7 @@
 // ── Signal analyzers ───────────────────────────────────────────────────────
 
 /// Check for a single dominant struct/enum/trait definition.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn try_dominant_type(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
     debug_assert!(!entries.is_empty(), "entries must not be empty");
     let type_defs: Vec<&FunctionEntry> = entries
@@ -144,6 +145,7 @@ fn try_original_base(file_path: &str) -> Option<(String, f32, String)> {
 }
 
 /// Check if >70% of functions share a keyword theme.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn try_function_theme(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
     debug_assert!(!entries.is_empty(), "entries must not be empty");
     let fn_entries: Vec<&&FunctionEntry> = entries
@@ -198,6 +200,7 @@ pub(crate) fn try_function_theme(entries: &[&FunctionEntry]) -> Option<(String, 
 }
 
 /// Find the longest common prefix across function names (min 4 chars).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn try_common_prefix(entries: &[&FunctionEntry]) -> Option<(String, f32, String)> {
     debug_assert!(!entries.is_empty(), "entries must not be empty");
     let fn_names: Vec<&str> = entries
@@ -226,6 +229,7 @@ pub(crate) fn try_common_prefix(entries: &[&FunctionEntry]) -> Option<(String, f
 }
 
 /// Extract dominant keyword from doc comments.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn try_doc_comment_consensus(
     entries: &[&FunctionEntry],
 ) -> Option<(String, f32, String)> {

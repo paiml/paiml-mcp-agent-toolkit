@@ -43,6 +43,7 @@ pub struct EnhancedTypeScriptVisitor;
 
 #[cfg(not(feature = "typescript-ast"))]
 impl EnhancedTypeScriptVisitor {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(_file_path: &std::path::Path) -> Self {
         debug_assert!(
             _file_path.exists(),
@@ -52,6 +53,7 @@ impl EnhancedTypeScriptVisitor {
         Self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_items(self, _module: &()) -> Vec<crate::services::context::AstItem> {
         vec![]
     }

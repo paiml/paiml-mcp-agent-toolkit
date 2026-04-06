@@ -19,6 +19,7 @@
 /// let dataset = generate_test_dataset(100_000);
 /// assert_eq!(dataset.len(), 100_000);
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_test_dataset(size: usize) -> Vec<f64> {
     debug_assert!(size > 0, "size must be positive");
     // Use a deterministic seed for reproducibility
@@ -54,6 +55,7 @@ pub fn generate_test_dataset(size: usize) -> Vec<f64> {
 /// let (mean, std) = mean_and_std(&values);
 /// assert!((mean - 3.0).abs() < 0.01);
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn mean_and_std(values: &[f64]) -> (f64, f64) {
     debug_assert!(!values.is_empty(), "values must not be empty");
     use aprender::primitives::Vector;
@@ -100,6 +102,7 @@ pub fn mean_and_std(values: &[f64]) -> (f64, f64) {
 /// let avg = compute_avg(&dataset, Backend::Scalar).unwrap();
 /// assert!((avg - 3.0).abs() < 0.01);
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn compute_avg(dataset: &[f64], backend: Backend) -> Result<f64> {
     debug_assert!(!dataset.is_empty(), "dataset must not be empty");
     if dataset.is_empty() {

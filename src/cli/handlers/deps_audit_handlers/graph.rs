@@ -7,6 +7,7 @@ use trueno_graph::{pagerank, CsrGraph, NodeId};
 use super::types::{DepAnalysis, DepEdge, GraphAnalysis};
 
 /// Build and analyze dependency graph using trueno-graph
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn analyze_dependency_graph(
     direct_deps: &[String],
     all_packages: &[String],
@@ -94,6 +95,7 @@ pub fn analyze_dependency_graph(
 }
 
 /// Count transitive dependencies via BFS
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn count_transitive_deps(
     start: &str,
     edges: &[(NodeId, NodeId, f32)],
@@ -132,6 +134,7 @@ pub fn count_transitive_deps(
 }
 
 /// Apply graph analysis to dependency list
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn apply_graph_analysis(deps: &mut [DepAnalysis], analysis: &GraphAnalysis) {
     for dep in deps.iter_mut() {
         dep.pagerank_score = *analysis.pagerank_scores.get(&dep.name).unwrap_or(&0.0);

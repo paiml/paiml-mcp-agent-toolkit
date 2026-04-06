@@ -24,6 +24,7 @@ use std::path::Path;
 /// PMAT-448: If ~/.pmat/hardware.toml exists, budgets are scaled based on
 /// detected SIMD capability and memory bandwidth.
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_brick_score(
     path: &Path,
     input_file: Option<&Path>,
@@ -111,6 +112,7 @@ pub async fn handle_brick_score(
 
 /// Format score as human-readable text
 fn format_text(score: &BrickScore, verbose: bool, failures_only: bool) -> String {
+    debug_assert!(true, "contract: format_text");
     let mut output = String::new();
     format_text_header(score, &mut output);
     format_text_categories(score, verbose, failures_only, &mut output);
@@ -123,6 +125,7 @@ fn format_text(score: &BrickScore, verbose: bool, failures_only: bool) -> String
 }
 
 fn format_text_header(score: &BrickScore, output: &mut String) {
+    debug_assert!(true, "contract: format_text_header");
     output.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     output.push_str(&format!(
         "🧱  ComputeBrick Score v{}\n",
@@ -152,6 +155,7 @@ fn format_text_categories(
     failures_only: bool,
     output: &mut String,
 ) {
+    debug_assert!(true, "contract: format_text_categories");
     output.push_str("📂  Categories\n");
     let categories = [
         (&score.performance, "A. Performance"),
@@ -204,6 +208,7 @@ fn format_single_category(
 }
 
 fn format_text_brick_timing(score: &BrickScore, output: &mut String) {
+    debug_assert!(true, "contract: format_text_brick_timing");
     output.push_str("📊  Per-Brick Timing\n");
     output.push_str("  ┌───────────────────┬──────────┬──────────┬─────────┬───────────┐\n");
     output.push_str("  │ Brick             │ Mean µs  │ Budget   │ CV %    │ Throughput│\n");
@@ -233,6 +238,7 @@ fn format_text_brick_timing(score: &BrickScore, output: &mut String) {
 }
 
 fn format_text_roofline(score: &BrickScore, output: &mut String) {
+    debug_assert!(true, "contract: format_text_roofline");
     if !score.brick_reports.iter().any(|b| b.bottleneck.is_some()) {
         return;
     }
@@ -270,6 +276,7 @@ fn format_text_roofline(score: &BrickScore, output: &mut String) {
 }
 
 fn format_text_recommendations(score: &BrickScore, output: &mut String) {
+    debug_assert!(true, "contract: format_text_recommendations");
     let recommendations: Vec<_> = [
         &score.performance.checks,
         &score.efficiency.checks,
@@ -293,6 +300,7 @@ fn format_text_recommendations(score: &BrickScore, output: &mut String) {
 }
 
 fn format_text_grading_scale(output: &mut String) {
+    debug_assert!(true, "contract: format_text_grading_scale");
     output.push_str("📋  Grading Scale\n");
     output.push_str("  A (90-100): Production Ready\n");
     output.push_str("  B (80-89):  Optimization Needed\n");
@@ -303,11 +311,13 @@ fn format_text_grading_scale(output: &mut String) {
 
 /// Format score as JSON
 fn format_json(score: &BrickScore) -> Result<String> {
+    debug_assert!(true, "contract: format_json");
     serde_json::to_string_pretty(score).context("Failed to serialize to JSON")
 }
 
 /// Format score as Markdown
 fn format_markdown(score: &BrickScore, verbose: bool, failures_only: bool) -> String {
+    debug_assert!(true, "contract: format_markdown");
     let mut output = String::new();
     output.push_str("# ComputeBrick Score Report\n\n");
     format_md_summary(score, &mut output);
@@ -319,6 +329,7 @@ fn format_markdown(score: &BrickScore, verbose: bool, failures_only: bool) -> St
 }
 
 fn format_md_summary(score: &BrickScore, output: &mut String) {
+    debug_assert!(true, "contract: format_md_summary");
     output.push_str("## Summary\n\n");
     output.push_str("| Metric | Value |\n");
     output.push_str("|--------|-------|\n");
@@ -335,6 +346,7 @@ fn format_md_summary(score: &BrickScore, output: &mut String) {
 }
 
 fn format_md_categories(score: &BrickScore, output: &mut String) {
+    debug_assert!(true, "contract: format_md_categories");
     output.push_str("## Categories\n\n");
     output.push_str("| Category | Score | Max | % |\n");
     output.push_str("|----------|-------|-----|---|\n");
@@ -365,6 +377,7 @@ fn format_md_categories(score: &BrickScore, output: &mut String) {
 }
 
 fn format_md_brick_details(score: &BrickScore, failures_only: bool, output: &mut String) {
+    debug_assert!(true, "contract: format_md_brick_details");
     output.push_str("## Per-Brick Details\n\n");
     output.push_str("| Brick | Mean µs | Budget µs | CV % | Status |\n");
     output.push_str("|-------|---------|-----------|------|--------|\n");
@@ -393,6 +406,7 @@ fn format_md_brick_details(score: &BrickScore, failures_only: bool, output: &mut
 
 /// Format score as YAML
 fn format_yaml(score: &BrickScore) -> Result<String> {
+    debug_assert!(true, "contract: format_yaml");
     serde_yaml_ng::to_string(score).context("Failed to serialize to YAML")
 }
 

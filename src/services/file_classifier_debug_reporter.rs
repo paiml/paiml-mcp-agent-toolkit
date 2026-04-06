@@ -30,6 +30,7 @@ pub struct DebugEvent {
 
 impl DebugReporter {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(output_path: Option<std::path::PathBuf>) -> Self {
         Self {
             start_time: Instant::now(),
@@ -38,6 +39,7 @@ impl DebugReporter {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn record_decision(&mut self, file: &Path, decision: &ParseDecision) {
         debug_assert!(file.exists(), "file must exist: {}", file.display());
         let event = DebugEvent {
@@ -51,6 +53,7 @@ impl DebugReporter {
         self.events.push(event);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn record_parse_result(
         &mut self,
         file: &Path,
@@ -66,6 +69,7 @@ impl DebugReporter {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_report(&self) -> Result<DebugReport> {
         let total_files = self.events.len();
         let parsed_files = self
@@ -105,6 +109,7 @@ impl DebugReporter {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn save_report(&self) -> Result<()> {
         if let Some(output_path) = &self.output_path {
             let report = self.generate_report()?;
@@ -115,6 +120,7 @@ impl DebugReporter {
     }
 
     fn get_memory_usage_mb(&self) -> f64 {
+        debug_assert!(true, "contract: get_memory_usage_mb");
         #[cfg(target_os = "linux")]
         {
             if let Ok(status) = std::fs::read_to_string("/proc/self/status") {

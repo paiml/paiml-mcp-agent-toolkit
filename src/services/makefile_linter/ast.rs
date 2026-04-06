@@ -85,6 +85,7 @@ pub struct SourceSpan {
 
 impl SourceSpan {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(start: usize, end: usize, line: usize, column: usize) -> Self {
         Self {
             start,
@@ -95,6 +96,7 @@ impl SourceSpan {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn file_level() -> Self {
         Self {
             start: 0,

@@ -4,6 +4,7 @@
 
 /// Delegate to `pv query` for cross-project contract search.
 /// pv-compatibility spec §2.6: pv query integration.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn handle_pv_query_delegation(
     query: &str,
     limit: usize,
@@ -58,6 +59,7 @@ pub(crate) fn handle_pv_query_delegation(
 
 /// Show functions without contract bindings, ranked by importance.
 /// Uses ContractIndex from .pmat/binding-index.json + function index.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn handle_contract_gaps(
     project_path: &std::path::Path,
     limit: usize,
@@ -121,6 +123,7 @@ pub(crate) fn handle_contract_gaps(
 }
 
 /// Show non-code asset contract status via asset_validator service.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn handle_asset_contracts(
     project_path: &std::path::Path,
     format: &crate::cli::QueryOutputFormat,

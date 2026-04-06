@@ -53,6 +53,7 @@ pub struct LanguageMapperFactory;
 
 impl LanguageMapperFactory {
     /// Create a mapper for the specified language
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create(language: Language) -> Result<Arc<dyn LanguageMapper>> {
         match language {
             Language::Java => Ok(Arc::new(JavaMapper::new())),
@@ -65,6 +66,7 @@ impl LanguageMapperFactory {
     }
 
     /// Create mappers for all supported languages
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_all() -> HashMap<Language, Arc<dyn LanguageMapper>> {
         let mut mappers = HashMap::new();
 
@@ -84,6 +86,7 @@ impl LanguageMapperFactory {
     }
 
     /// Create a mapper for a file based on its extension
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn create_for_file(path: &Path) -> Result<Arc<dyn LanguageMapper>> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let language = Language::from_path(path)
@@ -101,6 +104,7 @@ pub struct BaseLanguageMapper {
 
 impl BaseLanguageMapper {
     /// Create a new base mapper
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(language: Language) -> Self {
         Self { language }
     }

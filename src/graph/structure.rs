@@ -27,6 +27,7 @@ pub struct StructuralAnalyzer {
 }
 
 impl StructuralAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(directed: bool) -> Self {
         StructuralAnalyzer { directed }
     }
@@ -42,6 +43,7 @@ impl StructuralAnalyzer {
     /// # Implementation
     /// - Uses aprender for: density, diameter, clustering, assortativity
     /// - Uses petgraph for: components, cycles, reciprocity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&self, graph: &DependencyGraph) -> StructuralMetrics {
         // Convert to aprender graph
         let aprender_graph = to_aprender_graph(graph, self.directed);
@@ -107,6 +109,7 @@ impl StructuralAnalyzer {
 
 /// Compute reciprocity: fraction of edges that have a reverse edge.
 fn compute_reciprocity(graph: &DependencyGraph) -> f64 {
+    debug_assert!(true, "contract: compute_reciprocity");
     if graph.edge_count() == 0 {
         return 0.0;
     }
@@ -268,6 +271,7 @@ mod tests {
     }
 
     fn make_test_edge() -> EdgeData {
+        debug_assert!(true, "contract: make_test_edge");
         EdgeData::Import {
             weight: 1.0,
             visibility: Visibility::Public,

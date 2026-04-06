@@ -4,6 +4,7 @@ use crate::services::defect_probability::DefectScore;
 use anyhow::Result;
 
 /// Toyota Way: Extract Method - Reduced complexity by separating concerns
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_defect_summary(
     predictions: &[(String, DefectScore)],
     elapsed: std::time::Duration,
@@ -20,6 +21,7 @@ pub(crate) fn format_defect_summary(
 }
 
 /// Toyota Way: Extract Method - Write summary header
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_summary_header(output: &mut String) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "🔮 Defect Prediction Summary")?;
@@ -29,6 +31,7 @@ pub(crate) fn write_summary_header(output: &mut String) -> Result<()> {
 }
 
 /// Toyota Way: Extract Method - Calculate and write risk distribution
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_risk_distribution(
     output: &mut String,
     predictions: &[(String, DefectScore)],
@@ -54,6 +57,7 @@ pub(crate) struct RiskStatistics {
     pub(crate) low_risk: usize,
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub(crate) fn calculate_risk_statistics(predictions: &[(String, DefectScore)]) -> RiskStatistics {
     debug_assert!(!predictions.is_empty(), "predictions must not be empty");
     let high_risk = predictions
@@ -77,6 +81,7 @@ pub(crate) fn calculate_risk_statistics(predictions: &[(String, DefectScore)]) -
 }
 
 /// Toyota Way: Extract Method - Write top risk files section
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_top_risk_files(
     output: &mut String,
     predictions: &[(String, DefectScore)],
@@ -103,6 +108,7 @@ pub(crate) fn write_top_risk_files(
 }
 
 /// Toyota Way: Extract Method - Get risk level icon
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn get_risk_icon(
     risk_level: &crate::services::defect_probability::RiskLevel,
 ) -> &'static str {
@@ -114,6 +120,7 @@ pub(crate) fn get_risk_icon(
 }
 
 /// Toyota Way: Extract Method - Write summary footer
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_summary_footer(
     output: &mut String,
     elapsed: std::time::Duration,

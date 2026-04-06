@@ -2,6 +2,7 @@
 
 impl HelpNlpProcessor {
     /// Create a new NLP processor
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let mut stop_words = HashSet::new();
         // Common English stop words + domain-specific
@@ -60,6 +61,7 @@ impl HelpNlpProcessor {
     }
 
     /// Preprocess text for search (tokenize, filter, stem)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn preprocess(&self, text: &str) -> Vec<String> {
         debug_assert!(!text.is_empty(), "text must not be empty");
         self.tokenize(text)
@@ -70,6 +72,7 @@ impl HelpNlpProcessor {
     }
 
     /// Calculate term frequency for a document
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn term_frequency(&self, text: &str) -> HashMap<String, f64> {
         debug_assert!(!text.is_empty(), "text must not be empty");
         let tokens = self.preprocess(text);
@@ -89,6 +92,7 @@ impl HelpNlpProcessor {
     }
 
     /// Calculate BM25 score between query and document
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn bm25_score(&self, query: &str, document: &str, k1: f64, b: f64) -> f64 {
         debug_assert!(!query.is_empty(), "query must not be empty");
         let query_tokens = self.preprocess(query);

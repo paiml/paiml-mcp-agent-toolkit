@@ -29,6 +29,7 @@ pub enum QualityResult {
 }
 
 impl ClaudeIntegrationQualityGate {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check(&self, metrics: &QualityMetrics) -> QualityResult {
         // Zero tolerance for SATD in integration layer
         if metrics.satd_count > 0 {

@@ -9,10 +9,12 @@ impl Default for UndefinedVariableRule {
 
 impl MakefileRule for UndefinedVariableRule {
     fn id(&self) -> &'static str {
+        debug_assert!(true, "contract: id");
         "undefinedvariable"
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
+        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
         let mut defined_vars = HashSet::new();
 
@@ -99,6 +101,7 @@ impl<'a> VariableScanner<'a> {
     }
 
     fn find_next_dollar(&mut self) -> Option<usize> {
+        debug_assert!(true, "contract: find_next_dollar");
         while self.position < self.bytes.len() {
             if self.bytes[self.position] == b'$' {
                 return Some(self.position);
@@ -109,6 +112,7 @@ impl<'a> VariableScanner<'a> {
     }
 
     fn parse_parenthesized_var(&mut self, start: usize) -> Option<VariableRef> {
+        debug_assert!(true, "contract: parse_parenthesized_var");
         let content_start = start + 2;
         if content_start >= self.text.len() {
             return None;
@@ -133,6 +137,7 @@ impl<'a> VariableScanner<'a> {
     }
 
     fn parse_braced_var(&mut self, start: usize) -> Option<VariableRef> {
+        debug_assert!(true, "contract: parse_braced_var");
         let content_start = start + 2;
         if content_start >= self.text.len() {
             return None;
@@ -156,6 +161,7 @@ impl<'a> VariableScanner<'a> {
     }
 
     fn parse_single_char_var(&mut self, start: usize) -> Option<VariableRef> {
+        debug_assert!(true, "contract: parse_single_char_var");
         if start + 1 >= self.bytes.len() {
             return None;
         }
@@ -184,6 +190,7 @@ impl Iterator for VariableScanner<'_> {
     type Item = VariableRef;
 
     fn next(&mut self) -> Option<Self::Item> {
+        debug_assert!(true, "contract: next");
         loop {
             let dollar_pos = self.find_next_dollar()?;
 
@@ -301,6 +308,7 @@ fn extract_var_name(var_content: &str) -> String {
 
 /// Check if a variable reference should be validated
 fn should_check_variable(var_ref: &VariableRef) -> bool {
+    debug_assert!(true, "contract: should_check_variable");
     // Skip empty names (likely shell commands)
     if var_ref.name.is_empty() {
         return false;

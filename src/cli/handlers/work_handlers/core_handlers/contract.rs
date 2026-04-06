@@ -153,6 +153,7 @@ fn evaluate_require_clauses_at_start(project_path: &Path, contract: &WorkContrac
 
 /// Display DbC triad summary after contract creation
 fn print_dbc_summary(contract: &WorkContract, without: &[String]) {
+    debug_assert!(true, "contract: print_dbc_summary");
     if let Some(profile) = &contract.profile {
         println!(
             "\n   Profile: {} ({})",

@@ -1,6 +1,7 @@
 // TDG helper functions - percentile, primary factor, refactoring estimates, filtering
 
 /// Calculate percentile value from sorted array
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn percentile(sorted_values: &[f64], p: f64) -> f64 {
     if sorted_values.is_empty() {
         return 0.0;
@@ -12,6 +13,7 @@ pub fn percentile(sorted_values: &[f64], p: f64) -> f64 {
 }
 
 /// Identify the primary contributing factor from TDG components
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn identify_primary_factor(components: &crate::models::tdg::TDGComponents) -> String {
     let mut factors = [
         (components.complexity * 0.30, "High Complexity"),
@@ -29,6 +31,7 @@ pub fn identify_primary_factor(components: &crate::models::tdg::TDGComponents) -
 }
 
 /// Estimate refactoring hours based on TDG score
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn estimate_refactoring_hours(tdg_score: f64) -> f64 {
     // Empirical formula: hours = base * multiplier^tdg
     let base_hours = 2.0;

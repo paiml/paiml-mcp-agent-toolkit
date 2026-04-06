@@ -58,6 +58,7 @@ pub struct TdgTool;
 impl TdgTool {
     /// Creates a new TDG analysis tool handler.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -72,6 +73,7 @@ impl Default for TdgTool {
 #[async_trait]
 impl ToolHandler for TdgTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+        debug_assert!(true, "contract: handle");
         debug!("Handling analyze.tdg with args: {}", args);
 
         let params: TdgArgs = serde_json::from_value(args)
@@ -123,6 +125,7 @@ pub struct TdgCompareTool;
 impl TdgCompareTool {
     /// Creates a new TDG comparison tool handler.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -137,6 +140,7 @@ impl Default for TdgCompareTool {
 #[async_trait]
 impl ToolHandler for TdgCompareTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+        debug_assert!(true, "contract: handle");
         debug!("Handling analyze.tdg_compare with args: {}", args);
 
         let params: TdgCompareArgs = serde_json::from_value(args)

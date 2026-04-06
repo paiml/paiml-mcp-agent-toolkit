@@ -1,4 +1,5 @@
 /// Print validation result as text
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_validation_text(result: &QaValidationResult) {
     use crate::cli::colors as c;
     println!("Validating {}...\n", c::label(&result.task_id));
@@ -49,6 +50,7 @@ pub fn print_validation_text(result: &QaValidationResult) {
 }
 
 /// Print validation result as markdown
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_validation_markdown(result: &QaValidationResult) {
     println!("# QA Validation Report: {}\n", result.task_id);
     println!(
@@ -85,6 +87,7 @@ pub fn print_validation_markdown(result: &QaValidationResult) {
 }
 
 /// Generate QA report for audit trail
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_report(
     task_id: &str,
     project_path: &Path,

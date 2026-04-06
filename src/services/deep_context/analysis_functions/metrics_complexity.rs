@@ -47,6 +47,7 @@ pub(super) fn detect_language(path: &std::path::Path) -> String {
 
 // --- Complexity analysis ---
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_complexity(path: &std::path::Path) -> anyhow::Result<ComplexityReport> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::complexity::aggregate_results;

@@ -27,6 +27,7 @@ pub struct RedTeamResult {
 
 impl RedTeamResult {
     /// Format as human-readable text report
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_text(&self) -> String {
         let mut output = String::new();
 
@@ -93,6 +94,7 @@ impl RedTeamResult {
     }
 
     /// Format as JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_json(&self) -> serde_json::Value {
         serde_json::json!({
             "commit_message": self.commit_message,
@@ -136,6 +138,7 @@ pub struct RedTeamHandler {
 }
 
 impl RedTeamHandler {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             extractor: ClaimExtractor::new(),
@@ -145,6 +148,7 @@ impl RedTeamHandler {
     }
 
     /// Analyze a commit message for hallucinations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_commit_message(
         &self,
         commit_message: &str,
@@ -201,6 +205,7 @@ impl RedTeamHandler {
     }
 
     /// Analyze a pair of commits to classify intent
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_commit_pair(
         &self,
         original: &CommitInfo,
@@ -272,6 +277,7 @@ pub struct RedTeamCmd {
 
 impl RedTeamCmd {
     /// Execute the red-team command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn execute(&self) -> anyhow::Result<ExitCode> {
         match &self.command {
             RedTeamCommands::Analyze {

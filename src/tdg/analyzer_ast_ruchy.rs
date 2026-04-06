@@ -9,6 +9,7 @@ use super::analyzer_ast::TdgAnalyzerAst;
 impl TdgAnalyzerAst {
     #[cfg(feature = "ruchy-ast")]
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_ruchy_semantic_complexity(&self, source: &str) -> f32 {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let mut complexity_score = self.config.weights.semantic_complexity;
@@ -36,6 +37,7 @@ impl TdgAnalyzerAst {
 
     #[cfg(feature = "ruchy-ast")]
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn count_ruchy_imports(&self, source: &str) -> u32 {
         debug_assert!(!source.is_empty(), "source must not be empty");
         // Count Ruchy-style import statements
@@ -46,6 +48,7 @@ impl TdgAnalyzerAst {
 
     #[cfg(feature = "ruchy-ast")]
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn count_ruchy_dependencies(&self, source: &str) -> u32 {
         debug_assert!(!source.is_empty(), "source must not be empty");
         // Count actor message dependencies and external calls
@@ -56,6 +59,7 @@ impl TdgAnalyzerAst {
 
     #[cfg(feature = "ruchy-ast")]
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_ruchy_doc_coverage(&self, source: &str) -> f32 {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let line_count = source.lines().count() as f32;
@@ -74,6 +78,7 @@ impl TdgAnalyzerAst {
 
     #[cfg(feature = "ruchy-ast")]
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn calculate_ruchy_consistency(&self, source: &str) -> f32 {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let mut consistency_score = self.config.weights.consistency;

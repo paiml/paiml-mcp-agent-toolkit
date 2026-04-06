@@ -25,6 +25,7 @@ fn create_parsers() -> Result<Parsers> {
 }
 
 /// Parse a roadmap from markdown content
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_roadmap(content: &str) -> Result<Roadmap> {
     debug_assert!(!content.is_empty(), "content must not be empty");
     let mut roadmap = Roadmap {

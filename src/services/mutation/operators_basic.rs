@@ -4,18 +4,22 @@ pub struct ArithmeticOperatorReplacement;
 
 impl MutationOperator for ArithmeticOperatorReplacement {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "AOR"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::ArithmeticReplacement
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         matches!(expr, Expr::Binary(bin) if is_arithmetic_op(&bin.op))
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         if let Expr::Binary(bin) = expr {
             let mutants = mutate_arithmetic_op(bin);
             return Ok(mutants);
@@ -24,11 +28,13 @@ impl MutationOperator for ArithmeticOperatorReplacement {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.85 // Arithmetic changes are usually caught
     }
 }
 
 fn mutate_arithmetic_op(bin: &syn::ExprBinary) -> Vec<Expr> {
+    debug_assert!(true, "contract: mutate_arithmetic_op");
     let replacements: &[BinOp] = match bin.op {
         BinOp::Add(_) => &[
             BinOp::Sub(Default::default()),
@@ -60,6 +66,7 @@ fn mutate_arithmetic_op(bin: &syn::ExprBinary) -> Vec<Expr> {
 }
 
 fn apply_binary_replacements(bin: &syn::ExprBinary, ops: &[BinOp]) -> Vec<Expr> {
+    debug_assert!(true, "contract: apply_binary_replacements");
     ops.iter()
         .map(|&new_op| {
             let mut mutated = bin.clone();
@@ -75,18 +82,22 @@ pub struct RelationalOperatorReplacement;
 
 impl MutationOperator for RelationalOperatorReplacement {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "ROR"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::RelationalReplacement
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         matches!(expr, Expr::Binary(bin) if is_relational_op(&bin.op))
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         if let Expr::Binary(bin) = expr {
             let mutants = mutate_relational_op(bin);
             return Ok(mutants);
@@ -95,11 +106,13 @@ impl MutationOperator for RelationalOperatorReplacement {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.90 // Relational changes often caught by tests
     }
 }
 
 fn mutate_relational_op(bin: &syn::ExprBinary) -> Vec<Expr> {
+    debug_assert!(true, "contract: mutate_relational_op");
     let replacements: &[BinOp] = match bin.op {
         BinOp::Lt(_) => &[
             BinOp::Le(Default::default()),
@@ -154,18 +167,22 @@ pub struct ConditionalOperatorReplacement;
 
 impl MutationOperator for ConditionalOperatorReplacement {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "COR"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::ConditionalReplacement
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         matches!(expr, Expr::Binary(bin) if is_logical_op(&bin.op))
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         if let Expr::Binary(bin) = expr {
             let replacement = match bin.op {
                 BinOp::And(_) => Some(BinOp::Or(Default::default())),
@@ -184,6 +201,7 @@ impl MutationOperator for ConditionalOperatorReplacement {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.80 // Logic changes often detected
     }
 }
@@ -194,18 +212,22 @@ pub struct UnaryOperatorReplacement;
 
 impl MutationOperator for UnaryOperatorReplacement {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "UOR"
     }
 
     fn operator_type(&self) -> MutationOperatorType {
+        debug_assert!(true, "contract: operator_type");
         MutationOperatorType::UnaryReplacement
     }
 
     fn can_mutate(&self, expr: &Expr) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         matches!(expr, Expr::Unary(_))
     }
 
     fn mutate(&self, expr: &Expr, _location: SourceLocation) -> Result<Vec<Expr>> {
+        debug_assert!(true, "contract: mutate");
         if let Expr::Unary(unary) = expr {
             match unary.op {
                 UnOp::Not(_) => {
@@ -229,6 +251,7 @@ impl MutationOperator for UnaryOperatorReplacement {
 }
 
 // Helper functions for operator classification
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_arithmetic_op(op: &BinOp) -> bool {
     matches!(
         op,
@@ -236,6 +259,7 @@ pub(crate) fn is_arithmetic_op(op: &BinOp) -> bool {
     )
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_relational_op(op: &BinOp) -> bool {
     matches!(
         op,
@@ -243,6 +267,7 @@ pub(crate) fn is_relational_op(op: &BinOp) -> bool {
     )
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_logical_op(op: &BinOp) -> bool {
     matches!(op, BinOp::And(_) | BinOp::Or(_))
 }

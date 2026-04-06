@@ -7,6 +7,7 @@ use tree_sitter::Parser;
 
 impl VariableInspector {
     /// Inspect variables in Rust source at the given line
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn inspect_rust(&self, source: &str, line: usize) -> Result<Vec<Variable>, String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
@@ -22,6 +23,7 @@ impl VariableInspector {
     }
 
     /// Inspect variables in TypeScript source at the given line
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn inspect_typescript(&self, source: &str, line: usize) -> Result<Vec<Variable>, String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
@@ -38,6 +40,7 @@ impl VariableInspector {
 
     /// Inspect variables in Python source at the given line
     #[cfg(feature = "python-ast")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn inspect_python(&self, source: &str, line: usize) -> Result<Vec<Variable>, String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
@@ -53,11 +56,13 @@ impl VariableInspector {
     }
 
     #[cfg(not(feature = "python-ast"))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn inspect_python(&self, _source: &str, _line: usize) -> Result<Vec<Variable>, String> {
         Err("python-ast feature is disabled".to_string())
     }
 
     /// Inspect variables from a file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn inspect_file(&self, path: &Path, line: usize) -> Result<Vec<Variable>, String> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let source =

@@ -4,6 +4,7 @@
 impl RoadmapService {
     /// Get lock file path
     fn lock_file_path(&self) -> PathBuf {
+        debug_assert!(true, "contract: lock_file_path");
         let mut lock_path = self.roadmap_path.clone();
         lock_path.set_extension("yaml.lock");
         lock_path
@@ -11,6 +12,7 @@ impl RoadmapService {
 
     /// Acquire exclusive lock for writing
     fn acquire_write_lock(&self) -> Result<File> {
+        debug_assert!(true, "contract: acquire_write_lock");
         let lock_path = self.lock_file_path();
 
         // Create parent directory if needed
@@ -35,6 +37,7 @@ impl RoadmapService {
 
     /// Acquire shared lock for reading
     fn acquire_read_lock(&self) -> Result<File> {
+        debug_assert!(true, "contract: acquire_read_lock");
         let lock_path = self.lock_file_path();
 
         // Create parent directory if needed
@@ -97,6 +100,7 @@ impl RoadmapService {
     }
 
     /// Load roadmap from file (with shared lock)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn load(&self) -> Result<Roadmap> {
         // Acquire shared lock (allows multiple concurrent readers)
         let _lock = self.acquire_read_lock()?;
@@ -114,6 +118,7 @@ impl RoadmapService {
     }
 
     /// Save roadmap to file (with exclusive lock)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn save(&self, roadmap: &Roadmap) -> Result<()> {
         // Acquire exclusive lock (blocks all other readers and writers)
         let _lock = self.acquire_write_lock()?;

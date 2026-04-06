@@ -3,6 +3,7 @@
 #[async_trait]
 impl McpTool for DeepWasmAnalyzeTool {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "deep_wasm_analyze".to_string(),
             description: "Perform deep inspection of Rust/Ruchy → WASM → JS pipeline".to_string(),
@@ -49,6 +50,7 @@ impl McpTool for DeepWasmAnalyzeTool {
 
     #[cfg(feature = "deep-wasm")]
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use std::path::PathBuf;
 
         let source_path = params["source_path"]
@@ -133,6 +135,7 @@ impl McpTool for DeepWasmAnalyzeTool {
 
     #[cfg(not(feature = "deep-wasm"))]
     async fn execute(&self, _params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         Err(McpError {
             code: error_codes::METHOD_NOT_FOUND,
             message: "Deep WASM feature not enabled. Recompile with --features deep-wasm"

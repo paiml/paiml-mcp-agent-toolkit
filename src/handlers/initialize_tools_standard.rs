@@ -1,5 +1,6 @@
 /// Standard analysis tools: churn, complexity, DAG, context, dead code, deep context.
 fn standard_analysis_tool_definitions() -> Vec<serde_json::Value> {
+    debug_assert!(true, "contract: standard_analysis_tool_definitions");
     vec![
         json!({
             "name": "analyze_code_churn",

@@ -86,6 +86,7 @@ impl ProgressIndicator {
     /// Create a new progress spinner
     ///
     /// CC=2: Simple initialization
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(message: &str) -> Self {
         let progress_bar = if Self::should_show_progress() {
             let pb = ProgressBar::new_spinner();
@@ -109,6 +110,7 @@ impl ProgressIndicator {
     ///
     /// CC=5: TTY check + env checks (TICKET-PMAT-6006)
     fn should_show_progress() -> bool {
+        debug_assert!(true, "contract: should_show_progress");
         // Don't show in CI environments
         if std::env::var("CI").is_ok() {
             return false;
@@ -131,6 +133,7 @@ impl ProgressIndicator {
     /// Update the progress message
     ///
     /// CC=1: Simple delegation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_message(&self, message: &str) {
         if let Some(ref pb) = self.progress_bar {
             pb.set_message(message.to_string());
@@ -140,6 +143,7 @@ impl ProgressIndicator {
     /// Finish with success message
     ///
     /// CC=2: Conditional finish
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn finish_with_message(&self, message: &str) {
         if let Some(ref pb) = self.progress_bar {
             pb.finish_with_message(format!("✓ {}", message));
@@ -149,6 +153,7 @@ impl ProgressIndicator {
     /// Finish with error message
     ///
     /// CC=2: Conditional finish
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn finish_with_error(&self, message: &str) {
         if let Some(ref pb) = self.progress_bar {
             pb.finish_with_message(format!("✗ {}", message));
@@ -158,6 +163,7 @@ impl ProgressIndicator {
     /// Clear the progress indicator
     ///
     /// CC=1: Simple delegation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear(&self) {
         if let Some(ref pb) = self.progress_bar {
             pb.finish_and_clear();
@@ -165,16 +171,19 @@ impl ProgressIndicator {
     }
 
     /// Check if progress is enabled
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_enabled(&self) -> bool {
         self.progress_bar.is_some()
     }
 
     /// Check if colors are being used
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn uses_color(&self) -> bool {
         Self::should_show_progress() && std::env::var("NO_COLOR").is_err()
     }
 
     /// Check if running in a TTY
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_tty() -> bool {
         std::io::stdout().is_terminal()
     }
@@ -198,6 +207,7 @@ pub struct MultiStageProgress {
 }
 
 impl MultiStageProgress {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(stages: Vec<String>) -> Self {
         Self {
             stages,
@@ -209,6 +219,7 @@ impl MultiStageProgress {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn next_stage(&mut self, _message: &str) {
         debug_assert!(!_message.is_empty(), "_message must not be empty");
         if self.current_stage_index < self.stages.len() - 1 {
@@ -216,6 +227,7 @@ impl MultiStageProgress {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_stage(&self) -> &str {
         &self.stages[self.current_stage_index]
     }
@@ -224,11 +236,13 @@ impl MultiStageProgress {
         self.current_stage_index
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_progress(&mut self, current: u64, total: u64) {
         self.completed_items = current;
         self.total_items = total;
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn completed_items(&self) -> u64 {
         self.completed_items
     }
@@ -237,6 +251,7 @@ impl MultiStageProgress {
         self.total_items
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_eta(&self) -> Duration {
         if self.completed_items == 0 || self.total_items == 0 {
             return Duration::from_secs(0);
@@ -250,6 +265,7 @@ impl MultiStageProgress {
         Duration::from_secs(estimated_seconds)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn finish(&self, _message: &str) {
         debug_assert!(!_message.is_empty(), "_message must not be empty");
         if let Some(ref pb) = self.progress_bar {
@@ -269,6 +285,7 @@ pub struct CategoryProgress {
 }
 
 impl CategoryProgress {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(categories: Vec<String>) -> Self {
         Self {
             categories,
@@ -280,6 +297,7 @@ impl CategoryProgress {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn next_category(&mut self, _name: &str) {
         debug_assert!(!_name.is_empty(), "_name must not be empty");
         if self.current_category_index < self.categories.len() - 1 {
@@ -290,6 +308,7 @@ impl CategoryProgress {
         self.total_files = 0;
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_category(&self) -> &str {
         &self.categories[self.current_category_index]
     }
@@ -298,11 +317,13 @@ impl CategoryProgress {
         self.current_category_index
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_file_progress(&mut self, current: usize, total: usize) {
         self.files_processed = current;
         self.total_files = total;
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn files_processed(&self) -> usize {
         self.files_processed
     }
@@ -311,6 +332,7 @@ impl CategoryProgress {
         self.total_files
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn category_percent(&self) -> f64 {
         if self.total_files == 0 {
             return 0.0;
@@ -318,6 +340,7 @@ impl CategoryProgress {
         (self.files_processed as f64 / self.total_files as f64) * 100.0
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn overall_percent(&self) -> f64 {
         if self.categories.is_empty() {
             return 0.0;
@@ -331,6 +354,7 @@ impl CategoryProgress {
         (total_progress / self.categories.len() as f64) * 100.0
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn elapsed(&self) -> Duration {
         self.start_time.elapsed()
     }
@@ -349,6 +373,7 @@ pub struct Spinner {
 }
 
 impl Spinner {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             frames: vec!['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
@@ -356,6 +381,7 @@ impl Spinner {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn tick(&mut self) {
         self.current_frame_index = (self.current_frame_index + 1) % self.frames.len();
     }

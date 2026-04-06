@@ -78,6 +78,7 @@ fn format_qg_as_detailed(
 
 // Helper: Write detailed header
 fn write_qg_detailed_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    debug_assert!(true, "contract: write_qg_detailed_header");
     use std::fmt::Write;
     writeln!(output, "# Quality Gate Detailed Report\n")?;
     writeln!(
@@ -95,6 +96,7 @@ fn write_qg_detailed_header(output: &mut String, results: &QualityGateResults) -
 
 // Helper: Write detailed summary
 fn write_qg_detailed_summary(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    debug_assert!(true, "contract: write_qg_detailed_summary");
     use std::fmt::Write;
     writeln!(output, "## Violations by Type\n")?;
     let items = [
@@ -201,6 +203,7 @@ fn write_qg_markdown_violations(
 
 /// Toyota Way: Extract Method - Write QG Markdown header section (complexity <=5)
 fn write_qg_markdown_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    debug_assert!(true, "contract: write_qg_markdown_header");
     use std::fmt::Write;
 
     writeln!(output, "# Quality Gate Report\n")?;
@@ -220,6 +223,7 @@ fn write_qg_markdown_header(output: &mut String, results: &QualityGateResults) -
 
 /// Toyota Way: Extract Method - Format QG status badge (complexity <=3)
 fn format_qg_status_badge(passed: bool) -> &'static str {
+    debug_assert!(true, "contract: format_qg_status_badge");
     if passed {
         "\u{2705} PASSED"
     } else {
@@ -232,6 +236,7 @@ fn write_qg_markdown_summary_table(
     output: &mut String,
     results: &QualityGateResults,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_qg_markdown_summary_table");
     use std::fmt::Write;
 
     writeln!(output, "## Summary\n")?;
@@ -243,6 +248,7 @@ fn write_qg_markdown_summary_table(
 
 /// Toyota Way: Extract Method - Write QG Markdown table headers (complexity <=3)
 fn write_qg_markdown_table_headers(output: &mut String) -> Result<()> {
+    debug_assert!(true, "contract: write_qg_markdown_table_headers");
     use std::fmt::Write;
 
     writeln!(output, "| Check Type | Violations |")?;
@@ -253,6 +259,7 @@ fn write_qg_markdown_table_headers(output: &mut String) -> Result<()> {
 
 /// Toyota Way: Extract Method - Write QG Markdown table rows (complexity <=5)
 fn write_qg_markdown_table_rows(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    debug_assert!(true, "contract: write_qg_markdown_table_rows");
     use std::fmt::Write;
 
     let rows = get_qg_violation_summary_rows(results);

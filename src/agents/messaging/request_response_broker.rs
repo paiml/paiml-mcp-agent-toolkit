@@ -1,4 +1,5 @@
 impl RequestResponseBroker {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(router: Arc<MessageRouter>) -> Self {
         Self {
             pending_requests: Arc::new(RwLock::new(HashMap::new())),
@@ -6,6 +7,7 @@ impl RequestResponseBroker {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn request(
         &self,
         from: Uuid,
@@ -38,6 +40,7 @@ impl RequestResponseBroker {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn handle_response(&self, message: AgentMessage) {
         if let Some(correlation_id) = message.header.correlation_id {
             if let Some(tx) = self.pending_requests.write().remove(&correlation_id) {
@@ -61,6 +64,7 @@ impl Handler<AgentMessage> for RequestResponseActor {
 }
 
 // Typed request handler
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn typed_request<R: Request>(
     broker: &RequestResponseBroker,
     from: Uuid,

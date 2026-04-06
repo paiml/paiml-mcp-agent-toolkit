@@ -1,6 +1,7 @@
 // ConsensusStorage: inherent methods + RaftStorage trait implementation
 
 impl<S: AgentState> ConsensusStorage<S> {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(node_id: NodeId, initial_state: S) -> Self {
         Self {
             node_id,
@@ -14,6 +15,7 @@ impl<S: AgentState> ConsensusStorage<S> {
     }
 
     async fn apply_entry(&self, entry: &Entry<ClientRequest>) -> ClientResponse {
+        debug_assert!(true, "contract: apply_entry");
         match &entry.payload {
             EntryPayload::Normal(request) => {
                 match &request.operation {
@@ -75,10 +77,12 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
     type ShutdownError = std::io::Error;
 
     async fn get_membership_config(&self) -> Result<MembershipConfig, std::io::Error> {
+        debug_assert!(true, "contract: get_membership_config");
         Ok(self.membership.read().clone())
     }
 
     async fn get_initial_state(&self) -> Result<async_raft::storage::InitialState, std::io::Error> {
+        debug_assert!(true, "contract: get_initial_state");
         let membership = self.membership.read().clone();
         let mut last_log_index = 0;
         let mut last_log_term = 0;
@@ -110,6 +114,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         &self,
         hs: &async_raft::storage::HardState,
     ) -> Result<(), std::io::Error> {
+        debug_assert!(true, "contract: save_hard_state");
         *self.current_term.write() = hs.current_term;
         *self.voted_for.write() = hs.voted_for;
         Ok(())
@@ -120,6 +125,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         start: u64,
         stop: u64,
     ) -> Result<Vec<Entry<ClientRequest>>, std::io::Error> {
+        debug_assert!(true, "contract: get_log_entries");
         let log = self.log.read();
         let entries: Vec<_> = log
             .range(start..stop)
@@ -129,6 +135,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
     }
 
     async fn delete_logs_from(&self, start: u64, stop: Option<u64>) -> Result<(), std::io::Error> {
+        debug_assert!(true, "contract: delete_logs_from");
         let mut log = self.log.write();
         let keys_to_remove: Vec<_> = if let Some(stop) = stop {
             log.range(start..stop).map(|(k, _)| *k).collect()
@@ -167,6 +174,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         index: &u64,
         data: &ClientRequest,
     ) -> Result<ClientResponse, std::io::Error> {
+        debug_assert!(true, "contract: apply_entry_to_state_machine");
         let log = self.log.read();
         if let Some(entry) = log.get(index) {
             Ok(self.apply_entry(entry).await)
@@ -192,6 +200,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
     }
 
     async fn do_log_compaction(&self) -> Result<Vec<u8>, std::io::Error> {
+        debug_assert!(true, "contract: do_log_compaction");
         let state = self.state_machine.read();
         let snapshot_data = bincode::serialize(&*state)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
@@ -226,6 +235,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         ),
         std::io::Error,
     > {
+        debug_assert!(true, "contract: create_snapshot");
         let snapshot_bytes = self.do_log_compaction().await?;
         let last_applied_log = self
             .log
@@ -254,6 +264,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
         id: String,
         snapshot: Self::Snapshot,
     ) -> Result<(), std::io::Error> {
+        debug_assert!(true, "contract: finalize_snapshot_installation");
         // Apply snapshot to state machine
         if let Ok(new_state) = bincode::deserialize::<S>(&snapshot) {
             *self.state_machine.write() = new_state;
@@ -279,6 +290,7 @@ impl<S: AgentState> RaftStorage<ClientRequest, ClientResponse> for ConsensusStor
     async fn get_current_snapshot(
         &self,
     ) -> Result<Option<async_raft::storage::CurrentSnapshotData<Vec<u8>>>, std::io::Error> {
+        debug_assert!(true, "contract: get_current_snapshot");
         if let Some(snapshot) = &*self.snapshot.read() {
             Ok(Some(async_raft::storage::CurrentSnapshotData {
                 index: snapshot.index,

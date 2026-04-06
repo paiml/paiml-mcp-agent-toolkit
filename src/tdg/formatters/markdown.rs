@@ -23,6 +23,7 @@ use super::helpers::{format_metric_name, grade_description};
 /// assert!(md.contains("## TDG Score"));
 /// ```ignore
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_markdown(score: &TdgScore) -> String {
     let mut output = String::new();
 

@@ -48,6 +48,7 @@
 /// # Ok(())
 /// # }
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn check_dead_code(
     project_path: &Path,
     max_percentage: f64,

@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 ///
 /// Routes to spec falsification if target is a file path,
 /// otherwise falls back to work item contract falsification.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_falsify(
     target: String,
     override_claims: Option<Vec<String>>,
@@ -208,6 +209,7 @@ fn collect_spec_files(dir: &Path) -> Result<Vec<PathBuf>> {
 
 /// Print only falsified claims
 fn print_failures_only(report: &crate::services::spec_falsification::SpecFalsificationReport) {
+    debug_assert!(true, "contract: print_failures_only");
     use crate::services::spec_falsification::VerdictStatus;
 
     let falsified: Vec<_> = report

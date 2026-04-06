@@ -4,6 +4,7 @@
 impl DeterministicMermaidEngine {
     /// Generate deterministic codebase modules Mermaid diagram
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_codebase_modules_mmd(
         &self,
         graph: &SimpleStableGraph<ModuleNode, EdgeType>,
@@ -67,6 +68,7 @@ impl DeterministicMermaidEngine {
 
     /// Generate service interaction diagram with complexity-based styling
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_service_interactions_mmd(
         &self,
         graph: &SimpleStableGraph<ModuleNode, EdgeType>,

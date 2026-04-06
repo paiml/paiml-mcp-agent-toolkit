@@ -28,6 +28,7 @@ impl Default for AutoScalerConfig {
 }
 
 impl AutoScaler {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         allocator: Arc<AdaptiveAllocator>,
         manager: Arc<ResourceManager>,
@@ -42,6 +43,7 @@ impl AutoScaler {
     }
 
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run(&self) {
         if !self.config.enabled {
             return;

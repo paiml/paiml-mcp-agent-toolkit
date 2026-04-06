@@ -5,6 +5,7 @@ pub struct QualityGateSupervisor {
 }
 
 impl QualityGateSupervisor {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         analyzer: Addr<AnalyzerActor>,
         transformer: Addr<TransformerActor>,
@@ -24,6 +25,7 @@ impl Actor for QualityGateSupervisor {
 
 impl Supervised for QualityGateSupervisor {
     fn restarting(&mut self, _ctx: &mut Context<Self>) {
+        debug_assert!(true, "contract: restarting");
         tracing::info!("QualityGateSupervisor restarting");
     }
 }

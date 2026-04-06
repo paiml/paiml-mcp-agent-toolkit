@@ -41,6 +41,7 @@ fn calculate_summary(checks: &[HealthCheck]) -> HealthSummary {
 
 /// Print health report
 fn print_health_report(report: &HealthReport, format: &OutputFormat) -> Result<()> {
+    debug_assert!(true, "contract: print_health_report");
     match format {
         OutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(report)?);
@@ -60,6 +61,7 @@ fn print_health_report(report: &HealthReport, format: &OutputFormat) -> Result<(
 
 /// Print health report as table
 fn print_health_table(report: &HealthReport) {
+    debug_assert!(true, "contract: print_health_table");
     let overall_icon = if report.healthy { "✅" } else { "❌" };
     eprintln!("{} {}\n", overall_icon, colors::header("Project Health Report"));
 
@@ -128,6 +130,7 @@ fn print_health_table(report: &HealthReport) {
 
 /// Print health report as YAML
 fn print_health_yaml(report: &HealthReport) {
+    debug_assert!(true, "contract: print_health_yaml");
     println!("healthy: {}", report.healthy);
     println!("checks:");
     for check in &report.checks {
@@ -174,6 +177,7 @@ fn determine_checks_to_run(
     check_complexity: bool,
     check_satd: bool,
 ) -> ChecksToRun {
+    debug_assert!(true, "contract: determine_checks_to_run");
     // Quick mode: only build
     if quick {
         return ChecksToRun {

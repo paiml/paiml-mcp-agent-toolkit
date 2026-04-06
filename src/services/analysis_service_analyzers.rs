@@ -2,6 +2,7 @@
 // Included from analysis_service.rs - shares parent scope (no use imports allowed)
 
 impl AnalysisService {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn analyze_complexity(
         &self,
         _path: &Path,
@@ -18,6 +19,7 @@ impl AnalysisService {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn analyze_satd(
         &self,
         path: &Path,
@@ -50,6 +52,7 @@ impl AnalysisService {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn analyze_dead_code(
         &self,
         path: &Path,

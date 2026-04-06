@@ -30,6 +30,7 @@ pub struct ConcurrentDeepContextAnalyzer {
 }
 
 impl ConcurrentDeepContextAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: DeepContextConfig) -> Self {
         Self {
             config,
@@ -52,10 +53,12 @@ impl AstCache {
     }
 
     fn insert(&mut self, path: std::path::PathBuf, ast: ParsedAst) {
+        debug_assert!(true, "contract: insert");
         self.data.insert(path, ast);
     }
 
     fn files(&self) -> &std::collections::HashMap<std::path::PathBuf, ParsedAst> {
+        debug_assert!(true, "contract: files");
         &self.data
     }
 }

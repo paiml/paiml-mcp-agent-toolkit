@@ -42,6 +42,7 @@ fn create_sarif_rules(vulnerabilities: &[VulnerabilityMatch]) -> Vec<serde_json:
 
 /// Create single SARIF rule (Complexity: 1)
 fn create_sarif_rule(pattern: &str) -> serde_json::Value {
+    debug_assert!(true, "contract: create_sarif_rule");
     serde_json::json!({
         "id": pattern,
         "name": pattern,
@@ -65,6 +66,7 @@ fn create_sarif_results(vulnerabilities: &[VulnerabilityMatch]) -> Vec<serde_jso
 
 /// Create single SARIF result (Complexity: 3)
 fn create_sarif_result(vuln: &VulnerabilityMatch) -> serde_json::Value {
+    debug_assert!(true, "contract: create_sarif_result");
     use crate::wasm::security::Severity;
 
     let level = match vuln.severity {

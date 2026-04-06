@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Handle predict-quality command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_predict_quality(
     metric: Option<String>,
     threshold: Option<f64>,

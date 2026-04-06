@@ -2,6 +2,7 @@
 // visibility checks, import extraction, builtin type detection, and dependency graph building.
 
 impl CouplingAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }

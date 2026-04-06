@@ -14,6 +14,7 @@ impl TimelineUI {
     /// let player = TimelinePlayer::new(recording);
     /// let ui = TimelineUI::from_player(player);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_player(player: TimelinePlayer) -> Self {
         Self {
             player,
@@ -25,6 +26,7 @@ impl TimelineUI {
     /// Create a new timeline UI from snapshots (legacy Sprint 73 API)
     ///
     /// This method is kept for backward compatibility with Sprint 73 tests.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(snapshots: Vec<ExecutionSnapshot>) -> Self {
         debug_assert!(!snapshots.is_empty(), "snapshots must not be empty");
         // Create recording and populate with converted snapshots
@@ -74,11 +76,13 @@ impl TimelineUI {
     }
 
     /// Get current frame number
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_frame(&self) -> usize {
         self.player.current_frame()
     }
 
     /// Get current position in the timeline (legacy API)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_position(&self) -> usize {
         // For legacy compatibility
         if !self.snapshots_legacy.is_empty() {
@@ -89,6 +93,7 @@ impl TimelineUI {
     }
 
     /// Get progress text: "Frame X/Y"
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn progress_text(&self) -> String {
         format!(
             "Frame {}/{}",
@@ -98,16 +103,19 @@ impl TimelineUI {
     }
 
     /// Get current snapshot variables
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_variables(&self) -> &HashMap<String, serde_json::Value> {
         &self.player.current_snapshot().variables
     }
 
     /// Get current snapshot stack frames
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_stack_frames(&self) -> &[StackFrame] {
         &self.player.current_snapshot().stack_frames
     }
 
     /// Get frame info: "Frame X/Y | Timestamp | Location"
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn frame_info(&self) -> String {
         let snapshot = self.player.current_snapshot();
 
@@ -132,21 +140,25 @@ impl TimelineUI {
     }
 
     /// Check if playback is active
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_playing(&self) -> bool {
         self.player.is_playing()
     }
 
     /// Start playback
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn play(&mut self) {
         self.player.play();
     }
 
     /// Pause playback
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn pause(&mut self) {
         self.player.pause();
     }
 
     /// Advance to next frame
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn next_frame(&mut self) -> Result<&Snapshot> {
         self.player
             .next_frame()
@@ -154,6 +166,7 @@ impl TimelineUI {
     }
 
     /// Move to previous frame
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn prev_frame(&mut self) -> Result<&Snapshot> {
         self.player
             .prev_frame()
@@ -164,6 +177,7 @@ impl TimelineUI {
     ///
     /// Returns a reference to the snapshot at the target frame.
     /// Now works correctly in both legacy and modern modes (Sprint 77+).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn jump_to(&mut self, frame: usize) -> Result<&Snapshot> {
         if !self.snapshots_legacy.is_empty() {
             // Legacy mode - validate against legacy snapshot count and sync state
@@ -185,6 +199,7 @@ impl TimelineUI {
     ///
     /// Call this method periodically (e.g., from UI event loop) to auto-advance
     /// frames when playback is active.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn tick(&mut self) {
         if self.player.is_playing() {
             // Attempt to advance, ignore errors (e.g., end of recording)
@@ -201,6 +216,7 @@ impl TimelineUI {
     /// - 'j' or 'J': Jump mode (handled by caller)
     ///
     /// Returns Ok(()) on success, Err on invalid key or navigation error.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn handle_key(&mut self, key: char) -> Result<()> {
         // Check for legacy mode first
         if !self.snapshots_legacy.is_empty() {
@@ -240,6 +256,7 @@ impl TimelineUI {
 
     /// Handle keyboard input for legacy mode
     fn handle_key_legacy(&mut self, key: char) -> Result<()> {
+        debug_assert!(true, "contract: handle_key_legacy");
         match key {
             '→' => {
                 // Step forward

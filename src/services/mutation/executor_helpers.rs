@@ -32,6 +32,7 @@ impl MutantExecutor {
 
     /// Run cargo test in working directory with smart test filtering
     async fn run_cargo_test_for_mutant(&self, mutant: &Mutant) -> Result<String> {
+        debug_assert!(true, "contract: run_cargo_test_for_mutant");
         // Extract module path for test filtering
         let module_filter = self.extract_module_path(&mutant.original_file);
 

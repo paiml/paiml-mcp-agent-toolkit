@@ -98,6 +98,7 @@ fn check_file_for_lock_poisoning(entry: &Path) -> Vec<CbPatternViolation> {
     violations
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
@@ -165,6 +166,7 @@ pub(super) fn check_serde_line(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb122_serde_safety(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let serde_patterns = [
@@ -226,6 +228,7 @@ fn check_file_for_undocumented_ignore(entry: &Path) -> Vec<CbPatternViolation> {
     violations
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb123_undocumented_ignore(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     [project_path.join("src"), project_path.join("tests")]
@@ -292,6 +295,7 @@ fn check_config_file_for_coverage(config_path: &Path) -> Vec<CbPatternViolation>
         .collect()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb124_coverage_threshold(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let config_files = [

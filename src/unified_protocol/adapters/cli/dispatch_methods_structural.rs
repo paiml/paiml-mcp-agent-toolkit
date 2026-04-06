@@ -4,6 +4,7 @@ impl CliAdapter {
     fn dispatch_structural_analysis(
         analyze_cmd: &AnalyzeCommands,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(true, "contract: dispatch_structural_analysis");
         match analyze_cmd {
             AnalyzeCommands::Dag {
                 dag_type,
@@ -140,6 +141,7 @@ impl CliAdapter {
     fn dispatch_specialized_analysis(
         analyze_cmd: &AnalyzeCommands,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(true, "contract: dispatch_specialized_analysis");
         match analyze_cmd {
             AnalyzeCommands::Makefile {
                 path,

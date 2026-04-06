@@ -75,6 +75,7 @@ pub enum TuiAction {
 
 impl TuiAction {
     /// Get human-readable description of action
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn description(&self) -> &str {
         match self {
             TuiAction::NextFrame => "Next frame",

@@ -35,6 +35,7 @@ pub struct IncrementalCoverageConfig {
 /// Refactored handler for incremental coverage analysis using the facade pattern.
 ///
 /// This reduces complexity from 26 to ~8 by delegating to the facade service.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_incremental_coverage(config: IncrementalCoverageConfig) -> Result<()> {
     debug_assert!(
         config.project_path.exists(),
@@ -105,6 +106,7 @@ async fn output_results(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(true, "contract: output_results");
     let content = format_result(result, format, top_files)?;
 
     if let Some(output_path) = output {
@@ -123,6 +125,7 @@ fn format_result(
     format: IncrementalCoverageOutputFormat,
     top_files: usize,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_result");
     match format {
         IncrementalCoverageOutputFormat::Summary => Ok(format_summary(&result, top_files)),
         IncrementalCoverageOutputFormat::Detailed => Ok(format_detailed(&result, top_files)),

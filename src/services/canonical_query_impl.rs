@@ -4,10 +4,12 @@
 
 impl CanonicalQuery for SystemArchitectureQuery {
     fn query_id(&self) -> &'static str {
+        debug_assert!(true, "contract: query_id");
         "system-architecture-v1"
     }
 
     fn execute(&self, ctx: &AnalysisContext) -> Result<QueryResult> {
+        debug_assert!(true, "contract: execute");
         let start = std::time::Instant::now();
 
         // 1. Component detection via module hierarchy
@@ -43,6 +45,7 @@ impl CanonicalQuery for SystemArchitectureQuery {
 fn detect_architectural_components(
     dag: &crate::models::dag::DependencyGraph,
 ) -> Result<Vec<Component>> {
+    debug_assert!(true, "contract: detect_architectural_components");
     let mut components = Vec::new();
 
     // Extract top-level modules as initial components

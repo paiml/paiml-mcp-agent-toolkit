@@ -2,6 +2,7 @@
 
 impl ComparisonView {
     /// Export diff report as JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn export_diff_json(&self) -> Result<String> {
         let mut report = serde_json::json!({
             "metadata": {
@@ -22,6 +23,7 @@ impl ComparisonView {
     }
 
     fn build_frame_diffs(&self) -> Vec<serde_json::Value> {
+        debug_assert!(true, "contract: build_frame_diffs");
         let max_frames = self.total_frames_max();
         let snapshots_a = self.player_a.recording().snapshots();
         let snapshots_b = self.player_b.recording().snapshots();

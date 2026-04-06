@@ -9,6 +9,7 @@ impl Default for PatternEngine {
 
 impl PatternEngine {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let mut patterns = std::collections::HashMap::new();
         patterns.insert(
@@ -23,6 +24,7 @@ impl PatternEngine {
         Self { patterns }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn apply_pattern(&self, code: &str, pattern_name: &str) -> Result<String> {
         debug_assert!(!code.is_empty(), "code must not be empty");
         match pattern_name {

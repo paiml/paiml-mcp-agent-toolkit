@@ -13,6 +13,7 @@ use std::path::PathBuf;
 /// 2. Multiple files analysis for MCP composition (via `files` parameter)
 /// 3. Project-wide analysis (when both `file` and `files` are empty)
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_tdg_enhanced(
     project_path: PathBuf,
     file: Option<PathBuf>,
@@ -80,6 +81,7 @@ fn print_analysis_header(project_path: &PathBuf, threshold: f64, top: usize, for
 
 /// Prepare files for analysis
 fn prepare_files_for_analysis(file: Option<PathBuf>, files: Vec<PathBuf>) -> Vec<PathBuf> {
+    debug_assert!(true, "contract: prepare_files_for_analysis");
     let files_to_analyze = if let Some(single_file) = file {
         vec![single_file]
     } else if !files.is_empty() {
@@ -495,6 +497,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

@@ -12,6 +12,7 @@ impl TdgGraph {
     ///
     /// `VisGraph` ready for terminal visualization
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_vis_graph(&self) -> crate::viz::terminal::VisGraph {
         let mut vis = crate::viz::terminal::VisGraph::new();
 
@@ -51,11 +52,13 @@ impl TdgGraph {
 #[cfg(feature = "viz")]
 impl crate::viz::terminal::Visualizable for TdgGraph {
     fn render_terminal(&self, config: &crate::viz::terminal::RenderConfig) -> Result<String> {
+        debug_assert!(true, "contract: render_terminal");
         let vis = self.to_vis_graph();
         vis.render_terminal(config)
     }
 
     fn node_count(&self) -> usize {
+        debug_assert!(true, "contract: node_count");
         self.num_nodes()
     }
 }

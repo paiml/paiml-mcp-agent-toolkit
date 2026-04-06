@@ -3,6 +3,7 @@
 
 impl ProjectFileDiscovery {
     /// Discover all analyzable files in the project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn discover_files(&self) -> Result<Vec<PathBuf>> {
         let start = std::time::Instant::now();
         debug!("Starting file discovery at: {}", self.root.display());
@@ -93,6 +94,7 @@ impl ProjectFileDiscovery {
 
     /// Create the `WalkBuilder` with appropriate configuration
     fn create_walk_builder(&self) -> Result<WalkBuilder> {
+        debug_assert!(true, "contract: create_walk_builder");
         let mut builder = WalkBuilder::new(&self.root);
 
         // Configure ripgrep-style filtering

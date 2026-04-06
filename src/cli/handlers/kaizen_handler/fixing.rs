@@ -8,6 +8,7 @@ use std::process::Command;
 
 /// Apply safe deterministic fixes (clippy --fix + cargo fmt), verify with cargo check.
 /// Returns the number of fixes applied.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn apply_safe_fixes(path: &Path, findings: &mut [KaizenFinding]) -> Result<usize> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let has_clippy = findings
@@ -90,6 +91,7 @@ pub(crate) fn apply_safe_fixes(path: &Path, findings: &mut [KaizenFinding]) -> R
 
 /// Apply safe fixes for a specific crate's findings within a cross-stack run.
 /// Runs clippy --fix and cargo fmt in the crate directory, then marks matching findings.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn apply_safe_fixes_for_crate(
     crate_path: &Path,
     crate_name: &str,
@@ -181,6 +183,7 @@ pub(crate) fn apply_safe_fixes_for_crate(
 }
 
 /// Spawn AI sub-agents for complex findings. Runs sequentially in v1.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn spawn_agents(
     path: &Path,
     findings: &mut [KaizenFinding],
@@ -256,6 +259,7 @@ pub(crate) fn spawn_agents(
 }
 
 /// Spawn agents for a specific crate's findings in cross-stack mode.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn spawn_agents_for_crate(
     crate_path: &Path,
     crate_name: &str,

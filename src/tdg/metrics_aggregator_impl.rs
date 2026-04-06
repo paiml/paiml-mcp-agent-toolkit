@@ -21,6 +21,7 @@ impl Default for MetricsAggregator {
 
 impl MetricsAggregator {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             storage_metrics: Arc::new(RwLock::new(RollingWindow::new(
@@ -41,6 +42,7 @@ impl MetricsAggregator {
     }
 
     /// Record storage metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn record_storage_metrics(&self, metrics: StorageMetricPoint) -> Result<()> {
         let mut window = self.storage_metrics.write().await;
         window.push(metrics, HashMap::new());
@@ -48,6 +50,7 @@ impl MetricsAggregator {
     }
 
     /// Record performance metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn record_performance_metrics(&self, metrics: PerformanceMetricPoint) -> Result<()> {
         let mut window = self.performance_metrics.write().await;
 
@@ -70,6 +73,7 @@ impl MetricsAggregator {
     }
 
     /// Record analysis metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn record_analysis_metrics(&self, metrics: AnalysisMetricPoint) -> Result<()> {
         let mut window = self.analysis_metrics.write().await;
         window.push(metrics, HashMap::new());
@@ -77,6 +81,7 @@ impl MetricsAggregator {
     }
 
     /// Calculate aggregated statistics for performance metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn aggregate_performance_stats(&self) -> AggregatedStats {
         let window = self.performance_metrics.read().await;
         let data = window.get_window();
@@ -214,6 +219,7 @@ impl MetricsAggregator {
     }
 
     /// Get current alert status
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_alert_status(&self) -> Vec<Alert> {
         let mut alerts = Vec::new();
         let thresholds = self.alert_thresholds.read().await;
@@ -256,6 +262,7 @@ impl MetricsAggregator {
     }
 
     /// Export metrics in various formats
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn export_metrics(&self, format: ExportFormat) -> Result<String> {
         let storage = self.storage_metrics.read().await.get_window();
         let performance = self.performance_metrics.read().await.get_window();

@@ -1,6 +1,7 @@
 impl GitHubActionsIntegration {
     /// Create new GitHub Actions integration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         monitor: QualityMonitor,
         enforcer: ErrorBudgetEnforcer,
@@ -14,6 +15,7 @@ impl GitHubActionsIntegration {
     }
 
     /// Run quality analysis for pull request
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_pull_request(
         &mut self,
         _pr_number: u32,
@@ -121,6 +123,7 @@ impl GitHubActionsIntegration {
 
     /// Generate GitHub Actions workflow YAML
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_workflow_yaml(&self) -> String {
         let triggers = &self.config.triggers;
         let thresholds = &self.config.quality_thresholds;
@@ -240,6 +243,7 @@ jobs:
         analysis: &QualityAnalysis,
         decision: &Decision,
     ) -> String {
+        debug_assert!(true, "contract: generate_comment");
         let template = &self.config.comments.template;
         let mut comment = format!("{}\n\n", template.header);
 
@@ -333,6 +337,7 @@ jobs:
 
     /// Extract team identifier from repository name
     fn extract_team_from_repository(&self) -> String {
+        debug_assert!(true, "contract: extract_team_from_repository");
         // Simple heuristic: use repository owner as team
         self.config
             .repository

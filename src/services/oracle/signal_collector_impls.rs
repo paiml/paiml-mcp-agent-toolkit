@@ -15,6 +15,7 @@ fn extract_compiler_message(line: &str) -> Option<serde_json::Value> {
 
 /// Extract error code and rendered text from a cargo diagnostic message object.
 fn extract_code_and_rendered(message: &serde_json::Value) -> (Option<String>, String) {
+    debug_assert!(true, "contract: extract_code_and_rendered");
     let code = message
         .get("code")
         .and_then(|c| c.get("code"))
@@ -32,6 +33,7 @@ fn extract_code_and_rendered(message: &serde_json::Value) -> (Option<String>, St
 
 /// Compute clippy lint weight based on the error code category.
 fn clippy_weight(code: &Option<String>) -> f32 {
+    debug_assert!(true, "contract: clippy_weight");
     let code_str = match code.as_deref() {
         Some(s) => s,
         None => return 0.5,

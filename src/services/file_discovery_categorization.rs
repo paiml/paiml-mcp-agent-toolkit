@@ -3,6 +3,7 @@
 
 impl ProjectFileDiscovery {
     /// Get statistics about discovered files
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_discovery_stats(&self) -> Result<DiscoveryStats> {
         let files = self.discover_files()?;
         let mut stats = DiscoveryStats::default();
@@ -39,6 +40,7 @@ impl ProjectFileDiscovery {
 
     /// Categorize a file for deep context analysis
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn categorize_file(path: &Path) -> FileCategory {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");

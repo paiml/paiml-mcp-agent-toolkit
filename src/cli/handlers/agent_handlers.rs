@@ -27,6 +27,7 @@ struct AgentStartConfig {
 }
 
 /// Handle agent commands
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_agent_command(command: AgentCommands) -> Result<()> {
     match command {
         AgentCommands::Start {

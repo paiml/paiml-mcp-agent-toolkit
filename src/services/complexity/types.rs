@@ -65,6 +65,7 @@ impl ComplexityMetrics {
     /// assert!(metrics.halstead.is_none());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(cyclomatic: u16, cognitive: u16, nesting_max: u8, lines: u16) -> Self {
         Self {
             cyclomatic,
@@ -100,6 +101,7 @@ impl ComplexityMetrics {
     /// assert_eq!(metrics.halstead.unwrap().operators_unique, 8);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_halstead(
         cyclomatic: u16,
         cognitive: u16,
@@ -133,6 +135,7 @@ impl ComplexityMetrics {
     /// assert!(!complex.is_simple());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_simple(&self) -> bool {
         self.cyclomatic <= 5 && self.cognitive <= 7
     }
@@ -154,6 +157,7 @@ impl ComplexityMetrics {
     /// assert!(complex.needs_refactoring());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn needs_refactoring(&self) -> bool {
         self.cyclomatic > 10 || self.cognitive > 15
     }
@@ -174,6 +178,7 @@ impl ComplexityMetrics {
     /// assert!(complex.complexity_score() > simple.complexity_score());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn complexity_score(&self) -> f64 {
         // Weighted combination of complexity metrics
         (f64::from(self.cyclomatic) * 1.0)
@@ -253,6 +258,7 @@ impl HalsteadMetrics {
     /// assert_eq!(metrics.volume, 0.0); // Not calculated yet
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         operators_unique: u32,
         operands_unique: u32,
@@ -292,6 +298,7 @@ impl HalsteadMetrics {
     /// assert!(calculated.bugs >= 0.0);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_derived(mut self) -> Self {
         // Prevent division by zero
         if self.operators_unique == 0 || self.operands_unique == 0 {

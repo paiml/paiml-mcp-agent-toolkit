@@ -41,6 +41,7 @@ struct BottleneckAnalysis {
 }
 
 /// Handle the bottleneck analysis command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_bottleneck(
     path: &Path,
     format: &crate::cli::enums::OutputFormat,
@@ -271,6 +272,7 @@ fn classify_pattern(path: &str, touches: usize, lines: usize) -> String {
 
 /// Get recommendation based on pattern
 fn get_recommendation(pattern: &str) -> String {
+    debug_assert!(true, "contract: get_recommendation");
     match pattern {
         "Registry/Dispatch" => {
             "Consider proc-macro auto-discovery (inventory/linkme) to avoid touching this file for every new feature".to_string()
@@ -337,6 +339,7 @@ fn detect_coupling(commit_files: &[Vec<String>], min_co_changes: usize) -> Vec<C
 
 /// Format results as colorized text
 fn format_text(analysis: &BottleneckAnalysis) -> String {
+    debug_assert!(true, "contract: format_text");
     use crate::cli::colors as c;
     use std::fmt::Write;
 

@@ -4,6 +4,7 @@
 impl WasmValidator {
     /// Creates a new WASM validator
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             validation_errors: Vec::new(),
@@ -12,6 +13,7 @@ impl WasmValidator {
     }
 
     /// Validates WASM module for correctness (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_wasm_module(&mut self, wasm_bytes: &[u8]) -> Result<bool, String> {
         debug_assert!(!wasm_bytes.is_empty(), "wasm_bytes must not be empty");
         if wasm_bytes.len() < 8 {
@@ -38,6 +40,7 @@ impl WasmValidator {
     }
 
     /// Performs security analysis on WASM module (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_security(&mut self, wasm_bytes: &[u8]) -> Result<Vec<String>, String> {
         debug_assert!(!wasm_bytes.is_empty(), "wasm_bytes must not be empty");
         let mut warnings = Vec::new();
@@ -59,12 +62,14 @@ impl WasmValidator {
 
     /// Gets validation errors
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_validation_errors(&self) -> &[String] {
         &self.validation_errors
     }
 
     /// Gets security warnings
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_security_warnings(&self) -> &[String] {
         &self.security_warnings
     }

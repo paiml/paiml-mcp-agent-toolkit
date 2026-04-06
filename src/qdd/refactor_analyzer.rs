@@ -3,11 +3,13 @@
 
 impl CodeAnalyzer {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(_profile: QualityProfile) -> Self {
         Self {}
     }
 
     /// Analyze code quality
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze(&self, code: &str) -> Result<CodeAnalysis> {
         debug_assert!(!code.is_empty(), "code must not be empty");
         Ok(CodeAnalysis {

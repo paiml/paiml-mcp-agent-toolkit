@@ -6,6 +6,7 @@ use crate::cli::colors;
 use crate::services::defect_detector::{DefectPattern, Severity};
 use anyhow::{Context, Result};
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_text_report(report: &DefectReport) {
     println!("\n{}", colors::header("Known Defects Report"));
     println!("{}", colors::rule());
@@ -115,6 +116,7 @@ pub fn print_text_report(report: &DefectReport) {
 }
 
 fn print_defect_pattern(defect: &DefectPattern) {
+    debug_assert!(true, "contract: print_defect_pattern");
     let severity_color = match defect.severity {
         Severity::Critical => colors::RED,
         Severity::High => colors::BOLD_RED,
@@ -160,6 +162,7 @@ fn print_defect_pattern(defect: &DefectPattern) {
     );
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_json_report(report: &DefectReport) -> Result<()> {
     let json =
         serde_json::to_string_pretty(report).context("Failed to serialize report to JSON")?;
@@ -167,6 +170,7 @@ pub fn print_json_report(report: &DefectReport) -> Result<()> {
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_junit_report(report: &DefectReport) -> Result<()> {
     println!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
     println!(

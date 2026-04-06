@@ -45,6 +45,7 @@ impl EntropyReport {
     /// assert_eq!(report.total_loc_reduction(), 0);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_loc_reduction(&self) -> usize {
         self.actionable_violations
             .iter()
@@ -92,6 +93,7 @@ impl EntropyReport {
     /// assert_eq!(report.reduction_percentage(), 0.0);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn reduction_percentage(&self) -> f64 {
         if self.entropy_metrics.total_loc > 0 {
             (self.total_loc_reduction() as f64 / self.entropy_metrics.total_loc as f64) * 100.0
@@ -102,6 +104,7 @@ impl EntropyReport {
 
     /// Format as human-readable report
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_report(&self) -> String {
         let mut report = String::new();
 

@@ -23,6 +23,7 @@ impl Default for ProgressBar {
 
 impl ProgressBar {
     /// Create a new progress bar with specified width
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(width: usize) -> Self {
         debug_assert!(width > 0, "width must be positive");
         ProgressBar {
@@ -32,12 +33,14 @@ impl ProgressBar {
     }
 
     /// Enable color output
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_color(mut self) -> Self {
         self.use_color = true;
         self
     }
 
     /// Render progress bar for a value (0.0 - 1.0)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render(&self, value: f64) -> String {
         let clamped = value.clamp(0.0, 1.0);
         let filled = (clamped * self.width as f64).round() as usize;
@@ -51,6 +54,7 @@ impl ProgressBar {
     }
 
     /// Render progress bar with percentage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_with_percent(&self, value: f64) -> String {
         let rendered = self.render(value);
         format!("{} {:>3.0}%", rendered, value * 100.0)
@@ -58,6 +62,7 @@ impl ProgressBar {
 
     /// Render segmented progress bar with thresholds
     /// Thresholds are pairs of (value, color) for different zones
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_segmented(&self, value: f64, thresholds: &[(f64, Severity)]) -> String {
         let clamped = value.clamp(0.0, 1.0);
         let filled = (clamped * self.width as f64).round() as usize;
@@ -111,6 +116,7 @@ impl Default for Sparkline {
 
 impl Sparkline {
     /// Render sparkline from normalized values (0-7)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render(&self, values: &[u8]) -> String {
         debug_assert!(!values.is_empty(), "values must not be empty");
         values
@@ -120,6 +126,7 @@ impl Sparkline {
     }
 
     /// Render sparkline from raw f64 values (auto-normalize)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_auto(&self, values: &[f64]) -> String {
         debug_assert!(!values.is_empty(), "values must not be empty");
         if values.is_empty() {
@@ -143,6 +150,7 @@ impl Sparkline {
     }
 
     /// Render sparkline with trend indicator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_with_trend(&self, values: &[f64]) -> String {
         debug_assert!(!values.is_empty(), "values must not be empty");
         let sparkline = self.render_auto(values);
@@ -195,26 +203,31 @@ pub struct StatusIndicator;
 
 impl StatusIndicator {
     /// Render a pass indicator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn pass() -> &'static str {
         "✓"
     }
 
     /// Render a fail indicator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn fail() -> &'static str {
         "✗"
     }
 
     /// Render a warning indicator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn warning() -> &'static str {
         "⚠"
     }
 
     /// Render a pending indicator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn pending() -> &'static str {
         "◷"
     }
 
     /// Render an info indicator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn info() -> &'static str {
         "ℹ"
     }

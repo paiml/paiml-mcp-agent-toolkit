@@ -3,6 +3,7 @@
 impl CacheConfig {
     /// Load configuration from environment variables
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_env() -> Self {
         let mut config = Self::default();
 
@@ -32,36 +33,42 @@ impl CacheConfig {
 
     /// Get AST TTL as Duration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn ast_ttl(&self) -> Duration {
         Duration::from_secs(self.ast_ttl_secs)
     }
 
     /// Get template TTL as Duration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn template_ttl(&self) -> Duration {
         Duration::from_secs(self.template_ttl_secs)
     }
 
     /// Get DAG TTL as Duration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn dag_ttl(&self) -> Duration {
         Duration::from_secs(self.dag_ttl_secs)
     }
 
     /// Get churn TTL as Duration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn churn_ttl(&self) -> Duration {
         Duration::from_secs(self.churn_ttl_secs)
     }
 
     /// Get git stats TTL as Duration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn git_stats_ttl(&self) -> Duration {
         Duration::from_secs(self.git_stats_ttl_secs)
     }
 
     /// Calculate max memory in bytes
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn max_memory_bytes(&self) -> usize {
         self.max_memory_mb * 1024 * 1024
     }

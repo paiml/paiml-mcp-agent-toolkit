@@ -42,6 +42,7 @@ impl ContextError {
     /// Format error with full context and suggestions
     ///
     /// CC=4: Match on enum variants
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_detailed(&self) -> String {
         match self {
             ContextError::FileNotFound {
@@ -183,6 +184,7 @@ fn format_config_error(
 /// Helper to create file not found error with roadmap suggestions
 ///
 /// CC=1: Simple constructor
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn roadmap_not_found(path: &Path) -> ContextError {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     ContextError::FileNotFound {
@@ -198,6 +200,7 @@ pub fn roadmap_not_found(path: &Path) -> ContextError {
 /// Helper to create file not found error with Cargo.toml suggestions
 ///
 /// CC=1: Simple constructor
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn cargo_toml_not_found(path: &Path) -> ContextError {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     ContextError::FileNotFound {
@@ -213,6 +216,7 @@ pub fn cargo_toml_not_found(path: &Path) -> ContextError {
 /// Helper to create file not found error with generic suggestions
 ///
 /// CC=1: Simple constructor
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn file_not_found(path: &Path) -> ContextError {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     ContextError::FileNotFound {

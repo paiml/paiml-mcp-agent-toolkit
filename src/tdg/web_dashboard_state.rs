@@ -24,6 +24,7 @@ pub struct DashboardState {
 
 impl DashboardState {
     /// Create new dashboard state with initialized TDG system
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         info!("Initializing TDG Dashboard state");
 
@@ -62,6 +63,7 @@ impl DashboardState {
     }
 
     /// Update system metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn update_metrics(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let storage_stats = self.storage.get_statistics();
         let adaptive = AdaptiveThresholdFactory::create_default();

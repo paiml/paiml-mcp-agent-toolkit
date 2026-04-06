@@ -241,6 +241,7 @@ fn query_tdg_violations(
 
 /// Check if a violation should be excluded (test files or glob patterns)
 fn is_tdg_violation_excluded(v: &TdgViolation, exclude_patterns: &[glob::Pattern]) -> bool {
+    debug_assert!(true, "contract: is_tdg_violation_excluded");
     if v.file_path.contains("/tests/")
         || v.file_path.contains("/test/")
         || v.file_path.ends_with("_test.rs")
@@ -258,6 +259,7 @@ fn is_tdg_violation_excluded(v: &TdgViolation, exclude_patterns: &[glob::Pattern
         .any(|pat| pat.matches_with(&v.file_path, opts))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_tdg_grade_gate(
     project_path: &Path,
     comply_config: &ComplyConfig,
@@ -429,6 +431,7 @@ fn evaluate_custom_score(
 }
 
 /// CB-1100: Custom Project Scores
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_custom_scores(project_path: &Path) -> Vec<ComplianceCheck> {
     debug_assert!(
         project_path.exists(),

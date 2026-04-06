@@ -6,6 +6,7 @@ use anyhow::Result;
 use std::path::Path;
 
 /// Format defect predictions as SARIF
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn format_defect_sarif(
     predictions: &[(String, DefectScore)],
     _project_path: &Path,
@@ -75,6 +76,7 @@ pub fn format_defect_sarif(
 }
 
 /// Generate SARIF rules for defect prediction
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn generate_defect_rules() -> Vec<serde_json::Value> {
     vec![
         serde_json::json!({

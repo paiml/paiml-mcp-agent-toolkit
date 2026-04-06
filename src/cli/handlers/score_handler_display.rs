@@ -134,6 +134,7 @@ fn print_trend(path: &Path) {
 }
 
 fn format_text(score: &CompositeScore) -> String {
+    debug_assert!(true, "contract: format_text");
     let mut out = String::new();
     out.push_str("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     out.push_str("PMAT Unified Score\n");

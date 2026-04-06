@@ -3,6 +3,7 @@
 
 impl SATDDetector {
     /// Check if line is false positive SATD
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn is_false_positive_line(&self, line: &str) -> bool {
         debug_assert!(!line.is_empty(), "line must not be empty");
         let trimmed = line.trim();
@@ -268,6 +269,7 @@ impl SATDDetector {
     }
 
     /// Check if line is documentation, test, or metadata about SATD
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn is_documentation_or_metadata(&self, line: &str) -> bool {
         debug_assert!(!line.is_empty(), "line must not be empty");
         let trimmed = line.trim();
@@ -357,6 +359,7 @@ impl SATDDetector {
     }
 
     /// Comprehensive false positive detection for SATD
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn is_likely_test_data_or_pattern(&self, line: &str, file_path: &Path) -> bool {
         debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // First check: Should we exclude this entire file?

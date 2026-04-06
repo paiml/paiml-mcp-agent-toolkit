@@ -61,6 +61,7 @@
         use super::*;
 
         fn make_test_result() -> EnforcementResult {
+            debug_assert!(true, "contract: make_test_result");
             EnforcementResult {
                 state: EnforcementState::Analyzing,
                 score: 0.75,

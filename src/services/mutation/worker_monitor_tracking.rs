@@ -1,5 +1,6 @@
 impl WorkerMetrics {
     /// Create new worker metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(id: usize) -> Self {
         Self {
             id,
@@ -15,6 +16,7 @@ impl WorkerMetrics {
     }
 
     /// Record a successful task completion
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_success(&mut self, processing_time_ms: u64) {
         self.processed_count += 1;
         self.state = WorkerState::Idle;
@@ -27,6 +29,7 @@ impl WorkerMetrics {
     }
 
     /// Record a task failure
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_failure(&mut self, error: &str) {
         debug_assert!(!error.is_empty(), "error must not be empty");
         self.failed_count += 1;
@@ -40,12 +43,14 @@ impl WorkerMetrics {
     }
 
     /// Update heartbeat timestamp
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update_heartbeat(&mut self) {
         self.last_heartbeat = Instant::now();
         self.heartbeat_count += 1;
     }
 
     /// Check if worker appears to be stalled
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_stalled(&self, timeout: Duration) -> bool {
         if self.state == WorkerState::Processing {
             self.last_heartbeat.elapsed() > timeout
@@ -55,12 +60,14 @@ impl WorkerMetrics {
     }
 
     /// Set worker state
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_state(&mut self, state: WorkerState) {
         self.state = state;
         self.update_heartbeat();
     }
 
     /// Add or update a custom metric
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_custom_metric(&mut self, key: &str, value: &str) {
         debug_assert!(!key.is_empty(), "key must not be empty");
         self.custom_metrics
@@ -68,6 +75,7 @@ impl WorkerMetrics {
     }
 
     /// Get time since last heartbeat
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn time_since_heartbeat(&self) -> Duration {
         self.last_heartbeat.elapsed()
     }

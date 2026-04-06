@@ -16,6 +16,7 @@ pub struct PdmtService {
 
 impl PdmtService {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             deterministic_seed: 42, // Fixed seed for determinism
@@ -23,6 +24,7 @@ impl PdmtService {
     }
 
     /// Generate a deterministic todo list from requirements
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_todos(
         &self,
         requirements: Vec<String>,

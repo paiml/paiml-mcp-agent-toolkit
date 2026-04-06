@@ -20,6 +20,7 @@ pub struct RoadmapService {
 
 impl RoadmapService {
     /// Create a new roadmap service with custom path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new<P: AsRef<Path>>(roadmap_path: P) -> Self {
         Self {
             roadmap_path: roadmap_path.as_ref().to_path_buf(),
@@ -27,6 +28,7 @@ impl RoadmapService {
     }
 
     /// Create a roadmap service with default path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn default_path() -> Self {
         Self::new(DEFAULT_ROADMAP_PATH)
     }

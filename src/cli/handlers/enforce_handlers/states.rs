@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 // ========== SPRINT 82 REFACTORED FUNCTIONS (≤10 COMPLEXITY EACH) ==========
 
 /// Handle analyzing state - extracted from `run_enforcement_step` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyzing_state(
     project_path: &Path,
     profile: &QualityProfile,
@@ -71,6 +72,7 @@ pub async fn handle_analyzing_state(
 }
 
 /// Handle violating state - extracted from `run_enforcement_step` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_violating_state(
     violations: Vec<QualityViolation>,
     total_score: f64,
@@ -110,6 +112,7 @@ pub fn handle_violating_state(
 }
 
 /// Handle refactoring state - extracted from `run_enforcement_step` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_refactoring_state(
     total_score: f64,
     specific_file: Option<&PathBuf>,
@@ -132,6 +135,7 @@ pub fn handle_refactoring_state(
 }
 
 /// Handle complete state - extracted from `run_enforcement_step` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn handle_complete_state() -> Result<EnforcementResult> {
     Ok(EnforcementResult {
         state: EnforcementState::Complete,
@@ -151,6 +155,7 @@ pub fn handle_complete_state() -> Result<EnforcementResult> {
 // ========== SPRINT 84 REFACTORED FUNCTIONS (A+ STANDARD ≤10 COMPLEXITY EACH) ==========
 
 /// Handle violating state proxy - extracted from `run_enforcement_step` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_violating_enforcement_state_proxy(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -183,6 +188,7 @@ pub async fn handle_violating_enforcement_state_proxy(
 }
 
 /// Handle refactoring state for enforcement - extracted from `run_enforcement_step` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_refactoring_enforcement_state(
     base_score: f64,
     specific_file: Option<&PathBuf>,
@@ -191,6 +197,7 @@ pub fn handle_refactoring_enforcement_state(
 }
 
 /// Handle validating state for enforcement - extracted from `run_enforcement_step` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_validating_enforcement_state(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -226,6 +233,7 @@ pub async fn handle_validating_enforcement_state(
 }
 
 /// Handle analyzing state for enforcement - alias for clarity (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyzing_enforcement_state(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -249,6 +257,7 @@ pub async fn handle_analyzing_enforcement_state(
 }
 
 /// Handle complete state for enforcement - alias for clarity (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn handle_complete_enforcement_state() -> Result<EnforcementResult> {
     handle_complete_state()
 }

@@ -1,6 +1,7 @@
 // TDG handler - main entry point and orchestration
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_tdg(
     path: PathBuf,
     file: Option<PathBuf>,

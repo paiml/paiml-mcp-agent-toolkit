@@ -45,6 +45,7 @@ impl Default for PatternCollection {
 
 impl PatternCollection {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             patterns: HashMap::new(),
@@ -54,11 +55,13 @@ impl PatternCollection {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn file_count(&self) -> usize {
         self.total_files
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn summary(&self) -> super::violation_detector::PatternSummary {
         // For now, return a summary based on the most common pattern
         let most_common = self
@@ -84,12 +87,14 @@ impl PatternCollection {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_pattern(&mut self, pattern: AstPattern) {
         let hash = pattern.pattern_hash.clone();
         self.patterns.insert(hash, pattern);
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_patterns_for_file(&self, file: &Path) -> Vec<&AstPattern> {
         debug_assert!(file.exists(), "file must exist: {}", file.display());
         self.file_patterns

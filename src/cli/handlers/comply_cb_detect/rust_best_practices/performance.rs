@@ -16,6 +16,7 @@ use std::fs;
 use std::path::Path;
 
 /// CB-517: Stale Debug Artifacts - leftover debug instrumentation in production code
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb517_stale_debug_artifacts(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -101,6 +102,7 @@ pub fn detect_cb517_stale_debug_artifacts(project_path: &Path) -> Vec<CbPatternV
 }
 
 /// CB-518: Expensive Clone in Loop - .clone() calls inside loop bodies
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb518_expensive_clone_in_loop(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -197,6 +199,7 @@ pub fn detect_cb518_expensive_clone_in_loop(project_path: &Path) -> Vec<CbPatter
 }
 
 /// CB-519: Lossy Data Pipeline - detect quantize/dequantize/encode/decode round-trip chains
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb519_lossy_data_pipeline(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -357,6 +360,7 @@ fn scan_cb520_file(
 }
 
 /// CB-520: Expensive Init in Hot Path - constructor/load/open calls inside loops
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb520_expensive_init_in_loop(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -394,6 +398,7 @@ pub fn detect_cb520_expensive_init_in_loop(project_path: &Path) -> Vec<CbPattern
 }
 
 /// CB-521: Format Detection Without Magic Bytes - binary parsing without header validation
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb521_format_without_magic_bytes(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

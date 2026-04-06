@@ -82,6 +82,7 @@ pub struct CliErrorResponse {
 /// Extract the current protocol from request context
 /// This would typically be set by middleware or the protocol adapter
 fn extract_protocol_from_context() -> Option<Protocol> {
+    debug_assert!(true, "contract: extract_protocol_from_context");
     // In a real implementation, this would extract from request extensions
     // For now, we'll use a thread-local or similar mechanism
     CURRENT_PROTOCOL.with(std::cell::Cell::get)
@@ -103,6 +104,7 @@ thread_local! {
 /// clear_protocol_context();
 /// // Protocol context is now cleared
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn set_protocol_context(protocol: Protocol) {
     CURRENT_PROTOCOL.with(|p| p.set(Some(protocol)));
 }
@@ -118,6 +120,7 @@ pub fn set_protocol_context(protocol: Protocol) {
 /// clear_protocol_context();
 /// // Protocol context is now None
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn clear_protocol_context() {
     CURRENT_PROTOCOL.with(|p| p.set(None));
 }

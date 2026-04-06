@@ -5,6 +5,7 @@
 // --- Coverage metric helpers (markdown) ---
 
 fn format_coverage_metrics_md(r: &QueryResult, out: &mut String) {
+    debug_assert!(true, "contract: format_coverage_metrics_md");
     match r.coverage_status.as_str() {
         "uncovered" => {
             out.push_str(&format!(" | 🛡️ **Uncovered (0/{} lines)**", r.lines_total));
@@ -31,6 +32,7 @@ fn format_coverage_metrics_md(r: &QueryResult, out: &mut String) {
 }
 
 fn format_coverage_diff_md(diff: f32, out: &mut String) {
+    debug_assert!(true, "contract: format_coverage_diff_md");
     if diff > 0.0 {
         out.push_str(&format!(" | ✅ **+{:.1}% coverage**", diff));
     } else if diff < 0.0 {
@@ -41,6 +43,7 @@ fn format_coverage_diff_md(diff: f32, out: &mut String) {
 // --- Coverage metric helpers (colorized text) ---
 
 fn format_coverage_metrics_text(r: &QueryResult, out: &mut String) {
+    debug_assert!(true, "contract: format_coverage_metrics_text");
     match r.coverage_status.as_str() {
         "uncovered" => {
             out.push_str(&format!(
@@ -79,6 +82,7 @@ fn format_coverage_metrics_text(r: &QueryResult, out: &mut String) {
 }
 
 fn format_coverage_diff_text(diff: f32, out: &mut String) {
+    debug_assert!(true, "contract: format_coverage_diff_text");
     if diff > 0.0 {
         out.push_str(&format!(" | \x1b[1;32m✅ +{:.1}% cov\x1b[0m", diff));
     } else if diff < 0.0 {
@@ -107,6 +111,7 @@ fn truncate_doc(doc: &str) -> String {
 // --- Rich metrics builders (used by format_text_with_code) ---
 
 fn build_rich_metrics(r: &QueryResult) -> Vec<String> {
+    debug_assert!(true, "contract: build_rich_metrics");
     let mut metrics = Vec::new();
     metrics.push(format!("C:{}", r.complexity));
     metrics.push(format!("L:{}", r.loc));
@@ -126,6 +131,7 @@ fn build_rich_metrics(r: &QueryResult) -> Vec<String> {
 }
 
 fn push_pagerank_metric(r: &QueryResult, metrics: &mut Vec<String>) {
+    debug_assert!(true, "contract: push_pagerank_metric");
     if r.pagerank <= 0.0 {
         return;
     }
@@ -138,6 +144,7 @@ fn push_pagerank_metric(r: &QueryResult, metrics: &mut Vec<String>) {
 }
 
 fn push_indegree_metric(r: &QueryResult, metrics: &mut Vec<String>) {
+    debug_assert!(true, "contract: push_indegree_metric");
     if r.in_degree >= 5 {
         metrics.push(format!("\x1b[1;32m↓{}\x1b[0m", r.in_degree));
     } else if r.in_degree > 0 {
@@ -146,6 +153,7 @@ fn push_indegree_metric(r: &QueryResult, metrics: &mut Vec<String>) {
 }
 
 fn push_churn_metric_rich(r: &QueryResult, metrics: &mut Vec<String>) {
+    debug_assert!(true, "contract: push_churn_metric_rich");
     if r.commit_count == 0 {
         return;
     }
@@ -163,6 +171,7 @@ fn push_churn_metric_rich(r: &QueryResult, metrics: &mut Vec<String>) {
 }
 
 fn push_entropy_metric(r: &QueryResult, metrics: &mut Vec<String>) {
+    debug_assert!(true, "contract: push_entropy_metric");
     if r.pattern_diversity <= 0.0 {
         return;
     }
@@ -177,6 +186,7 @@ fn push_entropy_metric(r: &QueryResult, metrics: &mut Vec<String>) {
 }
 
 fn push_coverage_metric_rich(r: &QueryResult, metrics: &mut Vec<String>) {
+    debug_assert!(true, "contract: push_coverage_metric_rich");
     match r.coverage_status.as_str() {
         "uncovered" => {
             metrics.push(format!(
@@ -216,6 +226,7 @@ fn push_coverage_metric_rich(r: &QueryResult, metrics: &mut Vec<String>) {
 }
 
 fn push_fault_metric_rich(r: &QueryResult, metrics: &mut Vec<String>) {
+    debug_assert!(true, "contract: push_fault_metric_rich");
     if r.fault_annotations.is_empty() {
         return;
     }
@@ -233,6 +244,7 @@ fn push_fault_metric_rich(r: &QueryResult, metrics: &mut Vec<String>) {
 // --- Call graph formatting ---
 
 fn format_call_graph(r: &QueryResult) -> Option<String> {
+    debug_assert!(true, "contract: format_call_graph");
     if r.calls.is_empty() && r.called_by.is_empty() {
         return None;
     }

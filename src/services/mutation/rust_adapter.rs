@@ -44,6 +44,7 @@ impl LanguageAdapter for RustAdapter {
     }
 
     fn mutation_operators(&self) -> Vec<Box<dyn MutationOperator>> {
+        debug_assert!(true, "contract: mutation_operators");
         vec![
             // Phase 1-4 Operators
             Box::new(ArithmeticOperatorReplacement),

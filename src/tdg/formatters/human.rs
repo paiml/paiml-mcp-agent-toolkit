@@ -23,6 +23,7 @@ use super::helpers::progress_bar;
 /// assert!(output.contains("85.5/100 (A)"));
 /// ```ignore
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_human(score: &TdgScore) -> String {
     let mut output = String::new();
 

@@ -9,6 +9,7 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 /// Discover files for defect analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn discover_files_for_defect_analysis(
     project_path: &Path,
     config: &DefectPredictionConfig,
@@ -24,6 +25,7 @@ pub async fn discover_files_for_defect_analysis(
 }
 
 /// Analyze defect probability for files
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_defect_probability(
     files: &[(PathBuf, String, usize)],
     config: &DefectPredictionConfig,

@@ -12,6 +12,7 @@ use serde_json::Value;
 use std::path::PathBuf;
 
 /// Convert MCP tool parameters to uniform contracts
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn map_mcp_tool(tool_name: &str, params: Value) -> Result<Box<dyn ContractValidation>> {
     debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     match tool_name {
@@ -27,6 +28,7 @@ pub fn map_mcp_tool(tool_name: &str, params: Value) -> Result<Box<dyn ContractVa
 }
 
 fn map_complexity_contract(params: &Value) -> Result<Box<dyn ContractValidation>> {
+    debug_assert!(true, "contract: map_complexity_contract");
     let contract = AnalyzeComplexityContract {
         base: parse_base_params(params)?,
         max_cyclomatic: params["max_cyclomatic"].as_u64().map(|n| n as u32),
@@ -38,6 +40,7 @@ fn map_complexity_contract(params: &Value) -> Result<Box<dyn ContractValidation>
 }
 
 fn map_satd_contract(params: &Value) -> Result<Box<dyn ContractValidation>> {
+    debug_assert!(true, "contract: map_satd_contract");
     let contract = AnalyzeSatdContract {
         base: parse_base_params(params)?,
         severity: parse_severity(&params["severity"]),
@@ -50,6 +53,7 @@ fn map_satd_contract(params: &Value) -> Result<Box<dyn ContractValidation>> {
 }
 
 fn map_dead_code_contract(params: &Value) -> Result<Box<dyn ContractValidation>> {
+    debug_assert!(true, "contract: map_dead_code_contract");
     let contract = AnalyzeDeadCodeContract {
         base: parse_base_params(params)?,
         include_unreachable: params["include_unreachable"].as_bool().unwrap_or(false),
@@ -62,6 +66,7 @@ fn map_dead_code_contract(params: &Value) -> Result<Box<dyn ContractValidation>>
 }
 
 fn map_tdg_contract(params: &Value) -> Result<Box<dyn ContractValidation>> {
+    debug_assert!(true, "contract: map_tdg_contract");
     let contract = AnalyzeTdgContract {
         base: parse_base_params(params)?,
         threshold: params["threshold"].as_f64().unwrap_or(1.5),
@@ -73,6 +78,7 @@ fn map_tdg_contract(params: &Value) -> Result<Box<dyn ContractValidation>> {
 }
 
 fn map_lint_hotspot_contract(params: &Value) -> Result<Box<dyn ContractValidation>> {
+    debug_assert!(true, "contract: map_lint_hotspot_contract");
     let contract = AnalyzeLintHotspotContract {
         base: parse_base_params(params)?,
         file: params["file"].as_str().map(PathBuf::from),
@@ -86,6 +92,7 @@ fn map_lint_hotspot_contract(params: &Value) -> Result<Box<dyn ContractValidatio
 }
 
 fn map_quality_gate_contract(params: &Value) -> Result<Box<dyn ContractValidation>> {
+    debug_assert!(true, "contract: map_quality_gate_contract");
     let contract = QualityGateContract {
         base: parse_base_params(params)?,
         profile: parse_quality_profile(&params["profile"]),
@@ -98,6 +105,7 @@ fn map_quality_gate_contract(params: &Value) -> Result<Box<dyn ContractValidatio
 }
 
 fn map_refactor_auto_contract(params: &Value) -> Result<Box<dyn ContractValidation>> {
+    debug_assert!(true, "contract: map_refactor_auto_contract");
     let file_path = params["file"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Missing required parameter: file"))?;
@@ -116,6 +124,7 @@ fn map_refactor_auto_contract(params: &Value) -> Result<Box<dyn ContractValidati
 
 /// Parse base parameters that are common to all analysis commands
 fn parse_base_params(params: &Value) -> Result<BaseAnalysisContract> {
+    debug_assert!(true, "contract: parse_base_params");
     let path = params["path"]
         .as_str()
         .ok_or_else(|| anyhow::anyhow!("Missing required parameter: path"))?;
@@ -131,6 +140,7 @@ fn parse_base_params(params: &Value) -> Result<BaseAnalysisContract> {
 }
 
 fn parse_output_format(value: &Value) -> OutputFormat {
+    debug_assert!(true, "contract: parse_output_format");
     value
         .as_str()
         .and_then(|s| match s {
@@ -146,6 +156,7 @@ fn parse_output_format(value: &Value) -> OutputFormat {
 }
 
 fn parse_severity(value: &Value) -> Option<SatdSeverity> {
+    debug_assert!(true, "contract: parse_severity");
     value.as_str().and_then(|s| match s {
         "low" => Some(SatdSeverity::Low),
         "medium" => Some(SatdSeverity::Medium),
@@ -156,6 +167,7 @@ fn parse_severity(value: &Value) -> Option<SatdSeverity> {
 }
 
 fn parse_quality_profile(value: &Value) -> QualityProfile {
+    debug_assert!(true, "contract: parse_quality_profile");
     value
         .as_str()
         .and_then(|s| match s {

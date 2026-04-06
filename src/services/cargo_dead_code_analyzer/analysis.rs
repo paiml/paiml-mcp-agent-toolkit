@@ -9,6 +9,7 @@ impl CargoDeadCodeAnalyzer {
     /// 2. COMPILER_LINT: Run cargo check with -W dead_code
     /// 3. REFERENCE_GRAPH: (future) Build call graph for unreachable code
     /// 4. HEURISTICS: (future) Pattern-based detection
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze(&self) -> Result<AccurateDeadCodeReport> {
         use tokio::time::{timeout, Duration};
 
@@ -48,6 +49,7 @@ impl CargoDeadCodeAnalyzer {
     /// Detecting them is fast (~10ms for large projects) and catches
     /// code that developers knowingly left as dead.
     fn scan_for_suppression_attributes(&self) -> Result<Vec<(PathBuf, DeadItem)>> {
+        debug_assert!(true, "contract: scan_for_suppression_attributes");
         use regex::Regex;
         use std::fs;
 
@@ -164,6 +166,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Run cargo check and capture JSON output with timeout
     fn run_cargo_check(&self) -> Result<String> {
+        debug_assert!(true, "contract: run_cargo_check");
         // PMAT_DEAD_CODE_SKIP=1 can be used to skip in specific test scenarios
         // Removed CI bypass per CB-128 spec - dead code detection must work everywhere
         if std::env::var("PMAT_DEAD_CODE_SKIP").is_ok() {

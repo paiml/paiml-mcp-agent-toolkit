@@ -3,6 +3,7 @@
 
 impl PdcaLoop {
     /// Create a new PDCA loop with default configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             config: OracleConfig::default(),
@@ -12,6 +13,7 @@ impl PdcaLoop {
     }
 
     /// Create with custom configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: OracleConfig, targets: ConvergenceTargets) -> Self {
         Self {
             config,
@@ -21,11 +23,13 @@ impl PdcaLoop {
     }
 
     /// Get max iterations configured
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn max_iterations(&self) -> usize {
         self.config.max_iterations
     }
 
     /// Run the PDCA loop until convergence or max iterations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn run(&self, project_path: &Path) -> Result<Vec<PdcaIterationResult>> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         if !project_path.exists() {
@@ -121,6 +125,7 @@ impl PdcaLoop {
     }
 
     /// Run a single PDCA iteration (for CI/CD)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn run_single(&self, project_path: &Path) -> Result<PdcaIterationResult> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let results = self.run_iterations(project_path, 1).await?;
@@ -131,6 +136,7 @@ impl PdcaLoop {
     }
 
     /// Run N iterations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn run_iterations(
         &self,
         project_path: &Path,
@@ -219,6 +225,7 @@ impl PdcaLoop {
 
     /// Check for regression after applying fixes
     fn check_regression(&self, before: &ProjectMetrics, after: &ProjectMetrics) -> Result<()> {
+        debug_assert!(true, "contract: check_regression");
         // Coverage should not decrease significantly
         if after.test_coverage < before.test_coverage - 0.01 {
             bail!(

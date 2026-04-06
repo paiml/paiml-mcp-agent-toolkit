@@ -50,6 +50,7 @@ impl Location {
     /// assert_eq!(location.span.len(), 50);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: PathBuf, start: u32, end: u32) -> Self {
         debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
@@ -82,6 +83,7 @@ impl Location {
     /// assert!(!outer.contains(&separate)); // Different files
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn contains(&self, other: &Location) -> bool {
         self.file_path == other.file_path
             && self.span.start <= other.span.start
@@ -111,6 +113,7 @@ impl Location {
     /// assert!(!loc1.overlaps(&loc4));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn overlaps(&self, other: &Location) -> bool {
         self.file_path == other.file_path
             && self.span.start < other.span.end
@@ -120,6 +123,7 @@ impl Location {
 
 impl Span {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(start: u32, end: u32) -> Self {
         Self {
             start: BytePos(start),
@@ -128,16 +132,19 @@ impl Span {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn len(&self) -> u32 {
         self.end.0 - self.start.0
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_empty(&self) -> bool {
         self.start.0 >= self.end.0
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn contains(&self, pos: BytePos) -> bool {
         self.start <= pos && pos < self.end
     }
@@ -145,6 +152,7 @@ impl Span {
 
 impl BytePos {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_usize(self) -> usize {
         self.0 as usize
     }
@@ -160,6 +168,7 @@ impl BytePos {
     /// assert_eq!(pos.to_usize(), 42);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_usize(pos: usize) -> Self {
         Self(pos as u32)
     }
@@ -197,6 +206,7 @@ impl QualifiedName {
     /// assert_eq!(qname.to_qualified_string(), "std::collections::HashMap");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(module_path: Vec<String>, name: String) -> Self {
         debug_assert!(!module_path.is_empty(), "module_path must not be empty");
         Self {
@@ -207,6 +217,7 @@ impl QualifiedName {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_disambiguator(mut self, disambiguator: u32) -> Self {
         self.disambiguator = Some(disambiguator);
         self
@@ -235,6 +246,7 @@ impl QualifiedName {
     /// // Error case
     /// assert!(QualifiedName::from_string("").is_err());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_string(qualified_str: &str) -> Result<Self, &'static str> {
         debug_assert!(!qualified_str.is_empty(), "qualified_str must not be empty");
         if qualified_str.is_empty() {
@@ -284,6 +296,7 @@ impl QualifiedName {
     /// assert_eq!(simple.to_qualified_string(), "main");
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_qualified_string(&self) -> String {
         let mut result = self.module_path.join("::");
         if !result.is_empty() {

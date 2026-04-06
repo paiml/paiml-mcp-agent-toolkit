@@ -1,3 +1,4 @@
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_project_with_persistent_cache(
     root_path: &Path,
     toolchain: &str,

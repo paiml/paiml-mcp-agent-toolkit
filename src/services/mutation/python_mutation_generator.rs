@@ -18,6 +18,7 @@ pub struct PythonMutationGenerator {
 
 impl PythonMutationGenerator {
     /// Create generator with all default Python mutation operators
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_default_operators() -> Self {
         Self {
             operators: vec![
@@ -31,6 +32,7 @@ impl PythonMutationGenerator {
     }
 
     /// Generate all mutants from Python source code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_mutants(&self, source: &str, file_path: &str) -> Result<Vec<Mutant>> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let tree = self.parse_python(source)?;

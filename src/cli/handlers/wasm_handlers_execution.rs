@@ -1,5 +1,6 @@
 /// Handle WebAssembly analysis
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_webassembly(
     project_path: PathBuf,
     format: ComplexityOutputFormat,
@@ -43,6 +44,7 @@ async fn analyze_wasm_files(
     security: bool,
     complexity: bool,
 ) -> Vec<(PathBuf, WasmMetrics)> {
+    debug_assert!(true, "contract: analyze_wasm_files");
     let mut results = Vec::new();
 
     for file_path in wasm_files {

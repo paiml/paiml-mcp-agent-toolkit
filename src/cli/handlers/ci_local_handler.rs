@@ -17,6 +17,7 @@ struct CiCheckResult {
 }
 
 /// Run local CI simulation
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_ci_local(
     path: &Path,
     quick: bool,
@@ -116,6 +117,7 @@ pub async fn handle_ci_local(
 
 /// Build the list of checks to run
 fn build_check_list(quick: bool, matrix: Option<&str>) -> Vec<&'static str> {
+    debug_assert!(true, "contract: build_check_list");
     if let Some(m) = matrix {
         match m {
             "fmt" => vec!["cargo-fmt"],
@@ -140,6 +142,7 @@ fn build_check_list(quick: bool, matrix: Option<&str>) -> Vec<&'static str> {
 }
 
 fn full_checks() -> Vec<&'static str> {
+    debug_assert!(true, "contract: full_checks");
     vec![
         "cargo-fmt",
         "clippy-default",

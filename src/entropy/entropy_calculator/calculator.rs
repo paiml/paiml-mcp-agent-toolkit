@@ -20,11 +20,13 @@ pub struct EntropyCalculator {
 
 impl EntropyCalculator {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: EntropyConfig) -> Self {
         Self { config }
     }
 
     /// Calculate entropy metrics from patterns
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate(&self, patterns: &PatternCollection) -> Result<EntropyMetrics> {
         let total_patterns = patterns.patterns.len();
         let total_instances: usize = patterns.patterns.values().map(|p| p.frequency).sum();
@@ -62,6 +64,7 @@ impl EntropyCalculator {
     }
 
     /// Calculate Shannon entropy of pattern distribution
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_pattern_diversity(&self, patterns: &PatternCollection) -> f64 {
         // Contract: calculate_pattern_diversity returns a bounded score
         if patterns.patterns.is_empty() {
@@ -87,6 +90,7 @@ impl EntropyCalculator {
     }
 
     /// Calculate average entropy at file level
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_file_level_entropy(&self, patterns: &PatternCollection) -> f64 {
         // Contract: calculate_file_level_entropy returns a bounded score
         // Calculate how diverse patterns are within each file
@@ -127,6 +131,7 @@ impl EntropyCalculator {
     }
 
     /// Calculate entropy at module level
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_module_level_entropy(&self, patterns: &PatternCollection) -> f64 {
         // Contract: calculate_module_level_entropy returns a bounded score
         // Group files by module (simplified: by directory)
@@ -180,6 +185,7 @@ impl EntropyCalculator {
     }
 
     /// Calculate entropy at project level
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn calculate_project_level_entropy(&self, patterns: &PatternCollection) -> f64 {
         // Contract: calculate_project_level_entropy returns a bounded score
         // Overall project pattern diversity

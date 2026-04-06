@@ -79,6 +79,7 @@ pub enum ParetoEffort {
 }
 
 impl ParetoEffort {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn multiplier(&self) -> f32 {
         match self {
             ParetoEffort::Low => 1.0,
@@ -87,6 +88,7 @@ impl ParetoEffort {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn label(&self) -> &'static str {
         match self {
             ParetoEffort::Low => "Low",
@@ -112,6 +114,7 @@ pub enum SortMode {
 }
 
 impl SortMode {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(s: &str) -> Self {
         debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {

@@ -27,6 +27,7 @@ impl UnifiedCache {
     /// # });
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(capacity: usize) -> Self {
         debug_assert!(capacity > 0, "capacity must be positive");
         // Default to capacity 1 if 0 is provided (NonZeroUsize requirement)
@@ -83,6 +84,7 @@ impl UnifiedCache {
     /// assert_eq!(retrieved.expect("cache hit").timestamp, report.timestamp);
     /// # });
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get(&self, key: &str) -> Option<AnalysisReport> {
         debug_assert!(!key.is_empty(), "key must not be empty");
         self.cache.read().await.peek(key).cloned()
@@ -135,6 +137,7 @@ impl UnifiedCache {
     /// assert!(cache.get("key3").await.is_some()); // Newly added
     /// # });
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn put(&self, key: String, report: AnalysisReport) {
         self.cache.write().await.put(key, report);
     }

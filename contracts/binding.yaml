@@ -3,31 +3,126 @@ target_crate: pmat
 bindings:
 - contract: pmat-core.yaml
   equation: refresh_bindings
-  module_path: pmat::cli::handlers::comply_handlers::check_handlers::check_commit_enforcement
   source_file: src/cli/handlers/comply_handlers/check_handlers/check_commit_enforcement.rs
   function: handle_refresh_bindings
-  signature: 'fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>'
   status: implemented
-  notes: Generates .pmat/binding-index.json + 3 O(1) cache files + contracts/work/*.yaml
 - contract: pmat-core.yaml
   equation: check_compliance
-  module_path: pmat::cli::handlers::comply_handlers
   source_file: src/cli/handlers/comply_handlers/check_handlers/check.rs
   function: handle_check
-  signature: 'fn handle_check(project_path: &Path, strict: bool) -> anyhow::Result<()>'
   status: implemented
-  notes: Runs all CB checks and reports status
 - contract: pmat-core.yaml
-  equation: refresh_bindings
+  equation: check_compliance
   source_file: src/services/contract_index.rs
   function: ContractIndex::load
-  signature: 'fn load(project_path: &Path) -> Option<Self>'
   status: implemented
-  notes: R-9 ContractIndex service
 - contract: pmat-core.yaml
   equation: check_compliance
   source_file: src/services/asset_validator.rs
   function: validate_all_assets
-  signature: 'fn validate_all_assets(project_path: &Path) -> Vec<AssetValidationResult>'
   status: implemented
-  notes: R-10 asset_validator service
+- contract: pmat-core.yaml
+  equation: score_range
+  source_file: src/cli/handlers/score_handler.rs
+  function: handle_score
+  status: implemented
+- contract: pmat-core.yaml
+  equation: score_range
+  source_file: src/cli/handlers/score_handler.rs
+  function: compute_composite
+  status: implemented
+- contract: pmat-core.yaml
+  equation: score_range
+  source_file: src/services/rust_project_score/orchestrator.rs
+  function: score_with_mode
+  status: implemented
+- contract: pmat-core.yaml
+  equation: score_range
+  source_file: src/cli/handlers/rust_project_score_handlers.rs
+  function: handle_rust_project_score
+  status: implemented
+- contract: pmat-core.yaml
+  equation: score_range
+  source_file: src/services/popper_score/orchestrator.rs
+  function: score
+  status: implemented
+- contract: pmat-core.yaml
+  equation: score_range
+  source_file: src/cli/handlers/popper_score_handlers.rs
+  function: handle_popper_score
+  status: implemented
+- contract: pmat-core.yaml
+  equation: score_range
+  source_file: src/cli/handlers/work_contract_scoring.rs
+  function: score_contract
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/query_handler/query_execution.rs
+  function: handle_query
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/advanced_analysis_handlers.rs
+  function: handle_analyze_tdg
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/dead_code_handlers.rs
+  function: handle_analyze_dead_code
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/comprehensive_handler.rs
+  function: handle_analyze_comprehensive
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/five_whys_handlers.rs
+  function: handle_debug
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/kaizen_handler/mod.rs
+  function: handle_kaizen
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/demo_handlers.rs
+  function: handle_quality_gate
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/bottleneck_handler.rs
+  function: handle_bottleneck
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/infra_score_handlers.rs
+  function: handle_infra_score
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/repo_score_handlers.rs
+  function: handle_repo_score
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/brick_score_handlers.rs
+  function: handle_brick_score
+  status: implemented
+- contract: pmat-core.yaml
+  equation: path_exists
+  source_file: src/cli/handlers/demo_score_handlers.rs
+  function: handle_demo_score
+  status: implemented
+- contract: pmat-core.yaml
+  equation: lint_valid
+  source_file: src/cli/handlers/work_contract_lint.rs
+  function: lint_contract
+  status: implemented
+- contract: pmat-core.yaml
+  equation: non_empty_index
+  source_file: src/services/agent_context/function_index/build_persistence.rs
+  function: save
+  status: implemented

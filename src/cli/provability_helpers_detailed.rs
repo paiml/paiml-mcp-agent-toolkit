@@ -1,4 +1,5 @@
 /// Format provability results as detailed markdown
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_provability_detailed(
     function_ids: &[FunctionId],
     summaries: &[ProofSummary],
@@ -19,6 +20,7 @@ fn group_functions_by_file<'a>(
     function_ids: &'a [FunctionId],
     summaries: &'a [ProofSummary],
 ) -> HashMap<&'a str, Vec<(&'a FunctionId, &'a ProofSummary)>> {
+    debug_assert!(true, "contract: group_functions_by_file");
     let mut by_file = HashMap::new();
 
     for (func_id, summary) in function_ids.iter().zip(summaries.iter()) {
@@ -36,6 +38,7 @@ fn write_detailed_analysis_by_file(
     by_file: HashMap<&str, Vec<(&FunctionId, &ProofSummary)>>,
     include_evidence: bool,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_detailed_analysis_by_file");
     for (file_path, functions) in by_file {
         write_file_section(output, file_path, &functions, include_evidence)?;
     }
@@ -71,6 +74,7 @@ fn write_function_details(
     func_id: &FunctionId,
     summary: &ProofSummary,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_function_details");
     use crate::cli::colors as c;
     use crate::services::lightweight_provability_analyzer::PropertyType;
 

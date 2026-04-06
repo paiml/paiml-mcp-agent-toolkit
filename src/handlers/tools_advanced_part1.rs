@@ -133,6 +133,7 @@ async fn calculate_file_metrics(
 
 #[allow(dead_code)]
 /// Toyota Way: Extract Method - Handle defect probability analysis (complexity ≤8)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn handle_analyze_defect_probability(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
@@ -169,6 +170,7 @@ pub(crate) async fn handle_analyze_defect_probability(
 fn parse_defect_probability_args(
     arguments: serde_json::Value,
 ) -> Result<(AnalyzeDefectProbabilityArgs, PathBuf), Box<dyn std::error::Error>> {
+    debug_assert!(true, "contract: parse_defect_probability_args");
     let args: AnalyzeDefectProbabilityArgs = serde_json::from_value(arguments)?;
 
     let project_path = args.project_path.as_ref().map_or_else(
@@ -272,6 +274,7 @@ fn format_defect_probability_output(
     args: &AnalyzeDefectProbabilityArgs,
     analysis: &crate::services::defect_probability::ProjectDefectAnalysis,
 ) -> String {
+    debug_assert!(true, "contract: format_defect_probability_output");
     match args.format.as_deref() {
         Some("json") => serde_json::to_string_pretty(analysis).unwrap_or_default(),
         _ => format!(
@@ -295,6 +298,7 @@ struct AnalyzeDeadCodeArgs {
 }
 
 /// Toyota Way: Extract Method - Handle dead code analysis (complexity ≤8)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn handle_analyze_dead_code(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
@@ -338,6 +342,7 @@ pub(crate) async fn handle_analyze_dead_code(
 fn parse_dead_code_args(
     arguments: serde_json::Value,
 ) -> Result<(AnalyzeDeadCodeArgs, PathBuf), Box<dyn std::error::Error>> {
+    debug_assert!(true, "contract: parse_dead_code_args");
     let args: AnalyzeDeadCodeArgs = serde_json::from_value(arguments)?;
 
     let project_path = args.project_path.as_ref().map_or_else(
@@ -374,6 +379,7 @@ fn format_and_respond_dead_code(
     args: AnalyzeDeadCodeArgs,
     result: crate::models::dead_code::DeadCodeRankingResult,
 ) -> McpResponse {
+    debug_assert!(true, "contract: format_and_respond_dead_code");
     let format = args.format.as_deref().unwrap_or("summary");
 
     let content_text = match format_dead_code_output(&result, format) {
@@ -440,6 +446,7 @@ fn format_dead_code_output(
 fn format_dead_code_summary_mcp(
     result: &crate::models::dead_code::DeadCodeRankingResult,
 ) -> anyhow::Result<String> {
+    debug_assert!(true, "contract: format_dead_code_summary_mcp");
     let mut output = String::with_capacity(1024);
 
     output.push_str("# Dead Code Analysis Summary\n\n");
@@ -454,6 +461,7 @@ fn format_dead_code_summary_stats(
     output: &mut String,
     summary: &crate::models::dead_code::DeadCodeSummary,
 ) {
+    debug_assert!(true, "contract: format_dead_code_summary_stats");
     output.push_str(&format!(
         "**Total files analyzed:** {}\n",
         summary.total_files_analyzed

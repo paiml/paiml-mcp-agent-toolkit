@@ -6,6 +6,7 @@ fn format_dead_code_result(
     result: &crate::models::dead_code::DeadCodeResult,
     format: &DeadCodeOutputFormat,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_dead_code_result");
     match format {
         DeadCodeOutputFormat::Json => format_dead_code_as_json(result),
         DeadCodeOutputFormat::Sarif => format_dead_code_as_sarif(result),
@@ -16,11 +17,13 @@ fn format_dead_code_result(
 
 /// Format result as JSON
 fn format_dead_code_as_json(result: &crate::models::dead_code::DeadCodeResult) -> Result<String> {
+    debug_assert!(true, "contract: format_dead_code_as_json");
     Ok(serde_json::to_string_pretty(result)?)
 }
 
 /// Format result as SARIF
 fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) -> Result<String> {
+    debug_assert!(true, "contract: format_dead_code_as_sarif");
     use crate::models::dead_code::{ConfidenceLevel, DeadCodeType};
     use serde_json::json;
 
@@ -88,6 +91,7 @@ fn format_dead_code_as_sarif(result: &crate::models::dead_code::DeadCodeResult) 
 }
 
 /// Format result as summary
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_dead_code_as_summary(
     result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<String> {
@@ -111,6 +115,7 @@ fn write_dead_code_header(
     output: &mut String,
     result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_dead_code_header");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -152,6 +157,7 @@ fn write_dead_code_by_type_section(
     output: &mut String,
     summary: &crate::models::dead_code::DeadCodeSummary,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_dead_code_by_type_section");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -212,6 +218,7 @@ fn write_top_files_section(
 fn format_dead_code_as_markdown(
     result: &crate::models::dead_code::DeadCodeResult,
 ) -> Result<String> {
+    debug_assert!(true, "contract: format_dead_code_as_markdown");
     let mut sections = Vec::new();
 
     // Build summary section
@@ -234,6 +241,7 @@ fn format_dead_code_as_markdown(
 }
 
 fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeResult) -> String {
+    debug_assert!(true, "contract: format_dead_code_summary_section");
     format!(
         "# Dead Code Analysis Report\n\n\
          ## Summary\n\n\
@@ -253,6 +261,7 @@ fn format_dead_code_summary_section(result: &crate::models::dead_code::DeadCodeR
 fn format_dead_code_breakdown_section(
     summary: &crate::models::dead_code::DeadCodeSummary,
 ) -> String {
+    debug_assert!(true, "contract: format_dead_code_breakdown_section");
     format!(
         "## Dead Code Breakdown\n\n\
          | Type | Count |\n\
@@ -293,6 +302,7 @@ fn format_dead_code_file_details_section(
 }
 
 fn format_dead_code_recommendations_section() -> String {
+    debug_assert!(true, "contract: format_dead_code_recommendations_section");
     "## Recommendations\n\n\
      1. **Review High Confidence Dead Code**: Start with files marked as high confidence.\n\
      2. **Check Test Coverage**: Dead code often indicates missing tests.\n\
@@ -303,6 +313,7 @@ fn format_dead_code_recommendations_section() -> String {
 
 /// Write dead code output to file or stdout
 async fn write_dead_code_output(content: String, output: Option<PathBuf>) -> Result<()> {
+    debug_assert!(true, "contract: write_dead_code_output");
     match output {
         Some(path) => {
             tokio::fs::write(&path, content).await?;

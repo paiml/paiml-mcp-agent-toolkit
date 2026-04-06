@@ -5,6 +5,7 @@ pub struct ParallelRecovery<S: AgentState> {
 }
 
 impl<S: AgentState> ParallelRecovery<S> {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn new(
         num_partitions: usize,
         event_config: EventStoreConfig,
@@ -30,6 +31,7 @@ impl<S: AgentState> ParallelRecovery<S> {
         Ok(Self { managers })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn recover_all_partitions(
         &self,
         initial_state_factory: impl Fn() -> S + Send + Sync,
@@ -50,6 +52,7 @@ impl<S: AgentState> ParallelRecovery<S> {
         try_join_all(futures).await
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn merge_partitions(
         &self,
         states: Vec<RestoredState<S>>,

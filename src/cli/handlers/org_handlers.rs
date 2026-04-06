@@ -38,6 +38,7 @@ use tracing::{info, warn};
 
 /// Handle organizational intelligence commands
 #[cfg(feature = "org-intelligence")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_org_command(org_cmd: OrgCommands) -> Result<()> {
     match org_cmd {
         OrgCommands::Analyze {

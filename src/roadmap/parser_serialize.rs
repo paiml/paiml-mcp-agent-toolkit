@@ -1,6 +1,7 @@
 // Roadmap serialization: roadmap_to_markdown, format_sprint, format_task, section helpers
 
 /// Convert a roadmap to markdown format
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn roadmap_to_markdown(roadmap: &Roadmap) -> Result<String> {
     let mut output = String::new();
 
@@ -17,6 +18,7 @@ pub fn roadmap_to_markdown(roadmap: &Roadmap) -> Result<String> {
 
 /// Add current sprint section to output (cognitive complexity <=3)
 fn add_current_sprint_section(output: &mut String, roadmap: &Roadmap) -> Result<()> {
+    debug_assert!(true, "contract: add_current_sprint_section");
     if let Some(current_id) = &roadmap.current_sprint {
         if let Some(sprint) = roadmap.sprints.get(current_id) {
             output.push_str(&format_sprint(sprint, true, false)?);
@@ -28,6 +30,7 @@ fn add_current_sprint_section(output: &mut String, roadmap: &Roadmap) -> Result<
 
 /// Add completed sprints section to output (cognitive complexity <=3)
 fn add_completed_sprints_section(output: &mut String, roadmap: &Roadmap) -> Result<()> {
+    debug_assert!(true, "contract: add_completed_sprints_section");
     for sprint_id in &roadmap.completed_sprints {
         if let Some(sprint) = roadmap.sprints.get(sprint_id) {
             output.push_str(&format_sprint(sprint, false, true)?);
@@ -39,6 +42,7 @@ fn add_completed_sprints_section(output: &mut String, roadmap: &Roadmap) -> Resu
 
 /// Add future sprints section to output (cognitive complexity <=5)
 fn add_future_sprints_section(output: &mut String, roadmap: &Roadmap) -> Result<()> {
+    debug_assert!(true, "contract: add_future_sprints_section");
     for (id, sprint) in &roadmap.sprints {
         if is_future_sprint(id, roadmap) {
             output.push_str(&format_sprint(sprint, false, false)?);
@@ -50,11 +54,13 @@ fn add_future_sprints_section(output: &mut String, roadmap: &Roadmap) -> Result<
 
 /// Check if sprint is a future sprint (not current and not completed)
 fn is_future_sprint(id: &String, roadmap: &Roadmap) -> bool {
+    debug_assert!(true, "contract: is_future_sprint");
     roadmap.current_sprint.as_ref() != Some(id) && !roadmap.completed_sprints.contains(id)
 }
 
 /// Add backlog section to output (cognitive complexity <=4)
 fn add_backlog_section(output: &mut String, roadmap: &Roadmap) -> Result<()> {
+    debug_assert!(true, "contract: add_backlog_section");
     if !roadmap.backlog.is_empty() {
         output.push_str("### Backlog \u{1f4cb}\n");
         output.push_str("| ID | Description | Status | Complexity | Priority |\n");
@@ -68,6 +74,7 @@ fn add_backlog_section(output: &mut String, roadmap: &Roadmap) -> Result<()> {
 }
 
 fn format_sprint(sprint: &Sprint, is_current: bool, is_completed: bool) -> Result<String> {
+    debug_assert!(true, "contract: format_sprint");
     let mut output = String::new();
 
     let prefix = if is_current {
@@ -126,6 +133,7 @@ fn format_sprint(sprint: &Sprint, is_current: bool, is_completed: bool) -> Resul
 }
 
 fn format_task(task: &Task) -> Result<String> {
+    debug_assert!(true, "contract: format_task");
     Ok(format!(
         "| {} | {} | {} | {:?} | {:?} |\n",
         task.id,

@@ -68,6 +68,7 @@ fn check_file_for_simd_violations(entry: &Path) -> Vec<CbPatternViolation> {
     violations
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");

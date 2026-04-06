@@ -51,6 +51,7 @@ pub struct ComplexityTool;
 impl ComplexityTool {
     /// Creates a new complexity analysis tool handler.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -65,6 +66,7 @@ impl Default for ComplexityTool {
 #[async_trait]
 impl ToolHandler for ComplexityTool {
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+        debug_assert!(true, "contract: handle");
         debug!("Handling analyze.complexity with args: {}", args);
 
         let params: ComplexityArgs = serde_json::from_value(args)

@@ -28,6 +28,7 @@ pub struct EventLoop {
 
 impl EventLoop {
     /// Create new event loop
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             running: false,
@@ -37,22 +38,26 @@ impl EventLoop {
     }
 
     /// Check if event loop is running
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_running(&self) -> bool {
         self.running
     }
 
     /// Check if raw mode is enabled
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_raw_mode_enabled(&self) -> bool {
         self.raw_mode_enabled
     }
 
     /// Check if terminal is available (TTY)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_terminal_available(&self) -> bool {
         use std::io::IsTerminal;
         std::io::stdin().is_terminal()
     }
 
     /// Enable terminal raw mode
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn enable_raw_mode(&mut self) -> Result<()> {
         if !self.is_terminal_available() {
             anyhow::bail!("Not a terminal");
@@ -66,6 +71,7 @@ impl EventLoop {
     }
 
     /// Disable terminal raw mode
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn disable_raw_mode(&mut self) -> Result<()> {
         if self.raw_mode_enabled {
             stdout().execute(LeaveAlternateScreen)?;
@@ -76,16 +82,19 @@ impl EventLoop {
     }
 
     /// Start event loop
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn start(&mut self) {
         self.running = true;
     }
 
     /// Stop event loop
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn stop(&mut self) {
         self.running = false;
     }
 
     /// Poll for event with timeout
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn poll_event(&mut self, timeout: Duration) -> Result<Option<TerminalEvent>> {
         // Check queued events first (for testing)
         if let Some(event) = self.event_queue.pop_front() {
@@ -103,6 +112,7 @@ impl EventLoop {
 
     /// Parse crossterm event
     fn parse_crossterm_event(&self, event: Event) -> Option<TerminalEvent> {
+        debug_assert!(true, "contract: parse_crossterm_event");
         match event {
             Event::Key(KeyEvent { code, .. }) => {
                 let key_code = match code {
@@ -122,6 +132,7 @@ impl EventLoop {
     }
 
     /// Parse event (used by tests)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_event(&self, event: TerminalEvent) -> Option<TerminalEvent> {
         match event {
             TerminalEvent::Key(_) => Some(event),
@@ -131,11 +142,13 @@ impl EventLoop {
     }
 
     /// Queue event for testing
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn queue_event(&mut self, event: TerminalEvent) {
         self.event_queue.push_back(event);
     }
 
     /// Get next queued event (for testing)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn next_queued_event(&mut self) -> Option<TerminalEvent> {
         self.event_queue.pop_front()
     }

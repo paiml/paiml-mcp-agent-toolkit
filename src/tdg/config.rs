@@ -87,6 +87,7 @@ pub enum PenaltyCurve {
 
 impl PenaltyCurve {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn apply(&self, value: f32, base: f32) -> f32 {
         match self {
             PenaltyCurve::Linear => value * base,
@@ -112,6 +113,7 @@ pub struct LanguageOverride {
 }
 
 impl TdgConfig {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_file(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
@@ -119,6 +121,7 @@ impl TdgConfig {
         Ok(config)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: &Path) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = toml::to_string_pretty(self)?;

@@ -12,6 +12,7 @@ use rusqlite::{params, Connection};
 ///
 /// Called from the main `create_schema()` in `sqlite_backend.rs` to ensure
 /// tables exist even without the `doc-indexing` feature (they'll just be empty).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn create_documents_schema(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS documents (
@@ -49,6 +50,7 @@ pub(crate) fn create_documents_schema(conn: &Connection) -> Result<(), String> {
 /// Insert document chunks into the database within a transaction.
 ///
 /// Uses upsert (ON CONFLICT REPLACE) for incremental updates.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn insert_document_chunks(
     conn: &Connection,
     chunks: &[DocumentChunk],
@@ -118,6 +120,7 @@ pub(crate) fn insert_document_chunks(
 /// Query documents using FTS5 BM25 ranking.
 ///
 /// Returns results ranked by relevance with snippet extraction.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn query_documents(
     conn: &Connection,
     query: &str,
@@ -174,6 +177,7 @@ pub(crate) fn query_documents(
 }
 
 /// Check if a file has already been indexed with the given checksum.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn file_is_current(conn: &Connection, file_path: &str, checksum: &str) -> bool {
     debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     debug_assert!(!checksum.is_empty(), "checksum must not be empty");
@@ -187,6 +191,7 @@ pub(crate) fn file_is_current(conn: &Connection, file_path: &str, checksum: &str
 }
 
 /// Remove all document chunks for a given file path.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn remove_file_documents(conn: &Connection, file_path: &str) -> Result<(), String> {
     debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     // Remove FTS entries first (need rowids)

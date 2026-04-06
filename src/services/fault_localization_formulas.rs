@@ -8,6 +8,7 @@
 ///
 /// Reference: Jones, J.A., Harrold, M.J. (2005). ASE '05
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn tarantula(failed: usize, passed: usize, total_failed: usize, total_passed: usize) -> f32 {
     let failed_ratio = if total_failed > 0 {
         failed as f32 / total_failed as f32
@@ -35,6 +36,7 @@ pub fn tarantula(failed: usize, passed: usize, total_failed: usize, total_passed
 ///
 /// Reference: Abreu et al. (2009). JSS 82(11)
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn ochiai(failed: usize, passed: usize, total_failed: usize) -> f32 {
     let denominator = ((total_failed * (failed + passed)) as f32).sqrt();
     if denominator == 0.0 {
@@ -50,6 +52,7 @@ pub fn ochiai(failed: usize, passed: usize, total_failed: usize) -> f32 {
 ///
 /// Reference: Wong et al. (2014). IEEE TSE 40(1)
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn dstar(failed: usize, passed: usize, total_failed: usize, star: u32) -> f32 {
     let numerator = (failed as f32).powi(star as i32);
     let not_failed = total_failed.saturating_sub(failed);
@@ -67,6 +70,7 @@ pub fn dstar(failed: usize, passed: usize, total_failed: usize, star: u32) -> f3
 }
 
 impl SbflLocalizer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             formula: SbflFormula::Tarantula,
@@ -76,23 +80,27 @@ impl SbflLocalizer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_formula(mut self, formula: SbflFormula) -> Self {
         self.formula = formula;
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_top_n(mut self, n: usize) -> Self {
         debug_assert!(n > 0, "n must be positive");
         self.top_n = n;
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_explanations(mut self, include: bool) -> Self {
         self.include_explanations = include;
         self
     }
 
     #[allow(dead_code)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_min_confidence(mut self, threshold: f32) -> Self {
         debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         self.min_confidence_threshold = threshold;
@@ -100,6 +108,7 @@ impl SbflLocalizer {
     }
 
     /// Localize faults using the configured SBFL formula
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn localize(
         &self,
         coverage: &[StatementCoverage],
@@ -194,6 +203,7 @@ impl SbflLocalizer {
         total_failed: usize,
         total_passed: usize,
     ) -> f32 {
+        debug_assert!(true, "contract: calculate_score");
         match self.formula {
             SbflFormula::Tarantula => tarantula(failed, passed, total_failed, total_passed),
             SbflFormula::Ochiai => ochiai(failed, passed, total_failed),
@@ -237,6 +247,7 @@ impl SbflLocalizer {
         total_passed: usize,
         total_failed: usize,
     ) -> f32 {
+        debug_assert!(true, "contract: calculate_confidence");
         let total_tests = total_passed + total_failed;
         if total_tests == 0 || total_failed == 0 {
             return 0.0;

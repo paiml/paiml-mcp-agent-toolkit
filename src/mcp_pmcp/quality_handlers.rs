@@ -22,6 +22,7 @@ pub struct QualityGateTool;
 
 impl QualityGateTool {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -47,6 +48,7 @@ pub struct QualityGateSummaryTool;
 
 impl QualityGateSummaryTool {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -72,6 +74,7 @@ pub struct QualityGateBaselineTool;
 
 impl QualityGateBaselineTool {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -96,6 +99,7 @@ pub struct QualityGateCompareTool;
 
 impl QualityGateCompareTool {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }

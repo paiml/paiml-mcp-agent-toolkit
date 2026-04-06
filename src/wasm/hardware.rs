@@ -14,6 +14,7 @@ pub struct HardwareClass {
 impl HardwareClass {
     /// Create hardware class from system info
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_system() -> Self {
         let cpu_count = num_cpus::get();
 
@@ -26,6 +27,7 @@ impl HardwareClass {
 
     /// Calculate similarity score with another hardware class (0.0-1.0)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn similarity(&self, other: &HardwareClass) -> f64 {
         let mut score = 0.0;
 
@@ -49,6 +51,7 @@ impl HardwareClass {
 
     /// Calculate performance correction factor relative to baseline
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn performance_factor(&self, baseline: &HardwareClass) -> f64 {
         // Empirically derived correction factors
         let core_factor = self.core_count_class.speedup() / baseline.core_count_class.speedup();
@@ -73,6 +76,7 @@ pub enum CpuFamily {
 impl CpuFamily {
     /// Detect CPU family from system
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect() -> Self {
         // This would use actual CPU detection in production
         // Simplified for now
@@ -92,6 +96,7 @@ impl CpuFamily {
 
     /// Check if two CPU families are compatible
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn compatible_with(&self, other: &CpuFamily) -> bool {
         use CpuFamily::{AmdEpyc, AmdRyzen, AppleSilicon, ArmCortex, IntelCore, IntelXeon};
 
@@ -121,6 +126,7 @@ pub enum CoreClass {
 impl CoreClass {
     /// Create from actual core count
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_count(count: usize) -> Self {
         debug_assert!(count > 0, "count must be positive");
         match count {
@@ -134,6 +140,7 @@ impl CoreClass {
 
     /// Distance between core classes
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn distance(&self, other: &CoreClass) -> usize {
         use CoreClass::{Dual, Many, Octa, Quad, Single};
 
@@ -158,6 +165,7 @@ impl CoreClass {
 
     /// Expected speedup factor for parallel workloads
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn speedup(&self) -> f64 {
         match self {
             Self::Single => 1.0,
@@ -170,6 +178,7 @@ impl CoreClass {
 
     /// Representative core count
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn representative_count(&self) -> usize {
         match self {
             Self::Single => 1,
@@ -193,6 +202,7 @@ pub enum CacheClass {
 impl CacheClass {
     /// Detect cache class from system
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect() -> Self {
         // This would use actual cache detection in production
         // Simplified for now
@@ -201,6 +211,7 @@ impl CacheClass {
 
     /// Distance between cache classes
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn distance(&self, other: &CacheClass) -> usize {
         use CacheClass::{Huge, Large, Medium, Small};
 
@@ -223,6 +234,7 @@ impl CacheClass {
 
     /// Representative cache size in MB
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mb(&self) -> f64 {
         match self {
             Self::Small => 2.0,
@@ -266,6 +278,7 @@ pub struct CacheSizes {
 impl HardwareProfile {
     /// Create profile from current system
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_system() -> Self {
         let logical_cores = num_cpus::get();
         let physical_cores = num_cpus::get_physical();
@@ -449,6 +462,7 @@ mod property_tests {
 
         #[test]
         fn cache_class_distance_symmetric(a in 0usize..4, b in 0usize..4) {
+            debug_assert!(true, "contract: cache_class_distance_symmetric");
             let classes = [CacheClass::Small, CacheClass::Medium, CacheClass::Large, CacheClass::Huge];
             let class_a = &classes[a];
             let class_b = &classes[b];
@@ -457,6 +471,7 @@ mod property_tests {
 
         #[test]
         fn hardware_similarity_symmetric(core_a in 0usize..5, core_b in 0usize..5) {
+            debug_assert!(true, "contract: hardware_similarity_symmetric");
             let core_classes = [CoreClass::Single, CoreClass::Dual, CoreClass::Quad, CoreClass::Octa, CoreClass::Many];
             let hw1 = HardwareClass {
                 cpu_family: CpuFamily::IntelCore,

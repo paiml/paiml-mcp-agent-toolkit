@@ -11,10 +11,12 @@ impl ProtocolAdapter for HttpStreamAdapter {
     type Output = Response<Body>;
 
     fn protocol(&self) -> Protocol {
+        debug_assert!(true, "contract: protocol");
         Protocol::Http
     }
 
     async fn decode(&self, _input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
+        debug_assert!(true, "contract: decode");
         let _stream = self
             .stream
             .as_ref()
@@ -28,6 +30,7 @@ impl ProtocolAdapter for HttpStreamAdapter {
     }
 
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
+        debug_assert!(true, "contract: encode");
         let mut http_response = Response::builder().status(response.status);
 
         for (name, value) in &response.headers {
@@ -119,6 +122,7 @@ pub struct HttpServer {
 
 impl HttpServer {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(bind_addr: SocketAddr, service: Box<dyn HttpServiceHandler>) -> Self {
         Self {
             adapter: HttpAdapter::new(bind_addr),
@@ -126,6 +130,7 @@ impl HttpServer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn bind(&mut self) -> Result<(), ProtocolError> {
         self.adapter.bind().await
     }
@@ -163,6 +168,7 @@ async fn handle_connection(
     service: Box<dyn HttpServiceHandler>,
     adapter: HttpAdapter,
 ) -> Result<(), ProtocolError> {
+        debug_assert!(true, "contract: handle");
     let io = TokioIo::new(stream);
 
     let service_fn = hyper::service::service_fn(move |req: Request<hyper::body::Incoming>| {
@@ -181,6 +187,7 @@ async fn process_http_request(
     adapter: HttpAdapter,
     remote_addr: SocketAddr,
 ) -> Result<Response<axum::body::Body>, String> {
+    debug_assert!(true, "contract: process_http_request");
     let input = convert_hyper_to_http_input(req, remote_addr).await?;
     let unified_request = decode_http_input(&adapter, input).await?;
     let unified_response = handle_unified_request(service, unified_request).await?;
@@ -191,6 +198,7 @@ async fn convert_hyper_to_http_input(
     req: Request<hyper::body::Incoming>,
     remote_addr: SocketAddr,
 ) -> Result<HttpInput, String> {
+    debug_assert!(true, "contract: convert_hyper_to_http_input");
     let (parts, body) = req.into_parts();
     let body_bytes = collect_request_body(body).await?;
     let axum_request = Request::from_parts(parts, Body::from(body_bytes.to_vec()));
@@ -202,6 +210,7 @@ async fn convert_hyper_to_http_input(
 }
 
 async fn collect_request_body(body: hyper::body::Incoming) -> Result<bytes::Bytes, String> {
+    debug_assert!(true, "contract: collect_request_body");
     Ok(body
         .collect()
         .await
@@ -213,6 +222,7 @@ async fn decode_http_input(
     adapter: &HttpAdapter,
     input: HttpInput,
 ) -> Result<UnifiedRequest, String> {
+    debug_assert!(true, "contract: decode_http_input");
     adapter
         .decode(input)
         .await
@@ -223,6 +233,7 @@ async fn handle_unified_request(
     service: Box<dyn HttpServiceHandler>,
     unified_request: UnifiedRequest,
 ) -> Result<UnifiedResponse, String> {
+    debug_assert!(true, "contract: handle_unified_request");
     service
         .handle(unified_request)
         .await
@@ -233,6 +244,7 @@ async fn encode_unified_response(
     adapter: &HttpAdapter,
     unified_response: UnifiedResponse,
 ) -> Result<Response<axum::body::Body>, String> {
+    debug_assert!(true, "contract: encode_unified_response");
     let http_output = adapter
         .encode(unified_response)
         .await
@@ -252,6 +264,7 @@ where
         > + 'static,
     S::Future: Send + 'static,
 {
+    debug_assert!(true, "contract: serve_http_connection");
     http1::Builder::new()
         .serve_connection(io, service)
         .await

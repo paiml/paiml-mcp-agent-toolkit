@@ -1,5 +1,6 @@
 impl AgentContextIndex {
     /// Save index to directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, index_path: &Path) -> Result<(), String> {
         debug_assert!(!self.functions.is_empty(), "saving empty index — no functions parsed");
 
@@ -31,6 +32,7 @@ impl AgentContextIndex {
     ///
     /// Prefers SQLite `context.db` when available (v2.0), falls back to
     /// LZ4+bincode blob `context.idx/functions.lz4` (v1.x).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(index_path: &Path) -> Result<Self, String> {
         debug_assert!(index_path.exists(), "index_path must exist: {}", index_path.display());
         // Try SQLite path first (v2.0)

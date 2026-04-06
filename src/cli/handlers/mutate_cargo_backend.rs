@@ -4,6 +4,7 @@
 
 /// Handle mutation testing via cargo-mutants backend
 async fn handle_cargo_mutants_backend(args: MutateArgs) -> Result<()> {
+    debug_assert!(true, "contract: handle_cargo_mutants_backend");
     use crate::cli::handlers::cargo_mutants_backend::{self, CargoMutantsConfig};
     use crate::services::mutation::json_parser::CargoMutantsReport;
 

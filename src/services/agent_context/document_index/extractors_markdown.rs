@@ -1,6 +1,7 @@
 // ── Markdown Extraction ─────────────────────────────────────────
 
 /// Extract structured text from Markdown, splitting at `##` headings.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn extract_markdown(
     path: &Path,
     relative_path: &str,

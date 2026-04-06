@@ -5,6 +5,7 @@
 // CB-950: Truthy String Ambiguity
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb950_truthy_ambiguity(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_yaml_files(project_path);
@@ -65,6 +66,7 @@ pub fn detect_cb950_truthy_ambiguity(project_path: &Path) -> Vec<CbPatternViolat
 // CB-951: Excessive Nesting
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb951_excessive_nesting(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_yaml_files(project_path);
@@ -126,6 +128,7 @@ pub fn detect_cb951_excessive_nesting(project_path: &Path) -> Vec<CbPatternViola
 // CB-952: Missing Required Fields (GitHub Actions specific)
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb952_missing_required_fields(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_yaml_files(project_path);
@@ -186,6 +189,7 @@ pub fn detect_cb952_missing_required_fields(project_path: &Path) -> Vec<CbPatter
 // CB-953: Unpinned Action Version
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb953_unpinned_action(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_yaml_files(project_path);
@@ -266,6 +270,7 @@ pub fn detect_cb953_unpinned_action(project_path: &Path) -> Vec<CbPatternViolati
 // CB-954: Secret in Plain Text
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb954_plaintext_secret(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_yaml_files(project_path);

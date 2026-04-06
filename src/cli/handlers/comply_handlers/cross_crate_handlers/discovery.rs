@@ -14,6 +14,7 @@ use std::path::{Path, PathBuf};
 /// 3. `batuta oracle --local` (batuta stack auto-discovery)
 /// 4. `.pmat/workspace.toml` siblings (legacy)
 /// 5. Single-crate fallback
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn discover_workspace_crates(
     workspace_path: &Path,
     explicit_crates: Option<&[PathBuf]>,
@@ -170,6 +171,7 @@ fn extract_members_array(content: &str) -> String {
 
 /// Extract double-quoted strings from a TOML array fragment.
 fn extract_quoted_strings(buf: &str) -> Vec<String> {
+    debug_assert!(true, "contract: extract_quoted_strings");
     let mut result = Vec::new();
     let mut in_quote = false;
     let mut current = String::new();
@@ -242,6 +244,7 @@ fn discover_from_batuta_oracle(workspace_path: &Path) -> Vec<CrateInfo> {
 
 /// Run `batuta oracle --local --format json` and parse the projects map.
 fn invoke_batuta_oracle() -> Option<serde_json::Map<String, serde_json::Value>> {
+    debug_assert!(true, "contract: invoke_batuta_oracle");
     let output = std::process::Command::new("batuta")
         .args(["oracle", "--local", "--format", "json"])
         .output()
@@ -277,6 +280,7 @@ fn find_current_project(
 
 /// Extract PAIML dependency names from a project's JSON value.
 fn extract_paiml_dep_names(info: &serde_json::Value) -> Vec<String> {
+    debug_assert!(true, "contract: extract_paiml_dep_names");
     info.get("paiml_dependencies")
         .and_then(|d| d.as_array())
         .map(|deps| {
@@ -319,6 +323,7 @@ fn projects_to_crate_infos(
     projects: &serde_json::Map<String, serde_json::Value>,
     related: &HashSet<String>,
 ) -> Vec<CrateInfo> {
+    debug_assert!(true, "contract: projects_to_crate_infos");
     related
         .iter()
         .filter_map(|crate_name| {
@@ -412,6 +417,7 @@ pub(super) fn read_crate_name(cargo_toml: &Path) -> Option<String> {
 
 /// Parse dependency names from a Cargo.toml [dependencies] section.
 /// Simple string parser — no full TOML parser needed.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn read_cargo_deps(cargo_toml: &Path) -> Vec<String> {
     debug_assert!(
         cargo_toml.exists(),

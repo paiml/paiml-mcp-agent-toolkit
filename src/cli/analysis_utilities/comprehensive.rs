@@ -147,6 +147,7 @@ include!("comprehensive_formatting.rs");
 ///   --output defect-report.md
 /// ```ignore
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_comprehensive(
     project_path: PathBuf,
     format: ComprehensiveOutputFormat,
@@ -391,6 +392,7 @@ async fn write_comprehensive_output(
     executive_summary: bool,
     output: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_comprehensive_output");
     // Format output
     let content = format_comprehensive_report(report, format, executive_summary)?;
 

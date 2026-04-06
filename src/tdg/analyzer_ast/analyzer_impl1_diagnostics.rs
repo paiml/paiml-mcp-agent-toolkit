@@ -1,5 +1,6 @@
 impl TdgAnalyzerAst {
     /// Get scheduler statistics for diagnostics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_scheduler_stats(&self) -> Option<crate::tdg::SchedulingStatistics> {
         if let Some(scheduler) = &self.scheduler {
             Some(scheduler.get_statistics().await)
@@ -12,11 +13,13 @@ impl TdgAnalyzerAst {
 
     /// Get a reference to the storage system for querying stored scores
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_storage(&self) -> Option<&TieredStore> {
         self.storage.as_ref()
     }
 
     /// Get stored score for a specific file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn get_stored_score(&self, path: &Path) -> Result<Option<TdgScore>> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(storage) = &self.storage {
@@ -48,6 +51,7 @@ impl TdgAnalyzerAst {
 
     /// Get storage statistics for monitoring
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_storage_stats(&self) -> Option<crate::tdg::StorageStatistics> {
         self.storage
             .as_ref()
@@ -55,6 +59,7 @@ impl TdgAnalyzerAst {
     }
 
     /// Get adaptive threshold statistics for diagnostics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_adaptive_stats(&self) -> Option<crate::tdg::PerformanceStatistics> {
         if let Some(adaptive) = &self.adaptive_manager {
             Some(adaptive.get_performance_stats().await)
@@ -64,6 +69,7 @@ impl TdgAnalyzerAst {
     }
 
     /// Get current adaptive thresholds
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_current_thresholds(&self) -> Option<crate::tdg::CurrentThresholds> {
         if let Some(adaptive) = &self.adaptive_manager {
             Some(adaptive.get_current_thresholds().await)
@@ -73,6 +79,7 @@ impl TdgAnalyzerAst {
     }
 
     /// Reset adaptive thresholds to defaults
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn reset_adaptive_thresholds(&self) -> Result<()> {
         if let Some(adaptive) = &self.adaptive_manager {
             adaptive.reset_to_defaults().await?;
@@ -81,6 +88,7 @@ impl TdgAnalyzerAst {
     }
 
     /// Get resource controller statistics for diagnostics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_resource_stats(&self) -> Option<crate::tdg::ResourceEnforcementStats> {
         if let Some(controller) = &self.resource_controller {
             Some(controller.get_enforcement_stats().await)
@@ -90,6 +98,7 @@ impl TdgAnalyzerAst {
     }
 
     /// Get current resource usage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_resource_usage(&self) -> Option<crate::tdg::ResourceUsage> {
         if let Some(controller) = &self.resource_controller {
             Some(controller.get_current_usage().await)

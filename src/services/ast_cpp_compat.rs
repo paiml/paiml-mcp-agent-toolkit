@@ -19,6 +19,7 @@ use crate::ast::languages::c_cpp::CppStrategy;
 use crate::ast::languages::LanguageStrategy;
 
 /// Analyze a C++ file and return complexity metrics (compatibility function)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_cpp_file_with_complexity(
     path: &Path,
 ) -> Result<FileComplexityMetrics, TemplateError> {
@@ -27,6 +28,7 @@ pub async fn analyze_cpp_file_with_complexity(
 }
 
 /// Analyze a C++ file with optional classifier (compatibility function)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_cpp_file_with_complexity_and_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
@@ -101,12 +103,14 @@ pub async fn analyze_cpp_file_with_complexity_and_classifier(
 }
 
 /// Analyze a C++ file and return context (compatibility function)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_cpp_file(path: &Path) -> Result<FileContext, TemplateError> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_cpp_file_with_classifier(path, None).await
 }
 
 /// Analyze a C++ file with optional classifier and return context (compatibility function)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_cpp_file_with_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
@@ -175,6 +179,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

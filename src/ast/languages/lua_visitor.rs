@@ -17,6 +17,7 @@ impl<'a> LuaTreeSitterVisitor<'a> {
     }
 
     fn add_node(&mut self, kind: AstKind) -> u32 {
+        debug_assert!(true, "contract: add_node");
         let mut node = UnifiedAstNode::new(kind, Language::Lua);
 
         if let Some(parent) = self.current_parent {
@@ -28,6 +29,7 @@ impl<'a> LuaTreeSitterVisitor<'a> {
 
     /// Check if a function_call node is a `require(...)` call
     fn is_require_call(&self, node: &tree_sitter::Node) -> bool {
+        debug_assert!(true, "contract: is_require_call");
         // In tree-sitter-lua 0.2.0, function_call has a child "name" or the
         // first named child is an identifier
         for child in node.children(&mut node.walk()) {
@@ -44,6 +46,7 @@ impl<'a> LuaTreeSitterVisitor<'a> {
     }
 
     fn visit_node(&mut self, node: &tree_sitter::Node, parent: Option<u32>) {
+        debug_assert!(true, "contract: visit_node");
         let old_parent = self.current_parent;
         self.current_parent = parent;
 

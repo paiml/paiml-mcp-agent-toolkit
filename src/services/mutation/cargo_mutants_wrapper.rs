@@ -47,6 +47,7 @@ impl CargoMutantsWrapper {
     ///
     /// This method should not fail under normal circumstances. It returns Ok even when
     /// cargo-mutants is not installed.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Result<Self> {
         // cargo-mutants is a cargo subcommand, so check if `cargo` exists
         let cargo_path = which::which("cargo").ok();
@@ -82,6 +83,7 @@ impl CargoMutantsWrapper {
     /// Get the detected cargo path (if cargo-mutants is installed)
     ///
     /// Returns the path to the cargo binary used for executing cargo-mutants subcommand.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn cargo_mutants_path(&self) -> Option<&PathBuf> {
         self.cargo_mutants_path.as_ref()
     }
@@ -89,6 +91,7 @@ impl CargoMutantsWrapper {
     /// Check if cargo-mutants is installed
     ///
     /// Returns `true` if cargo-mutants subcommand is available via `cargo mutants`.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_installed(&self) -> bool {
         self.cargo_mutants_path.is_some()
     }
@@ -100,6 +103,7 @@ impl CargoMutantsWrapper {
     /// # Errors
     ///
     /// Returns error if cargo-mutants is not installed or execution fails.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn version(&self) -> Result<String> {
         self.cargo_mutants_path
             .as_ref()
@@ -132,6 +136,7 @@ impl CargoMutantsWrapper {
     /// - Version cannot be retrieved
     /// - Version format is invalid
     /// - Version is below minimum (v24.7.0)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_version(&self) -> Result<()> {
         let version_str = self.version()?;
         let (major, minor) = Self::parse_version(&version_str)?;

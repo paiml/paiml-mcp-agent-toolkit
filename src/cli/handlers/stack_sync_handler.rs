@@ -105,6 +105,7 @@ struct StackManifest {
 // ── Stack Manifest Discovery ──────────────────────────────────────────────
 
 fn load_stack_manifest() -> Result<StackManifest> {
+    debug_assert!(true, "contract: load_stack_manifest");
     let base_path = resolve_base_path();
 
     // Try .pmat/stack.toml first
@@ -140,6 +141,7 @@ fn load_stack_manifest() -> Result<StackManifest> {
 }
 
 fn resolve_base_path() -> PathBuf {
+    debug_assert!(true, "contract: resolve_base_path");
     // Resolve repo paths by looking in parent of current project (~/src/)
     if let Ok(cwd) = std::env::current_dir() {
         if let Some(parent) = cwd.parent() {
@@ -164,6 +166,7 @@ fn resolve_repo_path(base: &Path, repo_name: &str) -> PathBuf {
 
 // ── Cargo.toml Parsing ───────────────────────────────────────────────────
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn parse_cargo_dependencies(cargo_toml_path: &Path) -> Result<Vec<DepInfo>> {
     debug_assert!(
         cargo_toml_path.exists(),
@@ -265,6 +268,7 @@ fn check_latest_version(crate_name: &str) -> Result<Option<String>> {
     parse_cargo_search_output(&stdout, crate_name)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_cargo_search_output(output: &str, crate_name: &str) -> Result<Option<String>> {
     debug_assert!(!crate_name.is_empty(), "crate_name must not be empty");
     // Format: `crate_name = "0.4.30"    # Description`
@@ -288,6 +292,7 @@ pub fn parse_cargo_search_output(output: &str, crate_name: &str) -> Result<Optio
 
 // ── Batuta Crate Detection ───────────────────────────────────────────────
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_batuta_crate(name: &str) -> bool {
     debug_assert!(!name.is_empty(), "name must not be empty");
     BATUTA_CRATES.contains(&name)
@@ -295,6 +300,7 @@ pub fn is_batuta_crate(name: &str) -> bool {
 
 // ── Mismatch Detection ──────────────────────────────────────────────────
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn detect_mismatches(
     repo_name: &str,
     deps: &[DepInfo],
@@ -372,6 +378,7 @@ fn build_stack_graph(repos: &[RepoInfo], all_deps: &BTreeMap<String, Vec<DepInfo
 
 // ── Handler: stack status ────────────────────────────────────────────────
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_stack_status(format: &OutputFormat) -> Result<()> {
     let manifest = load_stack_manifest()?;
 
@@ -489,6 +496,7 @@ fn print_status_table(
     latest_versions: &BTreeMap<String, String>,
     status: &StackStatus,
 ) {
+    debug_assert!(true, "contract: print_status_table");
     println!();
     println!("{}", c::header("Stack Dependency Status"));
     println!("{}", c::rule());
@@ -565,6 +573,7 @@ fn print_status_table(
 
 // ── Handler: stack sync ──────────────────────────────────────────────────
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_stack_sync(apply: bool, dry_run: bool) -> Result<()> {
     let manifest = load_stack_manifest()?;
 

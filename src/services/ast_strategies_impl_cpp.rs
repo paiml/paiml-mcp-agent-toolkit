@@ -33,6 +33,7 @@ fn cpp_type_to_ast_item(
     name: Option<String>,
     line: usize,
 ) -> Option<crate::services::context::AstItem> {
+    debug_assert!(true, "contract: cpp_type_to_ast_item");
     match type_kind {
         crate::models::unified_ast::TypeKind::Struct | crate::models::unified_ast::TypeKind::Class => {
             let default = if matches!(type_kind, crate::models::unified_ast::TypeKind::Class) {
@@ -130,6 +131,7 @@ impl CppAstStrategy {
     }
 
     /// Extract function name from source text (C++ can include templates, operators, etc.)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_function_name(source_text: &str) -> Option<String> {
         debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for pattern: type name(...) or name(...)
@@ -155,6 +157,7 @@ impl CppAstStrategy {
     }
 
     /// Extract type name from source text (struct, class, enum, etc.)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_type_name(source_text: &str) -> Option<String> {
         debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for patterns like "class name", "struct name", "enum class name"
@@ -181,6 +184,7 @@ impl CppAstStrategy {
     }
 
     /// Convert byte position to line number
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn byte_pos_to_line(byte_pos: usize, content_lines: &[&str]) -> usize {
         let mut current_pos = 0;
         for (line_idx, line) in content_lines.iter().enumerate() {

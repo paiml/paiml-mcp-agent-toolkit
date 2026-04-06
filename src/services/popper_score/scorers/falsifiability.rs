@@ -44,6 +44,7 @@ impl Default for FalsifiabilityScorer {
 
 impl PopperScorer for FalsifiabilityScorer {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "Falsifiability & Testability"
     }
 

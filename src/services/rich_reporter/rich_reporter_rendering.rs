@@ -4,6 +4,7 @@
 
 impl RichReporter {
     /// Render report as text (ASCII art)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_text(&self) -> String {
         let mut output = String::new();
         let box_drawer = BoxDrawer::default();
@@ -253,11 +254,13 @@ impl RichReporter {
     }
 
     /// Render report as JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_json(&self) -> String {
         serde_json::to_string_pretty(&self.report).unwrap_or_else(|_| "{}".to_string())
     }
 
     /// Render report as Markdown
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render_markdown(&self) -> String {
         let mut output = String::new();
 
@@ -336,6 +339,7 @@ impl RichReporter {
     }
 
     /// Render based on configured format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn render(&self) -> String {
         match self.config.format {
             OutputFormat::Text | OutputFormat::Plain => self.render_text(),
@@ -346,11 +350,13 @@ impl RichReporter {
     }
 
     /// Get the report data
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn report(&self) -> &RichReport {
         &self.report
     }
 
     /// Get mutable report data
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn report_mut(&mut self) -> &mut RichReport {
         &mut self.report
     }

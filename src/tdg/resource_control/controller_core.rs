@@ -1,6 +1,7 @@
 impl PlatformResourceController {
     /// Create new resource controller
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(limits: ResourceLimits) -> Self {
         let semaphore = Arc::new(Semaphore::new(limits.max_concurrent_ops));
 
@@ -24,6 +25,7 @@ impl PlatformResourceController {
     }
 
     /// Start resource monitoring background task
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn start_monitoring(&self) -> Result<()> {
         let mut monitoring_guard = self.monitoring_active.write().await;
         if *monitoring_guard {
@@ -65,12 +67,14 @@ impl PlatformResourceController {
     }
 
     /// Stop resource monitoring
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn stop_monitoring(&self) {
         let mut monitoring_guard = self.monitoring_active.write().await;
         *monitoring_guard = false;
     }
 
     /// Request resource allocation for operation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn request_resources(
         &self,
         operation_id: String,

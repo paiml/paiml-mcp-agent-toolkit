@@ -23,6 +23,7 @@ pub(super) async fn handle_cache(action: &HooksCacheAction) -> Result<()> {
 
 /// Initialize cache directory structure
 async fn handle_cache_init(manager: &HooksCacheManager) -> Result<()> {
+    debug_assert!(true, "contract: handle_cache_init");
     println!("{}", c::label("Initializing hooks cache..."));
 
     manager.init()?;
@@ -55,6 +56,7 @@ async fn handle_cache_init(manager: &HooksCacheManager) -> Result<()> {
 
 /// Show cache status and check result
 async fn handle_cache_status(manager: &HooksCacheManager, format: &OutputFormat) -> Result<()> {
+    debug_assert!(true, "contract: handle_cache_status");
     let check_result = manager.check()?;
     let metrics = manager.get_metrics().unwrap_or_default();
     let hit_rate = manager.hit_rate().unwrap_or(0.0);
@@ -180,6 +182,7 @@ async fn handle_cache_status(manager: &HooksCacheManager, format: &OutputFormat)
 
 /// Clear cache
 async fn handle_cache_clear(manager: &HooksCacheManager, gate: Option<&str>) -> Result<()> {
+    debug_assert!(true, "contract: handle_cache_clear");
     if let Some(gate_name) = gate {
         println!(
             "{} Clearing cache for gate: {}",
@@ -202,6 +205,7 @@ async fn handle_cache_clear(manager: &HooksCacheManager, gate: Option<&str>) -> 
 
 /// Show detailed metrics
 async fn handle_cache_metrics(manager: &HooksCacheManager, format: &OutputFormat) -> Result<()> {
+    debug_assert!(true, "contract: handle_cache_metrics");
     let metrics = manager.get_metrics()?;
     let hit_rate = manager.hit_rate()?;
     let is_healthy = manager.is_healthy()?;

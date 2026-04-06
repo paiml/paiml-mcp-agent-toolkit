@@ -3,6 +3,7 @@
 impl DefectReportService {
     /// Create a new defect report service
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let cpus = num_cpus::get();
         Self {
@@ -11,6 +12,7 @@ impl DefectReportService {
     }
 
     /// Generate a comprehensive defect report
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn generate_report(&self, project_path: &Path) -> Result<DefectReport> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let start_time = std::time::Instant::now();
@@ -233,6 +235,7 @@ impl DefectReportService {
 
     /// Compute summary statistics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_summary(&self, defects: &[Defect]) -> DefectSummary {
         debug_assert!(!defects.is_empty(), "defects must not be empty");
         let mut by_severity = BTreeMap::new();

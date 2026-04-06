@@ -4,6 +4,7 @@ impl TicketFile {
     /// # Complexity
     /// - Time: O(n) where n is file size
     /// - Cyclomatic: 2
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_file(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
@@ -17,6 +18,7 @@ impl TicketFile {
     /// # Complexity
     /// - Time: O(n) where n is content length
     /// - Cyclomatic: 8
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_content(content: &str) -> Result<Self> {
         debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
@@ -66,6 +68,7 @@ impl TicketFile {
     /// # Complexity
     /// - Time: O(1)
     /// - Cyclomatic: 5
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate(&self) -> Result<()> {
         // Validate ID format
         if !self.id.starts_with("TICKET-PMAT-") {

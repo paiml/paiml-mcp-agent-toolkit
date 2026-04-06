@@ -60,6 +60,7 @@ pub enum AnalysisError {
 
 impl UnifiedPythonAnalyzer {
     /// Create new analyzer for a file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: PathBuf) -> Self {
         debug_assert!(
             file_path.exists(),
@@ -74,6 +75,7 @@ impl UnifiedPythonAnalyzer {
     }
 
     /// Get the file path being analyzed
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn file_path(&self) -> &Path {
         &self.file_path
     }

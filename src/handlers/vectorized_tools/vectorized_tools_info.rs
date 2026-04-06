@@ -13,6 +13,7 @@
 /// assert!(tools[0]["name"].as_str().unwrap().contains("vectorized"));
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_vectorized_tools_info() -> Vec<serde_json::Value> {
     vec![
         json!({

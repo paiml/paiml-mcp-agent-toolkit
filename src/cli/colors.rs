@@ -38,6 +38,7 @@ pub const DIM_CYAN: &str = "\x1b[2;36m";
 
 /// Format a section header (bold + underline)
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn header(text: &str) -> String {
     debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD}{UNDERLINE}{text}{RESET}")
@@ -45,6 +46,7 @@ pub fn header(text: &str) -> String {
 
 /// Format a subheader (bold)
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn subheader(text: &str) -> String {
     debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD}{text}{RESET}")
@@ -52,6 +54,7 @@ pub fn subheader(text: &str) -> String {
 
 /// Format a success/pass item
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn pass(text: &str) -> String {
     debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{GREEN}✓{RESET} {text}")
@@ -59,6 +62,7 @@ pub fn pass(text: &str) -> String {
 
 /// Format a warning item
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn warn(text: &str) -> String {
     debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{YELLOW}⚠{RESET} {text}")
@@ -66,6 +70,7 @@ pub fn warn(text: &str) -> String {
 
 /// Format a failure/error item
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn fail(text: &str) -> String {
     debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{RED}✗{RESET} {text}")
@@ -73,6 +78,7 @@ pub fn fail(text: &str) -> String {
 
 /// Format a skipped item
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn skip(text: &str) -> String {
     debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{DIM}⏭{RESET} {DIM}{text}{RESET}")
@@ -80,6 +86,7 @@ pub fn skip(text: &str) -> String {
 
 /// Format a dimmed/secondary text
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn dim(text: &str) -> String {
     debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{DIM}{text}{RESET}")
@@ -87,6 +94,7 @@ pub fn dim(text: &str) -> String {
 
 /// Format a file path (cyan, like rg/fd)
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn path(text: &str) -> String {
     debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{CYAN}{text}{RESET}")
@@ -94,6 +102,7 @@ pub fn path(text: &str) -> String {
 
 /// Format a number/score (bold white)
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn number(text: &str) -> String {
     debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD_WHITE}{text}{RESET}")
@@ -101,6 +110,7 @@ pub fn number(text: &str) -> String {
 
 /// Format a label (bold)
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn label(text: &str) -> String {
     debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD}{text}{RESET}")
@@ -108,6 +118,7 @@ pub fn label(text: &str) -> String {
 
 /// Format a grade with appropriate color
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn grade(g: &str) -> String {
     debug_assert!(!g.is_empty(), "g must not be empty");
     let color = match g.chars().next() {
@@ -123,6 +134,7 @@ pub fn grade(g: &str) -> String {
 
 /// Format a percentage with threshold coloring (higher is better)
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn pct(value: f64, good_threshold: f64, warn_threshold: f64) -> String {
     let color = if value >= good_threshold {
         GREEN
@@ -136,6 +148,7 @@ pub fn pct(value: f64, good_threshold: f64, warn_threshold: f64) -> String {
 
 /// Format a percentage with inverted threshold coloring (lower is better, e.g. pressure)
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn pct_inverse(value: f64, good_threshold: f64, warn_threshold: f64) -> String {
     let color = if value <= good_threshold {
         GREEN
@@ -149,6 +162,7 @@ pub fn pct_inverse(value: f64, good_threshold: f64, warn_threshold: f64) -> Stri
 
 /// Format a delta value (positive = green/improvement, negative = red/regression)
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn delta(value: f64) -> String {
     let color = if value > 0.0 {
         GREEN
@@ -162,6 +176,7 @@ pub fn delta(value: f64) -> String {
 
 /// Format a score fraction (e.g., "14.5/15.0") with threshold coloring
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn score(earned: f64, max: f64, good_pct: f64, warn_pct: f64) -> String {
     let percentage = if max > 0.0 { earned / max * 100.0 } else { 0.0 };
     let color = if percentage >= good_pct {
@@ -176,12 +191,14 @@ pub fn score(earned: f64, max: f64, good_pct: f64, warn_pct: f64) -> String {
 
 /// Format a horizontal rule
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn rule() -> String {
     format!("{DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{RESET}")
 }
 
 /// Format a section separator (thin)
 #[inline]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn separator() -> String {
     format!("{DIM}───────────────────────────────────────────────────{RESET}")
 }

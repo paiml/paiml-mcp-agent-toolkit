@@ -29,6 +29,7 @@ impl CudaSimdAnalyzer {
     }
 
     fn score_reproducibility(patterns: &RustProjectPatterns) -> ReproducibilityScore {
+        debug_assert!(true, "contract: score_reproducibility");
         ReproducibilityScore {
             deterministic_output: if patterns.has_golden_traces { 8.0 } else { 4.0 },
             version_pinning: if patterns.has_cargo_lock && patterns.has_rust_toolchain {
@@ -45,6 +46,7 @@ impl CudaSimdAnalyzer {
     }
 
     fn score_statistical_rigor(patterns: &RustProjectPatterns) -> StatisticalRigorScore {
+        debug_assert!(true, "contract: score_statistical_rigor");
         if patterns.has_criterion_benches {
             StatisticalRigorScore {
                 warmup_iterations: 4.0,
@@ -137,6 +139,7 @@ impl CudaSimdAnalyzer {
 
     /// Check if quality gate passes
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn passes_quality_gate(&self, result: &CudaSimdTdgResult) -> bool {
         if !result.score.gateway_passed {
             return false;

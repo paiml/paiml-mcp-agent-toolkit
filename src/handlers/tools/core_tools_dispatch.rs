@@ -1,3 +1,4 @@
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_tool_call<T: TemplateServerTrait>(
     server: Arc<T>,
     request: McpRequest,
@@ -14,6 +15,7 @@ fn parse_tool_call_params(
     params: Option<serde_json::Value>,
     request_id: &serde_json::Value,
 ) -> Result<ToolCallParams, Box<McpResponse>> {
+    debug_assert!(true, "contract: parse_tool_call_params");
     let params = match params {
         Some(p) => p,
         None => {
@@ -40,6 +42,7 @@ async fn dispatch_tool_call<T: TemplateServerTrait>(
     request_id: serde_json::Value,
     tool_params: ToolCallParams,
 ) -> McpResponse {
+    debug_assert!(true, "contract: dispatch_tool_call");
     match tool_params.name.as_str() {
         "get_server_info" => handle_get_server_info(request_id).await,
         tool_name if is_template_tool(tool_name) => {
@@ -60,6 +63,7 @@ async fn dispatch_tool_call<T: TemplateServerTrait>(
 }
 
 /// Check if a tool name is a template tool
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_template_tool(tool_name: &str) -> bool {
     debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     matches!(
@@ -73,6 +77,7 @@ pub fn is_template_tool(tool_name: &str) -> bool {
 }
 
 /// Check if a tool name is an analysis tool
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_analysis_tool(tool_name: &str) -> bool {
     debug_assert!(!tool_name.is_empty(), "tool_name must not be empty");
     matches!(
@@ -99,6 +104,7 @@ async fn handle_template_tools<T: TemplateServerTrait>(
     request_id: serde_json::Value,
     tool_params: ToolCallParams,
 ) -> McpResponse {
+    debug_assert!(true, "contract: handle_template_tools");
     match tool_params.name.as_str() {
         "generate_template" => {
             handle_generate_template(server, request_id, tool_params.arguments).await

@@ -3,6 +3,7 @@
 
 /// Format operator as mnemonic and operands
 fn format_operator(op: &Operator) -> (String, Vec<String>) {
+    debug_assert!(true, "contract: format_operator");
     match op {
         Operator::Call { function_index } => ("call".to_string(), vec![function_index.to_string()]),
         Operator::LocalGet { local_index } => {
@@ -61,6 +62,7 @@ fn format_operator(op: &Operator) -> (String, Vec<String>) {
 
 /// Calculate stack effect for an operator
 fn calculate_stack_effect(op: &Operator) -> StackEffect {
+    debug_assert!(true, "contract: calculate_stack_effect");
     match op {
         // Constants: push 1
         Operator::I32Const { .. }
@@ -134,6 +136,7 @@ fn calculate_stack_effect(op: &Operator) -> StackEffect {
 
 /// Categorize operator
 fn categorize_operator(op: &Operator) -> String {
+    debug_assert!(true, "contract: categorize_operator");
     match op {
         Operator::Unreachable
         | Operator::Nop
@@ -198,6 +201,7 @@ fn categorize_operator(op: &Operator) -> String {
 
 /// Estimate execution cost
 fn estimate_cost(op: &Operator) -> u32 {
+    debug_assert!(true, "contract: estimate_cost");
     match op {
         // Cheap operations
         Operator::Nop | Operator::Drop | Operator::LocalGet { .. } | Operator::LocalSet { .. } => 1,

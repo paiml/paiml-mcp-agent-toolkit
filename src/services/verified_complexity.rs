@@ -76,6 +76,7 @@ pub struct HalsteadMetrics {
 impl HalsteadMetrics {
     /// Calculate derived Halstead metrics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn volume(&self) -> f64 {
         let n = f64::from(self.n1 + self.n2);
         #[allow(non_snake_case)]
@@ -84,6 +85,7 @@ impl HalsteadMetrics {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn difficulty(&self) -> f64 {
         if self.n2 == 0 {
             return 0.0;
@@ -92,6 +94,7 @@ impl HalsteadMetrics {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn effort(&self) -> f64 {
         self.volume() * self.difficulty()
     }

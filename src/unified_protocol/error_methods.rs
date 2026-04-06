@@ -4,6 +4,7 @@
 impl AppError {
     /// Get the appropriate HTTP status code for this error
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn status_code(&self) -> StatusCode {
         match self {
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
@@ -24,6 +25,7 @@ impl AppError {
 
     /// Get the MCP error code for this error
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mcp_error_code(&self) -> i32 {
         match self {
             AppError::NotFound(_) => -32001,
@@ -44,6 +46,7 @@ impl AppError {
 
     /// Get a categorized error type string
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn error_type(&self) -> &'static str {
         match self {
             AppError::NotFound(_) => "NOT_FOUND",
@@ -64,6 +67,7 @@ impl AppError {
     }
 
     /// Convert to protocol-specific response
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_protocol_response(
         &self,
         protocol: Protocol,
@@ -77,6 +81,7 @@ impl AppError {
     }
 
     fn to_mcp_response(&self) -> Result<UnifiedResponse, serde_json::Error> {
+        debug_assert!(true, "contract: to_mcp_response");
         let mcp_error = McpError {
             code: self.mcp_error_code(),
             message: self.to_string(),
@@ -95,6 +100,7 @@ impl AppError {
     }
 
     fn to_http_response(&self) -> Result<UnifiedResponse, serde_json::Error> {
+        debug_assert!(true, "contract: to_http_response");
         let error_response = HttpErrorResponse {
             error: self.to_string(),
             error_type: self.error_type().to_string(),
@@ -105,6 +111,7 @@ impl AppError {
     }
 
     fn to_cli_response(&self) -> Result<UnifiedResponse, serde_json::Error> {
+        debug_assert!(true, "contract: to_cli_response");
         let cli_error = CliErrorResponse {
             message: self.to_string(),
             error_type: self.error_type().to_string(),
@@ -123,6 +130,7 @@ impl AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
+        debug_assert!(true, "contract: into_response");
         // Default to HTTP protocol if no context is available
         let protocol = extract_protocol_from_context().unwrap_or(Protocol::Http);
 

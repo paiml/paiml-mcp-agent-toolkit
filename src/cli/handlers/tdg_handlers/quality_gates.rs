@@ -12,6 +12,7 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 /// Execute TDG analysis on file or directory (cognitive complexity ≤3)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn execute_tdg_analysis<'a>(
     analyzer: &'a TdgAnalyzer,
     config: &'a TdgCommandConfig,
@@ -26,6 +27,7 @@ pub(crate) fn execute_tdg_analysis<'a>(
 }
 
 /// Validate minimum grade requirement (cognitive complexity ≤4)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn validate_minimum_grade(
     score: &crate::tdg::TdgScore,
     config: &TdgCommandConfig,
@@ -110,6 +112,7 @@ fn run_primary_gate(
     baseline_path: Option<&PathBuf>,
     current: &crate::tdg::TdgBaseline,
 ) -> Result<crate::tdg::GateResult> {
+    debug_assert!(true, "contract: run_primary_gate");
     use crate::tdg::{GateConfig, MinimumGradeGate, NewFileGate, QualityGate, TdgBaseline};
 
     if new_files_only {

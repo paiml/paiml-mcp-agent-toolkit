@@ -24,6 +24,7 @@ impl Default for PageRankComputer {
 }
 
 impl PageRankComputer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::default()
     }
@@ -45,6 +46,7 @@ impl PageRankComputer {
     /// - Power iteration with damping factor (default: 0.85)
     /// - Handles dangling nodes (no outgoing edges)
     /// - Convergence tolerance: 1e-6
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute(&self, graph: &DependencyGraph) -> Vec<f64> {
         if graph.node_count() == 0 {
             return Vec::new();
@@ -64,6 +66,7 @@ impl PageRankComputer {
     /// This method is deprecated and will be removed in a future version.
     /// Use `compute(&DependencyGraph)` instead.
     #[deprecated(since = "2.201.0", note = "Use compute(&DependencyGraph) instead")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_legacy(&self, matrices: &GraphMatrices) -> Vec<f64> {
         // Build scratch DependencyGraph from GraphMatrices
         let mut graph = DependencyGraph::new();

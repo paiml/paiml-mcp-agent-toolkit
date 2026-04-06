@@ -53,6 +53,7 @@ pub enum NodeKind {
 
 impl NodeKind {
     /// Convert from AstItem enum
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_ast_item(item: &AstItem) -> Self {
         match item {
             AstItem::Function { .. } => NodeKind::Function,
@@ -67,6 +68,7 @@ impl NodeKind {
     }
 
     /// Convert from a string item kind
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_ast_item_kind(kind: &str) -> Self {
         debug_assert!(!kind.is_empty(), "kind must not be empty");
         match kind.to_lowercase().as_str() {
@@ -113,6 +115,7 @@ impl NodeKind {
     }
 
     /// Returns a string representation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn as_str(&self) -> &'static str {
         match self {
             NodeKind::Package => "package",

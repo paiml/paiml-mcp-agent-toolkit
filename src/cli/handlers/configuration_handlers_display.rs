@@ -3,6 +3,7 @@
 
 /// Show configuration overview
 async fn show_configuration_overview(config_service: &ConfigurationService) -> Result<()> {
+    debug_assert!(true, "contract: show_configuration_overview");
     use crate::cli::colors as c;
 
     info!("Generating configuration overview");
@@ -123,6 +124,7 @@ async fn show_configuration(
     config_service: &ConfigurationService,
     section: Option<String>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: show_configuration");
     use crate::cli::colors as c;
 
     let config = config_service.get_config()?;

@@ -31,6 +31,7 @@ impl MermaidGenerator {
     /// // Generator ready to create Mermaid diagrams
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(options: MermaidOptions) -> Self {
         Self {
             options,

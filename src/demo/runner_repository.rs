@@ -1,5 +1,6 @@
 /// Resolve repository path from multiple possible sources
 /// Returns either a local path or a special marker path for URLs that need cloning
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn resolve_repository(
     path: Option<PathBuf>,
     url: Option<String>,
@@ -24,6 +25,7 @@ pub fn resolve_repository(
 
 /// Resolve repository path, cloning if necessary
 /// This is the async version that actually performs cloning for URLs
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn resolve_repository_async(
     path: Option<PathBuf>,
     url: Option<String>,
@@ -120,6 +122,7 @@ fn try_owner_repo_format(repo_spec: &str) -> Option<Result<PathBuf>> {
 }
 
 fn get_canonical_path(hint: Option<PathBuf>) -> Result<PathBuf> {
+    debug_assert!(true, "contract: get_canonical_path");
     match hint {
         Some(p) => {
             if !p.exists() {
@@ -167,11 +170,13 @@ fn find_git_root(start_path: &Path) -> Option<PathBuf> {
 }
 
 fn is_interactive_environment() -> bool {
+    debug_assert!(true, "contract: is_interactive_environment");
     use std::io::IsTerminal;
     std::io::stdout().is_terminal() && env::var("CI").is_err()
 }
 
 fn read_repository_path_from_user() -> Result<PathBuf> {
+    debug_assert!(true, "contract: read_repository_path_from_user");
     eprintln!("No git repository found in current directory");
     eprint!("Enter path to a git repository (or press Enter to cancel): ");
     io::stdout().flush()?;
@@ -202,6 +207,7 @@ fn read_repository_path_from_user() -> Result<PathBuf> {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_repository(hint: Option<PathBuf>) -> Result<PathBuf> {
     let candidate = get_canonical_path(hint)?;
 

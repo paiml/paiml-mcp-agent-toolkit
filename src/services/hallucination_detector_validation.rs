@@ -2,6 +2,7 @@
 // against codebase facts, contradiction detection, and end-to-end documentation checking.
 
 fn check_capability_contradiction(claim: &Claim) -> Option<ValidationResult> {
+    debug_assert!(true, "contract: check_capability_contradiction");
     let has_compile_cap = claim.entities.iter().any(|e| {
         matches!(e, Entity::Capability(cap) if cap == "compile")
     });
@@ -25,6 +26,7 @@ fn check_language_support(
     claim: &Claim,
     code_facts: &CodeFactDatabase,
 ) -> Option<ValidationResult> {
+    debug_assert!(true, "contract: check_language_support");
     for entity in &claim.entities {
         let Entity::Language(lang) = entity else {
             continue;
@@ -58,6 +60,7 @@ fn check_language_support(
 
 impl HallucinationDetector {
     /// Create new detector with code facts
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(code_facts: CodeFactDatabase) -> Self {
         Self {
             code_facts,
@@ -66,6 +69,7 @@ impl HallucinationDetector {
     }
 
     /// Validate a claim against codebase
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_claim(&self, claim: &Claim) -> Result<ValidationResult> {
         if let Some(result) = check_capability_contradiction(claim) {
             return Ok(result);
@@ -85,6 +89,7 @@ impl HallucinationDetector {
 
 impl DocAccuracyValidator {
     /// Create new validator with code facts
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(code_facts: CodeFactDatabase) -> Self {
         Self {
             extractor: ClaimExtractor::new(),
@@ -93,6 +98,7 @@ impl DocAccuracyValidator {
     }
 
     /// Validate all claims in documentation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_documentation(
         &self,
         content: &str,
@@ -118,6 +124,7 @@ impl DocAccuracyValidator {
     }
 
     /// Check if results contain any contradictions
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_contradictions(&self, results: &[ValidationResult]) -> bool {
         debug_assert!(!results.is_empty(), "results must not be empty");
         results

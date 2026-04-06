@@ -25,6 +25,7 @@ const MUTABLE_COLLECTIONS: &[&str] = &[
     "mutable.TreeSet",
 ];
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb800_mutable_collection(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
@@ -75,6 +76,7 @@ pub fn detect_cb800_mutable_collection(project_path: &Path) -> Vec<CbPatternViol
 // CB-801: Null Usage
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb801_null_usage(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
@@ -146,6 +148,7 @@ fn contains_null_literal(line: &str) -> bool {
 // CB-802: Unrestricted Wildcard Import
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb802_wildcard_import(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);

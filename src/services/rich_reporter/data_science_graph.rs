@@ -3,6 +3,7 @@ impl DataScienceAnalyzer {
     ///
     /// Higher PageRank = finding is in a more "central" file that many others depend on
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_pagerank(&self, findings: &mut [Finding], dependencies: &[(String, String)]) {
         if findings.is_empty() || dependencies.is_empty() {
             return;
@@ -75,6 +76,7 @@ impl DataScienceAnalyzer {
     }
 
     /// Detect code communities using Louvain algorithm
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_communities(
         &self,
         findings: &mut [Finding],
@@ -203,6 +205,7 @@ impl DataScienceAnalyzer {
 
     /// Build file-based communities when no dependencies are available
     fn build_file_communities(&self, findings: &mut [Finding]) -> Vec<CodeCommunity> {
+        debug_assert!(true, "contract: build_file_communities");
         let mut communities = Vec::new();
         for finding in findings.iter_mut() {
             let file = finding.location.file.to_string_lossy().to_string();

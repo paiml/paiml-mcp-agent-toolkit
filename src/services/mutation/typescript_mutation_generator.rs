@@ -15,12 +15,14 @@ pub struct TypeScriptMutationGenerator {
 
 impl TypeScriptMutationGenerator {
     /// Create new mutation generator with given operators
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(operators: Vec<Box<dyn TreeSitterMutationOperator>>) -> Self {
         debug_assert!(!operators.is_empty(), "operators must not be empty");
         Self { operators }
     }
 
     /// Create with default TypeScript operators
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_default_operators() -> Self {
         use super::typescript_tree_sitter_mutations::*;
 
@@ -36,6 +38,7 @@ impl TypeScriptMutationGenerator {
     }
 
     /// Generate mutants from TypeScript source code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_mutants(&self, source: &str, file_path: &str) -> Result<Vec<Mutant>> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         // Parse TypeScript source with tree-sitter

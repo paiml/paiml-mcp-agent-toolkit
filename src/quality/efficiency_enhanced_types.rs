@@ -1,5 +1,6 @@
 /// Helper function to convert a syn::Path to a string
 fn path_to_string(path: &syn::Path) -> String {
+    debug_assert!(true, "contract: path_to_string");
     path.segments
         .iter()
         .map(|seg| seg.ident.to_string())
@@ -35,6 +36,7 @@ impl Display for Complexity {
 }
 
 impl Complexity {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn combine(&self, other: &Complexity) -> Complexity {
         // When combining complexities (e.g., nested loops), multiply
         use Complexity::*;
@@ -49,6 +51,7 @@ impl Complexity {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn max(&self, other: &Complexity) -> Complexity {
         if self > other {
             self.clone()

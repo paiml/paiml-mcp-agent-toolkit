@@ -16,6 +16,7 @@ pub struct RollingWindow<T: Clone> {
 
 impl<T: Clone> RollingWindow<T> {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(window_size: Duration, max_points: usize) -> Self {
         Self {
             window_size,
@@ -24,6 +25,7 @@ impl<T: Clone> RollingWindow<T> {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn push(&mut self, value: T, tags: HashMap<String, String>) {
         let now = SystemTime::now();
 
@@ -51,11 +53,13 @@ impl<T: Clone> RollingWindow<T> {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_window(&self) -> Vec<DataPoint<T>> {
         self.data.iter().cloned().collect()
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }

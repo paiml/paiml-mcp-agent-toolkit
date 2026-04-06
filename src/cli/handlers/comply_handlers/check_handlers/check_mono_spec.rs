@@ -13,6 +13,7 @@ use std::path::Path;
 /// 2. docs/specifications/components/ directory exists with sub-specs
 /// 3. No loose spec files in docs/specifications/ (only pmat-spec.md)
 /// 4. All component files are under 500 lines
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_mono_spec_structure(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -118,6 +119,7 @@ pub(crate) fn check_mono_spec_structure(project_path: &Path) -> ComplianceCheck 
 /// 1. dhat (or similar profiler) in Cargo.toml dev-dependencies
 /// 2. Profile binary exists (examples/dhat_profile.rs or similar)
 /// 3. Memory baseline file exists (.pmat-metrics/memory-baseline.json)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_memory_profiling(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -229,6 +231,7 @@ fn has_profile_example_in_dir(project_path: &Path) -> bool {
 ///
 /// Computes evolution score from test pass/fail data across commits.
 /// Returns Skip if insufficient data.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_swe_ci_evoscore(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),

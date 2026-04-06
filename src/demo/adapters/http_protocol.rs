@@ -61,11 +61,13 @@ impl DemoProtocol for HttpDemoAdapter {
     }
 
     async fn encode_response(&self, resp: Self::Response) -> Result<Vec<u8>, Self::Error> {
+        debug_assert!(true, "contract: encode_response");
         let json = serde_json::to_vec_pretty(&resp)?;
         Ok(json)
     }
 
     async fn get_protocol_metadata(&self) -> ProtocolMetadata {
+        debug_assert!(true, "contract: get_protocol_metadata");
         ProtocolMetadata {
             name: "http",
             version: "1.1",
@@ -136,6 +138,7 @@ impl DemoProtocol for HttpDemoAdapter {
     }
 
     async fn execute_demo(&self, request: Self::Request) -> Result<Self::Response, Self::Error> {
+        debug_assert!(true, "contract: execute_demo");
         let request_id = Uuid::new_v4().to_string();
 
         let body = match request.path.as_str() {

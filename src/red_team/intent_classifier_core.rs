@@ -1,4 +1,5 @@
 impl IntentClassifier {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             hallucination_keywords: vec![
@@ -25,6 +26,7 @@ impl IntentClassifier {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn classify(
         &self,
         original_commit: &CommitInfo,

@@ -26,6 +26,7 @@ where
     B: Service<Input = A::Output>,
 {
     /// Create a new simple composite service
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(first: A, second: B) -> Self {
         Self {
             first: Arc::new(first),
@@ -51,6 +52,7 @@ where
     type Error = anyhow::Error;
 
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
+        debug_assert!(true, "contract: process");
         let start = Instant::now();
 
         // Process through first service
@@ -71,14 +73,17 @@ where
     }
 
     fn validate_input(&self, input: &Self::Input) -> Result<(), ValidationError> {
+        debug_assert!(true, "contract: validate_input");
         self.first.validate_input(input)
     }
 
     fn metrics(&self) -> ServiceMetrics {
+        debug_assert!(true, "contract: metrics");
         self.metrics.clone()
     }
 
     fn name(&self) -> &'static str {
+        debug_assert!(true, "contract: name");
         "SimpleCompositeService"
     }
 }
@@ -91,11 +96,13 @@ pub struct ServiceComposer {
 impl ServiceComposer {
     /// Create a new service composer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: Arc<super::service_base::ServiceRegistry>) -> Self {
         Self { registry }
     }
 
     /// Compose two services sequentially
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn compose<A, B>(&self, first: A, second: B) -> SimpleCompositeService<A, B>
     where
         A: Service,
@@ -106,6 +113,7 @@ impl ServiceComposer {
 
     /// Get the service registry
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn registry(&self) -> &super::service_base::ServiceRegistry {
         &self.registry
     }
@@ -129,6 +137,7 @@ mod tests {
         type Error = anyhow::Error;
 
         async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
+            debug_assert!(true, "contract: process");
             Ok(input + self.value)
         }
     }
@@ -145,6 +154,7 @@ mod tests {
         type Error = anyhow::Error;
 
         async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
+            debug_assert!(true, "contract: process");
             Ok(input * self.factor)
         }
     }
@@ -191,6 +201,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

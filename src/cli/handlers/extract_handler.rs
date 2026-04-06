@@ -8,6 +8,7 @@ use std::path::Path;
 use crate::services::semantic::chunker::{self, Language};
 
 /// Handle `pmat extract --list <FILE>`
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_extract_list(file_path: &Path) -> Result<()> {
     debug_assert!(
         file_path.exists(),

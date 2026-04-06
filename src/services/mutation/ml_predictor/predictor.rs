@@ -34,6 +34,7 @@ pub struct SurvivabilityPredictor {
 
 impl SurvivabilityPredictor {
     /// Create new predictor
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let feature_names = vec![
             "operator_type".to_string(),
@@ -69,6 +70,7 @@ impl SurvivabilityPredictor {
     /// Train the predictor on historical data using LinearRegression
     /// Phase 4.3 GREEN - Aprender migration (0 dependencies vs linfa's 50+)
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn train(&mut self, training_data: &[TrainingData]) -> Result<()> {
         debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         if training_data.is_empty() {
@@ -152,6 +154,7 @@ impl SurvivabilityPredictor {
 
     /// Perform k-fold cross-validation to measure model accuracy
     /// Returns average accuracy across folds
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cross_validate(&self, training_data: &[TrainingData], k_folds: usize) -> Result<f64> {
         debug_assert!(!training_data.is_empty(), "training_data must not be empty");
         if training_data.is_empty() {
@@ -259,6 +262,7 @@ impl SurvivabilityPredictor {
     }
 
     /// Update model with new data (incremental learning)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update(&mut self, new_data: &[TrainingData]) -> Result<()> {
         debug_assert!(!new_data.is_empty(), "new_data must not be empty");
         if !self.trained {
@@ -295,6 +299,7 @@ impl SurvivabilityPredictor {
     /// Predict kill probability for a mutant using trained LinearRegression
     /// Phase 4.3 GREEN - Uses aprender LinearRegression with 18 features
     #[allow(clippy::cast_possible_truncation)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn predict(&self, mutant: &Mutant) -> Result<PredictionResult> {
         if !self.trained {
             anyhow::bail!("Model not trained");
@@ -358,6 +363,7 @@ impl SurvivabilityPredictor {
     }
 
     /// Predict with human-readable explanation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn predict_with_explanation(&self, mutant: &Mutant) -> Result<(PredictionResult, String)> {
         let prediction = self.predict(mutant)?;
 
@@ -378,6 +384,7 @@ impl SurvivabilityPredictor {
     }
 
     /// Prioritize mutants by predicted kill probability
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn prioritize_mutants(
         &self,
         mutants: &[Mutant],
@@ -401,6 +408,7 @@ impl SurvivabilityPredictor {
     }
 
     /// Get feature importance scores
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn feature_importance(&self) -> Result<HashMap<String, f64>> {
         if !self.trained {
             anyhow::bail!("Model not trained");
@@ -410,6 +418,7 @@ impl SurvivabilityPredictor {
     }
 
     /// Check if model is trained
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_trained(&self) -> bool {
         self.trained
     }
@@ -418,6 +427,7 @@ impl SurvivabilityPredictor {
     /// NOTE: LinearRegression model is not currently serialized.
     /// After loading, the model will use statistical baseline predictions.
     /// For consistent ML predictions, retrain the model after loading.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: &Path) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let serialized = bincode::serialize(self)?;
@@ -426,6 +436,7 @@ impl SurvivabilityPredictor {
     }
 
     /// Load model from file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let data = std::fs::read(path)?;

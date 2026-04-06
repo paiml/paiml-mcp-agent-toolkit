@@ -2,6 +2,7 @@
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn matches_pattern(path: &str, pattern: &str) -> bool {
     debug_assert!(!path.is_empty(), "path must not be empty");
     if pattern.ends_with('/') {

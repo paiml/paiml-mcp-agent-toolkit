@@ -17,6 +17,7 @@ use super::MAX_CACHE_AGE_HOURS;
 
 impl HooksCacheManager {
     /// Initialize cache directory structure
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn init(&self) -> Result<()> {
         fs::create_dir_all(&self.cache_dir)?;
         fs::create_dir_all(self.cache_dir.join("gates"))?;
@@ -32,6 +33,7 @@ impl HooksCacheManager {
     /// Check cache for O(1) decision
     ///
     /// Returns immediately if cache hit (5ms target)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check(&self) -> Result<CacheCheckResult> {
         let cache_path = self.cache_dir.join("tree-hash.json");
 
@@ -107,6 +109,7 @@ impl HooksCacheManager {
     }
 
     /// Update cache after successful gate run
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update(
         &self,
         result: CacheResult,
@@ -129,6 +132,7 @@ impl HooksCacheManager {
     }
 
     /// Clear all caches
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear(&self) -> Result<()> {
         if self.cache_dir.exists() {
             fs::remove_dir_all(&self.cache_dir)?;
@@ -138,6 +142,7 @@ impl HooksCacheManager {
     }
 
     /// Clear specific gate cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear_gate(&self, gate_name: &str) -> Result<()> {
         debug_assert!(!gate_name.is_empty(), "gate_name must not be empty");
         let gate_path = self
@@ -151,6 +156,7 @@ impl HooksCacheManager {
     }
 
     /// Get cache metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_metrics(&self) -> Result<HooksCacheMetrics> {
         let metrics_path = self.cache_dir.join("metrics.json");
         if !metrics_path.exists() {
@@ -163,6 +169,7 @@ impl HooksCacheManager {
     }
 
     /// Update metrics after hook run
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_run(&self, hit: bool, duration_ms: u64) -> Result<()> {
         let mut metrics = self.get_metrics()?;
 
@@ -190,6 +197,7 @@ impl HooksCacheManager {
     }
 
     /// Get cache hit rate
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn hit_rate(&self) -> Result<f64> {
         let metrics = self.get_metrics()?;
         if metrics.total_runs == 0 {
@@ -199,6 +207,7 @@ impl HooksCacheManager {
     }
 
     /// Check if cache is healthy (CB-021)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_healthy(&self) -> Result<bool> {
         let metrics = self.get_metrics()?;
         // Need at least 10 runs to assess health

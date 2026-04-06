@@ -39,6 +39,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Extract dead code item from compiler message
     fn extract_dead_item(&self, message: &Value) -> Option<(PathBuf, DeadItem)> {
+        debug_assert!(true, "contract: extract_dead_item");
         let spans = message["spans"].as_array()?;
         let primary_span = spans
             .iter()
@@ -65,6 +66,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Parse the warning message to extract name and kind
     fn parse_message(&self, message: &str) -> Option<(String, DeadCodeKind)> {
+        debug_assert!(true, "contract: parse_message");
         // Common patterns in dead code messages
         let patterns = [
             ("function `", "` is never used", DeadCodeKind::Function),
@@ -221,6 +223,7 @@ impl CargoDeadCodeAnalyzer {
 
 /// Convert DeadCodeKind to string representation
 fn dead_code_kind_to_str(kind: &DeadCodeKind) -> &str {
+    debug_assert!(true, "contract: dead_code_kind_to_str");
     match kind {
         DeadCodeKind::Function => "function",
         DeadCodeKind::Method => "method",

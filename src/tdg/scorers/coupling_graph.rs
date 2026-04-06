@@ -9,10 +9,12 @@ impl DependencyGraph {
     }
 
     fn add_edge(&mut self, from: String, to: String) {
+        debug_assert!(true, "contract: add_edge");
         self.edges.entry(from).or_insert_with(HashSet::new).insert(to);
     }
 
     fn topological_sort(&self) -> Vec<String> {
+        debug_assert!(true, "contract: topological_sort");
         let mut visited = HashSet::new();
         let mut stack = Vec::new();
 
@@ -42,6 +44,7 @@ impl DependencyGraph {
     }
 
     fn calculate_depth(&self) -> usize {
+        debug_assert!(true, "contract: calculate_depth");
         let topo_order = self.topological_sort();
         let mut depths = HashMap::new();
         let mut max_depth = 0;

@@ -231,6 +231,7 @@ fn is_zero_u32(v: &u32) -> bool {
 
 impl QueryResult {
     /// Create from function entry with relevance score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_entry(entry: &FunctionEntry, relevance: f32, include_source: bool) -> Self {
         Self {
             file_path: entry.file_path.clone(),
@@ -284,6 +285,7 @@ impl QueryResult {
     ///
     /// Used by coverage-gaps mode where call graph data is not displayed.
     /// Avoids 71K × 2 HashMap lookups + Vec clones for unused data.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_entry_with_metrics(
         entry: &FunctionEntry,
         func_idx: usize,
@@ -301,6 +303,7 @@ impl QueryResult {
     }
 
     /// Create from function entry with caller/callee context and graph metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_entry_with_context(
         entry: &FunctionEntry,
         func_idx: usize,
@@ -344,6 +347,7 @@ impl QueryResult {
     }
 
     /// Format for display
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_display(&self) -> String {
         format!(
             "{}:{} - {}\n  Signature: {}\n  TDG: {} ({:.1}) | Complexity: {} | Big-O: {}\n  Doc: {}\n  Relevance: {:.2}",

@@ -97,6 +97,7 @@ lazy_static! {
 /// assert!(!is_generic_description("Agent name (lowercase, alphanumeric)"));
 /// assert!(!is_generic_description("Quality level: standard, high, extreme"));
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_generic_description(desc: &str) -> bool {
     debug_assert!(!desc.is_empty(), "desc must not be empty");
     // Empty is generic
@@ -181,6 +182,7 @@ fn has_low_word_uniqueness(words: &[&str]) -> bool {
 /// Suggest improvements for generic descriptions
 ///
 /// Returns suggested improvements if a description is generic.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn suggest_improvements(desc: &str) -> Vec<String> {
     debug_assert!(!desc.is_empty(), "desc must not be empty");
     let mut suggestions = Vec::new();

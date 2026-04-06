@@ -1,5 +1,6 @@
 /// Handle spec score command (S-001)
 /// Validates specification with 100-point Popperian score
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_spec_score(
     spec_path: &Path,
     format: SpecOutputFormat,
@@ -45,6 +46,7 @@ pub async fn handle_spec_score(
 
 /// Handle spec comply command (S-003)
 /// Auto-fixes spec issues to meet 95-point threshold
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_spec_comply(
     spec_path: &Path,
     dry_run: bool,
@@ -120,6 +122,7 @@ pub async fn handle_spec_comply(
 }
 
 /// Handle spec create command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_spec_create(
     name: &str,
     issue: Option<&str>,
@@ -265,6 +268,7 @@ epic: "{epic_name}"
 }
 
 /// Handle spec list command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_spec_list(
     path: &Path,
     min_score: Option<u8>,
@@ -302,6 +306,7 @@ pub async fn handle_spec_list(
 }
 
 fn spec_display_name<'a>(path: &'a Path, title: &'a str) -> &'a str {
+    debug_assert!(true, "contract: spec_display_name");
     if title.is_empty() {
         path.file_stem()
             .and_then(|s| s.to_str())

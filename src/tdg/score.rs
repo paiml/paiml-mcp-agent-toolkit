@@ -50,6 +50,7 @@ impl Default for TdgScore {
 }
 
 impl TdgScore {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_total(&mut self) {
         // Clamp individual components to their expected weight ranges
         // This ensures components can never exceed their designated contribution
@@ -105,6 +106,7 @@ impl TdgScore {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_metric(&mut self, category: MetricCategory, value: f32) {
         match category {
             MetricCategory::StructuralComplexity => self.structural_complexity = value,

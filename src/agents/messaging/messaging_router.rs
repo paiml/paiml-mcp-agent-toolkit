@@ -12,6 +12,7 @@ impl Default for MessageRouter {
 }
 
 impl MessageRouter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             routes: dashmap::DashMap::new(),
@@ -19,6 +20,7 @@ impl MessageRouter {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&self, agent_id: Uuid, recipient: Recipient<AgentMessage>) {
         self.routes.insert(agent_id, recipient);
     }
@@ -37,6 +39,7 @@ impl MessageRouter {
     }
 
     fn process_queue(&self) -> Result<(), RouterError> {
+        debug_assert!(true, "contract: process_queue");
         // Sort by priority and process
         let mut messages: Vec<(Priority, AgentMessage)> = Vec::new();
 

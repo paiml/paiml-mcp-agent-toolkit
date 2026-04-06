@@ -1,6 +1,7 @@
 // Toolchain-based file dispatch: analyze_file_by_toolchain, analyze_deno_file,
 // analyze_file_by_toolchain_persistent, and project analysis entry points.
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_project(
     root_path: &Path,
     toolchain: &str,
@@ -10,6 +11,7 @@ pub async fn analyze_project(
 }
 
 /// Optimized project analysis for dead code detection - focuses only on source files
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_project_for_dead_code(
     root_path: &Path,
     toolchain: &str,
@@ -27,6 +29,7 @@ pub async fn analyze_project_for_dead_code(
     })
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_project_with_cache(
     root_path: &Path,
     toolchain: &str,
@@ -48,6 +51,7 @@ pub async fn analyze_project_with_cache(
     })
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_project_with_persistent_cache(
     root_path: &Path,
     toolchain: &str,

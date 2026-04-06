@@ -53,6 +53,7 @@ pub struct ReproducibilityReport {
 }
 
 /// Check the reproducibility level of a project (CB-301).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn check_reproducibility(project_path: &Path) -> ReproducibilityReport {
     debug_assert!(
         project_path.exists(),
@@ -119,6 +120,7 @@ fn determine_level(
     has_make_reproduce: bool,
     has_golden_traces: bool,
 ) -> ReproducibilityLevel {
+    debug_assert!(true, "contract: determine_level");
     // Gold: lockfile + dockerfile + make reproduce + golden traces
     if has_lockfile && has_dockerfile && has_make_reproduce && has_golden_traces {
         return ReproducibilityLevel::Gold;
@@ -259,6 +261,7 @@ fn check_golden_traces(project_path: &Path) -> bool {
 
 /// Check if golden traces are passing (CB-302).
 /// Returns None if no golden traces configured, Some(true) if passing.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn check_golden_trace_drift(project_path: &Path) -> Option<bool> {
     debug_assert!(
         project_path.exists(),

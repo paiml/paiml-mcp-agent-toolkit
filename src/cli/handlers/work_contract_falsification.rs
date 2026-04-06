@@ -140,6 +140,7 @@ pub struct FalsificationResult {
 
 impl FalsificationResult {
     /// Create a passing result (hypothesis holds)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn passed(explanation: impl Into<String>) -> Self {
         Self {
             falsified: false,
@@ -149,6 +150,7 @@ impl FalsificationResult {
     }
 
     /// Create a failing result (hypothesis falsified)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn failed(explanation: impl Into<String>, evidence: EvidenceType) -> Self {
         Self {
             falsified: true,

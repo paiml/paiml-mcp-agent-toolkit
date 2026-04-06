@@ -1,5 +1,6 @@
 impl UnifiedRequest {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(method: Method, path: String) -> Self {
         Self {
             method,
@@ -12,12 +13,14 @@ impl UnifiedRequest {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_body(mut self, body: Body) -> Self {
         self.body = body;
         self
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_header(mut self, key: &str, value: &str) -> Self {
         debug_assert!(!key.is_empty(), "key must not be empty");
         if let (Ok(name), Ok(val)) = (
@@ -29,6 +32,7 @@ impl UnifiedRequest {
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_extension<T: Serialize>(mut self, key: &str, value: T) -> Self {
         debug_assert!(!key.is_empty(), "key must not be empty");
         if let Ok(json_value) = serde_json::to_value(value) {
@@ -38,6 +42,7 @@ impl UnifiedRequest {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_extension<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Option<T> {
         debug_assert!(!key.is_empty(), "key must not be empty");
         self.extensions

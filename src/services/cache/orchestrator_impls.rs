@@ -29,6 +29,7 @@ impl Default for OrchestratorConfig {
 impl CacheOrchestrator {
     /// Create a new cache orchestrator
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: OrchestratorConfig) -> Self {
         Self {
             workload_profile: RwLock::new(WorkloadProfile::default()),
@@ -46,6 +47,7 @@ impl CacheOrchestrator {
     }
 
     /// Register a cache strategy
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register_strategy(&self, strategy: Box<dyn CacheStrategy + Send + Sync>) -> Result<()> {
         let strategy_id = strategy.strategy_id().to_string();
         self.strategies
@@ -56,6 +58,7 @@ impl CacheOrchestrator {
     }
 
     /// Analyze workload and recommend optimal strategy
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn recommend_strategy(&self) -> Result<StrategyRecommendation> {
         let workload = self.workload_profile.read().clone();
         let recommendation = self.analyze_workload_and_recommend(&workload).await?;
@@ -72,6 +75,7 @@ impl CacheOrchestrator {
     }
 
     /// Update workload profile based on current metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn update_workload_profile(&self, new_profile: WorkloadProfile) -> Result<()> {
         {
             let mut current_profile = self.workload_profile.write();
@@ -87,11 +91,13 @@ impl CacheOrchestrator {
     }
 
     /// Get current performance metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_performance_metrics(&self) -> PerformanceMetrics {
         self.metrics.read().clone()
     }
 
     /// Run continuous optimization
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run_optimization_loop(&self) -> Result<()> {
         let mut interval = tokio::time::interval(self.config.evaluation_interval);
 
@@ -105,6 +111,7 @@ impl CacheOrchestrator {
     }
 
     /// Force strategy evaluation and potential switch
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn evaluate_and_switch_if_needed(&self) -> Result<()> {
         let recommendation = self.recommend_strategy().await?;
         let _current_metrics = self.get_performance_metrics();
@@ -128,6 +135,7 @@ impl CacheOrchestrator {
     }
 
     /// Get orchestrator statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_orchestrator_stats(&self) -> OrchestratorStats {
         OrchestratorStats {
             strategy_switches: self.counters.strategy_switches.load(Ordering::Relaxed),

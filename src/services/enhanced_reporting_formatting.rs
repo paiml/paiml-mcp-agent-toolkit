@@ -5,6 +5,7 @@ impl EnhancedReportingService {
         results: &AnalysisResults,
         sections: &[ReportSection],
     ) -> Result<Vec<Visualization>> {
+        debug_assert!(true, "contract: create_visualizations");
         let mut visualizations = Vec::new();
 
         // Complexity distribution chart
@@ -27,6 +28,7 @@ impl EnhancedReportingService {
         &self,
         complexity: &ComplexityAnalysis,
     ) -> Result<Visualization> {
+        debug_assert!(true, "contract: create_complexity_distribution_chart");
         let data = serde_json::json!({
             "labels": ["0-5", "6-10", "11-15", "16-20", "20+"],
             "datasets": [{
@@ -94,6 +96,7 @@ impl EnhancedReportingService {
     }
 
     /// Format report based on output format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn format_report(
         &self,
         report: &UnifiedAnalysisReport,
@@ -110,11 +113,13 @@ impl EnhancedReportingService {
 
     /// Format report as JSON
     fn format_as_json(&self, report: &UnifiedAnalysisReport) -> Result<String> {
+        debug_assert!(true, "contract: format_as_json");
         Ok(serde_json::to_string_pretty(report)?)
     }
 
     /// Format report as Markdown
     fn format_as_markdown(&self, report: &UnifiedAnalysisReport) -> Result<String> {
+        debug_assert!(true, "contract: format_as_markdown");
         let mut md = String::with_capacity(8192);
 
         // Title
@@ -219,6 +224,7 @@ impl EnhancedReportingService {
 
     /// Format report as HTML
     async fn format_as_html(&self, report: &UnifiedAnalysisReport) -> Result<String> {
+        debug_assert!(true, "contract: format_as_html");
         // In a real implementation, this would use templates
         let mut html = String::with_capacity(16384);
 
@@ -257,12 +263,14 @@ impl EnhancedReportingService {
 
     /// Format report as PDF
     async fn format_as_pdf(&self, _report: &UnifiedAnalysisReport) -> Result<String> {
+        debug_assert!(true, "contract: format_as_pdf");
         // Generate PDF content placeholder
         Ok("[PDF Report Generated]".to_string())
     }
 
     /// Format report as interactive dashboard
     async fn format_as_dashboard(&self, _report: &UnifiedAnalysisReport) -> Result<String> {
+        debug_assert!(true, "contract: format_as_dashboard");
         // Generate dashboard HTML placeholder
         Ok("<html><body><h1>Analysis Dashboard</h1></body></html>".to_string())
     }

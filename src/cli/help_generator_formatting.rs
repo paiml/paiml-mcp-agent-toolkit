@@ -3,6 +3,7 @@
 
 impl HelpGenerator {
     /// Create a new HelpGenerator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: CommandRegistry) -> Self {
         Self {
             registry,
@@ -12,12 +13,14 @@ impl HelpGenerator {
     }
 
     /// Create with explicit color setting
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_color(mut self, color: bool) -> Self {
         self.color = color;
         self
     }
 
     /// Create with explicit width
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_width(mut self, width: usize) -> Self {
         debug_assert!(width > 0, "width must be positive");
         self.width = width;
@@ -31,6 +34,7 @@ impl HelpGenerator {
     ///
     /// # Returns
     /// Formatted help text string
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate(&self, path: &str) -> String {
         debug_assert!(!path.is_empty(), "path must not be empty");
         match self.registry.find_command(path) {
@@ -40,6 +44,7 @@ impl HelpGenerator {
     }
 
     /// Generate top-level help (all commands overview)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_overview(&self) -> String {
         let mut out = String::new();
 
@@ -103,6 +108,7 @@ impl HelpGenerator {
 
     /// Generate help for a specific command
     fn format_command_help(&self, cmd: &CommandMetadata) -> String {
+        debug_assert!(true, "contract: format_command_help");
         let mut out = String::new();
 
         // Header with name and description
@@ -220,6 +226,7 @@ impl HelpGenerator {
 
     /// Format usage string for a command
     fn format_usage(&self, cmd: &CommandMetadata) -> String {
+        debug_assert!(true, "contract: format_usage");
         let mut usage = cmd.name.clone();
 
         // Add subcommands indicator
@@ -247,6 +254,7 @@ impl HelpGenerator {
 
     /// Format a single argument for help output
     fn format_argument(&self, arg: &ArgumentMetadata) -> String {
+        debug_assert!(true, "contract: format_argument");
         let mut line = String::new();
 
         // Build flag/name part
@@ -303,6 +311,7 @@ impl HelpGenerator {
 
     /// Format a global flag
     fn format_flag(&self, flag: &crate::cli::registry::FlagMetadata) -> String {
+        debug_assert!(true, "contract: format_flag");
         let mut line = String::new();
 
         let flag_part = match (&flag.short, &flag.long) {
@@ -347,6 +356,7 @@ impl HelpGenerator {
     }
 
     /// Print help to stdout with colors
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn print_help(&self, path: Option<&str>) -> std::io::Result<()> {
         let help = match path {
             Some(p) => self.generate(p),

@@ -78,6 +78,7 @@ impl HooksCommand {
     }
 
     /// Detect project type from files in directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn detect_project_type(&self) -> String {
         let current_dir = std::env::current_dir().ok();
 
@@ -100,6 +101,7 @@ impl HooksCommand {
     }
 
     /// Update config values in existing TOML content
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn update_config_values(
         &self,
         content: &str,
@@ -131,6 +133,7 @@ impl HooksCommand {
     }
 
     /// Extract current value from TOML content
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_current_value(&self, content: &str, key: &str) -> String {
         debug_assert!(!content.is_empty(), "content must not be empty");
         debug_assert!(!key.is_empty(), "key must not be empty");
@@ -143,6 +146,7 @@ impl HooksCommand {
     }
 
     /// Generate new config content with specified values
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_config_content(
         &self,
         max_complexity: u32,

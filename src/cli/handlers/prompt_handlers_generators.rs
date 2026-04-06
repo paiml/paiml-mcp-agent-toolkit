@@ -184,6 +184,7 @@ fn append_scaffold_sections(
     include_bashrs: bool,
     include_roadmap: bool,
 ) {
+    debug_assert!(true, "contract: append_scaffold_sections");
     if include_pmat {
         prompt.push_str(
             "### PMAT Tools Integration\n\

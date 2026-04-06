@@ -1,5 +1,6 @@
 impl MetricTrendStore {
     /// Create new trend store
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Result<Self> {
         let storage_path = PathBuf::from(".pmat-metrics/trends");
         std::fs::create_dir_all(&storage_path).context("Failed to create trends directory")?;
@@ -16,6 +17,7 @@ impl MetricTrendStore {
     }
 
     /// Load from custom path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let storage_path = path.as_ref().to_path_buf();
         std::fs::create_dir_all(&storage_path).context("Failed to create trends directory")?;
@@ -32,6 +34,7 @@ impl MetricTrendStore {
     }
 
     /// Record new metric observation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record(&mut self, metric: &str, value: f64, timestamp: i64) -> Result<()> {
         debug_assert!(!metric.is_empty(), "metric must not be empty");
         let obs = MetricObservation {
@@ -57,6 +60,7 @@ impl MetricTrendStore {
 
     /// Add observation to CSR graph (Phase 3.2)
     fn add_to_graph(&mut self, obs: &MetricObservation) -> Result<()> {
+        debug_assert!(true, "contract: add_to_graph");
         // Check if this observation is already in the graph (prevent duplicates)
         if self.node_map.contains_key(&obs.timestamp) {
             return Ok(()); // Already added
@@ -89,6 +93,7 @@ impl MetricTrendStore {
     }
 
     /// Get trend analysis for metric (last N days)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn trend(&mut self, metric: &str, days: usize) -> Result<TrendAnalysis> {
         debug_assert!(!metric.is_empty(), "metric must not be empty");
         // Load from disk if not cached

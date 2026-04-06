@@ -46,6 +46,7 @@ impl Default for ServiceRegistry {
 }
 
 impl ServiceRegistry {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             services: Arc::new(RwLock::new(HashMap::new())),
@@ -53,6 +54,7 @@ impl ServiceRegistry {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&self, service: Arc<dyn Service>) {
         let metadata = service.metadata();
         self.services.write().insert(metadata.name.clone(), service);
@@ -61,15 +63,18 @@ impl ServiceRegistry {
             .insert(metadata.name.clone(), metadata);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, name: &str) -> Option<Arc<dyn Service>> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.services.read().get(name).cloned()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn list(&self) -> Vec<ServiceMetadata> {
         self.metadata.read().values().cloned().collect()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn unregister(&self, name: &str) -> bool {
         debug_assert!(!name.is_empty(), "name must not be empty");
         let service_removed = self.services.write().remove(name).is_some();
@@ -77,6 +82,7 @@ impl ServiceRegistry {
         service_removed && metadata_removed
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn health_check_all(&self) -> HashMap<String, bool> {
         // Collect services while holding the lock, then drop it before async work
         let services_snapshot: Vec<_> = {
@@ -111,6 +117,7 @@ mod tests {
     #[async_trait]
     impl Service for MockService {
         fn metadata(&self) -> ServiceMetadata {
+            debug_assert!(true, "contract: metadata");
             ServiceMetadata {
                 name: self.name.clone(),
                 description: "Mock service for testing".to_string(),
@@ -134,6 +141,7 @@ mod tests {
     #[async_trait]
     impl Service for FailingHealthService {
         fn metadata(&self) -> ServiceMetadata {
+            debug_assert!(true, "contract: metadata");
             ServiceMetadata {
                 name: "failing_health".to_string(),
                 description: "Service with failing health check".to_string(),

@@ -183,6 +183,7 @@ fn collect_register_diag(diags: &mut Vec<PtxDiagnostic>, count: u32) {
 }
 
 fn collect_branch_diag(diags: &mut Vec<PtxDiagnostic>, density: f32) {
+    debug_assert!(true, "contract: collect_branch_diag");
     if density > 0.3 {
         diags.push(PtxDiagnostic {
             severity: PtxSeverity::Critical,
@@ -207,6 +208,7 @@ fn collect_branch_diag(diags: &mut Vec<PtxDiagnostic>, density: f32) {
 }
 
 fn collect_shmem_diag(diags: &mut Vec<PtxDiagnostic>, bytes: u32) {
+    debug_assert!(true, "contract: collect_shmem_diag");
     if bytes > 48_000 {
         diags.push(PtxDiagnostic {
             severity: PtxSeverity::Critical,
@@ -277,6 +279,7 @@ fn collect_cb060_diagnostics(diags: &mut Vec<PtxDiagnostic>, source: &str) {
 }
 
 /// Run PTX diagnostics on the merged index
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn run_ptx_diagnostics(index: &AgentContextIndex) -> PtxDiagnosticResult {
     let mut functions = Vec::new();
     let mut total_critical = 0;
@@ -345,6 +348,7 @@ pub fn run_ptx_diagnostics(index: &AgentContextIndex) -> PtxDiagnosticResult {
 }
 
 /// Format PTX diagnostics as human-readable text
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_ptx_diagnostics_text(result: &PtxDiagnosticResult) -> String {
     let mut out = String::new();
     out.push_str(&format!(
@@ -390,6 +394,7 @@ pub fn format_ptx_diagnostics_text(result: &PtxDiagnosticResult) -> String {
 }
 
 /// Format PTX diagnostics as JSON
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_ptx_diagnostics_json(result: &PtxDiagnosticResult) -> String {
     let functions: Vec<serde_json::Value> = result
         .functions

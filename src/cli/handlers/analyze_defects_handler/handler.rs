@@ -10,6 +10,7 @@ use std::path::Path;
 use walkdir::WalkDir;
 
 /// Handle the `pmat analyze defects` command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_defects(
     path: Option<&Path>,
     file: Option<&Path>,
@@ -71,6 +72,7 @@ pub async fn handle_analyze_defects(
     Ok(exit_code)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn collect_rust_files(path: &Path) -> Result<Vec<std::path::PathBuf>> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut files = Vec::new();
@@ -89,6 +91,7 @@ pub(crate) fn collect_rust_files(path: &Path) -> Result<Vec<std::path::PathBuf>>
     Ok(files)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_hidden(entry: &walkdir::DirEntry) -> bool {
     // Never filter out the root entry (depth 0) — fixes `--path .` scanning 0 files
     if entry.depth() == 0 {
@@ -102,6 +105,7 @@ pub(crate) fn is_hidden(entry: &walkdir::DirEntry) -> bool {
         || entry.file_name() == "target"
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn calculate_summary(
     files: &[std::path::PathBuf],
     files_with_defects: usize,

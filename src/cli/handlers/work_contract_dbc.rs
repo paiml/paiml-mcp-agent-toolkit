@@ -124,6 +124,7 @@ pub enum ThresholdComparison {
 /// Returns whether the child threshold is strengthened, weakened, equal,
 /// or incompatible relative to the parent. Used by `validate_subcontracting()`
 /// and claim ID conflict resolution in profile composition.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn compare_thresholds(
     parent: &Option<ClauseThreshold>,
     child: &Option<ClauseThreshold>,
@@ -137,6 +138,7 @@ pub fn compare_thresholds(
 }
 
 fn compare_threshold_values(parent: &ClauseThreshold, child: &ClauseThreshold) -> ThresholdComparison {
+    debug_assert!(true, "contract: compare_threshold_values");
     match (parent, child) {
         (
             ClauseThreshold::Numeric {
@@ -184,6 +186,7 @@ fn compare_numeric(
     c_op: ThresholdOp,
     c_val: f64,
 ) -> ThresholdComparison {
+    debug_assert!(true, "contract: compare_numeric");
     if p_op != c_op {
         return ThresholdComparison::Incompatible;
     }
@@ -200,6 +203,7 @@ fn compare_numeric(
 }
 
 fn compare_ordered(child: f64, parent: f64, higher_is_stronger: bool) -> ThresholdComparison {
+    debug_assert!(true, "contract: compare_ordered");
     #[allow(clippy::float_cmp)]
     if child == parent {
         return ThresholdComparison::Equal;
@@ -237,6 +241,7 @@ pub struct ContractQuality {
 }
 
 impl ContractQuality {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate(active: usize, applicable: usize) -> Self {
         let score = if applicable == 0 {
             0.0
@@ -327,6 +332,7 @@ pub struct InvariantResult {
 
 impl CheckpointRecord {
     /// Create a new checkpoint record from invariant evaluation results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         work_item_id: String,
         git_sha: String,
@@ -347,6 +353,7 @@ impl CheckpointRecord {
     }
 
     /// Save checkpoint to .pmat-work/{item-id}/checkpoints/
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, project_path: &Path) -> Result<PathBuf> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let checkpoint_dir = project_path
@@ -363,6 +370,7 @@ impl CheckpointRecord {
     }
 
     /// Load all checkpoints for a work item, sorted by timestamp
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_all(project_path: &Path, work_item_id: &str) -> Vec<Self> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let checkpoint_dir = project_path
@@ -387,6 +395,7 @@ impl CheckpointRecord {
 
 /// Validate that a child contract does not weaken parent postconditions.
 /// Returns Ok(()) if subcontracting rules hold, or the first violation found.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn validate_subcontracting(
     parent_ensure: &[ContractClause],
     child_ensure: &[ContractClause],

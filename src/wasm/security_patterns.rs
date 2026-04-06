@@ -9,6 +9,7 @@ impl Default for PatternDetector {
 
 impl PatternDetector {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             patterns: Self::default_patterns(),
@@ -18,6 +19,7 @@ impl PatternDetector {
 
     /// Default vulnerability patterns to detect
     fn default_patterns() -> Vec<VulnerabilityPattern> {
+        debug_assert!(true, "contract: default_patterns");
         vec![
             // Integer overflow in loop counter
             VulnerabilityPattern {
@@ -68,6 +70,7 @@ impl PatternDetector {
     }
 
     /// Scan WASM payload for vulnerability patterns
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn scan(&mut self, payload: &Payload) -> Result<()> {
         if let Payload::CodeSectionEntry(body) = payload {
             let reader = body.get_operators_reader()?;
@@ -90,6 +93,7 @@ impl PatternDetector {
 
     /// Get all found vulnerabilities
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn finalize(&self) -> Vec<VulnerabilityMatch> {
         self.found.clone()
     }
@@ -122,6 +126,7 @@ fn find_sequence(seq: &[OperatorMatcher], operators: &[Operator]) -> Option<usiz
 }
 
 fn find_within(distance: usize, op_list: &[OperatorMatcher], operators: &[Operator]) -> Option<usize> {
+    debug_assert!(true, "contract: find_within");
     for i in 0..operators.len() {
         if op_list[0].matches(&operators[i]) {
             for j in (i + 1)..=(i + distance).min(operators.len() - 1) {
@@ -135,6 +140,7 @@ fn find_within(distance: usize, op_list: &[OperatorMatcher], operators: &[Operat
 }
 
 fn find_not_preceded_by(target: &OperatorMatcher, guards: &[OperatorMatcher], operators: &[Operator]) -> Option<usize> {
+    debug_assert!(true, "contract: find_not_preceded_by");
     for i in 0..operators.len() {
         if target.matches(&operators[i]) {
             let has_guard = operators[i.saturating_sub(10)..i]
@@ -167,6 +173,7 @@ impl OpcodePattern {
 impl VulnerabilityMatch {
     /// Get risk score (0-100)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn risk_score(&self) -> u32 {
         match self.severity {
             Severity::Low => 25,

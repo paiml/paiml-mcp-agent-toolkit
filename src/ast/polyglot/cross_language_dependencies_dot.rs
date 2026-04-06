@@ -3,6 +3,7 @@
 
 impl CrossLanguageDependencies {
     /// Generate a dependency graph in DOT format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_dot(&self) -> String {
         let mut dot = String::from("digraph CrossLanguageDependencies {\n");
 
@@ -46,6 +47,7 @@ impl CrossLanguageDependencies {
 
     /// Get color for a language in DOT format
     fn language_color(&self, language: Language) -> &'static str {
+        debug_assert!(true, "contract: language_color");
         match language {
             Language::Java => "\"#b07219\"",       // Java brown
             Language::Kotlin => "\"#A97BFF\"",     // Kotlin purple

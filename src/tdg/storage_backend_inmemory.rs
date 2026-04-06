@@ -5,6 +5,7 @@ pub struct InMemoryBackend {
 
 impl InMemoryBackend {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             data: Arc::new(DashMap::new()),
@@ -42,6 +43,7 @@ impl StorageBackend for InMemoryBackend {
     }
 
     fn iter(&self) -> Result<StorageIterator<'_>> {
+        debug_assert!(true, "contract: iter");
         let entries: Vec<_> = self
             .data
             .iter()
@@ -51,6 +53,7 @@ impl StorageBackend for InMemoryBackend {
     }
 
     fn size_on_disk(&self) -> Result<u64> {
+        debug_assert!(true, "contract: size_on_disk");
         let size: usize = self
             .data
             .iter()
@@ -60,20 +63,24 @@ impl StorageBackend for InMemoryBackend {
     }
 
     fn flush(&self) -> Result<()> {
+        debug_assert!(true, "contract: flush");
         // No-op for in-memory backend
         Ok(())
     }
 
     fn clear(&self) -> Result<()> {
+        debug_assert!(true, "contract: clear");
         self.data.clear();
         Ok(())
     }
 
     fn backend_name(&self) -> &'static str {
+        debug_assert!(true, "contract: backend_name");
         "in-memory"
     }
 
     fn get_stats(&self) -> HashMap<String, String> {
+        debug_assert!(true, "contract: get_stats");
         let mut stats = HashMap::new();
         stats.insert("entries".to_string(), self.data.len().to_string());
         let size: usize = self

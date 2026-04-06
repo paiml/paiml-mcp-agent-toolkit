@@ -13,6 +13,7 @@ pub struct ComplexityVisitor<'a> {
 }
 
 impl<'a> ComplexityVisitor<'a> {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(complexity: &'a mut ComplexityMetrics) -> Self {
         Self {
             complexity,
@@ -26,6 +27,7 @@ impl<'a> ComplexityVisitor<'a> {
     /// Calculate cognitive complexity increment based on node type and nesting
     #[inline(always)]
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_cognitive_increment(&self, is_nesting_construct: bool) -> u16 {
         if is_nesting_construct {
             1 + u16::from(self.nesting_level.saturating_sub(1))
@@ -36,6 +38,7 @@ impl<'a> ComplexityVisitor<'a> {
 
     /// Enter a nesting level
     #[inline(always)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn enter_nesting(&mut self) {
         self.nesting_level = self.nesting_level.saturating_add(1);
         if self.nesting_level > self.complexity.nesting_max {
@@ -45,6 +48,7 @@ impl<'a> ComplexityVisitor<'a> {
 
     /// Exit a nesting level
     #[inline(always)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn exit_nesting(&mut self) {
         self.nesting_level = self.nesting_level.saturating_sub(1);
     }

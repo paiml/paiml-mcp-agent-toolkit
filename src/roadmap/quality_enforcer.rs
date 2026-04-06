@@ -4,11 +4,13 @@
 impl QualityGateEnforcer {
     /// Create new enforcer with configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: QualityGateConfig) -> Self {
         Self { config }
     }
 
     /// Run all quality checks for a task
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn run_quality_checks(&mut self, task_id: &str) -> Result<QualityReport> {
         debug_assert!(!task_id.is_empty(), "task_id must not be empty");
         let mut report = QualityReport::new(task_id);
@@ -32,6 +34,7 @@ impl QualityGateEnforcer {
 
     /// Check code complexity
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_complexity(&self) -> CheckResult {
         CheckResult {
             check: QualityCheck::Complexity(self.config.complexity_max),
@@ -43,6 +46,7 @@ impl QualityGateEnforcer {
 
     /// Check test coverage
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_test_coverage(&self) -> CheckResult {
         CheckResult {
             check: QualityCheck::TestCoverage(self.config.coverage_min),
@@ -54,6 +58,7 @@ impl QualityGateEnforcer {
 
     /// Check documentation
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_documentation(&self) -> CheckResult {
         CheckResult {
             check: QualityCheck::Documentation,
@@ -65,6 +70,7 @@ impl QualityGateEnforcer {
 
     /// Check for SATD violations
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_satd(&self) -> CheckResult {
         CheckResult {
             check: QualityCheck::NoSatd,
@@ -76,6 +82,7 @@ impl QualityGateEnforcer {
 
     /// Check lint compliance
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_lint_compliance(&self) -> CheckResult {
         CheckResult {
             check: QualityCheck::LintCompliance,
@@ -87,6 +94,7 @@ impl QualityGateEnforcer {
 
     /// Check if roadmap is updated
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_roadmap_updated(&self) -> CheckResult {
         CheckResult {
             check: QualityCheck::RoadmapUpdated,
@@ -98,6 +106,7 @@ impl QualityGateEnforcer {
 
     /// Format quality report as string
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_report(report: &QualityReport) -> String {
         let mut output = format!("Quality Report for {}\n", report.task_id);
         output.push_str(&format!("Timestamp: {}\n\n", report.timestamp));
@@ -130,6 +139,7 @@ impl QualityGateEnforcer {
 impl QualityCheck {
     /// Check if this check matches another (for testing)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn matches(&self, other: &QualityCheck) -> bool {
         matches!(
             (self, other),

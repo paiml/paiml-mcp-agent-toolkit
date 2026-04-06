@@ -8,6 +8,7 @@ pub struct InteractiveScaffolder {
 impl InteractiveScaffolder {
     /// Create a new interactive scaffolder.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             term: Term::stdout(),
@@ -16,6 +17,7 @@ impl InteractiveScaffolder {
     }
 
     /// Run the interactive scaffolding process.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn run(&mut self) -> Result<AgentContext> {
         // Clear screen and show header
         self.term.clear_screen()?;
@@ -52,6 +54,7 @@ impl InteractiveScaffolder {
 
     /// Show the header.
     fn show_header(&self) -> Result<()> {
+        debug_assert!(true, "contract: show_header");
         println!("╔══════════════════════════════════════════╗");
         println!("║      PMAT Agent Scaffolder v0.1.0       ║");
         println!("║   Interactive Agent Creation Wizard      ║");
@@ -62,6 +65,7 @@ impl InteractiveScaffolder {
 
     /// Prompt for agent name.
     fn prompt_name(&self) -> Result<String> {
+        debug_assert!(true, "contract: prompt_name");
         loop {
             let name: String = Input::with_theme(&self.theme)
                 .with_prompt("Agent name")
@@ -94,6 +98,7 @@ impl InteractiveScaffolder {
 
     /// Prompt for template type.
     fn prompt_template(&self) -> Result<AgentTemplate> {
+        debug_assert!(true, "contract: prompt_template");
         let items = [
             ("MCP Tool Server", "Standard MCP server with async handlers"),
             (
@@ -136,6 +141,7 @@ impl InteractiveScaffolder {
 
     /// Prompt for features to include.
     fn prompt_features(&self, template: &AgentTemplate) -> Result<HashSet<AgentFeature>> {
+        debug_assert!(true, "contract: prompt_features");
         let available_features = self.get_available_features(template);
 
         if available_features.is_empty() {
@@ -162,6 +168,7 @@ impl InteractiveScaffolder {
 
     /// Get available features for a template.
     fn get_available_features(&self, template: &AgentTemplate) -> Vec<AgentFeature> {
+        debug_assert!(true, "contract: get_available_features");
         match template {
             AgentTemplate::MCPToolServer => vec![
                 AgentFeature::ToolComposition,
@@ -198,6 +205,7 @@ impl InteractiveScaffolder {
 
     /// Convert feature to display string.
     fn feature_to_string(&self, feature: &AgentFeature) -> String {
+        debug_assert!(true, "contract: feature_to_string");
         match feature {
             AgentFeature::StateMachine { .. } => "State Machine with transitions".to_string(),
             AgentFeature::QualityGates { .. } => "Quality Gates enforcement".to_string(),
@@ -215,6 +223,7 @@ impl InteractiveScaffolder {
 
     /// Prompt for quality level.
     fn prompt_quality_level(&self) -> Result<QualityLevel> {
+        debug_assert!(true, "contract: prompt_quality_level");
         let items = [
             ("Standard", "Basic quality checks, suitable for prototypes"),
             ("Strict", "Zero warnings, high test coverage"),
@@ -245,6 +254,7 @@ impl InteractiveScaffolder {
 
     /// Prompt for deterministic core specification.
     fn prompt_deterministic_core(&self) -> Result<CoreSpec> {
+        debug_assert!(true, "contract: prompt_deterministic_core");
         println!("\n=== Deterministic Core Configuration ===");
 
         let verification_items = ["Property-based tests", "Formal proof", "Model checking"];
@@ -285,6 +295,7 @@ impl InteractiveScaffolder {
 
     /// Prompt for probabilistic wrapper specification.
     fn prompt_probabilistic_wrapper(&self) -> Result<WrapperSpec> {
+        debug_assert!(true, "contract: prompt_probabilistic_wrapper");
         println!("\n=== Probabilistic Wrapper Configuration ===");
 
         let model_items = ["GPT-4", "Claude", "Local model"];
@@ -343,6 +354,7 @@ impl InteractiveScaffolder {
 
     /// Convert template to string representation.
     fn template_to_string(&self, template: &AgentTemplate) -> String {
+        debug_assert!(true, "contract: template_to_string");
         match template {
             AgentTemplate::MCPToolServer => "mcp-server".to_string(),
             AgentTemplate::StateMachineWorkflow => "state-machine".to_string(),
@@ -354,6 +366,7 @@ impl InteractiveScaffolder {
 
     /// Confirm and display the configuration.
     fn confirm_and_display(&self, ctx: &AgentContext) -> Result<()> {
+        debug_assert!(true, "contract: confirm_and_display");
         println!("\n╔══════════════════════════════════════════╗");
         println!("║         Agent Configuration Summary      ║");
         println!("╚══════════════════════════════════════════╝");

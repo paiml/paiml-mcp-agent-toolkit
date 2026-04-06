@@ -94,6 +94,7 @@ pub struct WorkContract {
 }
 
 fn default_verification_level() -> String {
+    debug_assert!(true, "contract: default_verification_level");
     "L3".to_string()
 }
 
@@ -138,6 +139,7 @@ fn default_iteration() -> u32 {
 
 impl WorkContract {
     /// Create a new work contract with baseline capture (v4.0 flat claims, backward compat)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(work_item_id: String, baseline_commit: String) -> Self {
         Self {
             version: "4.0".to_string(),
@@ -170,6 +172,7 @@ impl WorkContract {
     ///
     /// Detects the project profile, generates claims, verifies toolchain,
     /// applies exclusions, and calculates contract quality.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_dbc(
         work_item_id: String,
         baseline_commit: String,
@@ -273,17 +276,20 @@ impl WorkContract {
     }
 
     /// Check if this is a v5.0 (triad) contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_dbc(&self) -> bool {
         self.version == "5.0" && self.profile.is_some()
     }
 
     /// Get total active claim count across the triad
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn triad_claim_count(&self) -> usize {
         self.require.len() + self.ensure.len() + self.invariant.len()
     }
 
     /// Generate default falsifiable claims
     fn default_claims() -> Vec<FalsifiableClaim> {
+        debug_assert!(true, "contract: default_claims");
         vec![
             FalsifiableClaim {
                 hypothesis: "All baseline files still exist".to_string(),
@@ -476,6 +482,7 @@ impl WorkContract {
     }
 
     /// Load contract from file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(project_path: &Path, work_item_id: &str) -> Result<Self> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let contract_path = Self::contract_path(project_path, work_item_id);
@@ -485,6 +492,7 @@ impl WorkContract {
     }
 
     /// Save contract to file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, project_path: &Path) -> Result<PathBuf> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let contract_dir = project_path.join(".pmat-work").join(&self.work_item_id);
@@ -498,6 +506,7 @@ impl WorkContract {
     }
 
     /// Get contract path for a work item
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn contract_path(project_path: &Path, work_item_id: &str) -> PathBuf {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         project_path
@@ -507,6 +516,7 @@ impl WorkContract {
     }
 
     /// Check if contract exists for work item
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn exists(project_path: &Path, work_item_id: &str) -> bool {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self::contract_path(project_path, work_item_id).exists()

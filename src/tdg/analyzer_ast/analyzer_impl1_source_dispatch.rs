@@ -1,4 +1,5 @@
 impl TdgAnalyzerAst {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn analyze_source(
         &self,
         source: &str,

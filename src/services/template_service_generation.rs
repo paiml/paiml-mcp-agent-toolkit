@@ -1,6 +1,7 @@
 // Template generation and context creation functions.
 // Includes generate_template, generate_context, get_template_content, and scaffold_project.
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn get_template_content<T: TemplateServerTrait>(
     server: &T,
     uri: &str,
@@ -13,6 +14,7 @@ pub async fn get_template_content<T: TemplateServerTrait>(
         .map_err(|_| TemplateError::NotFound(format!("Template content not found: {uri}")))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn generate_template<T: TemplateServerTrait>(
     server: &T,
     uri: &str,
@@ -124,6 +126,7 @@ async fn generate_context(
     })
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn scaffold_project<T: TemplateServerTrait>(
     server: Arc<T>,
     toolchain: &str,

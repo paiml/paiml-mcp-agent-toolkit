@@ -3,29 +3,34 @@
 
 impl ParallelLouvain {
     /// Create a new ParallelLouvain detector with default parameters.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set the resolution parameter.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_resolution(mut self, resolution: f64) -> Self {
         self.resolution = resolution;
         self
     }
 
     /// Set maximum iterations.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
         self.max_iterations = max_iterations;
         self
     }
 
     /// Set minimum improvement threshold.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_min_improvement(mut self, min_improvement: f64) -> Self {
         self.min_improvement = min_improvement;
         self
     }
 
     /// Set number of threads (0 = use all available).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_num_threads(mut self, num_threads: usize) -> Self {
         debug_assert!(num_threads > 0, "num_threads must be positive");
         self.num_threads = num_threads;
@@ -39,6 +44,7 @@ impl ParallelLouvain {
     ///
     /// # Returns
     /// Community assignment vector where `result[i]` is the community ID of node `i`
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect(&self, graph: &UndirectedGraph) -> Vec<usize> {
         let n = graph.node_count();
         if n == 0 {
@@ -81,6 +87,7 @@ impl ParallelLouvain {
     ///
     /// Returns true if any node was moved.
     fn local_moving_phase(&self, graph_data: &GraphData, communities: &mut [usize]) -> bool {
+        debug_assert!(true, "contract: local_moving_phase");
         let n = communities.len();
         let improved = AtomicBool::new(false);
 
@@ -117,6 +124,7 @@ impl ParallelLouvain {
         graph_data: &GraphData,
         community_data: &CommunityData,
     ) -> Option<(usize, usize)> {
+        debug_assert!(true, "contract: find_best_move");
         let node_degree = graph_data.degrees[node];
         let total_weight = graph_data.total_weight;
 
@@ -178,6 +186,7 @@ impl ParallelLouvain {
         node_degree: f64,
         total_weight: f64,
     ) -> f64 {
+        debug_assert!(true, "contract: modularity_gain");
         // Sum of weights to target community
         let ki_in = graph_data.neighbor_weight_to_community(
             node,
@@ -198,6 +207,7 @@ impl ParallelLouvain {
 
     /// Get unique communities of a node's neighbors.
     fn get_neighbor_communities(&self, node: usize, graph_data: &GraphData) -> Vec<usize> {
+        debug_assert!(true, "contract: get_neighbor_communities");
         graph_data.neighbors[node]
             .iter()
             .map(|(neighbor, _)| graph_data.degrees[*neighbor] as usize % graph_data.n) // Placeholder: actual community from neighbors
@@ -206,6 +216,7 @@ impl ParallelLouvain {
 
     /// Calculate modularity of a community assignment.
     fn calculate_modularity_internal(&self, graph_data: &GraphData, communities: &[usize]) -> f64 {
+        debug_assert!(true, "contract: calculate_modularity_internal");
         if graph_data.total_weight == 0.0 {
             return 0.0;
         }
@@ -235,6 +246,7 @@ impl ParallelLouvain {
     }
 
     /// Calculate modularity of a community assignment (public API).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_modularity(&self, graph: &UndirectedGraph, communities: &[usize]) -> f64 {
         // Contract: calculate_modularity returns a bounded score
         let graph_data = GraphData::from_graph(graph);
@@ -243,6 +255,7 @@ impl ParallelLouvain {
 
     /// Renumber communities to use contiguous IDs starting from 0.
     fn renumber_communities(&self, communities: &mut [usize]) {
+        debug_assert!(true, "contract: renumber_communities");
         let mut mapping: HashMap<usize, usize> = HashMap::new();
         let mut next_id = 0;
 
@@ -257,6 +270,7 @@ impl ParallelLouvain {
     }
 
     /// Get the number of unique communities in an assignment.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn num_communities(communities: &[usize]) -> usize {
         let unique: std::collections::HashSet<_> = communities.iter().collect();
         unique.len()

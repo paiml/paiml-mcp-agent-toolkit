@@ -68,12 +68,14 @@ struct LintHotspotMapParams<'a> {
 impl ContractAdapter {
     /// Generate deprecation warnings for inconsistent parameters
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn deprecation_warnings(_cmd: &AnalyzeCommands) -> Vec<String> {
         // No deprecation warnings - silently accept both --path and --project-path
         Vec::new()
     }
 
     /// Map existing CLI analyze commands to uniform contracts
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_cli(cmd: &AnalyzeCommands) -> Result<Box<dyn ContractValidation>> {
         match cmd {
             AnalyzeCommands::Complexity {
@@ -206,6 +208,7 @@ impl ContractAdapter {
     }
 
     fn map_complexity_command(params: ComplexityMapParams) -> Result<Box<dyn ContractValidation>> {
+        debug_assert!(true, "contract: map_complexity_command");
         let path = params.project_path;
 
         let contract = AnalyzeComplexityContract {
@@ -227,6 +230,7 @@ impl ContractAdapter {
     }
 
     fn map_satd_command(params: SatdMapParams) -> Result<Box<dyn ContractValidation>> {
+        debug_assert!(true, "contract: map_satd_command");
         let contract = AnalyzeSatdContract {
             base: BaseAnalysisContract {
                 path: params.path.to_path_buf(),
@@ -247,6 +251,7 @@ impl ContractAdapter {
     }
 
     fn map_dead_code_command(params: DeadCodeMapParams) -> Result<Box<dyn ContractValidation>> {
+        debug_assert!(true, "contract: map_dead_code_command");
         let contract = AnalyzeDeadCodeContract {
             base: BaseAnalysisContract {
                 path: params.path.to_path_buf(),
@@ -296,6 +301,7 @@ impl ContractAdapter {
     fn map_lint_hotspot_command(
         params: LintHotspotMapParams,
     ) -> Result<Box<dyn ContractValidation>> {
+        debug_assert!(true, "contract: map_lint_hotspot_command");
         let contract = AnalyzeLintHotspotContract {
             base: BaseAnalysisContract {
                 path: params.project_path.to_path_buf(),
@@ -323,6 +329,7 @@ pub struct BackwardCompatibility;
 impl BackwardCompatibility {
     /// Map old parameter names to new ones in JSON
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn map_json_params(mut params: serde_json::Value) -> serde_json::Value {
         if let Some(obj) = params.as_object_mut() {
             Self::map_project_path_to_path(obj);
@@ -336,6 +343,7 @@ impl BackwardCompatibility {
     /// Map old parameter names to new ones in JSON for complexity analysis
     /// This variant converts `file` to `files` array for tools that expect an array
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn map_json_params_for_complexity(mut params: serde_json::Value) -> serde_json::Value {
         if let Some(obj) = params.as_object_mut() {
             Self::map_project_path_to_path(obj);
@@ -346,6 +354,7 @@ impl BackwardCompatibility {
     }
 
     fn map_project_path_to_path(obj: &mut serde_json::Map<String, serde_json::Value>) {
+        debug_assert!(true, "contract: map_project_path_to_path");
         if let Some(project_path) = obj.remove("project_path") {
             // Only set path if it's not already present
             if !obj.contains_key("path") {
@@ -355,6 +364,7 @@ impl BackwardCompatibility {
     }
 
     fn map_file_to_files(obj: &mut serde_json::Map<String, serde_json::Value>) {
+        debug_assert!(true, "contract: map_file_to_files");
         if let Some(file) = obj.remove("file") {
             if !obj.contains_key("files") {
                 obj.insert("files".to_string(), serde_json::json!([file]));

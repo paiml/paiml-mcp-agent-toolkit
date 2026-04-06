@@ -5,6 +5,7 @@ fn collect_project_functions(
     std::collections::HashMap<String, (String, u32)>,
     std::collections::HashSet<String>,
 ) {
+    debug_assert!(true, "contract: collect_project_functions");
     use crate::services::context::AstItem;
     use std::collections::{HashMap, HashSet};
 
@@ -32,6 +33,7 @@ fn detect_function_calls(
     project_context: &crate::services::context::ProjectContext,
     all_functions: &std::collections::HashMap<String, (String, u32)>,
 ) -> std::collections::HashMap<String, std::collections::HashSet<String>> {
+    debug_assert!(true, "contract: detect_function_calls");
     use std::collections::{HashMap, HashSet};
 
     let mut function_calls: HashMap<String, HashSet<String>> = HashMap::new();
@@ -78,6 +80,7 @@ fn compute_reachable_functions(
     entry_points: &std::collections::HashSet<String>,
     function_calls: &std::collections::HashMap<String, std::collections::HashSet<String>>,
 ) -> std::collections::HashSet<String> {
+    debug_assert!(true, "contract: compute_reachable_functions");
     let mut reachable = entry_points.clone();
     let mut changed = true;
 
@@ -101,6 +104,7 @@ fn compute_reachable_functions(
 
 impl DeadCodeAnalyzer {
     /// Analyze dead code using project context directly
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_project_context(
         &mut self,
         project_context: &crate::services::context::ProjectContext,

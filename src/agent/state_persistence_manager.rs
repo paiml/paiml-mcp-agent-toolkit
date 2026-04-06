@@ -12,6 +12,7 @@ pub struct StatePersistence {
 
 impl StatePersistence {
     /// Create new state persistence manager
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(state_dir: impl AsRef<Path>) -> Result<Self> {
         let state_file = state_dir.as_ref().join("agent_state.json");
 
@@ -37,6 +38,7 @@ impl StatePersistence {
     }
 
     /// Save current state to file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn save(&self) -> Result<()> {
         let state = self.state.read().await;
         let json = serde_json::to_string_pretty(&*state)?;
@@ -55,6 +57,7 @@ impl StatePersistence {
     }
 
     /// Start auto-save task
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn start_auto_save(&self) {
         let state_file = self.state_file.clone();
         let state = self.state.clone();
@@ -79,6 +82,7 @@ impl StatePersistence {
     }
 
     /// Add or update monitored project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn add_project(&self, project: ProjectState) -> Result<()> {
         let mut state = self.state.write().await;
         state.monitored_projects.insert(project.id.clone(), project);
@@ -87,6 +91,7 @@ impl StatePersistence {
     }
 
     /// Remove monitored project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn remove_project(&self, project_id: &str) -> Result<()> {
         debug_assert!(!project_id.is_empty(), "project_id must not be empty");
         let mut state = self.state.write().await;
@@ -96,6 +101,7 @@ impl StatePersistence {
     }
 
     /// Update project metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn update_metrics(&self, project_id: &str, metrics: QualityMetrics) -> Result<()> {
         debug_assert!(!project_id.is_empty(), "project_id must not be empty");
         let mut state = self.state.write().await;
@@ -125,11 +131,13 @@ impl StatePersistence {
     }
 
     /// Get current state
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_state(&self) -> AgentState {
         self.state.read().await.clone()
     }
 
     /// Update statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn update_statistics<F>(&self, updater: F) -> Result<()>
     where
         F: FnOnce(&mut AgentStatistics),

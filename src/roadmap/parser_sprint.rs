@@ -187,6 +187,7 @@ fn parse_backlog_section(
 
 /// Create a task from regex captures
 fn create_task_from_captures(captures: &regex::Captures) -> Task {
+    debug_assert!(true, "contract: create_task_from_captures");
     Task {
         id: captures
             .get(1)

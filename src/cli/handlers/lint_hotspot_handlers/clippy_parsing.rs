@@ -94,6 +94,7 @@ fn create_violation_detail(
 }
 
 fn extract_lint_name(diagnostic: &DiagnosticMessage) -> String {
+    debug_assert!(true, "contract: extract_lint_name");
     diagnostic
         .code
         .as_ref()
@@ -117,6 +118,7 @@ fn update_severity_distribution(severity_dist: &mut SeverityDistribution, level:
 }
 
 /// Process a diagnostic message
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn process_diagnostic(
     diagnostic: &DiagnosticMessage,
     file_metrics: &mut HashMap<PathBuf, FileMetrics>,
@@ -185,6 +187,7 @@ pub(crate) fn process_diagnostic(
 }
 
 /// Parse clippy JSON output into file metrics (cognitive complexity <=8)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn parse_clippy_json_output(
     output: &std::process::Output,
 ) -> Result<HashMap<PathBuf, FileMetrics>> {

@@ -103,6 +103,7 @@ pub struct CargoDeadCodeAnalyzer {
 
 impl CargoDeadCodeAnalyzer {
     /// Create a new analyzer for the given project path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_path: impl AsRef<Path>) -> Self {
         Self {
             project_path: project_path.as_ref().to_path_buf(),
@@ -117,6 +118,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Include test code in analysis
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn include_tests(mut self) -> Self {
         self.exclude_tests = false;
         self
@@ -124,6 +126,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Include example code in analysis
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn include_examples(mut self) -> Self {
         self.exclude_examples = false;
         self
@@ -131,6 +134,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Include benchmark code in analysis
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn include_benches(mut self) -> Self {
         self.exclude_benches = false;
         self
@@ -138,6 +142,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Set maximum directory traversal depth
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_max_depth(mut self, max_depth: usize) -> Self {
         debug_assert!(max_depth > 0, "max_depth must be positive");
         self.max_depth = max_depth;
@@ -146,6 +151,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Disable caching (force fresh analysis every time)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn without_cache(mut self) -> Self {
         self.use_cache = false;
         self
@@ -153,6 +159,7 @@ impl CargoDeadCodeAnalyzer {
 
     /// Force cache refresh even if cache is valid
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn force_refresh(mut self) -> Self {
         self.force_refresh = true;
         self
@@ -160,6 +167,7 @@ impl CargoDeadCodeAnalyzer {
 }
 
 /// Public API for backward compatibility
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_dead_code(project_path: impl AsRef<Path>) -> Result<AccurateDeadCodeReport> {
     let analyzer = CargoDeadCodeAnalyzer::new(project_path);
     analyzer.analyze().await

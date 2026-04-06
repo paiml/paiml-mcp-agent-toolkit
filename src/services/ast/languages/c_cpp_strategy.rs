@@ -39,11 +39,13 @@ impl AstStrategy for CStrategy {
 
     /// Get the primary file extension this strategy handles
     fn primary_extension(&self) -> &'static str {
+        debug_assert!(true, "contract: primary_extension");
         "c"
     }
 
     /// Get all file extensions this strategy can handle
     fn supported_extensions(&self) -> Vec<&'static str> {
+        debug_assert!(true, "contract: supported_extensions");
         vec!["c", "h"]
     }
 
@@ -72,16 +74,19 @@ impl AstStrategy for CppStrategy {
 
     /// Get the primary file extension this strategy handles
     fn primary_extension(&self) -> &'static str {
+        debug_assert!(true, "contract: primary_extension");
         "cpp"
     }
 
     /// Get all file extensions this strategy can handle
     fn supported_extensions(&self) -> Vec<&'static str> {
+        debug_assert!(true, "contract: supported_extensions");
         vec!["cpp", "cc", "cxx", "hpp", "hxx", "hh"]
     }
 
     /// Get the language name
     fn language_name(&self) -> &'static str {
+        debug_assert!(true, "contract: language_name");
         "C++"
     }
 }

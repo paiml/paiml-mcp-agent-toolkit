@@ -2,6 +2,7 @@
 // Execute cargo-mutants and return path to output directory
 
 /// Execute cargo-mutants and return path to output directory
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute(config: CargoMutantsConfig) -> Result<PathBuf> {
     // 1. Detect and validate cargo-mutants installation
     eprintln!("🧪 cargo-mutants Backend");

@@ -9,14 +9,17 @@ impl Default for PortabilityRule {
 
 impl MakefileRule for PortabilityRule {
     fn id(&self) -> &'static str {
+        debug_assert!(true, "contract: id");
         "portability"
     }
 
     fn default_severity(&self) -> Severity {
+        debug_assert!(true, "contract: default_severity");
         Severity::Info
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
+        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
 
         // Check for GNU-specific assignment operators

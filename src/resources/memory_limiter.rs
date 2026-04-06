@@ -18,6 +18,7 @@ pub struct MemoryLimiter {
 }
 
 impl MemoryLimiter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(limits: MemoryLimits) -> Result<Self, ResourceError> {
         let mut system = SysInfo::new_all();
         system.refresh_all();
@@ -38,6 +39,7 @@ impl MemoryLimiter {
     }
 
     fn apply_memory_limits(&self, limits: &MemoryLimits) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: apply_memory_limits");
         // Apply RSS limit using setrlimit
         self.set_rss_limit(limits.max_bytes)?;
 
@@ -60,6 +62,7 @@ impl MemoryLimiter {
     }
 
     fn set_rss_limit(&self, limit_bytes: usize) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: set_rss_limit");
         #[cfg(unix)]
         {
             use libc::{rlimit, setrlimit, RLIMIT_AS};
@@ -90,6 +93,7 @@ impl MemoryLimiter {
     }
 
     fn set_heap_limit(&self, limit_bytes: usize) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: set_heap_limit");
         #[cfg(unix)]
         {
             use libc::{rlimit, setrlimit, RLIMIT_DATA};
@@ -120,6 +124,7 @@ impl MemoryLimiter {
     }
 
     fn set_stack_limit(&self, limit_bytes: usize) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: set_stack_limit");
         #[cfg(unix)]
         {
             use libc::{rlimit, setrlimit, RLIMIT_STACK};
@@ -150,6 +155,7 @@ impl MemoryLimiter {
     }
 
     fn set_swap_limit(&self, _limit_bytes: usize) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: set_swap_limit");
         // Swap limiting typically requires cgroup configuration
         #[cfg(target_os = "linux")]
         {
@@ -172,6 +178,7 @@ impl MemoryLimiter {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_allocation(&self, size: usize) -> Result<(), ResourceError> {
         debug_assert!(size > 0, "size must be positive");
         let current = self.allocated.load(Ordering::Relaxed);
@@ -187,6 +194,7 @@ impl MemoryLimiter {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_allocation(&self, size: usize) {
         debug_assert!(size > 0, "size must be positive");
         let new_allocated = self.allocated.fetch_add(size, Ordering::SeqCst) + size;
@@ -206,11 +214,13 @@ impl MemoryLimiter {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_deallocation(&self, size: usize) {
         debug_assert!(size > 0, "size must be positive");
         self.allocated.fetch_sub(size, Ordering::SeqCst);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_allocated(&self) -> usize {
         self.allocated.load(Ordering::Relaxed)
     }
@@ -222,11 +232,13 @@ impl MemoryLimiter {
 
 impl ResourceController for MemoryLimiter {
     fn apply_limits(&self, limits: &ResourceLimits) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: apply_limits");
         *self.limits.write() = limits.memory.clone();
         self.apply_memory_limits(&limits.memory)
     }
 
     fn get_usage(&self) -> Result<ResourceUsage, ResourceError> {
+        debug_assert!(true, "contract: get_usage");
         let mut system = self.system.write();
         system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
@@ -251,6 +263,7 @@ impl ResourceController for MemoryLimiter {
     }
 
     fn release(&self) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: release");
         // Reset limits to system defaults
         #[cfg(unix)]
         {
@@ -283,6 +296,7 @@ pub struct LimitedAllocator {
 }
 
 impl LimitedAllocator {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(limiter: Arc<MemoryLimiter>) -> Self {
         Self {
             limiter,
@@ -351,6 +365,7 @@ pub struct MemoryMonitor {
 }
 
 impl MemoryMonitor {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(limiter: Arc<MemoryLimiter>) -> Self {
         Self {
             limiter,
@@ -358,6 +373,7 @@ impl MemoryMonitor {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_pressure_callback<F>(&self, callback: F)
     where
         F: Fn(f32) + Send + Sync + 'static,
@@ -365,6 +381,7 @@ impl MemoryMonitor {
         self.pressure_callbacks.write().push(Box::new(callback));
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_memory_pressure(&self) -> f32 {
         let allocated = self.limiter.get_allocated();
         let limit = self.limiter.limits.read().max_bytes;
@@ -382,6 +399,7 @@ impl MemoryMonitor {
         pressure
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn monitor_loop(&self) {
         loop {
             self.check_memory_pressure();

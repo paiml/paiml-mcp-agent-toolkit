@@ -1,4 +1,5 @@
 impl RepositoryContext {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_mock() -> Self {
         Self {
             subsequent_commits: Some(vec![]),
@@ -23,6 +24,7 @@ impl RepositoryContext {
     /// Build repository context from actual filesystem path
     ///
     /// GREEN Phase: Implementation for RED tests
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_path(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::from_path_with_config(path, false)
@@ -33,6 +35,7 @@ impl RepositoryContext {
     /// # Arguments
     /// * `path` - Repository path
     /// * `deep` - If true, fetch entire git history; if false, fetch recent commits only (last 30 days)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_path_with_config(path: &Path, deep: bool) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let repo_path = path.canonicalize().context("Failed to canonicalize path")?;
@@ -77,12 +80,14 @@ impl RepositoryContext {
     }
 
     /// Check if repository has git history
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_git_history(&self) -> bool {
         self.git_repo.is_some()
     }
 
     /// Get recent commits from git history
     #[cfg(feature = "git-lib")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_recent_commits(&self, limit: usize) -> Vec<CommitInfo> {
         debug_assert!(limit > 0, "limit must be positive");
         let Some(ref repo_path) = self.git_repo else {
@@ -121,6 +126,7 @@ impl RepositoryContext {
 
     /// Get recent commits from git history (shell git fallback)
     #[cfg(not(feature = "git-lib"))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_recent_commits(&self, limit: usize) -> Vec<CommitInfo> {
         debug_assert!(limit > 0, "limit must be positive");
         use std::process::Command;
@@ -166,16 +172,19 @@ impl RepositoryContext {
     }
 
     /// Get test files found in repository
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_test_files(&self) -> Vec<PathBuf> {
         self.test_files.clone()
     }
 
     /// Check if coverage report exists
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_coverage_report(&self) -> bool {
         self.coverage_path.is_some()
     }
 
     /// Get coverage percentage from report
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_coverage_percentage(&self) -> f64 {
         let Some(ref coverage_path) = self.coverage_path else {
             return 0.0;
@@ -185,6 +194,7 @@ impl RepositoryContext {
     }
 
     /// Get test execution information
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_test_execution_info(&self) -> TestExecutionInfo {
         let Some(ref test_results_path) = self.test_results_path else {
             return TestExecutionInfo::default();
@@ -194,6 +204,7 @@ impl RepositoryContext {
     }
 
     /// Search codebase for pattern using grep
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn grep_codebase(&self, pattern: &str) -> Vec<PathBuf> {
         Self::grep_directory(&self.repo_path, pattern).unwrap_or_default()
     }
@@ -435,55 +446,65 @@ impl RepositoryContext {
         Ok(matches)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_coverage(mut self, coverage: f64) -> Self {
         self.actual_coverage = Some(coverage);
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_subsequent_commits(mut self, commits: Vec<String>) -> Self {
         self.subsequent_commits = Some(commits);
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_test_results(mut self, passing: bool, ignored: usize) -> Self {
         self.test_results = Some((passing, ignored));
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_broken_links(mut self, count: usize) -> Self {
         debug_assert!(count > 0, "count must be positive");
         self.broken_links_count = Some(count);
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_vulnerabilities(mut self, count: usize) -> Self {
         debug_assert!(count > 0, "count must be positive");
         self.vulnerabilities_count = Some(count);
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_benchmarks(mut self, data: Option<String>) -> Self {
         self.benchmark_results = data;
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_issue_status(mut self, _issue_num: u32, status: &str) -> Self {
         self.issue_status = Some(status.to_string());
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_code_grep_results(mut self, search_term: &str, count: usize) -> Self {
         debug_assert!(count > 0, "count must be positive");
         self.code_grep_results = Some((search_term.to_string(), count));
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_commit_timestamps(mut self, timestamps: Vec<i64>) -> Self {
         self.commit_timestamps = Some(timestamps.clone());
         self.latest_commit_timestamp = timestamps.last().copied();
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_coverage_error(mut self, error: &str) -> Self {
         debug_assert!(!error.is_empty(), "error must not be empty");
         self.coverage_error = Some(error.to_string());

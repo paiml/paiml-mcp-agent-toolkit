@@ -1,5 +1,6 @@
 impl GitHistoryIndex {
     /// Get commits that need embeddings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_commits_without_embeddings(
         &self,
         limit: usize,
@@ -18,6 +19,7 @@ impl GitHistoryIndex {
     }
 
     /// Get last indexed commit hash
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_last_indexed_commit(&self) -> Result<Option<String>, GitHistoryError> {
         let result: Option<String> = self
             .conn
@@ -32,6 +34,7 @@ impl GitHistoryIndex {
     }
 
     /// Set last indexed commit hash
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn set_last_indexed_commit(&self, commit_hash: &str) -> Result<(), GitHistoryError> {
         debug_assert!(!commit_hash.is_empty(), "commit_hash must not be empty");
         self.conn.execute(
@@ -42,6 +45,7 @@ impl GitHistoryIndex {
     }
 
     /// Get total commit count
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn commit_count(&self) -> Result<usize, GitHistoryError> {
         let count: i64 = self
             .conn
@@ -50,6 +54,7 @@ impl GitHistoryIndex {
     }
 
     /// Get commits by file path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_commits_for_file(
         &self,
         file_path: &str,
@@ -76,6 +81,7 @@ impl GitHistoryIndex {
     }
 
     /// Check if a commit exists in the index
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn commit_exists(&self, commit_hash: &str) -> Result<bool, GitHistoryError> {
         debug_assert!(!commit_hash.is_empty(), "commit_hash must not be empty");
         let count: i64 = self.conn.query_row(
@@ -87,6 +93,7 @@ impl GitHistoryIndex {
     }
 
     /// Get commits by timestamp range (for incremental queries)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_commits_since(
         &self,
         timestamp: i64,
@@ -131,6 +138,7 @@ impl GitHistoryIndex {
     }
 
     /// Calculate checksum of index (for falsification test F1)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn checksum(&self) -> Result<String, GitHistoryError> {
         let count: i64 = self
             .conn

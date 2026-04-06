@@ -4,6 +4,7 @@
 impl CrossLanguageDependencies {
     /// Resolve unresolved references
     fn resolve_references(&mut self) {
+        debug_assert!(true, "contract: resolve_references");
         let name_map = self.build_name_map();
         let to_resolve = self.collect_unresolved_references();
         let new_dependencies = Self::resolve_against_name_map(&self.nodes, &name_map, &to_resolve);
@@ -12,6 +13,7 @@ impl CrossLanguageDependencies {
 
     /// Build a lookup map from node names and FQNs to node IDs
     fn build_name_map(&self) -> HashMap<String, Vec<String>> {
+        debug_assert!(true, "contract: build_name_map");
         let mut name_map: HashMap<String, Vec<String>> = HashMap::new();
         for (id, node) in &self.nodes {
             name_map
@@ -28,6 +30,7 @@ impl CrossLanguageDependencies {
 
     /// Collect all unresolved references (empty target_id) from nodes
     fn collect_unresolved_references(&self) -> Vec<(String, String, ReferenceKind)> {
+        debug_assert!(true, "contract: collect_unresolved_references");
         let mut to_resolve = Vec::new();
         for (source_id, source) in &self.nodes {
             for reference in &source.references {
@@ -49,6 +52,7 @@ impl CrossLanguageDependencies {
         name_map: &HashMap<String, Vec<String>>,
         to_resolve: &[(String, String, ReferenceKind)],
     ) -> Vec<CrossLanguageDependency> {
+        debug_assert!(true, "contract: resolve_against_name_map");
         let mut new_dependencies = Vec::new();
         for (source_id, target_name, kind) in to_resolve {
             let Some(source) = nodes.get(source_id) else {

@@ -211,10 +211,12 @@ pub struct ComplyThresholds {
 }
 
 fn default_min_binding_existence() -> f64 {
+    debug_assert!(true, "contract: default_min_binding_existence");
     80.0
 }
 
 fn default_min_verification_level() -> String {
+    debug_assert!(true, "contract: default_min_verification_level");
     "L0".to_string()
 }
 

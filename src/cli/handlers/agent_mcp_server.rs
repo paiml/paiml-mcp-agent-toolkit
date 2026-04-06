@@ -1,5 +1,6 @@
 /// Start MCP server for testing
 async fn handle_agent_mcp_server(config_path: Option<PathBuf>, debug: bool) -> Result<()> {
+    debug_assert!(true, "contract: handle_agent_mcp_server");
     // Only log to stderr if debug is enabled
     if debug {
         eprintln!("Starting MCP server in debug mode");

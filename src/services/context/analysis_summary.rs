@@ -1,6 +1,7 @@
 // Project summary building, context graph construction, item counting,
 // and gitignore configuration.
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn build_gitignore(root_path: &Path) -> Result<ignore::gitignore::Gitignore, TemplateError> {
     debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let mut gitignore = GitignoreBuilder::new(root_path);
@@ -20,6 +21,7 @@ pub(crate) fn build_gitignore(root_path: &Path) -> Result<ignore::gitignore::Git
         .map_err(|e| TemplateError::InvalidUtf8(e.to_string()))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn build_project_summary(
     files: &[FileContext],
     root_path: &Path,

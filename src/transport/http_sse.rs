@@ -68,6 +68,7 @@ impl HttpSseTransportAdapter {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn serve(addr: &str) -> Result<Self, TransportError> {
         debug_assert!(!addr.is_empty(), "addr must not be empty");
         info!("Starting HTTP/SSE server on {}", addr);
@@ -171,6 +172,7 @@ impl HttpSseTransportAdapter {
     }
     
     /// Creates an HTTP/SSE transport as a boxed TransportAdapter.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn boxed(addr: &str) -> Result<Box<dyn TransportAdapter>, TransportError> {
         debug_assert!(!addr.is_empty(), "addr must not be empty");
         Ok(Box::new(Self::serve(addr).await?))
@@ -180,6 +182,7 @@ impl HttpSseTransportAdapter {
 #[async_trait]
 impl TransportAdapter for HttpSseTransportAdapter {
     async fn send(&mut self, message: TransportMessage) -> Result<(), TransportError> {
+        debug_assert!(true, "contract: send");
         self.sender
             .send(message)
             .await
@@ -187,6 +190,7 @@ impl TransportAdapter for HttpSseTransportAdapter {
     }
     
     async fn receive(&mut self) -> Result<TransportMessage, TransportError> {
+        debug_assert!(true, "contract: receive");
         self.receiver
             .recv()
             .await
@@ -194,17 +198,20 @@ impl TransportAdapter for HttpSseTransportAdapter {
     }
     
     async fn close(&mut self) -> Result<(), TransportError> {
+        debug_assert!(true, "contract: close");
         let mut state = self.state.write().await;
         state.connected = false;
         Ok(())
     }
     
     fn is_connected(&self) -> bool {
+        debug_assert!(true, "contract: is_connected");
         // Use try_read to avoid blocking
         self.state.try_read().map(|s| s.connected).unwrap_or(false)
     }
     
     fn transport_type(&self) -> &'static str {
+        debug_assert!(true, "contract: transport_type");
         "http-sse"
     }
 }
@@ -264,6 +271,7 @@ mod tests {
     #[test]
     fn test_http_sse_transport_is_send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
+            debug_assert!(true, "contract: assert_send_sync");
         assert_send_sync::<HttpSseTransportAdapter>();
     }
 

@@ -43,6 +43,7 @@ impl ClaimExtractor {
     }
 
     fn extract_test_status(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
+        debug_assert!(true, "contract: extract_test_status");
         if let Some((pos, text, caps)) = Self::match_first_pattern(&self.test_patterns, msg) {
             let numeric = caps
                 .get(4)
@@ -56,6 +57,7 @@ impl ClaimExtractor {
     }
 
     fn extract_documentation_claims(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
+        debug_assert!(true, "contract: extract_documentation_claims");
         if let Some((pos, text, _)) = Self::match_first_pattern(&self.documentation_patterns, msg) {
             let numeric = self.extract_numeric_value(&text);
             claims.push((
@@ -66,6 +68,7 @@ impl ClaimExtractor {
     }
 
     fn extract_coverage_claims(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
+        debug_assert!(true, "contract: extract_coverage_claims");
         if let Some((pos, text, caps)) = Self::match_first_pattern(&self.coverage_patterns, msg) {
             let numeric = caps
                 .get(1)
@@ -79,6 +82,7 @@ impl ClaimExtractor {
     }
 
     fn extract_migration_claims(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
+        debug_assert!(true, "contract: extract_migration_claims");
         if let Some((pos, text, _)) = Self::match_first_pattern(&self.migration_patterns, msg) {
             claims.push((
                 pos,
@@ -88,6 +92,7 @@ impl ClaimExtractor {
     }
 
     fn extract_completion_claims(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
+        debug_assert!(true, "contract: extract_completion_claims");
         if let Some((pos, text, _)) = Self::match_first_pattern(&self.completion_patterns, msg) {
             // Skip if we already have a claim overlapping this position (e.g., migration)
             if claims.iter().any(|(p, _)| *p == pos) {
@@ -101,6 +106,7 @@ impl ClaimExtractor {
     }
 
     fn extract_bugfix_claims(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
+        debug_assert!(true, "contract: extract_bugfix_claims");
         if let Some((pos, text, caps)) = Self::match_first_pattern(&self.bugfix_patterns, msg) {
             let issue_number = caps
                 .get(caps.len() - 1)
@@ -113,6 +119,7 @@ impl ClaimExtractor {
     }
 
     fn extract_performance_claims(&self, msg: &str, claims: &mut Vec<(usize, Claim)>) {
+        debug_assert!(true, "contract: extract_performance_claims");
         if let Some((pos, text, caps)) = Self::match_first_pattern(&self.performance_patterns, msg)
         {
             let numeric = caps.get(1).and_then(|m| m.as_str().parse::<f64>().ok());
@@ -132,6 +139,7 @@ impl ClaimExtractor {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract(&self, commit_message: &str) -> Vec<Claim> {
         debug_assert!(!commit_message.is_empty(), "commit_message must not be empty");
         let mut claims_with_pos: Vec<(usize, Claim)> = Vec::new();

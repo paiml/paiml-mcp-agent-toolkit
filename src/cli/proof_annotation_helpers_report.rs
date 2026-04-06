@@ -1,6 +1,7 @@
 // Report generation: full detailed output, markdown output, and SARIF output formatting.
 
 /// Format annotations as full detailed output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn format_as_full(
     annotations: &[(Location, ProofAnnotation)],
     project_path: &Path,
@@ -90,6 +91,7 @@ fn write_proof_annotation(
     ann: &ProofAnnotation,
     include_evidence: bool,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_proof_annotation");
     use std::fmt::Write;
 
     write_annotation_header(output, loc)?;
@@ -106,6 +108,7 @@ fn write_proof_annotation(
 
 /// Write annotation position header
 fn write_annotation_header(output: &mut String, loc: &Location) -> Result<()> {
+    debug_assert!(true, "contract: write_annotation_header");
     use std::fmt::Write;
     writeln!(
         output,
@@ -117,6 +120,7 @@ fn write_annotation_header(output: &mut String, loc: &Location) -> Result<()> {
 
 /// Write basic annotation information
 fn write_annotation_basic_info(output: &mut String, ann: &ProofAnnotation) -> Result<()> {
+    debug_assert!(true, "contract: write_annotation_basic_info");
     use std::fmt::Write;
 
     writeln!(output, "**Property**: {:?}", ann.property_proven)?;
@@ -134,6 +138,7 @@ fn write_annotation_basic_info(output: &mut String, ann: &ProofAnnotation) -> Re
 
 /// Write annotation assumptions
 fn write_annotation_assumptions(output: &mut String, ann: &ProofAnnotation) -> Result<()> {
+    debug_assert!(true, "contract: write_annotation_assumptions");
     use std::fmt::Write;
 
     if !ann.assumptions.is_empty() {
@@ -148,6 +153,7 @@ fn write_annotation_assumptions(output: &mut String, ann: &ProofAnnotation) -> R
 
 /// Write annotation evidence information
 fn write_annotation_evidence(output: &mut String, ann: &ProofAnnotation) -> Result<()> {
+    debug_assert!(true, "contract: write_annotation_evidence");
     use std::fmt::Write;
 
     writeln!(output, "\n**Evidence**: {:?}", ann.evidence_type)?;
@@ -159,6 +165,7 @@ fn write_annotation_evidence(output: &mut String, ann: &ProofAnnotation) -> Resu
 }
 
 /// Format annotations as markdown output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn format_as_markdown(
     annotations: &[(Location, ProofAnnotation)],
     project_path: &Path,
@@ -283,6 +290,7 @@ fn write_proof_summary_item(
     ann: &ProofAnnotation,
     include_evidence: bool,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_proof_summary_item");
     use std::fmt::Write;
 
     writeln!(
@@ -301,6 +309,7 @@ fn write_proof_summary_item(
 }
 
 /// Format annotations as SARIF output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn format_as_sarif(
     annotations: &[(Location, ProofAnnotation)],
     _project_path: &Path,

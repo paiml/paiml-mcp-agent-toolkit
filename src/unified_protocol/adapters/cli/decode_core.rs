@@ -3,6 +3,7 @@ impl CliAdapter {
         &self,
         command: &Commands,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(true, "contract: decode_command");
         match command {
             Commands::Generate {
                 category,
@@ -170,6 +171,7 @@ impl CliAdapter {
         category: &Option<String>,
         format: &OutputFormat,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(true, "contract: decode_list");
         let mut query_params = Vec::new();
         if let Some(tc) = toolchain {
             query_params.push(format!("toolchain={tc}"));
@@ -249,6 +251,7 @@ impl CliAdapter {
     fn decode_analyze_command(
         analyze_cmd: &AnalyzeCommands,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(true, "contract: decode_analyze_command");
         // Toyota Way Extract Method: Determine command category and dispatch accordingly
         let command_category = Self::get_analyze_command_category(analyze_cmd);
 

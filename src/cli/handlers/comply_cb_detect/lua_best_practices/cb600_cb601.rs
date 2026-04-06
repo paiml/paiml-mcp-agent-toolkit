@@ -14,6 +14,7 @@ use std::path::Path;
 
 /// CB-600: Implicit Globals -- assignment without `local` keyword.
 /// Based on luacheck W111/W113.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -76,6 +77,7 @@ pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolat
 
 /// CB-601: Nil-Unsafe Access -- chained calls on function returns or deep field access.
 /// Based on Luau type system and LuaTaint taint analysis.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb601_nil_unsafe_access(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

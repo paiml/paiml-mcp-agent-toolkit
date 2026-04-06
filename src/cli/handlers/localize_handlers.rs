@@ -8,6 +8,7 @@ use crate::services::fault_localization::{FaultLocalizer, LcovParser, ReportForm
 
 /// Handle the `pmat localize` command
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_localize(
     passed_coverage: &Path,
     failed_coverage: &Path,

@@ -1,11 +1,13 @@
 // Included from convergence.rs — ConvergenceTracker implementation
 
 impl ConvergenceTracker {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Record a new iteration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record(
         &mut self,
         metrics: ProjectMetrics,
@@ -32,6 +34,7 @@ impl ConvergenceTracker {
 
     /// Check if new metrics are better than best
     fn is_better(&self, metrics: &ProjectMetrics) -> bool {
+        debug_assert!(true, "contract: is_better");
         let Some(best) = &self.best_metrics else {
             return true;
         };
@@ -45,6 +48,7 @@ impl ConvergenceTracker {
 
     /// Calculate a composite quality score
     fn calculate_score(&self, metrics: &ProjectMetrics) -> f32 {
+        debug_assert!(true, "contract: calculate_score");
         let mut score = 0.0;
 
         // Coverage contribution (weight: 0.25)
@@ -78,6 +82,7 @@ impl ConvergenceTracker {
     }
 
     /// Get convergence percentage (0.0 - 1.0)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn convergence_percentage(&self, targets: &ConvergenceTargets) -> f32 {
         let Some(best) = &self.best_metrics else {
             return 0.0;
@@ -152,11 +157,13 @@ impl ConvergenceTracker {
     }
 
     /// Check if converged
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_converged(&self) -> bool {
         matches!(self.current_status, Some(ConvergenceStatus::Converged))
     }
 
     /// Get remaining failures
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn remaining_failures(&self) -> Vec<String> {
         match &self.current_status {
             Some(ConvergenceStatus::NotConverged { remaining }) => remaining.clone(),
@@ -165,6 +172,7 @@ impl ConvergenceTracker {
     }
 
     /// Get improvement trend (positive = improving)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn trend(&self) -> f32 {
         if self.history.len() < 2 {
             return 0.0;

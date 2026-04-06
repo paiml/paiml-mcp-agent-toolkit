@@ -4,6 +4,7 @@
 impl SwiftSourceAnalyzer {
     /// Creates a new Swift source analyzer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
         debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
@@ -21,6 +22,7 @@ impl SwiftSourceAnalyzer {
     }
 
     /// Analyzes Swift source and extracts AST items (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_swift_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {

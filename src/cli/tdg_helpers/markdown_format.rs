@@ -5,6 +5,7 @@ use crate::models::tdg::{TDGHotspot, TDGSummary};
 use anyhow::Result;
 
 /// Format TDG results as Markdown
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_tdg_markdown(
     summary: &TDGSummary,
     hotspots: &[TDGHotspot],

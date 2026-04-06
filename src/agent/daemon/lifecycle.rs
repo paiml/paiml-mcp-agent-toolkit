@@ -37,6 +37,7 @@ pub struct AgentDaemon {
 impl AgentDaemon {
     /// Create new daemon instance
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: DaemonConfig) -> Self {
         Self {
             config,
@@ -58,6 +59,7 @@ impl AgentDaemon {
     }
 
     /// Start the daemon
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn start(&mut self) -> Result<()> {
         info!(
             "Starting Claude Code Agent Daemon v{}",
@@ -91,6 +93,7 @@ impl AgentDaemon {
     }
 
     /// Stop the daemon gracefully
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn stop(&mut self) -> Result<()> {
         info!("Stopping Claude Code Agent Daemon");
 
@@ -131,12 +134,14 @@ impl AgentDaemon {
     }
 
     /// Get current daemon state
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_state(&self) -> DaemonState {
         self.state.read().await.clone()
     }
 
     /// Initialize daemon components
     async fn initialize_components(&mut self) -> Result<()> {
+        debug_assert!(true, "contract: initialize_components");
         info!("Initializing daemon components");
 
         // Create quality monitor

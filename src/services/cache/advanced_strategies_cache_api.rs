@@ -9,6 +9,7 @@ where
 {
     /// Create a new adaptive cache
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: AdvancedCacheConfig) -> Self {
         let mut tier_stats = FxHashMap::default();
         tier_stats.insert(CacheTier::L1, TierStats::default());
@@ -30,6 +31,7 @@ where
     }
 
     /// Get value from cache with intelligent tier promotion
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get(&self, key: &K) -> Option<Arc<V>> {
         let start = Instant::now();
 
@@ -72,6 +74,7 @@ where
     }
 
     /// Put value into cache with intelligent tier placement
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn put(&self, key: K, value: V) -> Result<()> {
         let start = Instant::now();
         let value_arc = Arc::new(value);
@@ -103,6 +106,7 @@ where
     }
 
     /// Remove entry from all tiers
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn remove(&self, key: &K) -> Option<Arc<V>> {
         // Try to remove from all tiers
         let l1_removed = self.l1_cache.write().remove(key);
@@ -117,6 +121,7 @@ where
     }
 
     /// Clear all cache tiers
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn clear(&self) -> Result<()> {
         self.l1_cache.write().clear();
         self.l2_cache.write().clear();
@@ -136,6 +141,7 @@ where
 
     /// Get comprehensive cache statistics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_stats(&self) -> AdaptiveCacheStats {
         let _stats = self.stats.read();
         // Manual clone since we removed Clone derive due to atomics
@@ -146,6 +152,7 @@ where
     }
 
     /// Warm cache based on configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn warm_cache(&self, warm_keys: Vec<K>) -> Result<usize> {
         debug_assert!(!warm_keys.is_empty(), "warm_keys must not be empty");
         let start = Instant::now();
@@ -175,6 +182,7 @@ where
     }
 
     /// Run background maintenance
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn background_maintenance(&self) -> Result<()> {
         if !self.config.performance_config.background_cleanup {
             return Ok(());

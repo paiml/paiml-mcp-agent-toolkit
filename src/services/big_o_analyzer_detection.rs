@@ -81,6 +81,7 @@ impl BigOAnalyzer {
     }
 
     fn determine_time_complexity(max_loop_depth: usize, has_recursion: bool) -> ComplexityBound {
+        debug_assert!(true, "contract: determine_time_complexity");
         if has_recursion && max_loop_depth == 0 {
             return ComplexityBound::unknown();
         }

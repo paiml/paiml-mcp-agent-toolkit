@@ -15,6 +15,7 @@ pub struct FileManifest {
 
 impl FileManifest {
     /// Build manifest from project directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn build(project_path: &Path) -> Result<Self> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut files = HashMap::new();
@@ -81,6 +82,7 @@ impl FileManifest {
     }
 
     /// Verify manifest integrity (find missing files)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn verify_integrity(&self, project_path: &Path) -> Vec<PathBuf> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut missing = Vec::new();
@@ -117,6 +119,7 @@ pub struct FileEntry {
 
 impl FileEntry {
     /// Create file entry from path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_path(path: &Path) -> Result<Option<Self>> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let extension = path.extension().and_then(|e| e.to_str());

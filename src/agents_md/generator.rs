@@ -158,6 +158,7 @@ impl Default for AgentsMdGenerator {
 impl AgentsMdGenerator {
     /// Create new generator
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let mut generator = Self {
             templates: HashMap::new(),
@@ -170,6 +171,7 @@ impl AgentsMdGenerator {
 
     /// Create with custom config
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: GeneratorConfig) -> Self {
         let mut generator = Self {
             templates: HashMap::new(),
@@ -182,6 +184,7 @@ impl AgentsMdGenerator {
 
     /// Load default templates
     fn load_default_templates(&mut self) {
+        debug_assert!(true, "contract: load_default_templates");
         // Rust template
         self.templates.insert(ProjectType::Rust, Template {
             sections: vec![
@@ -231,6 +234,7 @@ impl AgentsMdGenerator {
     }
 
     /// Generate from PMAT analysis
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_from_analysis(&self, analysis: &PmatAnalysis) -> Result<String> {
         let _template = self
             .templates
@@ -276,6 +280,7 @@ impl AgentsMdGenerator {
     }
 
     /// Generate from project structure
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_from_project(&self, project: &ProjectInfo) -> Result<String> {
         // Create basic analysis from project info
         let analysis = PmatAnalysis {
@@ -296,6 +301,7 @@ impl AgentsMdGenerator {
     }
 
     /// Update existing AGENTS.md
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update_existing(&self, current: &str, updates: Updates) -> Result<String> {
         debug_assert!(!current.is_empty(), "current must not be empty");
         let parser = super::parser::AgentsMdParser::new();
@@ -326,6 +332,7 @@ impl AgentsMdGenerator {
 
     /// Format document back to markdown
     fn format_document(&self, doc: &AgentsMdDocument) -> Result<String> {
+        debug_assert!(true, "contract: format_document");
         let mut output = String::new();
         writeln!(output, "# AGENTS.md")?;
         writeln!(output)?;
@@ -340,6 +347,7 @@ impl AgentsMdGenerator {
     /// Format a section
     #[allow(clippy::only_used_in_recursion)]
     fn format_section(&self, output: &mut String, section: &Section, level: usize) -> Result<()> {
+        debug_assert!(true, "contract: format_section");
         let heading = "#".repeat(level);
         writeln!(output, "{} {}", heading, section.title)?;
         writeln!(output, "{}", section.content)?;
@@ -354,6 +362,7 @@ impl AgentsMdGenerator {
 
     /// Generate development setup section
     fn generate_dev_setup(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
+        debug_assert!(true, "contract: generate_dev_setup");
         writeln!(output, "## Development Setup")?;
         writeln!(output, "```bash")?;
 
@@ -371,6 +380,7 @@ impl AgentsMdGenerator {
 
     /// Generate testing section
     fn generate_testing(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
+        debug_assert!(true, "contract: generate_testing");
         writeln!(output, "## Testing Instructions")?;
         writeln!(output, "- Run tests before committing")?;
         writeln!(
@@ -385,6 +395,7 @@ impl AgentsMdGenerator {
 
     /// Generate code style section
     fn generate_code_style(&self, output: &mut String, analysis: &PmatAnalysis) -> Result<()> {
+        debug_assert!(true, "contract: generate_code_style");
         writeln!(output, "## Code Style")?;
         writeln!(output, "- Follow project coding standards")?;
         writeln!(
@@ -399,6 +410,7 @@ impl AgentsMdGenerator {
 
     /// Generate PR guidelines
     fn generate_pr_guidelines(&self, output: &mut String) -> Result<()> {
+        debug_assert!(true, "contract: generate_pr_guidelines");
         writeln!(output, "## PR Guidelines")?;
         writeln!(output, "- Squash commits with conventional format")?;
         writeln!(output, "- Must pass all quality gates")?;

@@ -1,5 +1,6 @@
 impl QualityMonitor {
     /// Create a new quality monitor
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: MonitorConfig) -> Result<Self> {
         let (tx, _rx) = crossbeam_channel::bounded(1000);
 
@@ -14,6 +15,7 @@ impl QualityMonitor {
 
     /// Start monitoring a directory
     #[cfg(feature = "watch")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         info!("Starting quality monitoring for: {:?}", path);
@@ -50,6 +52,7 @@ impl QualityMonitor {
 
     /// Start monitoring a directory (stub when watch feature disabled)
     #[cfg(not(feature = "watch"))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         info!(
@@ -61,6 +64,7 @@ impl QualityMonitor {
     }
 
     /// Analyze incremental changes with O(log n) complexity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_incremental(&self, change: FileChange) -> Result<Metrics> {
         // Use real tree-sitter incremental parsing
         let mut parser = self.parser.lock().expect("internal error");
@@ -69,6 +73,7 @@ impl QualityMonitor {
 
     /// Get current metrics for a file
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_metrics(&self, path: &Path) -> Option<Metrics> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.metrics.get(path).map(|entry| entry.clone())
@@ -76,6 +81,7 @@ impl QualityMonitor {
 
     /// Get all metrics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_all_metrics(&self) -> HashMap<PathBuf, Metrics> {
         self.metrics
             .iter()
@@ -85,6 +91,7 @@ impl QualityMonitor {
 
     /// Subscribe to quality events
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn subscribe(&self) -> crossbeam_channel::Receiver<QualityEvent> {
         let (_tx, rx) = crossbeam_channel::bounded(100);
         rx
@@ -99,6 +106,7 @@ impl QualityMonitor {
         parser: &Arc<std::sync::Mutex<EnhancedParser>>,
         config: &MonitorConfig,
     ) {
+        debug_assert!(true, "contract: handle_fs_event");
         match event.kind {
             EventKind::Create(_) | EventKind::Modify(_) => {
                 for path in event.paths {

@@ -20,6 +20,7 @@ use super::super::TdgScore;
 /// assert!(json.contains("85.5"));
 /// ```ignore
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_json(score: &TdgScore) -> String {
     serde_json::to_string_pretty(score).unwrap_or_else(|_| "{}".to_string())
 }

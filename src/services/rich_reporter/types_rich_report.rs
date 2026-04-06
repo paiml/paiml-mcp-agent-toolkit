@@ -29,6 +29,7 @@ pub struct RichReport {
 
 impl RichReport {
     /// Create a new empty report
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(title: impl Into<String>, project: impl Into<String>) -> Self {
         RichReport {
             title: title.into(),
@@ -47,6 +48,7 @@ impl RichReport {
     }
 
     /// Calculate Andon status from findings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_andon_status(&mut self) {
         let critical_count = self
             .findings
@@ -69,6 +71,7 @@ impl RichReport {
     }
 
     /// Count findings by severity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn findings_by_severity(&self) -> HashMap<Severity, usize> {
         let mut counts = HashMap::new();
         for finding in &self.findings {

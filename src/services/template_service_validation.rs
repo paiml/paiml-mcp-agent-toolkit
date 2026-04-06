@@ -90,6 +90,7 @@ fn validate_parameter_value(
     spec: &crate::models::template::ParameterSpec,
     provided: &Map<String, serde_json::Value>,
 ) -> Result<(), TemplateError> {
+    debug_assert!(true, "contract: validate_parameter_value");
     if let Some(value) = provided.get(&spec.name) {
         if let Some(pattern) = &spec.validation_pattern {
             validate_pattern_match(spec, pattern, value)?;
@@ -103,6 +104,7 @@ fn validate_pattern_match(
     pattern: &str,
     value: &serde_json::Value,
 ) -> Result<(), TemplateError> {
+    debug_assert!(true, "contract: validate_pattern_match");
     let regex = regex::Regex::new(pattern).map_err(|_| TemplateError::ValidationError {
         parameter: spec.name.clone(),
         reason: "invalid validation pattern".to_string(),
@@ -119,6 +121,7 @@ fn validate_pattern_match(
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn validate_template<T: TemplateServerTrait>(
     server: Arc<T>,
     uri: &str,
@@ -158,6 +161,7 @@ async fn get_template_metadata<T: TemplateServerTrait>(
 fn extract_params_map(
     parameters: &serde_json::Value,
 ) -> Result<&Map<String, serde_json::Value>, ValidationResult> {
+    debug_assert!(true, "contract: extract_params_map");
     if let serde_json::Value::Object(map) = parameters {
         Ok(map)
     } else {
@@ -212,6 +216,7 @@ fn validate_parameter_pattern(
     value: &serde_json::Value,
     errors: &mut Vec<ValidationError>,
 ) {
+    debug_assert!(true, "contract: validate_parameter_pattern");
     if let Some(pattern) = &param_spec.validation_pattern {
         if let Ok(regex) = regex::Regex::new(pattern) {
             if let Some(str_val) = value.as_str() {

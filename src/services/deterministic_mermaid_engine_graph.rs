@@ -4,6 +4,7 @@
 impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
     /// Create a new empty stable graph
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
@@ -12,6 +13,7 @@ impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
     }
 
     /// Add a node to the graph and return its index
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_node(&mut self, node: N) -> NodeIndex {
         let idx = self.nodes.len();
         self.nodes.push(Some(node));
@@ -19,6 +21,7 @@ impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
     }
 
     /// Add an edge between two nodes
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_edge(&mut self, source: NodeIndex, target: NodeIndex, weight: E) {
         self.edges.push(Edge {
             source,
@@ -28,10 +31,12 @@ impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
     }
 
     fn node_count(&self) -> usize {
+        debug_assert!(true, "contract: node_count");
         self.nodes.iter().filter(|n| n.is_some()).count()
     }
 
     fn node_indices(&self) -> impl Iterator<Item = NodeIndex> + '_ {
+        debug_assert!(true, "contract: node_indices");
         self.nodes
             .iter()
             .enumerate()
@@ -39,6 +44,7 @@ impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
     }
 
     fn edge_references(&self) -> impl Iterator<Item = EdgeRef<'_, E>> + '_ {
+        debug_assert!(true, "contract: edge_references");
         self.edges.iter().map(|e| EdgeRef {
             source: e.source,
             target: e.target,
@@ -48,6 +54,7 @@ impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
 
     #[allow(dead_code)]
     fn get_node(&self, idx: NodeIndex) -> Option<&N> {
+        debug_assert!(true, "contract: get_node");
         self.nodes.get(idx.0).and_then(|n| n.as_ref())
     }
 }

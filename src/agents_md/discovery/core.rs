@@ -16,6 +16,7 @@ use std::time::SystemTime;
 use tokio::sync::mpsc;
 
 fn event_to_change_type(kind: &EventKind) -> Option<FileChangeType> {
+    debug_assert!(true, "contract: event_to_change_type");
     match kind {
         EventKind::Create(_) => Some(FileChangeType::Created),
         EventKind::Modify(_) => Some(FileChangeType::Modified),
@@ -115,12 +116,14 @@ impl Default for AgentsMdDiscovery {
 impl AgentsMdDiscovery {
     /// Create new discovery system
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::with_config(DiscoveryConfig::default())
     }
 
     /// Create with custom configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: DiscoveryConfig) -> Self {
         Self {
             cache: Arc::new(DashMap::new()),
@@ -131,6 +134,7 @@ impl AgentsMdDiscovery {
 
     /// Find nearest AGENTS.md file from path
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn find_nearest(&self, path: &Path) -> Option<PathBuf> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check cache first
@@ -167,6 +171,7 @@ impl AgentsMdDiscovery {
 
     /// Discover all AGENTS.md files in project
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn discover_all(&self, root: &Path) -> Vec<AgentsMdFile> {
         debug_assert!(root.exists(), "root must exist: {}", root.display());
         let mut files = Vec::new();
@@ -180,6 +185,7 @@ impl AgentsMdDiscovery {
 
     /// Build hierarchy for monorepo
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn build_hierarchy(&self, files: Vec<AgentsMdFile>) -> AgentsMdHierarchy {
         debug_assert!(!files.is_empty(), "files must not be empty");
         if files.is_empty() {
@@ -212,6 +218,7 @@ impl AgentsMdDiscovery {
     }
 
     /// Start watching for changes
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn start_watching(&mut self) -> Result<mpsc::Receiver<FileChange>> {
         let (tx, rx) = mpsc::channel(100);
 
@@ -231,11 +238,13 @@ impl AgentsMdDiscovery {
     }
 
     /// Stop watching for changes
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn stop_watching(&mut self) {
         self.watcher = None;
     }
 
     /// Clear cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear_cache(&self) {
         self.cache.clear();
     }
@@ -316,6 +325,7 @@ impl AgentsMdDiscovery {
     /// Insert file into hierarchy tree
     #[allow(clippy::only_used_in_recursion)]
     fn insert_into_tree(&self, node: &mut HierarchyNode, file: &AgentsMdFile) {
+        debug_assert!(true, "contract: insert_into_tree");
         if file.parent == node.path {
             node.agents_file = Some(file.clone());
             return;

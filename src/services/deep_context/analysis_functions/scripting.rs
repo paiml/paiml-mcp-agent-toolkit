@@ -18,6 +18,7 @@ use super::metrics::TYPESCRIPT_UNIFIED_CACHE;
 
 /// Toyota Way Single Responsibility: Handle TypeScript/JavaScript file analysis
 /// OPTIMIZATION: Uses UnifiedTypeScriptAnalyzer to parse file once and extract both AST and complexity
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_typescript_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -42,6 +43,7 @@ pub async fn analyze_typescript_language(
 /// Toyota Way Single Responsibility: Handle Python file analysis
 /// OPTIMIZATION: Uses UnifiedPythonAnalyzer to parse file once and extract both AST and complexity
 #[cfg(feature = "python-ast")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_python_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -64,6 +66,7 @@ pub async fn analyze_python_language(
 }
 
 #[cfg(not(feature = "python-ast"))]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_python_language(
     _file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -79,6 +82,7 @@ pub async fn analyze_python_language(
 /// Toyota Way Single Responsibility: Handle Bash script file analysis
 /// TICKET-3006: Now uses unified parser to eliminate double parsing
 #[cfg(feature = "shell-ast")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_bash_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -108,6 +112,7 @@ pub async fn analyze_bash_language(
 }
 
 #[cfg(not(feature = "shell-ast"))]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_bash_language(
     _file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -121,6 +126,7 @@ pub async fn analyze_bash_language(
 }
 
 /// Toyota Way Single Responsibility: Handle Ruby file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_ruby_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -134,6 +140,7 @@ pub async fn analyze_ruby_language(
 
 /// Toyota Way Single Responsibility: Handle Lua file analysis (regex + tree-sitter)
 #[cfg(feature = "lua-ast")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_lua_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -196,6 +203,7 @@ pub async fn analyze_lua_language(
 }
 
 #[cfg(not(feature = "lua-ast"))]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_lua_language(
     _file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -208,6 +216,7 @@ pub async fn analyze_lua_language(
 }
 
 /// Toyota Way Single Responsibility: Handle Elixir file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_elixir_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -220,6 +229,7 @@ pub async fn analyze_elixir_language(
 }
 
 /// Toyota Way Single Responsibility: Handle Erlang file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_erlang_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -232,6 +242,7 @@ pub async fn analyze_erlang_language(
 }
 
 /// Toyota Way Single Responsibility: Handle Haskell file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_haskell_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -244,6 +255,7 @@ pub async fn analyze_haskell_language(
 }
 
 /// Toyota Way Single Responsibility: Handle OCaml file analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_ocaml_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {

@@ -8,6 +8,7 @@
 ///
 /// # Performance
 /// O(V + E) with SIMD acceleration
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn connected_components(graph: &DependencyGraph) -> usize {
     if graph.node_count() == 0 {
         return 0;
@@ -35,6 +36,7 @@ pub fn connected_components(graph: &DependencyGraph) -> usize {
 ///
 /// # Note
 /// Replaces petgraph::algo::kosaraju_scc with aprender's SIMD version
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn strongly_connected_components(graph: &DependencyGraph) -> Vec<usize> {
     if graph.node_count() == 0 {
         return Vec::new();
@@ -54,6 +56,7 @@ pub fn strongly_connected_components(graph: &DependencyGraph) -> Vec<usize> {
 ///
 /// # Algorithm
 /// Uses topological sort - if sort fails, graph has cycles
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_cyclic(graph: &DependencyGraph) -> bool {
     if graph.node_count() == 0 {
         return false;
@@ -75,6 +78,7 @@ pub fn is_cyclic(graph: &DependencyGraph) -> bool {
 ///
 /// # Performance
 /// SIMD-accelerated for cache efficiency
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn shortest_path(
     graph: &DependencyGraph,
     source: usize,
@@ -95,6 +99,7 @@ pub fn shortest_path(
 ///
 /// # Returns
 /// Betweenness centrality scores for each node
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn betweenness_centrality(graph: &DependencyGraph) -> Vec<f64> {
     if graph.node_count() == 0 {
         return Vec::new();
@@ -111,6 +116,7 @@ pub fn betweenness_centrality(graph: &DependencyGraph) -> Vec<f64> {
 ///
 /// # Returns
 /// Vector of communities, each community is a vector of node IDs
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn louvain_communities(graph: &UndirectedGraph) -> Vec<Vec<usize>> {
     if graph.node_count() == 0 {
         return Vec::new();

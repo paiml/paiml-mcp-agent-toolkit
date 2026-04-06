@@ -1,6 +1,7 @@
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /// Convert CamelCase to snake_case.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn to_snake_case(name: &str) -> String {
     debug_assert!(!name.is_empty(), "name must not be empty");
     let chars: Vec<char> = name.chars().collect();
@@ -95,12 +96,14 @@ fn detect_parent_file(file_path: &str, index: &AgentContextIndex) -> Option<Stri
 }
 
 /// Check if the suggested path already exists in the index.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn check_collision(suggested_path: &str, index: &AgentContextIndex) -> bool {
     debug_assert!(!suggested_path.is_empty(), "suggested_path must not be empty");
     index.file_index.contains_key(suggested_path)
 }
 
 /// Find a context word from function names (most common non-trivial word).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn find_context_word(entries: &[&FunctionEntry]) -> Option<String> {
     debug_assert!(!entries.is_empty(), "entries must not be empty");
     let mut word_counts: HashMap<String, usize> = HashMap::new();

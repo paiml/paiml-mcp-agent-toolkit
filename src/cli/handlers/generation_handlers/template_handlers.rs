@@ -10,6 +10,7 @@ use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 
 /// Handle template generation command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_generate(
     server: Arc<StatelessTemplateServer>,
     category: String,
@@ -38,6 +39,7 @@ pub async fn handle_generate(
 }
 
 /// Handle project scaffolding command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_scaffold(
     server: Arc<StatelessTemplateServer>,
     toolchain: String,
@@ -126,6 +128,7 @@ pub(super) fn get_default_scaffold_templates(toolchain: &str) -> Vec<String> {
 }
 
 /// Handle template validation command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_validate(
     server: Arc<StatelessTemplateServer>,
     uri: String,

@@ -28,6 +28,7 @@ pub struct ProjectScore {
 
 impl ProjectScore {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn aggregate(scores: Vec<TdgScore>) -> Self {
         debug_assert!(!scores.is_empty(), "scores must not be empty");
         let total_files = scores.len();
@@ -76,6 +77,7 @@ impl ProjectScore {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn average(&self) -> TdgScore {
         if self.files.is_empty() {
             // No files analyzed — return zero score, not perfect score
@@ -136,6 +138,7 @@ pub struct Comparison {
 
 impl Comparison {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(source1: TdgScore, source2: TdgScore) -> Self {
         let delta = source2.total - source1.total;
         let improvement_percentage = if source1.total > 0.0 {

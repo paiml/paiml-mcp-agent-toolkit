@@ -6,6 +6,7 @@ impl Default for CodeQualityScorer {
 
 impl Scorer for CodeQualityScorer {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         &self.name
     }
 

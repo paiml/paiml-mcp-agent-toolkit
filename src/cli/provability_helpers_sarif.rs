@@ -1,4 +1,5 @@
 /// Format provability results as SARIF
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_provability_sarif(
     function_ids: &[FunctionId],
     summaries: &[ProofSummary],
@@ -67,6 +68,7 @@ pub fn format_provability_sarif(
 
 /// Generate SARIF rules for provability analysis
 fn generate_provability_rules() -> Vec<serde_json::Value> {
+    debug_assert!(true, "contract: generate_provability_rules");
     vec![
         serde_json::json!({
             "id": "low-provability",

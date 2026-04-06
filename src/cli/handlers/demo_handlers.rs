@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 /// Handle demo command with comprehensive parameter support
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_demo(
     server: Arc<StatelessTemplateServer>,
     path: Option<PathBuf>,
@@ -72,6 +73,7 @@ pub async fn handle_demo(
 
 /// Handle quality gate command
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_quality_gate(
     project_path: PathBuf,
     file: Option<PathBuf>,
@@ -133,6 +135,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

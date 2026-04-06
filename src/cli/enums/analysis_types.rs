@@ -99,6 +99,7 @@ pub enum QualityCheckType {
 impl QualityCheckType {
     /// Returns the default checks to run
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn default_checks() -> Vec<Self> {
         vec![
             QualityCheckType::Complexity,
@@ -117,6 +118,7 @@ impl QualityCheckType {
 impl QualityCheckType {
     /// Get the string representation of the quality check type
     fn as_str(&self) -> &'static str {
+        debug_assert!(true, "contract: as_str");
         match self {
             QualityCheckType::DeadCode => "dead-code",
             QualityCheckType::Complexity => "complexity",

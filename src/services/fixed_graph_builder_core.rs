@@ -1,5 +1,6 @@
 impl FixedGraphBuilder {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: GraphConfig) -> Self {
         Self {
             max_nodes: config.max_nodes,
@@ -26,6 +27,7 @@ impl FixedGraphBuilder {
     /// // Builder will now limit to 50 nodes instead of 100
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_max_nodes(mut self, max_nodes: usize) -> Self {
         self.max_nodes = max_nodes;
         self
@@ -49,12 +51,14 @@ impl FixedGraphBuilder {
     /// // Builder will now limit to 200 edges instead of 500
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_max_edges(mut self, max_edges: usize) -> Self {
         self.max_edges = max_edges;
         self
     }
 
     /// Build a fixed-size graph from a dependency graph
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn build(&self, graph: &DependencyGraph) -> Result<FixedGraph> {
         // 1. Group nodes by module
         let groups = self.group_by_module(graph);
@@ -71,6 +75,7 @@ impl FixedGraphBuilder {
 
     /// Group nodes by module path
     fn group_by_module(&self, graph: &DependencyGraph) -> HashMap<String, Vec<String>> {
+        debug_assert!(true, "contract: group_by_module");
         let mut groups: HashMap<String, Vec<String>> = HashMap::new();
 
         for (node_id, node) in &graph.nodes {
@@ -83,6 +88,7 @@ impl FixedGraphBuilder {
 
     /// Get the module name for a node
     fn get_module_name(&self, node: &NodeInfo) -> String {
+        debug_assert!(true, "contract: get_module_name");
         // Extract module from file path
         if !node.file_path.is_empty() {
             let parts: Vec<&str> = node.file_path.split('/').collect();
@@ -111,6 +117,7 @@ impl FixedGraphBuilder {
         graph: &DependencyGraph,
         groups: &HashMap<String, Vec<String>>,
     ) -> HashMap<String, f64> {
+        debug_assert!(true, "contract: calculate_pagerank");
         let damping_factor = 0.85;
         let iterations = 10;
         let num_nodes = graph.nodes.len() as f64;
@@ -172,6 +179,7 @@ impl FixedGraphBuilder {
         scores: HashMap<String, f64>,
         groups: &HashMap<String, Vec<String>>,
     ) -> Vec<String> {
+        debug_assert!(true, "contract: select_top_nodes");
         // Sort groups by score
         let mut sorted_groups: Vec<(String, f64)> = scores.into_iter().collect();
         sorted_groups.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));

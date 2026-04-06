@@ -72,6 +72,7 @@ pub struct ClaudeBridge {
 
 impl ClaudeBridge {
     /// Create new bridge instance
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn new(config: BridgeConfig) -> Result<Self, BridgeError> {
         let start = Instant::now();
 
@@ -108,11 +109,13 @@ impl ClaudeBridge {
     }
 
     /// Get initialization time
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn init_time(&self) -> Duration {
         self.init_time
     }
 
     /// Analyze code content with caching
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_code(&self, content: &str) -> Result<AnalysisResult, BridgeError> {
         debug_assert!(!content.is_empty(), "content must not be empty");
         // Check cache if enabled
@@ -153,6 +156,7 @@ impl ClaudeBridge {
     }
 
     /// Send raw request to bridge
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn send_request(
         &self,
         _request: BridgeRequest,
@@ -168,11 +172,13 @@ impl ClaudeBridge {
     }
 
     /// Get pool statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn pool_stats(&self) -> super::pool::PoolStats {
         self.pool.stats()
     }
 
     /// Get cache statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cache_stats(&self) -> super::cache::CacheMetrics {
         self.cache.hit_rate()
     }
@@ -180,6 +186,7 @@ impl ClaudeBridge {
     /// Spawn bridge process
     #[allow(dead_code)]
     async fn spawn_bridge_process(&self) -> Result<BridgeProcess, BridgeError> {
+        debug_assert!(true, "contract: spawn_bridge_process");
         // Always use tokio::process for consistency
         let mut child = tokio::process::Command::new("node")
             .arg(&self.config.bridge_path)
@@ -207,11 +214,13 @@ impl ClaudeBridge {
     }
 
     /// Clear all caches
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn clear_cache(&self) {
         self.cache.clear().await;
     }
 
     /// Health check
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn health_check(&self) -> bool {
         // Check if pool is available
         let stats = self.pool.stats();

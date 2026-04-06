@@ -69,6 +69,7 @@ impl PmcpServer {
     /// # }
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             state_manager: Arc::new(Mutex::new(StateManager::new())),
@@ -96,6 +97,7 @@ impl PmcpServer {
     /// server.run().await.unwrap();
     /// # });
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
         info!("Starting PMAT MCP server using pmcp SDK");
 

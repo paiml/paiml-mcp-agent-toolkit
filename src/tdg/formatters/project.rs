@@ -22,6 +22,7 @@ use super::super::{Grade, ProjectScore};
 /// assert!(output.contains("Project Score"));
 /// ```ignore
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_project(project: &ProjectScore) -> String {
     let mut output = String::new();
 

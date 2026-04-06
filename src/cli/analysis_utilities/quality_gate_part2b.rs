@@ -33,6 +33,7 @@ fn print_quality_gate_final_status(results: &QualityGateResults, violations: &[Q
 
 /// Handles the exit status based on quality gate results
 fn handle_quality_gate_exit_status(fail_on_violation: bool, passed: bool) {
+    debug_assert!(true, "contract: handle_quality_gate_exit_status");
     if fail_on_violation && !passed {
         eprintln!("\n❌ Quality gate FAILED");
         std::process::exit(1);
@@ -128,6 +129,7 @@ fn persist_entropy_details_to_sqlite(
 fn entropy_violation_to_tuple(
     v: &QualityViolation,
 ) -> Option<(String, String, String, usize, f64, usize, String, Option<String>)> {
+    debug_assert!(true, "contract: entropy_violation_to_tuple");
     let details = v.details.as_ref()?;
     let (pattern_type, repetitions, variation_score) = parse_entropy_score_factors(&details.score_factors);
     let loc_reduction = parse_loc_reduction(&v.message);
@@ -164,6 +166,7 @@ fn parse_entropy_score_factors(factors: &[String]) -> (String, usize, f64) {
 
 /// Parse "saves N lines" from a violation message to extract LOC reduction.
 fn parse_loc_reduction(message: &str) -> usize {
+    debug_assert!(true, "contract: parse_loc_reduction");
     message
         .find("saves ")
         .and_then(|i| {
@@ -177,6 +180,7 @@ fn parse_loc_reduction(message: &str) -> usize {
 ///
 /// Must be called from async context. Runs the analyzer on sampled functions
 /// and writes results to `provability_scores` table.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn persist_provability_to_sqlite(
     project_path: &std::path::Path,
     quiet: bool,

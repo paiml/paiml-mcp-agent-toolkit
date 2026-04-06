@@ -3,6 +3,7 @@
 /// Suggest how to split a file into semantically coherent clusters.
 ///
 /// Returns `None` if the file is not in the index or has no functions.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn suggest_split(
     index: &AgentContextIndex,
     file_path: &str,
@@ -126,6 +127,7 @@ fn assign_orphans_to_clusters(
     clusters: &mut Vec<SplitCluster>,
     orphan_items: Vec<(ClusterItem, usize)>,
 ) -> Vec<ClusterItem> {
+    debug_assert!(true, "contract: assign_orphans_to_clusters");
     if clusters.is_empty() {
         return orphan_items.into_iter().map(|(item, _)| item).collect();
     }

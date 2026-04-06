@@ -15,14 +15,17 @@ impl Default for MaxBodyLengthRule {
 
 impl MakefileRule for MaxBodyLengthRule {
     fn id(&self) -> &'static str {
+        debug_assert!(true, "contract: id");
         "maxbodylength"
     }
 
     fn default_severity(&self) -> Severity {
+        debug_assert!(true, "contract: default_severity");
         Severity::Info
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
+        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
 
         for node in &ast.nodes {
@@ -71,10 +74,12 @@ impl Default for TimestampExpandedRule {
 
 impl MakefileRule for TimestampExpandedRule {
     fn id(&self) -> &'static str {
+        debug_assert!(true, "contract: id");
         "timestampexpanded"
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
+        debug_assert!(true, "contract: check");
         let mut violations = Vec::new();
 
         // Check for $(shell date) in immediate assignments

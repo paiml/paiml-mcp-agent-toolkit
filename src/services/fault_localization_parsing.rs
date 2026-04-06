@@ -4,12 +4,14 @@
 
 impl LcovParser {
     /// Parse LCOV format coverage file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn parse_file<P: AsRef<Path>>(path: P) -> Result<Vec<(StatementId, usize)>> {
         let content = std::fs::read_to_string(path.as_ref())
             .map_err(|e| anyhow!("Failed to read LCOV file: {}", e))?;
         Self::parse(&content)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(content: &str) -> Result<Vec<(StatementId, usize)>> {
         debug_assert!(!content.is_empty(), "content must not be empty");
         let mut results = Vec::new();
@@ -40,6 +42,7 @@ impl LcovParser {
     }
 
     /// Combine coverage from multiple test runs (passed and failed)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn combine_coverage(
         passed_coverage: &[(StatementId, usize)],
         failed_coverage: &[(StatementId, usize)],
@@ -70,6 +73,7 @@ impl LcovParser {
 
 impl FaultLocalizer {
     /// Check if cargo-llvm-cov is available
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_coverage_tool_available() -> bool {
         std::process::Command::new("cargo")
             .args(["llvm-cov", "--version"])
@@ -79,6 +83,7 @@ impl FaultLocalizer {
     }
 
     /// Run fault localization on coverage data
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn run_localization(
         passed_coverage: &[(StatementId, usize)],
         failed_coverage: &[(StatementId, usize)],
@@ -105,6 +110,7 @@ impl FaultLocalizer {
     }
 
     /// Generate report in specified format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_report(
         result: &FaultLocalizationResult,
         format: ReportFormat,
@@ -120,6 +126,7 @@ impl FaultLocalizer {
     }
 
     /// Format report for terminal output
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_terminal_report(result: &FaultLocalizationResult) -> String {
         let mut output = String::new();
 
@@ -206,6 +213,7 @@ impl FaultLocalizer {
 
     /// Enrich fault localization results with TDG scores
     #[allow(dead_code)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn enrich_with_tdg(
         result: &mut FaultLocalizationResult,
         tdg_scores: &HashMap<String, f32>,

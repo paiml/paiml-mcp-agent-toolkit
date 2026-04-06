@@ -108,6 +108,7 @@ fn check_claude_md_patterns(
 /// 1. RAG index exists at .pmat/context.idx or .pmat/context.db
 /// 2. Index is fresh (less than 24 hours old)
 /// 3. CLAUDE.md references pmat_query_code (optional)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb130_agent_context_adoption(project_path: &Path) -> AgentContextReport {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let index_path = project_path.join(".pmat/context.idx");

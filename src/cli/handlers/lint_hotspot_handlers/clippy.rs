@@ -19,6 +19,7 @@ include!("clippy_file_analysis.rs");
 /// # Errors
 ///
 /// Returns an error if the operation fails
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn run_clippy_analysis(
     project_path: &Path,
     clippy_flags: &str,
@@ -46,6 +47,7 @@ pub(crate) async fn run_clippy_analysis(
 /// # Errors
 ///
 /// Returns an error if the operation fails
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn run_clippy_analysis_single_file(
     project_path: &Path,
     file_path: &Path,

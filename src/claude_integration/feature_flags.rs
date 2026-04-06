@@ -45,6 +45,7 @@ impl Default for FeatureFlags {
 
 impl FeatureFlags {
     /// Create new feature flags with conservative defaults
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             enabled: AtomicBool::new(false), // Default: disabled
@@ -56,6 +57,7 @@ impl FeatureFlags {
     }
 
     /// Check if feature should be enabled for a given identifier
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn should_use_claude(&self, identifier: &str) -> bool {
         debug_assert!(!identifier.is_empty(), "identifier must not be empty");
         // Kill switch check
@@ -78,16 +80,19 @@ impl FeatureFlags {
     }
 
     /// Enable the feature (master switch)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn enable(&self) {
         self.enabled.store(true, Ordering::Release);
     }
 
     /// Disable the feature (kill switch)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn disable(&self) {
         self.enabled.store(false, Ordering::Release);
     }
 
     /// Set rollout strategy
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_strategy(&self, strategy: RolloutStrategy) {
         *self.strategy.write() = strategy;
 
@@ -107,22 +112,26 @@ impl FeatureFlags {
     }
 
     /// Add identifier to allowlist
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_to_allowlist(&self, identifier: impl Into<String>) {
         self.allowlist.write().insert(identifier.into());
     }
 
     /// Remove identifier from allowlist
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn remove_from_allowlist(&self, identifier: &str) {
         debug_assert!(!identifier.is_empty(), "identifier must not be empty");
         self.allowlist.write().remove(identifier);
     }
 
     /// Set maximum latency threshold
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_max_latency(&self, latency_ms: u32) {
         self.max_latency_ms.store(latency_ms, Ordering::Release);
     }
 
     /// Automatically rollback if latency exceeds threshold
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn auto_rollback_on_degradation(&self, current_latency_ms: u32) -> bool {
         let max = self.max_latency_ms.load(Ordering::Relaxed);
 
@@ -140,16 +149,19 @@ impl FeatureFlags {
     }
 
     /// Get current rollout percentage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_percentage(&self) -> u32 {
         self.rollout_percentage.load(Ordering::Relaxed)
     }
 
     /// Get current strategy
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_strategy(&self) -> RolloutStrategy {
         *self.strategy.read()
     }
 
     /// Check if enabled (master switch)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_enabled(&self) -> bool {
         self.enabled.load(Ordering::Relaxed)
     }
@@ -166,6 +178,7 @@ impl FeatureFlags {
     }
 
     /// Get allowlist size
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn allowlist_size(&self) -> usize {
         self.allowlist.read().len()
     }
@@ -191,6 +204,7 @@ impl Default for FeatureFlagsBuilder {
 }
 
 impl FeatureFlagsBuilder {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::default()
     }
@@ -200,21 +214,25 @@ impl FeatureFlagsBuilder {
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn strategy(mut self, strategy: RolloutStrategy) -> Self {
         self.strategy = strategy;
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_to_allowlist(mut self, identifier: impl Into<String>) -> Self {
         self.allowlist.insert(identifier.into());
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn max_latency(mut self, latency_ms: u32) -> Self {
         self.max_latency_ms = latency_ms;
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn build(self) -> FeatureFlags {
         let flags = FeatureFlags::new();
 

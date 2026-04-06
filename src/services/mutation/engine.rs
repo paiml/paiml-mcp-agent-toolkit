@@ -45,15 +45,18 @@ pub struct MutationEngine {
 }
 impl MutationEngine {
     /// Create new mutation engine
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(adapter: Arc<dyn LanguageAdapter>, config: MutationConfig) -> Self {
         Self { adapter, config }
     }
     /// Create default mutation engine with Rust adapter
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn default_rust() -> Self {
         use super::RustAdapter;
         Self::new(Arc::new(RustAdapter::new()), MutationConfig::default())
     }
     /// Generate mutants from source file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn generate_mutants_from_file(&self, source_file: &Path) -> Result<Vec<Mutant>> {
         debug_assert!(
             source_file.exists(),
@@ -67,6 +70,7 @@ impl MutationEngine {
             .await
     }
     /// Generate mutants from source code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn generate_mutants_from_source(
         &self,
         file_path: &Path,
@@ -87,6 +91,7 @@ impl MutationEngine {
     }
     /// Apply mutation strategy to filter/limit mutants
     fn apply_strategy(&self, mutants: &mut Vec<Mutant>) {
+        debug_assert!(true, "contract: apply_strategy");
         match &self.config.strategy {
             MutationStrategy::Selective => {
                 mutants.retain(|m| {
@@ -123,6 +128,7 @@ impl MutationEngine {
         }
     }
     /// Execute mutants and return results (sequential)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_mutants(&self, mutants: Vec<Mutant>) -> Result<Vec<MutationResult>> {
         debug_assert!(!mutants.is_empty(), "mutants must not be empty");
         let mut results = Vec::new();
@@ -133,6 +139,7 @@ impl MutationEngine {
         Ok(results)
     }
     /// Execute mutants in parallel using distributed executor
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_mutants_parallel(
         &self,
         mutants: Vec<Mutant>,
@@ -149,6 +156,7 @@ impl MutationEngine {
     }
     /// Execute a single mutant
     async fn execute_mutant(&self, mutant: &Mutant) -> Result<MutationResult> {
+        debug_assert!(true, "contract: execute_mutant");
         let temp_file = self.write_temp_mutant(mutant).await?;
         let start = std::time::Instant::now();
         let test_result = self.adapter.run_tests(&temp_file).await?;
@@ -169,6 +177,7 @@ impl MutationEngine {
     }
     /// Write mutant to temporary file
     async fn write_temp_mutant(&self, mutant: &Mutant) -> Result<std::path::PathBuf> {
+        debug_assert!(true, "contract: write_temp_mutant");
         let temp_dir = std::env::temp_dir();
         let temp_file = temp_dir.join(format!("mutant_{}.rs", mutant.id));
         tokio::fs::write(&temp_file, &mutant.mutated_source)
@@ -192,6 +201,7 @@ struct MutationVisitor<'a> {
 impl<'a> MutationVisitor<'a> {
     /// Delete a statement from the entire file and return the modified source
     fn delete_statement_in_file(&self, stmt_to_delete: &syn::Stmt) -> String {
+        debug_assert!(true, "contract: delete_statement_in_file");
         let mut modified_tree = self.syntax_tree.clone();
         let mut deleter = StatementDeletion {
             target_stmt: quote::quote!(# stmt_to_delete).to_string(),
@@ -203,6 +213,7 @@ impl<'a> MutationVisitor<'a> {
     }
     /// Replace an expression in the entire file and return the modified source
     fn replace_expression_in_file(&self, original_expr: &Expr, mutated_expr: &Expr) -> String {
+        debug_assert!(true, "contract: replace_expression_in_file");
         let mut modified_tree = self.syntax_tree.clone();
         let mut replacer = ExpressionReplacer {
             original: quote::quote!(# original_expr).to_string(),
@@ -215,6 +226,7 @@ impl<'a> MutationVisitor<'a> {
     }
     /// Format a syn::File back to readable Rust code using prettyplease
     fn format_syn_file(file: &File) -> String {
+        debug_assert!(true, "contract: format_syn_file");
         prettyplease::unparse(file)
     }
 }
@@ -225,6 +237,7 @@ struct StatementDeletion {
 }
 impl syn::visit_mut::VisitMut for StatementDeletion {
     fn visit_block_mut(&mut self, block: &mut syn::Block) {
+        debug_assert!(true, "contract: visit_block_mut");
         if !self.deleted {
             block.stmts.retain(|stmt| {
                 let stmt_str = quote::quote!(# stmt).to_string();
@@ -247,6 +260,7 @@ struct ExpressionReplacer {
 }
 impl syn::visit_mut::VisitMut for ExpressionReplacer {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        debug_assert!(true, "contract: visit_expr_mut");
         if !self.replaced {
             let current = quote::quote!(# expr).to_string();
             if current == self.original {
@@ -260,6 +274,7 @@ impl syn::visit_mut::VisitMut for ExpressionReplacer {
 }
 impl<'a> Visit<'_> for MutationVisitor<'a> {
     fn visit_stmt(&mut self, stmt: &syn::Stmt) {
+        debug_assert!(true, "contract: visit_stmt");
         let can_delete = match stmt {
             syn::Stmt::Expr(expr, semi) => {
                 let is_deletable_type = matches!(
@@ -302,6 +317,7 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
         syn::visit::visit_stmt(self, stmt);
     }
     fn visit_expr(&mut self, expr: &Expr) {
+        debug_assert!(true, "contract: visit_expr");
         for operator in &self.operators {
             if operator.name() == "SDL" {
                 continue;

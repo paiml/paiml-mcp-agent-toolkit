@@ -34,6 +34,7 @@ pub struct CapturedError {
 
 impl CapturedError {
     /// Create a new captured error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(command: &str, args: &[String], error_message: &str) -> Self {
         debug_assert!(!command.is_empty(), "command must not be empty");
         Self {
@@ -52,6 +53,7 @@ impl CapturedError {
     }
 
     /// Add backtrace to error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_backtrace(mut self, backtrace: &str) -> Self {
         debug_assert!(!backtrace.is_empty(), "backtrace must not be empty");
         self.backtrace = Some(backtrace.to_string());
@@ -59,12 +61,14 @@ impl CapturedError {
     }
 
     /// Add exit code to error
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_exit_code(mut self, code: i32) -> Self {
         self.exit_code = Some(code);
         self
     }
 
     /// Redact sensitive paths from error (privacy protection)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn redact_paths(&mut self) {
         // Redact home directory
         if let Ok(home) = std::env::var("HOME") {
@@ -85,6 +89,7 @@ impl CapturedError {
 }
 
 /// Get the path to the error capture file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn get_error_capture_path() -> Result<PathBuf> {
     let home = dirs::home_dir().context("Could not determine home directory")?;
     let pmat_dir = home.join(".pmat");
@@ -98,6 +103,7 @@ pub fn get_error_capture_path() -> Result<PathBuf> {
 }
 
 /// Save captured error to disk
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn save_error(error: &CapturedError) -> Result<()> {
     let path = get_error_capture_path()?;
     let json = serde_json::to_string_pretty(error).context("Failed to serialize error")?;
@@ -106,6 +112,7 @@ pub fn save_error(error: &CapturedError) -> Result<()> {
 }
 
 /// Load captured error from disk
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn load_error() -> Result<Option<CapturedError>> {
     let path = get_error_capture_path()?;
 
@@ -121,6 +128,7 @@ pub fn load_error() -> Result<Option<CapturedError>> {
 }
 
 /// Clear captured error from disk
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn clear_error() -> Result<()> {
     let path = get_error_capture_path()?;
 
@@ -132,6 +140,7 @@ pub fn clear_error() -> Result<()> {
 }
 
 /// Generate GitHub issue markdown from captured error
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_issue_markdown(error: &CapturedError, title: Option<&str>) -> String {
     let default_title = format!(
         "Bug: {} fails with error",

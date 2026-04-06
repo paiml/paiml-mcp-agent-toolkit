@@ -81,6 +81,7 @@ pub struct ProjectContextGraph {
 impl ProjectContextGraph {
     /// Create new project context graph
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             cache: HashMap::new(),
@@ -109,6 +110,7 @@ impl ProjectContextGraph {
     /// # Errors
     ///
     /// Returns error if item already exists (duplicate symbol name)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_item(&mut self, name: String, item: AstItem) -> Result<()> {
         // Check for duplicates
         if self.node_map.contains_key(&name) {
@@ -146,6 +148,7 @@ impl ProjectContextGraph {
     /// # Errors
     ///
     /// Returns error if CSR graph operation fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_edge(&mut self, from: &str, to: &str) -> Result<()> {
         debug_assert!(!from.is_empty(), "from must not be empty");
         debug_assert!(!to.is_empty(), "to must not be empty");
@@ -169,6 +172,7 @@ impl ProjectContextGraph {
     ///
     /// Some(&AstItem) if found, None otherwise
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_item(&self, name: &str) -> Option<&AstItem> {
         debug_assert!(!name.is_empty(), "name must not be empty");
         self.cache.get(name)
@@ -182,6 +186,7 @@ impl ProjectContextGraph {
     /// # Errors
     ///
     /// Returns error if PageRank computation fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update_hotness(&mut self) -> Result<()> {
         if self.graph.num_nodes() == 0 {
             return Ok(());
@@ -210,6 +215,7 @@ impl ProjectContextGraph {
     ///
     /// Vec<(symbol_name, pagerank_score)> sorted by score (highest first)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn hot_symbols(&self) -> Vec<(String, f32)> {
         let mut symbols: Vec<_> = self
             .hotness_cache
@@ -225,12 +231,14 @@ impl ProjectContextGraph {
     /// Returns the count of nodes we've added to the graph (tracked via node_map),
     /// not the CSR graph's node count (which only tracks nodes with edges).
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn num_nodes(&self) -> usize {
         self.node_map.len()
     }
 
     /// Get number of edges in graph
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn num_edges(&self) -> usize {
         self.graph.num_edges()
     }

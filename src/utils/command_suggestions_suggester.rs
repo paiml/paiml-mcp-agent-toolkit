@@ -23,6 +23,7 @@ fn find_closest(candidate: &str, commands: &[String], max_distance: usize) -> Op
 
 impl CommandSuggester {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let main_commands = vec![
             "analyze".to_string(),
@@ -65,6 +66,7 @@ impl CommandSuggester {
 
     /// Get command suggestions for a failed command
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn suggest_command(&self, failed_args: &[String]) -> Option<String> {
         debug_assert!(!failed_args.is_empty(), "failed_args must not be empty");
         if failed_args.is_empty() {
@@ -115,6 +117,7 @@ impl CommandSuggester {
 
     /// Get help text with working examples
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_help_examples() -> String {
         let examples = vec![
             "# Analyze code complexity",

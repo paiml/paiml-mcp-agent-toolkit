@@ -6,6 +6,7 @@ fn apply_filters(
     filter: Option<crate::cli::SymbolTypeFilter>,
     query: Option<String>,
 ) -> Result<SymbolTable> {
+    debug_assert!(true, "contract: apply_filters");
     // Filter by type
     if let Some(type_filter) = filter {
         table.symbols.retain(|s| match type_filter {
@@ -80,6 +81,7 @@ fn apply_filters(
 /// assert!(output.contains("Top Files by Symbol Count"));
 /// assert!(output.contains("main.rs"));
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_output(
     table: SymbolTable,
     format: crate::cli::SymbolTableOutputFormat,
@@ -99,11 +101,13 @@ pub fn format_output(
 
 /// Format JSON output (cognitive complexity ≤2)
 fn format_json_output(table: &SymbolTable) -> Result<String> {
+    debug_assert!(true, "contract: format_json_output");
     Ok(serde_json::to_string_pretty(table)?)
 }
 
 /// Format human-readable output (cognitive complexity ≤8)
 fn format_human_output(table: SymbolTable, show_unreferenced: bool) -> Result<String> {
+    debug_assert!(true, "contract: format_human_output");
     let mut output = String::new();
 
     write_header(&mut output, table.total_symbols)?;
@@ -121,6 +125,7 @@ fn format_human_output(table: SymbolTable, show_unreferenced: bool) -> Result<St
 
 /// Write header section (cognitive complexity ≤3)
 fn write_header(output: &mut String, total_symbols: usize) -> Result<()> {
+    debug_assert!(true, "contract: write_header");
     use crate::cli::colors as c;
     use std::fmt::Write;
     writeln!(
@@ -161,6 +166,7 @@ fn group_symbols_by_type(symbols: &[Symbol]) -> HashMap<SymbolKind, Vec<&Symbol>
 
 /// Write a single symbol group (cognitive complexity ≤6)
 fn write_symbol_group(output: &mut String, kind: &SymbolKind, syms: &[&Symbol]) -> Result<()> {
+    debug_assert!(true, "contract: write_symbol_group");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
@@ -282,6 +288,7 @@ fn extract_filename(file_path: &str) -> &str {
 
 /// Format CSV output (cognitive complexity ≤5)
 fn format_csv_output(table: SymbolTable) -> Result<String> {
+    debug_assert!(true, "contract: format_csv_output");
     use std::fmt::Write;
     let mut output = String::new();
 

@@ -129,6 +129,7 @@ impl Default for PerformanceStatistics {
 impl PerformanceStatistics {
     /// Format statistics for diagnostic display
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_diagnostic(&self) -> String {
         let trend_indicator = match self.performance_trend {
             PerformanceTrend::Improving => "📈 IMPROVING",

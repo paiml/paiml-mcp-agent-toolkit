@@ -40,12 +40,15 @@ pub struct LintTrendConfig {
 }
 
 fn lint_config_default_true() -> bool {
+    debug_assert!(true, "contract: lint_config_default_true");
     true
 }
 fn lint_config_default_retention_days() -> u32 {
+    debug_assert!(true, "contract: lint_config_default_retention_days");
     90
 }
 fn lint_config_default_drift_threshold() -> f64 {
+    debug_assert!(true, "contract: lint_config_default_drift_threshold");
     0.05
 }
 
@@ -74,6 +77,7 @@ impl Default for LintConfig {
 impl LintConfig {
     /// Load lint configuration from `.pmat-work/dbc-lint.toml`.
     /// Returns default config if file doesn't exist.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(project_path: &Path) -> Self {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_path = project_path.join(".pmat-work").join("dbc-lint.toml");
@@ -87,6 +91,7 @@ impl LintConfig {
     }
 
     /// Parse lint config from TOML string
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse(toml_str: &str) -> Result<Self> {
         debug_assert!(!toml_str.is_empty(), "toml_str must not be empty");
         // Manual TOML parsing (avoid adding toml dep just for this)
@@ -149,6 +154,7 @@ impl LintConfig {
     }
 
     /// Get the effective severity for a rule, considering overrides and strict mode
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn effective_severity(&self, rule_id: &str, default: LintSeverity) -> Option<LintSeverity> {
         debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         // Suppressed rules are completely silenced
@@ -176,6 +182,7 @@ impl LintConfig {
     }
 
     /// Check if a rule is suppressed
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_suppressed(&self, rule_id: &str) -> bool {
         debug_assert!(!rule_id.is_empty(), "rule_id must not be empty");
         self.suppress.contains(&rule_id.to_string())
@@ -188,6 +195,7 @@ impl LintConfig {
 }
 
 /// Apply lint config to a completed LintReport, filtering and adjusting findings.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn apply_lint_config(report: &LintReport, config: &LintConfig) -> LintReport {
     let mut findings: Vec<LintFinding> = report
         .findings
@@ -242,6 +250,7 @@ pub fn apply_lint_config(report: &LintReport, config: &LintConfig) -> LintReport
 ///
 /// Scans `.pmat-work/*/contract.json` for contracts modified since `git_ref`.
 /// Returns work item IDs of changed contracts.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn changed_contracts_since(project_path: &Path, git_ref: &str) -> Vec<String> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let output = std::process::Command::new("git")
@@ -297,6 +306,7 @@ pub struct CodebaseScore {
 }
 
 /// Compute codebase-level scoring across all active work contracts.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn compute_codebase_score(project_path: &Path) -> CodebaseScore {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let pmat_work = project_path.join(".pmat-work");

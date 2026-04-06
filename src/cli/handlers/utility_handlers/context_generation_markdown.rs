@@ -91,6 +91,7 @@ fn add_simple_file_section(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) {
+    debug_assert!(true, "contract: add_simple_file_section");
     // File header
     builder.content.push_str(&format!("### {}\n\n", file.path));
 
@@ -132,6 +133,7 @@ fn format_ast_item_line(
     file: &crate::services::context::FileContext,
     analyses: &crate::services::deep_context::AnalysisResults,
 ) -> String {
+    debug_assert!(true, "contract: format_ast_item_line");
     match item {
         crate::services::context::AstItem::Function { name, .. } => {
             let annotations = get_simple_function_annotations(name, file, analyses);

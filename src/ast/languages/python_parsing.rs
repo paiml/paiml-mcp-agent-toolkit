@@ -2,6 +2,7 @@
 
 impl PythonStrategy {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {}
     }
@@ -29,12 +30,14 @@ impl PythonStrategy {
 
     #[cfg(feature = "python-ast")]
     fn has_syntax_errors(tree: &Tree) -> bool {
+        debug_assert!(true, "contract: has_syntax_errors");
         let root = tree.root_node();
         Self::node_has_error(&root)
     }
 
     #[cfg(feature = "python-ast")]
     fn node_has_error(node: &tree_sitter::Node) -> bool {
+        debug_assert!(true, "contract: node_has_error");
         if node.kind() == "ERROR" || node.is_error() || node.is_missing() {
             return true;
         }

@@ -24,6 +24,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 /// Handle special modes (list violations, validate only)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_special_modes(
     list_violations: bool,
     validate_only: bool,
@@ -53,6 +54,7 @@ pub async fn handle_special_modes(
 }
 
 /// Run the main enforcement loop - DEEPLY REFACTORED (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_main_enforcement_loop(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -80,6 +82,7 @@ pub async fn run_main_enforcement_loop(
 }
 
 /// Check if enforcement should continue
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn should_continue_enforcement(
     current_state: EnforcementState,
     iteration: u32,
@@ -101,6 +104,7 @@ pub fn should_continue_enforcement(
 }
 
 /// Execute a single enforcement iteration
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn execute_enforcement_iteration(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -127,6 +131,7 @@ pub async fn execute_enforcement_iteration(
 }
 
 /// Check if should stop for target improvement
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn should_stop_for_target_improvement(
     target_improvement: Option<f32>,
     result_score: f64,
@@ -141,6 +146,7 @@ pub fn should_stop_for_target_improvement(
 
 /// Check improvement targets - extracted from `run_main_enforcement_loop` (complexity: ≤10)
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn check_improvement_targets(
     config: &EnforcementConfig,
     result_score: f64,
@@ -155,6 +161,7 @@ pub fn check_improvement_targets(
 }
 
 /// Finalize enforcement run - extracted from `run_main_enforcement_loop` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn finalize_enforcement_run(
     current_score: f64,
     iteration: u32,
@@ -167,6 +174,7 @@ pub fn finalize_enforcement_run(
 }
 
 /// Handle single enforcement iteration - extracted from `run_main_enforcement_loop` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_enforcement_iteration(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -198,6 +206,7 @@ pub async fn handle_enforcement_iteration(
 }
 
 /// Execute main enforcement loop - extracted from `run_main_enforcement_loop` (complexity: ≤10)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn execute_main_loop(
     project_path: &PathBuf,
     profile: &QualityProfile,
@@ -243,6 +252,7 @@ pub async fn execute_main_loop(
 
 /// Run a single enforcement step - REFACTORED (complexity: ≤10)
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_enforcement_step(
     project_path: &PathBuf,
     profile: &QualityProfile,

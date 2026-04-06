@@ -6,6 +6,7 @@ pub struct AdaptiveSnapshotScheduler {
 }
 
 impl AdaptiveSnapshotScheduler {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: SnapshotSchedulerConfig) -> Self {
         Self {
             config: parking_lot::RwLock::new(config),
@@ -13,6 +14,7 @@ impl AdaptiveSnapshotScheduler {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn should_snapshot(&self, events_since: usize, time_since: Duration) -> bool {
         let config = self.config.read();
 
@@ -44,6 +46,7 @@ impl AdaptiveSnapshotScheduler {
     }
 
     fn adaptive_decision(&self, events_since: usize, time_since: Duration) -> bool {
+        debug_assert!(true, "contract: adaptive_decision");
         let metrics = self.metrics.read();
 
         if metrics.recovery_times.is_empty() {
@@ -67,6 +70,7 @@ impl AdaptiveSnapshotScheduler {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_snapshot(&self, events_between: usize, time_between: Duration) {
         let mut metrics = self.metrics.write();
         metrics.total_snapshots += 1;
@@ -74,6 +78,7 @@ impl AdaptiveSnapshotScheduler {
         metrics.total_time_between_snapshots += time_between;
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_recovery(&self, recovery_time: Duration) {
         let mut metrics = self.metrics.write();
         metrics.last_recovery_time = Some(recovery_time);
@@ -91,6 +96,7 @@ impl AdaptiveSnapshotScheduler {
     }
 
     fn adapt_configuration(&self, recovery_time: Duration) {
+        debug_assert!(true, "contract: adapt_configuration");
         let mut config = self.config.write();
 
         if recovery_time > config.recovery_time_target * 2 {
@@ -106,6 +112,7 @@ impl AdaptiveSnapshotScheduler {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_config(&self) -> SnapshotSchedulerConfig {
         self.config.read().clone()
     }

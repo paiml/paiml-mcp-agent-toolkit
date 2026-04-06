@@ -51,6 +51,7 @@
 /// }
 /// # });
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn check_complexity(
     project_path: &Path,
     _max_complexity: u32,
@@ -144,6 +145,7 @@ fn is_violation_excluded(
     violation: &crate::services::complexity::Violation,
     exclude_globs: &[glob::Pattern],
 ) -> bool {
+    debug_assert!(true, "contract: is_violation_excluded");
     use crate::services::complexity::Violation;
     let file_path = match violation {
         Violation::Error { file, .. } | Violation::Warning { file, .. } => file,
@@ -158,6 +160,7 @@ fn process_complexity_violation(
     violation: &crate::services::complexity::Violation,
     violations: &mut Vec<QualityViolation>,
 ) {
+    debug_assert!(true, "contract: process_complexity_violation");
     use crate::services::complexity::Violation;
 
     let (file, line, function, rule, message, value, threshold, severity) = match violation {

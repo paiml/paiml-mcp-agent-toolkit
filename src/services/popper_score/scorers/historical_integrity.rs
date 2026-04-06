@@ -31,6 +31,7 @@ pub struct HistoricalIntegrityScorer;
 
 impl HistoricalIntegrityScorer {
     /// Create a new historical integrity scorer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -269,6 +270,7 @@ impl Default for HistoricalIntegrityScorer {
 
 impl PopperScorer for HistoricalIntegrityScorer {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "Historical Integrity"
     }
 

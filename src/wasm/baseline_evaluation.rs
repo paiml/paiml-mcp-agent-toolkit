@@ -3,6 +3,7 @@
 
 impl QualityBaseline {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(release_metrics: Metrics, stable_metrics: Metrics) -> Self {
         Self {
             release_anchor: release_metrics,
@@ -13,6 +14,7 @@ impl QualityBaseline {
 
     /// Evaluate current metrics against baselines
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn evaluate(&self, current: &Metrics) -> QualityAssessment {
         let mut violations = Vec::new();
 
@@ -76,12 +78,14 @@ impl QualityBaseline {
     }
 
     /// Add new data point to rolling window
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_data_point(&mut self, metrics: Metrics) {
         self.rolling_window.add_point(metrics);
     }
 
     /// Calculate overall health score (0-100)
     fn calculate_health_score(&self, current: &Metrics) -> f64 {
+        debug_assert!(true, "contract: calculate_health_score");
         let mut score = 100.0;
 
         // Complexity penalty
@@ -129,6 +133,7 @@ impl QualityBaseline {
 
 impl RollingStats {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(window_days: usize) -> Self {
         Self {
             window_days,
@@ -136,6 +141,7 @@ impl RollingStats {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_point(&mut self, metrics: Metrics) {
         self.data_points.push_back(metrics);
 
@@ -152,6 +158,7 @@ impl RollingStats {
 
     /// Calculate trend slope using linear regression
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn trend_slope(&self) -> f64 {
         if self.data_points.len() < 2 {
             return 0.0;

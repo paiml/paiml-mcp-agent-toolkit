@@ -5,6 +5,7 @@ pub struct DeepContextOrchestratorFactory;
 
 impl DeepContextOrchestratorFactory {
     /// Create orchestrator with default configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn create() -> Result<DeepContextOrchestrator> {
         let ast_engine = Arc::new(UnifiedAstEngine::new());
         let intelligence = Arc::new(CodeIntelligence::new());
@@ -16,6 +17,7 @@ impl DeepContextOrchestratorFactory {
     }
 
     /// Create minimal orchestrator for testing
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create_minimal() -> Result<DeepContextOrchestrator> {
         let ast_engine = Arc::new(UnifiedAstEngine::new());
         let intelligence = Arc::new(CodeIntelligence::new());

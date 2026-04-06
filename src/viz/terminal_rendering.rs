@@ -3,6 +3,7 @@
 
 impl Visualizable for VisGraph {
     fn render_terminal(&self, config: &RenderConfig) -> Result<String> {
+        debug_assert!(true, "contract: render_terminal");
         if self.nodes.is_empty() {
             return Ok("(empty graph)\n".to_string());
         }
@@ -75,6 +76,7 @@ impl Visualizable for VisGraph {
     }
 
     fn node_count(&self) -> usize {
+        debug_assert!(true, "contract: node_count");
         self.nodes.len()
     }
 }

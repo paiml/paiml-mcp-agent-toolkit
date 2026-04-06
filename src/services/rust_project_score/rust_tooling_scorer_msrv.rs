@@ -36,6 +36,7 @@ fn ci_tests_msrv(project_path: &Path, msrv: &str) -> bool {
 
 /// Extract a named profile section from Cargo.toml content
 fn extract_profile_section<'a>(content: &'a str, header: &str) -> Option<&'a str> {
+    debug_assert!(true, "contract: extract_profile_section");
     let start = content.find(header)?;
     let section = &content[start..];
     let end = section[1..]

@@ -17,6 +17,7 @@ pub enum ChangeType {
 }
 
 impl ChangeType {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn as_str(&self) -> &'static str {
         match self {
             ChangeType::Added => "A",
@@ -54,6 +55,7 @@ pub struct CommitInfo {
 
 impl CommitInfo {
     /// Full commit message (subject + body)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn full_message(&self) -> String {
         match &self.message_body {
             Some(body) if !body.is_empty() => format!("{}\n\n{}", self.message_subject, body),
@@ -63,6 +65,7 @@ impl CommitInfo {
 
     /// Check if this is a meaningful commit for indexing
     /// Skips: merge commits with no custom message, very short messages
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_indexable(&self) -> bool {
         // Skip merge commits with generic messages
         if self.is_merge && self.message_subject.starts_with("Merge ") {

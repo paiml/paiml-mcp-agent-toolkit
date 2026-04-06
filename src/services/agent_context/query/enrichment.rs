@@ -24,6 +24,7 @@ use std::path::Path;
 /// let churn_map: HashMap<String, (u32, f32)> = HashMap::new();
 /// enrich_with_churn(&mut results, &churn_map);
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn enrich_with_churn(results: &mut [QueryResult], file_churn: &HashMap<String, (u32, f32)>) {
     for result in results.iter_mut() {
         if let Some((commit_count, churn_score)) = file_churn.get(&result.file_path) {
@@ -37,6 +38,7 @@ pub fn enrich_with_churn(results: &mut [QueryResult], file_churn: &HashMap<Strin
 ///
 /// Converts a slice of file churn metrics into a HashMap keyed by relative path
 /// for O(1) lookup during result enrichment.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn build_churn_map(metrics: &[FileChurnMetrics]) -> HashMap<String, (u32, f32)> {
     debug_assert!(!metrics.is_empty(), "metrics must not be empty");
     metrics
@@ -60,6 +62,7 @@ pub fn build_churn_map(metrics: &[FileChurnMetrics]) -> HashMap<String, (u32, f3
 /// * `project_root` - Project root path for git operations
 /// * `period_days` - Number of days to look back in git history
 #[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires git + IncrementalChurnAnalyzer
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn enrich_results_with_churn(
     results: &mut [QueryResult],
     project_root: &Path,
@@ -156,6 +159,7 @@ fn collect_file_contents(results: &[QueryResult], project_root: &Path) -> HashMa
 /// Detects code clones using MinHash + LSH for O(1) similarity matching.
 /// Results are enriched with clone_count and duplication_score.
 #[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires filesystem + DuplicateDetectionEngine
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn enrich_results_with_duplicates(
     results: &mut [QueryResult],
     project_root: &Path,
@@ -227,6 +231,7 @@ pub async fn enrich_results_with_duplicates(
 /// * `results` - Query results to enrich
 /// * `project_root` - Project root path for analysis
 #[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires EntropyAnalyzer + filesystem
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn enrich_results_with_entropy(
     results: &mut [QueryResult],
     project_root: &Path,
@@ -365,6 +370,7 @@ fn faults_in_range(faults: &[String], start_line: usize, end_line: usize) -> Vec
 /// Runs batuta bug-hunter falsify to detect mutation targets and boundary conditions.
 /// Results are enriched with fault_annotations containing any detected issues.
 #[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires pmat subprocess
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn enrich_results_with_faults(
     results: &mut [QueryResult],
     project_root: &Path,

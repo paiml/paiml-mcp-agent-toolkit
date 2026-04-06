@@ -31,6 +31,7 @@ use std::path::Path;
 /// * `verbose` - Include detailed breakdown in output
 /// * `failures_only` - Show only failing checks (recommendations)
 /// * `output` - Optional file path to write results to (stdout if None)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_popper_score(
     path: &Path,
     format: &RepoScoreOutputFormat,

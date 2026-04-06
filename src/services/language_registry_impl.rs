@@ -6,18 +6,21 @@ impl Language {
 
     /// Get file extensions associated with this language (Toyota Way: ≤3 complexity)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extensions(&self) -> &'static [&'static str] {
         LANGUAGE_INFO[(*self).to_index()].extensions
     }
 
     /// Get human-readable name for this language (Toyota Way: ≤3 complexity)  
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn name(&self) -> &'static str {
         LANGUAGE_INFO[(*self).to_index()].name
     }
 
     /// Detect language from file extension
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_extension(ext: &str) -> Self {
         debug_assert!(!ext.is_empty(), "ext must not be empty");
         let ext = ext.to_lowercase();
@@ -92,6 +95,7 @@ impl Language {
 
     /// Detect language from file path
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn from_path(path: &Path) -> Self {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Handle special cases by filename
@@ -122,6 +126,7 @@ impl Language {
 
     /// Check if language has full AST parsing support
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_ast_support(&self) -> bool {
         match self {
             // Languages with full AST support (existing implementations)
@@ -160,6 +165,7 @@ impl Language {
 
     /// Check if language supports complexity analysis
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn supports_complexity(&self) -> bool {
         match self {
             // Programming languages that have control flow

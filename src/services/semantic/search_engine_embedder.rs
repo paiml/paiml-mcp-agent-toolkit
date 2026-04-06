@@ -3,6 +3,7 @@
 
 impl LocalEmbedder {
     /// Create a new local embedder with fixed dimension
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             dimension: 256,
@@ -12,6 +13,7 @@ impl LocalEmbedder {
     }
 
     /// Create embedder with custom dimension
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_dimension(dimension: usize) -> Self {
         Self {
             dimension,
@@ -21,6 +23,7 @@ impl LocalEmbedder {
     }
 
     /// Fit the embedder on a corpus of documents (builds IDF statistics)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn fit(&self, documents: &[String]) -> Result<(), String> {
         debug_assert!(!documents.is_empty(), "documents must not be empty");
         let mut df = self
@@ -47,6 +50,7 @@ impl LocalEmbedder {
     }
 
     /// Generate embedding for a single text using feature hashing + TF-IDF weighting
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn embed(&self, text: &str) -> Result<Vec<f32>, String> {
         debug_assert!(!text.is_empty(), "text must not be empty");
         let tokens = self.tokenize(text);
@@ -113,6 +117,7 @@ impl LocalEmbedder {
     }
 
     /// Get embedding dimension
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn dimension(&self) -> usize {
         self.dimension
     }

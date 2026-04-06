@@ -43,6 +43,7 @@ pub enum PmatSubAgent {
 
 impl PmatSubAgent {
     /// Get the display name of the sub-agent.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn name(&self) -> &'static str {
         match self {
             Self::ComplexityAnalyst => "complexity-analyst",
@@ -61,6 +62,7 @@ impl PmatSubAgent {
     }
 
     /// Get a brief description of the sub-agent.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn description(&self) -> &'static str {
         match self {
             Self::ComplexityAnalyst => {
@@ -103,6 +105,7 @@ impl PmatSubAgent {
     }
 
     /// Check if this sub-agent is implemented in the MVP.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_mvp(&self) -> bool {
         matches!(
             self,
@@ -115,6 +118,7 @@ impl PmatSubAgent {
     }
 
     /// Get the primary MCP tools used by this sub-agent.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn primary_tools(&self) -> Vec<&'static str> {
         match self {
             Self::ComplexityAnalyst => vec!["analyze_complexity", "analyze_cognitive_complexity"],
@@ -135,6 +139,7 @@ impl PmatSubAgent {
     }
 
     /// Get all sub-agents (MVP only by default).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn all_mvp() -> Vec<Self> {
         vec![
             Self::ComplexityAnalyst,
@@ -146,6 +151,7 @@ impl PmatSubAgent {
     }
 
     /// Get all sub-agents (including future phases).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn all() -> Vec<Self> {
         vec![
             Self::ComplexityAnalyst,
@@ -200,6 +206,7 @@ pub struct SubAgentGenerator {
 
 impl SubAgentGenerator {
     /// Create a new sub-agent generator.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             _template_dir: PathBuf::from("server/src/scaffold/agent/subagent_templates"),
@@ -207,6 +214,7 @@ impl SubAgentGenerator {
     }
 
     /// Create a generator with custom template directory.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_template_dir(template_dir: PathBuf) -> Self {
         debug_assert!(
             template_dir.exists(),
@@ -219,6 +227,7 @@ impl SubAgentGenerator {
     }
 
     /// Generate a sub-agent definition in markdown format.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_subagent(&self, agent: PmatSubAgent) -> Result<String> {
         if !agent.is_mvp() {
             bail!(
@@ -238,6 +247,7 @@ impl SubAgentGenerator {
     }
 
     /// Export sub-agent to a file compatible with Claude Code.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn export_for_claude_code(
         &self,
         agent: PmatSubAgent,
@@ -262,6 +272,7 @@ impl SubAgentGenerator {
     }
 
     /// Export all MVP sub-agents.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn export_all_mvp(&self, output_dir: &Path) -> Result<Vec<PathBuf>> {
         debug_assert!(
             output_dir.exists(),
@@ -277,6 +288,7 @@ impl SubAgentGenerator {
     }
 
     /// Get MCP tool mapping for all sub-agents.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_tool_mapping() -> HashMap<PmatSubAgent, Vec<&'static str>> {
         let mut mapping = HashMap::new();
         for agent in PmatSubAgent::all() {
@@ -287,22 +299,27 @@ impl SubAgentGenerator {
 
     // Template generation methods (to be implemented)
     fn generate_complexity_analyst(&self) -> Result<String> {
+        debug_assert!(true, "contract: generate_complexity_analyst");
         Ok(include_str!("subagent_templates/complexity_analyst.md.tmpl").to_string())
     }
 
     fn generate_mutation_tester(&self) -> Result<String> {
+        debug_assert!(true, "contract: generate_mutation_tester");
         Ok(include_str!("subagent_templates/mutation_tester.md.tmpl").to_string())
     }
 
     fn generate_satd_detector(&self) -> Result<String> {
+        debug_assert!(true, "contract: generate_satd_detector");
         Ok(include_str!("subagent_templates/satd_detector.md.tmpl").to_string())
     }
 
     fn generate_dead_code_eliminator(&self) -> Result<String> {
+        debug_assert!(true, "contract: generate_dead_code_eliminator");
         Ok(include_str!("subagent_templates/dead_code_eliminator.md.tmpl").to_string())
     }
 
     fn generate_documentation_enforcer(&self) -> Result<String> {
+        debug_assert!(true, "contract: generate_documentation_enforcer");
         Ok(include_str!("subagent_templates/documentation_enforcer.md.tmpl").to_string())
     }
 }

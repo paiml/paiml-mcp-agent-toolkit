@@ -81,6 +81,7 @@ pub struct PdmtGitHubService {
 
 impl PdmtGitHubService {
     /// Create a new PDMT GitHub service with default configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             config: PdmtConfig::default(),
@@ -88,11 +89,13 @@ impl PdmtGitHubService {
     }
 
     /// Create a new PDMT GitHub service with custom configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: PdmtConfig) -> Self {
         Self { config }
     }
 
     /// Generate a PDMT-compliant issue template
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_issue_template(
         &self,
         request: &PdmtIssueRequest,
@@ -123,6 +126,7 @@ impl PdmtGitHubService {
     }
 
     /// Convert PDMT template to GitHub issue request
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_github_request(&self, template: &PdmtIssueTemplate) -> IssueRequest {
         IssueRequest {
             title: template.title.clone(),
@@ -133,6 +137,7 @@ impl PdmtGitHubService {
     }
 
     /// Extract PDMT metadata from GitHub issue
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_metadata(&self, issue: &GitHubIssue) -> Option<PdmtMetadata> {
         let body = issue.body.as_ref()?;
 

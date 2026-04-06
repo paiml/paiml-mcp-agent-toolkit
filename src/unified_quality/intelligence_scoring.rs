@@ -7,6 +7,7 @@ impl Default for FeedbackCollector {
 impl FeedbackCollector {
     /// Create a new feedback collector
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             accepted: Vec::new(),
@@ -16,6 +17,7 @@ impl FeedbackCollector {
     }
 
     /// Record feedback
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record(&mut self, pattern_id: &str, accepted: bool, outcome: Option<String>) {
         debug_assert!(!pattern_id.is_empty(), "pattern_id must not be empty");
         use std::time::SystemTime;
@@ -60,6 +62,7 @@ impl Default for ConfidenceScorer {
 impl ConfidenceScorer {
     /// Create a new confidence scorer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             weights: ScoringWeights::default(),
@@ -68,6 +71,7 @@ impl ConfidenceScorer {
 
     /// Score a pattern for a violation
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn score(&self, pattern: &Pattern, _violation: &Violation) -> f64 {
         let mut score = 0.0;
 

@@ -9,6 +9,7 @@ impl PathValidator {
     /// let existing_path = Path::new("Cargo.toml");
     /// assert!(PathValidator::ensure_exists(existing_path).is_ok());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn ensure_exists(path: &Path) -> Result<(), PathValidationError> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !path.exists() {
@@ -33,6 +34,7 @@ impl PathValidator {
     /// assert!(PathValidator::path_exists(existing_path));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn path_exists(path: &Path) -> bool {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.exists()
@@ -48,6 +50,7 @@ impl PathValidator {
     /// let file_path = Path::new("Cargo.toml");
     /// assert!(PathValidator::ensure_file(file_path).is_ok());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn ensure_file(path: &Path) -> Result<(), PathValidationError> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::ensure_exists(path)?;
@@ -74,6 +77,7 @@ impl PathValidator {
     /// assert!(PathValidator::is_valid_file(file_path));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn is_valid_file(path: &Path) -> bool {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.exists() && path.is_file()
@@ -89,6 +93,7 @@ impl PathValidator {
     /// let dir_path = Path::new("src");
     /// assert!(PathValidator::ensure_directory(dir_path).is_ok());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn ensure_directory(path: &Path) -> Result<(), PathValidationError> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::ensure_exists(path)?;
@@ -115,12 +120,14 @@ impl PathValidator {
     /// assert!(PathValidator::is_valid_directory(dir_path));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn is_valid_directory(path: &Path) -> bool {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.exists() && path.is_dir()
     }
 
     /// Validate that a path exists and is readable
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn ensure_readable(path: &Path) -> Result<(), PathValidationError> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::ensure_exists(path)?;
@@ -137,6 +144,7 @@ impl PathValidator {
     /// Get parent directory, validating it exists
     ///
     /// Returns the parent directory if the path is a file, or the path itself if it's a directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn get_valid_parent(path: &Path) -> Result<&Path, PathValidationError> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::ensure_exists(path)?;
@@ -156,6 +164,7 @@ impl PathValidator {
 
     /// Check if path is a valid source file (with common extensions)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn is_source_file(path: &Path) -> bool {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !path.is_file() {
@@ -173,6 +182,7 @@ impl PathValidator {
     }
 
     /// Validate path exists and return appropriate error for anyhow
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn validate_exists_anyhow(path: &Path) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !path.exists() {
@@ -182,6 +192,7 @@ impl PathValidator {
     }
 
     /// Validate path is file and return appropriate error for anyhow
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn validate_file_anyhow(path: &Path) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::validate_exists_anyhow(path)?;
@@ -193,6 +204,7 @@ impl PathValidator {
     }
 
     /// Validate path is directory and return appropriate error for anyhow
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn validate_directory_anyhow(path: &Path) -> Result<()> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::validate_exists_anyhow(path)?;

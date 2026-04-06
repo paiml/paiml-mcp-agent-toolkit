@@ -16,6 +16,7 @@ impl Default for GenerateCommandGroup {
 
 impl GenerateCommandGroup {
     /// Handle generate command with modular implementation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn handle_generate(
         &self,
         server: Arc<StatelessTemplateServer>,
@@ -38,6 +39,7 @@ impl GenerateCommandGroup {
     }
 
     /// Handle scaffold command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn handle_scaffold(
         &self,
         server: Arc<StatelessTemplateServer>,
@@ -53,6 +55,7 @@ impl GenerateCommandGroup {
     }
 
     /// Handle validate command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn handle_validate(
         &self,
         server: Arc<StatelessTemplateServer>,

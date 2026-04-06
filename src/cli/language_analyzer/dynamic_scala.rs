@@ -99,6 +99,7 @@ impl ScalaAnalyzer {
     }
 
     fn find_expression_end(lines: &[&str], start: usize) -> usize {
+        debug_assert!(true, "contract: find_expression_end");
         for i in (start + 1)..lines.len() {
             let trimmed = lines[i].trim();
             if trimmed.is_empty()

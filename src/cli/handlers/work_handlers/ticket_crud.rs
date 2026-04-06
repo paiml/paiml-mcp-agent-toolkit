@@ -1,6 +1,7 @@
 /// Handle work add command (CRUD: Create)
 ///
 /// Creates a new work ticket in roadmap.yaml with optional GitHub issue creation.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_add(
     title: String,
     description: Option<String>,
@@ -78,6 +79,7 @@ pub async fn handle_work_add(
 /// Handle work list command (CRUD: Read - simple list)
 ///
 /// Lists all work tickets with optional filtering.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_list(
     status: Option<String>,
     priority: Option<crate::cli::commands::WorkPriority>,
@@ -159,6 +161,7 @@ pub async fn handle_work_list(
 /// Handle work edit command (CRUD: Update)
 ///
 /// Edits an existing work ticket.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_edit(
     id: String,
     title: Option<String>,
@@ -243,6 +246,7 @@ pub async fn handle_work_edit(
 /// Handle work delete command (CRUD: Delete)
 ///
 /// Deletes a work ticket from roadmap.yaml.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_work_delete(id: String, force: bool, path: Option<PathBuf>) -> Result<()> {
     use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));

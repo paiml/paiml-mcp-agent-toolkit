@@ -6,6 +6,7 @@
 /// # Complexity
 /// - Time: O(n) where n is number of tickets
 /// - Cyclomatic: 7
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_maintain_roadmap(
     roadmap_path: PathBuf,
     tickets_dir: PathBuf,
@@ -40,6 +41,7 @@ pub async fn handle_maintain_roadmap(
 
 /// Validate roadmap structure and ticket consistency (internal, reusable)
 /// (TICKET-PMAT-6019)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn validate_roadmap_internal(
     roadmap_path: &Path,
     tickets_dir: &Path,
@@ -164,6 +166,7 @@ async fn fix_roadmap_status(roadmap_path: &Path, tickets_dir: &Path, dry_run: bo
 /// # Complexity
 /// - Time: O(n) where n is number of tickets
 /// - Cyclomatic: 6
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn generate_tickets_internal(
     roadmap_path: &Path,
     tickets_dir: &Path,

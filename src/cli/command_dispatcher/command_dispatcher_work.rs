@@ -8,6 +8,7 @@ use super::CommandDispatcher;
 
 impl CommandDispatcher {
     /// Execute work command (Issue #75: Unified GitHub/YAML workflow)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn execute_work_command(
         command: &crate::cli::commands::WorkCommands,
     ) -> anyhow::Result<()> {
@@ -184,6 +185,7 @@ impl CommandDispatcher {
     }
 
     /// Execute spec command (master-plan-pmat-work-system.md S-001 to S-010)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn handle_spec_command(
         command: crate::cli::commands::SpecCommands,
     ) -> anyhow::Result<()> {
@@ -239,6 +241,7 @@ impl CommandDispatcher {
     }
 
     /// Execute top-level falsify command — routes to spec or work item falsification
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_falsify_command(
         target: String,
         override_claims: Option<Vec<String>>,

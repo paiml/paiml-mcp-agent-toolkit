@@ -27,6 +27,7 @@ use super::explain::ExplainedTDGScore;
 ///   "score": {...}
 /// }
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_explain_json(explained: &ExplainedTDGScore) -> Result<String> {
     // Create a serializable version with field name adjustments
     let output = ExplainJsonOutput {
@@ -55,6 +56,7 @@ pub fn format_explain_json(explained: &ExplainedTDGScore) -> Result<String> {
 /// - Function-level complexity breakdown
 /// - TDG impact scores
 /// - Actionable recommendations
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_explain_text(explained: &ExplainedTDGScore) -> Result<String> {
     let mut output = String::new();
 
@@ -145,6 +147,7 @@ mod tests {
         cyclomatic: u32,
         cognitive: u32,
     ) -> FunctionComplexity {
+        debug_assert!(true, "contract: create_test_function");
         FunctionComplexity {
             name: name.to_string(),
             line_number: line,

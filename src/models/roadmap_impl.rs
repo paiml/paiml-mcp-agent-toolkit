@@ -4,6 +4,7 @@
 
 impl Roadmap {
     /// Create a new empty roadmap
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(github_repo: Option<String>) -> Self {
         Self {
             roadmap_version: ROADMAP_VERSION.to_string(),
@@ -26,6 +27,7 @@ impl Roadmap {
     /// - Partial: "unwrap elimination"
     /// - Short: "unwrap"
     /// - Any case: "UNWRAP"
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_item(&self, id: &str) -> Option<&RoadmapItem> {
         debug_assert!(!id.is_empty(), "id must not be empty");
         let id_lower = id.to_lowercase();
@@ -60,6 +62,7 @@ impl Roadmap {
     }
 
     /// Find item by GitHub issue number
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_item_by_github_issue(&self, issue: u64) -> Option<&RoadmapItem> {
         self.roadmap
             .iter()
@@ -67,12 +70,14 @@ impl Roadmap {
     }
 
     /// Find item by ID (mutable)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_item_mut(&mut self, id: &str) -> Option<&mut RoadmapItem> {
         debug_assert!(!id.is_empty(), "id must not be empty");
         self.roadmap.iter_mut().find(|item| item.id == id)
     }
 
     /// Add or update item
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn upsert_item(&mut self, item: RoadmapItem) {
         if let Some(existing) = self.find_item_mut(&item.id) {
             *existing = item;
@@ -82,6 +87,7 @@ impl Roadmap {
     }
 
     /// Remove item by ID
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn remove_item(&mut self, id: &str) -> Option<RoadmapItem> {
         debug_assert!(!id.is_empty(), "id must not be empty");
         if let Some(pos) = self.roadmap.iter().position(|item| item.id == id) {
@@ -92,6 +98,7 @@ impl Roadmap {
     }
 
     /// Get items without GitHub sync
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn yaml_only_items(&self) -> Vec<&RoadmapItem> {
         self.roadmap
             .iter()
@@ -100,6 +107,7 @@ impl Roadmap {
     }
 
     /// Get epic items
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn epic_items(&self) -> Vec<&RoadmapItem> {
         self.roadmap
             .iter()
@@ -110,6 +118,7 @@ impl Roadmap {
 
 impl RoadmapItem {
     /// Create a new roadmap item
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(id: String, title: String) -> Self {
         let now = chrono::Utc::now().to_rfc3339();
         Self {
@@ -133,6 +142,7 @@ impl RoadmapItem {
     }
 
     /// Create from GitHub issue
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_github_issue(issue_number: u64, title: String) -> Self {
         let id = format!("GH-{}", issue_number);
         let mut item = Self::new(id, title);
@@ -141,6 +151,7 @@ impl RoadmapItem {
     }
 
     /// Calculate overall completion percentage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn completion_percentage(&self) -> u8 {
         if !self.subtasks.is_empty() {
             // Epic: weighted average of subtasks
@@ -166,6 +177,7 @@ impl RoadmapItem {
     }
 
     /// Check if item is synced with GitHub
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_github_synced(&self) -> bool {
         self.github_issue.is_some()
     }

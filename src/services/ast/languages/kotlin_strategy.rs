@@ -18,6 +18,7 @@ pub struct KotlinStrategy;
 impl KotlinStrategy {
     /// Creates a new Kotlin language strategy
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
@@ -59,14 +60,17 @@ impl AstStrategy for KotlinStrategy {
     }
 
     fn primary_extension(&self) -> &'static str {
+        debug_assert!(true, "contract: primary_extension");
         "kt"
     }
 
     fn supported_extensions(&self) -> Vec<&'static str> {
+        debug_assert!(true, "contract: supported_extensions");
         vec!["kt", "kts"]
     }
 
     fn language_name(&self) -> &'static str {
+        debug_assert!(true, "contract: language_name");
         "Kotlin"
     }
 }

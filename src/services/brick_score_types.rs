@@ -70,6 +70,7 @@ pub struct BrickStats {
 
 impl BrickStats {
     /// Calculate mean time in microseconds
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mean_us(&self) -> f64 {
         if self.count == 0 {
             0.0
@@ -79,6 +80,7 @@ impl BrickStats {
     }
 
     /// Calculate throughput in elements/second
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn throughput(&self) -> f64 {
         if self.total_ns == 0 {
             0.0
@@ -89,6 +91,7 @@ impl BrickStats {
 
     /// Calculate coefficient of variation (CV)
     /// Approximated from min/max range
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cv_percent(&self) -> f64 {
         if self.count < 2 || self.min_ns == 0 {
             0.0
@@ -131,6 +134,7 @@ pub struct BrickBudget {
 }
 
 /// Default brick budgets from qwen2.5-coder-showcase-demo.md
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn default_brick_budgets() -> Vec<BrickBudget> {
     vec![
         BrickBudget {
@@ -186,6 +190,7 @@ pub struct CategoryScore {
 }
 
 impl CategoryScore {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn percentage(&self) -> f64 {
         if self.max_points == 0.0 {
             100.0

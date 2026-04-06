@@ -1,6 +1,7 @@
 // SnapshotStore lifecycle: deletion, cleanup, and integrity verification
 
 impl SnapshotStore {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn delete_snapshot(&self, snapshot_id: &SnapshotId) -> Result<(), SnapshotError> {
         // Remove from metadata
         {
@@ -20,6 +21,7 @@ impl SnapshotStore {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn cleanup_orphaned_files(&self) -> Result<usize, SnapshotError> {
         let mut deleted = 0;
 

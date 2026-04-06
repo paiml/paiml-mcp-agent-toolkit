@@ -39,16 +39,19 @@ pub enum ScoringMode {
 
 impl ScoringMode {
     /// Check if this mode should skip subprocess calls
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn skip_subprocesses(&self) -> bool {
         matches!(self, ScoringMode::Quick)
     }
 
     /// Check if this mode should skip expensive cargo operations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn skip_expensive_cargo(&self) -> bool {
         matches!(self, ScoringMode::Quick | ScoringMode::Fast)
     }
 
     /// Check if full analysis is enabled
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_full(&self) -> bool {
         matches!(self, ScoringMode::Full)
     }

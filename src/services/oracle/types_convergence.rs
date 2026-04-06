@@ -60,6 +60,7 @@ pub enum ConvergenceStatus {
 
 impl ConvergenceTargets {
     /// Check if metrics meet convergence criteria
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check(&self, metrics: &ProjectMetrics) -> ConvergenceStatus {
         let mut failures = Vec::new();
 

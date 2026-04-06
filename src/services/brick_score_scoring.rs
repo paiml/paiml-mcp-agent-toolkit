@@ -98,6 +98,7 @@ fn score_stability(cv: f64, brick_name: &str) -> BrickCheck {
 ///
 /// PMAT-448: If hardware is provided, the score metadata will include
 /// detailed hardware info for reproducibility.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn score_brick_profiler(
     profiler_output: &BrickProfilerOutput,
     budgets: &[BrickBudget],
@@ -293,6 +294,7 @@ pub fn score_brick_profiler(
 }
 
 /// Load BrickProfiler JSON from file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn load_profiler_json(path: &Path) -> anyhow::Result<BrickProfilerOutput> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = fs::read_to_string(path)?;
@@ -301,6 +303,7 @@ pub fn load_profiler_json(path: &Path) -> anyhow::Result<BrickProfilerOutput> {
 }
 
 /// Scan project for brick profiler JSON files
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn find_profiler_files(project_path: &Path) -> Vec<std::path::PathBuf> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut files = Vec::new();

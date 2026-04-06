@@ -14,6 +14,7 @@ pub struct RuchyLexer {
 
 impl RuchyLexer {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(input: String) -> Self {
         let lexer = Self {
             input: input.clone(),
@@ -26,6 +27,7 @@ impl RuchyLexer {
     }
 
     fn advance(&mut self) {
+        debug_assert!(true, "contract: advance");
         if let Some(ch) = self.current_char {
             if ch == '\n' {
                 self.line += 1;
@@ -40,10 +42,12 @@ impl RuchyLexer {
     }
 
     fn peek(&self) -> Option<char> {
+        debug_assert!(true, "contract: peek");
         self.input.chars().nth(self.position + 1)
     }
 
     fn skip_whitespace(&mut self) {
+        debug_assert!(true, "contract: skip_whitespace");
         while let Some(ch) = self.current_char {
             if ch.is_whitespace() {
                 self.advance();
@@ -54,6 +58,7 @@ impl RuchyLexer {
     }
 
     fn skip_comment(&mut self) {
+        debug_assert!(true, "contract: skip_comment");
         if self.current_char == Some('/') && self.peek() == Some('/') {
             while self.current_char.is_some() && self.current_char != Some('\n') {
                 self.advance();
@@ -62,6 +67,7 @@ impl RuchyLexer {
     }
 
     fn read_identifier(&mut self) -> String {
+        debug_assert!(true, "contract: read_identifier");
         let mut result = String::new();
         while let Some(ch) = self.current_char {
             if ch.is_alphanumeric() || ch == '_' {
@@ -75,6 +81,7 @@ impl RuchyLexer {
     }
 
     fn read_number(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: read_number");
         let mut num_str = String::new();
         let mut is_float = false;
 
@@ -108,6 +115,7 @@ impl RuchyLexer {
     }
 
     fn read_string(&mut self, quote: char) -> String {
+        debug_assert!(true, "contract: read_string");
         let mut result = String::new();
         self.advance(); // skip opening quote
 
@@ -141,6 +149,7 @@ impl RuchyLexer {
         result
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn next_token(&mut self) -> RuchyToken {
         self.skip_whitespace();
         self.skip_comment();
@@ -160,6 +169,7 @@ impl RuchyLexer {
 
     /// Handle identifier and keyword tokens
     fn handle_identifier(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_identifier");
         let ident = self.read_identifier();
         KEYWORD_MAP
             .get(ident.as_str())
@@ -169,6 +179,7 @@ impl RuchyLexer {
 
     /// Handle character literal tokens
     fn handle_char_literal(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_char_literal");
         self.advance();
         let ch = self.current_char.unwrap_or('\0');
         self.advance();
@@ -180,6 +191,7 @@ impl RuchyLexer {
 
     /// Handle operators and punctuation tokens
     fn handle_operator_or_punctuation(&mut self, ch: char) -> RuchyToken {
+        debug_assert!(true, "contract: handle_operator_or_punctuation");
         // Try single-character tokens first
         if let Some(token) = SINGLE_CHAR_TOKEN_MAP.get(&ch) {
             return self.handle_single_char_token(token.clone());
@@ -207,12 +219,14 @@ impl RuchyLexer {
 
     /// Handle single character tokens
     fn handle_single_char_token(&mut self, token: RuchyToken) -> RuchyToken {
+        debug_assert!(true, "contract: handle_single_char_token");
         self.advance();
         token
     }
 
     /// Handle dash (-) and arrow (->) tokens
     fn handle_dash(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_dash");
         self.advance();
         if self.current_char == Some('>') {
             self.advance();
@@ -224,6 +238,7 @@ impl RuchyLexer {
 
     /// Handle slash (/) and comment tokens
     fn handle_slash(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_slash");
         self.advance();
         if self.current_char == Some('/') {
             self.skip_comment();
@@ -235,6 +250,7 @@ impl RuchyLexer {
 
     /// Handle equals (=) tokens
     fn handle_equals(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_equals");
         self.advance();
         match self.current_char {
             Some('=') => {
@@ -251,6 +267,7 @@ impl RuchyLexer {
 
     /// Handle pipe (|) tokens
     fn handle_pipe(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_pipe");
         self.advance();
         match self.current_char {
             Some('>') => {
@@ -267,6 +284,7 @@ impl RuchyLexer {
 
     /// Handle ampersand (&) tokens
     fn handle_ampersand(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_ampersand");
         self.advance();
         if self.current_char == Some('&') {
             self.advance();
@@ -278,6 +296,7 @@ impl RuchyLexer {
 
     /// Handle annotation (@) tokens
     fn handle_annotation(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_annotation");
         self.advance();
         let ident = self.read_identifier();
         RuchyToken::Annotation(format!("@{ident}"))
@@ -285,6 +304,7 @@ impl RuchyLexer {
 
     /// Handle dot (.) tokens
     fn handle_dot(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_dot");
         self.advance();
         if self.current_char == Some('.') {
             self.advance();
@@ -301,6 +321,7 @@ impl RuchyLexer {
 
     /// Handle colon (:) tokens
     fn handle_colon(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_colon");
         self.advance();
         if self.current_char == Some(':') {
             self.advance();
@@ -312,6 +333,7 @@ impl RuchyLexer {
 
     /// Handle exclamation (!) tokens
     fn handle_exclamation(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_exclamation");
         self.advance();
         if self.current_char == Some('=') {
             self.advance();
@@ -323,6 +345,7 @@ impl RuchyLexer {
 
     /// Handle less than (<) tokens
     fn handle_less_than(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_less_than");
         self.advance();
         match self.current_char {
             Some('=') => {
@@ -339,6 +362,7 @@ impl RuchyLexer {
 
     /// Handle greater than (>) tokens
     fn handle_greater_than(&mut self) -> RuchyToken {
+        debug_assert!(true, "contract: handle_greater_than");
         self.advance();
         match self.current_char {
             Some('=') => {

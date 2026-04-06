@@ -3,6 +3,7 @@
 
 impl DuplicationDefectAnalyzer {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let config = crate::services::duplicate_detector::DuplicateDetectionConfig::default();
         Self {
@@ -85,6 +86,7 @@ impl DuplicationDefectAnalyzer {
         instance: &crate::services::duplicate_detector::CloneInstance,
         index: usize,
     ) -> Defect {
+        debug_assert!(true, "contract: clone_to_defect");
         let severity = match &group.clone_type {
             CloneType::Type1 { .. } if group.total_lines > 50 => Severity::High,
             CloneType::Type1 { .. } => Severity::Medium,

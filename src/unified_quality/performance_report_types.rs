@@ -90,6 +90,7 @@ impl Default for PerformanceMetrics {
 impl PerformanceMetrics {
     /// Create new performance metrics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             timeseries: HashMap::new(),
@@ -102,6 +103,7 @@ impl PerformanceMetrics {
 impl PerformanceOptimizer {
     /// Create new performance optimizer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: OptimizationConfig) -> Self {
         Self {
             optimizations: Vec::new(),

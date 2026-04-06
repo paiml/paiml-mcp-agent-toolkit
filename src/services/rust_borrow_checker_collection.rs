@@ -130,6 +130,7 @@ impl RustBorrowChecker {
         start: std::time::Instant,
         collection_state: CollectionState,
     ) -> Result<ProofCollectionResult, ProofCollectionError> {
+        debug_assert!(true, "contract: finalize_collection");
         let duration = start.elapsed();
         let annotations_count = collection_state.annotations.len();
 
@@ -155,6 +156,7 @@ impl RustBorrowChecker {
 
 impl ProofSource for RustBorrowChecker {
     fn clone_box(&self) -> Box<dyn ProofSource> {
+        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 

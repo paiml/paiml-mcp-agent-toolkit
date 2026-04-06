@@ -13,6 +13,7 @@ use super::output_formats::{format_defect_output, output_results};
 /// Handle defect prediction analysis with real ML-based implementation
 /// Toyota Way: Extract Method - Reduced complexity by separating concerns
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_defect_prediction(
     project_path: PathBuf,
     confidence_threshold: f32,
@@ -82,6 +83,7 @@ fn print_analysis_header(project_path: &Path, confidence_threshold: f32, high_ri
 }
 
 /// Toyota Way: Extract Method - Create configuration object
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn create_defect_prediction_config(
     confidence_threshold: f32,
     min_lines: usize,
@@ -142,6 +144,7 @@ fn calculate_defect_predictions(
 }
 
 /// Toyota Way: Extract Method - Filter and sort predictions based on criteria
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn filter_and_sort_predictions(
     mut predictions: Vec<(String, DefectScore)>,
     high_risk_only: bool,

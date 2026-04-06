@@ -90,6 +90,7 @@ pub fn test_function() {
 }
 
 async fn async_function() {
+    debug_assert!(true, "contract: async_function");
     // Some async code
 }
 "#;

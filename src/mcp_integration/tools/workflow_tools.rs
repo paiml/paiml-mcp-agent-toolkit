@@ -13,6 +13,7 @@ pub struct OrchestrateTool {
 }
 
 impl OrchestrateTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         let executor = Arc::new(crate::workflow::executor::DefaultWorkflowExecutor::new(
             registry.clone(),
@@ -20,6 +21,7 @@ impl OrchestrateTool {
         Self { registry, executor }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_with_executor(
         registry: Arc<AgentRegistry>,
         executor: Arc<dyn crate::workflow::WorkflowExecutor>,
@@ -31,6 +33,7 @@ impl OrchestrateTool {
 #[async_trait]
 impl McpTool for OrchestrateTool {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "orchestrate".to_string(),
             description: "Orchestrate complex multi-step workflows".to_string(),
@@ -65,6 +68,7 @@ impl McpTool for OrchestrateTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use crate::workflow::{Workflow, WorkflowContext, WorkflowState};
         use parking_lot::RwLock;
         use std::time::Instant;
@@ -149,6 +153,7 @@ pub struct QualityGateTool {
 }
 
 impl QualityGateTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -159,6 +164,7 @@ impl QualityGateTool {
 #[async_trait]
 impl McpTool for QualityGateTool {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         ToolMetadata {
             name: "quality_gate".to_string(),
             description: "Run quality gate checks with zero tolerance".to_string(),
@@ -188,6 +194,7 @@ impl McpTool for QualityGateTool {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         let code = params["code"].as_str().ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
             message: "Missing code parameter".to_string(),

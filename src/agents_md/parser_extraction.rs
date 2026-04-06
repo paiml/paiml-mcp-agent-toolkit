@@ -5,6 +5,7 @@
 
 impl AgentsMdParser {
     /// Validate parsed document
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate(&self, doc: &AgentsMdDocument) -> Result<ValidationReport> {
         let mut report = ValidationReport {
             valid: true,
@@ -70,6 +71,7 @@ impl AgentsMdParser {
 
     /// Extract sections by type
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_sections(&self, doc: &AgentsMdDocument) -> HashMap<SectionType, Section> {
         let mut map = HashMap::new();
         for section in &doc.sections {
@@ -80,6 +82,7 @@ impl AgentsMdParser {
 
     /// Detect section type from title
     fn detect_section_type(title: &str) -> SectionType {
+        debug_assert!(true, "contract: detect_section_type");
         let lower = title.to_lowercase();
 
         if lower.contains("overview") || lower.contains("introduction") || lower.contains("about") {

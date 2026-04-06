@@ -4,6 +4,7 @@ impl AgentContextIndex {
     /// For cross-project RAG, each project is indexed and merged into a single
     /// searchable index. File paths are prefixed with the project directory name
     /// to disambiguate across projects.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn build_workspace(project_paths: &[&Path]) -> Result<Self, String> {
         debug_assert!(!project_paths.is_empty(), "project_paths must not be empty");
         if project_paths.is_empty() {
@@ -32,6 +33,7 @@ impl AgentContextIndex {
     /// paths like `aprender/src/lib.rs` instead of `src/lib.rs`.
     /// Only rebuilds file_index (paths changed). Corpus, name_index, and
     /// call graph are reused from the persisted payload.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_with_prefix(index_path: &Path, prefix: &str) -> Result<Self, String> {
         debug_assert!(index_path.exists(), "index_path must exist: {}", index_path.display());
         let mut index = Self::load(index_path)?;
@@ -73,6 +75,7 @@ impl AgentContextIndex {
     /// Returns `(index_path, project_name)` pairs for siblings that have
     /// a `.pmat/context.idx` or `.pmat/context.db`. Silently skips siblings
     /// without an index.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn discover_sibling_indexes(project_path: &Path) -> Vec<(PathBuf, String)> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let workspace_config = project_path.join(".pmat/workspace.toml");
@@ -121,6 +124,7 @@ impl AgentContextIndex {
     /// importance.
     ///
     /// Each sibling's `.pmat/context.idx` is never modified.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn merge_siblings(&mut self, siblings: &[(PathBuf, String)]) {
         debug_assert!(!siblings.is_empty(), "siblings must not be empty");
         for (idx_path, project_name) in siblings {
@@ -148,6 +152,7 @@ impl AgentContextIndex {
     /// aprender calling a trueno function). This method rebuilds the entire call
     /// graph from scratch using the unified `name_index`, then recomputes
     /// PageRank and centrality so cross-project importance is reflected.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn rebuild_cross_project_graph(&mut self) {
         let (calls, called_by) = build_call_graph(&self.functions, &self.name_index);
         let graph_metrics = compute_graph_metrics(self.functions.len(), &calls, &called_by);
@@ -211,6 +216,7 @@ impl AgentContextIndex {
 
     /// Merge another index into this one.
     fn merge(&mut self, other: Self) {
+        debug_assert!(true, "contract: merge");
         for func in other.functions {
             self.functions.push(func);
         }

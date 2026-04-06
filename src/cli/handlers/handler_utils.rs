@@ -23,6 +23,7 @@ use crate::cli;
 /// assert_eq!(result, DagType::CallGraph);
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn convert_deep_context_dag_type(dag_type: cli::DeepContextDagType) -> cli::DagType {
     match dag_type {
         cli::DeepContextDagType::CallGraph => cli::DagType::CallGraph,
@@ -45,6 +46,7 @@ pub fn convert_deep_context_dag_type(dag_type: cli::DeepContextDagType) -> cli::
 /// assert_eq!(convert_cache_strategy(DeepContextCacheStrategy::Offline), "offline");
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn convert_cache_strategy(strategy: cli::DeepContextCacheStrategy) -> String {
     match strategy {
         cli::DeepContextCacheStrategy::Normal => "normal".to_string(),
@@ -57,6 +59,7 @@ pub fn convert_cache_strategy(strategy: cli::DeepContextCacheStrategy) -> String
 ///
 /// Ensures threshold is within valid range (0.0 - 1.0 or 0 - 100 depending on format)
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn normalize_threshold(threshold: f64, is_percentage: bool) -> f64 {
     debug_assert!(threshold >= 0.0, "threshold must be non-negative");
     let normalized = if is_percentage {

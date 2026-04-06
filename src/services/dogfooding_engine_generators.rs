@@ -3,6 +3,7 @@
 
 impl DogfoodingEngine {
     /// Generate AST context analysis markdown
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn generate_ast_context(
         &self,
         root: &Path,
@@ -57,6 +58,7 @@ impl DogfoodingEngine {
     }
 
     /// Generate combined metrics JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn generate_combined_metrics(
         &self,
         root: &Path,
@@ -103,6 +105,7 @@ impl DogfoodingEngine {
     }
 
     /// Generate complexity analysis markdown
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn generate_complexity_analysis(
         &self,
         root: &Path,

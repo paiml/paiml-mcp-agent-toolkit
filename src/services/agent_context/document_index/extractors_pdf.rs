@@ -5,6 +5,7 @@
 /// Requires the `doc-indexing` feature for full text extraction.
 /// Without it, returns metadata-only chunk (filename + size).
 #[cfg(feature = "doc-indexing")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn extract_pdf(
     path: &Path,
     relative_path: &str,
@@ -39,6 +40,7 @@ pub(crate) fn extract_pdf(
 }
 
 #[cfg(not(feature = "doc-indexing"))]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn extract_pdf(
     path: &Path,
     relative_path: &str,

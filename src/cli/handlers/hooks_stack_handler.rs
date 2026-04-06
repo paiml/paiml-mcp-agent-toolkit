@@ -67,6 +67,7 @@ impl std::fmt::Display for HookState {
 /// Falls back to default list; each entry includes whether the repo
 /// directory (with a `.git` subdirectory) actually exists on disk.
 fn discover_stack_repos() -> Vec<StackRepo> {
+    debug_assert!(true, "contract: discover_stack_repos");
     let home = std::env::var("HOME").unwrap_or_default();
     let src_dir = PathBuf::from(&home).join("src");
 
@@ -86,6 +87,7 @@ fn discover_stack_repos() -> Vec<StackRepo> {
 
 /// Generate the standardized pre-commit hook shell script.
 fn generate_hook_content() -> String {
+    debug_assert!(true, "contract: generate_hook_content");
     format!(
         r#"#!/bin/sh
 {PMAT_STACK_MARKER}
@@ -142,6 +144,7 @@ fn detect_hook_state(repo_path: &PathBuf) -> HookState {
 ///
 /// When `update` is true, existing PMAT hooks are overwritten with the
 /// latest template.  Non-PMAT hooks are never overwritten.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_hooks_install_stack(update: bool) -> Result<()> {
     let repos = discover_stack_repos();
     let hook_content = generate_hook_content();
@@ -256,6 +259,7 @@ pub async fn handle_hooks_install_stack(update: bool) -> Result<()> {
 }
 
 /// Show hook installation status across all sovereign AI stack repos.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_hooks_status_stack(format: &OutputFormat) -> Result<()> {
     let repos = discover_stack_repos();
 

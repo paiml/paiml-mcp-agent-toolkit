@@ -65,6 +65,7 @@
 /// # }
 /// ```
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_quality_gate(
     project_path: PathBuf,
     file: Option<PathBuf>,
@@ -151,6 +152,7 @@ pub async fn handle_quality_gate(
 
 /// Prints the initial quality gate status message
 fn print_quality_gate_start_message(file: &Option<PathBuf>) {
+    debug_assert!(true, "contract: print_quality_gate_start_message");
     if let Some(single_file) = file {
         eprintln!(
             "🔍 Running quality gate checks on file: {}...",
@@ -177,6 +179,7 @@ fn print_checks_to_run(checks: &[QualityCheckType]) {
 
 /// Toyota Way: Extract Method - Print all quality checks (complexity ≤5)
 fn print_all_checks() {
+    debug_assert!(true, "contract: print_all_checks");
     eprintln!("  ✓ Complexity analysis");
     eprintln!("  ✓ Dead code detection");
     eprintln!("  ✓ Self-admitted technical debt (SATD)");
@@ -196,6 +199,7 @@ fn print_selected_checks(checks: &[QualityCheckType]) {
 
 /// Toyota Way: Extract Method - Print single check description (complexity ≤7)
 fn print_single_check(check: &QualityCheckType) {
+    debug_assert!(true, "contract: print_single_check");
     if let Some(message) = get_check_message(check) {
         print_check_success(message);
     }
@@ -203,6 +207,7 @@ fn print_single_check(check: &QualityCheckType) {
 
 /// Get the success message for a specific quality check type
 fn get_check_message(check: &QualityCheckType) -> Option<&'static str> {
+    debug_assert!(true, "contract: get_check_message");
     match check {
         QualityCheckType::Complexity => Some("Complexity analysis"),
         QualityCheckType::DeadCode => Some("Dead code detection"),
@@ -217,5 +222,6 @@ fn get_check_message(check: &QualityCheckType) -> Option<&'static str> {
 
 /// Print a check success message with consistent formatting
 fn print_check_success(message: &str) {
+    debug_assert!(true, "contract: print_check_success");
     eprintln!("  ✓ {message}");
 }

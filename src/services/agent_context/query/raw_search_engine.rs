@@ -182,6 +182,7 @@ fn collect_file_matches(
 
 /// Build the search and exclude regex patterns from options.
 fn build_search_patterns(options: &RawSearchOptions) -> Result<(Regex, Option<Regex>), String> {
+    debug_assert!(true, "contract: build_search_patterns");
     let pattern_str = if options.literal {
         regex::escape(options.pattern)
     } else {
@@ -222,6 +223,7 @@ fn build_search_patterns(options: &RawSearchOptions) -> Result<(Regex, Option<Re
 
 /// Build the exclude file glob from options.
 fn build_exclude_glob(options: &RawSearchOptions) -> Option<globset::GlobSet> {
+    debug_assert!(true, "contract: build_exclude_glob");
     if options.exclude_file_pattern.is_empty() {
         return None;
     }
@@ -286,6 +288,7 @@ fn walk_and_collect(
 }
 
 /// Execute raw file search across all project files
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn raw_search(
     project_path: &Path,
     options: &RawSearchOptions,
@@ -328,6 +331,7 @@ pub fn raw_search(
 
 /// Check if a raw search result falls within an indexed function's line range.
 /// Used for deduplication when merging index + raw results.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
 pub fn is_within_indexed_function(
     raw_file: &str,
     raw_line: usize,

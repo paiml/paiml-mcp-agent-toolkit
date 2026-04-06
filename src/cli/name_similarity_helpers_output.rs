@@ -1,5 +1,6 @@
 /// Build results JSON with optional performance metrics
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn build_results_json(config: JsonResultsConfig) -> Value {
     let mut results = serde_json::json!({
         "query": config.query,
@@ -35,6 +36,7 @@ pub fn build_results_json(config: JsonResultsConfig) -> Value {
 }
 
 /// Format and output results based on selected format
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn output_results(config: OutputConfig) -> Result<()> {
     let output_content = match config.format {
         NameSimilarityOutputFormat::Summary => format_summary_output(

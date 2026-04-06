@@ -10,6 +10,7 @@ pub struct ResourceManager {
 }
 
 impl ResourceManager {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(limits: ResourceLimits) -> Result<Self, ResourceError> {
         use cpu_limiter::CpuLimiter;
         use io_throttle::IoThrottle;
@@ -39,6 +40,7 @@ impl ResourceManager {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update_limits(&self, new_limits: ResourceLimits) -> Result<(), ResourceError> {
         self.cpu_controller.apply_limits(&new_limits)?;
         self.memory_controller.apply_limits(&new_limits)?;
@@ -53,6 +55,7 @@ impl ResourceManager {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_current_usage(&self) -> Result<ResourceUsage, ResourceError> {
         let cpu_usage = self.cpu_controller.get_usage()?;
         let memory_usage = self.memory_controller.get_usage()?;
@@ -90,6 +93,7 @@ impl ResourceManager {
         Ok(usage)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_usage_history(&self, duration: Duration) -> Vec<ResourceUsage> {
         let history = self.usage_history.read();
         let cutoff = std::time::SystemTime::now() - duration;
@@ -101,6 +105,7 @@ impl ResourceManager {
             .collect()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn release_all(&self) -> Result<(), ResourceError> {
         self.cpu_controller.release()?;
         self.memory_controller.release()?;

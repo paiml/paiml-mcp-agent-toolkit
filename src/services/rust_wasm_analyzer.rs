@@ -53,6 +53,7 @@ pub struct UnsafeBlock {
 }
 
 /// Analyze Rust file for WASM-specific constructs
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn analyze_wasm_constructs(file: &syn::File) -> WasmAnalysis {
     let mut analysis = WasmAnalysis::default();
 
@@ -86,6 +87,7 @@ pub fn analyze_wasm_constructs(file: &syn::File) -> WasmAnalysis {
 
 /// Analyze a function for WASM boundary markers
 fn analyze_function(func: &ItemFn) -> Option<WasmBoundaryFunction> {
+    debug_assert!(true, "contract: analyze_function");
     let is_wasm_bindgen = has_attribute(&func.attrs, "wasm_bindgen");
     let is_no_mangle = has_attribute(&func.attrs, "no_mangle");
     let is_extern_c = is_extern_c_fn(&func.sig.abi);
@@ -115,6 +117,7 @@ fn analyze_impl_method(
     method: &syn::ImplItemFn,
     impl_attrs: &[Attribute],
 ) -> Option<WasmBoundaryFunction> {
+    debug_assert!(true, "contract: analyze_impl_method");
     let is_wasm_bindgen =
         has_attribute(&method.attrs, "wasm_bindgen") || has_attribute(impl_attrs, "wasm_bindgen");
     let is_no_mangle = has_attribute(&method.attrs, "no_mangle");
@@ -141,6 +144,7 @@ fn analyze_impl_method(
 
 /// Analyze extern block
 fn analyze_extern_block(foreign_mod: &syn::ItemForeignMod) -> Option<ExternBlock> {
+    debug_assert!(true, "contract: analyze_extern_block");
     let abi = foreign_mod
         .abi
         .name
@@ -164,6 +168,7 @@ fn analyze_extern_block(foreign_mod: &syn::ItemForeignMod) -> Option<ExternBlock
 
 /// Check if function signature is extern "C"
 fn is_extern_c_fn(abi: &Option<syn::Abi>) -> bool {
+    debug_assert!(true, "contract: is_extern_c_fn");
     if let Some(abi) = abi {
         if let Some(name) = &abi.name {
             return name.value() == "C";
@@ -174,6 +179,7 @@ fn is_extern_c_fn(abi: &Option<syn::Abi>) -> bool {
 
 /// Analyze function signature for memory patterns
 fn analyze_function_signature(sig: &syn::Signature) -> Vec<MemoryPattern> {
+    debug_assert!(true, "contract: analyze_function_signature");
     let mut patterns = Vec::new();
 
     // Analyze inputs
@@ -193,6 +199,7 @@ fn analyze_function_signature(sig: &syn::Signature) -> Vec<MemoryPattern> {
 
 /// Analyze a type for memory patterns
 fn analyze_type(ty: &Type) -> Vec<MemoryPattern> {
+    debug_assert!(true, "contract: analyze_type");
     let mut patterns = Vec::new();
 
     match ty {
@@ -284,6 +291,7 @@ mod tests {
     fn test_detect_memory_patterns() {
         let code = quote! {
             #[wasm_bindgen]
+            #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
             pub fn process_data(input: Vec<u8>) -> Box<String> {
                 debug_assert!(!input.is_empty(), "input must not be empty");
                 Box::new(String::from_utf8_lossy(&input).to_string())
@@ -317,6 +325,7 @@ mod tests {
     #[test]
     fn test_non_boundary_function_ignored() {
         let code = quote! {
+            #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
             pub fn regular_function() -> i32 {
                 42
             }
@@ -350,6 +359,7 @@ mod tests {
     fn test_full_file_analysis() {
         let code = quote! {
             #[wasm_bindgen]
+            #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
             pub fn wasm_func() {}
 
             #[no_mangle]
@@ -359,6 +369,7 @@ mod tests {
                 fn external();
             }
 
+            #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
             pub fn regular_func() {}
         };
 

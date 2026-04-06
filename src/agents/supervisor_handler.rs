@@ -2,6 +2,7 @@ impl Handler<ValidateCode> for QualityGateSupervisor {
     type Result = ResponseFuture<Result<ValidationResult, AgentError>>;
 
     fn handle(&mut self, msg: ValidateCode, _ctx: &mut Context<Self>) -> Self::Result {
+        debug_assert!(true, "contract: handle");
         let analyzer = self.analyzer.clone();
         let validator = self.validator.clone();
 

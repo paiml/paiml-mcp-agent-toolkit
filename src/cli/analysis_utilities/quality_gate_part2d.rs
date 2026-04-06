@@ -33,6 +33,7 @@ fn format_report_header(output: &mut String, file_path: &Path, passed: bool) {
 
 /// Format the summary section with violation counts
 fn format_results_summary(output: &mut String, results: &QualityGateResults) {
+    debug_assert!(true, "contract: format_results_summary");
     output.push_str("## Summary\n\n");
     output.push_str(&format!(
         "- Total Violations: {}\n",
@@ -96,6 +97,7 @@ fn format_violation_type_group(
 
 /// Format a single violation with severity icon, file path, and location
 fn format_single_violation(output: &mut String, violation: &QualityViolation) {
+    debug_assert!(true, "contract: format_single_violation");
     let severity_icon = get_severity_icon(&violation.severity);
 
     // Format file path - use short relative path if possible
@@ -127,6 +129,7 @@ fn format_single_violation(output: &mut String, violation: &QualityViolation) {
 }
 
 /// Get the appropriate icon for violation severity
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_severity_icon(severity: &str) -> &'static str {
     debug_assert!(!severity.is_empty(), "severity must not be empty");
     match severity {

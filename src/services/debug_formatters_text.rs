@@ -1,4 +1,5 @@
 /// Format analysis as human-readable text
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_text(analysis: &DebugAnalysis) -> Result<String> {
     use crate::cli::colors as c;
 

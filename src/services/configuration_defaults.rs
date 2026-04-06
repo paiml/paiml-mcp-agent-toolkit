@@ -4,6 +4,7 @@
 impl ConfigurationService {
     /// Create default configuration
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn default_config() -> PmatConfig {
         PmatConfig {
             system: SystemConfig {

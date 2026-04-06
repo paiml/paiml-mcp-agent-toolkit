@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 impl CommandDispatcher {
     /// Execute scaffold commands using handler pattern (reduces complexity)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn execute_scaffold_command(
         command: ScaffoldCommands,
         server: Arc<StatelessTemplateServer>,
@@ -98,6 +99,7 @@ impl CommandDispatcher {
 
     /// Execute scaffold agent command (extracted for complexity reduction)
     #[allow(clippy::too_many_arguments)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_scaffold_agent_command(
         name: String,
         template: String,

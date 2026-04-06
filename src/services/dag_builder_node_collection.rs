@@ -2,6 +2,7 @@
 
 impl DagBuilder {
     fn collect_nodes(&mut self, file: &FileContext) {
+        debug_assert!(true, "contract: collect_nodes");
         // Build complexity lookup maps for O(1) access
         let function_complexity: FxHashMap<&str, u32> = file
             .complexity_metrics
@@ -37,6 +38,7 @@ impl DagBuilder {
         function_complexity: &FxHashMap<&str, u32>,
         class_complexity: &FxHashMap<&str, u32>,
     ) {
+        debug_assert!(true, "contract: collect_single_node");
         match item {
             AstItem::Function {
                 name,

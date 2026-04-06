@@ -15,6 +15,7 @@ pub struct CheckExplanation {
 }
 
 /// Lookup explanations by exact match, prefix match, or fuzzy match.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn lookup(pattern: &str) -> Vec<&'static CheckExplanation> {
     let pattern_upper = pattern.to_uppercase();
     let pattern_lower = pattern.to_lowercase();
@@ -48,6 +49,7 @@ pub fn lookup(pattern: &str) -> Vec<&'static CheckExplanation> {
 }
 
 /// List all available check IDs grouped by domain.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn list_all() -> Vec<(&'static str, Vec<&'static CheckExplanation>)> {
     let domains = [
         ("Compliance (CB-xxx)", "CB-"),
@@ -76,6 +78,7 @@ pub fn list_all() -> Vec<(&'static str, Vec<&'static CheckExplanation>)> {
 }
 
 /// Format a single explanation for terminal output.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_explanation(e: &CheckExplanation) -> String {
     let mut out = String::new();
     out.push_str(&format!("{}: {}\n", e.id, e.name));

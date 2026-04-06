@@ -1,5 +1,6 @@
 impl Recording {
     /// Create a new recording
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(program: String, args: Vec<String>) -> Self {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -18,21 +19,25 @@ impl Recording {
     }
 
     /// Add a snapshot to the recording
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_snapshot(&mut self, snapshot: Snapshot) {
         self.snapshots.push(snapshot);
     }
 
     /// Get metadata
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn metadata(&self) -> &RecordingMetadata {
         &self.metadata
     }
 
     /// Get snapshots
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn snapshots(&self) -> &[Snapshot] {
         &self.snapshots
     }
 
     /// Get snapshot count
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn snapshot_count(&self) -> usize {
         self.snapshots.len()
     }
@@ -45,6 +50,7 @@ impl Recording {
     /// - Metadata (MessagePack)
     /// - Snapshot count (4 bytes, little-endian u32)
     /// - Snapshots array (MessagePack)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut buffer = Vec::new();
 
@@ -74,6 +80,7 @@ impl Recording {
     /// Deserialize recording from bytes
     ///
     /// Validates magic header, version, and snapshot count before parsing.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         let mut cursor = Cursor::new(bytes);
@@ -162,6 +169,7 @@ impl Recording {
     }
 
     /// Write recording to file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn write_to_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         let bytes = self.to_bytes()?;
         std::fs::write(path, bytes)?;
@@ -169,6 +177,7 @@ impl Recording {
     }
 
     /// Load recording from file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let bytes = std::fs::read(&path).with_context(|| {
             format!("Failed to read recording file: {}", path.as_ref().display())
@@ -178,6 +187,7 @@ impl Recording {
 }
 
 /// Validate magic header
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn validate_magic_header(bytes: &[u8]) -> bool {
     debug_assert!(!bytes.is_empty(), "bytes must not be empty");
     bytes == MAGIC_HEADER

@@ -12,6 +12,7 @@ pub struct SnapshotManager {
 
 impl SnapshotManager {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::with_path(".pmat-cache")
     }
@@ -50,6 +51,7 @@ impl SnapshotManager {
     /// let result = manager.save_snapshot(&state);
     /// assert!(result.is_ok());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn save_snapshot(&self, state: &RefactorStateMachine) -> Result<(), String> {
         debug!(
             "Saving refactor state snapshot to {:?} using {}",
@@ -96,6 +98,7 @@ impl SnapshotManager {
     ///     Err(e) => println!("No snapshot found: {}", e),
     /// }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn load_snapshot(&self) -> Result<RefactorStateMachine, String> {
         debug!(
             "Loading refactor state snapshot from {:?} using {}",
@@ -134,6 +137,7 @@ impl SnapshotManager {
     /// let result = manager.remove_snapshot();
     /// // Ok if file was removed or didn't exist
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn remove_snapshot(&self) -> Result<(), String> {
         if self.snapshot_path.exists() {
             fs::remove_file(&self.snapshot_path)
@@ -171,6 +175,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

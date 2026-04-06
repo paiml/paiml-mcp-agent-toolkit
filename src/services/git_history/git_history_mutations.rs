@@ -1,5 +1,6 @@
 impl GitHistoryIndex {
     /// Insert a commit into the index
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn insert_commit(&self, commit: &CommitInfo) -> Result<(), GitHistoryError> {
         let issue_refs_json = serde_json::to_string(&commit.issue_refs).unwrap_or_default();
 
@@ -46,6 +47,7 @@ impl GitHistoryIndex {
     }
 
     /// Insert multiple commits in a transaction
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn insert_commits(&mut self, commits: &[CommitInfo]) -> Result<usize, GitHistoryError> {
         debug_assert!(!commits.is_empty(), "commits must not be empty");
         let tx = self.conn.transaction()?;
@@ -102,6 +104,7 @@ impl GitHistoryIndex {
     }
 
     /// Update embedding for a commit
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update_embedding(
         &self,
         commit_hash: &str,
@@ -122,6 +125,7 @@ impl GitHistoryIndex {
     /// Toyota Way: Heijunka - Level loading without blocking
     ///
     /// Returns number of new commits synced
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn sync_incremental(
         &mut self,
         new_commits: &[CommitInfo],

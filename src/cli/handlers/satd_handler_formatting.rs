@@ -6,6 +6,7 @@ fn format_output(
     days: u32,
     metrics: bool,
 ) -> String {
+    debug_assert!(true, "contract: format_output");
     match format {
         SatdOutputFormat::Summary => format_summary(result),
         SatdOutputFormat::Json => format_json(result, metrics, evolution),
@@ -16,6 +17,7 @@ fn format_output(
 
 /// Format as summary
 fn format_summary(result: &SatdAnalysisResult) -> String {
+    debug_assert!(true, "contract: format_summary");
     use crate::cli::colors as c;
 
     let mut output = String::new();
@@ -118,6 +120,7 @@ fn format_summary(result: &SatdAnalysisResult) -> String {
 
 /// Format as JSON
 fn format_json(result: &SatdAnalysisResult, metrics: bool, evolution: bool) -> String {
+    debug_assert!(true, "contract: format_json");
     let mut json_data = serde_json::json!({
         "total_files": result.total_files,
         "total_violations": result.violations.len(),
@@ -161,6 +164,7 @@ fn format_json(result: &SatdAnalysisResult, metrics: bool, evolution: bool) -> S
 
 /// Format as SARIF
 fn format_sarif(result: &SatdAnalysisResult) -> String {
+    debug_assert!(true, "contract: format_sarif");
     let rules = vec![serde_json::json!({
         "id": "satd-violation",
         "shortDescription": {
@@ -222,6 +226,7 @@ fn format_sarif(result: &SatdAnalysisResult) -> String {
 
 /// Format as Markdown
 fn format_markdown(result: &SatdAnalysisResult, evolution: bool, days: u32) -> String {
+    debug_assert!(true, "contract: format_markdown");
     let mut output = String::new();
     output.push_str("# SATD Analysis Report\n\n");
     output.push_str(&format!("**Summary:** {}\n\n", result.summary));
@@ -286,6 +291,7 @@ fn format_markdown(result: &SatdAnalysisResult, evolution: bool, days: u32) -> S
 
 /// Print metrics to stderr
 fn print_metrics(result: &SatdAnalysisResult) {
+    debug_assert!(true, "contract: print_metrics");
     use crate::cli::colors as c;
 
     eprintln!(

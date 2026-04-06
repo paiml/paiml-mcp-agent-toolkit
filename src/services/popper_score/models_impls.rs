@@ -8,6 +8,7 @@
 
 impl PopperScore {
     /// Create a new empty score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             raw_score: 0.0,
@@ -37,6 +38,7 @@ impl PopperScore {
     /// ```text
     /// Normalized_Score = (Points_Earned / Points_Available) x 100
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate(&mut self) {
         // Check gateway
         let falsifiability_score = self.categories.falsifiability.earned;
@@ -87,6 +89,7 @@ const GRADE_THRESHOLDS: &[(f64, PopperGrade)] = &[
 
 impl PopperGrade {
     /// Calculate grade from normalized score (0-100)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_normalized_score(score: f64) -> Self {
         debug_assert!(score >= 0.0, "score must be non-negative");
         GRADE_THRESHOLDS
@@ -97,6 +100,7 @@ impl PopperGrade {
     }
 
     /// Check if grade meets Popperian scientific standards
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn meets_standards(&self) -> bool {
         matches!(
             self,
@@ -105,6 +109,7 @@ impl PopperGrade {
     }
 
     /// Get interpretation text
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn interpretation(&self) -> &'static str {
         match self {
             PopperGrade::APlus => "Exemplary Popperian Science",
@@ -142,6 +147,7 @@ impl fmt::Display for PopperGrade {
 
 impl PopperCategoryScores {
     /// Calculate total earned points
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_earned(&self) -> f64 {
         let mut total = self.falsifiability.earned
             + self.reproducibility.earned
@@ -158,6 +164,7 @@ impl PopperCategoryScores {
     }
 
     /// Calculate total available points (may be <100 if ML is N/A)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_available(&self) -> f64 {
         let mut total = self.falsifiability.max
             + self.reproducibility.max
@@ -193,6 +200,7 @@ impl Default for PopperCategoryScores {
 
 impl PopperCategoryScore {
     /// Create a new category score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(name: &str, earned: f64, max: f64) -> Self {
         debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
@@ -207,6 +215,7 @@ impl PopperCategoryScore {
     }
 
     /// Create a N/A category score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new_na(name: &str, max: f64) -> Self {
         debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
@@ -221,6 +230,7 @@ impl PopperCategoryScore {
     }
 
     /// Calculate percentage (0-100)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn percentage(&self) -> f64 {
         if self.is_not_applicable || self.max == 0.0 {
             0.0
@@ -230,24 +240,28 @@ impl PopperCategoryScore {
     }
 
     /// Mark as applicable (for ML projects)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mark_applicable(&mut self) {
         self.is_applicable = true;
         self.is_not_applicable = false;
     }
 
     /// Mark as not applicable
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mark_not_applicable(&mut self) {
         self.is_applicable = false;
         self.is_not_applicable = true;
     }
 
     /// Add a sub-score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn add_sub_score(&mut self, sub: PopperSubScore) {
         self.earned += sub.earned;
         self.sub_scores.push(sub);
     }
 
     /// Add a finding
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_finding(&mut self, finding: PopperFinding) {
         self.findings.push(finding);
     }
@@ -259,6 +273,7 @@ impl PopperCategoryScore {
 
 impl PopperSubScore {
     /// Create a new sub-score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(id: &str, name: &str, earned: f64, max: f64, description: &str) -> Self {
         debug_assert!(!id.is_empty(), "id must not be empty");
         debug_assert!(!name.is_empty(), "name must not be empty");

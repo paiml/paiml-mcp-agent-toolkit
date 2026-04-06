@@ -58,6 +58,7 @@ impl CodeIntelligence {
     /// assert!(cache_time.as_millis() < 10); // Cache should be very fast
     /// # });
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_comprehensive(
         &self,
         req: AnalysisRequest,
@@ -259,6 +260,7 @@ impl CodeIntelligence {
         req: &'a AnalysisRequest,
         _report: &'a mut AnalysisReport,
     ) -> Vec<std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + 'a>>> {
+        debug_assert!(true, "contract: build_analysis_futures");
         let mut futures = Vec::new();
 
         for analysis_type in &req.analysis_types {

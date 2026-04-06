@@ -190,6 +190,7 @@ fn truncate_command(command: &str) -> &str {
 }
 
 fn suggest_safe_alternative(pattern: &str) -> String {
+    debug_assert!(true, "contract: suggest_safe_alternative");
     match pattern {
         "rm -rf / - extremely dangerous" => "Use specific paths and add safety checks".to_string(),
         "downloading and piping to shell" => {

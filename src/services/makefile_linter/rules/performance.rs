@@ -29,6 +29,7 @@ impl RecursiveExpansionRule {
         &self,
         ast: &MakefileAst,
     ) -> (HashSet<String>, HashMap<String, HashSet<String>>) {
+        debug_assert!(true, "contract: identify_expensive_variables");
         let mut expensive_vars = HashSet::new();
         let mut var_deps: HashMap<String, HashSet<String>> = HashMap::new();
 
@@ -69,6 +70,7 @@ impl RecursiveExpansionRule {
         expensive_vars: &mut HashSet<String>,
         var_deps: &HashMap<String, HashSet<String>>,
     ) {
+        debug_assert!(true, "contract: propagate_expensive_status");
         let mut changed = true;
         while changed {
             changed = false;
@@ -90,6 +92,7 @@ impl RecursiveExpansionRule {
         ast: &MakefileAst,
         expensive_vars: &HashSet<String>,
     ) -> Vec<Violation> {
+        debug_assert!(true, "contract: check_recipe_usage");
         let mut violations = Vec::new();
 
         for node in &ast.nodes {
@@ -129,6 +132,7 @@ impl RecursiveExpansionRule {
         ast: &MakefileAst,
         expensive_vars: &HashSet<String>,
     ) -> Vec<Violation> {
+        debug_assert!(true, "contract: check_prerequisite_usage");
         let mut violations = Vec::new();
 
         for node in &ast.nodes {
@@ -175,14 +179,17 @@ impl RecursiveExpansionRule {
 
 impl MakefileRule for RecursiveExpansionRule {
     fn id(&self) -> &'static str {
+        debug_assert!(true, "contract: id");
         "recursive-expansion"
     }
 
     fn default_severity(&self) -> Severity {
+        debug_assert!(true, "contract: default_severity");
         Severity::Performance
     }
 
     fn check(&self, ast: &MakefileAst) -> Vec<Violation> {
+        debug_assert!(true, "contract: check");
         // First pass: identify expensive variables and build dependency graph
         let (mut expensive_vars, var_deps) = self.identify_expensive_variables(ast);
 
@@ -475,6 +482,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

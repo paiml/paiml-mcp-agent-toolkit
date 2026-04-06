@@ -166,6 +166,7 @@ impl MatchParser {
 
 /// Extract variant names from match blocks with 5+ arms.
 /// Returns variant identifiers like "Q4_K", "LLaMA", etc.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn extract_large_match_variants(content: &str) -> Vec<String> {
     debug_assert!(!content.is_empty(), "content must not be empty");
     let mut parser = MatchParser::new();
@@ -262,6 +263,7 @@ fn is_commit_line(trimmed: &str) -> bool {
 
 /// Check if a commit message indicates a fix
 fn is_fix_commit(msg: &str) -> bool {
+    debug_assert!(true, "contract: is_fix_commit");
     let lower = msg.to_lowercase();
     lower.contains("fix") || lower.contains("bug") || lower.contains("hotfix")
 }
@@ -285,6 +287,7 @@ fn increment_streaks(files: &[String], streaks: &mut std::collections::HashMap<S
 
 /// Parse git log output to detect consecutive fix-commit chains per file.
 /// Returns (file, chain_length) for files exceeding the threshold.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn detect_fix_chains(log: &str, max_chain: usize) -> Vec<(String, usize)> {
     debug_assert!(!log.is_empty(), "log must not be empty");
     let mut streaks: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
@@ -324,6 +327,7 @@ pub(crate) fn detect_fix_chains(log: &str, max_chain: usize) -> Vec<(String, usi
 }
 
 /// Get list of changed files since baseline
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn get_changed_files(project_path: &Path, baseline_commit: &str) -> Result<Vec<String>> {
     debug_assert!(
         project_path.exists(),

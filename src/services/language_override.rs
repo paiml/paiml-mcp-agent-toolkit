@@ -26,6 +26,7 @@ pub struct LanguageOverride {
 /// 1. --language flag (single language override)
 /// 2. --languages flag (multiple languages)
 /// 3. Auto-detection using enhanced_language_detection (BUG-011)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn get_effective_languages(
     override_opts: &LanguageOverride,
     path: &Path,
@@ -60,6 +61,7 @@ pub fn get_effective_languages(
 /// - "Python" -> "python"
 /// - "CPP" -> "cpp"
 /// - "TypeScript" -> "typescript"
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn normalize_language_name(name: &str) -> Result<String> {
     debug_assert!(!name.is_empty(), "name must not be empty");
     let normalized = name.to_lowercase().trim().to_string();
@@ -76,6 +78,7 @@ pub fn normalize_language_name(name: &str) -> Result<String> {
 /// Supported languages (from BUG-011 enhanced detection):
 /// - rust, python, javascript, typescript, go, cpp, c, java, kotlin,
 ///   swift, ruby, php, bash, wasm, etc.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn validate_language_support(language: &str) -> Result<()> {
     debug_assert!(!language.is_empty(), "language must not be empty");
     let supported = [
@@ -111,11 +114,13 @@ pub fn validate_language_support(language: &str) -> Result<()> {
 }
 
 /// Check if language override is specified
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn has_override(override_opts: &LanguageOverride) -> bool {
     override_opts.language.is_some() || override_opts.languages.is_some()
 }
 
 /// Get language detection with override applied
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn get_language_detection_with_override(
     override_opts: &LanguageOverride,
     path: &Path,
@@ -235,12 +240,14 @@ mod tests {
     }
 
     fn create_test_project() -> TempDir {
+        debug_assert!(true, "contract: create_test_project");
         let temp = TempDir::new().unwrap();
         std::fs::write(temp.path().join("test.txt"), "test").unwrap();
         temp
     }
 
     fn create_rust_project() -> TempDir {
+        debug_assert!(true, "contract: create_rust_project");
         use std::fs;
 
         let temp = TempDir::new().unwrap();

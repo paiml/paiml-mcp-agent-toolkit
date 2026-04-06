@@ -61,24 +61,28 @@ pub struct DefectTaxonomy {
 impl DefectTaxonomy {
     /// Get defect pattern by ticket ID
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, ticket_id: &str) -> Option<&DefectClass> {
         debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
         self.patterns.get(ticket_id)
     }
 
     /// Get all patterns
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn all(&self) -> impl Iterator<Item = &DefectClass> {
         self.patterns.values()
     }
 
     /// Get total number of patterns
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn len(&self) -> usize {
         self.patterns.len()
     }
 
     /// Check if taxonomy is empty
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_empty(&self) -> bool {
         self.patterns.is_empty()
     }

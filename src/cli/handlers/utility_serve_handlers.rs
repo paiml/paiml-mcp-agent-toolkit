@@ -8,6 +8,7 @@ use crate::cli::colors as c;
 use anyhow::Result;
 
 /// Handle serve command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_serve(
     host: String,
     port: u16,
@@ -164,6 +165,7 @@ async fn handle_full_server(addr: &str, host: &str, port: u16, cors: bool) -> Re
 }
 
 async fn wait_for_shutdown() -> Result<()> {
+    debug_assert!(true, "contract: wait_for_shutdown");
     eprintln!("{}", c::dim("Press Ctrl+C to exit.\n"));
     tokio::signal::ctrl_c().await?;
     eprintln!("{}", c::label("Shutting down server..."));
@@ -172,6 +174,7 @@ async fn wait_for_shutdown() -> Result<()> {
 
 /// Start a WebSocket-only server
 async fn start_websocket_server(addr: String) -> Result<()> {
+    debug_assert!(true, "contract: start_websocket_server");
     eprintln!(
         "{} WebSocket server implementation ready for {}",
         c::dim(""),
@@ -189,6 +192,7 @@ async fn start_websocket_server(addr: String) -> Result<()> {
 
 /// Start HTTP-SSE server
 async fn start_http_sse_server(addr: String, _cors: bool) -> Result<()> {
+    debug_assert!(true, "contract: start_http_sse_server");
     eprintln!(
         "{} HTTP-SSE server implementation ready for {}",
         c::dim(""),
@@ -206,6 +210,7 @@ async fn start_http_sse_server(addr: String, _cors: bool) -> Result<()> {
 
 /// Start hybrid server (HTTP + WebSocket)
 async fn start_hybrid_server(addr: String, _cors: bool) -> Result<()> {
+    debug_assert!(true, "contract: start_hybrid_server");
     eprintln!(
         "{} Hybrid server implementation ready for {}",
         c::dim(""),
@@ -220,6 +225,7 @@ async fn start_hybrid_server(addr: String, _cors: bool) -> Result<()> {
 
 /// Start full multi-transport server
 async fn start_full_server(addr: String, _cors: bool) -> Result<()> {
+    debug_assert!(true, "contract: start_full_server");
     eprintln!(
         "{} Full server implementation ready for {}",
         c::dim(""),

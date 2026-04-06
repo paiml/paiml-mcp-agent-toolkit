@@ -173,6 +173,7 @@ fn collect_local_decl_vars(trimmed: &str, locals: &mut std::collections::HashSet
 /// E.g. `local wrap_ok, err = pcall(...)` -> Some("wrap_ok")
 ///      `local ok = pcall(...)` -> Some("ok")
 ///      `status = pcall(...)` -> Some("status")
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_pcall_status_var(line: &str) -> Option<String> {
     debug_assert!(!line.is_empty(), "line must not be empty");
     // Find the `=` that precedes pcall

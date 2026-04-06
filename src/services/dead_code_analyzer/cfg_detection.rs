@@ -12,6 +12,7 @@
 ///
 /// Also detects module-level cfg gating by scanning for `#[cfg` on
 /// `mod` blocks that enclose the function.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_cfg_gated(file_path: &str, fn_line: u32) -> bool {
     debug_assert!(!file_path.is_empty(), "file_path must not be empty");
     let content = match std::fs::read_to_string(file_path) {

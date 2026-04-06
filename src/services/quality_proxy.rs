@@ -46,6 +46,7 @@ pub struct QualityProxyService {
 impl QualityProxyService {
     /// Creates a new quality proxy service.
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             satd_detector: SATDDetector::new(),

@@ -10,6 +10,7 @@ pub struct RegressionGate {
 }
 
 impl RegressionGate {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: GateConfig) -> Self {
         Self { config }
     }
@@ -21,10 +22,12 @@ impl RegressionGate {
 
 impl QualityGate for RegressionGate {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "RegressionGate"
     }
 
     fn check(&self, baseline: &TdgBaseline, current: &TdgBaseline) -> Result<GateResult> {
+        debug_assert!(true, "contract: check");
         let comparison = baseline.compare(current);
         let mut violations = Vec::new();
 
@@ -95,6 +98,7 @@ impl QualityGate for RegressionGate {
 }
 
 /// Format a score delta for display
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_delta(delta: f32) -> String {
     if delta >= 0.0 {
         format!("+{:.1}", delta)

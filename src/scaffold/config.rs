@@ -67,6 +67,7 @@ impl Default for QualityGateConfig {
 
 impl QualityGateConfig {
     /// Extreme TDD configuration (highest standards)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extreme_tdd() -> Self {
         Self {
             max_cyclomatic: 10,

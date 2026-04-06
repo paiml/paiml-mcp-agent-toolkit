@@ -61,6 +61,7 @@ use std::path::Path;
 /// # Ok(())
 /// # }
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_rust_project_score(
     path: &Path,
     format: &RepoScoreOutputFormat,

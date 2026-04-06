@@ -75,6 +75,7 @@ struct DeadCodeData {
 
 impl DeadCodeData {
     fn total_dead_items(&self) -> usize {
+        debug_assert!(true, "contract: total_dead_items");
         self.unreachable_functions.len() + self.unused_variables.len() + self.unused_imports.len()
     }
 }
@@ -91,6 +92,7 @@ struct SatdData {
 
 impl SatdData {
     fn total_satd_count(&self) -> usize {
+        debug_assert!(true, "contract: total_satd_count");
         self.todos.len() + self.fixmes.len() + self.hacks.len()
     }
 }

@@ -116,6 +116,7 @@ impl MetricTrendStore {
     }
 
     /// Get all tracked metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn metrics(&mut self) -> Result<Vec<String>> {
         let mut metrics = Vec::new();
         for entry in std::fs::read_dir(&self.storage_path)? {

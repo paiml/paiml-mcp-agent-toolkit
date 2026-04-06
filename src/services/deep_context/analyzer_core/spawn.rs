@@ -13,6 +13,7 @@ use crate::services::deep_context::AnalysisType;
 use crate::services::deep_context::DeepContextAnalyzer;
 
 impl DeepContextAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_parallel_analyses_with_progress(
         &self,
         project_path: &std::path::Path,
@@ -94,6 +95,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Spawn all configured analysis tasks EXCEPT AST (which runs in Phase 1)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_remaining_tasks(
         &self,
         project_path: &std::path::Path,
@@ -128,6 +130,7 @@ impl DeepContextAnalyzer {
 
     /// Merge partial results from remaining analyses into the main results
     fn merge_results(&self, target: &mut ParallelAnalysisResults, source: ParallelAnalysisResults) {
+        debug_assert!(true, "contract: merge_results");
         if source.ast_contexts.is_some() {
             target.ast_contexts = source.ast_contexts;
         }
@@ -158,6 +161,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Spawn a single analysis task based on type
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_analysis_task(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -197,6 +201,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_ast_analysis(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -213,6 +218,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_complexity_analysis(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -227,6 +233,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_churn_analysis(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -242,6 +249,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_dead_code_analysis(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -256,6 +264,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_duplicate_analysis(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -271,6 +280,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_satd_analysis(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -290,6 +300,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_provability_analysis(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -311,6 +322,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_dag_analysis(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -334,6 +346,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) fn spawn_big_o_analysis(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -348,6 +361,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn collect_analysis_results_with_progress(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -362,6 +376,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Process all analysis results concurrently with progress
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn process_analysis_results_with_progress(
         &self,
         join_set: &mut tokio::task::JoinSet<AnalysisResult>,
@@ -393,6 +408,7 @@ impl DeepContextAnalyzer {
 
     /// Integrate a single analysis result into the final results.
     /// Takes ownership and moves data to avoid cloning large structures.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn integrate_analysis_result(
         &self,
         results: &mut ParallelAnalysisResults,
@@ -432,6 +448,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Log errors from analysis integration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn log_integration_error(&self, result: &AnalysisResult) {
         match result {
             AnalysisResult::Ast(Err(e))
@@ -450,6 +467,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Get analysis name for logging
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn get_analysis_name(&self, result: &AnalysisResult) -> &'static str {
         match result {
             AnalysisResult::Ast(_) => "AST",

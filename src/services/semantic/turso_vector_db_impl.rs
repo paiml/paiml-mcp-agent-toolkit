@@ -6,6 +6,7 @@ impl TursoVectorDB {
     ///
     /// # Returns
     /// Database instance
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn new_local<P: AsRef<Path>>(_path: P) -> Result<Self, String> {
         // Default to 1536 dimensions (OpenAI text-embedding-3-small)
         // The dimension will be auto-adjusted on first insert
@@ -29,6 +30,7 @@ impl TursoVectorDB {
     ///
     /// # Returns
     /// Row ID of inserted/updated entry
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn insert(&self, entry: &EmbeddingEntry) -> Result<i64, String> {
         // Check if we need to reinitialize with different dimension
         let embedding_dim = entry.embedding.len();
@@ -119,6 +121,7 @@ impl TursoVectorDB {
     ///
     /// # Returns
     /// Array of row IDs
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn batch_insert(&self, entries: &[EmbeddingEntry]) -> Result<Vec<i64>, String> {
         debug_assert!(!entries.is_empty(), "entries must not be empty");
         let mut ids = Vec::new();
@@ -138,6 +141,7 @@ impl TursoVectorDB {
     ///
     /// # Returns
     /// Array of search results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn query_by_file(&self, file_path: &str) -> Result<Vec<SearchResult>, String> {
         debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let file_index = self
@@ -184,6 +188,7 @@ impl TursoVectorDB {
     ///
     /// # Returns
     /// Array of search results
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn query_by_language(&self, language: &str) -> Result<Vec<SearchResult>, String> {
         debug_assert!(!language.is_empty(), "language must not be empty");
         let metadata_map = self
@@ -222,6 +227,7 @@ impl TursoVectorDB {
     ///
     /// # Returns
     /// Array of search results sorted by similarity (highest first)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn similarity_search(
         &self,
         query: &[f32],
@@ -268,6 +274,7 @@ impl TursoVectorDB {
     ///
     /// # Returns
     /// Number of rows deleted
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn delete_by_file(&self, file_path: &str) -> Result<usize, String> {
         debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         let chunk_ids = {
@@ -298,12 +305,14 @@ impl TursoVectorDB {
     }
 
     /// Alias for delete_by_file (for backward compatibility)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn delete_file_entries(&self, file_path: &str) -> Result<usize, String> {
         debug_assert!(!file_path.is_empty(), "file_path must not be empty");
         self.delete_by_file(file_path).await
     }
 
     /// Get a specific entry by file path and chunk name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_entry(
         &self,
         file_path: &str,
@@ -316,6 +325,7 @@ impl TursoVectorDB {
     }
 
     /// Get database statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_stats(&self) -> Result<DbStats, String> {
         let store = self.store.read().map_err(|e| format!("Lock error: {e}"))?;
         let file_index = self
@@ -338,6 +348,7 @@ impl TursoVectorDB {
     ///
     /// # Returns
     /// Cosine similarity score (-1.0 to 1.0)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cosine_similarity(v1: &[f32], v2: &[f32]) -> f64 {
         if v1.len() != v2.len() {
             return 0.0;
@@ -372,6 +383,7 @@ impl TursoVectorDB {
     /// # Returns
     /// Cosine similarity score (-1.0 to 1.0)
     #[inline]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cosine_similarity_simd(v1: &[f32], v2: &[f32]) -> f64 {
         if v1.len() != v2.len() || v1.is_empty() {
             return 0.0;

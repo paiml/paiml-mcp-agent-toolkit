@@ -43,6 +43,7 @@ impl McpResponse {
     /// assert!(response.error.is_none());
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn success(id: Value, result: Value) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -71,6 +72,7 @@ impl McpResponse {
     /// assert_eq!(response.error.unwrap().code, -32601);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn error(id: Value, code: i32, message: String) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),

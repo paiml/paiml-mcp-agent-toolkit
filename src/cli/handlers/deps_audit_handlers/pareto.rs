@@ -6,6 +6,7 @@ use std::path::Path;
 use super::types::{DepAnalysis, DepCategory, ParetoEffort, ParetoEntry};
 
 /// Calculate effort to remove a dependency based on its usage
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn estimate_effort(name: &str, category: DepCategory) -> ParetoEffort {
     debug_assert!(!name.is_empty(), "name must not be empty");
     // High effort: deeply integrated deps
@@ -45,6 +46,7 @@ pub fn estimate_effort(name: &str, category: DepCategory) -> ParetoEffort {
 }
 
 /// Run Pareto analysis using cargo tree for accurate transitive counts
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn run_pareto_analysis(deps: &[DepAnalysis], path: &Path) -> Vec<ParetoEntry> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut entries = Vec::new();
@@ -88,6 +90,7 @@ pub fn run_pareto_analysis(deps: &[DepAnalysis], path: &Path) -> Vec<ParetoEntry
 }
 
 /// Get transitive dependency count using cargo tree
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn get_transitive_count(dep_name: &str, path: &Path) -> usize {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::process::Command;

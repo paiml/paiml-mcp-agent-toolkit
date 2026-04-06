@@ -1,5 +1,6 @@
 impl WorkerMonitor {
     /// Create a new worker monitor
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(worker_count: usize, stall_timeout: Duration) -> Self {
         debug_assert!(count > 0, "count must be positive");
         Self {
@@ -10,6 +11,7 @@ impl WorkerMonitor {
     }
 
     /// Initialize all workers
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn initialize_workers(&self) {
         let mut workers = self.workers.write().await;
 
@@ -19,6 +21,7 @@ impl WorkerMonitor {
     }
 
     /// Record heartbeat from a worker
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn record_heartbeat(&self, worker_id: usize) {
         let mut workers = self.workers.write().await;
 
@@ -28,6 +31,7 @@ impl WorkerMonitor {
     }
 
     /// Record worker starting to process a task
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn record_start_processing(&self, worker_id: usize) {
         let mut workers = self.workers.write().await;
 
@@ -37,6 +41,7 @@ impl WorkerMonitor {
     }
 
     /// Record successful task completion
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn record_success(&self, worker_id: usize, processing_time_ms: u64) {
         let mut workers = self.workers.write().await;
 
@@ -46,6 +51,7 @@ impl WorkerMonitor {
     }
 
     /// Record task failure
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn record_failure(&self, worker_id: usize, error: &str) {
         debug_assert!(!error.is_empty(), "error must not be empty");
         let mut workers = self.workers.write().await;
@@ -56,6 +62,7 @@ impl WorkerMonitor {
     }
 
     /// Mark worker as failed
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn mark_failed(&self, worker_id: usize, reason: &str) {
         let mut workers = self.workers.write().await;
 
@@ -66,6 +73,7 @@ impl WorkerMonitor {
     }
 
     /// Mark worker as terminated
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn mark_terminated(&self, worker_id: usize) {
         let mut workers = self.workers.write().await;
 
@@ -75,18 +83,21 @@ impl WorkerMonitor {
     }
 
     /// Get metrics for a specific worker
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_worker_metrics(&self, worker_id: usize) -> Option<WorkerMetrics> {
         let workers = self.workers.read().await;
         workers.get(&worker_id).cloned()
     }
 
     /// Get metrics for all workers
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_all_metrics(&self) -> Vec<WorkerMetrics> {
         let workers = self.workers.read().await;
         workers.values().cloned().collect()
     }
 
     /// Get IDs of stalled workers
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_stalled_workers(&self) -> Vec<usize> {
         let workers = self.workers.read().await;
 
@@ -98,6 +109,7 @@ impl WorkerMonitor {
     }
 
     /// Get count of workers in each state
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_state_counts(&self) -> HashMap<WorkerState, usize> {
         let workers = self.workers.read().await;
         let mut counts = HashMap::new();
@@ -110,6 +122,7 @@ impl WorkerMonitor {
     }
 
     /// Calculate overall health score (0-100)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub async fn calculate_health_score(&self) -> f64 {
         let workers = self.workers.read().await;
         let total = workers.len();
@@ -127,6 +140,7 @@ impl WorkerMonitor {
     }
 
     /// Run monitoring task periodically
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run_monitoring_task(
         monitor: Arc<Self>,
         interval: Duration,

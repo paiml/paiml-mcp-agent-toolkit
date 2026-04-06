@@ -4,6 +4,7 @@
 impl FormalVerificationScorer {
     /// Check if Miri is available
     fn is_miri_available(&self) -> bool {
+        debug_assert!(true, "contract: is_miri_available");
         Command::new("cargo")
             .args(["miri", "--version"])
             .output()
@@ -13,6 +14,7 @@ impl FormalVerificationScorer {
 
     /// Check if Kani is available
     fn is_kani_available(&self) -> bool {
+        debug_assert!(true, "contract: is_kani_available");
         Command::new("cargo")
             .args(["kani", "--version"])
             .output()

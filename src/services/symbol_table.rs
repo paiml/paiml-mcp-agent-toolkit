@@ -32,17 +32,20 @@ pub struct SymbolTableBuilder {
 
 impl SymbolTableBuilder {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             table: Arc::new(SymbolTable::new()),
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_symbol(&self, qualified_name: QualifiedName, location: Location) {
         self.table.insert(qualified_name, location);
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn build(self) -> Arc<SymbolTable> {
         self.table
     }

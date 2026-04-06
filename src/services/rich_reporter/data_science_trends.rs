@@ -1,5 +1,6 @@
 impl DataScienceAnalyzer {
     /// Analyze metric trends
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_trends(&self, metrics: &[(String, Vec<(i64, f64)>)]) -> Vec<MetricTrend> {
         debug_assert!(!metrics.is_empty(), "metrics must not be empty");
         metrics

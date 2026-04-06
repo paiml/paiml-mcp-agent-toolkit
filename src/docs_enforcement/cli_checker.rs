@@ -31,6 +31,7 @@ pub struct CliDocumentationReport {
 }
 
 impl CliDocumentationReport {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_valid(&self) -> bool {
         self.has_help
             && self.has_usage_section

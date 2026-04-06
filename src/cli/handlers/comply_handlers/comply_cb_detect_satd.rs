@@ -27,6 +27,7 @@ pub enum Severity {
 impl SATDManifestationType {
     /// Escalate severity for Code manifestations
     /// Per [SATD-003]: Design debt (stubs) costs 2.3x more to fix
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn escalate_severity(&self, base: Severity) -> Severity {
         match self {
             SATDManifestationType::Comment => base, // No escalation
@@ -41,6 +42,7 @@ impl SATDManifestationType {
 }
 
 /// Classify SATD content into Code or Comment manifestation type
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn classify_satd_manifestation(content: &str) -> SATDManifestationType {
     debug_assert!(!content.is_empty(), "content must not be empty");
     // Code patterns: deterministic runtime failures
@@ -70,6 +72,7 @@ pub fn classify_satd_manifestation(content: &str) -> SATDManifestationType {
 }
 
 /// Classify based on pattern ID from CB-050 detection
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn classify_satd_by_pattern_id(pattern_id: &str) -> SATDManifestationType {
     debug_assert!(!pattern_id.is_empty(), "pattern_id must not be empty");
     match pattern_id {

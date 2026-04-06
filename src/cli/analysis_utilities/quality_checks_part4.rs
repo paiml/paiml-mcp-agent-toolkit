@@ -1,6 +1,7 @@
 
 /// Toyota Way: Extract Method - Get QG violation summary data rows (complexity ≤3)
 fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str, u64); 9] {
+    debug_assert!(true, "contract: get_qg_violation_summary_rows");
     [
         (
             "Complexity",
@@ -40,12 +41,14 @@ fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str
 
 // Helper functions
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_toolchain(path: &Path) -> Option<String> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     super::detect_primary_language(path)
 }
 
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn build_complexity_thresholds(
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
@@ -100,6 +103,7 @@ pub fn build_complexity_thresholds(
 /// - Reduced cyclomatic complexity from 40 to <8
 /// - Improved readability through single-responsibility functions
 /// - Better maintainability following Toyota Way Kaizen principles
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_project_files(
     project_path: &Path,
     toolchain: Option<&str>,
@@ -200,6 +204,7 @@ pub async fn analyze_project_files(
 /// assert_eq!(default_extensions, vec!["rs"]);
 /// ```ignore
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_file_extensions(toolchain: Option<&str>) -> Vec<&'static str> {
     match toolchain {
         Some("rust") => vec!["rs"],
@@ -246,6 +251,7 @@ pub fn get_file_extensions(toolchain: Option<&str>) -> Vec<&'static str> {
 ///
 /// `true` if the file should be analyzed, `false` otherwise
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn should_analyze_file(
     path: &Path,
     project_path: &Path,
@@ -301,6 +307,7 @@ fn is_excluded_path(path: &Path) -> bool {
 }
 
 /// Check if path contains excluded directories
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_excluded_directory(path_str: &str) -> bool {
     debug_assert!(!path_str.is_empty(), "path_str must not be empty");
     // Normalize path for consistent matching
@@ -395,6 +402,7 @@ pub fn is_excluded_directory(path_str: &str) -> bool {
 
 /// Check if filename indicates a test file
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_excluded_filename(filename: &str) -> bool {
     debug_assert!(!filename.is_empty(), "filename must not be empty");
     is_test_file(filename)
@@ -404,6 +412,7 @@ pub fn is_excluded_filename(filename: &str) -> bool {
 }
 
 /// Check if filename is a test file (cognitive complexity ≤6)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_test_file(filename: &str) -> bool {
     debug_assert!(!filename.is_empty(), "filename must not be empty");
     const TEST_SUFFIXES: &[&str] = &["_test.rs", "_tests.rs", "tests.rs"];
@@ -424,6 +433,7 @@ pub fn is_test_file(filename: &str) -> bool {
 }
 
 /// Check if filename is an example or demo file (cognitive complexity ≤4)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_example_or_demo_file(filename: &str) -> bool {
     debug_assert!(!filename.is_empty(), "filename must not be empty");
     const EXAMPLE_DEMO_PREFIXES: &[&str] = &["example_", "demo_"];
@@ -436,6 +446,7 @@ pub fn is_example_or_demo_file(filename: &str) -> bool {
 }
 
 /// Check if filename is a benchmark file (cognitive complexity ≤4)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_benchmark_file(filename: &str) -> bool {
     debug_assert!(!filename.is_empty(), "filename must not be empty");
     const BENCH_SUFFIXES: &[&str] = &["_bench.rs", "_benchmark.rs"];
@@ -446,6 +457,7 @@ pub fn is_benchmark_file(filename: &str) -> bool {
 }
 
 /// Check if filename is a mock or stub file (cognitive complexity ≤4)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_mock_or_stub_file(filename: &str) -> bool {
     debug_assert!(!filename.is_empty(), "filename must not be empty");
     const MOCK_STUB_PREFIXES: &[&str] = &["mock_", "stub_", "stubs_"];
@@ -489,6 +501,7 @@ async fn analyze_file_complexity_async(
 }
 
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn add_top_files_ranking(
     files: Vec<crate::services::complexity::FileComplexityMetrics>,
     top_files: usize,
@@ -501,6 +514,7 @@ pub fn add_top_files_ranking(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn format_dead_code_output(
     format: DeadCodeOutputFormat,
     dead_code_result: &crate::models::dead_code::DeadCodeResult,

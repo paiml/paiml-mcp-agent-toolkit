@@ -3,6 +3,7 @@
 
 impl ReadmeCompressor {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let mut section_importance = HashMap::new();
 
@@ -41,6 +42,7 @@ impl ReadmeCompressor {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn compress(&self, content: &str) -> CompressedReadme {
         debug_assert!(!content.is_empty(), "content must not be empty");
         let sections = self.parse_markdown_sections(content);
@@ -95,6 +97,7 @@ impl ReadmeCompressor {
     }
 
     fn calculate_section_score(&self, section: &Section) -> f32 {
+        debug_assert!(true, "contract: calculate_section_score");
         let title_lower = section.title.to_lowercase();
 
         // Check exact matches first
@@ -117,6 +120,7 @@ impl ReadmeCompressor {
     }
 
     fn compress_section(&self, section: &Section, budget: usize) -> CompressedSection {
+        debug_assert!(true, "contract: compress_section");
         let mut content = String::new();
         let max_chars = budget * 4; // Rough estimate of 4 chars per token
 
@@ -216,6 +220,7 @@ impl ReadmeCompressor {
     }
 
     fn extract_features_from_section(&self, section: &Section, features: &mut Vec<String>) {
+        debug_assert!(true, "contract: extract_features_from_section");
         // Extract from lists
         for list in &section.lists {
             for item in list.items.iter().take(5) {

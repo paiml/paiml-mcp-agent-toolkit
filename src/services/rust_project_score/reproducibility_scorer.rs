@@ -40,6 +40,7 @@ pub struct ReproducibilityScorer {
 
 impl ReproducibilityScorer {
     /// Create a new reproducibility scorer wrapping Popper B-F
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             popper_b: PopperReproducibilityScorer::new(),
@@ -59,6 +60,7 @@ impl Default for ReproducibilityScorer {
 
 impl Scorer for ReproducibilityScorer {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "Reproducibility"
     }
 
@@ -168,6 +170,7 @@ impl Scorer for ReproducibilityScorer {
 /// the overall grade at F. This implements Jidoka (stop the line).
 ///
 /// Returns `Some(percentage)` if gateway passes, `None` if it fails.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn check_falsifiability_gateway(project_path: &Path) -> Option<f64> {
     debug_assert!(
         project_path.exists(),

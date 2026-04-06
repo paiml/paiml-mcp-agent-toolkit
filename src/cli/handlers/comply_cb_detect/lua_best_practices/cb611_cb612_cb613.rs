@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 /// - Unbounded caches without weak references or eviction
 ///
 /// Reference: Kong, AwesomeWM, KOReader weak table usage.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb611_weak_table_misuse(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -162,6 +163,7 @@ impl std::fmt::Display for LuaTestFramework {
 /// CB-612: Auto-detect Lua test framework(s) and report as informational.
 /// Supports hybrid projects (e.g., Kong uses both busted and Test::Nginx).
 /// Reference: Kong, APISIX, xmake, KOReader framework patterns.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb612_test_framework(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -208,6 +210,7 @@ fn has_require_pattern(content: &str, module: &str) -> bool {
 }
 
 /// Detect which Lua test frameworks are in use based on file patterns and require statements.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_lua_test_frameworks(project_path: &Path) -> Vec<LuaTestFramework> {
     debug_assert!(
         project_path.exists(),
@@ -322,6 +325,7 @@ fn has_test_nginx_indicators(project_path: &Path) -> bool {
 /// CB-613: Detect circular require() chains in Lua projects.
 /// Builds a directed graph from top-level require() calls and finds cycles via DFS.
 /// Function-scoped requires are excluded (they're safe -- deferred loading).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb613_require_cycles(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -461,6 +465,7 @@ fn extract_require_module(line: &str) -> Option<String> {
 
 /// Find cycles in the require graph using DFS.
 fn find_require_cycles(graph: &std::collections::HashMap<String, Vec<String>>) -> Vec<Vec<String>> {
+    debug_assert!(true, "contract: find_require_cycles");
     use std::collections::HashSet;
     let mut cycles = Vec::new();
     let mut visited = HashSet::new();

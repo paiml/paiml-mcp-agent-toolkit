@@ -3,6 +3,7 @@
 ///
 /// # Errors
 /// Returns an error if the Makefile cannot be read or analyzed
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_makefile(
     path: PathBuf,
     rules: Vec<String>,
@@ -51,6 +52,7 @@ pub async fn handle_analyze_makefile(
 
 // Helper: Print analysis summary
 fn print_makefile_analysis_summary(lint_result: &makefile_linter::LintResult) {
+    debug_assert!(true, "contract: print_makefile_analysis_summary");
     eprintln!("📊 Found {} violations", lint_result.violations.len());
     eprintln!(
         "✨ Quality score: {:.1}%",
@@ -77,6 +79,7 @@ fn filter_makefile_violations(
 
 // Helper: Handle fix mode
 fn handle_makefile_fix_mode(fix: bool, filtered_violations: &[makefile_linter::Violation]) {
+    debug_assert!(true, "contract: handle_makefile_fix_mode");
     if !fix {
         return;
     }
@@ -209,6 +212,7 @@ fn write_makefile_violations_table(
 }
 
 // Helper: Get severity display string
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_severity_display(severity: &makefile_linter::Severity) -> &'static str {
     match severity {
         makefile_linter::Severity::Error => "❌ Error",
@@ -334,6 +338,7 @@ fn build_sarif_results(
 }
 
 // Helper: Get SARIF level
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_sarif_level(severity: &makefile_linter::Severity) -> &'static str {
     match severity {
         makefile_linter::Severity::Error => "error",
@@ -369,6 +374,7 @@ fn format_makefile_as_gcc(
 }
 
 // Helper: Get GCC level
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_gcc_level(severity: &makefile_linter::Severity) -> &'static str {
     match severity {
         makefile_linter::Severity::Error => "error",

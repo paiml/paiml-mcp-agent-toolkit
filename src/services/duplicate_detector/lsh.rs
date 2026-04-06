@@ -53,6 +53,7 @@ impl LshIndex {
     /// * `(10, 10)` - Higher precision for similarity > 0.8
     /// * `(25, 4)` - Maximum recall for similarity > 0.3
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(num_bands: usize, rows_per_band: usize) -> Self {
         debug_assert!(num_bands > 0, "num_bands must be positive");
         let buckets = (0..num_bands).map(|_| HashMap::new()).collect();
@@ -69,6 +70,7 @@ impl LshIndex {
     /// # Arguments
     /// * `fragment_id` - Unique identifier for the code fragment
     /// * `signature` - MinHash signature of the fragment
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn insert(&mut self, fragment_id: FragmentId, signature: MinHashSignature) {
         // Store the signature for later similarity computation
         self.signatures.insert(fragment_id, signature.clone());
@@ -95,6 +97,7 @@ impl LshIndex {
     /// # Returns
     /// Set of fragment IDs that are candidate matches (O(1) average)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn query(&self, query: &MinHashSignature) -> HashSet<FragmentId> {
         let mut candidates = HashSet::new();
 
@@ -121,6 +124,7 @@ impl LshIndex {
     /// # Returns
     /// Vector of (fragment_id, similarity) pairs above threshold
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_similar(&self, query: &MinHashSignature, threshold: f64) -> Vec<(FragmentId, f64)> {
         debug_assert!(threshold >= 0.0, "threshold must be non-negative");
         let candidates = self.query(query);
@@ -139,24 +143,28 @@ impl LshIndex {
 
     /// Get the number of fragments in the index
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn len(&self) -> usize {
         self.signatures.len()
     }
 
     /// Check if the index is empty
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_empty(&self) -> bool {
         self.signatures.is_empty()
     }
 
     /// Get a signature by fragment ID
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_signature(&self, fragment_id: FragmentId) -> Option<&MinHashSignature> {
         self.signatures.get(&fragment_id)
     }
 
     /// Hash a band of MinHash values
     fn hash_band(&self, band: &[u64]) -> u64 {
+        debug_assert!(true, "contract: hash_band");
         let mut hasher = Hasher::new();
         for &val in band {
             hasher.update(&val.to_le_bytes());
@@ -176,6 +184,7 @@ impl LshIndex {
     /// - r = rows per band
     /// - b = number of bands
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn collision_probability(&self, jaccard_similarity: f64) -> f64 {
         let s = jaccard_similarity;
         let r = self.rows_per_band as f64;

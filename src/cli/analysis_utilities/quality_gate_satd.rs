@@ -1,6 +1,7 @@
 // Quality gate handlers - extracted for file health (CB-040)
 #[allow(clippy::too_many_arguments)]
 /// Toyota Way: Strategy Pattern + Extract Method - reduced complexity from 21→≤8  
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_satd(
     path: PathBuf,
     format: SatdOutputFormat,
@@ -48,6 +49,7 @@ async fn analyze_satd_items(
 }
 
 /// Toyota Way: Extract Method - apply SATD filters (complexity ≤8)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn apply_satd_filters(
     mut satd_items: Vec<crate::services::satd_detector::TechnicalDebt>,
     severity: Option<SatdSeverity>,
@@ -110,6 +112,7 @@ async fn write_satd_output(output: Option<PathBuf>, content: &str) -> Result<()>
 }
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_dag(
     dag_type: DagType,
     project_path: PathBuf,

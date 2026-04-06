@@ -3,6 +3,7 @@
 
 impl RoadmapService {
     /// Add or update an item in the roadmap (atomic read-modify-write with exclusive lock)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn upsert_item(&self, item: RoadmapItem) -> Result<()> {
         // Acquire exclusive lock for entire read-modify-write operation
         let _lock = self.acquire_write_lock()?;
@@ -34,6 +35,7 @@ impl RoadmapService {
     }
 
     /// Remove an item from the roadmap (atomic read-modify-write with exclusive lock)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn remove_item(&self, id: &str) -> Result<Option<RoadmapItem>> {
         debug_assert!(!id.is_empty(), "id must not be empty");
         // Acquire exclusive lock for entire read-modify-write operation
@@ -66,6 +68,7 @@ impl RoadmapService {
     }
 
     /// Find an item by ID
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_item(&self, id: &str) -> Result<Option<RoadmapItem>> {
         debug_assert!(!id.is_empty(), "id must not be empty");
         let roadmap = self.load()?;
@@ -73,22 +76,26 @@ impl RoadmapService {
     }
 
     /// Find an item by GitHub issue number
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_item_by_github_issue(&self, issue: u64) -> Result<Option<RoadmapItem>> {
         let roadmap = self.load()?;
         Ok(roadmap.find_item_by_github_issue(issue).cloned())
     }
 
     /// Get the roadmap file path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn path(&self) -> &Path {
         &self.roadmap_path
     }
 
     /// Check if roadmap file exists
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn exists(&self) -> bool {
         self.roadmap_path.exists()
     }
 
     /// Initialize a new roadmap file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn initialize(&self, github_repo: Option<String>) -> Result<()> {
         let roadmap = Roadmap::new(github_repo);
         self.save(&roadmap)?;

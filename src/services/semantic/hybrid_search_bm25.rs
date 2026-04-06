@@ -12,6 +12,7 @@ pub struct Bm25SearchEngine {
 
 impl Bm25SearchEngine {
     /// Create a new BM25 search engine
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             index: BM25Index::new(),
@@ -24,6 +25,7 @@ impl Bm25SearchEngine {
     /// # Arguments
     /// * `k1` - Term frequency saturation (default 1.2)
     /// * `b` - Length normalization (default 0.75)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_params(k1: f32, b: f32) -> Self {
         Self {
             index: BM25Index::with_params(k1, b),
@@ -37,6 +39,7 @@ impl Bm25SearchEngine {
     /// * `file_path` - Path to the file
     /// * `content` - File content
     /// * `language` - Programming language
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
     pub fn index_file(&mut self, file_path: &str, content: &str, _language: &str) {
         debug_assert!(!content.is_empty(), "content must not be empty");
         // Split content into lines and index each
@@ -69,6 +72,7 @@ impl Bm25SearchEngine {
     ///
     /// # Returns
     /// Results with true BM25 scores (not rank-based)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn search(&self, query: &str, limit: usize) -> Vec<(KeywordMatch, f32)> {
         debug_assert!(!query.is_empty(), "query must not be empty");
         let results = self.index.search(query, limit);
@@ -84,11 +88,13 @@ impl Bm25SearchEngine {
     }
 
     /// Get the number of indexed documents
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn len(&self) -> usize {
         self.index.len()
     }
 
     /// Check if the index is empty
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_empty(&self) -> bool {
         self.index.is_empty()
     }

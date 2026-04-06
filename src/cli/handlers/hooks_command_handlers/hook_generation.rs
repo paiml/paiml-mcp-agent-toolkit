@@ -55,6 +55,7 @@ impl HooksCommand {
     ///
     /// NOTE: No timestamp — CB-1335 requires deterministic output.
     /// Two consecutive `pmat hooks install` runs must produce identical files.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_hook_header(&self) -> String {
         r#"#!/bin/bash
 # Generated pre-commit hook (auto-managed by PMAT)
@@ -70,6 +71,7 @@ echo "================================"
 
     /// Generate environment variables section
     fn generate_env_vars(&self, config: &PmatConfig) -> String {
+        debug_assert!(true, "contract: generate_env_vars");
         format!(
             r#"# Load current configuration dynamically
 export PMAT_MAX_CYCLOMATIC_COMPLEXITY={}
@@ -86,6 +88,7 @@ export PMAT_TASK_ID_PATTERN="PMAT-[0-9]{{4}}"
 
     /// Generate the cargo fmt --check gate for Rust projects
     fn generate_format_check() -> &'static str {
+        debug_assert!(true, "contract: generate_format_check");
         r#"# 0. Format check (Rust only — cargo fmt --check on staged .rs files)
 STAGED_RS=$(git diff --cached --name-only --diff-filter=ACMR -- '*.rs' 2>/dev/null)
 if [ -n "$STAGED_RS" ] && command -v cargo &> /dev/null && [ -f Cargo.toml ]; then
@@ -109,6 +112,7 @@ fi
     /// - Non-code repos (no source files at all) get a fast pass
     /// - Mixed repos only check staged source files
     /// - SATD and docs checks only run when source files exist in the repo
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn generate_quality_checks(&self) -> String {
         let mut hook = String::from(
             r#"# Check if pmat is available

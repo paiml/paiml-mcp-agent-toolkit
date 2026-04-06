@@ -22,6 +22,7 @@
 /// * `code` - Show source code inline (default: true, use --summary to disable)
 /// * `git_history` - Include git commit history in search via RRF fusion
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_query(
     query: String,
     limit: usize,

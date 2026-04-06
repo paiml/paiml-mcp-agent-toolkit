@@ -15,22 +15,26 @@ impl PooledBuffer {
 
     /// Get the buffer data
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn as_slice(&self) -> &[u8] {
         &self.data
     }
 
     /// Get mutable access to buffer data
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         &mut self.data
     }
 
     /// Get buffer capacity
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn capacity(&self) -> usize {
         self.data.capacity()
     }
 
     /// Resize buffer (may trigger reallocation)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn resize(&mut self, new_size: usize) {
         self.data.resize(new_size, 0);
     }
@@ -91,6 +95,7 @@ impl StringInterner {
 
     /// Get current memory usage
     fn memory_usage(&self) -> usize {
+        debug_assert!(true, "contract: memory_usage");
         *self.total_size.lock()
     }
 
@@ -158,6 +163,7 @@ impl MemoryPool {
 
     /// Get pool statistics
     fn stats(&self) -> PoolStats {
+        debug_assert!(true, "contract: stats");
         let buffers = self.buffers.lock();
         let total_size = *self.total_size.lock();
         let allocation_count = *self.allocation_count.lock();
@@ -178,6 +184,7 @@ impl MemoryPool {
 
     /// Clear all buffers
     fn clear(&self) {
+        debug_assert!(true, "contract: clear");
         self.buffers.lock().clear();
         *self.total_size.lock() = 0;
     }

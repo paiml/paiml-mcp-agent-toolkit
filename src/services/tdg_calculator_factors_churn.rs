@@ -2,6 +2,7 @@
 // Split from tdg_calculator_factors.rs for complexity budget
 
 fn churn_score_from_age(days_old: u64) -> f64 {
+    debug_assert!(true, "contract: churn_score_from_age");
     if days_old < 7 {
         3.0
     } else if days_old < 30 {
@@ -34,6 +35,7 @@ impl TDGCalculator {
     }
 
     /// Get cached churn analysis or compute it once for the entire project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub async fn get_or_compute_churn_analysis(
         &self,
     ) -> Result<crate::models::churn::CodeChurnAnalysis> {

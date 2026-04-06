@@ -2,6 +2,7 @@
 // and DAG/cache strategy conversion helpers.
 
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn apply_satd_filters(
     items: Vec<crate::models::tdg::SatdItem>,
     severity: Option<SatdSeverity>,
@@ -54,6 +55,7 @@ pub struct DeepContextConfigParams {
 }
 
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn build_deep_context_config(
     _project_path: PathBuf,
     _output: Option<PathBuf>,
@@ -95,6 +97,7 @@ pub fn build_deep_context_config(
 /// assert!(matches!(model_type, DagType::CallGraph));
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::DagType {
     match dag_type {
         DeepContextDagType::CallGraph => crate::models::dag::DagType::CallGraph,
@@ -118,11 +121,13 @@ pub fn convert_dag_type(dag_type: DeepContextDagType) -> crate::models::dag::Dag
 /// assert_eq!(converted, DeepContextCacheStrategy::Normal);
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn convert_cache_strategy(strategy: DeepContextCacheStrategy) -> DeepContextCacheStrategy {
     // Return the strategy unchanged as it's already in the correct format
     strategy
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_analysis_filters(
     include: Vec<String>,
     exclude: Vec<String>,
@@ -153,6 +158,7 @@ pub fn parse_analysis_filters(
 /// assert_eq!(parse_analysis_type("big-o").unwrap(), AnalysisType::BigO);
 /// assert!(parse_analysis_type("invalid").is_err());
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_analysis_type(s: &str) -> anyhow::Result<AnalysisType> {
     debug_assert!(!s.is_empty(), "s must not be empty");
     match s.to_lowercase().as_str() {

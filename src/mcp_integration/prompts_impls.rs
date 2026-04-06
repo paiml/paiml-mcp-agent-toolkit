@@ -3,6 +3,7 @@
 #[async_trait]
 impl McpPrompt for CodeAnalysisPrompt {
     fn metadata(&self) -> PromptMetadata {
+        debug_assert!(true, "contract: metadata");
         PromptMetadata {
             name: "code_analysis".to_string(),
             description: Some("Analyze code for quality issues".to_string()),
@@ -25,6 +26,7 @@ impl McpPrompt for CodeAnalysisPrompt {
         &self,
         arguments: Option<HashMap<String, String>>,
     ) -> Result<Vec<PromptMessage>, McpError> {
+        debug_assert!(true, "contract: get");
         let lang = arguments
             .as_ref()
             .and_then(|args| args.get("language"))
@@ -51,6 +53,7 @@ impl McpPrompt for CodeAnalysisPrompt {
 #[async_trait]
 impl McpPrompt for RefactoringPrompt {
     fn metadata(&self) -> PromptMetadata {
+        debug_assert!(true, "contract: metadata");
         PromptMetadata {
             name: "refactoring".to_string(),
             description: Some("Guide code refactoring".to_string()),
@@ -66,6 +69,7 @@ impl McpPrompt for RefactoringPrompt {
         &self,
         arguments: Option<HashMap<String, String>>,
     ) -> Result<Vec<PromptMessage>, McpError> {
+        debug_assert!(true, "contract: get");
         let pattern = arguments
             .as_ref()
             .and_then(|args| args.get("pattern"))
@@ -85,6 +89,7 @@ impl McpPrompt for RefactoringPrompt {
 #[async_trait]
 impl McpPrompt for QualityAssessmentPrompt {
     fn metadata(&self) -> PromptMetadata {
+        debug_assert!(true, "contract: metadata");
         PromptMetadata {
             name: "quality_assessment".to_string(),
             description: Some("Assess overall code quality".to_string()),
@@ -96,6 +101,7 @@ impl McpPrompt for QualityAssessmentPrompt {
         &self,
         _arguments: Option<HashMap<String, String>>,
     ) -> Result<Vec<PromptMessage>, McpError> {
+        debug_assert!(true, "contract: get");
         Ok(vec![
             PromptMessage {
                 role: "system".to_string(),
@@ -110,6 +116,7 @@ impl McpPrompt for QualityAssessmentPrompt {
 #[async_trait]
 impl McpPrompt for RepoScorePrompt {
     fn metadata(&self) -> PromptMetadata {
+        debug_assert!(true, "contract: metadata");
         PromptMetadata {
             name: "repo_score".to_string(),
             description: Some(
@@ -134,6 +141,7 @@ impl McpPrompt for RepoScorePrompt {
         &self,
         arguments: Option<HashMap<String, String>>,
     ) -> Result<Vec<PromptMessage>, McpError> {
+        debug_assert!(true, "contract: get");
         let repo_path = arguments
             .as_ref()
             .and_then(|args| args.get("repository_path"))

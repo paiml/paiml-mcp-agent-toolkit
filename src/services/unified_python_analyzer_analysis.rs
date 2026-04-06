@@ -2,6 +2,7 @@ impl UnifiedPythonAnalyzer {
     /// Analyze file with single parse
     ///
     /// This is the core GREEN phase implementation: minimal but correct.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze(&self) -> Result<UnifiedAnalysis, AnalysisError> {
         // Track parse count for testing
         #[cfg(test)]

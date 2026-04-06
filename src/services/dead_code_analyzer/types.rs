@@ -13,6 +13,7 @@ pub struct HierarchicalBitSet {
 
 impl HierarchicalBitSet {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(capacity: usize) -> Self {
         debug_assert!(capacity > 0, "capacity must be positive");
         Self {
@@ -32,6 +33,7 @@ impl HierarchicalBitSet {
     /// bitset.set(42);
     /// assert!(bitset.is_set(42));
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set(&mut self, index: u32) {
         self.levels[0].insert(index);
     }
@@ -49,6 +51,7 @@ impl HierarchicalBitSet {
     /// assert!(bitset.is_set(10));
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_set(&self, index: u32) -> bool {
         self.levels[0].contains(index)
     }
@@ -75,6 +78,7 @@ impl HierarchicalBitSet {
     /// assert_eq!(bitset.count_set(), 3);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn count_set(&self) -> usize {
         self.levels[0].len() as usize
     }
@@ -113,6 +117,7 @@ pub struct CrossLangReferenceGraph {
 
 impl CrossLangReferenceGraph {
     /// Create a new empty reference graph
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn new() -> Self {
         Self {
             edges: Vec::new(),
@@ -122,6 +127,7 @@ impl CrossLangReferenceGraph {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn edges_for_chunk(&self, _chunk: &[u8]) -> Vec<ReferenceEdge> {
         debug_assert!(!_chunk.is_empty(), "_chunk must not be empty");
         // TRACKED: Implement efficient edge lookup for chunks
@@ -195,6 +201,7 @@ impl Default for VTableResolver {
 
 impl VTableResolver {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             vtables: HashMap::new(),
@@ -203,6 +210,7 @@ impl VTableResolver {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn resolve_dynamic_call(&self, interface: &str, method: &str) -> Vec<NodeKey> {
         debug_assert!(!interface.is_empty(), "interface must not be empty");
         debug_assert!(!method.is_empty(), "method must not be empty");

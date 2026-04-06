@@ -25,6 +25,7 @@ const SKIP_DIRS: &[&str] = &[
 ];
 
 /// Walk directory recursively for `.lean` files, skipping common non-source dirs.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn walkdir_lean_files(dir: &Path) -> Vec<PathBuf> {
     debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
@@ -61,6 +62,7 @@ fn walk_lean_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 
 /// CB-1050: Detect sorry usage (incomplete proofs).
 /// Sorry is Lean's escape hatch for unfinished proofs — it should be zero in production.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1050_sorry_usage(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -108,6 +110,7 @@ pub fn detect_cb1050_sorry_usage(project_path: &Path) -> Vec<CbPatternViolation>
 
 /// CB-1051: Detect non-standard axiom usage.
 /// Custom axioms weaken the trust base — flag any `axiom` declaration.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1051_axiom_usage(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -143,6 +146,7 @@ pub fn detect_cb1051_axiom_usage(project_path: &Path) -> Vec<CbPatternViolation>
 
 /// CB-1052: Theorem coverage check.
 /// Warns if sorry/theorem ratio exceeds 20% (more than 1 in 5 theorems incomplete).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1052_theorem_coverage(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -203,6 +207,7 @@ pub fn detect_cb1052_theorem_coverage(project_path: &Path) -> Vec<CbPatternViola
 
 /// CB-1053: Missing doc comments on public theorems.
 /// Public theorems should have doc comments (`/-- ... -/`) for maintainability.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb1053_undocumented_theorems(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

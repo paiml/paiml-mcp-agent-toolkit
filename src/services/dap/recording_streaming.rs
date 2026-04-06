@@ -1,5 +1,6 @@
 impl<W: Write> RecordingWriter<W> {
     /// Create a new streaming recording writer
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(mut writer: W, program: String, args: Vec<String>) -> Result<Self> {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -28,6 +29,7 @@ impl<W: Write> RecordingWriter<W> {
     }
 
     /// Create writer with specific compression level
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_compression(
         writer: W,
         program: String,
@@ -40,11 +42,13 @@ impl<W: Write> RecordingWriter<W> {
     }
 
     /// Add environment variable to metadata
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_environment(&mut self, key: impl Into<String>, value: impl Into<String>) {
         self.metadata.environment.insert(key.into(), value.into());
     }
 
     /// Write a snapshot to the recording
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn write_snapshot(&mut self, snapshot: &Snapshot) -> Result<()> {
         if self.finalized {
             anyhow::bail!("Cannot write snapshot: recording has been finalized");
@@ -61,11 +65,13 @@ impl<W: Write> RecordingWriter<W> {
     }
 
     /// Get current snapshot count
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn snapshot_count(&self) -> u32 {
         self.snapshot_count
     }
 
     /// Finalize the recording (write metadata, count, and snapshots)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn finalize(mut self) -> Result<()> {
         if self.finalized {
             anyhow::bail!("Recording has already been finalized");
@@ -102,11 +108,13 @@ impl<W: Write> RecordingWriter<W> {
 
 impl SnapshotSerializer {
     /// Create a new serializer with default capacity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::with_capacity(1024)
     }
 
     /// Create a serializer with specific initial capacity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_capacity(capacity: usize) -> Self {
         debug_assert!(capacity > 0, "capacity must be positive");
         Self {
@@ -116,6 +124,7 @@ impl SnapshotSerializer {
     }
 
     /// Create serializer with compression
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_compression(compression: CompressionLevel) -> Self {
         let mut serializer = Self::new();
         serializer.compression = compression;
@@ -135,6 +144,7 @@ impl SnapshotSerializer {
     }
 
     /// Get current buffer capacity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn capacity(&self) -> usize {
         self.buffer.capacity()
     }

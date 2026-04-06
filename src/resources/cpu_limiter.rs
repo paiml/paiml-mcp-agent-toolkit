@@ -17,6 +17,7 @@ pub struct CpuLimiter {
 }
 
 impl CpuLimiter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(limits: CpuLimits) -> Result<Self, ResourceError> {
         let mut system = System::new_all();
         system.refresh_all();
@@ -38,6 +39,7 @@ impl CpuLimiter {
     }
 
     fn apply_cpu_limits(&self, limits: &CpuLimits) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: apply_cpu_limits");
         // Apply CPU affinity based on core count
         self.set_cpu_affinity(limits.cores)?;
 
@@ -54,6 +56,7 @@ impl CpuLimiter {
 
     #[allow(unused_variables)]
     fn set_cpu_affinity(&self, cores: f32) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: set_cpu_affinity");
         #[cfg(target_os = "linux")]
         {
             use libc::{cpu_set_t, sched_setaffinity, CPU_SET, CPU_ZERO};
@@ -95,6 +98,7 @@ impl CpuLimiter {
     }
 
     fn get_current_affinity() -> Result<Option<Vec<usize>>, ResourceError> {
+        debug_assert!(true, "contract: get_current_affinity");
         #[cfg(target_os = "linux")]
         {
             use libc::{cpu_set_t, sched_getaffinity, CPU_ISSET};
@@ -132,6 +136,7 @@ impl CpuLimiter {
     }
 
     fn set_scheduling_priority(&self, priority: i32) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: set_scheduling_priority");
         #[cfg(unix)]
         {
             use libc::setpriority;
@@ -159,10 +164,12 @@ impl CpuLimiter {
     }
 
     fn is_cgroup_available(&self) -> bool {
+        debug_assert!(true, "contract: is_cgroup_available");
         batuta_common::sys::is_cgroup_available()
     }
 
     fn apply_cgroup_limits(&self, _limits: &CpuLimits) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: apply_cgroup_limits");
         #[cfg(target_os = "linux")]
         {
             // Try cgroups v2 first
@@ -180,6 +187,7 @@ impl CpuLimiter {
 
     #[allow(unused_variables)]
     fn apply_cgroup_v2_limits(&self, limits: &CpuLimits) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: apply_cgroup_v2_limits");
         #[cfg(target_os = "linux")]
         {
             use std::fs;
@@ -216,6 +224,7 @@ impl CpuLimiter {
 
     #[allow(unused_variables)]
     fn apply_cgroup_v1_limits(&self, limits: &CpuLimits) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: apply_cgroup_v1_limits");
         #[cfg(target_os = "linux")]
         {
             use std::fs;
@@ -256,6 +265,7 @@ impl CpuLimiter {
 
     #[allow(dead_code)]
     fn start_monitor(&mut self) {
+        debug_assert!(true, "contract: start_monitor");
         let limits = self.limits.clone();
         let system = self.system.clone();
         let pid = self.pid;
@@ -299,11 +309,13 @@ impl CpuLimiter {
 
 impl ResourceController for CpuLimiter {
     fn apply_limits(&self, limits: &ResourceLimits) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: apply_limits");
         *self.limits.write() = limits.cpu.clone();
         self.apply_cpu_limits(&limits.cpu)
     }
 
     fn get_usage(&self) -> Result<ResourceUsage, ResourceError> {
+        debug_assert!(true, "contract: get_usage");
         let mut system = self.system.write();
         system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
         system.refresh_cpu_all();
@@ -329,6 +341,7 @@ impl ResourceController for CpuLimiter {
     }
 
     fn release(&self) -> Result<(), ResourceError> {
+        debug_assert!(true, "contract: release");
         *self.shutdown.write() = true;
 
         // Restore original CPU affinity

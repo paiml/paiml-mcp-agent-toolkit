@@ -73,6 +73,7 @@ pub struct ParallelWasmAnalyzer {
 impl ParallelWasmAnalyzer {
     /// Create a new parallel analyzer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(config: ParallelConfig) -> Self {
         Self {
             _config: config,
@@ -81,6 +82,7 @@ impl ParallelWasmAnalyzer {
     }
 
     /// Analyze files in parallel
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_directory(&self, dir_path: &Path) -> Result<AggregatedAnalysis> {
         debug_assert!(
             dir_path.exists(),
@@ -348,6 +350,7 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
+            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

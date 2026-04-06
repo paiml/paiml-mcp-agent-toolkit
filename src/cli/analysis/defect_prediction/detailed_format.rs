@@ -4,6 +4,7 @@ use crate::services::defect_probability::DefectScore;
 use anyhow::Result;
 
 /// Format predictions as JSON
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_defect_json(
     predictions: &[(String, DefectScore)],
     elapsed: std::time::Duration,
@@ -34,6 +35,7 @@ pub(crate) fn format_defect_json(
 }
 
 /// Format predictions as detailed report
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_defect_detailed(
     predictions: &[(String, DefectScore)],
     elapsed: std::time::Duration,
@@ -53,6 +55,7 @@ pub(crate) fn format_defect_detailed(
 }
 
 /// Write detailed report header
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_detailed_header(output: &mut String) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "🔮 Defect Prediction Detailed Report")?;
@@ -62,6 +65,7 @@ pub(crate) fn write_detailed_header(output: &mut String) -> Result<()> {
 }
 
 /// Write details for a single file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_file_details(
     output: &mut String,
     file: &str,
@@ -85,6 +89,7 @@ pub(crate) fn write_file_details(
 }
 
 /// Write risk level information
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_risk_level(output: &mut String, score: &DefectScore) -> Result<()> {
     use std::fmt::Write;
     let risk_display = format_risk_level_display(&score.risk_level);
@@ -98,6 +103,7 @@ pub(crate) fn write_risk_level(output: &mut String, score: &DefectScore) -> Resu
 }
 
 /// Format risk level for display
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn format_risk_level_display(
     risk_level: &crate::services::defect_probability::RiskLevel,
 ) -> &'static str {
@@ -109,6 +115,7 @@ pub(crate) fn format_risk_level_display(
 }
 
 /// Write confidence level information
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_confidence_level(output: &mut String, score: &DefectScore) -> Result<()> {
     use std::fmt::Write;
     writeln!(output, "   Confidence: {:.1}%", score.confidence * 100.0)?;
@@ -116,6 +123,7 @@ pub(crate) fn write_confidence_level(output: &mut String, score: &DefectScore) -
 }
 
 /// Write contributing factors section
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_contributing_factors(output: &mut String, score: &DefectScore) -> Result<()> {
     use std::fmt::Write;
 
@@ -131,6 +139,7 @@ pub(crate) fn write_contributing_factors(output: &mut String, score: &DefectScor
 }
 
 /// Write recommendations section
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_recommendations(output: &mut String, score: &DefectScore) -> Result<()> {
     use std::fmt::Write;
 
@@ -146,6 +155,7 @@ pub(crate) fn write_recommendations(output: &mut String, score: &DefectScore) ->
 }
 
 /// Write analysis footer with timing
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn write_analysis_footer(
     output: &mut String,
     elapsed: std::time::Duration,

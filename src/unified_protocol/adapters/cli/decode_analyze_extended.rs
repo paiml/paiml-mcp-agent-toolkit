@@ -32,6 +32,7 @@ impl CliAdapter {
         centrality_threshold: f64,
         merge_threshold: usize,
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(true, "contract: decode_demo");
         let body = json!({
             "path": path.as_ref().map(|p| p.to_string_lossy().to_string()),
             "url": url,
@@ -462,6 +463,7 @@ impl CliAdapter {
 
     fn decode_analyze_assemblyscript(
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(true, "contract: decode_analyze_assemblyscript");
         Ok((
             Method::POST,
             "/api/v1/analyze/assemblyscript".to_string(),
@@ -472,6 +474,7 @@ impl CliAdapter {
 
     fn decode_analyze_webassembly(
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(true, "contract: decode_analyze_webassembly");
         Ok((
             Method::POST,
             "/api/v1/analyze/webassembly".to_string(),
@@ -482,12 +485,14 @@ impl CliAdapter {
 
     fn cli_only_command_error(
     ) -> Result<(Method, String, Value, Option<OutputFormat>), ProtocolError> {
+        debug_assert!(true, "contract: cli_only_command_error");
         Err(ProtocolError::InvalidFormat(
             "Command should be handled directly by CLI".to_string(),
         ))
     }
 
     fn format_to_extension_string(format: &OutputFormat) -> &'static str {
+        debug_assert!(true, "contract: format_to_extension_string");
         match format {
             OutputFormat::Json => "json",
             OutputFormat::Table => "table",

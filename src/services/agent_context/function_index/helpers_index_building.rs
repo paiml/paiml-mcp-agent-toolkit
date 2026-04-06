@@ -2,6 +2,7 @@
 ///
 /// Handles: `siblings = ["../aprender", "../trueno"]`
 /// Minimal parser — no full TOML dependency needed for one key.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn parse_workspace_siblings(content: &str) -> Vec<String> {
     debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
@@ -23,6 +24,7 @@ pub(crate) fn parse_workspace_siblings(content: &str) -> Vec<String> {
 /// Build a corpus document string for a single function entry.
 ///
 /// Used by find_similar() when corpus was not pre-built (SQLite load path).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn build_corpus_entry(func: &FunctionEntry) -> String {
     let doc = func.doc_comment.as_deref().unwrap_or("");
     // Estimate: known fields + ~20% of source for identifiers
@@ -53,6 +55,7 @@ pub(crate) fn build_corpus_entry(func: &FunctionEntry) -> String {
 }
 
 /// Build name_index, file_index, and corpus from functions.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn build_indices(functions: &[FunctionEntry]) -> BuildIndicesResult {
     debug_assert!(!functions.is_empty(), "functions must not be empty");
     build_indices_impl(functions, true)
@@ -62,6 +65,7 @@ pub(crate) fn build_indices(functions: &[FunctionEntry]) -> BuildIndicesResult {
 ///
 /// Used by SQLite load path where FTS5 handles search, saving ~36MB
 /// of corpus string allocation for 90K functions.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn build_indices_without_corpus(functions: &[FunctionEntry]) -> BuildIndicesResult {
     debug_assert!(!functions.is_empty(), "functions must not be empty");
     build_indices_impl(functions, false)

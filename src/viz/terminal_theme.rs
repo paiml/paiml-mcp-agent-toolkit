@@ -4,6 +4,7 @@
 impl TerminalTheme {
     /// Get critical node color for this theme
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn critical_color(&self) -> Rgba {
         match self {
             Self::Default => Rgba::new(255, 87, 34, 255), // Deep Orange
@@ -15,6 +16,7 @@ impl TerminalTheme {
 
     /// Get normal node color for this theme
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn normal_color(&self) -> Rgba {
         match self {
             Self::Default => Rgba::new(66, 133, 244, 255), // Blue
@@ -26,6 +28,7 @@ impl TerminalTheme {
 
     /// Get edge color for this theme
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn edge_color(&self) -> Rgba {
         match self {
             Self::Default => Rgba::new(150, 150, 150, 180),
@@ -37,6 +40,7 @@ impl TerminalTheme {
 
     /// Get background color for this theme
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn background_color(&self) -> Rgba {
         match self {
             Self::Default | Self::HighContrast | Self::ColorblindSafe => Rgba::BLACK,
@@ -48,6 +52,7 @@ impl TerminalTheme {
 impl NodeShape {
     /// Get the radius multiplier for this shape
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn radius_multiplier(&self) -> f32 {
         match self {
             Self::Circle => 1.0,
@@ -76,6 +81,7 @@ impl Default for RenderConfig {
 impl RenderConfig {
     /// Create config with ASCII mode (widest compatibility)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn ascii() -> Self {
         Self {
             mode: TerminalMode::Ascii,
@@ -85,6 +91,7 @@ impl RenderConfig {
 
     /// Create config with ANSI true color mode
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn ansi_color() -> Self {
         Self {
             mode: TerminalMode::AnsiTrueColor,
@@ -94,6 +101,7 @@ impl RenderConfig {
 
     /// Set theme
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn theme(mut self, theme: TerminalTheme) -> Self {
         self.theme = theme;
         self
@@ -101,6 +109,7 @@ impl RenderConfig {
 
     /// Set max nodes (semantic zooming)
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn max_nodes(mut self, max: usize) -> Self {
         self.max_nodes = max;
         self

@@ -25,6 +25,7 @@ impl SemanticCli {
     /// # Note
     /// Uses pure Rust TF-IDF embeddings via aprender.
     /// No external API keys or internet connection required.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn new(db_path: &str, workspace_path: &std::path::Path) -> Result<Self, String> {
         debug_assert!(
             workspace_path.exists(),
@@ -49,6 +50,7 @@ impl SemanticCli {
     }
 
     /// Sync embeddings for directory
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn embed_sync(
         &self,
         directory: &PathBuf,
@@ -74,12 +76,14 @@ impl SemanticCli {
     }
 
     /// Get embedding status
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn embed_status(&self) -> Result<String, String> {
         // Query database for statistics
         Ok("Embedding database status: 0 chunks indexed".to_string())
     }
 
     /// Clear all embeddings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn embed_clear(&self, confirm: bool) -> Result<String, String> {
         if !confirm {
             return Err("Clear operation requires --confirm flag".to_string());
@@ -90,6 +94,7 @@ impl SemanticCli {
     }
 
     /// Semantic search
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn semantic_search(
         &self,
         query: &str,
@@ -129,6 +134,7 @@ impl SemanticCli {
     }
 
     /// Find similar code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn semantic_similar(&self, file: &PathBuf, limit: usize) -> Result<String, String> {
         debug_assert!(file.exists(), "file must exist: {}", file.display());
         if !file.exists() {
@@ -164,6 +170,7 @@ impl SemanticCli {
     }
 
     /// Cluster code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_cluster(&self, method: &str, k: Option<usize>) -> Result<String, String> {
         debug_assert!(!method.is_empty(), "method must not be empty");
         let clustering_method = match method {
@@ -190,6 +197,7 @@ impl SemanticCli {
     }
 
     /// Extract topics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_topics(
         &self,
         num_topics: usize,

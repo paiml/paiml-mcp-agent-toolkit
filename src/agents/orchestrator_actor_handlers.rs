@@ -18,6 +18,7 @@ impl Handler<AnalyzeRequest> for OrchestratorActor {
     type Result = Result<AgentResponse, AgentError>;
 
     fn handle(&mut self, _msg: AnalyzeRequest, _ctx: &mut Context<Self>) -> Self::Result {
+        debug_assert!(true, "contract: handle");
         // Forward to analyzer actor
         Err(AgentError::ProcessingFailed("Not implemented".to_string()))
     }
@@ -27,6 +28,7 @@ impl Handler<TransformRequest> for OrchestratorActor {
     type Result = Result<AgentResponse, AgentError>;
 
     fn handle(&mut self, _msg: TransformRequest, _ctx: &mut Context<Self>) -> Self::Result {
+        debug_assert!(true, "contract: handle");
         // Forward to transformer actor
         Err(AgentError::ProcessingFailed("Not implemented".to_string()))
     }
@@ -36,6 +38,7 @@ impl Handler<ValidateRequest> for OrchestratorActor {
     type Result = Result<AgentResponse, AgentError>;
 
     fn handle(&mut self, _msg: ValidateRequest, _ctx: &mut Context<Self>) -> Self::Result {
+        debug_assert!(true, "contract: handle");
         // Forward to validator actor
         Err(AgentError::ProcessingFailed("Not implemented".to_string()))
     }

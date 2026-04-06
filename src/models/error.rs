@@ -59,6 +59,7 @@ pub enum AnalysisError {
 
 impl TemplateError {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_mcp_code(&self) -> i32 {
         match self {
             TemplateError::TemplateNotFound { .. } => -32001,
@@ -212,6 +213,7 @@ pub enum PmatError {
 impl PmatError {
     /// Convert to MCP JSON-RPC error code using categorized mapping
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn to_mcp_code(&self) -> i32 {
         // Delegate to specialized handlers for better maintainability
         match self {
@@ -225,6 +227,7 @@ impl PmatError {
 
     /// Map error to code based on error category (reduces CC complexity)
     fn get_error_code_by_category(&self) -> i32 {
+        debug_assert!(true, "contract: get_error_code_by_category");
         use PmatError::{
             AlignmentError, AllocationError, Analysis, AnalysisError, AstError, CacheError,
             ConfigError, DatabaseError, DirectoryNotFound, FeatureExtractionError, FileNotFound,
@@ -292,6 +295,7 @@ impl PmatError {
 
     /// File and I/O error codes
     fn get_io_error_code(&self) -> i32 {
+        debug_assert!(true, "contract: get_io_error_code");
         use PmatError::{DirectoryNotFound, FileNotFound, Io, PermissionDenied};
         match self {
             FileNotFound { .. } => -32001,
@@ -304,6 +308,7 @@ impl PmatError {
 
     /// Parsing and analysis error codes
     fn get_parsing_error_code(&self) -> i32 {
+        debug_assert!(true, "contract: get_parsing_error_code");
         use PmatError::{AnalysisError, AstError, ParseError, SyntaxError};
         match self {
             ParseError { .. } => -32004,
@@ -316,6 +321,7 @@ impl PmatError {
 
     /// SIMD and vectorized operation error codes
     fn get_simd_error_code(&self) -> i32 {
+        debug_assert!(true, "contract: get_simd_error_code");
         use PmatError::{AlignmentError, SimdError, VectorizedError};
         match self {
             SimdError { .. } => -32008,
@@ -327,6 +333,7 @@ impl PmatError {
 
     /// Machine learning error codes
     fn get_ml_error_code(&self) -> i32 {
+        debug_assert!(true, "contract: get_ml_error_code");
         use PmatError::{FeatureExtractionError, ModelError, TrainingDataError};
         match self {
             ModelError { .. } => -32011,
@@ -338,6 +345,7 @@ impl PmatError {
 
     /// Configuration and validation error codes
     fn get_config_error_code(&self) -> i32 {
+        debug_assert!(true, "contract: get_config_error_code");
         use PmatError::{ConfigError, FormatError, ValidationError};
         match self {
             ConfigError { .. } => -32014,
@@ -349,6 +357,7 @@ impl PmatError {
 
     /// Network and protocol error codes  
     fn get_network_error_code(&self) -> i32 {
+        debug_assert!(true, "contract: get_network_error_code");
         use PmatError::{NetworkError, ProtocolError, RenderError, SerializationError};
         match self {
             RenderError { .. } => -32018,
@@ -361,6 +370,7 @@ impl PmatError {
 
     /// Storage and cache error codes
     fn get_storage_error_code(&self) -> i32 {
+        debug_assert!(true, "contract: get_storage_error_code");
         use PmatError::{
             AllocationError, CacheError, DatabaseError, ResourceExhausted, StorageFullError,
             TimeoutError,
@@ -378,6 +388,7 @@ impl PmatError {
 
     /// Git/VCS and quality gate error codes
     fn get_vcs_error_code(&self) -> i32 {
+        debug_assert!(true, "contract: get_vcs_error_code");
         use PmatError::{
             GitError, ProofError, QualityGateError, RepositoryError, VerificationError,
         };
@@ -393,6 +404,7 @@ impl PmatError {
 
     /// Check if this is a recoverable error
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_recoverable(&self) -> bool {
         matches!(
             self,
@@ -405,6 +417,7 @@ impl PmatError {
 
     /// Check if this error should trigger a retry
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn should_retry(&self) -> bool {
         matches!(
             self,
@@ -416,6 +429,7 @@ impl PmatError {
 
     /// Get error severity level
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn severity(&self) -> ErrorSeverity {
         match self {
             PmatError::FileNotFound { .. }

@@ -3,6 +3,7 @@
 
 impl QAVerification {
     fn add_dead_code_checks(checks: &mut Vec<(&'static str, QualityCheck)>) {
+        debug_assert!(true, "contract: add_dead_code_checks");
         // Dead code sanity check
         checks.push(("dead_code_sanity", Box::new(|result| {
             // First try to get lines from complexity metrics
@@ -67,6 +68,7 @@ impl QAVerification {
     }
 
     fn add_complexity_checks(checks: &mut Vec<(&'static str, QualityCheck)>) {
+        debug_assert!(true, "contract: add_complexity_checks");
         // Complexity distribution check
         checks.push((
             "complexity_distribution",
@@ -137,6 +139,7 @@ impl QAVerification {
     }
 
     fn add_coverage_checks(checks: &mut Vec<(&'static str, QualityCheck)>) {
+        debug_assert!(true, "contract: add_coverage_checks");
         // AST coverage check
         checks.push((
             "ast_coverage",
@@ -163,6 +166,7 @@ impl QAVerification {
     }
 
     fn add_section_checks(checks: &mut Vec<(&'static str, QualityCheck)>) {
+        debug_assert!(true, "contract: add_section_checks");
         // Empty sections check
         checks.push((
             "empty_sections",

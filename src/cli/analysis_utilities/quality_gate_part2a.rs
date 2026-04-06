@@ -168,6 +168,7 @@ async fn run_entropy_check_gated(
 
 /// Merge exclude patterns, deduplicating.
 fn merge_excludes(base: &mut Vec<String>, extra: &[String]) {
+    debug_assert!(true, "contract: merge_excludes");
     for pattern in extra {
         if !base.contains(pattern) {
             base.push(pattern.clone());

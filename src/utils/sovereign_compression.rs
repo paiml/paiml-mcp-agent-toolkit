@@ -38,6 +38,7 @@ struct CompressionHeader {
 #[cfg(feature = "sovereign-compression")]
 impl CompressionHeader {
     fn encode(&self) -> Vec<u8> {
+        debug_assert!(true, "contract: encode");
         let mut result = Vec::with_capacity(12 + self.page_sizes.len() * 4);
         result.extend_from_slice(&MAGIC);
         result.extend_from_slice(&self.original_len.to_le_bytes());
@@ -108,6 +109,7 @@ impl CompressionHeader {
 /// # Returns
 /// Compressed data with header for decompression
 #[cfg(feature = "sovereign-compression")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
     debug_assert!(!input.is_empty(), "input must not be empty");
     use trueno_zram_core::lz4;
@@ -159,6 +161,7 @@ pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
 /// # Returns
 /// Original uncompressed data
 #[cfg(feature = "sovereign-compression")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn decompress(input: &[u8]) -> io::Result<Vec<u8>> {
     debug_assert!(!input.is_empty(), "input must not be empty");
     use trueno_zram_core::lz4;
@@ -204,6 +207,7 @@ pub fn decompress(input: &[u8]) -> io::Result<Vec<u8>> {
 
 /// Fallback implementation using lz4_flex when sovereign-compression is disabled
 #[cfg(not(feature = "sovereign-compression"))]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
     debug_assert!(!input.is_empty(), "input must not be empty");
     Ok(lz4_flex::compress_prepend_size(input))
@@ -211,6 +215,7 @@ pub fn compress(input: &[u8]) -> io::Result<Vec<u8>> {
 
 /// Fallback implementation using lz4_flex when sovereign-compression is disabled
 #[cfg(not(feature = "sovereign-compression"))]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn decompress(input: &[u8]) -> io::Result<Vec<u8>> {
     debug_assert!(!input.is_empty(), "input must not be empty");
     lz4_flex::decompress_size_prepended(input)

@@ -2,12 +2,14 @@
 
 impl DefectReportService {
     /// Format report as JSON
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_json(&self, report: &DefectReport) -> Result<String> {
         serde_json::to_string_pretty(report).map_err(Into::into)
     }
 
     /// Format report as CSV
     #[cfg(feature = "reporting")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_csv(&self, report: &DefectReport) -> Result<String> {
         let mut wtr = Writer::from_writer(vec![]);
 
@@ -55,11 +57,13 @@ impl DefectReportService {
 
     /// Format report as CSV (stub when reporting feature disabled)
     #[cfg(not(feature = "reporting"))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_csv(&self, _report: &DefectReport) -> Result<String> {
         anyhow::bail!("CSV reporting requires the 'reporting' feature")
     }
 
     /// Format report as Markdown
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_markdown(&self, report: &DefectReport) -> Result<String> {
         let mut md = String::with_capacity(100_000);
 
@@ -164,6 +168,7 @@ impl DefectReportService {
     }
 
     /// Format report as plain text
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_text(&self, report: &DefectReport) -> Result<String> {
         let mut txt = String::with_capacity(50_000);
 
@@ -245,6 +250,7 @@ impl DefectReportService {
 
     /// Generate filename with timestamp
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_filename(&self, format: ReportFormat) -> String {
         let timestamp = Utc::now().format("%Y%m%d-%H%M%S");
         match format {

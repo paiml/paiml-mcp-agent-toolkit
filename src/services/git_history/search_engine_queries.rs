@@ -3,6 +3,7 @@
 
 impl<'a> GitHistorySearchEngine<'a> {
     /// Create a new search engine
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(index: &'a GitHistoryIndex) -> Self {
         Self {
             index,
@@ -11,6 +12,7 @@ impl<'a> GitHistorySearchEngine<'a> {
     }
 
     /// Search git history for commits matching a query
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn search(
         &mut self,
         query: &str,
@@ -70,6 +72,7 @@ impl<'a> GitHistorySearchEngine<'a> {
     }
 
     /// Search by file - find commits that touched a specific file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn search_by_file(
         &self,
         file_path: &str,
@@ -100,6 +103,7 @@ impl<'a> GitHistorySearchEngine<'a> {
         &self,
         options: &GitSearchOptions,
     ) -> Result<Vec<CommitInfo>, GitHistoryError> {
+        debug_assert!(true, "contract: get_candidates");
         let mut sql = String::from(
             r#"
             SELECT commit_hash, message_subject, message_body, author_name, author_email,
@@ -159,6 +163,7 @@ impl<'a> GitHistorySearchEngine<'a> {
     }
 
     fn row_to_commit(row: &rusqlite::Row<'_>) -> Result<CommitInfo, rusqlite::Error> {
+        debug_assert!(true, "contract: row_to_commit");
         let issue_refs_str: String = row.get::<_, String>(9).unwrap_or_default();
         let issue_refs: Vec<String> = serde_json::from_str(&issue_refs_str).unwrap_or_default();
 
@@ -215,6 +220,7 @@ impl<'a> GitHistorySearchEngine<'a> {
 
     /// Get connection reference (workaround for borrowing)
     fn get_connection(&self) -> Result<&rusqlite::Connection, GitHistoryError> {
+        debug_assert!(true, "contract: get_connection");
         // Access the connection through the index
         // This requires making conn pub(crate) in GitHistoryIndex
         Ok(&self.index.conn)

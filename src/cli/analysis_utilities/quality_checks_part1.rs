@@ -2,6 +2,7 @@
 // Split into submodules via include!() pattern
 
 /// Check if path is a build artifact that should be excluded from duplicate detection
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn is_build_artifact(path: &Path) -> bool {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();

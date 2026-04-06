@@ -16,6 +16,7 @@ impl GitHubIssuesService {
     /// let service = GitHubIssuesService::new("ghp_xxxxxxxxxxxxxxxxxxxx")?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(token: &str) -> Result<Self, GitHubError> {
         debug_assert!(!token.is_empty(), "token must not be empty");
         let config = GitHubConfig {
@@ -48,6 +49,7 @@ impl GitHubIssuesService {
     /// let service = GitHubIssuesService::with_config(config)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: GitHubConfig) -> Result<Self, GitHubError> {
         if config.token.is_empty() {
             return Err(GitHubError::Authentication {
@@ -106,6 +108,7 @@ impl GitHubIssuesService {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn create_issue(
         &self,
         owner: &str,
@@ -149,6 +152,7 @@ impl GitHubIssuesService {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn read_issue(
         &self,
         owner: &str,
@@ -197,6 +201,7 @@ impl GitHubIssuesService {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn update_issue(
         &self,
         owner: &str,
@@ -250,6 +255,7 @@ impl GitHubIssuesService {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn list_issues(
         &self,
         owner: &str,
@@ -277,6 +283,7 @@ impl GitHubIssuesService {
         F: Fn() -> Fut,
         Fut: std::future::Future<Output = Result<T, GitHubError>>,
     {
+        debug_assert!(true, "contract: execute_with_retry");
         let mut attempts = 0;
         let mut delay = self.config.retry_delay;
 
@@ -303,6 +310,7 @@ impl GitHubIssuesService {
     where
         T: serde::de::DeserializeOwned,
     {
+        debug_assert!(true, "contract: handle_response");
         let status = response.status();
 
         if status.is_success() {

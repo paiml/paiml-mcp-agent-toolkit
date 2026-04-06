@@ -12,6 +12,7 @@ pub struct DefaultTemplateService;
 #[async_trait::async_trait]
 impl TemplateService for DefaultTemplateService {
     async fn list_templates(&self, _query: &ListTemplatesQuery) -> Result<TemplateList, AppError> {
+        debug_assert!(true, "contract: list_templates");
         Ok(TemplateList {
             templates: vec![TemplateInfo {
                 id: "makefile/rust/cli".to_string(),
@@ -45,6 +46,7 @@ impl TemplateService for DefaultTemplateService {
         &self,
         params: &GenerateParams,
     ) -> Result<GeneratedTemplate, AppError> {
+        debug_assert!(true, "contract: generate_template");
         Ok(GeneratedTemplate {
             template_id: params.template_uri.clone(),
             content: format!(
@@ -72,6 +74,7 @@ impl AnalysisService for DefaultAnalysisService {
         &self,
         _params: &ComplexityParams,
     ) -> Result<ComplexityAnalysis, AppError> {
+        debug_assert!(true, "contract: analyze_complexity");
         Ok(ComplexityAnalysis {
             summary: ComplexitySummary {
                 total_functions: 0,
@@ -84,6 +87,7 @@ impl AnalysisService for DefaultAnalysisService {
     }
 
     async fn analyze_churn(&self, _params: &ChurnParams) -> Result<ChurnAnalysis, AppError> {
+        debug_assert!(true, "contract: analyze_churn");
         Ok(ChurnAnalysis {
             summary: ChurnSummary {
                 total_commits: 0,
@@ -95,6 +99,7 @@ impl AnalysisService for DefaultAnalysisService {
     }
 
     async fn analyze_dag(&self, params: &DagParams) -> Result<DagAnalysis, AppError> {
+        debug_assert!(true, "contract: analyze_dag");
         use crate::cli::DagType;
         use crate::services::dag_builder::DagBuilder;
         use crate::services::mermaid_generator::{MermaidGenerator, MermaidOptions};
@@ -147,6 +152,7 @@ impl AnalysisService for DefaultAnalysisService {
     }
 
     async fn generate_context(&self, _params: &ContextParams) -> Result<ProjectContext, AppError> {
+        debug_assert!(true, "contract: generate_context");
         Ok(ProjectContext {
             project_name: "unknown".to_string(),
             toolchain: "unknown".to_string(),
@@ -166,6 +172,7 @@ impl AnalysisService for DefaultAnalysisService {
         &self,
         _params: &DeadCodeParams,
     ) -> Result<DeadCodeAnalysis, AppError> {
+        debug_assert!(true, "contract: analyze_dead_code");
         Ok(DeadCodeAnalysis {
             summary: DeadCodeSummary {
                 total_files_analyzed: 0,

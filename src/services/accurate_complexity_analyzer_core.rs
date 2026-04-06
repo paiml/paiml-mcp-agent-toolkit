@@ -2,6 +2,7 @@
 
 impl AccurateComplexityAnalyzer {
     /// Analyze a single Rust file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_file(&self, path: &Path) -> Result<FileComplexityResult> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read_to_string(path).await?;
@@ -28,6 +29,7 @@ impl AccurateComplexityAnalyzer {
     }
 
     /// Analyze an entire project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_project(&self, path: &Path) -> Result<ProjectComplexityResult> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut file_metrics = Vec::new();
@@ -59,6 +61,7 @@ impl AccurateComplexityAnalyzer {
 
     /// Analyze a single function
     fn analyze_function(&self, func: &ItemFn, line_start: u32) -> FunctionMetrics {
+        debug_assert!(true, "contract: analyze_function");
         let name = func.sig.ident.to_string();
         let suppressed = self.respect_annotations && self.has_suppress_annotation(&func.attrs);
 

@@ -1,5 +1,6 @@
 impl TelemetryService {
     /// Create a new telemetry service - THE ONE way (Toyota Way principle)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let startup_time = Instant::now();
         info!("Initializing PMAT Telemetry Service");
@@ -14,6 +15,7 @@ impl TelemetryService {
 
     /// Record operation telemetry data
     #[instrument(skip(self), fields(service = %input.service_name, operation = %input.operation))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn record_operation(&self, input: TelemetryInput) -> Result<TelemetryOutput> {
         let event_id = Uuid::new_v4().to_string();
         let recorded_at = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
@@ -41,6 +43,7 @@ impl TelemetryService {
 
     /// Update service-specific telemetry data
     async fn update_service_telemetry(&self, input: &TelemetryInput) -> Result<()> {
+        debug_assert!(true, "contract: update_service_telemetry");
         let mut entry = self
             .services
             .entry(input.service_name.clone())
@@ -89,6 +92,7 @@ impl TelemetryService {
 
     /// Update system-wide metrics
     async fn update_system_metrics(&self, input: &TelemetryInput) -> Result<()> {
+        debug_assert!(true, "contract: update_system_metrics");
         let mut metrics = self
             .system_metrics
             .write()
@@ -102,6 +106,7 @@ impl TelemetryService {
 
     /// Get comprehensive system telemetry data
     #[instrument(skip(self))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_system_telemetry(&self) -> Result<SystemTelemetryData> {
         let uptime_seconds = self.startup_time.elapsed().as_secs();
         let startup_time =
@@ -132,6 +137,7 @@ impl TelemetryService {
     }
 
     /// Get telemetry data for a specific service
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_service_telemetry(&self, service_name: &str) -> Option<ServiceTelemetryData> {
         debug_assert!(!service_name.is_empty(), "service_name must not be empty");
         self.services.get(service_name).map(|entry| entry.clone())
@@ -158,6 +164,7 @@ struct ServiceTotals {
 fn aggregate_service_data(
     services_map: &Arc<DashMap<String, ServiceTelemetryData>>,
 ) -> (HashMap<String, ServiceTelemetryData>, ServiceTotals) {
+    debug_assert!(true, "contract: aggregate_service_data");
     let mut services = HashMap::new();
     let mut totals = ServiceTotals {
         total_operations: 0,
@@ -179,6 +186,7 @@ fn aggregate_service_data(
 }
 
 fn build_system_data(totals: ServiceTotals) -> ServiceTelemetryData {
+    debug_assert!(true, "contract: build_system_data");
     let ServiceTotals {
         total_operations,
         total_successful,

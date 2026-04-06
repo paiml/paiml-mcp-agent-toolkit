@@ -39,6 +39,7 @@ impl ScoreVelocity {
     /// * `previous` - Previous baseline score
     /// * `current` - Current score
     /// * `days` - Days elapsed since baseline
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate(previous: f64, current: f64, days: u64) -> Self {
         let delta = current - previous;
         let delta_percent = if previous == 0.0 {
@@ -95,6 +96,7 @@ pub struct Recommendation {
 
 impl Recommendation {
     /// Create a new recommendation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         category: String,
         description: String,
@@ -129,6 +131,7 @@ pub struct ScoreMetadata {
 
 impl ScoreMetadata {
     /// Create new metadata
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(project_name: String, version: String) -> Self {
         Self {
             timestamp: chrono::Utc::now().to_rfc3339(),

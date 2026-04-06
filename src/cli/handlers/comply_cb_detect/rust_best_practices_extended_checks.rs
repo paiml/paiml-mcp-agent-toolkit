@@ -4,6 +4,7 @@
 // and incomplete classification chains.
 
 /// CB-522: Untested Path Normalization - path manipulation without edge case handling
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb522_untested_path_normalization(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -78,6 +79,7 @@ pub fn detect_cb522_untested_path_normalization(project_path: &Path) -> Vec<CbPa
 }
 
 /// CB-523: External Config Over Embedded Metadata - filesystem heuristics instead of embedded data
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb523_external_config_over_embedded(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -144,6 +146,7 @@ pub fn detect_cb523_external_config_over_embedded(project_path: &Path) -> Vec<Cb
 }
 
 /// CB-524: Incomplete Enum Match Coverage - wildcard matches on project enums across functions
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb524_incomplete_enum_match(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -237,6 +240,7 @@ pub fn detect_cb524_incomplete_enum_match(project_path: &Path) -> Vec<CbPatternV
 }
 
 /// CB-525: Hardcoded Field Names Without Aliases - JSON .get("field") chains without fallbacks
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb525_hardcoded_field_names(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -325,6 +329,7 @@ pub fn detect_cb525_hardcoded_field_names(project_path: &Path) -> Vec<CbPatternV
 }
 
 /// CB-526: Single-Path File Resolution - file lookup without fallback search
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb526_single_path_resolution(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -388,6 +393,7 @@ pub fn detect_cb526_single_path_resolution(project_path: &Path) -> Vec<CbPattern
 }
 
 /// CB-527: Incomplete Pattern List - contains()/starts_with() classification chains
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb527_incomplete_pattern_list(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");

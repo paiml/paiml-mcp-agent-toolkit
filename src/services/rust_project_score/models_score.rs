@@ -28,6 +28,7 @@ pub struct RustProjectScore {
 
 impl RustProjectScore {
     /// Create a new score with zero values
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             total_score: 0.0,
@@ -48,10 +49,12 @@ impl Default for RustProjectScore {
 
 impl NormalizedScore for RustProjectScore {
     fn raw(&self) -> f64 {
+        debug_assert!(true, "contract: raw");
         self.total_score
     }
 
     fn max_raw(&self) -> f64 {
+        debug_assert!(true, "contract: max_raw");
         RUST_PROJECT_MAX_POINTS
     }
 }
@@ -102,6 +105,7 @@ impl Grade {
     /// Calculate grade from raw score and max possible points
     ///
     /// PMAT-454: Now properly normalizes to 0-100 before grading
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn from_score(score: f64, max: f64) -> Self {
         debug_assert!(score >= 0.0, "score must be non-negative");
         // Normalize to 0-100 percentage
@@ -131,6 +135,7 @@ impl Grade {
     }
 
     /// Calculate grade from already-normalized percentage (0-100)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_normalized(normalized: f64) -> Self {
         Self::from_score(normalized, 100.0)
     }

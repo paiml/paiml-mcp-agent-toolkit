@@ -2,6 +2,7 @@
 // Included from bug_report_handler.rs — shares parent module scope (no use imports here)
 
 /// Handle the `pmat maintain bug-report` command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_bug_report(
     title: Option<&str>,
     dry_run: bool,
@@ -128,6 +129,7 @@ fn create_github_issue(title: &str, body: &str) -> Result<()> {
 
 /// Capture an error for later bug reporting
 /// Called when a pmat command fails
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn capture_command_error(command: &str, args: &[String], error: &str) {
     debug_assert!(!command.is_empty(), "command must not be empty");
     let captured = CapturedError::new(command, args, error);
@@ -138,6 +140,7 @@ pub fn capture_command_error(command: &str, args: &[String], error: &str) {
 }
 
 /// Capture an error with exit code
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn capture_command_error_with_code(command: &str, args: &[String], error: &str, code: i32) {
     debug_assert!(!command.is_empty(), "command must not be empty");
     let captured = CapturedError::new(command, args, error).with_exit_code(code);

@@ -6,6 +6,7 @@
 /// # Complexity
 /// - Time: O(n) where n is number of gates
 /// - Cyclomatic: 5
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn execute_all_gates(config: &GateConfig, project_dir: &Path) -> Result<QualityReport> {
     debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
@@ -58,6 +59,7 @@ pub fn execute_all_gates(config: &GateConfig, project_dir: &Path) -> Result<Qual
 /// # Complexity
 /// - Time: O(n) where n is number of gates
 /// - Cyclomatic: 4
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_report(report: &QualityReport) -> String {
     let mut output = String::new();
 

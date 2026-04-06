@@ -25,6 +25,7 @@ pub struct BreakpointManager {
 
 impl BreakpointManager {
     /// Create a new breakpoint manager
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             breakpoints: HashMap::new(),
@@ -32,6 +33,7 @@ impl BreakpointManager {
     }
 
     /// Set a breakpoint (or update existing)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_breakpoint(&mut self, breakpoint: Breakpoint) -> Result<(), String> {
         let source = breakpoint.source.clone();
         let line = breakpoint.line;
@@ -48,6 +50,7 @@ impl BreakpointManager {
     }
 
     /// Remove a breakpoint
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn remove_breakpoint(&mut self, source: &str, line: i64) -> Result<(), String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(file_breakpoints) = self.breakpoints.get_mut(source) {
@@ -62,6 +65,7 @@ impl BreakpointManager {
     }
 
     /// Check if a breakpoint exists at the given location
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_breakpoint(&self, source: &str, line: i64) -> bool {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.breakpoints
@@ -71,6 +75,7 @@ impl BreakpointManager {
     }
 
     /// Get a breakpoint at the given location
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_breakpoint(&self, source: &str, line: i64) -> Option<Breakpoint> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.breakpoints
@@ -80,11 +85,13 @@ impl BreakpointManager {
     }
 
     /// Get total count of breakpoints
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn count(&self) -> usize {
         self.breakpoints.values().map(|file_bp| file_bp.len()).sum()
     }
 
     /// Get all breakpoints in a specific file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn breakpoints_in_file(&self, source: &str) -> Vec<Breakpoint> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.breakpoints
@@ -99,17 +106,20 @@ impl BreakpointManager {
     }
 
     /// Clear all breakpoints
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear_all(&mut self) {
         self.breakpoints.clear();
     }
 
     /// Clear all breakpoints in a specific file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear_file(&mut self, source: &str) {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.breakpoints.remove(source);
     }
 
     /// Get all breakpoints across all files
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn all_breakpoints(&self) -> Vec<Breakpoint> {
         self.breakpoints
             .values()
@@ -118,6 +128,7 @@ impl BreakpointManager {
     }
 
     /// Record a hit on a breakpoint
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record_hit(&mut self, source: &str, line: i64) {
         debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(file_breakpoints) = self.breakpoints.get_mut(source) {
@@ -128,6 +139,7 @@ impl BreakpointManager {
     }
 
     /// Get hit count for a breakpoint
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_hit_count(&self, source: &str, line: i64) -> u64 {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.breakpoints
@@ -140,6 +152,7 @@ impl BreakpointManager {
     /// Check if execution should break at this location
     ///
     /// Evaluates conditional breakpoints if variables are provided
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn should_break(&self, source: &str, line: i64, variables: Option<&Value>) -> bool {
         debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(breakpoint) = self.get_breakpoint(source, line) {

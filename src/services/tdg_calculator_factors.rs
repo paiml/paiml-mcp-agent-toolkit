@@ -20,6 +20,7 @@ fn is_control_flow(trimmed: &str) -> bool {
 }
 
 fn score_from_complexities(function_complexities: &[usize], line_count: usize) -> f64 {
+    debug_assert!(true, "contract: score_from_complexities");
     let mean = function_complexities.iter().sum::<usize>() as f64
         / function_complexities.len() as f64;
     let variance = function_complexities
@@ -43,6 +44,7 @@ impl TDGCalculator {
     /// Compute complexity gradient with variance analysis
     #[allow(dead_code)]
     fn compute_complexity_gradient(&self, ast: &UnifiedAstNode) -> ComplexityVariance {
+        debug_assert!(true, "contract: compute_complexity_gradient");
         let mut analyzer = VerifiedComplexityAnalyzer::new();
         let complexities: Vec<u32> = if matches!(ast.kind, AstKind::Function(_)) {
             vec![analyzer.analyze_function(ast).cyclomatic]

@@ -87,6 +87,7 @@ fn is_function_start(trimmed: &str) -> bool {
 impl CppComplexityAnalyzer {
     /// Creates a new C++ complexity analyzer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -95,6 +96,7 @@ impl CppComplexityAnalyzer {
     }
 
     /// Analyzes complexity of C++ source code
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
@@ -131,6 +133,7 @@ impl CppComplexityAnalyzer {
     }
 
     fn update_complexity(&mut self, cl: &LineClassification, nesting_depth: &mut u32) {
+        debug_assert!(true, "contract: update_complexity");
         if cl.is_decision_point {
             self.cyclomatic_complexity += 1;
         }

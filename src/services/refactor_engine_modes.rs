@@ -1,4 +1,5 @@
 impl UnifiedEngine {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn run_server(&mut self) -> Result<Summary, EngineError> {
         loop {
             let state_machine = self.state_machine.read().await;
@@ -45,6 +46,7 @@ impl UnifiedEngine {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn run_interactive(&mut self) -> Result<Summary, EngineError> {
         loop {
             // Output current state as JSON
@@ -94,6 +96,7 @@ impl UnifiedEngine {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn run_batch(&mut self) -> Result<Summary, EngineError> {
         // Extract values from mode first to avoid borrow issues
         let checkpoint_dir = if let EngineMode::Batch { checkpoint_dir, .. } = &self.mode {
@@ -163,6 +166,7 @@ impl UnifiedEngine {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn export_state(&self) -> InteractiveState {
         let state_machine = self.state_machine.read().await;
         let current_state = &state_machine.current;
@@ -252,6 +256,7 @@ impl UnifiedEngine {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn read_command(&self) -> Result<Command, EngineError> {
         let stdin = io::stdin();
         let reader = BufReader::new(stdin);
@@ -272,6 +277,7 @@ impl UnifiedEngine {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn step_with_explanation(&self) -> Result<StepResult, EngineError> {
         let old_state = {
             let state_machine = self.state_machine.read().await;
@@ -297,6 +303,7 @@ impl UnifiedEngine {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn rollback_last_change(&self) -> Result<(), EngineError> {
         let mut state_machine = self.state_machine.write().await;
 
@@ -325,6 +332,7 @@ impl UnifiedEngine {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn explain_current_state(&self) -> Result<String, EngineError> {
         let state_machine = self.state_machine.read().await;
         match &state_machine.current {

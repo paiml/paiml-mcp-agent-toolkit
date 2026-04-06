@@ -3,12 +3,14 @@
 
 impl ParallelGitExecutor {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_root: PathBuf) -> Self {
         debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         Self::with_config(project_root, ParallelGitConfig::default())
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_config(project_root: PathBuf, config: ParallelGitConfig) -> Self {
         debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let semaphore = Arc::new(Semaphore::new(config.max_concurrent_operations));
@@ -23,6 +25,7 @@ impl ParallelGitExecutor {
     }
 
     /// Execute a single git command with caching
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_command(&self, args: Vec<&str>) -> Result<String> {
         debug_assert!(!args.is_empty(), "args must not be empty");
         // Generate cache key
@@ -73,6 +76,7 @@ impl ParallelGitExecutor {
     }
 
     /// Execute multiple git commands in parallel
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_batch(&self, commands: Vec<Vec<&str>>) -> Result<Vec<String>> {
         debug_assert!(!commands.is_empty(), "commands must not be empty");
         let futures: Vec<_> = commands
@@ -95,6 +99,7 @@ impl ParallelGitExecutor {
     }
 
     /// Get file history for multiple files in parallel
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn get_file_histories(
         &self,
         files: Vec<PathBuf>,
@@ -152,6 +157,7 @@ impl ParallelGitExecutor {
     }
 
     /// Get blame information for multiple files in parallel
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn get_file_blames(&self, files: Vec<PathBuf>) -> Result<Vec<(PathBuf, String)>> {
         let commands: Vec<Vec<&str>> = files
             .iter()
@@ -164,6 +170,7 @@ impl ParallelGitExecutor {
     }
 
     /// Get diff statistics for multiple file pairs in parallel
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn get_diff_stats(
         &self,
         file_pairs: Vec<(PathBuf, String, String)>, // (file, from_commit, to_commit)
@@ -235,6 +242,7 @@ impl ParallelGitExecutor {
     }
 
     /// Clear the command cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn clear_cache(&self) {
         let mut cache = self.cache.write().await;
         cache.clear();
@@ -242,6 +250,7 @@ impl ParallelGitExecutor {
     }
 
     /// Get cache statistics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn cache_stats(&self) -> (usize, usize) {
         let cache = self.cache.read().await;
         let size = cache.len();

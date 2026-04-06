@@ -3,6 +3,7 @@
 #[cfg(feature = "typescript-ast")]
 impl Visit for EnhancedTypeScriptVisitor {
     fn visit_function(&mut self, func: &Function) {
+        debug_assert!(true, "contract: visit_function");
         // This handles function expressions and arrow functions
         // Skip functions that are part of classes (already handled by visit_class_method)
         if !self.class_stack.is_empty() {
@@ -26,6 +27,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_fn_decl(&mut self, func_decl: &FnDecl) {
+        debug_assert!(true, "contract: visit_fn_decl");
         let name = self.get_qualified_name(func_decl.ident.sym.as_ref());
         let is_async = func_decl.function.is_async;
         let line = self.get_line(func_decl.span());
@@ -41,6 +43,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_class_decl(&mut self, class_decl: &ClassDecl) {
+        debug_assert!(true, "contract: visit_class_decl");
         let class_name = class_decl.ident.sym.to_string();
         let qualified_name = self.get_qualified_name(&class_name);
         let line = self.get_line(class_decl.span());
@@ -69,6 +72,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_method_prop(&mut self, method: &MethodProp) {
+        debug_assert!(true, "contract: visit_method_prop");
         let method_name = match &method.key {
             PropName::Ident(ident) => ident.sym.to_string(),
             PropName::Str(s) => s.value.to_string(),
@@ -92,6 +96,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_constructor(&mut self, constructor: &Constructor) {
+        debug_assert!(true, "contract: visit_constructor");
         let qualified_name = self.get_qualified_name("constructor");
         let line = self.get_line(constructor.span());
 
@@ -106,6 +111,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_class_method(&mut self, method: &ClassMethod) {
+        debug_assert!(true, "contract: visit_class_method");
         let method_name = match &method.key {
             PropName::Ident(ident) => ident.sym.to_string(),
             PropName::Str(s) => s.value.to_string(),
@@ -129,6 +135,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_ts_interface_decl(&mut self, interface: &TsInterfaceDecl) {
+        debug_assert!(true, "contract: visit_ts_interface_decl");
         let name = self.get_qualified_name(interface.id.sym.as_ref());
         let line = self.get_line(interface.span());
         let _members_count = interface.body.body.len();
@@ -143,6 +150,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_ts_enum_decl(&mut self, enum_decl: &TsEnumDecl) {
+        debug_assert!(true, "contract: visit_ts_enum_decl");
         let name = self.get_qualified_name(enum_decl.id.sym.as_ref());
         let line = self.get_line(enum_decl.span());
         let variants_count = enum_decl.members.len();
@@ -158,6 +166,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_import_decl(&mut self, import: &ImportDecl) {
+        debug_assert!(true, "contract: visit_import_decl");
         let path = import.src.value.to_string();
         let line = self.get_line(import.span());
 
@@ -167,6 +176,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_named_export(&mut self, export: &NamedExport) {
+        debug_assert!(true, "contract: visit_named_export");
         if let Some(src) = &export.src {
             let path = format!("export from {}", src.value);
             let line = self.get_line(export.span());
@@ -178,6 +188,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_module_decl(&mut self, module: &ModuleDecl) {
+        debug_assert!(true, "contract: visit_module_decl");
         match module {
             ModuleDecl::Import(import) => self.visit_import_decl(import),
             ModuleDecl::ExportNamed(export) => self.visit_named_export(export),
@@ -199,6 +210,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_var_decl(&mut self, var_decl: &VarDecl) {
+        debug_assert!(true, "contract: visit_var_decl");
         // Handle variable declarations that might be functions
         for declarator in &var_decl.decls {
             if let Some(init) = &declarator.init {
@@ -247,6 +259,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_return_stmt(&mut self, return_stmt: &ReturnStmt) {
+        debug_assert!(true, "contract: visit_return_stmt");
         if let Some(arg) = &return_stmt.arg {
             self.extract_function_from_expr(arg);
         }
@@ -254,10 +267,12 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_stmt(&mut self, stmt: &Stmt) {
+        debug_assert!(true, "contract: visit_stmt");
         stmt.visit_children_with(self);
     }
 
     fn visit_export_default_decl(&mut self, export_default: &ExportDefaultDecl) {
+        debug_assert!(true, "contract: visit_export_default_decl");
         match &export_default.decl {
             DefaultDecl::Class(class_expr) => {
                 if let Some(ident) = &class_expr.ident {
@@ -312,6 +327,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_export_decl(&mut self, export_decl: &ExportDecl) {
+        debug_assert!(true, "contract: visit_export_decl");
         // This handles `export function`, `export class`, etc.
         export_decl.visit_children_with(self);
     }

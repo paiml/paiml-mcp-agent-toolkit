@@ -33,6 +33,7 @@ fn c_type_to_ast_item(
     name: Option<String>,
     line: usize,
 ) -> Option<crate::services::context::AstItem> {
+    debug_assert!(true, "contract: c_type_to_ast_item");
     match type_kind {
         crate::models::unified_ast::TypeKind::Struct => {
             Some(crate::services::context::AstItem::Struct {
@@ -125,6 +126,7 @@ impl CAstStrategy {
     }
 
     /// Extract function name from source text
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_function_name(source_text: &str) -> Option<String> {
         debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for pattern: type name(...) or name(...)
@@ -141,6 +143,7 @@ impl CAstStrategy {
     }
 
     /// Extract type name from source text (struct, enum, etc.)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn extract_type_name(source_text: &str) -> Option<String> {
         debug_assert!(!source_text.is_empty(), "source_text must not be empty");
         // Look for patterns like "struct name" or "enum name"
@@ -157,6 +160,7 @@ impl CAstStrategy {
     }
 
     /// Convert byte position to line number
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn byte_pos_to_line(byte_pos: usize, content_lines: &[&str]) -> usize {
         let mut current_pos = 0;
         for (line_idx, line) in content_lines.iter().enumerate() {

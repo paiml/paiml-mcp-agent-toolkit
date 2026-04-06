@@ -4,6 +4,7 @@
 /// Classify a function's source code as PURE or IO.
 ///
 /// Returns the classification string and a list of detected I/O pattern labels.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn classify_io(source: &str) -> (String, Vec<String>) {
     debug_assert!(!source.is_empty(), "source must not be empty");
     let mut patterns = Vec::new();
@@ -20,6 +21,7 @@ pub(crate) fn classify_io(source: &str) -> (String, Vec<String>) {
 }
 
 /// Classify all results in-place, updating io_classification and io_patterns.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn classify_all_results(results: &mut [QueryResult]) {
     for r in results.iter_mut() {
         if let Some(ref source) = r.source {

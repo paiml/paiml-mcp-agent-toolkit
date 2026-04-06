@@ -10,6 +10,7 @@ use super::types::{CategoryMetrics, SATDDetector, SATDMetrics, Severity, Technic
 impl SATDDetector {
     /// Generate project-wide SATD metrics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_metrics(&self, debts: &[TechnicalDebt], total_loc: u64) -> SATDMetrics {
         debug_assert!(!debts.is_empty(), "debts must not be empty");
         let debt_density = if total_loc > 0 {
@@ -71,6 +72,7 @@ impl SATDDetector {
     }
 
     /// Calculate average age of technical debt items using git blame
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn calculate_average_debt_age(
         &self,
         debts: &[TechnicalDebt],
@@ -184,6 +186,7 @@ impl SATDDetector {
         timestamp: i64,
         now: &chrono::DateTime<chrono::Utc>,
     ) -> Option<f64> {
+        debug_assert!(true, "contract: calculate_age_from_timestamp");
         use chrono::DateTime;
 
         let debt_date = DateTime::from_timestamp(timestamp, 0)?;

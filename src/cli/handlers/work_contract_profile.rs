@@ -19,6 +19,7 @@ pub enum ContractProfile {
 impl ContractProfile {
     /// Auto-detect profile from project structure.
     /// Evaluated top-down, first match wins.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn detect(project_path: &Path) -> Self {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Check for explicit config override first
@@ -61,6 +62,7 @@ impl ContractProfile {
     }
 
     /// Human-readable profile name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn name(&self) -> &str {
         match self {
             ContractProfile::Universal => "Universal",
@@ -72,6 +74,7 @@ impl ContractProfile {
     }
 
     /// Required tools for this profile
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn required_tools(&self) -> Vec<RequiredTool> {
         match self {
             ContractProfile::Universal => vec![RequiredTool {
@@ -149,6 +152,7 @@ pub struct RequiredTool {
 
 impl RequiredTool {
     /// Check if this tool is available on the system
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_available(&self) -> bool {
         which_tool(&self.name)
     }
@@ -210,6 +214,7 @@ fn which_tool(name: &str) -> bool {
 }
 
 /// Check toolchain requirements for a profile. Returns list of missing tools.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn check_toolchain(profile: &ContractProfile, _project_path: &Path) -> Vec<MissingTool> {
     debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     profile
@@ -247,6 +252,7 @@ pub struct DbcThresholdOverrides {
 
 impl DbcConfig {
     /// Load DbC config from .pmat-work/config.toml
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(project_path: &Path) -> Self {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_path = project_path.join(".pmat-work").join("config.toml");
@@ -254,6 +260,7 @@ impl DbcConfig {
     }
 
     /// Load from a specific path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load_from_path(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)
@@ -326,6 +333,7 @@ impl DbcConfig {
 }
 
 /// Generate claims for a given profile
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn claims_for_profile(
     profile: &ContractProfile,
     config: &DbcConfig,
@@ -359,6 +367,7 @@ pub fn claims_for_profile(
 }
 
 /// Classify a flat list of clauses into the Meyer triad
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn classify_claims(
     clauses: &[ContractClause],
 ) -> (Vec<ContractClause>, Vec<ContractClause>, Vec<ContractClause>) {
@@ -379,6 +388,7 @@ pub fn classify_claims(
 }
 
 /// Apply explicit exclusions (--without). Returns (active, excluded).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn apply_exclusions(
     clauses: Vec<ContractClause>,
     without: &[String],

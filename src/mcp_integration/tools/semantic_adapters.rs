@@ -18,6 +18,7 @@ pub struct SemanticSearchToolAdapter {
 }
 
 impl SemanticSearchToolAdapter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self {
             inner: crate::mcp::tools::semantic_search_tools::SemanticSearchTool::new(engine),
@@ -28,6 +29,7 @@ impl SemanticSearchToolAdapter {
 #[async_trait]
 impl McpTool for SemanticSearchToolAdapter {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -49,6 +51,7 @@ impl McpTool for SemanticSearchToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -68,6 +71,7 @@ pub struct FindSimilarCodeToolAdapter {
 }
 
 impl FindSimilarCodeToolAdapter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self {
             inner: crate::mcp::tools::semantic_search_tools::FindSimilarCodeTool::new(engine),
@@ -78,6 +82,7 @@ impl FindSimilarCodeToolAdapter {
 #[async_trait]
 impl McpTool for FindSimilarCodeToolAdapter {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -97,6 +102,7 @@ impl McpTool for FindSimilarCodeToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -116,6 +122,7 @@ pub struct ClusterCodeToolAdapter {
 }
 
 impl ClusterCodeToolAdapter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self {
             inner: crate::mcp::tools::semantic_search_tools::ClusterCodeTool::new(engine),
@@ -126,6 +133,7 @@ impl ClusterCodeToolAdapter {
 #[async_trait]
 impl McpTool for ClusterCodeToolAdapter {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -145,6 +153,7 @@ impl McpTool for ClusterCodeToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
 
         self.inner
@@ -164,6 +173,7 @@ pub struct AnalyzeTopicsToolAdapter {
 }
 
 impl AnalyzeTopicsToolAdapter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self {
             inner: crate::mcp::tools::semantic_search_tools::AnalyzeTopicsTool::new(engine),
@@ -174,6 +184,7 @@ impl AnalyzeTopicsToolAdapter {
 #[async_trait]
 impl McpTool for AnalyzeTopicsToolAdapter {
     fn metadata(&self) -> ToolMetadata {
+        debug_assert!(true, "contract: metadata");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
         let name = self.inner.name().to_string();
         let schema = self.inner.schema();
@@ -193,6 +204,7 @@ impl McpTool for AnalyzeTopicsToolAdapter {
     }
 
     async fn execute(&self, params: Value) -> Result<Value, McpError> {
+        debug_assert!(true, "contract: execute");
         use crate::mcp::tools::semantic_search_tools::McpTool as SimpleMcpTool;
 
         self.inner

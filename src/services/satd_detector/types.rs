@@ -77,6 +77,7 @@ pub enum DebtCategory {
 }
 
 impl DebtCategory {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn as_str(&self) -> &'static str {
         match self {
             DebtCategory::Design => "Design",
@@ -119,6 +120,7 @@ impl Severity {
     /// assert_eq!(Severity::Critical.escalate(), Severity::Critical); // Already at max
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn escalate(self) -> Self {
         match self {
             Severity::Low => Severity::Medium,
@@ -141,6 +143,7 @@ impl Severity {
     /// assert_eq!(Severity::Low.reduce(), Severity::Low); // Already at min
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn reduce(self) -> Self {
         match self {
             Severity::Critical => Severity::High,
@@ -220,6 +223,7 @@ pub(crate) struct TestBlockTracker {
 }
 
 impl TestBlockTracker {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn new(is_rust_file: bool) -> Self {
         Self {
             is_rust_file,
@@ -228,6 +232,7 @@ impl TestBlockTracker {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn update_from_line(&mut self, trimmed_line: &str) {
         debug_assert!(!trimmed_line.is_empty(), "trimmed_line must not be empty");
         if !self.is_rust_file {
@@ -241,6 +246,7 @@ impl TestBlockTracker {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn is_in_test_block(&self) -> bool {
         self.in_test_block
     }
@@ -290,6 +296,7 @@ pub(crate) struct ProjectAnalysisStats {
 }
 
 impl ProjectAnalysisStats {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn new() -> Self {
         Self::default()
     }

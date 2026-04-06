@@ -84,6 +84,7 @@ static WGSL_TILED_STORE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
 /// The "Danger Zone" heuristic: A branch before a barrier is dangerous because
 /// some threads may exit early, causing the remaining threads to deadlock on
 /// the barrier.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn detect_ptx_barrier_divergence_in_str(ptx: &str) -> Vec<(u32, &'static str, String)> {
     debug_assert!(!ptx.is_empty(), "ptx must not be empty");
     let mut violations = Vec::new();
@@ -139,6 +140,7 @@ pub fn detect_ptx_barrier_divergence_in_str(ptx: &str) -> Vec<(u32, &'static str
 ///
 /// WGSL workgroupBarrier() inside control flow (if/else) is dangerous because
 /// not all threads in the workgroup may execute the barrier.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn detect_wgsl_barrier_divergence_in_str(wgsl: &str) -> Vec<(u32, &'static str, String)> {
     debug_assert!(!wgsl.is_empty(), "wgsl must not be empty");
     let mut violations = Vec::new();
@@ -219,6 +221,7 @@ pub fn detect_wgsl_barrier_divergence_in_str(wgsl: &str) -> Vec<(u32, &'static s
 ///
 /// Shared memory accesses without bounds checks can cause out-of-bounds errors.
 /// Safe patterns: predicated access (@%p), constant offset, or preceding setp.lt.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn detect_shared_memory_unbounded_in_str(ptx: &str) -> Vec<(u32, &'static str, String)> {
     debug_assert!(!ptx.is_empty(), "ptx must not be empty");
     let mut violations = Vec::new();
@@ -284,6 +287,7 @@ pub fn detect_shared_memory_unbounded_in_str(ptx: &str) -> Vec<(u32, &'static st
 ///
 /// Tiled kernels (GEMM, etc.) must check row < m && col < n before storing
 /// to avoid out-of-bounds writes on non-tile-aligned dimensions.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn detect_tiled_kernel_no_bounds_in_str(code: &str) -> Vec<(u32, &'static str, String)> {
     debug_assert!(!code.is_empty(), "code must not be empty");
     let mut violations = Vec::new();

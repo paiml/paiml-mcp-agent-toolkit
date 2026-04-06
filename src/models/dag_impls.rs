@@ -1,5 +1,6 @@
 impl DependencyGraph {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             nodes: FxHashMap::default(),
@@ -28,18 +29,21 @@ impl DependencyGraph {
     ///
     /// assert_eq!(graph.nodes.len(), 1);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_node(&mut self, node: NodeInfo) {
         self.nodes.insert(node.id.clone(), node);
     }
 
     /// Get the number of nodes in the graph
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
     }
 
     /// Get the number of edges in the graph  
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn edge_count(&self) -> usize {
         self.edges.len()
     }
@@ -62,6 +66,7 @@ impl DependencyGraph {
     /// assert_eq!(graph.edges.len(), 1);
     /// assert_eq!(graph.edges[0].edge_type, EdgeType::Calls);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_edge(&mut self, edge: Edge) {
         self.edges.push(edge);
     }
@@ -92,6 +97,7 @@ impl DependencyGraph {
     /// assert_eq!(calls_only.edges[0].edge_type, EdgeType::Calls);
     /// ```
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn filter_by_edge_type(&self, edge_type: EdgeType) -> Self {
         let filtered_edges: Vec<Edge> = self
             .edges

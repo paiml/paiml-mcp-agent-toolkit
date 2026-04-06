@@ -17,6 +17,7 @@ use crate::services::deep_context::{CacheStats, ContextMetadata};
 use crate::services::quality_gates::QAVerificationResult;
 
 impl DeepContextAnalyzer {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_project(&self, project_path: &PathBuf) -> anyhow::Result<DeepContext> {
         debug_assert!(
             project_path.exists(),
@@ -95,6 +96,7 @@ impl DeepContextAnalyzer {
     // EXTRACTED METHODS - Toyota Way Extract Method Pattern
     // Each method has single responsibility and <10 complexity
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_discovery_phase(
         &self,
         project_path: &PathBuf,
@@ -111,6 +113,7 @@ impl DeepContextAnalyzer {
         Ok(file_tree)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_analysis_phase(
         &self,
         project_path: &Path,
@@ -132,6 +135,7 @@ impl DeepContextAnalyzer {
         Ok(analyses)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn enrich_file_tree_if_dag_present(
         &self,
         file_tree: &mut AnnotatedFileTree,
@@ -146,6 +150,7 @@ impl DeepContextAnalyzer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn execute_cross_reference_phase(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -157,6 +162,7 @@ impl DeepContextAnalyzer {
         Ok(cross_refs)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn execute_defect_correlation_phase(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -168,6 +174,7 @@ impl DeepContextAnalyzer {
         Ok((defect_summary, hotspots))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn execute_quality_scoring_phase(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -182,6 +189,7 @@ impl DeepContextAnalyzer {
         Ok(quality_scorecard)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn execute_recommendations_phase(
         &self,
         analyses: &ParallelAnalysisResults,
@@ -196,6 +204,7 @@ impl DeepContextAnalyzer {
         Ok(recommendations)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn execute_template_provenance_phase(
         &self,
         _analyses: &ParallelAnalysisResults,
@@ -206,6 +215,7 @@ impl DeepContextAnalyzer {
         Ok(None)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_metadata_analysis_phase(
         &self,
         project_path: &Path,
@@ -225,6 +235,7 @@ impl DeepContextAnalyzer {
         Ok((build_info, project_overview))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn build_deep_context(&self, params: DeepContextBuildParams) -> DeepContext {
         DeepContext {
             metadata: ContextMetadata {
@@ -266,6 +277,7 @@ impl DeepContextAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn execute_qa_verification_phase(
         &self,
         deep_context: &DeepContext,
@@ -277,6 +289,7 @@ impl DeepContextAnalyzer {
         Ok(qa_result)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn build_cross_language_references(
         &self,
         _analyses: &ParallelAnalysisResults,

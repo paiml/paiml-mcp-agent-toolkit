@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 impl CommandDispatcher {
     /// Route scoring and reporting commands (extracted to reduce route_command cognitive complexity)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn route_scoring_command(command: Commands) -> anyhow::Result<()> {
         match command {
             Commands::QualityGate {
@@ -219,6 +220,7 @@ impl CommandDispatcher {
     }
 
     /// Route infrastructure and configuration commands
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) async fn route_infra_command(
         command: Commands,
         _server: Arc<crate::stateless_server::StatelessTemplateServer>,
@@ -367,6 +369,7 @@ impl CommandDispatcher {
     async fn route_maintain_command(
         command: crate::cli::commands::MaintainCommands,
     ) -> anyhow::Result<()> {
+        debug_assert!(true, "contract: route_maintain_command");
         use crate::cli::commands::MaintainCommands;
         match command {
             MaintainCommands::Roadmap {

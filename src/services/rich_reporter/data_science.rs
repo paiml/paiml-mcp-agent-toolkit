@@ -42,6 +42,7 @@ impl Default for DataScienceAnalyzer {
 
 impl DataScienceAnalyzer {
     /// Create a new analyzer with custom parameters
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         k_clusters: usize,
         pagerank_damping: f64,

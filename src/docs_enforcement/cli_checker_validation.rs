@@ -9,6 +9,7 @@
 /// - Options/FLAGS section
 /// - Non-generic descriptions
 /// - Examples (recommended)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn validate_cli_documentation(
     binary_path: &str,
     command: &[&str],

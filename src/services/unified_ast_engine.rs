@@ -19,24 +19,29 @@ impl Default for UnifiedAstEngine {
 
 impl UnifiedAstEngine {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn analyze_project(&self, _path: &Path) -> Result<AstForest> {
         debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Ok(AstForest::default())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn parse_project(&self, _path: &Path) -> Result<AstForest> {
         debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Ok(AstForest::default())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_metrics(&self, _forest: &AstForest) -> Result<ProjectMetrics> {
         Ok(ProjectMetrics::default())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_dependencies(
         &self,
         _forest: &AstForest,
@@ -46,6 +51,7 @@ impl UnifiedAstEngine {
 
     /// Generate artifacts for the project
     /// This is a stub implementation for backward compatibility
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn generate_artifacts(&self, _path: &Path) -> Result<ArtifactTree> {
         debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Ok(ArtifactTree::default())
@@ -59,6 +65,7 @@ pub struct AstForest {
 }
 
 impl AstForest {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn files(&self) -> impl Iterator<Item = (&PathBuf, &ModuleNode)> {
         self.modules.iter().map(|module| (&module.path, module))
     }

@@ -11,6 +11,7 @@ use super::HygieneScorer;
 
 impl HygieneScorer {
     /// Score absence of large files in git history (C3: 5 points)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn score_large_files(
         &self,
         repo_path: &Path,

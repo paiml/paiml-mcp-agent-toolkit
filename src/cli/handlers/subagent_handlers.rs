@@ -7,6 +7,7 @@ use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
 
 /// List all available sub-agents.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn list_subagents(show_all: bool) -> Result<()> {
     let agents = if show_all {
         PmatSubAgent::all()
@@ -60,6 +61,7 @@ pub fn list_subagents(show_all: bool) -> Result<()> {
 }
 
 /// Create a specific sub-agent.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn create_subagent(agent_name: &str, output_dir: Option<PathBuf>) -> Result<()> {
     debug_assert!(!agent_name.is_empty(), "agent_name must not be empty");
     // Parse agent name
@@ -111,6 +113,7 @@ pub fn create_subagent(agent_name: &str, output_dir: Option<PathBuf>) -> Result<
 }
 
 /// Create all MVP sub-agents.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn create_all_mvp_subagents(output_dir: Option<PathBuf>) -> Result<()> {
     let output = output_dir.unwrap_or_else(|| PathBuf::from(".claude/subagents"));
 
@@ -242,6 +245,7 @@ fn report_validation_results(issues: &[String], warnings: &[String]) -> Result<(
 }
 
 /// Validate a sub-agent definition file.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn validate_subagent(file_path: &Path) -> Result<()> {
     debug_assert!(
         file_path.exists(),
@@ -272,6 +276,7 @@ pub fn validate_subagent(file_path: &Path) -> Result<()> {
 }
 
 /// Show MCP tool mapping for sub-agents.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn show_tool_mapping(agent_name: Option<String>) -> Result<()> {
     let mapping = SubAgentGenerator::get_tool_mapping();
 
@@ -314,6 +319,7 @@ pub fn show_tool_mapping(agent_name: Option<String>) -> Result<()> {
 }
 
 /// Export MCP tool mapping as JSON.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn export_tool_mapping_json(output_path: &Path) -> Result<()> {
     debug_assert!(
         output_path.exists(),

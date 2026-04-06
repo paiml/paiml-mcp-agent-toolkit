@@ -38,6 +38,7 @@ impl MutantGuard {
     /// # Errors
     ///
     /// Returns an error if the backup cannot be created
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn new(path: &Path) -> Result<Self> {
         debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Create backup path with a unique suffix
@@ -64,6 +65,7 @@ impl MutantGuard {
     /// # Errors
     ///
     /// Returns an error if the restoration fails
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn restore(&mut self) -> Result<()> {
         if self.restored {
             return Ok(());
@@ -87,16 +89,19 @@ impl MutantGuard {
     ///
     /// This is useful when another mechanism has already restored the file
     /// and we don't want the Drop handler to attempt restoration again.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn mark_restored(&mut self) {
         self.restored = true;
     }
 
     /// Get the path to the backup file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn backup_path(&self) -> &Path {
         &self.backup_path
     }
 
     /// Get the path to the original file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn original_path(&self) -> &Path {
         &self.original_path
     }

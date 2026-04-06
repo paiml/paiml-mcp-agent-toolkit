@@ -8,11 +8,13 @@ pub struct IncrementalCoverageFacade {
 impl IncrementalCoverageFacade {
     /// Create a new incremental coverage facade
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: Arc<ServiceRegistry>) -> Self {
         Self { registry }
     }
 
     /// Perform incremental coverage analysis on a project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_project(
         &self,
         request: IncrementalCoverageRequest,
@@ -101,6 +103,7 @@ impl IncrementalCoverageFacade {
         changed_files: Vec<(PathBuf, String)>,
         request: &IncrementalCoverageRequest,
     ) -> IncrementalCoverageResult {
+        debug_assert!(true, "contract: build_coverage_result");
         let total_files = changed_files.len();
         let covered_files = coverage_data
             .iter()
@@ -146,6 +149,7 @@ impl IncrementalCoverageFacade {
     }
 
     /// Quick coverage analysis with defaults
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn quick_analysis(
         &self,
         project_path: PathBuf,

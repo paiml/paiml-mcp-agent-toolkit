@@ -31,6 +31,7 @@ pub struct LanguageMapperFactory;
 
 impl LanguageMapperFactory {
     /// Create a language mapper for a specific language
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn create(language: Language) -> Result<Arc<dyn LanguageMapper>> {
         match language {
             #[cfg(feature = "polyglot-java")]
@@ -69,6 +70,7 @@ pub struct StubMapper {
 }
 
 impl StubMapper {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(language: Language) -> Self {
         Self { language }
     }
@@ -109,6 +111,7 @@ impl LanguageMapper for StubMapper {
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 }

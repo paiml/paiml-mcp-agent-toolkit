@@ -86,6 +86,7 @@ pub struct LedgerEntry {
 }
 
 impl LedgerEntry {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_receipt(receipt: &FalsificationReceipt) -> Self {
         Self {
             receipt_id: receipt.id.clone(),

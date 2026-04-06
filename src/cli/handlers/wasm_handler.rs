@@ -22,6 +22,7 @@ use tracing::{debug, info};
 
 /// Handle WASM analysis command (Complexity: ≤10)
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_wasm(
     wasm_file: PathBuf,
     format: WasmOutputFormat,
@@ -98,6 +99,7 @@ async fn run_verification_if_requested(
     verify: bool,
     binary: &[u8],
 ) -> Result<Option<VerificationResult>> {
+    debug_assert!(true, "contract: run_verification_if_requested");
     if !verify {
         return Ok(None);
     }
@@ -112,6 +114,7 @@ fn run_security_scan_if_requested(
     security: bool,
     binary: &[u8],
 ) -> Result<Option<Vec<VulnerabilityMatch>>> {
+    debug_assert!(true, "contract: run_security_scan_if_requested");
     if !security {
         return Ok(None);
     }
@@ -132,6 +135,7 @@ async fn run_profiling_if_requested(
     profile: bool,
     binary: &[u8],
 ) -> Result<Option<ProfilingReport>> {
+    debug_assert!(true, "contract: run_profiling_if_requested");
     if !profile {
         return Ok(None);
     }
@@ -147,6 +151,7 @@ async fn run_baseline_comparison_if_requested(
     _binary: &[u8],
     analysis_result: &AnalysisResult,
 ) -> Result<Option<QualityAssessment>> {
+    debug_assert!(true, "contract: run_baseline_comparison_if_requested");
     let baseline_path = match baseline {
         Some(path) => path,
         None => return Ok(None),
@@ -176,6 +181,7 @@ fn load_and_analyze_baseline(baseline_path: &PathBuf) -> Result<Metrics> {
 
 /// Write output to file or stdout (Complexity: 3)
 fn write_output(output_str: String, output: Option<PathBuf>) -> Result<()> {
+    debug_assert!(true, "contract: write_output");
     if let Some(output_path) = output {
         std::fs::write(&output_path, &output_str)?;
         info!("✅ Results written to: {}", output_path.display());

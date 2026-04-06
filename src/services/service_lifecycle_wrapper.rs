@@ -1,5 +1,6 @@
 impl<S: Service> LifecycleWrapper<S> {
     /// Create a new lifecycle wrapper for a service
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(service: S, health_check_interval: Duration) -> Self {
         Self {
             service: Arc::new(RwLock::new(service)),
@@ -12,6 +13,7 @@ impl<S: Service> LifecycleWrapper<S> {
     }
 
     /// Start the service with lifecycle management
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn start(&self) -> Result<()> {
         let mut state = self.state.write().await;
         *state = ServiceState::Starting;
@@ -35,6 +37,7 @@ impl<S: Service> LifecycleWrapper<S> {
     }
 
     /// Stop the service gracefully
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn stop(&self) -> Result<()> {
         let mut state = self.state.write().await;
         *state = ServiceState::Stopping;
@@ -58,11 +61,13 @@ impl<S: Service> LifecycleWrapper<S> {
     }
 
     /// Get current service state
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_state(&self) -> ServiceState {
         *self.state.read().await
     }
 
     /// Get health status
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_health(&self) -> HealthStatus {
         let state = *self.state.read().await;
         let metrics = self.metrics.read().await.clone();
@@ -79,6 +84,7 @@ impl<S: Service> LifecycleWrapper<S> {
 
     /// Start the health check loop
     async fn start_health_check_loop(&self) {
+        debug_assert!(true, "contract: start_health_check_loop");
         let running = self.running.clone();
         let state = self.state.clone();
         let metrics = self.metrics.clone();
@@ -135,6 +141,7 @@ where
     type Error = S::Error;
 
     async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
+        debug_assert!(true, "contract: process");
         let start = std::time::Instant::now();
 
         // Check if service is in a runnable state

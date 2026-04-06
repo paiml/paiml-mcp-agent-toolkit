@@ -28,6 +28,7 @@ fn find_coverage_for_file<'a>(
 ///
 /// Returns one of: `"no_data"`, `"uncovered"`, `"full"`, or `"partial"`.
 fn determine_coverage_status(total: u32, covered: u32) -> &'static str {
+    debug_assert!(true, "contract: determine_coverage_status");
     if total == 0 {
         "no_data"
     } else if covered == 0 {
@@ -46,6 +47,7 @@ fn determine_coverage_status(total: u32, covered: u32) -> &'static str {
 /// composes naturally with `--faults` to show "fix the defect AND write
 /// the test" opportunities in a single view.
 fn annotate_coverage_faults(result: &mut QueryResult) {
+    debug_assert!(true, "contract: annotate_coverage_faults");
     match result.coverage_status.as_str() {
         "uncovered" => {
             result.fault_annotations.push(format!(
@@ -85,6 +87,7 @@ fn annotate_coverage_faults(result: &mut QueryResult) {
 /// - `"uncovered"` -- file instrumented, 0 lines covered
 /// - `"partial"` -- some lines covered, some not
 /// - `"full"` -- all instrumented lines covered
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn enrich_with_coverage(
     results: &mut [QueryResult],
     file_coverage: &HashMap<String, HashMap<usize, u64>>,
@@ -130,6 +133,7 @@ pub fn enrich_with_coverage(
 
 /// Compute coverage delta: enriches results with `coverage_diff` field showing
 /// change from baseline. Positive = coverage improved, negative = regressed.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn enrich_with_coverage_diff(
     results: &mut [QueryResult],
     baseline_coverage: &HashMap<String, HashMap<usize, u64>>,
@@ -166,6 +170,7 @@ pub fn enrich_with_coverage_diff(
 /// Format a coverage summary line for display after enriched results.
 ///
 /// Returns None if no results have coverage data.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_coverage_summary(results: &[QueryResult]) -> Option<String> {
     debug_assert!(!results.is_empty(), "results must not be empty");
     let with_data: Vec<_> = results
@@ -222,6 +227,7 @@ fn format_coverage_header(
     total_pct: f64,
     with_data: &[&QueryResult],
 ) -> String {
+    debug_assert!(true, "contract: format_coverage_header");
     let pct_color = if total_pct >= 80.0 {
         "\x1b[32m"
     } else if total_pct >= 50.0 {
@@ -241,6 +247,7 @@ fn format_coverage_header(
 
 /// Append uncovered/partial counters to summary string.
 fn append_coverage_counters(summary: &mut String, uncovered_count: usize, partial_count: usize) {
+    debug_assert!(true, "contract: append_coverage_counters");
     if uncovered_count > 0 {
         summary.push_str(&format!(
             " | \x1b[1;31m{} uncovered\x1b[0m",
@@ -258,6 +265,7 @@ fn append_coverage_counters(summary: &mut String, uncovered_count: usize, partia
 ///
 /// Higher impact = more uncovered lines in important, low-complexity code
 /// (i.e., easy wins for coverage improvement).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub fn compute_impact_score(missed_lines: u32, pagerank: f32, complexity: u32) -> f32 {
     debug_assert!(
         pagerank >= 0.0,

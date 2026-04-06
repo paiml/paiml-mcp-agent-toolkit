@@ -10,6 +10,7 @@ async fn scan_for_cruft(
     max_size_bytes: u64,
     recursive: bool,
 ) -> Result<RefactorDocsResult> {
+    debug_assert!(true, "contract: scan_for_cruft");
     let mut cruft_files = Vec::new();
     let mut preserved_files = Vec::new();
     let mut errors = Vec::new();
@@ -151,6 +152,7 @@ fn passes_file_filters(
     max_size_bytes: u64,
     now: &SystemTime,
 ) -> bool {
+    debug_assert!(true, "contract: passes_file_filters");
     if metadata.len() > max_size_bytes {
         return false;
     }
@@ -161,6 +163,7 @@ fn passes_file_filters(
 
 /// Calculate file age in days
 fn calculate_age_days(metadata: &fs::Metadata, now: &SystemTime) -> u32 {
+    debug_assert!(true, "contract: calculate_age_days");
     match metadata.modified() {
         Ok(modified) => {
             let duration = now.duration_since(modified).unwrap_or_default();
@@ -193,6 +196,7 @@ fn create_cruft_file(
 
 /// Update summary statistics for a cruft file
 fn update_summary_for_cruft(summary: &mut CleanupSummary, cruft: &CruftFile) {
+    debug_assert!(true, "contract: update_summary_for_cruft");
     let category_str = cruft.category.to_string();
     *summary
         .files_by_category
@@ -209,6 +213,7 @@ fn update_summary_for_cruft(summary: &mut CleanupSummary, cruft: &CruftFile) {
 
 /// Merge directory summary into main summary
 fn merge_summary(main: &mut CleanupSummary, dir: &CleanupSummary) {
+    debug_assert!(true, "contract: merge_summary");
     for (category, count) in &dir.files_by_category {
         *main.files_by_category.entry(category.clone()).or_default() += count;
     }

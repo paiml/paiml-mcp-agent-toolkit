@@ -14,6 +14,7 @@ impl CommandDispatcher {
     /// Execute quality gate command (extracted for complexity reduction)
     /// Used by tests; production path calls analysis_utilities::handle_quality_gate directly (#230).
     #[allow(clippy::too_many_arguments, dead_code)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_quality_gate_command(
         project_path: Option<PathBuf>,
         file: Option<PathBuf>,
@@ -78,6 +79,7 @@ impl CommandDispatcher {
 
     /// Execute report command (extracted for complexity reduction)
     #[allow(clippy::too_many_arguments)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub(crate) async fn execute_report_command(
         project_path: Option<PathBuf>,
         output_format: OutputFormat,

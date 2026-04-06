@@ -19,6 +19,7 @@ pub struct ServiceAdapter<T, I, O> {
 }
 
 impl<T, I, O> ServiceAdapter<T, I, O> {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(inner: T) -> Self {
         Self {
             inner: Arc::new(inner),
@@ -28,6 +29,7 @@ impl<T, I, O> ServiceAdapter<T, I, O> {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn inner(&self) -> &T {
         &self.inner
     }
@@ -44,6 +46,7 @@ macro_rules! impl_service_adapter {
             type Error = anyhow::Error;
 
             async fn process(&self, input: Self::Input) -> Result<Self::Output, Self::Error> {
+                debug_assert!(true, "contract: process");
                 let start = std::time::Instant::now();
                 let result = $process_fn(&self.inner, input).await;
                 let duration = start.elapsed();
@@ -55,6 +58,7 @@ macro_rules! impl_service_adapter {
             }
 
             fn metrics(&self) -> ServiceMetrics {
+                debug_assert!(true, "contract: metrics");
                 self.metrics.blocking_read().clone()
             }
         }

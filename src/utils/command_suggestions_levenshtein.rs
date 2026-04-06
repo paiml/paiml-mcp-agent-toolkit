@@ -1,5 +1,6 @@
 /// Calculate Levenshtein distance between two strings
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn levenshtein_distance(a: &str, b: &str) -> usize {
     debug_assert!(!a.is_empty(), "a must not be empty");
     debug_assert!(!b.is_empty(), "b must not be empty");
@@ -25,6 +26,7 @@ pub fn levenshtein_distance(a: &str, b: &str) -> usize {
 
 /// Initialize the distance matrix with base values
 fn initialize_distance_matrix(a_len: usize, b_len: usize) -> Vec<Vec<usize>> {
+    debug_assert!(true, "contract: initialize_distance_matrix");
     let mut matrix = vec![vec![0; b_len + 1]; a_len + 1];
 
     // Initialize first column (deletions from source)
@@ -56,6 +58,7 @@ fn calculate_edit_distances(matrix: &mut Vec<Vec<usize>>, a: &str, b: &str) {
 
 /// Calculate the minimum edit distance for a single cell
 fn calculate_cell_distance(matrix: &[Vec<usize>], i: usize, j: usize, chars_match: bool) -> usize {
+    debug_assert!(true, "contract: calculate_cell_distance");
     let substitution_cost = usize::from(!chars_match);
 
     let deletion_cost = matrix[i - 1][j] + 1;

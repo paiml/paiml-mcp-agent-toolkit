@@ -32,6 +32,7 @@ impl QualityProxyService {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn proxy_operation(&self, request: ProxyRequest) -> Result<ProxyResponse> {
         info!(
             "Proxying {} operation for {}",
@@ -120,6 +121,7 @@ impl QualityProxyService {
     }
 
     fn get_operation_content(&self, request: &ProxyRequest) -> Result<String> {
+        debug_assert!(true, "contract: get_operation_content");
         match request.operation {
             ProxyOperation::Write => request
                 .content

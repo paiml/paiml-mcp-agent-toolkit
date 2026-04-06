@@ -5,6 +5,7 @@ use std::path::Path;
 
 /// Compute composite priority: severity_weight * (1.0 + suspiciousness).
 /// Critical=4, High=3, Medium=2, Low=1.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn composite_priority(finding: &KaizenFinding) -> f32 {
     let severity_weight = match finding.severity {
         FindingSeverity::Critical => 4.0f32,
@@ -16,6 +17,7 @@ pub(crate) fn composite_priority(finding: &KaizenFinding) -> f32 {
     severity_weight * (1.0 + suspiciousness)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn sort_findings(findings: &mut [KaizenFinding]) {
     findings.sort_by(|a, b| {
         composite_priority(b)
@@ -26,6 +28,7 @@ pub(crate) fn sort_findings(findings: &mut [KaizenFinding]) {
 
 /// Enrich findings with tarantula suspiciousness scores from LCOV coverage data.
 /// Gracefully does nothing if no coverage data is available.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn enrich_with_tarantula(path: &Path, findings: &mut [KaizenFinding]) {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let lcov_candidates = [

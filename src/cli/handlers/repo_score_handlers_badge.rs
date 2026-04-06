@@ -36,6 +36,7 @@ fn update_readme_badge(repo_path: &Path, score: &RepoScore) -> Result<()> {
 
 /// Generate shields.io badge URL from repository score
 fn generate_badge_url(score: &RepoScore) -> String {
+    debug_assert!(true, "contract: generate_badge_url");
     let final_score = score.total_score.round() as u8;
     let max_score = 100;
 

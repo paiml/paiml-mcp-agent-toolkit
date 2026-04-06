@@ -20,6 +20,7 @@ impl RecoveryManager {
     }
 
     async fn rollback_completed_steps(context: &WorkflowContext) -> Result<(), WorkflowError> {
+        debug_assert!(true, "contract: rollback_completed_steps");
         // Get all completed steps in reverse order
         let step_results = context.step_results.read();
         let mut completed_steps: Vec<(String, Value)> = step_results
@@ -61,6 +62,7 @@ impl RecoveryManager {
     }
 
     async fn compensate_completed_steps(context: &WorkflowContext) -> Result<(), WorkflowError> {
+        debug_assert!(true, "contract: compensate_completed_steps");
         // Get all completed steps
         let step_results = context.step_results.read();
         let completed_steps: Vec<(String, Value)> = step_results

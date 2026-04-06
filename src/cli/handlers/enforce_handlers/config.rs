@@ -23,6 +23,7 @@ pub struct EnforcementConfig {
 }
 
 /// Load quality profile from name or config file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn load_quality_profile(
     profile_name: &str,
     _config_path: Option<PathBuf>,
@@ -37,6 +38,7 @@ pub fn load_quality_profile(
 }
 
 /// Initialize enforcement environment
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn initialize_enforcement_environment(
     profile_name: &str,
     config_path: Option<PathBuf>,
@@ -54,6 +56,7 @@ pub fn initialize_enforcement_environment(
 }
 
 /// Clear enforcement cache
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn clear_enforcement_cache(cache_dir: &Option<PathBuf>) {
     if let Some(cache_path) = cache_dir {
         eprintln!("🧹 Clearing cache at: {}", cache_path.display());

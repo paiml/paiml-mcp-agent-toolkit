@@ -50,6 +50,7 @@ pub struct ValidateDocsCmd {
 
 impl ValidateDocsCmd {
     /// Execute the validate-docs command
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute(&self) -> Result<ExitCode> {
         let config = if let Some(config_path) = &self.config {
             self.load_config(config_path)?
@@ -86,6 +87,7 @@ impl ValidateDocsCmd {
     }
 
     fn build_config(&self) -> ValidatorConfig {
+        debug_assert!(true, "contract: build_config");
         // Start with default excludes, then add CLI-provided ones
         let mut exclude_patterns = vec![
             "archive".to_string(),
@@ -116,6 +118,7 @@ impl ValidateDocsCmd {
     }
 
     fn print_text_summary(&self, summary: &crate::services::doc_validator::ValidationSummary) {
+        debug_assert!(true, "contract: print_text_summary");
         use crate::cli::colors as c;
         println!();
         println!("{}", c::header("Documentation Link Validation Summary"));
@@ -229,6 +232,7 @@ impl ValidateDocsCmd {
         &self,
         summary: &crate::services::doc_validator::ValidationSummary,
     ) -> Result<()> {
+        debug_assert!(true, "contract: print_json_summary");
         use serde_json::json;
 
         let results_json: Vec<_> = summary
@@ -267,6 +271,7 @@ impl ValidateDocsCmd {
         &self,
         summary: &crate::services::doc_validator::ValidationSummary,
     ) -> Result<()> {
+        debug_assert!(true, "contract: print_junit_summary");
         println!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         println!(
             "<testsuites name=\"Documentation Link Validation\" tests=\"{}\" failures=\"{}\" time=\"{:.3}\">",

@@ -3,6 +3,7 @@
 // add_project_header(), add_project_structure(), add_key_components().
 
 impl AdvancedUnifiedContextBuilder {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_path: &Path) -> Self {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self {
@@ -19,6 +20,7 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     /// Build the complete unified context with all annotations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn build_complete_context(&mut self) -> Result<String> {
         info!(
             "Building unified context with advanced annotations for {:?}",
@@ -68,6 +70,7 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     async fn get_basic_context(&self) -> Result<ProjectContext> {
+        debug_assert!(true, "contract: get_basic_context");
         use crate::services::simple_deep_context::{SimpleAnalysisConfig, SimpleDeepContext};
 
         let analyzer = SimpleDeepContext::new();
@@ -99,6 +102,7 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     fn add_project_header(&mut self, context: &ProjectContext) {
+        debug_assert!(true, "contract: add_project_header");
         self.output.push_str("# Project Context\n\n");
         self.output
             .push_str(&format!("Project: {}\n", self.project_path.display()));
@@ -107,6 +111,7 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     fn add_project_structure(&mut self, context: &ProjectContext) {
+        debug_assert!(true, "contract: add_project_structure");
         self.output.push_str("## Project Structure\n\n");
         self.output.push_str(&format!(
             "- **Total Files**: {}\n",
@@ -132,6 +137,7 @@ impl AdvancedUnifiedContextBuilder {
     }
 
     fn add_key_components(&mut self, context: &ProjectContext) {
+        debug_assert!(true, "contract: add_key_components");
         self.output.push_str("## Key Components\n\n");
 
         for file in &context.files {

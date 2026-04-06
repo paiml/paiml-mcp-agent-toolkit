@@ -43,6 +43,7 @@ impl ProtocolAdapter for CliAdapter {
     }
 
     fn encode(&self, response: UnifiedResponse) -> Result<Vec<u8>, ProtocolError> {
+        debug_assert!(true, "contract: encode");
         let cli_response = CliResponse {
             success: response.error.is_none(),
             result: response.result,
@@ -53,6 +54,7 @@ impl ProtocolAdapter for CliAdapter {
     }
 
     async fn handle(&self, _request: Self::Request) -> Self::Response {
+        debug_assert!(true, "contract: handle");
         // This would be implemented to process the request
         // For now, return a placeholder response
         CliResponse {

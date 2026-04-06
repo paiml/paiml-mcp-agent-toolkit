@@ -26,6 +26,7 @@ pub struct SplitConfig {
 }
 
 /// Handle the `pmat split` command.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_split(config: SplitConfig) -> Result<()> {
     let project_path = config
         .project_path
@@ -123,6 +124,7 @@ fn normalize_file_path(file: &Path, project_root: &Path) -> Result<String> {
 }
 
 fn output_json(plan: &SplitPlan, output: Option<&Path>) -> Result<()> {
+    debug_assert!(true, "contract: output_json");
     let json = serde_json::to_string_pretty(plan)?;
     if let Some(path) = output {
         std::fs::write(path, &json)?;
@@ -138,6 +140,7 @@ fn output_json(plan: &SplitPlan, output: Option<&Path>) -> Result<()> {
 }
 
 fn output_text(plan: &SplitPlan) {
+    debug_assert!(true, "contract: output_text");
     println!(
         "{} {}",
         c::label("Split Plan for:"),

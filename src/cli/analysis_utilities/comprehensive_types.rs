@@ -18,6 +18,7 @@ pub struct QualityGateResults {
 
 impl QualityGateResults {
     /// Recalculate per-category violation counts from the filtered violations list (#196).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn recalculate_from(&mut self, violations: &[QualityViolation]) {
         debug_assert!(!violations.is_empty(), "violations must not be empty");
         self.complexity_violations = violations.iter().filter(|v| v.check_type == "complexity").count();
@@ -188,6 +189,7 @@ pub struct ViolationDetails {
 
 impl QualityViolation {
     /// Create a simple violation without details (backwards-compatible).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(
         check_type: impl Into<String>,
         severity: impl Into<String>,
@@ -207,6 +209,7 @@ impl QualityViolation {
 
     /// Attach details for explainability (#226).
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_details(mut self, details: ViolationDetails) -> Self {
         self.details = Some(details);
         self

@@ -55,6 +55,7 @@
 /// assert!(output.contains("Analysis timestamp:"));
 /// # });
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn analyze_dag_enhanced(
     project_path: &str,
     _dag_type: crate::cli::DagType,

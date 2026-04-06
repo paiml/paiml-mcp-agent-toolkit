@@ -1,6 +1,7 @@
 /// Toyota Way: Extract Method - Check if path is source file (complexity ≤8)
 /// Determines if a path represents a source code file
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn is_source_file(path: &Path) -> bool {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Check if it has a source code extension

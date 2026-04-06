@@ -37,6 +37,7 @@ pub struct LanguageInfo {
 }
 
 /// Detect primary project language with confidence scoring
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_project_language_enhanced(path: &Path) -> LanguageDetection {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     debug!("Detecting project language at: {:?}", path);
@@ -137,6 +138,7 @@ fn compute_confidence_boost(lang: &str, path: &Path) -> f64 {
 }
 
 /// Detect all languages in a polyglot project
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_all_languages(path: &Path) -> MultiLanguageDetection {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     debug!("Detecting all languages at: {:?}", path);
@@ -201,6 +203,7 @@ pub fn detect_all_languages(path: &Path) -> MultiLanguageDetection {
 }
 
 /// Detect language with timeout
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_project_language_with_timeout(
     path: &Path,
     _timeout: Duration,
@@ -212,6 +215,7 @@ pub fn detect_project_language_with_timeout(
 }
 
 /// Override language detection manually
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn override_language_detection(_path: &Path, language: &str) -> LanguageDetection {
     debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
     LanguageDetection {
@@ -221,6 +225,7 @@ pub fn override_language_detection(_path: &Path, language: &str) -> LanguageDete
 }
 
 /// Override with multiple languages
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn override_multiple_languages(path: &Path, languages: Vec<String>) -> MultiLanguageDetection {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     let file_counts = count_files_by_extension(path);

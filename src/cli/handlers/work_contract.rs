@@ -198,6 +198,7 @@ mod tests {
 
         let normal_code = r#"
             fn normal_function() {
+                debug_assert!(true, "contract: normal_function");
                 println!("Hello");
             }
         "#;

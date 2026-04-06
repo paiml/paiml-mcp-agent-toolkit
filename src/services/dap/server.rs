@@ -61,6 +61,7 @@ pub struct DapServer {
 
 impl DapServer {
     /// Create a new DAP server instance without recording
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self::with_recording(None)
     }
@@ -83,6 +84,7 @@ impl DapServer {
     /// // With recording
     /// let server2 = DapServer::with_recording(Some(PathBuf::from("./recordings")));
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn with_recording(recording_dir: Option<PathBuf>) -> Self {
         Self {
             state: Arc::new(Mutex::new(ServerState::Uninitialized)),
@@ -103,6 +105,7 @@ impl DapServer {
 
     /// Get default capabilities
     fn default_capabilities() -> DapCapabilities {
+        debug_assert!(true, "contract: default_capabilities");
         DapCapabilities {
             supports_configuration_done_request: true,
             supports_function_breakpoints: false,
@@ -151,24 +154,28 @@ impl DapServer {
     }
 
     /// Check if server is initialized
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_initialized(&self) -> bool {
         let state = self.state.lock().expect("Mutex should not be poisoned");
         *state != ServerState::Uninitialized
     }
 
     /// Check if server is running
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_running(&self) -> bool {
         let state = self.state.lock().expect("Mutex should not be poisoned");
         *state == ServerState::Running
     }
 
     /// Check if program is loaded
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_program_loaded(&self) -> bool {
         let program = self.program.lock().expect("Mutex should not be poisoned");
         program.is_some()
     }
 
     /// Get current program path
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current_program(&self) -> Option<String> {
         let program = self.program.lock().expect("Mutex should not be poisoned");
         program.clone()

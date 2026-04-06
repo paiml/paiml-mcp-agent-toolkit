@@ -13,6 +13,7 @@ use std::path::Path;
 
 /// CB-602: pcall Error Handling -- uncaptured or unchecked pcall/xpcall.
 /// Based on FLuaScan progressive taint analysis.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb602_pcall_error_handling(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -78,6 +79,7 @@ pub fn detect_cb602_pcall_error_handling(project_path: &Path) -> Vec<CbPatternVi
 ///
 /// Supports inline suppression: `-- pmat:ignore CB-603` on the same line.
 /// Distinguishes safe usage (hardcoded string arg) from dangerous (concatenation/variable).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb603_deprecated_dangerous_api(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

@@ -12,6 +12,7 @@ impl WorkContract {
     /// this method creates tracked debt tickets and adds overrides to claims.
     ///
     /// This is the "managed migration path" for existing projects.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn acknowledge_legacy_debt(&mut self, project_path: &Path) -> Result<()> {
         debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let timestamp = chrono::Utc::now().format("%Y%m%d%H%M%S").to_string();

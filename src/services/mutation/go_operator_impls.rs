@@ -3,14 +3,17 @@
 
 impl TreeSitterMutationOperator for GoBinaryOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "GoBinaryOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         node.kind() == "binary_expression"
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Find operator child node (middle child in binary_expression)
         let mut cursor = node.walk();
         let mut operator_node = None;
@@ -63,20 +66,24 @@ impl TreeSitterMutationOperator for GoBinaryOpMutation {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.85
     }
 }
 
 impl TreeSitterMutationOperator for GoRelationalOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "GoRelationalOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         node.kind() == "binary_expression"
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Find operator child node
         let mut cursor = node.walk();
         let mut operator_node = None;
@@ -130,20 +137,24 @@ impl TreeSitterMutationOperator for GoRelationalOpMutation {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.90
     }
 }
 
 impl TreeSitterMutationOperator for GoLogicalOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "GoLogicalOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         node.kind() == "binary_expression"
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Find operator child node
         let mut cursor = node.walk();
         let mut operator_node = None;
@@ -187,20 +198,24 @@ impl TreeSitterMutationOperator for GoLogicalOpMutation {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.92
     }
 }
 
 impl TreeSitterMutationOperator for GoBitwiseOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "GoBitwiseOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         node.kind() == "binary_expression"
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Find operator child node
         let mut cursor = node.walk();
         let mut operator_node = None;
@@ -253,20 +268,24 @@ impl TreeSitterMutationOperator for GoBitwiseOpMutation {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.80
     }
 }
 
 impl TreeSitterMutationOperator for GoUnaryOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "GoUnaryOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         node.kind() == "unary_expression"
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Find operator child node (first child in unary_expression)
         let mut cursor = node.walk();
         let mut operator_node = None;
@@ -317,20 +336,24 @@ impl TreeSitterMutationOperator for GoUnaryOpMutation {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.88
     }
 }
 
 impl TreeSitterMutationOperator for GoAssignmentOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "GoAssignmentOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         node.kind() == "assignment_statement"
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Find operator child node
         let mut cursor = node.walk();
         let mut operator_node = None;
@@ -391,6 +414,7 @@ impl TreeSitterMutationOperator for GoAssignmentOpMutation {
     }
 
     fn kill_probability(&self) -> f64 {
+        debug_assert!(true, "contract: kill_probability");
         0.75
     }
 }

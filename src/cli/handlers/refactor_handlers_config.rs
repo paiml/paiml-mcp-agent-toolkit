@@ -88,6 +88,7 @@ async fn create_auto_commit(
     template: &str,
     summary: &crate::models::refactor::Summary,
 ) -> anyhow::Result<()> {
+    debug_assert!(true, "contract: create_auto_commit");
     use std::process::Command;
 
     // Stage all changes

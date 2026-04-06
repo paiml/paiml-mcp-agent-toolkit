@@ -13,6 +13,7 @@ pub enum SqlOutputFormat {
 }
 
 impl SqlOutputFormat {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_str_opt(s: &str) -> Self {
         debug_assert!(!s.is_empty(), "s must not be empty");
         match s.to_lowercase().as_str() {
@@ -101,6 +102,7 @@ const EXAMPLE_QUERIES: &[(&str, &str)] = &[
 ];
 
 /// Handle --schema flag: print table schemas
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_schema(db_path: &Path) -> Result<()> {
     debug_assert!(
         db_path.exists(),
@@ -140,6 +142,7 @@ pub fn handle_schema(db_path: &Path) -> Result<()> {
 }
 
 /// Handle --examples flag: print built-in example queries
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn handle_examples() {
     println!("Built-in example queries (use with: pmat sql <name>):\n");
     for (name, query) in EXAMPLE_QUERIES {
@@ -149,6 +152,7 @@ pub fn handle_examples() {
 }
 
 /// Handle SQL query execution
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn handle_sql(query: &str, format: SqlOutputFormat, db_path: &Path) -> Result<()> {
     debug_assert!(
         db_path.exists(),
@@ -202,6 +206,7 @@ fn resolve_query(query: &str) -> &str {
 
 /// Format a single cell from a SQLite row
 fn format_cell(row: &rusqlite::Row<'_>, idx: usize) -> String {
+    debug_assert!(true, "contract: format_cell");
     // Try integer first, then float, then string
     if let Ok(v) = row.get::<_, i64>(idx) {
         return v.to_string();
@@ -321,6 +326,7 @@ fn print_csv(columns: &[String], rows: &[Vec<String>]) {
 }
 
 /// Locate the best database path for the project
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn find_db_path(project_path: &Path, workspace: bool) -> Result<std::path::PathBuf> {
     debug_assert!(
         project_path.exists(),

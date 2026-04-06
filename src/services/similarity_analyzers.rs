@@ -25,6 +25,7 @@ impl TokenAnalyzer {
     }
 
     fn cosine_similarity(&self, v1: &TokenVector, v2: &TokenVector) -> f64 {
+        debug_assert!(true, "contract: cosine_similarity");
         let mut dot_product = 0.0;
         let mut norm1 = 0.0;
         let mut norm2 = 0.0;

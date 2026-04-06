@@ -34,6 +34,7 @@ pub enum DefectCategory {
 
 impl DefectCategory {
     /// Map rustc error code to defect category
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_rustc_error(code: &str) -> Option<Self> {
         debug_assert!(!code.is_empty(), "code must not be empty");
         match code {
@@ -52,6 +53,7 @@ impl DefectCategory {
     }
 
     /// Get confidence score for this category when detected via rustc
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn rustc_confidence(&self) -> f32 {
         match self {
             Self::TypeErrors => 0.95,

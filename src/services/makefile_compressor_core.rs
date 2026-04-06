@@ -1,5 +1,6 @@
 impl MakefileCompressor {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         let mut critical_targets = HashSet::new();
         critical_targets.insert("all");
@@ -48,6 +49,7 @@ impl MakefileCompressor {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn compress(&self, content: &str) -> CompressedMakefile {
         debug_assert!(!content.is_empty(), "content must not be empty");
         let mut result = CompressedMakefile::default();

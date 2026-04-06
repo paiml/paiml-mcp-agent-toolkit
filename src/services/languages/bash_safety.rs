@@ -5,6 +5,7 @@
 impl ShellSafetyAnalyzer {
     /// Creates a new shell safety analyzer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             safety_violations: Vec::new(),
@@ -13,6 +14,7 @@ impl ShellSafetyAnalyzer {
     }
 
     /// Analyzes shell script for safety issues (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_safety(&mut self, source: &str) -> Result<Vec<String>, String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let mut violations = Vec::new();
@@ -36,6 +38,7 @@ impl ShellSafetyAnalyzer {
     }
 
     /// Checks for common security vulnerabilities (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_security_vulnerabilities(&mut self, source: &str) -> Result<Vec<String>, String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let mut vulnerabilities = Vec::new();
@@ -55,6 +58,7 @@ impl ShellSafetyAnalyzer {
     }
 
     /// Validates best practices compliance (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_best_practices(&mut self, source: &str) -> Result<Vec<String>, String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let mut warnings = Vec::new();
@@ -75,12 +79,14 @@ impl ShellSafetyAnalyzer {
 
     /// Gets safety violations
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_safety_violations(&self) -> &[String] {
         &self.safety_violations
     }
 
     /// Gets best practice warnings
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_best_practice_warnings(&self) -> &[String] {
         &self.best_practice_warnings
     }
@@ -89,6 +95,7 @@ impl ShellSafetyAnalyzer {
 impl ShellCommandParser {
     /// Creates a new shell command parser
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             commands: Vec::new(),
@@ -97,6 +104,7 @@ impl ShellCommandParser {
     }
 
     /// Parses shell command line into tokens (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_command_line(&mut self, line: &str) -> Result<Vec<String>, String> {
         debug_assert!(!line.is_empty(), "line must not be empty");
         let tokens: Vec<String> = line
@@ -109,6 +117,7 @@ impl ShellCommandParser {
     }
 
     /// Extracts variable assignments (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_variable_assignments(
         &mut self,
         line: &str,
@@ -138,12 +147,14 @@ impl ShellCommandParser {
 
     /// Gets parsed commands
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_commands(&self) -> &[String] {
         &self.commands
     }
 
     /// Gets extracted variables
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_variables(&self) -> &[String] {
         &self.variables
     }

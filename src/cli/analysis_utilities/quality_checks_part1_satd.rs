@@ -57,6 +57,7 @@
 /// }
 /// # });
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn check_satd(project_path: &Path) -> Result<Vec<QualityViolation>> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Toyota Way: Use the ONE proper implementation, not duplicate logic

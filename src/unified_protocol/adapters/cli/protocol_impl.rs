@@ -4,10 +4,12 @@ impl ProtocolAdapter for CliAdapter {
     type Output = CliOutput;
 
     fn protocol(&self) -> Protocol {
+        debug_assert!(true, "contract: protocol");
         Protocol::Cli
     }
 
     async fn decode(&self, input: Self::Input) -> Result<UnifiedRequest, ProtocolError> {
+        debug_assert!(true, "contract: decode");
         debug!("Decoding CLI input: {:?}", input.command_name);
 
         let (method, path, body, output_format) = self.decode_command(&input.command)?;
@@ -39,6 +41,7 @@ impl ProtocolAdapter for CliAdapter {
     }
 
     async fn encode(&self, response: UnifiedResponse) -> Result<Self::Output, ProtocolError> {
+        debug_assert!(true, "contract: encode");
         debug!(status = %response.status, "Encoding CLI response");
 
         let body_bytes = axum::body::to_bytes(response.body, usize::MAX)

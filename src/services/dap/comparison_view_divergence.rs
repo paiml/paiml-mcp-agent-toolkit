@@ -2,6 +2,7 @@
 
 impl ComparisonView {
     /// Find the first frame where recordings diverge
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn find_divergence_point(&self) -> Option<usize> {
         let max_frames = self.total_frames_min();
 

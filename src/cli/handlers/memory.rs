@@ -96,6 +96,7 @@ pub struct PoolStatsOutput {
 }
 
 /// Handle memory management commands
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_memory_command(command: &MemoryCommand) -> Result<()> {
     // Initialize memory manager if not already done
     if global_memory_manager().is_err() {

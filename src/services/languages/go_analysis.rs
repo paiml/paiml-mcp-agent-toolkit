@@ -5,6 +5,7 @@
 impl GoAstVisitor {
     /// Creates a new Go AST visitor
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(file_path: &Path) -> Self {
         debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
@@ -16,6 +17,7 @@ impl GoAstVisitor {
     }
 
     /// Analyzes Go source code and extracts AST items (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_go_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
@@ -159,6 +161,7 @@ impl GoAstVisitor {
 impl GoComplexityAnalyzer {
     /// Creates a new Go complexity analyzer
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             cyclomatic_complexity: 0,
@@ -167,6 +170,7 @@ impl GoComplexityAnalyzer {
     }
 
     /// Analyzes complexity of Go source code (complexity ≤10)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
         debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
@@ -192,6 +196,7 @@ impl GoComplexityAnalyzer {
 /// Public async function to analyze a Go file and return FileContext
 /// This matches the API pattern used by TypeScript analyzer
 #[cfg(feature = "go-ast")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_go_file(
     path: &Path,
 ) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {

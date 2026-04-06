@@ -27,6 +27,7 @@ impl Default for FuzzConfig {
 
 impl FuzzConfig {
     /// Validate configuration
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate(&self) -> Result<()> {
         if self.iterations == 0 {
             anyhow::bail!("iterations must be > 0");
@@ -69,11 +70,13 @@ pub struct FuzzResult {
 
 impl FuzzResult {
     /// Check if any crashes were detected
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_crashes(&self) -> bool {
         !self.crashes.is_empty()
     }
 
     /// Check if any hangs were detected
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_hangs(&self) -> bool {
         !self.hangs.is_empty()
     }

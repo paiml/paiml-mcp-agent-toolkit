@@ -1,6 +1,7 @@
 // --- Dead code analysis ---
 
 #[allow(clippy::cast_possible_truncation)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_dead_code(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {

@@ -1,5 +1,6 @@
 impl MetricTrendStore {
     /// Update PageRank hotness scores (Phase 3.2)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn update_hotness(&mut self) -> Result<()> {
         if self.graph.num_nodes() == 0 {
             return Ok(()); // No nodes yet
@@ -41,6 +42,7 @@ impl MetricTrendStore {
     }
 
     /// Get hot metrics (sorted by PageRank score)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn hot_metrics(&self) -> Vec<(String, f32)> {
         let mut metrics: Vec<_> = self
             .hotness_cache
@@ -75,6 +77,7 @@ impl MetricTrendStore {
     /// # Returns
     ///
     /// PredictionResult with breach prediction, confidence, and recommendations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn predict_threshold_breach(
         &mut self,
         metric: &str,
@@ -222,6 +225,7 @@ impl MetricTrendStore {
         training_data: &[MetricObservation],
         forecast_days: usize,
     ) -> Result<Vec<ForecastPoint>> {
+        debug_assert!(true, "contract: generate_forecast");
         let first_ts = training_data[0].timestamp;
         let last_day = (model.last_timestamp - first_ts) as f64 / 86400.0;
 

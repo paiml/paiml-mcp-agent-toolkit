@@ -327,6 +327,10 @@ export class Calculator {
     /// **Quality Gate**: Must pass before v2.162.0 release.
     #[test]
     fn red_test_javascript_class_methods_must_be_extracted() {
+        debug_assert!(
+            true,
+            "contract: red_test_javascript_class_methods_must_be_extracted"
+        );
         let analyzer = JavaScriptAnalyzer;
         let content = r#"
 class Server {

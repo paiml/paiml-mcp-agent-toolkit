@@ -49,6 +49,7 @@ fn read_coverage_from_detail_cache(project_path: &Path) -> Option<f64> {
 
 /// Compute total and covered lines from per-file hit maps.
 fn compute_line_coverage(files: &serde_json::Map<String, serde_json::Value>) -> (u64, u64) {
+    debug_assert!(true, "contract: compute_line_coverage");
     let mut total = 0u64;
     let mut covered = 0u64;
     for line_hits in files.values() {

@@ -16,6 +16,7 @@ pub enum SimdWidth {
 
 impl SimdWidth {
     /// Number of f32 lanes
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn lanes(&self) -> usize {
         match self {
             SimdWidth::Scalar => 1,
@@ -26,6 +27,7 @@ impl SimdWidth {
     }
 
     /// Typical speedup factor (from trueno-zram measurements)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn compute_speedup(&self) -> f64 {
         // Contract: compute_speedup returns a bounded score
         let result = match self {
@@ -167,6 +169,7 @@ pub enum Bottleneck {
 
 impl HardwareCapability {
     /// Determine if workload is memory-bound or compute-bound
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn bottleneck(&self, arithmetic_intensity: f64, use_gpu: bool) -> Bottleneck {
         let threshold = if use_gpu {
             self.roofline.gpu_arithmetic_intensity.unwrap_or(f64::MAX)
@@ -183,6 +186,7 @@ impl HardwareCapability {
 }
 
 /// Default path for hardware.toml
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn default_hardware_path() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
@@ -191,6 +195,7 @@ pub fn default_hardware_path() -> PathBuf {
 }
 
 /// Load hardware capability from TOML file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn load_hardware_capability(path: Option<&Path>) -> Option<HardwareCapability> {
     let path = path
         .map(PathBuf::from)
@@ -206,6 +211,7 @@ pub fn load_hardware_capability(path: Option<&Path>) -> Option<HardwareCapabilit
 }
 
 /// Scale budgets based on hardware capability
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn scale_budgets_for_hardware(
     base_budgets: &[BrickBudget],
     hardware: &HardwareCapability,

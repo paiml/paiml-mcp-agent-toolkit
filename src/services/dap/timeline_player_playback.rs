@@ -17,6 +17,7 @@ impl TimelinePlayer {
     /// player.play();
     /// assert!(player.is_playing());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn play(&mut self) {
         self.is_playing = true;
     }
@@ -38,6 +39,7 @@ impl TimelinePlayer {
     /// player.pause();
     /// assert!(!player.is_playing());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn pause(&mut self) {
         self.is_playing = false;
     }
@@ -57,6 +59,7 @@ impl TimelinePlayer {
     /// player.play();
     /// assert!(player.is_playing());
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_playing(&self) -> bool {
         self.is_playing
     }
@@ -85,6 +88,7 @@ impl TimelinePlayer {
     /// player.set_speed(0.5);
     /// assert_eq!(player.playback_speed(), 0.5);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_speed(&mut self, speed: f64) {
         self.playback_speed = speed;
     }
@@ -104,6 +108,7 @@ impl TimelinePlayer {
     /// player.set_speed(2.0);
     /// assert_eq!(player.playback_speed(), 2.0);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn playback_speed(&self) -> f64 {
         self.playback_speed
     }
@@ -122,6 +127,7 @@ impl TimelinePlayer {
     /// let metadata = player.recording().metadata();
     /// println!("Program: {}", metadata.program);
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn recording(&self) -> &Recording {
         &self.recording
     }

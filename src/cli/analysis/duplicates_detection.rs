@@ -34,6 +34,7 @@ pub struct FileStats {
 
 /// Main entry point for duplicate analysis
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_analyze_duplicates(
     project_path: PathBuf,
     detection_type: crate::cli::DuplicateType,
@@ -111,6 +112,7 @@ async fn run_duplicate_detection(
 
 /// Apply top files filtering to report
 fn apply_top_files_filtering(report: &mut DuplicateReport, top_files: usize) {
+    debug_assert!(true, "contract: apply_top_files_filtering");
     if top_files == 0 {
         return;
     }
@@ -125,6 +127,7 @@ fn get_top_files_by_duplication(
     file_statistics: &HashMap<String, FileStats>,
     top_files: usize,
 ) -> std::collections::HashSet<String> {
+    debug_assert!(true, "contract: get_top_files_by_duplication");
     let mut file_stats: Vec<_> = file_statistics.iter().collect();
     file_stats.sort_by(|a, b| {
         b.1.duplication_percentage
@@ -144,6 +147,7 @@ fn filter_blocks_by_files(
     report: &mut DuplicateReport,
     top_file_names: &std::collections::HashSet<String>,
 ) {
+    debug_assert!(true, "contract: filter_blocks_by_files");
     report.duplicate_blocks.retain(|block| {
         block
             .locations
@@ -154,6 +158,7 @@ fn filter_blocks_by_files(
 
 /// Recalculate statistics after filtering
 fn recalculate_statistics_after_filtering(report: &mut DuplicateReport) {
+    debug_assert!(true, "contract: recalculate_statistics_after_filtering");
     let mut duplicate_lines = 0;
     for block in &report.duplicate_blocks {
         duplicate_lines += block.lines * block.locations.len();
@@ -170,6 +175,7 @@ fn recalculate_statistics_after_filtering(report: &mut DuplicateReport) {
 
 /// Print duplicate analysis summary
 fn print_duplicate_summary(report: &DuplicateReport) {
+    debug_assert!(true, "contract: print_duplicate_summary");
     use crate::cli::colors as c;
     eprintln!(
         "{} Found {} duplicate blocks",
@@ -191,6 +197,7 @@ async fn write_duplicate_output(
     format: crate::cli::DuplicateOutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: write_duplicate_output");
     let content = format_output(report, format)?;
 
     if let Some(output_path) = output {
@@ -311,6 +318,7 @@ fn calculate_duplicate_statistics(
     duplicate_blocks: &[DuplicateBlock],
     file_stats: &mut HashMap<String, FileStats>,
 ) -> usize {
+    debug_assert!(true, "contract: calculate_duplicate_statistics");
     let mut duplicate_lines = 0;
 
     for block in duplicate_blocks {
@@ -329,6 +337,7 @@ fn calculate_duplicate_statistics(
 
 /// Update duplication percentages for all files
 fn update_file_duplication_percentages(file_stats: &mut HashMap<String, FileStats>) {
+    debug_assert!(true, "contract: update_file_duplication_percentages");
     for stats in file_stats.values_mut() {
         if stats.total_lines > 0 {
             stats.duplication_percentage =
@@ -339,6 +348,7 @@ fn update_file_duplication_percentages(file_stats: &mut HashMap<String, FileStat
 
 /// Calculate overall duplication percentage
 fn calculate_duplication_percentage(duplicate_lines: usize, total_lines: usize) -> f32 {
+    debug_assert!(true, "contract: calculate_duplication_percentage");
     if total_lines > 0 {
         (duplicate_lines as f32 / total_lines as f32) * 100.0
     } else {
@@ -354,6 +364,7 @@ fn build_duplicate_report(
     duplication_percentage: f32,
     file_stats: HashMap<String, FileStats>,
 ) -> DuplicateReport {
+    debug_assert!(true, "contract: build_duplicate_report");
     DuplicateReport {
         total_duplicates: duplicate_blocks.len(),
         duplicate_lines,

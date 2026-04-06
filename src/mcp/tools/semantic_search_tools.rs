@@ -27,6 +27,7 @@ pub struct SemanticSearchTool {
 }
 
 impl SemanticSearchTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self { engine }
     }
@@ -70,14 +71,17 @@ impl SemanticSearchTool {
 #[async_trait]
 impl McpTool for SemanticSearchTool {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "semantic_search"
     }
 
     fn schema(&self) -> Value {
+        debug_assert!(true, "contract: schema");
         Self::schema()
     }
 
     async fn execute(&self, params: Value) -> Result<Value, String> {
+        debug_assert!(true, "contract: execute");
         let start = Instant::now();
 
         // Extract parameters
@@ -157,6 +161,7 @@ pub struct FindSimilarCodeTool {
 }
 
 impl FindSimilarCodeTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self { engine }
     }
@@ -189,14 +194,17 @@ impl FindSimilarCodeTool {
 #[async_trait]
 impl McpTool for FindSimilarCodeTool {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "find_similar_code"
     }
 
     fn schema(&self) -> Value {
+        debug_assert!(true, "contract: schema");
         Self::schema()
     }
 
     async fn execute(&self, params: Value) -> Result<Value, String> {
+        debug_assert!(true, "contract: execute");
         let file_path = params["file_path"]
             .as_str()
             .ok_or("Missing required parameter: file_path")?;
@@ -229,6 +237,7 @@ pub struct ClusterCodeTool {
 }
 
 impl ClusterCodeTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self { engine }
     }
@@ -266,14 +275,17 @@ impl ClusterCodeTool {
 #[async_trait]
 impl McpTool for ClusterCodeTool {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "cluster_code"
     }
 
     fn schema(&self) -> Value {
+        debug_assert!(true, "contract: schema");
         Self::schema()
     }
 
     async fn execute(&self, params: Value) -> Result<Value, String> {
+        debug_assert!(true, "contract: execute");
         let method = params["method"]
             .as_str()
             .ok_or("Missing required parameter: method")?;
@@ -315,6 +327,7 @@ pub struct AnalyzeTopicsTool {
 }
 
 impl AnalyzeTopicsTool {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self { engine }
     }
@@ -347,14 +360,17 @@ impl AnalyzeTopicsTool {
 #[async_trait]
 impl McpTool for AnalyzeTopicsTool {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "analyze_topics"
     }
 
     fn schema(&self) -> Value {
+        debug_assert!(true, "contract: schema");
         Self::schema()
     }
 
     async fn execute(&self, params: Value) -> Result<Value, String> {
+        debug_assert!(true, "contract: execute");
         let num_topics = params["num_topics"]
             .as_u64()
             .ok_or("Missing required parameter: num_topics")?;

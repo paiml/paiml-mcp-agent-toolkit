@@ -31,6 +31,7 @@ use super::types::SymbolInfo;
 /// assert_eq!(line, 1);
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_symbol_from_ast_item(
     item: &AstItem,
 ) -> Option<(String, &'static str, usize, String, bool)> {
@@ -79,6 +80,7 @@ pub fn extract_symbol_from_ast_item(
 
 /// Extract all symbols from deep context
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn extract_symbols_from_context(
     deep_context: &DeepContext,
     filter: &Option<super::super::SymbolTypeFilter>,

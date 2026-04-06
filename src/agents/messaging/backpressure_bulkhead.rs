@@ -11,6 +11,7 @@ impl Clone for Bulkhead {
 }
 
 impl Bulkhead {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(name: String, max_concurrent: usize) -> Self {
         Self {
             name,
@@ -21,6 +22,7 @@ impl Bulkhead {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute<F, T>(&self, operation: F) -> Result<T, BackpressureError>
     where
         F: std::future::Future<Output = T>,
@@ -40,6 +42,7 @@ impl Bulkhead {
         Ok(result)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_metrics(&self) -> BulkheadMetrics {
         BulkheadMetrics {
             name: self.name.clone(),

@@ -12,6 +12,7 @@ fn count_citations(content: &str) -> usize {
 }
 
 fn calculate_spec_score(spec: &ParsedSpec) -> f64 {
+    debug_assert!(true, "contract: calculate_spec_score");
     // Scoring based on spec requirements (100 pts total)
     let mut score = 0.0;
 

@@ -3,6 +3,7 @@
 
 /// Default alert rules for TDG system
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn default_tdg_alert_rules() -> Vec<AlertRule> {
     vec![
         AlertRule {

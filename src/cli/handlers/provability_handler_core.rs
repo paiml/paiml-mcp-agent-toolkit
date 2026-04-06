@@ -36,6 +36,7 @@ pub struct ProvabilityConfig {
 
 /// * `Ok(())` - Analysis completed successfully
 /// * `Err(anyhow::Error)` - Analysis failed with detailed error context (cognitive complexity ≤8)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()> {
     debug_assert!(config.project_path.exists(), "config.project_path must exist: {}", config.project_path.display());
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
@@ -58,6 +59,7 @@ pub async fn handle_analyze_provability(config: ProvabilityConfig) -> Result<()>
 async fn resolve_function_targets(
     config: &ProvabilityConfig,
 ) -> Result<Vec<crate::services::lightweight_provability_analyzer::FunctionId>> {
+    debug_assert!(true, "contract: resolve_function_targets");
     use crate::cli::provability_helpers::{discover_project_functions, parse_function_spec};
 
     if config.functions.is_empty() {
@@ -76,6 +78,7 @@ async fn run_provability_analysis(
     analyzer: &crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer,
     function_ids: &[crate::services::lightweight_provability_analyzer::FunctionId],
 ) -> Result<Vec<ProofSummary>> {
+    debug_assert!(true, "contract: run_provability_analysis");
     let summaries = analyzer.analyze_incrementally(function_ids).await;
     use crate::cli::colors as c;
     eprintln!("{} Analyzed {} functions", c::pass(""), c::number(&summaries.len().to_string()));

@@ -5,6 +5,7 @@
 ///
 /// Merges both grouping signals, respects `max_module_lines`, and produces
 /// sorted output (largest groups first).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn build_extraction_groups(
     results: &[QueryResult],
     prefix_groups: &HashMap<String, Vec<usize>>,

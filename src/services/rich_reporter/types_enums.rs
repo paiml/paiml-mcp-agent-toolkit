@@ -13,6 +13,7 @@ pub enum Severity {
 
 impl Severity {
     /// Get the ASCII indicator for this severity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn indicator(&self) -> &'static str {
         match self {
             Severity::Critical => "●",
@@ -23,6 +24,7 @@ impl Severity {
     }
 
     /// Get the ANSI color code for this severity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn color_code(&self) -> &'static str {
         match self {
             Severity::Critical => "\x1b[31m", // Red
@@ -46,6 +48,7 @@ pub enum AndonStatus {
 
 impl AndonStatus {
     /// Get the ASCII representation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn display(&self) -> &'static str {
         match self {
             AndonStatus::Green => "GREEN ✓",
@@ -68,6 +71,7 @@ pub enum TrendDirection {
 
 impl TrendDirection {
     /// Get the ASCII arrow indicator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn arrow(&self) -> &'static str {
         match self {
             TrendDirection::Improving => "↑",

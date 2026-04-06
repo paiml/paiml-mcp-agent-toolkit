@@ -3,11 +3,13 @@
 
 impl RrfFusion {
     /// Create a new RRF fusion instance with default k=60
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self { k: 60.0 }
     }
 
     /// Create with custom k value
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_k(k: f32) -> Self {
         Self { k }
     }
@@ -20,6 +22,7 @@ impl RrfFusion {
     ///
     /// # Returns
     /// Fused results sorted by RRF score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn fuse(&self, lists: Vec<(&str, Vec<RankedDocument>)>, limit: usize) -> Vec<FusedResult> {
         debug_assert!(limit > 0, "limit must be positive");
         let mut scores: HashMap<String, FusedResultBuilder> = HashMap::new();
@@ -78,6 +81,7 @@ impl RrfFusion {
 
     /// Calculate RRF improvement over single-source search
     /// Returns: (improvement_ratio, baseline_mrr, fused_mrr)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn calculate_improvement(
         &self,
         fused_results: &[FusedResult],

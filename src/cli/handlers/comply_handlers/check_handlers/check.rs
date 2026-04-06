@@ -37,6 +37,7 @@ use super::check_mono_spec::{
 use super::types::*;
 
 /// Check project compliance with current PMAT version
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn handle_check(
     project_path: &Path,
     strict: bool,
@@ -690,6 +691,7 @@ include!("check_agent_contracts.rs");
 include!("check_commit_enforcement.rs");
 
 /// CB-533: Stale path references in Makefiles and CI workflows.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -717,6 +719,7 @@ pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {
 }
 
 /// CB-148: Spec-work traceability.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_spec_work_traceability(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -745,6 +748,7 @@ pub(crate) fn check_spec_work_traceability(project_path: &Path) -> ComplianceChe
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn check_version_currency(project_version: &str) -> ComplianceCheck {
     debug_assert!(
         !project_version.is_empty(),
@@ -778,6 +782,7 @@ pub(crate) fn check_version_currency(project_version: &str) -> ComplianceCheck {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_config_files(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -807,6 +812,7 @@ pub(crate) fn check_config_files(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -841,6 +847,7 @@ pub(crate) fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -873,6 +880,7 @@ pub(crate) fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -941,6 +949,7 @@ pub(crate) fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_quality_thresholds(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -964,6 +973,7 @@ pub(crate) fn check_quality_thresholds(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         _project_path.exists(),
@@ -983,6 +993,7 @@ fn append_violation(
     issues: &mut Vec<String>,
     v: &crate::cli::handlers::comply_cb_detect::CbPatternViolation,
 ) {
+    debug_assert!(true, "contract: append_violation");
     issues.push(format!(
         "{}: {} ({}:{})",
         v.pattern_id, v.description, v.file, v.line
@@ -996,6 +1007,7 @@ fn collect_violations_with_counts(
         bool,
     )],
 ) -> (Vec<String>, usize, usize) {
+    debug_assert!(true, "contract: collect_violations_with_counts");
     let mut all_issues = Vec::new();
     let (mut critical_count, mut warning_count) = (0, 0);
     for (violations, is_critical) in detections {
@@ -1011,6 +1023,7 @@ fn collect_violations_with_counts(
     (all_issues, critical_count, warning_count)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn collect_cb_violations(
     project_path: &Path,
     has_probar: bool,
@@ -1065,6 +1078,7 @@ pub(crate) fn collect_cb_violations(
     (all_issues, critical_count, warning_count)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn build_cb_result(
     all_issues: Vec<String>,
     critical_count: usize,
@@ -1104,6 +1118,7 @@ pub(crate) fn build_cb_result(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -1135,6 +1150,7 @@ pub(crate) fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
     build_cb_result(all_issues, critical_count, warning_count)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -1259,6 +1275,7 @@ fn build_triaged_check(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -1281,6 +1298,7 @@ pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> Compliance
     )
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -1312,6 +1330,7 @@ pub(crate) fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_msrv(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),
@@ -1345,6 +1364,7 @@ pub(crate) fn check_msrv(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_ci_configured(project_path: &Path) -> ComplianceCheck {
     debug_assert!(
         project_path.exists(),

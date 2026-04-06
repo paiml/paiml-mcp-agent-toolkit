@@ -122,6 +122,7 @@ impl SqlAnalyzer {
 
     /// Find the end of a SQL block (delimited by ; or $$ or END;)
     fn find_sql_block_end(upper_lines: &[&str], start: usize) -> usize {
+        debug_assert!(true, "contract: find_sql_block_end");
         let mut depth: i32 = 0;
         for (i, line) in upper_lines.iter().enumerate().skip(start) {
             let trimmed = line.trim();

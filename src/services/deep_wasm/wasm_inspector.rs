@@ -22,6 +22,7 @@ pub struct WasmInspector {
 
 impl WasmInspector {
     /// Creates a new WASM inspector
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             max_module_size: 10_485_760, // 10 MB
@@ -29,6 +30,7 @@ impl WasmInspector {
     }
 
     /// Creates a new WASM inspector with custom size limit
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_size_limit(max_size: u64) -> Self {
         debug_assert!(max_size > 0, "max_size must be positive");
         Self {
@@ -37,12 +39,14 @@ impl WasmInspector {
     }
 
     /// Inspects a WASM binary file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn inspect_file<P: AsRef<Path>>(&self, path: P) -> DeepWasmResult<WasmModuleAnalysis> {
         let bytes = std::fs::read(path.as_ref())?;
         self.inspect_bytes(&bytes)
     }
 
     /// Inspects WASM binary from bytes
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn inspect_bytes(&self, bytes: &[u8]) -> DeepWasmResult<WasmModuleAnalysis> {
         debug_assert!(!bytes.is_empty(), "bytes must not be empty");
         // Check size limit
@@ -94,6 +98,7 @@ impl WasmInspector {
     }
 
     /// Extracts custom section by name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extract_custom_section<'a>(
         &self,
         bytes: &'a [u8],

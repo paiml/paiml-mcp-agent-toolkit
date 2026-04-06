@@ -11,6 +11,7 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 /// Handle QDD CLI commands
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_qdd_command(command: QddCommands) -> Result<()> {
     match command {
         QddCommands::Create {
@@ -75,6 +76,7 @@ async fn handle_qdd_create(
     output_type: String,
     output_file: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(true, "contract: handle_qdd_create");
     let qdd_code_type = convert_code_type(code_type);
     let quality_profile = convert_quality_profile(profile);
     let parameters = convert_parameters(inputs);
@@ -89,6 +91,7 @@ async fn handle_qdd_create(
 
 /// Convert CLI code type to QDD code type
 fn convert_code_type(code_type: QddCodeType) -> CodeType {
+    debug_assert!(true, "contract: convert_code_type");
     match code_type {
         QddCodeType::Function => CodeType::Function,
         QddCodeType::Module => CodeType::Module,
@@ -127,6 +130,7 @@ fn build_create_spec(
     inputs: Vec<Parameter>,
     output_type: String,
 ) -> CreateSpec {
+    debug_assert!(true, "contract: build_create_spec");
     CreateSpec {
         code_type,
         name,
@@ -145,6 +149,7 @@ async fn execute_create_operation(
     quality_profile: QualityProfile,
     create_spec: CreateSpec,
 ) -> Result<QddResult> {
+    debug_assert!(true, "contract: execute_create_operation");
     let qdd_tool = QddTool::with_profile(quality_profile);
     let operation = QddOperation::Create(create_spec);
     qdd_tool.execute(operation).await
@@ -152,6 +157,7 @@ async fn execute_create_operation(
 
 /// Display creation results
 fn display_create_results(profile: QddQualityProfile, result: &QddResult) {
+    debug_assert!(true, "contract: display_create_results");
     println!("{}", c::header("QDD Code Creation Successful!"));
     println!("{}", c::pass(&format!("Quality Profile: {profile:?}")));
     println!(
@@ -179,6 +185,7 @@ fn display_create_results(profile: QddQualityProfile, result: &QddResult) {
 
 /// Output generated code to file or stdout
 fn output_generated_code(output_file: Option<PathBuf>, result: &QddResult) -> Result<()> {
+    debug_assert!(true, "contract: output_generated_code");
     if let Some(output_path) = output_file {
         let full_content = format!(
             "{}\n\n{}\n\n{}",
@@ -246,6 +253,7 @@ fn create_quality_profile(
     max_complexity: Option<u32>,
     min_coverage: Option<u32>,
 ) -> QualityProfile {
+    debug_assert!(true, "contract: create_quality_profile");
     let mut quality_profile = match profile {
         QddQualityProfile::Extreme => QualityProfile::extreme(),
         QddQualityProfile::Standard => QualityProfile::standard(),
@@ -317,6 +325,7 @@ async fn execute_refactoring(
     quality_profile: QualityProfile,
     refactor_spec: RefactorSpec,
 ) -> Result<QddResult> {
+    debug_assert!(true, "contract: execute_refactoring");
     let qdd_tool = QddTool::with_profile(quality_profile);
     let operation = QddOperation::Refactor(refactor_spec);
     qdd_tool.execute(operation).await
@@ -379,6 +388,7 @@ fn save_refactored_code(output_path: &Path, code: &str) -> Result<()> {
 
 /// Display rollback information if available
 fn display_rollback_info(result: &QddResult) {
+    debug_assert!(true, "contract: display_rollback_info");
     if !result.rollback_plan.checkpoints.is_empty() {
         println!(
             "  {} {} rollback checkpoints available",

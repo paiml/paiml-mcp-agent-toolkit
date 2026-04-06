@@ -1,5 +1,6 @@
 // --- Churn analysis ---
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<CodeChurnAnalysis> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::git_analysis::GitAnalysisService;
@@ -48,6 +49,7 @@ pub async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<
 }
 // --- Duplicate code analysis ---
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_duplicate_code(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::services::duplicate_detector::CloneReport> {
@@ -81,6 +83,7 @@ fn filter_and_categorize_files_for_duplicates(
         crate::services::duplicate_detector::Language,
     )>,
 > {
+    debug_assert!(true, "contract: filter_and_categorize_files_for_duplicates");
     let mut files_for_analysis = Vec::new();
     for file_path in all_files {
         if let Some((file, content, lang)) = process_file_for_duplicate_detection(&file_path)? {
@@ -142,6 +145,7 @@ fn match_extension_to_language(
 
 // --- SATD analysis ---
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_satd(path: &std::path::Path) -> anyhow::Result<SATDAnalysisResult> {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::satd_detector::SATDDetector;
@@ -154,6 +158,7 @@ pub async fn analyze_satd(path: &std::path::Path) -> anyhow::Result<SATDAnalysis
 
 // --- Provability analysis ---
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_provability(
     path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
@@ -161,6 +166,7 @@ pub async fn analyze_provability(
     analyze_provability_with_cache(path, None).await
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_provability_with_cache(
     path: &std::path::Path,
     cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
@@ -169,6 +175,7 @@ pub async fn analyze_provability_with_cache(
     analyze_provability_with_context(path, cache_manager, None).await
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_provability_with_context(
     path: &std::path::Path,
     cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
@@ -255,6 +262,7 @@ pub async fn analyze_provability_with_context(
     Ok(summaries)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_project_language(path: &std::path::Path) -> &'static str {
     debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::file_discovery::ProjectFileDiscovery;
@@ -291,6 +299,7 @@ pub fn detect_project_language(path: &std::path::Path) -> &'static str {
 
 // --- DAG analysis ---
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_dag(
     path: &std::path::Path,
     dag_type: DagType,
@@ -299,6 +308,7 @@ pub async fn analyze_dag(
     analyze_dag_with_cache(path, dag_type, None).await
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_dag_with_cache(
     path: &std::path::Path,
     dag_type: DagType,
@@ -308,6 +318,7 @@ pub async fn analyze_dag_with_cache(
     analyze_dag_with_context(path, dag_type, cache_manager, None).await
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_dag_with_context(
     path: &std::path::Path,
     dag_type: DagType,
@@ -356,6 +367,7 @@ pub async fn analyze_dag_with_context(
 
 // --- Big-O analysis ---
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_big_o(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::services::big_o_analyzer::BigOAnalysisReport> {

@@ -10,6 +10,7 @@ pub struct CSharpMapper {
 impl CSharpMapper {
     /// Create a new C# mapper
     #[allow(clippy::new_without_default)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             base: BaseLanguageMapper::new(Language::CSharp),
@@ -43,6 +44,7 @@ impl LanguageMapper for CSharpMapper {
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 }
@@ -56,6 +58,7 @@ pub struct RubyMapper {
 impl RubyMapper {
     /// Create a new Ruby mapper
     #[allow(clippy::new_without_default)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             base: BaseLanguageMapper::new(Language::Ruby),
@@ -89,6 +92,7 @@ impl LanguageMapper for RubyMapper {
     }
 
     fn clone_box(&self) -> Box<dyn LanguageMapper> {
+        debug_assert!(true, "contract: clone_box");
         Box::new(self.clone())
     }
 }

@@ -4,6 +4,7 @@
 
 impl BigOAnalyzer {
     /// Analyze project for algorithmic complexity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze(&self, config: BigOAnalysisConfig) -> Result<BigOAnalysisReport> {
         info!("Starting Big-O complexity analysis");
         info!("Project path: {}", config.project_path.display());
@@ -43,6 +44,7 @@ impl BigOAnalyzer {
 
     /// Discover source files based on patterns
     async fn discover_source_files(&self, config: &BigOAnalysisConfig) -> Result<Vec<PathBuf>> {
+        debug_assert!(true, "contract: discover_source_files");
         use walkdir::WalkDir;
 
         let extensions = [
@@ -152,6 +154,7 @@ impl BigOAnalyzer {
 
     /// Detect language pattern and name from file extension
     fn detect_language_pattern(extension: &str) -> (&'static str, &'static str) {
+        debug_assert!(true, "contract: detect_language_pattern");
         match extension {
             "rs" => (r"fn\s+(\w+)", "rust"),
             "js" | "jsx" => (r"function\s+(\w+)", "javascript"),

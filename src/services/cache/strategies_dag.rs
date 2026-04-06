@@ -50,10 +50,12 @@ impl CacheStrategy for DagCacheStrategy {
     type Value = DependencyGraph;
 
     fn cache_key(&self, (path, dag_type): &(PathBuf, DagType)) -> String {
+        debug_assert!(true, "contract: cache_key");
         format!("dag:{}:{:?}", path.display(), dag_type)
     }
 
     fn validate(&self, (path, _): &(PathBuf, DagType), cached: &DependencyGraph) -> bool {
+        debug_assert!(true, "contract: validate");
         if !path.exists() {
             return false;
         }

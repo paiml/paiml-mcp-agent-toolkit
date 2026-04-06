@@ -32,6 +32,7 @@ pub struct IncrementalChurnAnalyzer {
 
 impl IncrementalChurnAnalyzer {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(project_root: PathBuf) -> Self {
         debug_assert!(
             project_root.exists(),
@@ -45,12 +46,14 @@ impl IncrementalChurnAnalyzer {
     }
 
     /// Clear the cache
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear_cache(&self) {
         self.cache.clear();
     }
 
     /// Get cache statistics
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn cache_stats(&self) -> (usize, usize) {
         let cache_size = self.cache.len();
         let cache_memory = cache_size * std::mem::size_of::<(PathBuf, ChurnCacheEntry)>();

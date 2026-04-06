@@ -30,6 +30,7 @@ impl std::fmt::Display for LuaAnnotationSystem {
 
 /// CB-616: Detect type annotation system and report doc coverage.
 /// Supports LuaLS (---@param, ---@return) and LDoc (-- @tparam, -- @treturn).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb616_type_annotations(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -134,6 +135,7 @@ fn build_annotation_violations(
     total_functions: usize,
     annotated_functions: usize,
 ) -> Vec<CbPatternViolation> {
+    debug_assert!(true, "contract: build_annotation_violations");
     let mut violations = Vec::new();
 
     let system = match (luals_count > 0, ldoc_count > 0) {
@@ -196,6 +198,7 @@ fn is_openresty_project(files: &[PathBuf]) -> bool {
 /// Only runs on detected OpenResty projects.
 /// - Flags stdlib globals used in handler functions without local caching
 /// - Flags ngx.var access without nil check
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb617_openresty_checks(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

@@ -13,6 +13,7 @@ use tokio::time::timeout;
 
 impl AgentsMdExecutor {
     /// Create new executor
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Result<Self> {
         let temp_dir = std::env::temp_dir().join("agents_md_executor");
         std::fs::create_dir_all(&temp_dir)?;
@@ -28,6 +29,7 @@ impl AgentsMdExecutor {
     }
 
     /// Create with custom config
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: ExecutorConfig) -> Result<Self> {
         let temp_dir = std::env::temp_dir().join("agents_md_executor");
         std::fs::create_dir_all(&temp_dir)?;
@@ -43,6 +45,7 @@ impl AgentsMdExecutor {
     }
 
     /// Execute command with safety checks
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_command(&self, cmd: &Command) -> Result<CommandOutput> {
         // Validate safety first
         let safety = self.validate_command(cmd)?;

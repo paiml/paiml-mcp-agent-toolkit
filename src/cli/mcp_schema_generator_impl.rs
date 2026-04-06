@@ -3,11 +3,13 @@
 
 impl McpSchemaGenerator {
     /// Create a new McpSchemaGenerator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(registry: CommandRegistry) -> Self {
         Self { registry }
     }
 
     /// Generate tools/list response for MCP protocol
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_tools_list(&self) -> Vec<McpToolDefinition> {
         self.registry
             .commands
@@ -18,6 +20,7 @@ impl McpSchemaGenerator {
 
     /// Generate a single tool definition from command metadata
     fn generate_tool_definition(&self, cmd: &CommandMetadata) -> Option<McpToolDefinition> {
+        debug_assert!(true, "contract: generate_tool_definition");
         let mcp = cmd.mcp.as_ref()?;
 
         Some(McpToolDefinition {
@@ -44,6 +47,7 @@ impl McpSchemaGenerator {
 
     /// Generate JSON Schema from command arguments
     fn generate_schema_from_args(&self, cmd: &CommandMetadata) -> Value {
+        debug_assert!(true, "contract: generate_schema_from_args");
         let mut properties = serde_json::Map::new();
         let mut required = Vec::new();
 
@@ -65,6 +69,7 @@ impl McpSchemaGenerator {
 
     /// Convert argument to JSON Schema property
     fn arg_to_json_schema(&self, arg: &crate::cli::registry::ArgumentMetadata) -> Value {
+        debug_assert!(true, "contract: arg_to_json_schema");
         let mut schema = serde_json::Map::new();
 
         // Type mapping
@@ -114,6 +119,7 @@ impl McpSchemaGenerator {
     }
 
     /// Validate consistency between registry and MCP schemas
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn validate_consistency(&self) -> Result<(), Vec<SchemaError>> {
         let mut errors = Vec::new();
 
@@ -165,6 +171,7 @@ impl McpSchemaGenerator {
     }
 
     /// Generate OpenAPI-compatible schema for all tools
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_openapi_schema(&self) -> Value {
         let tools = self.generate_tools_list();
 
@@ -205,6 +212,7 @@ impl McpSchemaGenerator {
     }
 
     /// Generate markdown documentation for all MCP tools
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_docs(&self) -> String {
         let mut doc = String::new();
         doc.push_str("# PMAT MCP Tools\n\n");

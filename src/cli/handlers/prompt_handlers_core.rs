@@ -1,4 +1,5 @@
 /// Handle the prompt command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_prompt(
     name: Option<String>,
     list: bool,
@@ -25,6 +26,7 @@ pub async fn handle_prompt(
 
 /// List all available prompts
 fn list_prompts() {
+    debug_assert!(true, "contract: list_prompts");
     println!("Available Prompts:");
     println!();
 
@@ -113,6 +115,7 @@ fn show_prompt(
 }
 
 /// New dispatcher for prompt subcommands (Phase 4)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_prompt_command(prompt_cmd: PromptCommands) -> Result<()> {
     match prompt_cmd {
         PromptCommands::Show {

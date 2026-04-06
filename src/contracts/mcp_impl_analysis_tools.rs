@@ -1,5 +1,6 @@
 /// Create tool definition for analyze_complexity
 fn create_analyze_complexity_tool() -> ToolDefinition {
+    debug_assert!(true, "contract: create_analyze_complexity_tool");
     ToolDefinition {
         name: "analyze_complexity".to_string(),
         description: "Analyze code complexity metrics".to_string(),
@@ -54,6 +55,7 @@ fn create_analyze_complexity_tool() -> ToolDefinition {
 
 /// Create tool definition for analyze_satd
 fn create_analyze_satd_tool() -> ToolDefinition {
+    debug_assert!(true, "contract: create_analyze_satd_tool");
     ToolDefinition {
         name: "analyze_satd".to_string(),
         description: "Analyze Self-Admitted Technical Debt in comments".to_string(),
@@ -116,6 +118,7 @@ fn create_analyze_satd_tool() -> ToolDefinition {
 
 /// Create tool definition for analyze_dead_code
 fn create_analyze_dead_code_tool() -> ToolDefinition {
+    debug_assert!(true, "contract: create_analyze_dead_code_tool");
     ToolDefinition {
         name: "analyze_dead_code".to_string(),
         description: "Analyze dead and unreachable code".to_string(),
@@ -178,6 +181,7 @@ fn create_analyze_dead_code_tool() -> ToolDefinition {
 
 /// Create tool definition for analyze_tdg
 fn create_analyze_tdg_tool() -> ToolDefinition {
+    debug_assert!(true, "contract: create_analyze_tdg_tool");
     ToolDefinition {
         name: "analyze_tdg".to_string(),
         description: "Analyze Technical Debt Gradient scores".to_string(),
@@ -235,6 +239,7 @@ fn create_analyze_tdg_tool() -> ToolDefinition {
 
 /// Create tool definition for analyze_lint_hotspot
 fn create_analyze_lint_hotspot_tool() -> ToolDefinition {
+    debug_assert!(true, "contract: create_analyze_lint_hotspot_tool");
     ToolDefinition {
         name: "analyze_lint_hotspot".to_string(),
         description: "Find files with highest defect density".to_string(),
@@ -301,6 +306,7 @@ fn create_analyze_lint_hotspot_tool() -> ToolDefinition {
 
 /// Create tool definition for analyze_entropy  
 fn create_analyze_entropy_tool() -> ToolDefinition {
+    debug_assert!(true, "contract: create_analyze_entropy_tool");
     ToolDefinition {
         name: "analyze_entropy".to_string(),
         description: "Analyze pattern entropy for actionable quality improvements".to_string(),
@@ -350,6 +356,7 @@ fn create_analyze_entropy_tool() -> ToolDefinition {
 
 /// Create tool definition for quality_gate
 fn create_quality_gate_tool() -> ToolDefinition {
+    debug_assert!(true, "contract: create_quality_gate_tool");
     ToolDefinition {
         name: "quality_gate".to_string(),
         description: "Run quality gate checks".to_string(),
@@ -412,6 +419,7 @@ fn create_quality_gate_tool() -> ToolDefinition {
 
 /// Create tool definition for refactor_auto
 fn create_refactor_auto_tool() -> ToolDefinition {
+    debug_assert!(true, "contract: create_refactor_auto_tool");
     ToolDefinition {
         name: "refactor_auto".to_string(),
         description: "Automatically refactor code to reduce complexity".to_string(),

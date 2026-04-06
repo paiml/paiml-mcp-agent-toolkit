@@ -56,6 +56,7 @@ pub(super) async fn route_deep_context_analysis(cmd: AnalyzeCommands) -> Result<
 }
 
 /// Convert deep context DAG type to standard DAG type
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn convert_deep_context_dag_type(dag_type: cli::DeepContextDagType) -> cli::DagType {
     match dag_type {
         cli::DeepContextDagType::CallGraph => cli::DagType::CallGraph,
@@ -66,6 +67,7 @@ pub(crate) fn convert_deep_context_dag_type(dag_type: cli::DeepContextDagType) -
 }
 
 /// Convert cache strategy to string
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn convert_cache_strategy(strategy: cli::DeepContextCacheStrategy) -> String {
     match strategy {
         cli::DeepContextCacheStrategy::Normal => "normal".to_string(),

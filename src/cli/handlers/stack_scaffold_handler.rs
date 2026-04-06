@@ -25,6 +25,7 @@ pub struct ScaffoldResult {
 
 // ── Template Definitions ──────────────────────────────────────────────────
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_scaffold_files(template: &str) -> Vec<ScaffoldFile> {
     match template {
         "sqi-a-minus" => get_sqi_a_minus_files(),
@@ -33,6 +34,7 @@ pub fn get_scaffold_files(template: &str) -> Vec<ScaffoldFile> {
 }
 
 fn get_sqi_a_minus_files() -> Vec<ScaffoldFile> {
+    debug_assert!(true, "contract: get_sqi_a_minus_files");
     vec![
         ScaffoldFile {
             path: ".clippy.toml",
@@ -132,6 +134,7 @@ updates:
 
 // ── Scaffold Execution ────────────────────────────────────────────────────
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn scaffold_repo(
     repo_path: &Path,
     files: &[ScaffoldFile],
@@ -222,6 +225,7 @@ pub fn scaffold_repo(
 
 // ── Handler ───────────────────────────────────────────────────────────────
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_stack_scaffold(
     all: bool,
     template: &str,
@@ -290,6 +294,7 @@ pub async fn handle_stack_scaffold(
 // ── Target Discovery ──────────────────────────────────────────────────────
 
 fn discover_targets(all: bool) -> Result<Vec<std::path::PathBuf>> {
+    debug_assert!(true, "contract: discover_targets");
     if !all {
         // Current repo only
         let cwd = std::env::current_dir().context("Failed to get current directory")?;

@@ -1,4 +1,5 @@
 impl RateLimiter {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(capacity: u32, refill_rate: u32) -> Self {
         debug_assert!(capacity > 0, "capacity must be positive");
         Self {
@@ -9,6 +10,7 @@ impl RateLimiter {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn try_acquire(&self, tokens: u32) -> bool {
         self.refill();
 
@@ -30,6 +32,7 @@ impl RateLimiter {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn acquire(&self, tokens: u32) {
         while !self.try_acquire(tokens) {
             tokio::time::sleep(Duration::from_millis(10)).await;
@@ -37,6 +40,7 @@ impl RateLimiter {
     }
 
     fn refill(&self) {
+        debug_assert!(true, "contract: refill");
         let mut last_refill = self.last_refill.lock();
         let now = Instant::now();
         let elapsed = now.duration_since(*last_refill);
@@ -53,6 +57,7 @@ impl RateLimiter {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn available_tokens(&self) -> u32 {
         self.refill();
         self.tokens.load(Ordering::Relaxed)

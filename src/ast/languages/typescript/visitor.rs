@@ -17,6 +17,7 @@ pub(crate) struct TypeScriptAstVisitor<'a> {
 }
 
 impl<'a> TypeScriptAstVisitor<'a> {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn new(dag: &'a mut AstDag, language: Language) -> Self {
         Self {
             dag,
@@ -36,6 +37,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
         self.dag.add_node(node)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn visit_module(&mut self, module: &Module) {
         for item in &module.body {
             self.visit_module_item(item);
@@ -43,6 +45,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
     }
 
     fn visit_module_item(&mut self, item: &ModuleItem) {
+        debug_assert!(true, "contract: visit_module_item");
         match item {
             ModuleItem::ModuleDecl(decl) => match decl {
                 ModuleDecl::Import(_import) => {
@@ -61,6 +64,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
     }
 
     fn visit_stmt(&mut self, stmt: &Stmt) {
+        debug_assert!(true, "contract: visit_stmt");
         match stmt {
             Stmt::Decl(decl) => self.visit_decl(decl),
             Stmt::Expr(expr_stmt) => self.visit_expr(&expr_stmt.expr),
@@ -74,6 +78,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
     }
 
     fn visit_decl(&mut self, decl: &Decl) {
+        debug_assert!(true, "contract: visit_decl");
         match decl {
             Decl::Fn(f) => {
                 let mut node =
@@ -143,6 +148,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
     }
 
     fn visit_expr(&mut self, expr: &swc_ecma_ast::Expr) {
+        debug_assert!(true, "contract: visit_expr");
         match expr {
             swc_ecma_ast::Expr::Fn(fn_expr) => {
                 self.add_function_node(fn_expr.function.is_async);
@@ -161,6 +167,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
     }
 
     fn add_function_node(&mut self, is_async: bool) {
+        debug_assert!(true, "contract: add_function_node");
         let mut node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), self.language);
         if is_async {
             node.flags.set(NodeFlags::ASYNC);
@@ -169,6 +176,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
     }
 
     fn visit_object_props(&mut self, obj_lit: &swc_ecma_ast::ObjectLit) {
+        debug_assert!(true, "contract: visit_object_props");
         for prop_or_spread in &obj_lit.props {
             let swc_ecma_ast::PropOrSpread::Prop(prop) = prop_or_spread else {
                 continue;
@@ -190,6 +198,7 @@ impl<'a> TypeScriptAstVisitor<'a> {
     }
 
     fn visit_call_expr(&mut self, call_expr: &swc_ecma_ast::CallExpr) {
+        debug_assert!(true, "contract: visit_call_expr");
         if let swc_ecma_ast::Callee::Expr(expr) = &call_expr.callee {
             self.visit_expr(expr);
         }

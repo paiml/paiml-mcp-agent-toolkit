@@ -16,6 +16,7 @@
 /// Set of all reachable function names
 #[must_use]
 #[allow(dead_code)] // Pure function tested in pure_function_tests module
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub(crate) fn compute_reachability(
     entry_points: &HashSet<String>,
     function_calls: &HashMap<String, HashSet<String>>,
@@ -107,6 +108,7 @@ fn find_calls_in_line(
 /// Map from caller qualified name to set of callee qualified names
 #[must_use]
 #[allow(dead_code)] // Pure function tested in pure_function_tests module
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn detect_function_calls_in_lines(
     file_path: &str,
     lines: &[&str],
@@ -142,6 +144,7 @@ pub(crate) fn detect_function_calls_in_lines(
 /// Vector of dead function items (without cfg-gated filtering)
 #[must_use]
 #[allow(dead_code)] // Pure function tested in pure_function_tests module
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn classify_dead_functions_pure(
     all_functions: &HashMap<String, (String, u32)>,
     reachable: &HashSet<String>,
@@ -167,6 +170,7 @@ pub(crate) fn classify_dead_functions_pure(
 /// Tuple of (all_functions map, entry_points set)
 #[must_use]
 #[allow(dead_code)] // Pure function reserved for future integration
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn collect_functions_from_context(
     files: &[crate::services::context::FileContext],
 ) -> (HashMap<String, (String, u32)>, HashSet<String>) {
@@ -196,6 +200,7 @@ pub(crate) fn collect_functions_from_context(
 /// Calculate dead code percentage (pure function).
 #[must_use]
 #[allow(dead_code)] // Pure function tested in pure_function_tests module
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn calculate_dead_percentage(total_functions: usize, dead_count: usize) -> f32 {
     // Contract: calculate_dead_percentage returns a bounded score
     if total_functions > 0 {

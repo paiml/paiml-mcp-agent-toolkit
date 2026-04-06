@@ -70,6 +70,7 @@ pub enum ComplexitySeverity {
 
 impl ComplexitySeverity {
     /// Classify severity based on cyclomatic complexity
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_cyclomatic(complexity: u32) -> Self {
         match complexity {
             0..=5 => Self::Low,
@@ -194,6 +195,7 @@ pub struct ExplainBaselineComparison {
 
 impl ExplainedTDGScore {
     /// Create a new explained TDG score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(score: TdgScore) -> Self {
         Self {
             score,
@@ -204,16 +206,19 @@ impl ExplainedTDGScore {
     }
 
     /// Add function complexity entry
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_function(&mut self, func: FunctionComplexity) {
         self.functions.push(func);
     }
 
     /// Add recommendation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_recommendation(&mut self, rec: ActionableRecommendation) {
         self.recommendations.push(rec);
     }
 
     /// Sort functions by TDG impact (descending)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn sort_functions_by_impact(&mut self) {
         self.functions.sort_by(|a, b| {
             b.tdg_impact
@@ -223,6 +228,7 @@ impl ExplainedTDGScore {
     }
 
     /// Sort recommendations by priority (ascending) and expected impact (descending)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn sort_recommendations(&mut self) {
         self.recommendations
             .sort_by(|a, b| match a.priority.cmp(&b.priority) {
@@ -235,16 +241,19 @@ impl ExplainedTDGScore {
     }
 
     /// Filter functions by complexity threshold
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn filter_functions_by_threshold(&mut self, threshold: u32) {
         self.functions.retain(|f| f.cyclomatic >= threshold);
     }
 
     /// Get total number of functions analyzed
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_functions(&self) -> usize {
         self.functions.len()
     }
 
     /// Get total number of recommendations
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn total_recommendations(&self) -> usize {
         self.recommendations.len()
     }

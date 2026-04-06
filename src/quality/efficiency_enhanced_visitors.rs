@@ -1,5 +1,6 @@
 impl<'ast> Visit<'ast> for SymbolicExecutor {
     fn visit_expr_for_loop(&mut self, node: &'ast syn::ExprForLoop) {
+        debug_assert!(true, "contract: visit_expr_for_loop");
         let loop_complexity = self.analyze_loop_pattern(node);
 
         // Push current loop complexity
@@ -26,6 +27,7 @@ impl<'ast> Visit<'ast> for SymbolicExecutor {
     }
 
     fn visit_expr_while(&mut self, node: &'ast syn::ExprWhile) {
+        debug_assert!(true, "contract: visit_expr_while");
         self.loop_depths.push(Complexity::ON);
 
         let nested = self
@@ -39,6 +41,7 @@ impl<'ast> Visit<'ast> for SymbolicExecutor {
     }
 
     fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
+        debug_assert!(true, "contract: visit_expr_call");
         // Check for known complex operations
         if let Expr::Path(path) = &*node.func {
             if let Some(ident) = path.path.get_ident() {
@@ -68,6 +71,7 @@ struct RecursionDetector {
 
 impl<'ast> Visit<'ast> for RecursionDetector {
     fn visit_expr_call(&mut self, node: &'ast syn::ExprCall) {
+        debug_assert!(true, "contract: visit_expr_call");
         if let Expr::Path(path) = &*node.func {
             if let Some(ident) = path.path.get_ident() {
                 if *ident == self.function_name {

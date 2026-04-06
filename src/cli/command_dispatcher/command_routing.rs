@@ -8,6 +8,7 @@ impl CommandDispatcher {
         command: Commands,
         server: Arc<StatelessTemplateServer>,
     ) -> anyhow::Result<()> {
+        debug_assert!(true, "contract: route_command");
         match command {
             Commands::Generate {
                 category,
@@ -515,6 +516,7 @@ impl CommandDispatcher {
 
 /// Handle `pmat explain <PATTERN>` — look up check/metric explanations.
 fn handle_explain(pattern: Option<&str>) {
+    debug_assert!(true, "contract: handle_explain");
     match pattern {
         Some(pat) => {
             let results = crate::explain::lookup(pat);

@@ -61,6 +61,7 @@ struct MockState {
 
 impl MockTransport {
     /// Creates a new mock transport.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             state: Arc::new(Mutex::new(MockState {
@@ -91,6 +92,7 @@ impl MockTransport {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn queue_response(&mut self, message: TransportMessage) {
         let mut state = self.state.lock().await;
         state.receive_queue.push_back(message);
@@ -113,6 +115,7 @@ impl MockTransport {
     /// # Ok(())
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn get_sent_messages(&self) -> Vec<TransportMessage> {
         let state = self.state.lock().await;
         state.sent_messages.clone()
@@ -134,6 +137,7 @@ impl MockTransport {
     /// assert!(result.is_err());
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn inject_error(&mut self, error: impl Into<String>) {
         let mut state = self.state.lock().await;
         state.next_error = Some(error.into());
@@ -151,6 +155,7 @@ impl MockTransport {
     /// transport.set_delay(100).await; // 100ms delay
     /// # }
     /// ```
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn set_delay(&mut self, delay_ms: u64) {
         let mut state = self.state.lock().await;
         state.simulate_delay = true;
@@ -158,12 +163,14 @@ impl MockTransport {
     }
     
     /// Simulates a connection drop.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn disconnect(&mut self) {
         let mut state = self.state.lock().await;
         state.connected = false;
     }
     
     /// Clears all queued messages and sent history.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn reset(&mut self) {
         let mut state = self.state.lock().await;
         state.receive_queue.clear();
@@ -183,6 +190,7 @@ impl Default for MockTransport {
 #[async_trait]
 impl PmcpTransport for MockTransport {
     async fn send(&mut self, message: TransportMessage) -> pmcp::Result<()> {
+        debug_assert!(true, "contract: send");
         let mut state = self.state.lock().await;
         
         // Check for injected error
@@ -206,6 +214,7 @@ impl PmcpTransport for MockTransport {
     }
     
     async fn receive(&mut self) -> pmcp::Result<TransportMessage> {
+        debug_assert!(true, "contract: receive");
         let mut state = self.state.lock().await;
         
         // Check for injected error
@@ -229,16 +238,19 @@ impl PmcpTransport for MockTransport {
     }
     
     async fn close(&mut self) -> pmcp::Result<()> {
+        debug_assert!(true, "contract: close");
         let mut state = self.state.lock().await;
         state.connected = false;
         Ok(())
     }
     
     fn is_connected(&self) -> bool {
+        debug_assert!(true, "contract: is_connected");
         self.state.try_lock().map(|s| s.connected).unwrap_or(false)
     }
     
     fn transport_type(&self) -> &'static str {
+        debug_assert!(true, "contract: transport_type");
         "mock"
     }
 }
@@ -247,28 +259,33 @@ impl PmcpTransport for MockTransport {
 #[async_trait]
 impl TransportAdapter for MockTransport {
     async fn send(&mut self, message: TransportMessage) -> Result<(), TransportError> {
+        debug_assert!(true, "contract: send");
         PmcpTransport::send(self, message)
             .await
             .map_err(|e| TransportError::Send(e.to_string()))
     }
     
     async fn receive(&mut self) -> Result<TransportMessage, TransportError> {
+        debug_assert!(true, "contract: receive");
         PmcpTransport::receive(self)
             .await
             .map_err(|e| TransportError::Receive(e.to_string()))
     }
     
     async fn close(&mut self) -> Result<(), TransportError> {
+        debug_assert!(true, "contract: close");
         PmcpTransport::close(self)
             .await
             .map_err(|e| TransportError::Connection(e.to_string()))
     }
     
     fn is_connected(&self) -> bool {
+        debug_assert!(true, "contract: is_connected");
         PmcpTransport::is_connected(self)
     }
     
     fn transport_type(&self) -> &'static str {
+        debug_assert!(true, "contract: transport_type");
         PmcpTransport::transport_type(self)
     }
 }

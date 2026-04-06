@@ -192,6 +192,7 @@ fn parse_dependencies(s: &str) -> Vec<String> {
 /// # Complexity
 /// - Time: O(n) where n is number of files
 /// - Cyclomatic: 4
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn list_tickets(dir: &Path) -> Result<Vec<TicketFile>> {
     debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut tickets = Vec::new();
@@ -220,6 +221,7 @@ pub fn list_tickets(dir: &Path) -> Result<Vec<TicketFile>> {
 /// # Complexity
 /// - Time: O(1)
 /// - Cyclomatic: 1
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn ticket_exists(tickets_dir: &Path, ticket_id: &str) -> bool {
     debug_assert!(tickets_dir.exists(), "tickets_dir must exist: {}", tickets_dir.display());
     let path = tickets_dir.join(format!("{}.md", ticket_id));

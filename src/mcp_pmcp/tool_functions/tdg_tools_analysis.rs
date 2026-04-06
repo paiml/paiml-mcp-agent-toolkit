@@ -1,4 +1,5 @@
 /// Analyze Technical Debt Grading (TDG) scores using the new TDG implementation
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_tdg(
     paths: &[PathBuf],
     threshold: Option<f64>,
@@ -134,6 +135,7 @@ async fn analyze_multiple_tdg_paths(
 }
 
 /// Compare TDG scores between two files or directories
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn compare_tdg(
     path1: &Path,
     path2: &Path,

@@ -36,6 +36,7 @@ fn format_qg_as_human(
 
 // Helper: Write human header
 fn write_qg_human_header(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    debug_assert!(true, "contract: write_qg_human_header");
     use std::fmt::Write;
     writeln!(output, "# Quality Gate Report\n")?;
     writeln!(
@@ -53,6 +54,7 @@ fn write_qg_human_header(output: &mut String, results: &QualityGateResults) -> R
 
 // Helper: Write violation counts
 fn write_qg_violation_counts(output: &mut String, results: &QualityGateResults) -> Result<()> {
+    debug_assert!(true, "contract: write_qg_violation_counts");
     use std::fmt::Write;
     let counts = [
         ("Complexity", results.complexity_violations),
@@ -95,6 +97,7 @@ fn write_qg_violations_list(output: &mut String, violations: &[QualityViolation]
 
 /// Write explainability details for violations that have them (#226, #229).
 fn write_violation_details(output: &mut String, v: &QualityViolation) -> Result<()> {
+    debug_assert!(true, "contract: write_violation_details");
     use std::fmt::Write;
     let Some(details) = &v.details else {
         return Ok(());
@@ -171,6 +174,7 @@ fn write_junit_testcases(output: &mut String, violations: &[QualityViolation]) -
 
 /// Toyota Way: Extract Method - Write single `JUnit` testcase (complexity <=5)
 fn write_single_junit_testcase(output: &mut String, v: &QualityViolation) -> Result<()> {
+    debug_assert!(true, "contract: write_single_junit_testcase");
     use std::fmt::Write;
     writeln!(
         output,
@@ -188,6 +192,7 @@ fn write_single_junit_testcase(output: &mut String, v: &QualityViolation) -> Res
 
 /// Toyota Way: Extract Method - Write `JUnit` XML footer (complexity <=3)
 fn write_junit_footer(output: &mut String) -> Result<()> {
+    debug_assert!(true, "contract: write_junit_footer");
     use std::fmt::Write;
     writeln!(output, r"  </testsuite>")?;
     writeln!(output, r"</testsuites>")?;

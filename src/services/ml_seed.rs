@@ -23,31 +23,37 @@ pub static MUTATION_SEED: AtomicU64 = AtomicU64::new(98765);
 /// ml_seed::set_embedding_seed(42);
 /// assert_eq!(ml_seed::get_embedding_seed(), 42);
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn set_embedding_seed(seed: u64) {
     EMBEDDING_SEED.store(seed, Ordering::SeqCst);
 }
 
 /// Get the current embedding seed
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_embedding_seed() -> u64 {
     EMBEDDING_SEED.load(Ordering::SeqCst)
 }
 
 /// Set the clustering seed for reproducible clustering
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn set_clustering_seed(seed: u64) {
     CLUSTERING_SEED.store(seed, Ordering::SeqCst);
 }
 
 /// Get the current clustering seed
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_clustering_seed() -> u64 {
     CLUSTERING_SEED.load(Ordering::SeqCst)
 }
 
 /// Set the mutation seed for reproducible mutation testing
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn set_mutation_seed(seed: u64) {
     MUTATION_SEED.store(seed, Ordering::SeqCst);
 }
 
 /// Get the current mutation seed
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_mutation_seed() -> u64 {
     MUTATION_SEED.load(Ordering::SeqCst)
 }
@@ -58,6 +64,7 @@ pub fn get_mutation_seed() -> u64 {
 /// - PMAT_EMBEDDING_SEED (default: 42)
 /// - PMAT_CLUSTERING_SEED (default: 12345)
 /// - PMAT_MUTATION_SEED (default: 98765)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn init_seeds_from_env() {
     if let Ok(seed) = std::env::var("PMAT_EMBEDDING_SEED") {
         if let Ok(seed) = seed.parse::<u64>() {
@@ -79,12 +86,14 @@ pub fn init_seeds_from_env() {
 }
 
 /// Create a seeded RNG for embedding operations
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn create_embedding_rng() -> rand::rngs::StdRng {
     use rand::SeedableRng;
     rand::rngs::StdRng::seed_from_u64(get_embedding_seed())
 }
 
 /// Create a seeded RNG for clustering operations
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn create_clustering_rng() -> rand::rngs::StdRng {
     use rand::SeedableRng;
     rand::rngs::StdRng::seed_from_u64(get_clustering_seed())

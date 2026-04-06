@@ -4,6 +4,7 @@
 ///
 /// This would connect to the actual MCP server to get tool definitions.
 /// For testing, we'll parse from the mcp_impl.rs handlers.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn load_mcp_tool_definitions() -> Result<Vec<McpToolDefinition>> {
     // Returns hardcoded tool definitions based on PMAT-6017, PMAT-6019, etc.
 

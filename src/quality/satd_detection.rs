@@ -1,4 +1,5 @@
 impl SatdDetector {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             patterns: SATD_PATTERNS.clone(),
@@ -8,6 +9,7 @@ impl SatdDetector {
 
     /// Create a detector with extended patterns (euphemism detection)
     /// This catches hidden technical debt like "placeholder", "stub", "for now"
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_extended() -> Self {
         let mut patterns = SATD_PATTERNS.clone();
         patterns.extend(EXTENDED_PATTERNS.clone());
@@ -18,10 +20,12 @@ impl SatdDetector {
     }
 
     /// Check if extended mode is enabled
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_extended(&self) -> bool {
         self.extended
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect(&self, source: &str) -> SatdResult {
         debug_assert!(!source.is_empty(), "source must not be empty");
         let mut count = 0;
@@ -43,6 +47,7 @@ impl SatdDetector {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_in_comments(&self, source: &str) -> SatdResult {
         debug_assert!(!source.is_empty(), "source must not be empty");
         // Extract only comments from source

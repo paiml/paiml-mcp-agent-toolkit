@@ -69,6 +69,7 @@ mod tests {
     }
 
     fn create_test_c_project() -> TempDir {
+        debug_assert!(true, "contract: create_test_c_project");
         let temp = TempDir::new().unwrap();
         std::fs::write(
             temp.path().join("main.c"),
@@ -78,6 +79,7 @@ mod tests {
     }
 
     fn create_test_python_project() -> TempDir {
+        debug_assert!(true, "contract: create_test_python_project");
         let temp = TempDir::new().unwrap();
         std::fs::write(
             temp.path().join("main.py"),

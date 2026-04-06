@@ -4,10 +4,12 @@
 
 impl TreeSitterMutationOperator for RustBinaryOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "RustBinaryOp"
     }
 
     fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         if node.kind() != "binary_expression" {
             return false;
         }
@@ -22,6 +24,7 @@ impl TreeSitterMutationOperator for RustBinaryOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         let mut mutations = Vec::new();
 
         if let Some(operator_node) = node.child_by_field_name("operator") {
@@ -73,10 +76,12 @@ impl TreeSitterMutationOperator for RustBinaryOpMutation {
 
 impl TreeSitterMutationOperator for RustRelationalOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "RustRelationalOp"
     }
 
     fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         if node.kind() != "binary_expression" {
             return false;
         }
@@ -91,6 +96,7 @@ impl TreeSitterMutationOperator for RustRelationalOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         let mut mutations = Vec::new();
 
         if let Some(operator_node) = node.child_by_field_name("operator") {
@@ -143,10 +149,12 @@ impl TreeSitterMutationOperator for RustRelationalOpMutation {
 
 impl TreeSitterMutationOperator for RustLogicalOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "RustLogicalOp"
     }
 
     fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         if node.kind() != "binary_expression" {
             return false;
         }
@@ -161,6 +169,7 @@ impl TreeSitterMutationOperator for RustLogicalOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         let mut mutations = Vec::new();
 
         if let Some(operator_node) = node.child_by_field_name("operator") {
@@ -209,10 +218,12 @@ impl TreeSitterMutationOperator for RustLogicalOpMutation {
 
 impl TreeSitterMutationOperator for RustBitwiseOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "RustBitwiseOp"
     }
 
     fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         if node.kind() != "binary_expression" {
             return false;
         }
@@ -227,6 +238,7 @@ impl TreeSitterMutationOperator for RustBitwiseOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         let mut mutations = Vec::new();
 
         if let Some(operator_node) = node.child_by_field_name("operator") {
@@ -278,10 +290,12 @@ impl TreeSitterMutationOperator for RustBitwiseOpMutation {
 
 impl TreeSitterMutationOperator for RustRangeOpMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "RustRangeOp"
     }
 
     fn can_mutate(&self, node: &Node, _source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         // Check for range expressions
         match node.kind() {
             "range_expression" | "inclusive_range_expression" => {
@@ -293,6 +307,7 @@ impl TreeSitterMutationOperator for RustRangeOpMutation {
     }
 
     fn mutate(&self, node: &Node, source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         let mut mutations = Vec::new();
 
         if let Some(operator_node) = node.child_by_field_name("operator") {
@@ -341,10 +356,12 @@ impl TreeSitterMutationOperator for RustRangeOpMutation {
 
 impl TreeSitterMutationOperator for RustPatternMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "RustPattern"
     }
 
     fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         // Detection-only: Identify pattern matching constructs
         // Actual mutation would require type inference
         match node.kind() {
@@ -363,6 +380,7 @@ impl TreeSitterMutationOperator for RustPatternMutation {
     }
 
     fn mutate(&self, _node: &Node, _source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Detection-only: Pattern matching mutations would require type inference
         // to ensure mutants are semantically valid (Some -> None requires compatible types)
         // Return empty mutations for now
@@ -376,10 +394,12 @@ impl TreeSitterMutationOperator for RustPatternMutation {
 
 impl TreeSitterMutationOperator for RustMethodChainMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "RustMethodChain"
     }
 
     fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         // Detection-only: Identify method call chains
         if node.kind() != "call_expression" {
             return false;
@@ -407,6 +427,7 @@ impl TreeSitterMutationOperator for RustMethodChainMutation {
     }
 
     fn mutate(&self, _node: &Node, _source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Detection-only: Method chain mutations would require type inference
         // to ensure the replacement method has compatible signatures
         // Return empty mutations for now
@@ -420,10 +441,12 @@ impl TreeSitterMutationOperator for RustMethodChainMutation {
 
 impl TreeSitterMutationOperator for RustBorrowMutation {
     fn name(&self) -> &str {
+        debug_assert!(true, "contract: name");
         "RustBorrow"
     }
 
     fn can_mutate(&self, node: &Node, source: &[u8]) -> bool {
+        debug_assert!(true, "contract: can_mutate");
         // Detection-only: Identify borrow/reference operations
         match node.kind() {
             "reference_expression" => true,
@@ -447,6 +470,7 @@ impl TreeSitterMutationOperator for RustBorrowMutation {
     }
 
     fn mutate(&self, _node: &Node, _source: &[u8]) -> Vec<MutatedSource> {
+        debug_assert!(true, "contract: mutate");
         // Detection-only: Borrow mutations would violate Rust's borrow checker
         // Changing & to &mut or vice versa would likely cause compilation errors
         // Return empty mutations for now

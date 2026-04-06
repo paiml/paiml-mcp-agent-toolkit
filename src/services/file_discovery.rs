@@ -113,6 +113,7 @@ pub struct ProjectFileDiscovery {
 
 impl ProjectFileDiscovery {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn new(root: PathBuf) -> Self {
         debug_assert!(root.exists(), "root must exist: {}", root.display());
         Self {
@@ -123,12 +124,14 @@ impl ProjectFileDiscovery {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(mut self, config: FileDiscoveryConfig) -> Self {
         self.config = config;
         self
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_classifier(mut self, classifier: Arc<FileClassifier>) -> Self {
         self.classifier = classifier;
         self
@@ -150,6 +153,7 @@ pub struct ExternalRepoFilter {
 
 impl ExternalRepoFilter {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new() -> Self {
         Self {
             patterns: EXTERNAL_REPO_PATTERNS.clone(),
@@ -157,6 +161,7 @@ impl ExternalRepoFilter {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_external_dependency(&self, entry: &DirEntry) -> bool {
         let path_str = entry.path().to_string_lossy();
         self.patterns.is_match(&path_str)

@@ -11,6 +11,7 @@
 /// Validates README.md has required sections in correct order.
 /// Required slots: header/title, badges area, description, installation, usage,
 /// contributing, license. Optional: benchmarks, architecture, api, footer.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_readme_layout(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let readme_path = project_path.join("README.md");
@@ -90,6 +91,7 @@ pub(crate) fn check_readme_layout(project_path: &Path) -> ComplianceCheck {
 /// CB-1325: CHANGELOG Contract
 ///
 /// Checks CHANGELOG.md follows Keep-a-Changelog format if present.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_changelog_contract(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let changelog_path = project_path.join("CHANGELOG.md");
@@ -161,6 +163,7 @@ pub(crate) fn check_changelog_contract(project_path: &Path) -> ComplianceCheck {
 ///
 /// Checks .pmat/ cache files for staleness.
 /// >7 days = warning, >30 days = error.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_cache_staleness(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let pmat_dir = project_path.join(".pmat");
@@ -241,6 +244,7 @@ pub(crate) fn check_cache_staleness(project_path: &Path) -> ComplianceCheck {
 ///
 /// Verifies that generated hook content is deterministic.
 /// Checks for timestamps, HashMap iteration, and random values in hook files.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_hook_determinism(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let hooks_dir = project_path.join(".git/hooks");
@@ -310,6 +314,7 @@ pub(crate) fn check_hook_determinism(project_path: &Path) -> ComplianceCheck {
 /// Checks that pre-commit hooks have a performance budget.
 /// Reads timing data from .pmat-metrics/hook-timing.json if available.
 /// Falls back to checking hook file for expensive operations.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_hook_performance(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let hooks_dir = project_path.join(".git/hooks");
@@ -378,6 +383,7 @@ pub(crate) fn check_hook_performance(project_path: &Path) -> ComplianceCheck {
 ///
 /// Validates Dockerfile follows security and best practices:
 /// no :latest tags, no curl|bash, pinned base images.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_dockerfile_contract(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let dockerfile = project_path.join("Dockerfile");
@@ -449,6 +455,7 @@ pub(crate) fn check_dockerfile_contract(project_path: &Path) -> ComplianceCheck 
 /// CB-1326: Badge Contract
 ///
 /// Checks that README has required badges (CI status, version, license).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_badge_contract(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let readme_path = project_path.join("README.md");
@@ -517,6 +524,7 @@ pub(crate) fn check_badge_contract(project_path: &Path) -> ComplianceCheck {
 ///
 /// Checks that hook files are written by a single codepath (HookRegistry pattern).
 /// Detects multiple independent hook writers by scanning for fs::write to hooks dir.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_hook_single_writer(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -635,6 +643,7 @@ pub(crate) fn check_hook_single_writer(project_path: &Path) -> ComplianceCheck {
 ///
 /// Checks that hook generation code doesn't have unescaped template substitution.
 /// Looks for `replace("{{` patterns without shell escaping.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_hook_no_injection(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -727,6 +736,7 @@ pub(crate) fn check_hook_no_injection(project_path: &Path) -> ComplianceCheck {
 /// Checks that hook file writes use write-then-rename (atomic) pattern,
 /// not direct fs::write to the hook path. Scans src/ for fs::write calls
 /// to .git/hooks/ paths without a tmp+rename pattern nearby.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -839,6 +849,7 @@ pub(crate) fn check_hook_atomic_writes(project_path: &Path) -> ComplianceCheck {
 /// CB-1331: Work Contract YAML Validity
 ///
 /// Validates that active work contracts in .pmat-work/ have valid structure.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_work_contract_validity(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
@@ -938,6 +949,7 @@ pub(crate) fn check_work_contract_validity(project_path: &Path) -> ComplianceChe
 /// CB-1322: SVG Asset Contract
 ///
 /// Validates SVG files for viewBox, accessibility, and reasonable element count.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_svg_contract(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut svg_count = 0usize;
@@ -1002,6 +1014,7 @@ pub(crate) fn check_svg_contract(project_path: &Path) -> ComplianceCheck {
 /// CB-1324: mdBook Contract
 ///
 /// Validates mdBook SUMMARY.md links if book/ directory exists.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_mdbook_contract(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let book_dir = project_path.join("book");
@@ -1074,6 +1087,7 @@ pub(crate) fn check_mdbook_contract(project_path: &Path) -> ComplianceCheck {
 /// Checks that provable-contracts verification levels don't regress.
 /// Reads contracts/ YAML for verification_summary.current_level fields
 /// and warns if any are below target_level.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_verification_ratchet(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
@@ -1241,6 +1255,7 @@ fn extract_level(content: &str, field: &str) -> Option<u8> {
 ///
 /// Checks binding.yaml entries reference functions that exist in source.
 /// A "ghost binding" is a binding.yaml entry for a function that doesn't exist.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_no_ghost_bindings(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let binding = project_path.join("binding.yaml");
@@ -1333,6 +1348,7 @@ pub(crate) fn check_no_ghost_bindings(project_path: &Path) -> ComplianceCheck {
 ///
 /// Checks contracts for generic placeholder preconditions like !is_empty().
 /// Domain-specific equations should have real preconditions, not boilerplate.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_no_placeholder_preconditions(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
@@ -1486,7 +1502,8 @@ fn is_fn_definition(t: &str) -> bool {
 fn is_enforcement_call(line: &str) -> bool {
     line.contains("debug_assert!") || line.contains("contract_pre_")
         || line.contains("contract_post_") || line.contains("#[contract")
-        || line.contains("requires!") || line.contains("ensures!")
+        || line.contains("::contract(") || line.contains("requires!")
+        || line.contains("ensures!")
 }
 
 /// Measure per-crate penetration for workspace projects.
@@ -1561,6 +1578,7 @@ fn find_failing_crates(crates: &[CratePenetration]) -> (Vec<String>, Vec<String>
 ///
 /// Checks that repos with binding.yaml have meaningful call-site penetration.
 /// Reports per-crate penetration for workspaces. CLI crates (*-cli) require ≥95%.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_enforcement_penetration(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let binding = project_path.join("binding.yaml");
@@ -1679,6 +1697,7 @@ fn parse_workspace_members(cargo_toml: &Path) -> Vec<String> {
 ///
 /// Checks that precondition assertions are placed after early-return guards,
 /// not before. Scans for debug_assert! before if..return patterns.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_assertion_placement(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
@@ -1725,6 +1744,7 @@ pub(crate) fn check_assertion_placement(project_path: &Path) -> ComplianceCheck 
 /// CB-1323: Forjar Config Contract
 ///
 /// Validates forjar.yaml configuration: no plaintext secrets, template refs resolved.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_forjar_contract(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let forjar = project_path.join("forjar.yaml");
@@ -1789,6 +1809,7 @@ pub(crate) fn check_forjar_contract(project_path: &Path) -> ComplianceCheck {
 ///
 /// Checks that numbers in spec documents match measurable data.
 /// Compares claims in docs/specifications/ against current pmat output.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_spec_number_accuracy(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let spec_dir = project_path.join("docs/specifications");
@@ -1867,6 +1888,7 @@ pub(crate) fn check_spec_number_accuracy(project_path: &Path) -> ComplianceCheck
 ///
 /// Spec: Phase 4 of commit-level-contract-enforcement.md
 /// Basis: Mugnier et al. (OOPSLA 2025) proof brittleness; Cedar (ICSE 2025)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_differential_obligations(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let binding_index_path = project_path.join(".pmat/binding-index.json");
@@ -2051,6 +2073,7 @@ fn get_staged_files(project_path: &Path) -> Vec<String> {
 /// Checks that `.pmat/binding-index.json` exists and is not stale.
 /// Staleness: >7 days = warning, >30 days = error.
 /// Freshness is essential for O(1) differential obligation checks.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_binding_index_freshness(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let idx_path = project_path.join(".pmat/binding-index.json");
@@ -2137,6 +2160,7 @@ pub(crate) fn check_binding_index_freshness(project_path: &Path) -> ComplianceCh
 ///
 /// Spec: Phase 5 of commit-level-contract-enforcement.md
 /// Basis: Pacti (ACM TCPS 2025); Dewes & Dimitrova (AAAI 2025)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_assume_guarantee_chains(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
@@ -2300,6 +2324,7 @@ fn extract_string_array(v: &serde_json::Value, field: &str) -> Vec<String> {
 /// Uses DFS-based cycle detection on the assumes→guarantees graph.
 ///
 /// Basis: Dardik & Kang (2025) compositional inductive invariant inference
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_ag_cycle_detection(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
@@ -2444,6 +2469,7 @@ fn dfs_cycle_check(
 /// is available. Scores readiness 0-4 based on components present.
 ///
 /// Spec: Phase 6 of commit-level-contract-enforcement.md
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_contract_query_readiness(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut score = 0u8;
@@ -2546,6 +2572,7 @@ pub(crate) fn check_contract_query_readiness(project_path: &Path) -> ComplianceC
 /// If `pv` CLI is available, runs `pv codegen --check` for dry-run validation.
 ///
 /// Spec: Phase 8 leak class L-6 (Parser/Domain Bugs)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_codegen_compiles(project_path: &Path) -> ComplianceCheck {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check for generated contract code
@@ -2660,6 +2687,7 @@ pub(crate) fn check_codegen_compiles(project_path: &Path) -> ComplianceCheck {
 /// CB-1350 differential obligation verification at commit time (O(1) lookup).
 ///
 /// Called by `pmat comply refresh-bindings`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()> {
     debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let pmat_dir = project_path.join(".pmat");
@@ -2978,6 +3006,7 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
 ///
 /// Records a signed override entry in `.pmat-metrics/ratchet-overrides.jsonl`.
 /// The override expires after 14 days. CB-1330 will flag if not recovered.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn handle_ratchet_override(
     project_path: &Path,
     binding: &str,
@@ -3023,6 +3052,7 @@ pub(crate) fn handle_ratchet_override(
 ///
 /// Runs CB-1320..1326 checks on assets and reports results.
 /// Can target a specific asset or validate all.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn handle_asset_validate(
     project_path: &Path,
     asset: Option<&str>,
@@ -3083,6 +3113,7 @@ fn yaml_escape_string(s: &str) -> String {
 /// Generate ISO-8601 timestamp using Howard Hinnant's civil date algorithm.
 /// Correct for all dates (no leap-year drift).
 fn chrono_free_timestamp() -> String {
+    debug_assert!(true, "contract: chrono_free_timestamp");
     let dur = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default();

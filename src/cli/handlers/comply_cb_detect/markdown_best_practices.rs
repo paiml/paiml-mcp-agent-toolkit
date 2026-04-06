@@ -29,6 +29,7 @@ const SKIP_DIRS: &[&str] = &[
 // =============================================================================
 
 /// Walk directory recursively for `.md`/`.mdx` files.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn walkdir_markdown_files(dir: &Path) -> Vec<PathBuf> {
     debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
@@ -64,6 +65,7 @@ fn walk_md_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 // CB-900: Internal link validation
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb900_broken_internal_link(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -138,6 +140,7 @@ pub fn detect_cb900_broken_internal_link(project_path: &Path) -> Vec<CbPatternVi
 // CB-901: Heading Hierarchy Skip
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb901_heading_hierarchy_skip(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -205,6 +208,7 @@ pub fn detect_cb901_heading_hierarchy_skip(project_path: &Path) -> Vec<CbPattern
 // CB-902: Missing Alt Text on Images
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb902_missing_alt_text(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -259,6 +263,7 @@ pub fn detect_cb902_missing_alt_text(project_path: &Path) -> Vec<CbPatternViolat
 // CB-903: Bare URL
 // =============================================================================
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb903_bare_url(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),
@@ -329,6 +334,7 @@ pub fn detect_cb903_bare_url(project_path: &Path) -> Vec<CbPatternViolation> {
 /// Default line length threshold for markdown files.
 const MD_LINE_LENGTH_THRESHOLD: usize = 120;
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn detect_cb904_long_line(project_path: &Path) -> Vec<CbPatternViolation> {
     debug_assert!(
         project_path.exists(),

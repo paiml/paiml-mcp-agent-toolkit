@@ -10,6 +10,7 @@ use anyhow::Result;
 use std::path::Path;
 
 /// Handle pmat debug command - Five Whys root cause analysis
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn handle_debug(
     issue: &str,
     depth: u8,

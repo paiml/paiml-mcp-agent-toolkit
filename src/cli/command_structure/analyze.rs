@@ -15,6 +15,7 @@ impl Default for AnalyzeCommandGroup {
 
 impl AnalyzeCommandGroup {
     /// Execute analysis command using modular handlers
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute(&self, cmd: AnalyzeCommands) -> Result<()> {
         // Delegate to analysis handlers which further delegate to specific modules
         crate::cli::handlers::analysis_handlers::route_analyze_command(cmd).await
