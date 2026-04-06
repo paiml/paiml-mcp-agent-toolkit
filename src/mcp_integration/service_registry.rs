@@ -61,6 +61,7 @@ impl ServiceRegistry {
     }
 
     pub fn get(&self, name: &str) -> Option<Arc<dyn Service>> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.services.read().get(name).cloned()
     }
 
@@ -69,6 +70,7 @@ impl ServiceRegistry {
     }
 
     pub fn unregister(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let service_removed = self.services.write().remove(name).is_some();
         let metadata_removed = self.metadata.write().remove(name).is_some();
         service_removed && metadata_removed

@@ -36,6 +36,11 @@ include!("kotlin_complexity.rs");
 /// Analyze a Kotlin file and return AST items
 #[cfg(feature = "kotlin-ast")]
 pub async fn analyze_kotlin_file(file_path: &Path) -> anyhow::Result<Vec<AstItem>> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     let source = std::fs::read_to_string(file_path)?;
     let visitor = KotlinAstVisitor::new(file_path);
     visitor
@@ -48,6 +53,11 @@ pub async fn analyze_kotlin_file(file_path: &Path) -> anyhow::Result<Vec<AstItem
 pub async fn analyze_kotlin_file(
     _file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    debug_assert!(
+        _file_path.exists(),
+        "_file_path must exist: {}",
+        _file_path.display()
+    );
     Ok(Vec::new())
 }
 

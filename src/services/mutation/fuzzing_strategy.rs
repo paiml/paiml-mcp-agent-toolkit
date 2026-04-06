@@ -178,6 +178,7 @@ impl FuzzMutationStrategy {
 
     /// Execute fuzzing from source code
     pub async fn execute_from_source(&self, source: &str) -> Result<FuzzMutationReport> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         use std::time::Instant;
 
         let start = Instant::now();
@@ -224,6 +225,7 @@ impl FuzzMutationStrategy {
         source: &str,
         workers: usize,
     ) -> Result<FuzzMutationReport> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         use std::sync::Arc;
         use std::time::Instant;
         use tokio::sync::Semaphore;

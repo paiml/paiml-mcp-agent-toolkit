@@ -106,6 +106,7 @@ impl PopperMetadata {
 
     /// Set project path
     pub fn with_path(mut self, path: PathBuf) -> Self {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.project_path = Some(path);
         self
     }

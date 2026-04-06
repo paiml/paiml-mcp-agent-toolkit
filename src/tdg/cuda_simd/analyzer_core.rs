@@ -53,6 +53,7 @@ impl CudaSimdAnalyzer {
 
     /// Analyze a file or directory
     pub fn analyze(&self, path: &Path) -> anyhow::Result<CudaSimdTdgResult> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut defects = Vec::new();
         let mut cuda_files = 0;
         let mut simd_files = 0;

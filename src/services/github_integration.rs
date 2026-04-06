@@ -150,6 +150,7 @@ impl GitHubClient {
 
     /// Fetch a GitHub issue from a URL
     pub async fn fetch_issue(&self, url: &str) -> Result<GitHubIssue> {
+        debug_assert!(!url.is_empty(), "url must not be empty");
         let (owner, repo, issue_number) = Self::parse_issue_url(url)?;
 
         info!(

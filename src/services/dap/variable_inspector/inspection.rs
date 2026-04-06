@@ -8,6 +8,7 @@ use tree_sitter::Parser;
 impl VariableInspector {
     /// Inspect variables in Rust source at the given line
     pub fn inspect_rust(&self, source: &str, line: usize) -> Result<Vec<Variable>, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_rust::LANGUAGE.into())
@@ -22,6 +23,7 @@ impl VariableInspector {
 
     /// Inspect variables in TypeScript source at the given line
     pub fn inspect_typescript(&self, source: &str, line: usize) -> Result<Vec<Variable>, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into())
@@ -37,6 +39,7 @@ impl VariableInspector {
     /// Inspect variables in Python source at the given line
     #[cfg(feature = "python-ast")]
     pub fn inspect_python(&self, source: &str, line: usize) -> Result<Vec<Variable>, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut parser = Parser::new();
         parser
             .set_language(&tree_sitter_python::LANGUAGE.into())
@@ -56,6 +59,7 @@ impl VariableInspector {
 
     /// Inspect variables from a file
     pub fn inspect_file(&self, path: &Path, line: usize) -> Result<Vec<Variable>, String> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let source =
             std::fs::read_to_string(path).map_err(|e| format!("Failed to read file: {}", e))?;
 

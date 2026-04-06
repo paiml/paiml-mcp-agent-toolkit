@@ -1,6 +1,7 @@
 // --- Churn analysis ---
 
 pub async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<CodeChurnAnalysis> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::git_analysis::GitAnalysisService;
     use std::time::{Duration, Instant};
 
@@ -50,6 +51,7 @@ pub async fn analyze_churn(path: &std::path::Path, days: u32) -> anyhow::Result<
 pub async fn analyze_duplicate_code(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::services::duplicate_detector::CloneReport> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::duplicate_detector::DuplicateDetectionEngine;
 
     let all_files = discover_project_files(path)?;
@@ -138,6 +140,7 @@ fn match_extension_to_language(
 // --- SATD analysis ---
 
 pub async fn analyze_satd(path: &std::path::Path) -> anyhow::Result<SATDAnalysisResult> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::satd_detector::SATDDetector;
 
     let detector = SATDDetector::new();
@@ -151,6 +154,7 @@ pub async fn analyze_satd(path: &std::path::Path) -> anyhow::Result<SATDAnalysis
 pub async fn analyze_provability(
     path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_provability_with_cache(path, None).await
 }
 
@@ -158,6 +162,7 @@ pub async fn analyze_provability_with_cache(
     path: &std::path::Path,
     cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
 ) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_provability_with_context(path, cache_manager, None).await
 }
 
@@ -166,6 +171,7 @@ pub async fn analyze_provability_with_context(
     cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
     prebuilt_context: Option<std::sync::Arc<crate::services::context::ProjectContext>>,
 ) -> anyhow::Result<Vec<crate::services::lightweight_provability_analyzer::ProofSummary>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::context::AstItem;
     use crate::services::lightweight_provability_analyzer::{
         FunctionId, LightweightProvabilityAnalyzer,
@@ -247,6 +253,7 @@ pub async fn analyze_provability_with_context(
 }
 
 pub fn detect_project_language(path: &std::path::Path) -> &'static str {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::file_discovery::ProjectFileDiscovery;
     let discovery = ProjectFileDiscovery::new(path.to_path_buf());
     let files = discovery.discover_files().unwrap_or_default();
@@ -285,6 +292,7 @@ pub async fn analyze_dag(
     path: &std::path::Path,
     dag_type: DagType,
 ) -> anyhow::Result<DependencyGraph> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_dag_with_cache(path, dag_type, None).await
 }
 
@@ -293,6 +301,7 @@ pub async fn analyze_dag_with_cache(
     dag_type: DagType,
     cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
 ) -> anyhow::Result<DependencyGraph> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_dag_with_context(path, dag_type, cache_manager, None).await
 }
 
@@ -302,6 +311,7 @@ pub async fn analyze_dag_with_context(
     cache_manager: Option<std::sync::Arc<crate::services::cache::SessionCacheManager>>,
     prebuilt_context: Option<std::sync::Arc<crate::services::context::ProjectContext>>,
 ) -> anyhow::Result<DependencyGraph> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::dag_builder::{
         filter_call_edges, filter_import_edges, filter_inheritance_edges, DagBuilder,
     };
@@ -346,6 +356,7 @@ pub async fn analyze_dag_with_context(
 pub async fn analyze_big_o(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::services::big_o_analyzer::BigOAnalysisReport> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::big_o_analyzer::{BigOAnalysisConfig, BigOAnalyzer};
 
     let analyzer = BigOAnalyzer::new();

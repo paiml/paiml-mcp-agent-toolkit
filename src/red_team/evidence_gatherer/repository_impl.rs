@@ -24,6 +24,7 @@ impl RepositoryContext {
     ///
     /// GREEN Phase: Implementation for RED tests
     pub fn from_path(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::from_path_with_config(path, false)
     }
 
@@ -33,6 +34,7 @@ impl RepositoryContext {
     /// * `path` - Repository path
     /// * `deep` - If true, fetch entire git history; if false, fetch recent commits only (last 30 days)
     pub fn from_path_with_config(path: &Path, deep: bool) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let repo_path = path.canonicalize().context("Failed to canonicalize path")?;
 
         // Detect git repository

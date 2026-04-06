@@ -17,6 +17,11 @@ impl InfraScoreAggregator {
 
     /// Aggregate all infra scores for a repository
     pub async fn aggregate(&self, repo_path: &Path) -> anyhow::Result<InfraScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let start = Instant::now();
 
         // Run all 5 base scorers + 1 bonus scorer

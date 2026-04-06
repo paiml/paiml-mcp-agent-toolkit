@@ -24,6 +24,7 @@ impl SimpleMcpHandler {
 
     /// Handle MCP tool call using uniform contracts
     pub async fn handle_tool_call(&self, name: &str, params: Value) -> Result<Value> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         // Apply backward compatibility mapping
         let params = crate::contracts::adapter::BackwardCompatibility::map_json_params(params);
 

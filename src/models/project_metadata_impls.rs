@@ -13,6 +13,7 @@ impl ProjectMetadata {
 
     /// Load project metadata from .pmat/project.toml
     pub fn load(project_path: &Path) -> Result<Self> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let path = Self::get_path(project_path);
         let content = fs::read_to_string(&path)
             .with_context(|| format!("Failed to read {}", path.display()))?;
@@ -22,6 +23,7 @@ impl ProjectMetadata {
 
     /// Save project metadata to .pmat/project.toml
     pub fn save(&self, project_path: &Path) -> Result<()> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let path = Self::get_path(project_path);
 
         // Ensure .pmat directory exists
@@ -38,11 +40,13 @@ impl ProjectMetadata {
 
     /// Check if project metadata exists
     pub fn exists(project_path: &Path) -> bool {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self::get_path(project_path).exists()
     }
 
     /// Get path to project.toml
     pub fn get_path(project_path: &Path) -> PathBuf {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         project_path.join(".pmat").join("project.toml")
     }
 
@@ -75,6 +79,7 @@ impl ProjectMetadata {
 
     /// Check if a breaking change has been accepted
     pub fn is_breaking_change_accepted(&self, version: &str) -> bool {
+        debug_assert!(!version.is_empty(), "version must not be empty");
         self.compliance
             .breaking_changes_accepted
             .contains(&version.to_string())

@@ -17,6 +17,7 @@ pub struct FileHealthReport {
 impl FileHealthReport {
     /// Create a new report from analyzed files
     pub fn from_files(project_path: PathBuf, files: Vec<FileHealthMetrics>) -> Self {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let total_files = files.len();
         let total_lines: usize = files.iter().map(|f| f.lines).sum();
 

@@ -17,6 +17,7 @@ impl TdgBaseline {
 
     /// Add file entry to baseline
     pub fn add_entry(&mut self, path: PathBuf, entry: BaselineEntry) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.files.insert(path, entry);
         self.recompute_summary();
     }

@@ -60,6 +60,7 @@ impl Language {
 
     /// Returns the language from a file path
     pub fn from_path(path: &Path) -> Option<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
             .and_then(|ext| ext.to_str())
             .and_then(Self::from_extension)

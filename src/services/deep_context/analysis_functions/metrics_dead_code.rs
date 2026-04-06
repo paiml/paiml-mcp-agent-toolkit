@@ -4,6 +4,7 @@
 pub async fn analyze_dead_code(
     path: &std::path::Path,
 ) -> anyhow::Result<crate::models::dead_code::DeadCodeRankingResult> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::dead_code::{
         DeadCodeAnalysisConfig, DeadCodeRankingResult, DeadCodeSummary,
     };

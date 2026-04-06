@@ -126,6 +126,7 @@ pub async fn handle_spec_create(
     epic: Option<&str>,
     output: Option<&Path>,
 ) -> anyhow::Result<()> {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     let slug = name.to_lowercase().replace(' ', "-");
     let output_dir = output
         .map(|p| p.to_path_buf())

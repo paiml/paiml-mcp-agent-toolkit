@@ -14,6 +14,11 @@ pub(crate) fn test_variant_coverage(
     project_path: &Path,
     baseline_commit: &str,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Scanning match arm coverage... ");
 
     let changed_files = get_changed_files(project_path, baseline_commit)?;
@@ -159,6 +164,7 @@ impl MatchParser {
 /// Extract variant names from match blocks with 5+ arms.
 /// Returns variant identifiers like "Q4_K", "LLaMA", etc.
 pub(crate) fn extract_large_match_variants(content: &str) -> Vec<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut parser = MatchParser::new();
     for line in content.lines() {
         parser.process_line(line.trim());
@@ -168,6 +174,7 @@ pub(crate) fn extract_large_match_variants(content: &str) -> Vec<String> {
 
 /// Extract test section content (everything after #[cfg(test)] or in test functions)
 pub(crate) fn extract_test_section(content: &str) -> String {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut in_test = false;
     let mut test_content = String::new();
 
@@ -192,6 +199,11 @@ pub(crate) fn test_fix_chain_limit(
     project_path: &Path,
     max_chain: usize,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Analyzing fix chains... ");
 
     // Get last 50 commits with changed files
@@ -307,6 +319,11 @@ pub(crate) fn detect_fix_chains(log: &str, max_chain: usize) -> Vec<(String, usi
 
 /// Get list of changed files since baseline
 pub(crate) fn get_changed_files(project_path: &Path, baseline_commit: &str) -> Result<Vec<String>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let output = Command::new("git")
         .args(["diff", "--name-only", baseline_commit, "HEAD"])
         .current_dir(project_path)

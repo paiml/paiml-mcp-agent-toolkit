@@ -75,6 +75,7 @@ impl SemanticNamer {
     /// Get a semantic name for a node based on its available fields
     #[must_use]
     pub fn get_semantic_name(&self, id: &str, node: &NodeInfo) -> String {
+        debug_assert!(!id.is_empty(), "id must not be empty");
         // Priority 1: Use label if not empty and meaningful
         if !node.label.is_empty() && node.label != id {
             return node.label.clone();

@@ -5,6 +5,7 @@
 impl CommitParser {
     /// Open a repository at the given path
     pub fn open(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let repo = Repository::discover(path)
             .with_context(|| format!("Failed to open git repository at {:?}", path))?;
         Ok(Self { repo })

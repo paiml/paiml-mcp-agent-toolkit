@@ -19,6 +19,7 @@ impl WorkflowContext {
     }
 
     pub fn get_variable(&self, name: &str) -> Option<Value> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.variables.read().get(name).cloned()
     }
 

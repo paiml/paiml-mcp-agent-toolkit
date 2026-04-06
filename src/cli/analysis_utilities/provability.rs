@@ -14,6 +14,7 @@ pub async fn handle_analyze_provability(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::lightweight_provability_analyzer::LightweightProvabilityAnalyzer;
 
     eprintln!("🔬 Analyzing function provability...");
@@ -128,6 +129,7 @@ pub async fn handle_analyze_defect_prediction(
     _perf: bool,
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     print_defect_analysis_header(
         &project_path,
         high_risk_only,

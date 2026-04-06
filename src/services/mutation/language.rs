@@ -91,6 +91,7 @@ impl LanguageRegistry {
 
     /// Detect language from file path using centralized Language enum (Sprint 63)
     pub fn detect_language(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Use centralized language detection from language_detector module
         let detected_language = Language::from_extension(path);
 
@@ -107,6 +108,7 @@ impl LanguageRegistry {
 
     /// Detect language from file path (legacy extension-based detection)
     pub fn detect_language_by_extension(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let extension = path.extension()?.to_str()?;
 
         for adapter in self.adapters.values() {
@@ -120,6 +122,7 @@ impl LanguageRegistry {
 
     /// Get adapter by name
     pub fn get_adapter(&self, name: &str) -> Option<Arc<dyn LanguageAdapter>> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.adapters.get(name).map(Arc::clone)
     }
 

@@ -168,6 +168,7 @@ impl ProjectContextGraph {
     /// Some(&AstItem) if found, None otherwise
     #[must_use]
     pub fn get_item(&self, name: &str) -> Option<&AstItem> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.cache.get(name)
     }
 

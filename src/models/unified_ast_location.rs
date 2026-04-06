@@ -51,6 +51,7 @@ impl Location {
     /// ```
     #[must_use]
     pub fn new(file_path: PathBuf, start: u32, end: u32) -> Self {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             file_path,
             span: Span {

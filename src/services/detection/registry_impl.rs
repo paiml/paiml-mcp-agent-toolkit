@@ -35,6 +35,7 @@ impl DetectionRegistry {
             >,
         >,
     ) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.detectors.insert(name.to_string(), detector);
     }
 
@@ -51,6 +52,7 @@ impl DetectionRegistry {
             >,
         >,
     > {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.detectors.get(name).cloned()
     }
 

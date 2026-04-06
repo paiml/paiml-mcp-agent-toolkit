@@ -149,6 +149,7 @@ impl AgentContextBuilder {
 /// ```ignore
 #[must_use]
 pub fn create_agent_context(name: &str, template: &str) -> AgentContextBuilder {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     AgentContextBuilder::new(name, template)
 }
 

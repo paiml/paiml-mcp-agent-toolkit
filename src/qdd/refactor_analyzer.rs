@@ -9,6 +9,7 @@ impl CodeAnalyzer {
 
     /// Analyze code quality
     pub fn analyze(&self, code: &str) -> Result<CodeAnalysis> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         Ok(CodeAnalysis {
             complexity: self.calculate_complexity(code),
             coverage: self.estimate_coverage(code),

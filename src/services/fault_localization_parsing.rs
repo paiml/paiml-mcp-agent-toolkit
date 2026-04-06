@@ -11,6 +11,7 @@ impl LcovParser {
     }
 
     pub fn parse(content: &str) -> Result<Vec<(StatementId, usize)>> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut results = Vec::new();
         let mut current_file: Option<PathBuf> = None;
 

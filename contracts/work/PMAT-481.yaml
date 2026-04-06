@@ -1,0 +1,7 @@
+# Auto-generated from .pmat-work/PMAT-481/contract.json
+name: "PMAT-481"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 0

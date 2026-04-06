@@ -93,6 +93,7 @@ impl McpCache {
 
     /// Get a value from the cache
     pub async fn get(&self, key: &str) -> Option<Value> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         let mut metrics = self.metrics.write().await;
         metrics.total_requests += 1;
 
@@ -192,6 +193,7 @@ impl CacheKeyBuilder {
     /// Build cache key for analysis results
     #[must_use]
     pub fn analysis_key(file_path: &str, version: &str) -> String {
+        debug_assert!(!version.is_empty(), "version must not be empty");
         format!("analysis:{file_path}:{version}")
     }
 

@@ -1,0 +1,7 @@
+# Auto-generated from .pmat-work/make_coverage_at_95__-_fast__no_workarounds/contract.json
+name: "make coverage at 95% - fast, no workarounds"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 0

@@ -78,6 +78,7 @@ impl TdgGraph {
     /// true if function exists, false otherwise
     #[must_use]
     pub fn has_function(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.node_map.contains_key(name)
     }
 

@@ -127,6 +127,7 @@ pub async fn handle_analyze_proof_annotations(
     _perf: bool,
     clear_cache: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::proof_annotation_helpers::{
         collect_and_filter_annotations, format_as_full, format_as_json, format_as_markdown,
         format_as_sarif, format_as_summary, setup_proof_annotator, ProofAnnotationFilter,
@@ -302,6 +303,7 @@ pub async fn handle_analyze_incremental_coverage(
     _force_refresh: bool,
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     print_coverage_analysis_header(
         &project_path,
         &base_branch,

@@ -164,6 +164,11 @@ fn resolve_repo_path(base: &Path, repo_name: &str) -> PathBuf {
 // ── Cargo.toml Parsing ───────────────────────────────────────────────────
 
 pub fn parse_cargo_dependencies(cargo_toml_path: &Path) -> Result<Vec<DepInfo>> {
+    debug_assert!(
+        cargo_toml_path.exists(),
+        "cargo_toml_path must exist: {}",
+        cargo_toml_path.display()
+    );
     let content = std::fs::read_to_string(cargo_toml_path)
         .with_context(|| format!("Failed to read {}", cargo_toml_path.display()))?;
     parse_cargo_toml_content(&content)
@@ -256,6 +261,7 @@ fn check_latest_version(crate_name: &str) -> Result<Option<String>> {
 }
 
 pub fn parse_cargo_search_output(output: &str, crate_name: &str) -> Result<Option<String>> {
+    debug_assert!(!crate_name.is_empty(), "crate_name must not be empty");
     // Format: `crate_name = "0.4.30"    # Description`
     for line in output.lines() {
         let line = line.trim();
@@ -278,6 +284,7 @@ pub fn parse_cargo_search_output(output: &str, crate_name: &str) -> Result<Optio
 // ── Batuta Crate Detection ───────────────────────────────────────────────
 
 pub fn is_batuta_crate(name: &str) -> bool {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     BATUTA_CRATES.contains(&name)
 }
 
@@ -288,6 +295,7 @@ pub fn detect_mismatches(
     deps: &[DepInfo],
     latest_versions: &BTreeMap<String, String>,
 ) -> Vec<DepMismatch> {
+    debug_assert!(!repo_name.is_empty(), "repo_name must not be empty");
     let mut mismatches = Vec::new();
 
     for dep in deps {

@@ -32,6 +32,11 @@ pub async fn handle_analyze_wasm(
     output: Option<PathBuf>,
     verbose: bool,
 ) -> Result<()> {
+    debug_assert!(
+        wasm_file.exists(),
+        "wasm_file must exist: {}",
+        wasm_file.display()
+    );
     info!("🔍 Analyzing WASM module: {}", wasm_file.display());
 
     // Load and analyze WASM binary

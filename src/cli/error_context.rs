@@ -164,6 +164,7 @@ fn format_config_error(
 ///
 /// CC=1: Simple constructor
 pub fn roadmap_not_found(path: &Path) -> ContextError {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     ContextError::FileNotFound {
         file_path: path.to_path_buf(),
         suggestions: vec![
@@ -178,6 +179,7 @@ pub fn roadmap_not_found(path: &Path) -> ContextError {
 ///
 /// CC=1: Simple constructor
 pub fn cargo_toml_not_found(path: &Path) -> ContextError {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     ContextError::FileNotFound {
         file_path: path.to_path_buf(),
         suggestions: vec![
@@ -192,6 +194,7 @@ pub fn cargo_toml_not_found(path: &Path) -> ContextError {
 ///
 /// CC=1: Simple constructor
 pub fn file_not_found(path: &Path) -> ContextError {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     ContextError::FileNotFound {
         file_path: path.to_path_buf(),
         suggestions: vec![

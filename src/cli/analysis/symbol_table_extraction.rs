@@ -13,6 +13,7 @@ pub async fn handle_analyze_symbol_table(
     output: Option<PathBuf>,
     _perf: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🔍 Building symbol table for project...");
 
     // Build the symbol table

@@ -66,6 +66,7 @@ impl FileClassifier {
 
     #[must_use]
     pub fn should_parse(&self, path: &Path, content: &[u8]) -> ParseDecision {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.should_parse_with_options(path, content, false)
     }
 

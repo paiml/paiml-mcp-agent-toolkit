@@ -22,6 +22,7 @@ pub struct ComplexityFeatures {
 impl ComplexityFeatures {
     /// Extract features from source code
     pub fn from_source(source: &str, language: &str) -> Self {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let lines: Vec<&str> = source.lines().collect();
         let loc = lines.len() as f64;
 

@@ -115,6 +115,7 @@ impl LanguageRegistry {
     /// Detect language from file path
     #[must_use]
     pub fn detect_language(&self, path: &Path) -> Language {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Language::from_path(path)
     }
 

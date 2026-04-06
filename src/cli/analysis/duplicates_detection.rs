@@ -47,6 +47,7 @@ pub async fn handle_analyze_duplicates(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     {
         use crate::cli::colors as c;
         eprintln!("{}", c::dim("Analyzing code similarity..."));

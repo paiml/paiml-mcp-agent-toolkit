@@ -88,6 +88,7 @@ impl std::fmt::Display for ScoreGrade {
 ///
 /// Each dimension is scored 0.0..1.0, then weighted and summed.
 pub fn score_contract(contract: &WorkContract, project_path: &Path) -> ContractScore {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let weights = ScoringWeights::default();
 
     let spec_depth = compute_spec_depth(contract);
@@ -251,6 +252,7 @@ pub struct DriftMetrics {
 ///
 /// Staleness threshold: 24 hours without a checkpoint.
 pub fn compute_drift_metrics(contract: &WorkContract, project_path: &Path) -> DriftMetrics {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let now = chrono::Utc::now();
     let hours_since_creation = (now - contract.created_at).num_minutes() as f64 / 60.0;
 
@@ -388,6 +390,7 @@ pub fn record_trend_snapshot(
 /// Uses a 7-snapshot rolling window. Drift is detected when the current
 /// score drops more than 5% below the rolling average.
 pub fn load_quality_trend(project_path: &Path, work_item_id: &str) -> QualityTrend {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let trend_dir = project_path
         .join(".pmat-work")
         .join(work_item_id)

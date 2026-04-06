@@ -30,6 +30,7 @@ const SKIP_DIRS: &[&str] = &[
 
 /// Walk directory recursively for `.md`/`.mdx` files.
 pub fn walkdir_markdown_files(dir: &Path) -> Vec<PathBuf> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     walk_md_recursive(dir, &mut files);
     files
@@ -63,6 +64,11 @@ fn walk_md_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 // =============================================================================
 
 pub fn detect_cb900_broken_internal_link(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_markdown_files(project_path);
     let mut violations = Vec::new();
 
@@ -132,6 +138,11 @@ pub fn detect_cb900_broken_internal_link(project_path: &Path) -> Vec<CbPatternVi
 // =============================================================================
 
 pub fn detect_cb901_heading_hierarchy_skip(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_markdown_files(project_path);
     let mut violations = Vec::new();
 
@@ -194,6 +205,11 @@ pub fn detect_cb901_heading_hierarchy_skip(project_path: &Path) -> Vec<CbPattern
 // =============================================================================
 
 pub fn detect_cb902_missing_alt_text(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_markdown_files(project_path);
     let mut violations = Vec::new();
 
@@ -243,6 +259,11 @@ pub fn detect_cb902_missing_alt_text(project_path: &Path) -> Vec<CbPatternViolat
 // =============================================================================
 
 pub fn detect_cb903_bare_url(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_markdown_files(project_path);
     let mut violations = Vec::new();
 
@@ -308,6 +329,11 @@ pub fn detect_cb903_bare_url(project_path: &Path) -> Vec<CbPatternViolation> {
 const MD_LINE_LENGTH_THRESHOLD: usize = 120;
 
 pub fn detect_cb904_long_line(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_markdown_files(project_path);
     let mut violations = Vec::new();
 

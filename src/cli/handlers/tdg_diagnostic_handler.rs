@@ -28,6 +28,11 @@ fn open_browser(url: &str) -> std::io::Result<()> {
 
 /// Handle TDG diagnostic commands
 pub async fn handle_tdg_diagnostics(command: &TdgCommand, base_path: &PathBuf) -> Result<()> {
+    debug_assert!(
+        base_path.exists(),
+        "base_path must exist: {}",
+        base_path.display()
+    );
     match command {
         TdgCommand::Diagnostics {
             detailed,

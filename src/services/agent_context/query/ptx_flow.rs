@@ -89,6 +89,7 @@ fn source_matches_any(source: &str, keywords: &[&str]) -> bool {
 
 /// Classify a function's PTX role based on source content and file extension.
 pub fn classify_ptx_role(source: &str, file_path: &str) -> Option<PtxRole> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let is_ptx_file =
         file_path.ends_with(".ptx") || file_path.ends_with(".cu") || file_path.ends_with(".cuh");
     if is_ptx_file || source_matches_any(source, EMITTER_KEYWORDS) {

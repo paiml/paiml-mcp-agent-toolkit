@@ -34,6 +34,7 @@ use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 pub async fn analyze_typescript_file_with_complexity(
     path: &Path,
 ) -> Result<FileComplexityMetrics, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_typescript_file_with_complexity_and_classifier(path, None).await
 }
 
@@ -42,6 +43,7 @@ pub async fn analyze_typescript_file_with_complexity_and_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileComplexityMetrics, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = tokio::fs::read_to_string(path)
         .await
@@ -133,6 +135,7 @@ pub async fn analyze_typescript_file_with_complexity_and_classifier(
 
 /// Analyze a TypeScript file and return context (compatibility function)
 pub async fn analyze_typescript_file(path: &Path) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_typescript_file_with_classifier(path, None).await
 }
 
@@ -141,6 +144,7 @@ pub async fn analyze_typescript_file_with_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = tokio::fs::read_to_string(path)
         .await
@@ -223,6 +227,7 @@ pub async fn analyze_typescript_file_with_classifier(
 pub async fn analyze_javascript_file_with_complexity(
     path: &Path,
 ) -> Result<FileComplexityMetrics, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_javascript_file_with_complexity_and_classifier(path, None).await
 }
 
@@ -231,6 +236,7 @@ pub async fn analyze_javascript_file_with_complexity_and_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileComplexityMetrics, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = tokio::fs::read_to_string(path)
         .await
@@ -282,6 +288,7 @@ pub async fn analyze_javascript_file_with_complexity_and_classifier(
 
 /// Analyze a JavaScript file and return context (compatibility function)
 pub async fn analyze_javascript_file(path: &Path) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_javascript_file_with_classifier(path, None).await
 }
 
@@ -290,6 +297,7 @@ pub async fn analyze_javascript_file_with_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = tokio::fs::read_to_string(path)
         .await

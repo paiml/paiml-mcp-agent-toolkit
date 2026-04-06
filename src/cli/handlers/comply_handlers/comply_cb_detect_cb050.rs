@@ -84,6 +84,7 @@ static DOC_TEST_PATTERN: LazyLock<Regex> =
 /// # Returns
 /// Vector of violations found
 pub fn detect_cb050_code_stubs_in_str(code: &str) -> Vec<(u32, &'static str, String)> {
+    debug_assert!(!code.is_empty(), "code must not be empty");
     detect_cb050_code_stubs_in_str_with_path(code, "")
 }
 
@@ -100,6 +101,7 @@ pub fn detect_cb050_code_stubs_in_str_with_path(
     code: &str,
     path: &str,
 ) -> Vec<(u32, &'static str, String)> {
+    debug_assert!(!code.is_empty(), "code must not be empty");
     let mut violations = Vec::new();
 
     // Check if this is a test file - stubs in tests are acceptable

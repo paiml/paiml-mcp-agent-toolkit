@@ -88,6 +88,11 @@ impl ChangelogEntry {
 
 /// Add entry to CHANGELOG.md
 pub fn add_to_changelog(project_path: &PathBuf, entry: ChangelogEntry) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let changelog_path = project_path.join("CHANGELOG.md");
 
     // Create CHANGELOG.md if it doesn't exist

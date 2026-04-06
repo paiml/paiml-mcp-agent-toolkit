@@ -20,6 +20,16 @@ impl HooksCommand {
     /// Create new hooks command with specified directories
     #[must_use]
     pub fn new(hooks_dir: PathBuf, _config_path: PathBuf) -> Self {
+        debug_assert!(
+            hooks_dir.exists(),
+            "hooks_dir must exist: {}",
+            hooks_dir.display()
+        );
+        debug_assert!(
+            _config_path.exists(),
+            "_config_path must exist: {}",
+            _config_path.display()
+        );
         Self { hooks_dir }
     }
 

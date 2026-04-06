@@ -75,6 +75,7 @@ impl Project {
     /// assert_eq!(project.root(), Path::new("."));
     /// ```
     pub fn new(root: &Path) -> Result<Self> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         Ok(Self {
             root: root.to_path_buf(),
             file_discovery: ProjectFileDiscovery::new(root.to_path_buf()),

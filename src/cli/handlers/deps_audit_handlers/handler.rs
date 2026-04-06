@@ -19,6 +19,7 @@ pub fn handle_deps_audit(
     pareto: bool,
     sort_by: &str,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let cargo_toml = path.join("Cargo.toml");
     if !cargo_toml.exists() {
         anyhow::bail!("No Cargo.toml found at {}", path.display());

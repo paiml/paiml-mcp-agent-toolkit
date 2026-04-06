@@ -143,6 +143,11 @@ jobs:
 /// - Time: O(1)
 /// - Cyclomatic: 2
 pub fn install_github_workflow(project_dir: &Path, config: &WorkflowConfig) -> std::io::Result<()> {
+    debug_assert!(
+        project_dir.exists(),
+        "project_dir must exist: {}",
+        project_dir.display()
+    );
     use std::fs;
 
     // Create .github/workflows directory

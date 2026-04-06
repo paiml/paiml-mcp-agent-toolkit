@@ -49,6 +49,7 @@ impl MakefileCompressor {
     }
 
     pub fn compress(&self, content: &str) -> CompressedMakefile {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut result = CompressedMakefile::default();
 
         // Phase 1: Extract variables

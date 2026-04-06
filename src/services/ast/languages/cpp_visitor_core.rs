@@ -3,6 +3,7 @@ impl CppAstVisitor {
     /// Creates a new C++ AST visitor
     #[must_use]
     pub fn new(file_path: &Path) -> Self {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // Check if file is a header file
         let is_header = file_path
             .extension()
@@ -20,6 +21,7 @@ impl CppAstVisitor {
 
     /// Analyzes C++ source code and extracts AST items (complexity ≤10)
     pub fn analyze_cpp_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }

@@ -55,6 +55,7 @@ pub async fn check_complexity(
     project_path: &Path,
     _max_complexity: u32,
 ) -> Result<Vec<QualityViolation>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::complexity::aggregate_results_with_thresholds;
     use crate::services::configuration_service::configuration;
 

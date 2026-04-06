@@ -52,6 +52,7 @@ impl SATDDetector {
         content: &str,
         file_path: &Path,
     ) -> Result<Vec<TechnicalDebt>, TemplateError> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut debts = Vec::new();
         let mut test_tracker = TestBlockTracker::new(self.is_rust_file(file_path));
 
@@ -70,6 +71,7 @@ impl SATDDetector {
     }
 
     pub(crate) fn is_rust_file(&self, file_path: &Path) -> bool {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         file_path.extension().and_then(|s| s.to_str()) == Some("rs")
     }
 

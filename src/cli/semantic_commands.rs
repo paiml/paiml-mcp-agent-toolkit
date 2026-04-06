@@ -26,6 +26,11 @@ impl SemanticCli {
     /// Uses pure Rust TF-IDF embeddings via aprender.
     /// No external API keys or internet connection required.
     pub async fn new(db_path: &str, workspace_path: &std::path::Path) -> Result<Self, String> {
+        debug_assert!(
+            workspace_path.exists(),
+            "workspace_path must exist: {}",
+            workspace_path.display()
+        );
         let vector_db = Arc::new(TursoVectorDB::new_local(db_path).await?);
 
         let search_engine = Arc::new(SemanticSearchEngine::new(db_path).await?);
@@ -87,6 +92,7 @@ impl SemanticCli {
         limit: usize,
         language: Option<String>,
     ) -> Result<String, String> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         if query.trim().is_empty() {
             return Err("Query cannot be empty".to_string());
         }
@@ -119,6 +125,7 @@ impl SemanticCli {
 
     /// Find similar code
     pub async fn semantic_similar(&self, file: &PathBuf, limit: usize) -> Result<String, String> {
+        debug_assert!(file.exists(), "file must exist: {}", file.display());
         if !file.exists() {
             return Err(format!("File not found: {}", file.display()));
         }

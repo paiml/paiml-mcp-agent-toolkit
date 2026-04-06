@@ -1,6 +1,7 @@
 impl GitHistoryIndex {
     /// Create or open git history index at the given path
     pub fn open(path: &Path) -> Result<Self, GitHistoryError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let conn = Connection::open(path)?;
         // Enable WAL mode for concurrent access (#161)
         conn.execute_batch(

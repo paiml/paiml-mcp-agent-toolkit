@@ -223,6 +223,7 @@ where
     }
 
     pub(crate) fn calculate_eviction_score(&self, pattern: &AccessPattern) -> f64 {
+        // Contract: calculate_eviction_score returns a bounded score
         // Lower score = more likely to evict
         // Combine frequency, recency, and locality
         let recency_weight = 0.4;

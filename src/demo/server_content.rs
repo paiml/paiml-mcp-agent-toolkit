@@ -77,6 +77,7 @@ impl DemoContent {
     }
 
     pub async fn with_polyglot_analysis(mut self, project_path: &std::path::Path) -> Self {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let polyglot_analyzer = PolyglotAnalyzer::new();
 
         if let Ok(analysis) = polyglot_analyzer.analyze_project(project_path).await {

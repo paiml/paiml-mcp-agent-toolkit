@@ -35,6 +35,7 @@ pub struct CapturedError {
 impl CapturedError {
     /// Create a new captured error
     pub fn new(command: &str, args: &[String], error_message: &str) -> Self {
+        debug_assert!(!command.is_empty(), "command must not be empty");
         Self {
             command: command.to_string(),
             args: args.to_vec(),

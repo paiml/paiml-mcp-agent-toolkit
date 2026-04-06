@@ -9,6 +9,7 @@
 /// - >20% LOC excluded = Error (significant coverage blind spot)
 /// - >50% LOC excluded = Critical (coverage metric meaningless)
 pub fn detect_cb125_coverage_exclusion_gaming(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let makefile_path = project_path.join("Makefile");
     let content = match fs::read_to_string(&makefile_path) {
         Ok(c) => c,

@@ -107,6 +107,7 @@ impl FileHealthMetrics {
         avg_complexity: f32,
         churn_30d: usize,
     ) -> Self {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let required_tlr = Self::required_tlr_for_size(lines);
         let tlr = if lines > 0 {
             test_lines as f32 / lines as f32

@@ -39,6 +39,7 @@ impl MutantGuard {
     ///
     /// Returns an error if the backup cannot be created
     pub async fn new(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Create backup path with a unique suffix
         let backup_path = path.with_extension(format!("pmat_backup_{}", std::process::id()));
 

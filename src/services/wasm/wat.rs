@@ -22,6 +22,7 @@ impl WatParser {
 
     /// Parse WAT content
     pub fn parse(&mut self, content: &str) -> Result<AstDag> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         if content.len() > self.max_file_size {
             return Err(anyhow::anyhow!(
                 "Content too large: {} bytes",

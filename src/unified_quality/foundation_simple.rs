@@ -106,6 +106,7 @@ impl QualityMonitor {
     
     /// Start monitoring a directory
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         info!("Starting quality monitoring for: {:?}", path);
         
         // Create file system watcher
@@ -146,6 +147,7 @@ impl QualityMonitor {
     
     /// Get current metrics for a file
     pub fn get_metrics(&self, path: &Path) -> Option<Metrics> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.metrics.get(path).map(|entry| entry.clone())
     }
     

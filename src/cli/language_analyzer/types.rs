@@ -34,6 +34,7 @@ impl Language {
     /// Detect language from file extension
     #[must_use]
     pub fn from_path(path: &Path) -> Self {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         match path.extension().and_then(|e| e.to_str()) {
             Some("rs") => Language::Rust,
             Some("js" | "jsx") => Language::JavaScript,

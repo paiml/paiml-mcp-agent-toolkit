@@ -1,6 +1,7 @@
 impl UnifiedNode {
     /// Create a new basic unified node with minimal information
     pub fn new(kind: NodeKind, name: &str, language: Language) -> Self {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let id = format!("{}:{}:{}", language.name(), kind.as_str(), name);
         Self {
             id,
@@ -232,6 +233,7 @@ impl UnifiedNode {
 
     /// Add language-specific metadata
     pub fn add_metadata(&mut self, key: &str, value: &str) {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         self.metadata.insert(key.to_string(), value.to_string());
     }
 }

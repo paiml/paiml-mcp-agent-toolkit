@@ -12,6 +12,7 @@ use super::types::DepEdge;
 pub fn parse_cargo_toml(
     path: &Path,
 ) -> Result<(Vec<(String, String, bool)>, Vec<(String, String, bool)>)> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content =
         fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
 
@@ -59,6 +60,7 @@ pub fn parse_cargo_toml(
 /// Parse Cargo.lock and extract dependency graph
 /// Looks in path, parent, and grandparent (for workspace roots)
 pub fn parse_cargo_lock(path: &Path) -> Result<(Vec<String>, Vec<DepEdge>)> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Try path, parent, grandparent (workspace root)
     let candidates = [
         path.join("Cargo.lock"),

@@ -17,6 +17,7 @@ pub(crate) fn scan_crate(
     crate_name: Option<&str>,
     config: &KaizenConfig,
 ) -> Result<Vec<KaizenFinding>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut findings = Vec::new();
 
     // Phase 1: Lint scans (sequential — both use cargo)

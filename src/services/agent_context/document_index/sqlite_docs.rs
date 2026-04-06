@@ -122,6 +122,7 @@ pub(crate) fn query_documents(
     query: &str,
     limit: usize,
 ) -> Result<Vec<DocumentResult>, String> {
+    debug_assert!(!query.is_empty(), "query must not be empty");
     if query.trim().is_empty() {
         return Ok(vec![]);
     }

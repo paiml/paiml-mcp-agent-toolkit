@@ -3,6 +3,7 @@
 /// Handles: `siblings = ["../aprender", "../trueno"]`
 /// Minimal parser — no full TOML dependency needed for one key.
 pub(crate) fn parse_workspace_siblings(content: &str) -> Vec<String> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     for line in content.lines() {
         let trimmed = line.trim();
         if let Some(rest) = trimmed.strip_prefix("siblings") {

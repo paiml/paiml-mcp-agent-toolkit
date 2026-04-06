@@ -26,6 +26,7 @@ pub async fn analyze_python_file_with_complexity(
     path: &Path,
     classifier: Option<&FileClassifier>,
 ) -> Result<FileComplexityMetrics, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Delegate to the version with classifier
     analyze_python_file_with_complexity_and_classifier(path, classifier).await
 }
@@ -86,6 +87,7 @@ async fn analyze_python_file_with_complexity_and_classifier(
 
 /// Analyze a Python file and return context (compatibility function)
 pub async fn analyze_python_file(path: &Path) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_python_file_with_classifier(path, None).await
 }
 
@@ -94,6 +96,7 @@ pub async fn analyze_python_file_with_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = tokio::fs::read_to_string(path)
         .await

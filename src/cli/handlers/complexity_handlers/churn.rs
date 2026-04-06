@@ -14,6 +14,11 @@ pub async fn handle_analyze_churn(
     include: Vec<String>,
     exclude: Vec<String>,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::services::git_analysis::GitAnalysisService;
 
     eprintln!("📊 Analyzing code churn for the last {days} days...");

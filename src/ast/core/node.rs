@@ -291,6 +291,11 @@ impl UnifiedAstNode {
     /// Get location for this node (requires file path context)
     #[must_use]
     pub fn location(&self, file_path: &Path) -> Location {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         Location {
             file_path: file_path.to_path_buf(),
             span: Span {

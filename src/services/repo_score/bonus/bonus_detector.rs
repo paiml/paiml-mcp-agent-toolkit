@@ -223,6 +223,11 @@ impl BonusDetector {
 
     /// Detect all bonus features
     pub async fn detect(&self, repo_path: &Path) -> Result<BonusScores> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         let property_tests = self.detect_property_tests(repo_path).await?;
         let fuzzing = self.detect_fuzzing(repo_path).await?;
         let mutation_testing = self.detect_mutation_testing(repo_path).await?;

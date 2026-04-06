@@ -191,6 +191,7 @@ impl Ord for Priority {
 // ScoreMetadata: construction
 impl ScoreMetadata {
     pub fn new(repository_path: PathBuf) -> Self {
+        debug_assert!(repository_path.exists(), "repository_path must exist: {}", repository_path.display());
         Self {
             timestamp: chrono::Utc::now().to_rfc3339(),
             repository_path,

@@ -12,6 +12,7 @@ use super::server::{DemoContent, Hotspot, LocalDemoServer};
 /// Replaces webbrowser crate to reduce transitive dependencies
 #[allow(dead_code)] // Used only when "demo" feature is enabled
 pub(crate) fn open_browser(url: &str) -> std::io::Result<()> {
+    debug_assert!(!url.is_empty(), "url must not be empty");
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open").arg(url).spawn()?;

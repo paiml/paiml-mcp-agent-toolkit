@@ -48,6 +48,7 @@ pub async fn check_entropy(
     project_path: &Path,
     min_entropy: f64,
 ) -> Result<Vec<QualityViolation>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     check_entropy_with_excludes(project_path, min_entropy, &[]).await
 }
 
@@ -57,6 +58,7 @@ pub async fn check_entropy_with_excludes(
     min_entropy: f64,
     extra_exclude_paths: &[String],
 ) -> Result<Vec<QualityViolation>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // TOYOTA WAY FIX: Replace Shannon entropy with AST pattern-based entropy
     // Sprint 98: Fix for 5831 false positive entropy violations
     use crate::entropy::violation_detector::Severity;

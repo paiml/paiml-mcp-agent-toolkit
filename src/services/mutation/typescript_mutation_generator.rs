@@ -36,6 +36,7 @@ impl TypeScriptMutationGenerator {
 
     /// Generate mutants from TypeScript source code
     pub fn generate_mutants(&self, source: &str, file_path: &str) -> Result<Vec<Mutant>> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Parse TypeScript source with tree-sitter
         let tree = self.parse_typescript(source)?;
 

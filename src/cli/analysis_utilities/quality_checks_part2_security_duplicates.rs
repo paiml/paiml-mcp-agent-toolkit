@@ -120,6 +120,7 @@ fn scan_content_for_pattern(
 /// # });
 /// ```
 pub async fn check_duplicates(project_path: &Path) -> Result<Vec<QualityViolation>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::collections::HashMap;
 
     let mut violations = Vec::new();
@@ -236,6 +237,7 @@ fn format_file_list(paths: &[PathBuf]) -> String {
 
 // Helper function to normalize code content
 pub fn normalize_code_content(content: &str) -> String {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     content
         .lines()
         .filter(|line| {
@@ -249,6 +251,7 @@ pub fn normalize_code_content(content: &str) -> String {
 
 // Helper function to calculate content hash
 pub fn calculate_content_hash(content: &str) -> u64 {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 

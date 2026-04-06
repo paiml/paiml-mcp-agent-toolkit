@@ -17,6 +17,7 @@ pub async fn handle_analyze_graph_metrics(
     top_k: usize,
     min_centrality: f64,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("📊 Analyzing graph metrics...");
 
     // Build dependency graph

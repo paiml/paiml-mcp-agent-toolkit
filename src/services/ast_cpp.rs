@@ -35,6 +35,7 @@ impl CppAstParser {
     }
 
     pub fn parse_file(&mut self, _path: &Path, _content: &str) -> Result<AstDag> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Placeholder - use new AST module for C++ parsing
         Err(anyhow::anyhow!(
             "C++ AST parsing has been moved to the new AST module"

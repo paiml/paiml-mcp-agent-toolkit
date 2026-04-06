@@ -24,6 +24,11 @@ pub async fn handle_analyze_big_o(
     perf: bool,
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let start_time = std::time::Instant::now();
 
     print_analysis_header(&project_path, confidence_threshold);

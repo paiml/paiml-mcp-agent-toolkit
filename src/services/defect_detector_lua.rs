@@ -12,6 +12,7 @@ impl LuaDefectDetector {
     }
 
     pub fn detect(&self, content: &str, file_path: &Path) -> Vec<DefectPattern> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let mut defects = Vec::new();
         if self.should_exclude_file(file_path) {
             return defects;

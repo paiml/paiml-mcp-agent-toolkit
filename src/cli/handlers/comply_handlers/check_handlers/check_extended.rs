@@ -16,6 +16,11 @@ use super::types::*;
 
 /// CB-300: Muda Waste Score (COMPLY-040)
 pub(crate) fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::cli::handlers::comply_handlers::muda_handlers;
     let report = muda_handlers::calculate_muda_score(project_path);
     let mut message = format!(
@@ -55,6 +60,11 @@ pub(crate) fn check_muda_waste_score(project_path: &Path) -> ComplianceCheck {
 
 /// CB-301: Reproducibility Level Check (COMPLY-041)
 pub(crate) fn check_reproducibility_level(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
     let report = reproducibility_handlers::check_reproducibility(project_path);
     let detail_summary: String = report
@@ -87,6 +97,11 @@ pub(crate) fn check_reproducibility_level(project_path: &Path) -> ComplianceChec
 
 /// CB-302: Golden Trace Drift Detection (COMPLY-042)
 pub(crate) fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::cli::handlers::comply_handlers::reproducibility_handlers;
     match reproducibility_handlers::check_golden_trace_drift(project_path) {
         None => ComplianceCheck {
@@ -112,6 +127,11 @@ pub(crate) fn check_golden_trace_drift(project_path: &Path) -> ComplianceCheck {
 
 /// CB-303: Equation-Driven Development Compliance (COMPLY-043)
 pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::cli::handlers::comply_handlers::edd_handlers;
     let report = edd_handlers::check_edd_compliance(project_path);
     if !report.is_simulation_project {
@@ -156,6 +176,11 @@ pub(crate) fn check_edd_compliance(project_path: &Path) -> ComplianceCheck {
 
 /// CB-304: Dead Code Percentage
 pub(crate) fn check_dead_code_percentage(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let config = crate::models::deep_context_config::DeepContextConfig::default();
     let threshold_pct = config.dead_code_threshold * 100.0;
     let source_dirs: Vec<std::path::PathBuf> = ["src", "crates", "lean", "lib"]
@@ -268,6 +293,11 @@ fn append_violation_details(msg: &mut String, report: &DependencyCountReport, li
 
 /// CB-081: Dependency Count Check
 pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if !project_path.join("Cargo.toml").exists() {
         return ComplianceCheck {
             name: "CB-081: Dependency Health".into(),
@@ -314,6 +344,11 @@ pub(crate) fn check_dependency_count(project_path: &Path) -> ComplianceCheck {
 pub(crate) fn discover_source_files(
     project_path: &Path,
 ) -> Result<Vec<std::path::PathBuf>, String> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let is_rust = project_path.join("Cargo.toml").exists();
     let is_lean = project_path.join("lakefile.lean").exists()
         || project_path.join("lean-toolchain").exists()
@@ -396,6 +431,11 @@ fn build_file_health_check(
 }
 
 pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = match discover_source_files(project_path) {
         Ok(f) => f,
         Err(msg) => {
@@ -442,6 +482,7 @@ pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
 }
 
 pub(crate) fn estimate_test_lines(content: &str) -> usize {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut test_lines = 0;
     let mut in_test_module = false;
     let mut brace_depth = 0;
@@ -490,6 +531,7 @@ fn count_line_complexity(trimmed: &str) -> u32 {
 }
 
 pub(crate) fn estimate_avg_complexity(content: &str) -> f32 {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut total_complexity = 1u32;
     let mut function_count = 0u32;
     for line in content.lines() {

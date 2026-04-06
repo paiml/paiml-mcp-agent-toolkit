@@ -69,6 +69,7 @@ pub async fn handle_analyze_tdg(
     include: Vec<String>,
     watch: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if watch {
         eprintln!("⏱️  Watch mode: Monitoring for file changes...");
         eprintln!("Press Ctrl+C to stop watching");

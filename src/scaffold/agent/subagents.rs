@@ -207,6 +207,11 @@ impl SubAgentGenerator {
 
     /// Create a generator with custom template directory.
     pub fn with_template_dir(template_dir: PathBuf) -> Self {
+        debug_assert!(
+            template_dir.exists(),
+            "template_dir must exist: {}",
+            template_dir.display()
+        );
         Self {
             _template_dir: template_dir,
         }
@@ -252,6 +257,11 @@ impl SubAgentGenerator {
 
     /// Export all MVP sub-agents.
     pub fn export_all_mvp(&self, output_dir: &Path) -> Result<Vec<PathBuf>> {
+        debug_assert!(
+            output_dir.exists(),
+            "output_dir must exist: {}",
+            output_dir.display()
+        );
         let mut paths = Vec::new();
         for agent in PmatSubAgent::all_mvp() {
             let path = self.export_for_claude_code(agent, output_dir)?;

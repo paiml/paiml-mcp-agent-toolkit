@@ -132,6 +132,7 @@ impl<'ast> Visit<'ast> for RustVisitor {
 }
 
 pub async fn analyze_rust_file(path: &Path) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_rust_file_with_cache(path, None).await
 }
 
@@ -139,6 +140,7 @@ pub async fn analyze_rust_file_with_cache(
     path: &Path,
     cache_manager: Option<Arc<SessionCacheManager>>,
 ) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(cache) = cache_manager {
         cache
             .get_or_compute_ast(path, || async {
@@ -188,6 +190,7 @@ pub async fn analyze_project(
     root_path: &Path,
     toolchain: &str,
 ) -> Result<ProjectContext, TemplateError> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     analyze_project_with_cache(root_path, toolchain, None).await
 }
 
@@ -196,6 +199,7 @@ pub async fn analyze_rust_file_with_persistent_cache(
     path: &Path,
     cache_manager: Option<Arc<PersistentCacheManager>>,
 ) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if let Some(cache) = cache_manager {
         cache
             .get_or_compute_ast(path, || async {
@@ -246,6 +250,7 @@ pub async fn analyze_project_for_dead_code(
     root_path: &Path,
     toolchain: &str,
 ) -> Result<ProjectContext, TemplateError> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let gitignore = build_gitignore(root_path)?;
     let files = scan_rust_files_only(root_path, toolchain, None, &gitignore).await;
     let summary = build_project_summary(&files, root_path, toolchain).await;
@@ -263,6 +268,7 @@ pub async fn analyze_project_with_cache(
     toolchain: &str,
     cache_manager: Option<Arc<SessionCacheManager>>,
 ) -> Result<ProjectContext, TemplateError> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let gitignore = build_gitignore(root_path)?;
     let files = scan_and_analyze_files(root_path, toolchain, cache_manager, &gitignore).await;
     let summary = build_project_summary(&files, root_path, toolchain).await;

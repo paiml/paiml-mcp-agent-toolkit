@@ -7,6 +7,7 @@
 /// - Time: O(n) where n is number of gates
 /// - Cyclomatic: 5
 pub fn execute_all_gates(config: &GateConfig, project_dir: &Path) -> Result<QualityReport> {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
 
     let start = Instant::now();

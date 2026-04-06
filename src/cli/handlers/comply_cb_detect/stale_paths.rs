@@ -7,6 +7,11 @@ use std::path::Path;
 
 /// CB-533: Detect stale path references in Makefiles and CI workflows.
 pub fn detect_cb533_stale_path_references(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut violations = Vec::new();
 
     // 1. Check Makefile

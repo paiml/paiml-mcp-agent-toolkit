@@ -26,6 +26,7 @@ impl QualityProfiles {
     /// Create profile by name
     #[must_use]
     pub fn by_name(name: &str) -> Option<QualityProfile> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         match name {
             "extreme" => Some(QualityProfile::extreme()),
             "standard" => Some(QualityProfile::standard()),

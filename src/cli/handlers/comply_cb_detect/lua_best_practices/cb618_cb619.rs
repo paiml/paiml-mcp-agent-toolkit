@@ -15,6 +15,11 @@ use std::path::Path;
 /// - Flags C.* function calls without error checking
 /// - Reports FFI usage summary
 pub fn detect_cb618_ffi_safety(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
     let mut ffi_file_count = 0;
@@ -136,6 +141,11 @@ impl std::fmt::Display for LuaOopPattern {
 /// CB-619: Detect Lua OOP patterns and report them for TDG awareness.
 /// Recognizes: separate metatable, prototypal inheritance, __call constructor, self-as-metatable.
 pub fn detect_cb619_oop_patterns(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut pattern_counts: std::collections::HashMap<LuaOopPattern, usize> =
         std::collections::HashMap::new();

@@ -72,6 +72,7 @@ pub async fn handle_mutate(
     format: OutputFormat,
     output: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     print_header(&path, &config.operators);
     validate_path(&path)?;
 

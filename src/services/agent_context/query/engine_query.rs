@@ -13,6 +13,7 @@ impl AgentContextIndex {
     /// Ranked list of matching functions
     #[allow(clippy::cast_possible_truncation)]
     pub fn query(&self, query: &str, options: QueryOptions) -> Result<Vec<QueryResult>, String> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         let limit = if options.limit == 0 {
             10
         } else {
@@ -241,6 +242,7 @@ impl AgentContextIndex {
 
     /// Get function by file and name
     pub fn get_function(&self, file_path: &str, function_name: &str) -> Option<QueryResult> {
+        debug_assert!(!function_name.is_empty(), "function_name must not be empty");
         self.functions
             .iter()
             .enumerate()
@@ -255,6 +257,7 @@ impl AgentContextIndex {
         function_name: &str,
         limit: usize,
     ) -> Result<Vec<QueryResult>, String> {
+        debug_assert!(!function_name.is_empty(), "function_name must not be empty");
         use crate::services::agent_context::function_index::helpers::build_corpus_entry;
 
         // Find the reference function

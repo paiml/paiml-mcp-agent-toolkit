@@ -138,6 +138,8 @@ impl ViolationTracker {
         exit_code: i32,
         message: &str,
     ) {
+        debug_assert!(!work_item_id.is_empty(), "work_item_id must not be empty");
+        debug_assert!(!command.is_empty(), "command must not be empty");
         self.violations.push(RuntimeViolation {
             work_item_id: work_item_id.to_string(),
             timestamp: chrono_now(),
@@ -156,6 +158,8 @@ impl ViolationTracker {
         command: &str,
         duration_ms: u64,
     ) -> bool {
+        debug_assert!(!work_item_id.is_empty(), "work_item_id must not be empty");
+        debug_assert!(!command.is_empty(), "command must not be empty");
         let is_anomalous = self
             .timings
             .get(command)
@@ -194,6 +198,7 @@ impl ViolationTracker {
         manifest_path: &str,
         message: &str,
     ) {
+        debug_assert!(!work_item_id.is_empty(), "work_item_id must not be empty");
         self.violations.push(RuntimeViolation {
             work_item_id: work_item_id.to_string(),
             timestamp: chrono_now(),
@@ -236,6 +241,7 @@ impl ViolationTracker {
 
     /// Save violation tracker to disk
     pub fn save(&self, project_path: &Path, work_item_id: &str) -> Result<()> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let dir = project_path
             .join(".pmat-work")
             .join(work_item_id)
@@ -249,6 +255,7 @@ impl ViolationTracker {
 
     /// Load violation tracker from disk (returns default if not found)
     pub fn load(project_path: &Path, work_item_id: &str) -> Self {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let path = project_path
             .join(".pmat-work")
             .join(work_item_id)

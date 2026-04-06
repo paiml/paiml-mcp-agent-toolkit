@@ -42,6 +42,11 @@ impl AssemblyScriptParser {
 
     /// Parse an `AssemblyScript` file
     pub async fn parse_file(&mut self, _file_path: &Path, content: &str) -> Result<AstDag> {
+        debug_assert!(
+            _file_path.exists(),
+            "_file_path must exist: {}",
+            _file_path.display()
+        );
         // Check file size limit
         if content.len() > MAX_FILE_SIZE {
             return Err(anyhow::anyhow!("File too large: {} bytes", content.len()));
@@ -56,6 +61,7 @@ impl AssemblyScriptParser {
 
     /// Analyze complexity of `AssemblyScript` code
     pub fn analyze_complexity(&self, content: &str) -> Result<WasmComplexity> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Basic complexity analysis
         let line_count = content.lines().count();
         let function_count = content.matches("function").count();

@@ -37,6 +37,7 @@ impl ContractMcpServer {
     
     /// Handle tool calls using uniform contracts
     pub async fn handle_tool_call(&self, name: &str, params: Value) -> Result<ToolResult> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         // Apply backward compatibility mapping
         let params = super::adapter::BackwardCompatibility::map_json_params(params);
         

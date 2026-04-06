@@ -5,6 +5,7 @@ impl EnhancedTypeScriptVisitor {
     /// Creates a new enhanced visitor for a given file
     #[must_use]
     pub fn new(file_path: &Path) -> Self {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             file_path: file_path.to_path_buf(),

@@ -31,6 +31,11 @@ pub async fn get_changed_files_for_coverage(
     base_branch: &str,
     target_branch: Option<&str>,
 ) -> Result<Vec<(PathBuf, String)>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     eprintln!("🔍 Getting changed files...");
     eprintln!("📍 Project: {}", project_path.display());
     eprintln!("🔄 Base branch: {base_branch}");

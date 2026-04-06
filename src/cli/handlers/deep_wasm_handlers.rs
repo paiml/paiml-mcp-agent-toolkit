@@ -252,6 +252,11 @@ pub async fn handle_deep_wasm(
     _track_memory: bool,
     _detect_deadlocks: bool,
 ) -> Result<()> {
+    debug_assert!(
+        _source_path.exists(),
+        "_source_path must exist: {}",
+        _source_path.display()
+    );
     Err(anyhow::anyhow!(
         "Deep WASM feature not enabled. Recompile with --features deep-wasm"
     ))

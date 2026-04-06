@@ -4,6 +4,7 @@
 pub async fn analyze_cpp_file(
     path: &Path,
 ) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::error::TemplateError;
     use crate::services::complexity::ComplexityMetrics;
     use crate::services::context::FileContext;

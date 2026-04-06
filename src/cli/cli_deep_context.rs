@@ -69,6 +69,7 @@ pub fn build_deep_context_config(
     _parallel: Option<usize>,
     _verbose: bool,
 ) -> anyhow::Result<crate::models::deep_context_config::DeepContextConfig> {
+    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Create DeepContextConfig with default values
     Ok(crate::models::deep_context_config::DeepContextConfig {
         entry_points: vec![],

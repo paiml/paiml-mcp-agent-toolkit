@@ -222,6 +222,7 @@ pub(crate) fn output_entropy_results(
     output: Option<std::path::PathBuf>,
     content: &str,
 ) -> Result<()> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     use std::fs;
 
     if let Some(output_path) = output {

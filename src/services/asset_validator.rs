@@ -82,6 +82,11 @@ pub enum AssetStatus {
 
 /// Validate all assets in a project and return results.
 pub fn validate_all_assets(project_path: &Path) -> Vec<AssetValidationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     AssetType::all()
         .iter()
         .map(|t| validate_asset(project_path, *t))
@@ -90,6 +95,11 @@ pub fn validate_all_assets(project_path: &Path) -> Vec<AssetValidationResult> {
 
 /// Validate a specific asset type.
 pub fn validate_asset(project_path: &Path, asset_type: AssetType) -> AssetValidationResult {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     match asset_type {
         AssetType::Readme => validate_readme(project_path),
         AssetType::Dockerfile => validate_dockerfile(project_path),

@@ -17,6 +17,11 @@ use std::path::Path;
 
 /// CB-517: Stale Debug Artifacts - leftover debug instrumentation in production code
 pub fn detect_cb517_stale_debug_artifacts(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -97,6 +102,11 @@ pub fn detect_cb517_stale_debug_artifacts(project_path: &Path) -> Vec<CbPatternV
 
 /// CB-518: Expensive Clone in Loop - .clone() calls inside loop bodies
 pub fn detect_cb518_expensive_clone_in_loop(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -188,6 +198,11 @@ pub fn detect_cb518_expensive_clone_in_loop(project_path: &Path) -> Vec<CbPatter
 
 /// CB-519: Lossy Data Pipeline - detect quantize/dequantize/encode/decode round-trip chains
 pub fn detect_cb519_lossy_data_pipeline(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -341,6 +356,11 @@ fn scan_cb520_file(
 
 /// CB-520: Expensive Init in Hot Path - constructor/load/open calls inside loops
 pub fn detect_cb520_expensive_init_in_loop(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -373,6 +393,11 @@ pub fn detect_cb520_expensive_init_in_loop(project_path: &Path) -> Vec<CbPattern
 
 /// CB-521: Format Detection Without Magic Bytes - binary parsing without header validation
 pub fn detect_cb521_format_without_magic_bytes(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,

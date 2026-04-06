@@ -98,6 +98,7 @@ impl ProgressTracker {
 
     /// Log a skipped file
     pub fn log_skipped_file(&self, file_path: &std::path::Path, reason: &str) {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         if self.enable_progress {
             eprintln!("⚠️  Skipped: {} ({})", file_path.display(), reason);
         }

@@ -4,6 +4,7 @@
 impl GitCloner {
     #[inline]
     pub fn parse_github_url(&self, url: &str) -> Result<ParsedGitHubUrl, CloneError> {
+        debug_assert!(!url.is_empty(), "url must not be empty");
         // Support various GitHub URL formats
         let url = url.trim();
 
@@ -115,6 +116,7 @@ impl GitCloner {
 
     #[must_use]
     pub fn compute_cache_key(&self, url: &str) -> String {
+        debug_assert!(!url.is_empty(), "url must not be empty");
         // Create a cache key from the URL
         // In production, you might want to use a hash
         url.chars()

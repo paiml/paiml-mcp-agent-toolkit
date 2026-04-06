@@ -100,6 +100,7 @@ impl TemplateRegistry {
 
     /// Fetch a remote template.
     pub async fn fetch_remote(&self, name: &str) -> ScaffoldResult<Arc<dyn TemplateGenerator>> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let url = self
             .remote
             .get(name)
@@ -114,6 +115,7 @@ impl TemplateRegistry {
 
     /// Validate a template file.
     pub fn validate_template_file(&self, path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !path.exists() {
             return Err(ScaffoldError::TemplateNotFound(format!("{}", path.display())).into());
         }
@@ -155,6 +157,7 @@ impl TemplateRegistry {
     /// Check if a template exists.
     #[must_use]
     pub fn has_template(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.builtin.contains_key(name)
             || self.custom.contains_key(name)
             || self.remote.contains_key(name)
@@ -163,6 +166,7 @@ impl TemplateRegistry {
     /// Get template metadata.
     #[must_use]
     pub fn get_template_info(&self, name: &str) -> Option<TemplateInfo> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.builtin.get(name).map(|gen| TemplateInfo {
             name: gen.name().to_string(),
             description: gen.description().to_string(),
@@ -337,6 +341,7 @@ async fn main() {{
             r#"//! Deterministic core implementation.
 
 pub fn deterministic_analyze(input: &str) -> String {
+    debug_assert!(!input.is_empty(), "input must not be empty");
     // Deterministic implementation
     format!("Analyzed: {}", input)
 }
@@ -349,6 +354,7 @@ pub fn deterministic_analyze(input: &str) -> String {
             r#"//! Probabilistic wrapper implementation.
 
 pub async fn probabilistic_enhance(input: &str) -> String {
+    debug_assert!(!input.is_empty(), "input must not be empty");
     // Probabilistic enhancement
     format!("Enhanced: {}", input)
 }

@@ -164,6 +164,7 @@ pub async fn handle_analyze_comprehensive(
     executive_summary: bool,
     _top_files: usize,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::time::Instant;
 
     eprintln!("🔍 Running comprehensive analysis...");

@@ -58,6 +58,7 @@ impl SpecClaimExtractor {
 
     /// Extract all falsifiable claims from a specification document
     pub fn extract(&self, content: &str, source_file: &Path) -> Vec<SpecClaim> {
+        debug_assert!(source_file.exists(), "source_file must exist: {}", source_file.display());
         let mut claims = Vec::new();
         let mut in_code_block = false;
         let mut claim_counter = 0usize;

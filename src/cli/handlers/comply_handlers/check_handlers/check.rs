@@ -677,6 +677,11 @@ include!("check_commit_enforcement.rs");
 
 /// CB-533: Stale path references in Makefiles and CI workflows.
 pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let violations =
         crate::cli::handlers::comply_cb_detect::detect_cb533_stale_path_references(project_path);
     if violations.is_empty() {
@@ -699,6 +704,11 @@ pub(crate) fn check_stale_paths(project_path: &Path) -> ComplianceCheck {
 
 /// CB-148: Spec-work traceability.
 pub(crate) fn check_spec_work_traceability(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let violations =
         crate::cli::handlers::comply_cb_detect::detect_cb148_spec_work_gaps(project_path);
     if violations.is_empty() {
@@ -751,6 +761,11 @@ pub(crate) fn check_version_currency(project_version: &str) -> ComplianceCheck {
 }
 
 pub(crate) fn check_config_files(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let config_files = [".pmat/project.toml", ".pmat-metrics.toml"];
     let missing: Vec<&str> = config_files
         .iter()
@@ -775,6 +790,11 @@ pub(crate) fn check_config_files(project_path: &Path) -> ComplianceCheck {
 }
 
 pub(crate) fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let pre_commit = project_path.join(".git").join("hooks").join("pre-commit");
     if pre_commit.exists() {
         if let Ok(content) = fs::read_to_string(&pre_commit) {
@@ -804,6 +824,11 @@ pub(crate) fn check_hooks_installed(project_path: &Path) -> ComplianceCheck {
 }
 
 pub(crate) fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let cache_dir = project_path.join(".pmat").join("hooks-cache");
     if cache_dir.exists() {
         if cache_dir.join("tree-hash.json").exists() || cache_dir.join("gates").exists() {
@@ -831,6 +856,11 @@ pub(crate) fn check_hooks_o1_capable(project_path: &Path) -> ComplianceCheck {
 }
 
 pub(crate) fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let metrics_path = project_path
         .join(".pmat")
         .join("hooks-cache")
@@ -894,6 +924,11 @@ pub(crate) fn check_hooks_cache_health(project_path: &Path) -> ComplianceCheck {
 }
 
 pub(crate) fn check_quality_thresholds(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if project_path.join(".pmat-metrics.toml").exists() {
         ComplianceCheck {
             name: "Quality Thresholds".into(),
@@ -912,6 +947,11 @@ pub(crate) fn check_quality_thresholds(project_path: &Path) -> ComplianceCheck {
 }
 
 pub(crate) fn check_deprecated_features(_project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        _project_path.exists(),
+        "_project_path must exist: {}",
+        _project_path.display()
+    );
     ComplianceCheck {
         name: "Deprecated Features".into(),
         status: CheckStatus::Pass,
@@ -958,6 +998,11 @@ pub(crate) fn collect_cb_violations(
     has_probar: bool,
     has_brick_dir: bool,
 ) -> (Vec<String>, usize, usize) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let detections = vec![
         (detect_cb020_unsafe_without_safety(project_path), false),
         (
@@ -1041,6 +1086,11 @@ pub(crate) fn build_cb_result(
 }
 
 pub(crate) fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let cargo_toml = project_path.join("Cargo.toml");
     let brick_dir = project_path.join("src").join("brick");
     let has_probar = cargo_toml.exists()
@@ -1067,6 +1117,11 @@ pub(crate) fn check_compute_brick(project_path: &Path) -> ComplianceCheck {
 }
 
 pub(crate) fn check_oip_tarantula_patterns(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let detections = vec![
         (detect_cb120_nan_unsafe_comparison(project_path), true),
         (detect_cb121_lock_poisoning(project_path), false),
@@ -1180,6 +1235,11 @@ fn build_triaged_check(
 }
 
 pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let violation_sets = vec![
         detect_cb125_coverage_exclusion_gaming(project_path),
         detect_cb126_slow_tests(project_path),
@@ -1197,6 +1257,11 @@ pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> Compliance
 }
 
 pub(crate) fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if !project_path.join("Cargo.toml").exists() {
         return ComplianceCheck {
             name: "Cargo.lock Present".into(),
@@ -1223,6 +1288,11 @@ pub(crate) fn check_cargo_lock(project_path: &Path) -> ComplianceCheck {
 }
 
 pub(crate) fn check_msrv(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() {
         return ComplianceCheck {
@@ -1251,6 +1321,11 @@ pub(crate) fn check_msrv(project_path: &Path) -> ComplianceCheck {
 }
 
 pub(crate) fn check_ci_configured(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let github_workflows = project_path.join(".github").join("workflows");
     if github_workflows.exists() && github_workflows.is_dir() {
         let wf_count = fs::read_dir(&github_workflows)

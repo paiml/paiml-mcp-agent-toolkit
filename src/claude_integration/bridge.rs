@@ -114,6 +114,7 @@ impl ClaudeBridge {
 
     /// Analyze code content with caching
     pub async fn analyze_code(&self, content: &str) -> Result<AnalysisResult, BridgeError> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Check cache if enabled
         if self.config.enable_cache {
             let result = self

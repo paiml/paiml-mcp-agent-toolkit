@@ -4,6 +4,7 @@
 /// Format file path for display, truncating long paths
 #[must_use]
 pub fn format_display_path(path: &std::path::Path, max_len: usize) -> String {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let path_str = path.to_string_lossy();
     if path_str.len() <= max_len {
         path_str.to_string()
@@ -61,6 +62,7 @@ pub fn output_to_file_or_stdout(
     output: Option<&std::path::Path>,
     content: &str,
 ) -> std::io::Result<()> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     if let Some(path) = output {
         std::fs::write(path, content)
     } else {
@@ -99,6 +101,7 @@ pub fn format_duration(duration: std::time::Duration) -> String {
 /// Calculate percentage with bounds (0-100)
 #[must_use]
 pub fn calculate_percentage(numerator: usize, denominator: usize) -> f64 {
+    // Contract: calculate_percentage returns a bounded score
     if denominator == 0 {
         0.0
     } else {

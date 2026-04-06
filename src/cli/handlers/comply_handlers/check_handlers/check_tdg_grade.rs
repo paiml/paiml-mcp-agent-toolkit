@@ -238,6 +238,11 @@ pub(crate) fn check_tdg_grade_gate(
     project_path: &Path,
     comply_config: &ComplyConfig,
 ) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let db_path = project_path.join(".pmat").join("context.db");
     if (!db_path.exists() || is_index_stale(project_path, &db_path))
         && !rebuild_index(project_path)
@@ -396,6 +401,11 @@ fn evaluate_custom_score(
 
 /// CB-1100: Custom Project Scores
 pub(crate) fn check_custom_scores(project_path: &Path) -> Vec<ComplianceCheck> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let config = match crate::models::comply_config::PmatYamlConfig::load(project_path) {
         Ok(c) => c,
         Err(_) => return vec![],

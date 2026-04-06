@@ -13,6 +13,7 @@ impl HybridSearchEngine {
     /// Uses pure Rust TF-IDF embeddings via aprender.
     /// No external API keys or internet connection required.
     pub async fn new(db_path: &str, search_root: &Path) -> Result<Self, String> {
+        debug_assert!(search_root.exists(), "search_root must exist: {}", search_root.display());
         let semantic_engine = SemanticSearchEngine::new(db_path).await?;
 
         Ok(Self {
@@ -311,6 +312,7 @@ impl HybridSearchEngine {
 
     /// Index a directory
     pub async fn index_directory(&self, path: &Path) -> Result<(), String> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.semantic_engine.index_directory(path).await?;
         Ok(())
     }

@@ -41,6 +41,7 @@ impl RuchyMlAstExtractor {
 
     /// Analyze Ruchy source code with ML-style syntax
     pub fn analyze_ruchy_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -241,6 +242,7 @@ impl RuchyMlAstExtractor {
 
     /// Analyze pattern matching complexity
     pub fn analyze_pattern_complexity(&mut self, source: &str) -> Result<u32, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.pattern_complexity = 0;
 
         for line in source.lines() {

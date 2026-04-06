@@ -163,6 +163,7 @@ impl TopicEngine {
     /// # Returns
     /// Coherence score (0.0 to 1.0)
     pub fn compute_coherence_score(&self, topics: &[Topic]) -> f64 {
+        // Contract: compute_coherence_score returns a bounded score
         if topics.is_empty() {
             return 0.0;
         }

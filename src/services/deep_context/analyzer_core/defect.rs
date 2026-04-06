@@ -289,6 +289,7 @@ impl DeepContextAnalyzer {
     }
 
     pub(crate) fn calculate_defect_density(&self, total_defects: usize, total_loc: usize) -> f64 {
+        // Contract: calculate_defect_density returns a bounded score
         if total_loc > 0 {
             (total_defects as f64 * 1000.0) / total_loc as f64
         } else {

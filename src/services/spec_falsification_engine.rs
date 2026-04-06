@@ -5,6 +5,7 @@ pub struct FalsificationEngine {
 
 impl FalsificationEngine {
     pub fn new(project_path: &Path) -> Self {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         Self {
             project_path: project_path.to_path_buf(),
         }
@@ -12,6 +13,7 @@ impl FalsificationEngine {
 
     /// Falsify all claims in a specification file
     pub fn falsify_spec(&self, spec_path: &Path) -> Result<SpecFalsificationReport> {
+        debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
         let content = std::fs::read_to_string(spec_path)
             .with_context(|| format!("Failed to read spec: {}", spec_path.display()))?;
 

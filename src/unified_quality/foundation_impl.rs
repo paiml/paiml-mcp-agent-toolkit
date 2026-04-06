@@ -15,6 +15,7 @@ impl QualityMonitor {
     /// Start monitoring a directory
     #[cfg(feature = "watch")]
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         info!("Starting quality monitoring for: {:?}", path);
 
         // Create file system watcher
@@ -50,6 +51,7 @@ impl QualityMonitor {
     /// Start monitoring a directory (stub when watch feature disabled)
     #[cfg(not(feature = "watch"))]
     pub async fn start_monitoring(&mut self, path: PathBuf) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         info!(
             "Starting quality monitoring for: {:?} (watch disabled)",
             path
@@ -68,6 +70,7 @@ impl QualityMonitor {
     /// Get current metrics for a file
     #[must_use]
     pub fn get_metrics(&self, path: &Path) -> Option<Metrics> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.metrics.get(path).map(|entry| entry.clone())
     }
 

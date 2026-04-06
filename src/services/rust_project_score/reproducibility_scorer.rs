@@ -159,6 +159,11 @@ impl Scorer for ReproducibilityScorer {
 ///
 /// Returns `Some(percentage)` if gateway passes, `None` if it fails.
 pub fn check_falsifiability_gateway(project_path: &Path) -> Option<f64> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use crate::services::popper_score::scorers::FalsifiabilityScorer;
 
     let scorer = FalsifiabilityScorer::new();

@@ -2,6 +2,7 @@
 // and gitignore configuration.
 
 pub(crate) fn build_gitignore(root_path: &Path) -> Result<ignore::gitignore::Gitignore, TemplateError> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let mut gitignore = GitignoreBuilder::new(root_path);
 
     // Add default ignores

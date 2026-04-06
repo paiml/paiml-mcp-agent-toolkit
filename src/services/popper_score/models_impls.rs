@@ -193,6 +193,7 @@ impl Default for PopperCategoryScores {
 impl PopperCategoryScore {
     /// Create a new category score
     pub fn new(name: &str, earned: f64, max: f64) -> Self {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             name: name.to_string(),
             earned,
@@ -206,6 +207,7 @@ impl PopperCategoryScore {
 
     /// Create a N/A category score
     pub fn new_na(name: &str, max: f64) -> Self {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             name: name.to_string(),
             earned: 0.0,
@@ -257,6 +259,8 @@ impl PopperCategoryScore {
 impl PopperSubScore {
     /// Create a new sub-score
     pub fn new(id: &str, name: &str, earned: f64, max: f64, description: &str) -> Self {
+        debug_assert!(!id.is_empty(), "id must not be empty");
+        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             id: id.to_string(),
             name: name.to_string(),

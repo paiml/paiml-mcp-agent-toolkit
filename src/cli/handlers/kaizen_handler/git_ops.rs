@@ -6,6 +6,7 @@ use std::path::Path;
 use std::process::Command;
 
 pub(crate) fn commit_changes(path: &Path, message: &str) -> Result<Option<String>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let add = Command::new("git")
         .args(["add", "-A"])
         .current_dir(path)
@@ -39,6 +40,7 @@ pub(crate) fn commit_changes(path: &Path, message: &str) -> Result<Option<String
 }
 
 pub(crate) fn push_changes(path: &Path) -> Result<bool> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let branch = detect_default_branch(path);
     let status = Command::new("git")
         .args(["push", "origin", &branch])
@@ -52,6 +54,7 @@ pub(crate) fn push_changes(path: &Path) -> Result<bool> {
 /// Detect the current branch name for pushing.
 /// Falls back to "master" if detection fails.
 pub(crate) fn detect_default_branch(path: &Path) -> String {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Try to get the current branch name
     let output = Command::new("git")
         .args(["rev-parse", "--abbrev-ref", "HEAD"])
@@ -79,6 +82,7 @@ pub(crate) fn create_github_issues(
     path: &Path,
     findings: &[&KaizenFinding],
 ) -> Vec<GithubIssueRef> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut refs = Vec::new();
 
     for finding in findings {
@@ -176,6 +180,7 @@ pub(crate) fn severity_to_labels(severity: FindingSeverity, source: FindingSourc
 }
 
 pub(crate) fn extract_issue_number(url: &str) -> u64 {
+    debug_assert!(!url.is_empty(), "url must not be empty");
     // URL format: https://github.com/org/repo/issues/123
     url.rsplit('/')
         .next()

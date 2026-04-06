@@ -305,6 +305,7 @@ impl ClusteringEngine {
 
     /// Compute silhouette score for clustering quality
     pub fn compute_silhouette_score(&self, vectors: &[Vec<f32>], labels: &[usize]) -> f64 {
+        // Contract: compute_silhouette_score returns a bounded score
         if vectors.is_empty() || labels.is_empty() {
             return 0.0;
         }

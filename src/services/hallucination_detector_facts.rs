@@ -13,6 +13,7 @@ impl CodeFactDatabase {
 
     /// Load facts from deep context markdown
     pub fn from_markdown(content: &str) -> Result<Self> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut db = Self::new();
 
         // Parse functions from "Functions:" sections
@@ -41,6 +42,7 @@ impl CodeFactDatabase {
 
     /// Check if database contains a function
     pub fn has_function(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.functions.contains_key(name)
     }
 

@@ -75,6 +75,11 @@ where
     T::Value: Serialize + for<'de> Deserialize<'de>,
 {
     pub fn new(strategy: T, cache_dir: PathBuf) -> Result<Self> {
+        debug_assert!(
+            cache_dir.exists(),
+            "cache_dir must exist: {}",
+            cache_dir.display()
+        );
         // Create cache directory if it doesn't exist
         fs::create_dir_all(&cache_dir).with_context(|| {
             format!("Failed to create cache directory: {}", cache_dir.display())

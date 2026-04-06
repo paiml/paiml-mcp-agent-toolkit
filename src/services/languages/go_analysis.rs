@@ -6,6 +6,7 @@ impl GoAstVisitor {
     /// Creates a new Go AST visitor
     #[must_use]
     pub fn new(file_path: &Path) -> Self {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
@@ -16,6 +17,7 @@ impl GoAstVisitor {
 
     /// Analyzes Go source code and extracts AST items (complexity ≤10)
     pub fn analyze_go_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }
@@ -159,6 +161,7 @@ impl GoComplexityAnalyzer {
 
     /// Analyzes complexity of Go source code (complexity ≤10)
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
         self.cognitive_complexity = 1;
 
@@ -185,6 +188,7 @@ impl GoComplexityAnalyzer {
 pub async fn analyze_go_file(
     path: &Path,
 ) -> Result<crate::services::context::FileContext, crate::models::error::TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::error::TemplateError;
     use crate::services::context::FileContext;
 

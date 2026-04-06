@@ -61,6 +61,7 @@ impl WorkerMetrics {
 
     /// Add or update a custom metric
     pub fn set_custom_metric(&mut self, key: &str, value: &str) {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         self.custom_metrics
             .insert(key.to_string(), value.to_string());
     }

@@ -183,6 +183,7 @@ fn check_trend_regression_violation(
 /// - 2 points: <=50 direct, <=250 transitive
 /// - 0 points: >50 direct or >250 transitive
 pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountReport {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml_path = project_path.join("Cargo.toml");
     let cargo_lock_path = project_path.join("Cargo.lock");
 

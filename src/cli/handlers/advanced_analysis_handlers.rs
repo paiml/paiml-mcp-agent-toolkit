@@ -102,6 +102,11 @@ pub async fn handle_analyze_deep_context(
     verbose: bool,
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     info!("🔍 Starting deep context analysis");
     info!("📂 Project path: {}", project_path.display());
     info!("📊 Analysis period: {} days", period_days);
@@ -234,6 +239,7 @@ pub async fn handle_analyze_makefile(
     gnu_version: Option<String>,
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Delegate to stub implementation for now - will be fully extracted later
     super::super::analysis_utilities::handle_analyze_makefile(
         path,
@@ -264,6 +270,11 @@ pub async fn handle_analyze_defect_prediction(
     perf: bool,
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     // Delegate to the real implementation
     crate::cli::analysis::defect_prediction::handle_analyze_defect_prediction(
         project_path,
@@ -302,6 +313,11 @@ pub async fn handle_analyze_comprehensive(
     perf: bool,
     executive_summary: bool,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use super::comprehensive_analysis_handler::ComprehensiveAnalysisConfig;
 
     // Create config struct
@@ -347,6 +363,11 @@ pub async fn handle_analyze_graph_metrics(
     top_k: usize,
     min_centrality: f64,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     // Delegate to the actual implementation
     crate::cli::analysis::graph_metrics::handle_analyze_graph_metrics(
         project_path,
@@ -381,6 +402,11 @@ pub async fn handle_analyze_symbol_table(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     // Delegate to the actual implementation
     crate::cli::analysis::symbol_table::handle_analyze_symbol_table(
         project_path,

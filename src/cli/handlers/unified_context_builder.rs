@@ -16,6 +16,11 @@ pub struct UnifiedContextBuilder {
 
 impl UnifiedContextBuilder {
     pub fn new(project_path: &Path) -> Self {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         Self {
             output: String::new(),
             project_path: project_path.to_path_buf(),

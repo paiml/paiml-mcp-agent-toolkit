@@ -3,6 +3,7 @@ pub async fn analyze_project_with_persistent_cache(
     toolchain: &str,
     cache_manager: Option<Arc<PersistentCacheManager>>,
 ) -> Result<ProjectContext, TemplateError> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let gitignore = build_gitignore(root_path)?;
     let files =
         scan_and_analyze_files_persistent(root_path, toolchain, cache_manager, &gitignore).await;

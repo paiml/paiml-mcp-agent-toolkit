@@ -5,6 +5,8 @@ pub async fn handle_spec_sync(
     dry_run: bool,
     direction: crate::cli::commands::SpecSyncDirection,
 ) -> anyhow::Result<()> {
+    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     use crate::cli::commands::SpecSyncDirection;
     use crate::services::roadmap_service::RoadmapService;
     use regex::Regex;
@@ -154,6 +156,8 @@ pub async fn handle_spec_drift(
     roadmap_path: &Path,
     format: SpecOutputFormat,
 ) -> anyhow::Result<()> {
+    debug_assert!(spec_path.exists(), "spec_path must exist: {}", spec_path.display());
+    debug_assert!(roadmap_path.exists(), "roadmap_path must exist: {}", roadmap_path.display());
     use crate::services::roadmap_service::RoadmapService;
     use regex::Regex;
     use std::collections::HashSet;

@@ -11,6 +11,7 @@ pub async fn handle_analyze_webassembly(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🔍 Analyzing WebAssembly files...");
     let start = std::time::Instant::now();
 

@@ -113,12 +113,14 @@ pub struct LanguageOverride {
 
 impl TdgConfig {
     pub fn from_file(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
         let config: Self = toml::from_str(&content)?;
         Ok(config)
     }
 
     pub fn save(&self, path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = toml::to_string_pretty(self)?;
         std::fs::write(path, content)?;
         Ok(())

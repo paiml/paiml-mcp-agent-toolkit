@@ -55,6 +55,7 @@ impl ToolRegistry {
     }
 
     pub fn get(&self, name: &str) -> Option<Arc<dyn McpTool>> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.tools.get(name).cloned()
     }
 }
@@ -220,6 +221,7 @@ impl PromptRegistry {
     }
 
     pub fn get(&self, name: &str) -> Option<Arc<dyn McpPrompt>> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.prompts.get(name).cloned()
     }
 }

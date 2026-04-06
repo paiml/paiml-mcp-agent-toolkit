@@ -55,6 +55,7 @@ impl WebSocketTransportAdapter {
     /// # }
     /// ```
     pub async fn connect(url: &str) -> Result<Self, TransportError> {
+        debug_assert!(!url.is_empty(), "url must not be empty");
         info!("Connecting to WebSocket at {}", url);
         
         let inner = WebSocketTransport::connect(url)
@@ -130,6 +131,7 @@ impl WebSocketTransportAdapter {
     
     /// Creates a WebSocket transport as a boxed TransportAdapter.
     pub async fn boxed(url: &str) -> Result<Box<dyn TransportAdapter>, TransportError> {
+        debug_assert!(!url.is_empty(), "url must not be empty");
         Ok(Box::new(Self::connect(url).await?))
     }
 }

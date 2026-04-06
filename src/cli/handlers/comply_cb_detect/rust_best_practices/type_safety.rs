@@ -15,6 +15,11 @@ use std::path::Path;
 
 /// CB-501: Unwrap Density - too many .unwrap() per file in production code
 pub fn detect_cb501_unwrap_density(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -71,6 +76,11 @@ pub fn detect_cb501_unwrap_density(project_path: &Path) -> Vec<CbPatternViolatio
 
 /// CB-502: Expect Quality - lazy or empty .expect() messages
 pub fn detect_cb502_expect_quality(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -136,6 +146,11 @@ pub fn detect_cb502_expect_quality(project_path: &Path) -> Vec<CbPatternViolatio
 
 /// CB-506: String Byte Indexing - &str[n..m] can panic on non-ASCII
 pub fn detect_cb506_string_byte_indexing(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -184,6 +199,11 @@ pub fn detect_cb506_string_byte_indexing(project_path: &Path) -> Vec<CbPatternVi
 
 /// CB-508: Lossy Numeric Casts - `as u8`, `as i32`, etc. without bounds checking
 pub fn detect_cb508_lossy_numeric_casts(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -239,6 +259,11 @@ pub fn detect_cb508_lossy_numeric_casts(project_path: &Path) -> Vec<CbPatternVio
 
 /// CB-515: Catch-All Match Default - `_ =>` returning concrete values instead of errors
 pub fn detect_cb515_catch_all_match_default(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -343,6 +368,11 @@ pub fn detect_cb515_catch_all_match_default(project_path: &Path) -> Vec<CbPatter
 
 /// CB-516: Hardcoded Magic Numbers - large numeric literals in configuration contexts
 pub fn detect_cb516_hardcoded_magic_numbers(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,

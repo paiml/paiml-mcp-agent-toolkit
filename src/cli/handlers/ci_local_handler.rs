@@ -24,6 +24,7 @@ pub async fn handle_ci_local(
     fix: bool,
     verbose: bool,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::cli::colors as c;
 
     println!("{}\n", c::header("PMAT Local CI Simulation"));

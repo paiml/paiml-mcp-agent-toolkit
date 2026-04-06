@@ -58,6 +58,7 @@ impl ClippyFixEngine {
         source: &str,
         diagnostic: &ClippyDiagnostic,
     ) -> Result<FixResult> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let start = std::time::Instant::now();
 
         // Check cache first
@@ -115,6 +116,7 @@ impl ClippyFixEngine {
         source: &str,
         diagnostic: &ClippyDiagnostic,
     ) -> Result<FixResult> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let result = self.apply_fix(source, diagnostic).await?;
 
         // Validate the fix compiles

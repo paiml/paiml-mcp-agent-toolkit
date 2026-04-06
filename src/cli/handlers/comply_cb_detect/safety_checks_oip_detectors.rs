@@ -97,6 +97,7 @@ fn check_file_for_lock_poisoning(entry: &Path) -> Vec<CbPatternViolation> {
 }
 
 pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     let src_dir = project_path.join("src");
@@ -163,6 +164,7 @@ pub(super) fn check_serde_line(
 }
 
 pub fn detect_cb122_serde_safety(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let serde_patterns = [
         "serde_json::from_str",
         "serde_json::from_slice",
@@ -222,6 +224,7 @@ fn check_file_for_undocumented_ignore(entry: &Path) -> Vec<CbPatternViolation> {
 }
 
 pub fn detect_cb123_undocumented_ignore(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     [project_path.join("src"), project_path.join("tests")]
         .iter()
         .filter(|d| d.exists())
@@ -284,6 +287,7 @@ fn check_config_file_for_coverage(config_path: &Path) -> Vec<CbPatternViolation>
 }
 
 pub fn detect_cb124_coverage_threshold(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let config_files = [
         project_path.join(".cargo").join("config.toml"),
         project_path.join("tarpaulin.toml"),

@@ -24,6 +24,7 @@ pub async fn handle_analyze_satd(
     fail_on_violation: bool,
     timeout: u64,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Print analysis info
     print_satd_analysis_info(strict, timeout);
 

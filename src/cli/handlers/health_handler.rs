@@ -100,6 +100,11 @@ pub async fn run_health_checks_internal(
     project_dir: &PathBuf,
     config: &HealthCheckConfig,
 ) -> Result<HealthReport> {
+    debug_assert!(
+        project_dir.exists(),
+        "project_dir must exist: {}",
+        project_dir.display()
+    );
     // Determine which checks to run based on flags
     let checks_to_run = determine_checks_to_run(
         config.quick,
@@ -149,6 +154,11 @@ pub async fn handle_maintain_health(
     format: OutputFormat,
     config: HealthCheckConfig,
 ) -> Result<()> {
+    debug_assert!(
+        project_dir.exists(),
+        "project_dir must exist: {}",
+        project_dir.display()
+    );
     let report = run_health_checks_internal(&project_dir, &config).await?;
 
     print_health_report(&report, &format)?;

@@ -34,6 +34,7 @@ impl WorkerTempFile {
     ///
     /// A new WorkerTempFile instance
     pub fn with_path(path: PathBuf) -> Self {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self {
             path,
             cleaned_up: false,
@@ -158,6 +159,7 @@ impl WorkerTempFile {
     ///
     /// Returns an error if copying fails
     pub async fn copy_to(&self, dest: &Path) -> Result<()> {
+        debug_assert!(dest.exists(), "dest must exist: {}", dest.display());
         fs::copy(&self.path, dest).await.with_context(|| {
             format!(
                 "Failed to copy temporary file from {} to {}",

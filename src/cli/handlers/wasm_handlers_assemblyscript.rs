@@ -10,6 +10,7 @@ pub async fn handle_analyze_assemblyscript(
     _timeout: u64,
     perf: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🔍 Analyzing AssemblyScript code...");
     let start = std::time::Instant::now();
 

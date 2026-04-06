@@ -2,6 +2,7 @@
 
 /// Convert CamelCase to snake_case.
 pub(crate) fn to_snake_case(name: &str) -> String {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     let chars: Vec<char> = name.chars().collect();
     let mut result = String::with_capacity(name.len() + 4);
     let mut prev_lower = false;

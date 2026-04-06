@@ -5,6 +5,7 @@ impl WasmModuleAnalyzer {
     /// Creates a new WASM module analyzer
     #[must_use]
     pub fn new(file_path: &Path) -> Self {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),

@@ -3,6 +3,7 @@
 impl TDGCalculator {
     /// Analyze directory and generate TDG summary
     pub async fn analyze_directory(&self, path: &Path) -> Result<TDGSummary> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let files = self.discover_files(path).await?;
         let scores = self.calculate_batch(files.clone()).await?;
 
@@ -74,6 +75,7 @@ impl TDGCalculator {
 
     /// Generate detailed TDG analysis with recommendations
     pub async fn analyze_path(&self, path: &Path) -> Result<TDGAnalysis> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let score = self.calculate_file(path).await?;
         let explanation = self.generate_explanation(&score);
         let recommendations = self.generate_recommendations(&score, path).await?;

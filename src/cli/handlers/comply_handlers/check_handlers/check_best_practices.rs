@@ -93,6 +93,11 @@ fn aggregate_violations(
 }
 
 pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     use comply_cb_detect::{
         detect_cb400_git_hooks_quality, detect_cb401_makefile_quality,
         detect_cb402_shell_script_quality,
@@ -170,6 +175,11 @@ pub(crate) fn check_shell_makefile_quality(project_path: &Path) -> ComplianceChe
 }
 
 pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let report = comply_cb_detect::detect_cb130_agent_context_adoption(project_path);
     let mut issues: Vec<String> = Vec::new();
     let mut warning_count = 0;
@@ -249,6 +259,11 @@ pub(crate) fn check_agent_context_adoption(project_path: &Path) -> ComplianceChe
 
 #[allow(dead_code)]
 pub(crate) fn check_rust_best_practices(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     check_rust_best_practices_with_config(project_path, None)
 }
 
@@ -256,6 +271,11 @@ pub(crate) fn check_rust_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
 ) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if !project_path.join("Cargo.toml").exists() {
         return ComplianceCheck {
             name: "CB-500: Rust Best Practices (CB-500 to CB-530)".into(),
@@ -400,6 +420,11 @@ pub(crate) fn check_rust_best_practices_with_config(
 
 #[allow(dead_code)]
 pub(crate) fn check_lua_best_practices(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     check_lua_best_practices_with_config(project_path, None)
 }
 
@@ -407,6 +432,11 @@ pub(crate) fn check_lua_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
 ) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if comply_cb_detect::walkdir_lua_files(project_path).is_empty() {
         return ComplianceCheck {
             name: "CB-600: Lua Best Practices (CB-600 to CB-619)".into(),
@@ -507,12 +537,22 @@ pub(crate) fn check_lua_best_practices_with_config(
 
 #[allow(dead_code)]
 pub(crate) fn check_sql_best_practices(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     check_sql_best_practices_with_config(project_path, None)
 }
 pub(crate) fn check_sql_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
 ) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if comply_cb_detect::walkdir_sql_files(project_path).is_empty() {
         return ComplianceCheck {
             name: "CB-700: SQL Best Practices (CB-700 to CB-705)".into(),
@@ -557,12 +597,22 @@ pub(crate) fn check_sql_best_practices_with_config(
 
 #[allow(dead_code)]
 pub(crate) fn check_markdown_best_practices(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     check_markdown_best_practices_with_config(project_path, None)
 }
 pub(crate) fn check_markdown_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
 ) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if comply_cb_detect::walkdir_markdown_files(project_path).is_empty() {
         return ComplianceCheck {
             name: "CB-900: Markdown Best Practices (CB-900 to CB-904)".into(),
@@ -603,12 +653,22 @@ pub(crate) fn check_markdown_best_practices_with_config(
 
 #[allow(dead_code)]
 pub(crate) fn check_yaml_best_practices(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     check_yaml_best_practices_with_config(project_path, None)
 }
 pub(crate) fn check_yaml_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
 ) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if comply_cb_detect::walkdir_yaml_files(project_path).is_empty() {
         return ComplianceCheck {
             name: "CB-950: YAML Best Practices (CB-950 to CB-954)".into(),
@@ -649,12 +709,22 @@ pub(crate) fn check_yaml_best_practices_with_config(
 
 #[allow(dead_code)]
 pub(crate) fn check_model_quality(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     check_model_quality_with_config(project_path, None)
 }
 pub(crate) fn check_model_quality_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
 ) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if comply_cb_detect::walkdir_model_files(project_path).is_empty() {
         return ComplianceCheck {
             name: "CB-1000: MLOps Model Quality (CB-1000 to CB-1008)".into(),
@@ -707,12 +777,22 @@ pub(crate) fn check_model_quality_with_config(
 
 #[allow(dead_code)]
 pub(crate) fn check_scala_best_practices(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     check_scala_best_practices_with_config(project_path, None)
 }
 pub(crate) fn check_scala_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
 ) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if comply_cb_detect::walkdir_scala_files(project_path).is_empty() {
         return ComplianceCheck {
             name: "CB-800: Scala Best Practices (CB-800 to CB-805)".into(),
@@ -757,12 +837,22 @@ pub(crate) fn check_scala_best_practices_with_config(
 
 #[allow(dead_code)]
 pub(crate) fn check_lean_best_practices(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     check_lean_best_practices_with_config(project_path, None)
 }
 pub(crate) fn check_lean_best_practices_with_config(
     project_path: &Path,
     comply_config: Option<&ComplyConfig>,
 ) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if comply_cb_detect::walkdir_lean_files(project_path).is_empty() {
         return ComplianceCheck {
             name: "CB-1050: Lean 4 Best Practices (CB-1050 to CB-1053)".into(),

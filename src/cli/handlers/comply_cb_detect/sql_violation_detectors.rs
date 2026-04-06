@@ -6,6 +6,7 @@
 // =============================================================================
 
 pub fn detect_cb700_select_star(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
     let mut violations = Vec::new();
 
@@ -62,6 +63,7 @@ pub fn detect_cb700_select_star(project_path: &Path) -> Vec<CbPatternViolation> 
 // =============================================================================
 
 pub fn detect_cb701_missing_where(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
     let mut violations = Vec::new();
 
@@ -155,6 +157,7 @@ fn has_implicit_join(lower: &str) -> bool {
 }
 
 pub fn detect_cb702_implicit_join(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
     let mut violations = Vec::new();
 
@@ -194,6 +197,7 @@ pub fn detect_cb702_implicit_join(project_path: &Path) -> Vec<CbPatternViolation
 // =============================================================================
 
 pub fn detect_cb703_sql_injection(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
     let mut violations = Vec::new();
 
@@ -252,6 +256,7 @@ pub fn detect_cb703_sql_injection(project_path: &Path) -> Vec<CbPatternViolation
 // =============================================================================
 
 pub fn detect_cb704_missing_index_hint(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_sql_files(project_path);
     let mut violations = Vec::new();
 
@@ -307,6 +312,7 @@ pub fn detect_cb704_missing_index_hint(project_path: &Path) -> Vec<CbPatternViol
 /// Detect SQL queries embedded inside loops in co-located code files.
 /// Looks for patterns like `for row in results: cursor.execute("SELECT ...")`.
 pub fn detect_cb705_n_plus_1_query(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let code_extensions = ["py", "rb", "php", "java", "js", "ts"];
     let mut code_files: Vec<PathBuf> = Vec::new();
     collect_code_files(project_path, &code_extensions, &mut code_files);

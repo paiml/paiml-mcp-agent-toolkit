@@ -26,6 +26,11 @@ pub async fn handle_analyze_similarity(
     output: Option<PathBuf>,
     top_files: usize,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let start = if perf { Some(Instant::now()) } else { None };
     eprintln!("🔍 Advanced similarity analysis starting...");
 

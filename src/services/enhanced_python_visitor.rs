@@ -27,6 +27,11 @@ impl EnhancedPythonVisitor {
     /// Creates a new enhanced Python visitor
     #[must_use]
     pub fn new(file_path: &Path, source: &str) -> Self {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),

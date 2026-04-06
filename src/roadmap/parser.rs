@@ -26,6 +26,7 @@ fn create_parsers() -> Result<Parsers> {
 
 /// Parse a roadmap from markdown content
 pub fn parse_roadmap(content: &str) -> Result<Roadmap> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut roadmap = Roadmap {
         current_sprint: None,
         sprints: HashMap::new(),

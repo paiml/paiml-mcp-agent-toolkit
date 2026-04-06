@@ -28,6 +28,7 @@ impl DemoRunner {
     }
 
     pub async fn execute(&mut self, repo_path: PathBuf) -> Result<DemoReport> {
+        debug_assert!(repo_path.exists(), "repo_path must exist: {}", repo_path.display());
         self.execute_with_diagram(&repo_path, None).await
     }
 

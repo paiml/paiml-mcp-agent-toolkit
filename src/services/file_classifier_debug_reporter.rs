@@ -38,6 +38,7 @@ impl DebugReporter {
     }
 
     pub fn record_decision(&mut self, file: &Path, decision: &ParseDecision) {
+        debug_assert!(file.exists(), "file must exist: {}", file.display());
         let event = DebugEvent {
             timestamp_ms: self.start_time.elapsed().as_millis() as u64,
             file: file.to_path_buf(),

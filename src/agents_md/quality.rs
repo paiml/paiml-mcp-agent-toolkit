@@ -134,6 +134,7 @@ impl AgentQualityGate {
 
     /// Validate agent-generated code
     pub fn validate_code(&self, code: &str) -> Result<QualityReport> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut issues = Vec::new();
         let mut score: f64 = 100.0;
 
@@ -179,6 +180,7 @@ impl AgentQualityGate {
 
     /// Detect SATD
     pub fn detect_satd(&self, content: &str) -> Result<SatdReport> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut locations = Vec::new();
         let satd_patterns = [
             concat!("TO", "DO"),
@@ -206,6 +208,7 @@ impl AgentQualityGate {
 
     /// Auto-fix quality issues
     pub fn auto_fix(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         if !self.config.auto_fix {
             return Ok(code.to_string());
         }

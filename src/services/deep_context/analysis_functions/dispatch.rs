@@ -18,6 +18,11 @@ use super::systems::{
 /// Analyze a single source file and extract AST items
 /// Toyota Way refactored: Reduced complexity from 14 to <8 using Extract Method
 pub async fn analyze_single_file(file_path: &std::path::Path) -> anyhow::Result<FileContext> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     let path_str = file_path.to_string_lossy().to_string();
     let language = detect_language(file_path);
 
@@ -42,6 +47,11 @@ pub async fn analyze_file_by_language(
     file_path: &std::path::Path,
     language: &str,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     match language {
         // Core languages with full AST analysis
         "rust" => analyze_rust_language(file_path).await,

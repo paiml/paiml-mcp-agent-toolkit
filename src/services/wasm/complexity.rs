@@ -77,6 +77,7 @@ impl WasmComplexityAnalyzer {
 
     /// Analyze text complexity  
     pub fn analyze_text(&self, content: &str) -> Result<WasmComplexity> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let line_count = content.lines().count();
         let function_count = content.matches("func").count();
         let complexity_score = (function_count * 2) + (line_count / 10);

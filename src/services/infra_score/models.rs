@@ -231,6 +231,8 @@ impl InfraCategoryScore {
 
 impl InfraCheck {
     pub fn pass(id: &str, name: &str, max_score: f64, evidence: Vec<String>) -> Self {
+        debug_assert!(!id.is_empty(), "id must not be empty");
+        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             id: id.to_string(),
             name: name.to_string(),
@@ -242,6 +244,8 @@ impl InfraCheck {
     }
 
     pub fn fail(id: &str, name: &str, max_score: f64, evidence: Vec<String>) -> Self {
+        debug_assert!(!id.is_empty(), "id must not be empty");
+        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             id: id.to_string(),
             name: name.to_string(),
@@ -259,6 +263,8 @@ impl InfraCheck {
         max_score: f64,
         evidence: Vec<String>,
     ) -> Self {
+        debug_assert!(!id.is_empty(), "id must not be empty");
+        debug_assert!(!name.is_empty(), "name must not be empty");
         Self {
             id: id.to_string(),
             name: name.to_string(),
@@ -272,6 +278,11 @@ impl InfraCheck {
 
 impl InfraScoreMetadata {
     pub fn new(repository_path: PathBuf) -> Self {
+        debug_assert!(
+            repository_path.exists(),
+            "repository_path must exist: {}",
+            repository_path.display()
+        );
         Self {
             timestamp: chrono::Utc::now().to_rfc3339(),
             repository_path,

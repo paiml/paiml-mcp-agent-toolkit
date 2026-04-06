@@ -12,6 +12,7 @@ pub async fn handle_analyze_satd(
     metrics: bool,
     output: Option<PathBuf>,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::satd_detector::SATDDetector;
     eprintln!("🔍 Analyzing Self-Admitted Technical Debt (SATD)...");
 

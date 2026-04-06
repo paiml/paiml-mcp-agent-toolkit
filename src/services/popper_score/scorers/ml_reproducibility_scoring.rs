@@ -1,6 +1,7 @@
 impl MLReproducibilityScorer {
     /// Detect if the project is an ML project
     pub fn is_ml_project(&self, project_path: &Path) -> bool {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         has_ml_files(project_path)
             || has_ml_requirements(project_path)
             || has_rust_ml_crates(project_path)

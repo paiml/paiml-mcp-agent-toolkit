@@ -65,6 +65,7 @@ impl AgentContextIndex {
 
     /// Find function index by file path and name
     pub fn find_function_index(&self, file_path: &str, function_name: &str) -> Option<usize> {
+        debug_assert!(!function_name.is_empty(), "function_name must not be empty");
         self.functions
             .iter()
             .position(|f| f.file_path == file_path && f.function_name == function_name)

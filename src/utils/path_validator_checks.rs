@@ -10,6 +10,7 @@ impl PathValidator {
     /// assert!(PathValidator::ensure_exists(existing_path).is_ok());
     /// ```
     pub fn ensure_exists(path: &Path) -> Result<(), PathValidationError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !path.exists() {
             return Err(PathValidationError::NotFound {
                 path: path.to_path_buf(),
@@ -33,6 +34,7 @@ impl PathValidator {
     /// ```
     #[must_use]
     pub fn path_exists(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.exists()
     }
 
@@ -47,6 +49,7 @@ impl PathValidator {
     /// assert!(PathValidator::ensure_file(file_path).is_ok());
     /// ```
     pub fn ensure_file(path: &Path) -> Result<(), PathValidationError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::ensure_exists(path)?;
 
         if !path.is_file() {
@@ -72,6 +75,7 @@ impl PathValidator {
     /// ```
     #[must_use]
     pub fn is_valid_file(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.exists() && path.is_file()
     }
 
@@ -86,6 +90,7 @@ impl PathValidator {
     /// assert!(PathValidator::ensure_directory(dir_path).is_ok());
     /// ```
     pub fn ensure_directory(path: &Path) -> Result<(), PathValidationError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::ensure_exists(path)?;
 
         if !path.is_dir() {
@@ -111,11 +116,13 @@ impl PathValidator {
     /// ```
     #[must_use]
     pub fn is_valid_directory(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.exists() && path.is_dir()
     }
 
     /// Validate that a path exists and is readable
     pub fn ensure_readable(path: &Path) -> Result<(), PathValidationError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::ensure_exists(path)?;
 
         // Check if we can read the file/directory
@@ -131,6 +138,7 @@ impl PathValidator {
     ///
     /// Returns the parent directory if the path is a file, or the path itself if it's a directory
     pub fn get_valid_parent(path: &Path) -> Result<&Path, PathValidationError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::ensure_exists(path)?;
 
         if path.is_file() {
@@ -149,6 +157,7 @@ impl PathValidator {
     /// Check if path is a valid source file (with common extensions)
     #[must_use]
     pub fn is_source_file(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !path.is_file() {
             return false;
         }
@@ -165,6 +174,7 @@ impl PathValidator {
 
     /// Validate path exists and return appropriate error for anyhow
     pub fn validate_exists_anyhow(path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !path.exists() {
             return Err(anyhow!("Path does not exist: {}", path.display()));
         }
@@ -173,6 +183,7 @@ impl PathValidator {
 
     /// Validate path is file and return appropriate error for anyhow
     pub fn validate_file_anyhow(path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::validate_exists_anyhow(path)?;
 
         if !path.is_file() {
@@ -183,6 +194,7 @@ impl PathValidator {
 
     /// Validate path is directory and return appropriate error for anyhow
     pub fn validate_directory_anyhow(path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self::validate_exists_anyhow(path)?;
 
         if !path.is_dir() {

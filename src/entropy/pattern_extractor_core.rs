@@ -11,6 +11,7 @@ impl PatternExtractor {
 
     /// Extract patterns from project using pmat context
     pub async fn extract_patterns(&self, project_path: &Path) -> Result<PatternCollection> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Get project context with AST
         let context = self.get_project_context(project_path).await?;
 

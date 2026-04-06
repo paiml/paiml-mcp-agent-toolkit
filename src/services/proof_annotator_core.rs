@@ -18,6 +18,7 @@ impl ProofAnnotator {
 
     /// Collect proof annotations from all sources in parallel
     pub async fn collect_proofs(&self, project_root: &Path) -> ProofMap {
+        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let start = Instant::now();
         let mut join_set = JoinSet::new();
 

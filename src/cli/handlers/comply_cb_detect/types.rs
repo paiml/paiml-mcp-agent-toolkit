@@ -120,6 +120,11 @@ pub fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usiz
 /// Scan Rust files for CB-020 (unsafe without SAFETY comment)
 /// NOTE: Skips test code (#[cfg(test)], mod tests, #[test]) - test code can use .unwrap() freely
 pub fn detect_cb020_unsafe_without_safety(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {
         Ok(e) => e,
@@ -170,6 +175,7 @@ fn has_preceding_safety_comment(lines: &[&str], line_num: usize) -> bool {
 
 /// Helper to walk directory for .rs files
 pub fn walkdir_rs_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::Error> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
@@ -186,6 +192,7 @@ pub fn walkdir_rs_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, std::io::
 /// Check if a file is entirely test code based on naming conventions.
 /// Matches: *_tests.rs, *_test.rs, tests.rs, tests_*.rs, *_tests_*.rs (include!() fragments)
 pub fn is_test_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     name.ends_with("_tests")
         || name.ends_with("_test")

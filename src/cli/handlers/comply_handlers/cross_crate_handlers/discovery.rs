@@ -18,6 +18,11 @@ pub fn discover_workspace_crates(
     workspace_path: &Path,
     explicit_crates: Option<&[PathBuf]>,
 ) -> Vec<CrateInfo> {
+    debug_assert!(
+        workspace_path.exists(),
+        "workspace_path must exist: {}",
+        workspace_path.display()
+    );
     // Priority 1: Explicit --crates flag
     if let Some(paths) = explicit_crates {
         if !paths.is_empty() {
@@ -369,6 +374,11 @@ pub(super) fn read_crate_name(cargo_toml: &Path) -> Option<String> {
 /// Parse dependency names from a Cargo.toml [dependencies] section.
 /// Simple string parser — no full TOML parser needed.
 pub fn read_cargo_deps(cargo_toml: &Path) -> Vec<String> {
+    debug_assert!(
+        cargo_toml.exists(),
+        "cargo_toml must exist: {}",
+        cargo_toml.display()
+    );
     let Ok(content) = std::fs::read_to_string(cargo_toml) else {
         return Vec::new();
     };

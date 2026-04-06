@@ -163,6 +163,7 @@ impl CargoMutantsReport {
     /// let report = CargoMutantsReport::from_output_dir(&output_dir)?;
     /// ```
     pub fn from_output_dir(dir: &std::path::Path) -> Result<Self> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         // Read outcomes.json
         let outcomes_path = dir.join("outcomes.json");
         let outcomes_json = std::fs::read_to_string(&outcomes_path)

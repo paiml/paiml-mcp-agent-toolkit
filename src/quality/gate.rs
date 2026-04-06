@@ -126,6 +126,11 @@ impl QualityGateRunner {
     }
 
     pub fn validate_module(&self, module_path: &Path) -> Result<QualityReport, QualityViolation> {
+        debug_assert!(
+            module_path.exists(),
+            "module_path must exist: {}",
+            module_path.display()
+        );
         let source = fs::read_to_string(module_path)
             .map_err(|e| QualityViolation::ParseError(e.to_string()))?;
 

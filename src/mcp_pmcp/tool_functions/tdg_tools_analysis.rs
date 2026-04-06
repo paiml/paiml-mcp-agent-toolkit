@@ -136,6 +136,8 @@ pub async fn compare_tdg(
     path2: &Path,
     with_git_context: Option<bool>, // Sprint 65: Git-commit correlation
 ) -> Result<Value> {
+    debug_assert!(path1.exists(), "path1 must exist: {}", path1.display());
+    debug_assert!(path2.exists(), "path2 must exist: {}", path2.display());
     use crate::tdg::TdgAnalyzer;
 
     let mut analyzer = TdgAnalyzer::new()?;

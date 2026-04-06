@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 /// Walk directory recursively for `.lua` files, skipping common non-source dirs.
 pub fn walkdir_lua_files(dir: &Path) -> Vec<PathBuf> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     walk_lua_recursive(dir, &mut files);
     files
@@ -37,6 +38,7 @@ fn walk_lua_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 
 /// Check if a file is a Lua test file based on naming conventions.
 pub fn is_lua_test_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     if stem.ends_with("_test") || stem.ends_with("_spec") || stem.starts_with("test_") {
         return true;
@@ -50,6 +52,7 @@ pub fn is_lua_test_file(path: &Path) -> bool {
 /// Extract production (non-comment) lines from Lua source.
 /// Returns Vec<(1-based line number, trimmed line content)>.
 pub fn compute_lua_production_lines(content: &str) -> Vec<(usize, String)> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut result = Vec::new();
     let mut in_block_comment = false;
 

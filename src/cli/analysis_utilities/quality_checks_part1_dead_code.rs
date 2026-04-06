@@ -52,6 +52,7 @@ pub async fn check_dead_code(
     project_path: &Path,
     max_percentage: f64,
 ) -> Result<Vec<QualityViolation>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::cargo_dead_code_analyzer::CargoDeadCodeAnalyzer;
 
     let mut violations = Vec::new();

@@ -15,6 +15,11 @@ use std::path::Path;
 /// CB-600: Implicit Globals -- assignment without `local` keyword.
 /// Based on luacheck W111/W113.
 pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -72,6 +77,11 @@ pub fn detect_cb600_implicit_globals(project_path: &Path) -> Vec<CbPatternViolat
 /// CB-601: Nil-Unsafe Access -- chained calls on function returns or deep field access.
 /// Based on Luau type system and LuaTaint taint analysis.
 pub fn detect_cb601_nil_unsafe_access(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 

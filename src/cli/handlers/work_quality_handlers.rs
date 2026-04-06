@@ -190,6 +190,11 @@ fn run_clippy_check(project_path: &PathBuf) -> Result<bool> {
 ///
 /// Returns Ok(true) if all gates pass, Ok(false) if any fail, or Err on execution failure.
 pub async fn run_quality_gates(project_path: &PathBuf) -> Result<bool> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let tests_ok = run_changed_module_tests(project_path)?;
     let rust_ok = run_rust_project_checks(project_path)?;
     let traces_ok = run_golden_trace_validation(project_path)?;
@@ -433,6 +438,11 @@ fn falsify_binary_bloat(project_path: &PathBuf, step: usize, total: usize) -> (b
 /// Scientific method: attempt to falsify work claims.
 /// Pass only if all falsification attempts fail (work is valid).
 pub async fn run_popper_falsification(project_path: &PathBuf) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut result = FalsificationResult::default();
     let total = 3;
 

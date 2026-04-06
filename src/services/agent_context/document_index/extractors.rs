@@ -24,6 +24,7 @@ pub(crate) fn extract_document(
     relative_path: &str,
     checksum: &str,
 ) -> Result<Vec<DocumentChunk>, String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     match path
         .extension()
         .and_then(|e| e.to_str())
@@ -43,6 +44,7 @@ pub(crate) fn extract_document(
 
 /// Check if a file extension is a supported document type.
 pub(crate) fn is_document_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     matches!(
         path.extension()
             .and_then(|e| e.to_str())

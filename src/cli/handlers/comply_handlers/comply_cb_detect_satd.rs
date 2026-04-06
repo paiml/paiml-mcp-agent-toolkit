@@ -42,6 +42,7 @@ impl SATDManifestationType {
 
 /// Classify SATD content into Code or Comment manifestation type
 pub fn classify_satd_manifestation(content: &str) -> SATDManifestationType {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     // Code patterns: deterministic runtime failures
     let code_patterns = [
         "todo!",

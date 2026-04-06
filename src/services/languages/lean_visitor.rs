@@ -5,6 +5,7 @@ impl LeanAstVisitor {
     /// Creates a new Lean AST visitor
     #[must_use]
     pub fn new(file_path: &Path) -> Self {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         Self {
             items: Vec::new(),
             _file_path: file_path.to_path_buf(),
@@ -14,6 +15,7 @@ impl LeanAstVisitor {
 
     /// Analyzes Lean 4 source code and extracts AST items (single-pass, complexity <=10)
     pub fn analyze_lean_source(mut self, source: &str) -> Result<Vec<AstItem>, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         if source.trim().is_empty() {
             return Ok(vec![]);
         }

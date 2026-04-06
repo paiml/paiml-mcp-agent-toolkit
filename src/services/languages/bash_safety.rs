@@ -14,6 +14,7 @@ impl ShellSafetyAnalyzer {
 
     /// Analyzes shell script for safety issues (complexity ≤10)
     pub fn analyze_safety(&mut self, source: &str) -> Result<Vec<String>, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut violations = Vec::new();
 
         for line in source.lines() {
@@ -36,6 +37,7 @@ impl ShellSafetyAnalyzer {
 
     /// Checks for common security vulnerabilities (complexity ≤10)
     pub fn check_security_vulnerabilities(&mut self, source: &str) -> Result<Vec<String>, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut vulnerabilities = Vec::new();
 
         for line in source.lines() {
@@ -54,6 +56,7 @@ impl ShellSafetyAnalyzer {
 
     /// Validates best practices compliance (complexity ≤10)
     pub fn validate_best_practices(&mut self, source: &str) -> Result<Vec<String>, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut warnings = Vec::new();
 
         let has_shebang = source.lines().next().unwrap_or("").starts_with("#!");

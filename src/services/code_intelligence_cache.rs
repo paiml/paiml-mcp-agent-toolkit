@@ -83,6 +83,7 @@ impl UnifiedCache {
     /// # });
     /// ```
     pub async fn get(&self, key: &str) -> Option<AnalysisReport> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         self.cache.read().await.peek(key).cloned()
     }
 

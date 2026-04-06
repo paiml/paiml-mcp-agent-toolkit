@@ -118,6 +118,16 @@ impl ValidationReport {
 /// - Time: O(n*m) where n=tickets in roadmap, m=ticket files
 /// - Cyclomatic: 7 (reduced from 11 via Extract Method refactoring)
 pub fn validate_project(roadmap_path: &Path, tickets_dir: &Path) -> Result<ValidationReport> {
+    debug_assert!(
+        roadmap_path.exists(),
+        "roadmap_path must exist: {}",
+        roadmap_path.display()
+    );
+    debug_assert!(
+        tickets_dir.exists(),
+        "tickets_dir must exist: {}",
+        tickets_dir.display()
+    );
     use std::collections::HashMap;
 
     // Parse roadmap

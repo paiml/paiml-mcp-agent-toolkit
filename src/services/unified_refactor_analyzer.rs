@@ -38,6 +38,7 @@ impl RustAnalyzer {
     }
 
     pub fn analyze_file(&self, _path: &Path) -> Result<()> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Ok(())
     }
 }

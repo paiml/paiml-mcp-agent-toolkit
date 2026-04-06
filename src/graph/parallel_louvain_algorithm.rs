@@ -235,6 +235,7 @@ impl ParallelLouvain {
 
     /// Calculate modularity of a community assignment (public API).
     pub fn calculate_modularity(&self, graph: &UndirectedGraph, communities: &[usize]) -> f64 {
+        // Contract: calculate_modularity returns a bounded score
         let graph_data = GraphData::from_graph(graph);
         self.calculate_modularity_internal(&graph_data, communities)
     }

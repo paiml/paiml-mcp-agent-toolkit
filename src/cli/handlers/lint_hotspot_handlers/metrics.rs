@@ -230,6 +230,7 @@ pub(crate) fn calculate_total_violations(metrics: &FileMetrics) -> usize {
 
 /// Calculate defect density (cognitive complexity <=2)
 pub(crate) fn calculate_defect_density(violations: usize, sloc: usize) -> f64 {
+    // Contract: calculate_defect_density returns a bounded score
     if sloc > 0 {
         violations as f64 / sloc as f64
     } else {

@@ -126,6 +126,7 @@ pub(crate) fn format_violation_list(issues: &[String]) -> String {
 
 /// Helper: Create skip check result
 pub(crate) fn skip_check(name: &str, message: &str) -> ComplianceCheck {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     ComplianceCheck {
         name: name.to_string(),
         status: CheckStatus::Skip,
@@ -192,6 +193,11 @@ pub(crate) fn get_changelog_entries(_from: &str, _to: &str) -> Vec<ChangelogEntr
 }
 
 pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Result<ProjectConfig> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let config_path = project_path.join(".pmat").join("project.toml");
     if config_path.exists() {
         let content = std::fs::read_to_string(&config_path)?;
@@ -209,6 +215,11 @@ pub(crate) fn load_or_create_project_config(project_path: &Path) -> anyhow::Resu
 }
 
 pub(crate) fn update_last_check_timestamp(project_path: &Path) -> anyhow::Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let config_path = project_path.join(".pmat").join("project.toml");
     if let Ok(mut config) = load_or_create_project_config(project_path) {
         config.pmat.last_compliance_check = Some(Utc::now());
@@ -284,6 +295,11 @@ pub(crate) fn migrate_project_version(
     target: &str,
     dry_run: bool,
 ) -> anyhow::Result<bool> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if dry_run {
         return Ok(true);
     }
@@ -299,6 +315,11 @@ pub(crate) fn migrate_project_version(
 }
 
 pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let gitignore_path = project_path.join(".gitignore");
     let pmat_entries = [
         ".pmat/backup/",
@@ -335,6 +356,11 @@ pub(crate) fn migrate_gitignore(project_path: &Path, dry_run: bool) -> anyhow::R
 }
 
 pub(crate) fn update_project_config(project_path: &Path, dry_run: bool) -> anyhow::Result<bool> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     migrate_project_version(project_path, PMAT_VERSION, dry_run)
 }
 

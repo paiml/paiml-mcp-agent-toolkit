@@ -290,6 +290,7 @@ pub fn score_brick_profiler(
 
 /// Load BrickProfiler JSON from file
 pub fn load_profiler_json(path: &Path) -> anyhow::Result<BrickProfilerOutput> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = fs::read_to_string(path)?;
     let output: BrickProfilerOutput = serde_json::from_str(&content)?;
     Ok(output)
@@ -297,6 +298,7 @@ pub fn load_profiler_json(path: &Path) -> anyhow::Result<BrickProfilerOutput> {
 
 /// Scan project for brick profiler JSON files
 pub fn find_profiler_files(project_path: &Path) -> Vec<std::path::PathBuf> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut files = Vec::new();
 
     // Common locations for profiler output

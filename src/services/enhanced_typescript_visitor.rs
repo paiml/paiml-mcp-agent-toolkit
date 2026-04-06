@@ -44,6 +44,11 @@ pub struct EnhancedTypeScriptVisitor;
 #[cfg(not(feature = "typescript-ast"))]
 impl EnhancedTypeScriptVisitor {
     pub fn new(_file_path: &std::path::Path) -> Self {
+        debug_assert!(
+            _file_path.exists(),
+            "_file_path must exist: {}",
+            _file_path.display()
+        );
         Self
     }
 

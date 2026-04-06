@@ -140,12 +140,14 @@ impl MLQualityScorer {
 
     /// Save model to file
     pub fn save(&self, _path: &Path) -> Result<()> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Serialization deferred until aprender supports it
         Ok(())
     }
 
     /// Load model from file
     pub fn load(_path: &Path) -> Result<Self> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         // Deserialization deferred until aprender supports it
         Ok(Self::new())
     }

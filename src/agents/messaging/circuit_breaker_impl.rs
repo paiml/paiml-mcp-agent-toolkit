@@ -142,6 +142,7 @@ impl CircuitBreakerManager {
     }
 
     pub fn get_or_create(&self, name: &str) -> Arc<CircuitBreaker> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.breakers
             .entry(name.to_string())
             .or_insert_with(|| Arc::new(CircuitBreaker::new(self.default_config.clone())))

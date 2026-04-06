@@ -113,6 +113,11 @@ impl ProjectMetaDetector {
     }
 
     pub async fn detect(&self, project_root: &Path) -> Vec<MetaFile> {
+        debug_assert!(
+            project_root.exists(),
+            "project_root must exist: {}",
+            project_root.display()
+        );
         let mut tasks = JoinSet::new();
         let mut found_files = Vec::new();
 

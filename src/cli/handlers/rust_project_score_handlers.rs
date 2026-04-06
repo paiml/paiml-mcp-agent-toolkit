@@ -69,6 +69,7 @@ pub async fn handle_rust_project_score(
     output: Option<&Path>,
     full: bool,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Validate path exists
     if !path.exists() {
         anyhow::bail!("Path not found: {}", path.display());

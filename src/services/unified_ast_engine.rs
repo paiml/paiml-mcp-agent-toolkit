@@ -24,10 +24,12 @@ impl UnifiedAstEngine {
     }
 
     pub async fn analyze_project(&self, _path: &Path) -> Result<AstForest> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Ok(AstForest::default())
     }
 
     pub async fn parse_project(&self, _path: &Path) -> Result<AstForest> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Ok(AstForest::default())
     }
 
@@ -45,6 +47,7 @@ impl UnifiedAstEngine {
     /// Generate artifacts for the project
     /// This is a stub implementation for backward compatibility
     pub async fn generate_artifacts(&self, _path: &Path) -> Result<ArtifactTree> {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         Ok(ArtifactTree::default())
     }
 }

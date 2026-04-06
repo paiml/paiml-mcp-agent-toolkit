@@ -336,6 +336,7 @@ impl SATDDetector {
 
     /// Comprehensive false positive detection for SATD
     pub(crate) fn is_likely_test_data_or_pattern(&self, line: &str, file_path: &Path) -> bool {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         // First check: Should we exclude this entire file?
         if self.should_exclude_file(file_path) {
             return true;

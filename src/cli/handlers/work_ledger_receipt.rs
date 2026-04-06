@@ -198,6 +198,7 @@ fn hypothesis_to_claim_id(hypothesis: &str) -> String {
 
 /// Get current git SHA from project path
 pub fn get_current_git_sha(project_path: &Path) -> String {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     std::process::Command::new("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(project_path)

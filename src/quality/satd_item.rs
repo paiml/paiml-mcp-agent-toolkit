@@ -21,6 +21,7 @@ impl SatdDetectorWithItems {
     }
 
     pub fn detect(&self, source: &str) -> Vec<SatdItem> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut items = Vec::new();
 
         for (line_num, line) in source.lines().enumerate() {

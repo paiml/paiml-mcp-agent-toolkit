@@ -1,5 +1,6 @@
 impl IncrementalCoverageAnalyzer {
     pub fn new(_db_path: &Path) -> Result<Self> {
+        debug_assert!(_db_path.exists(), "_db_path must exist: {}", _db_path.display());
         Ok(Self {
             coverage_cache: Arc::new(DashMap::new()),
             ast_cache: Arc::new(DashMap::new()),
@@ -99,6 +100,7 @@ impl IncrementalCoverageAnalyzer {
     }
 
     pub async fn compute_file_hash(&self, path: &Path) -> Result<[u8; 32]> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read(path).await?;
         let hash = blake3::hash(&content);
         Ok(*hash.as_bytes())

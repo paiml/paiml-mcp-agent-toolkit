@@ -129,6 +129,7 @@ impl CorrelationEngine {
         line_match: bool,
         column_match: bool,
     ) -> f64 {
+        // Contract: calculate_confidence returns a bounded score
         match (has_dwarf, has_source_map, line_match, column_match) {
             (true, true, true, true) => 1.0,    // Perfect match
             (true, true, true, false) => 0.98,  // Line match (most important)

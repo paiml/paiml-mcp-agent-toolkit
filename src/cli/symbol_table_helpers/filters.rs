@@ -58,6 +58,7 @@ pub fn passes_type_filter(kind: &str, filter: &Option<super::super::SymbolTypeFi
 /// ```
 #[must_use]
 pub fn passes_query_filter(name: &str, query: &Option<String>) -> bool {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     match query {
         Some(q) => name.to_lowercase().contains(&q.to_lowercase()),
         None => true,

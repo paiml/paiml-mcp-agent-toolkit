@@ -52,6 +52,7 @@ impl RefactoringRegistry {
     ///
     /// Returns an error if the operation fails
     pub async fn apply_refactoring(&self, function_name: &str, file_path: &Path) -> Result<bool> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         if let Some(refactoring) = self.refactorings.get(function_name) {
             refactoring.apply(file_path).await
         } else {
@@ -395,6 +396,7 @@ fn apply_defect_markdown_refactoring(content: &str) -> Result<String> {
 ///
 /// Returns an error if the operation fails
 pub async fn apply_automated_refactorings(project_path: &Path) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     eprintln!("🤖 Starting fully automated refactoring...");
     
     let registry = RefactoringRegistry::new();

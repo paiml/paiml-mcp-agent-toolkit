@@ -9,6 +9,7 @@
 // =============================================================================
 
 pub fn detect_cb803_return_statement(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
 
@@ -74,6 +75,7 @@ fn contains_return_keyword(line: &str) -> bool {
 // =============================================================================
 
 pub fn detect_cb804_var_declaration(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
 
@@ -139,6 +141,7 @@ const BLOCKING_CALLS: &[&str] = &[
 ];
 
 pub fn detect_cb805_blocking_in_future(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
 

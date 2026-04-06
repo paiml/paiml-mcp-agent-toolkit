@@ -14,6 +14,7 @@ const PLACEHOLDER_PRECONDITIONS: &[&str] = &[
 /// FAIL if >70% of preconditions are identical or contain known placeholders
 /// without accompanying domain constraints.
 pub(crate) fn check_precondition_quality(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -236,6 +237,7 @@ fn check_equation_preconditions(
 /// the generated assertion count against YAML precondition count. Falls back
 /// to checking for known placeholder patterns in any generated_contracts.rs file.
 pub(crate) fn check_codegen_fidelity(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -454,6 +456,7 @@ fn find_generated_contracts(project_path: &Path) -> Option<std::path::PathBuf> {
 /// Runs `pv coverage --enforcement <src> --binding <binding.yaml>` and parses
 /// the enforcement score (penetration × quality). E0=0.1, E1=0.5, E2=1.0.
 pub(crate) fn check_enforcement_quality(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     if resolve_contracts_dir(project_path).is_none() {
         return ComplianceCheck {
             name: "CB-1214: Enforcement Quality".into(),

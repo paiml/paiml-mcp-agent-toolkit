@@ -330,6 +330,7 @@ pub async fn validate_generated_code_with_proxy(
     file_path: &str,
     todo: &PdmtTodo,
 ) -> Result<ProxyResponse> {
+    debug_assert!(!code.is_empty(), "code must not be empty");
     let request = ProxyRequest {
         operation: ProxyOperation::Write,
         file_path: file_path.to_string(),

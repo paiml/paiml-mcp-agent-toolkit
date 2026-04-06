@@ -105,6 +105,7 @@ fn filter_and_categorize_files(
 /// Check if a file is a test file based on naming conventions.
 /// Matches: *_tests.rs, *_test.rs, tests/*.rs, test_*.rs
 pub(crate) fn is_test_file(path: &std::path::Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
     // Common Rust test file patterns

@@ -31,6 +31,7 @@ const GENERIC_PLACEHOLDERS: &[&str] = &[
 /// WARN on unknown structure. FAIL if >20% unclassified.
 /// Also detects semantic leaks: API-pattern contracts disguised as kernel-math.
 pub(crate) fn check_contract_surface_classification(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -179,6 +180,7 @@ pub(crate) fn check_contract_surface_classification(project_path: &Path) -> Comp
 /// FAIL if >3 OutputFormat definitions (severe duplication).
 /// WARN if any clap arg structs lack validation contracts.
 pub(crate) fn check_cli_arg_contracts(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     if !src_dir.exists() {
         return ComplianceCheck {
@@ -272,6 +274,7 @@ pub(crate) fn check_cli_arg_contracts(project_path: &Path) -> ComplianceCheck {
 /// Checks .github/workflows/ for known required patterns (RUST_MIN_STACK,
 /// --lib flag in cargo test) and Cargo.toml for sovereign dep contracts.
 pub(crate) fn check_config_contracts(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut issues: Vec<String> = Vec::new();
     let mut checks_run = 0usize;
 
@@ -322,6 +325,7 @@ pub(crate) fn check_config_contracts(project_path: &Path) -> ComplianceCheck {
 /// Checks Cargo.toml for sovereign stack dependencies and verifies they
 /// meet minimum version contracts. Also checks for adapter pattern.
 pub(crate) fn check_sovereign_dep_contracts(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let cargo_toml = project_path.join("Cargo.toml");
     if !cargo_toml.exists() {
         return ComplianceCheck {
@@ -420,6 +424,7 @@ pub(crate) fn check_sovereign_dep_contracts(project_path: &Path) -> ComplianceCh
 /// Counts MCP arg structs (Deserialize structs in mcp_pmcp/) and checks
 /// for schema documentation. WARN if >20 arg structs lack doc comments.
 pub(crate) fn check_mcp_schema_contracts(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mcp_dir = project_path.join("src").join("mcp_pmcp");
     if !mcp_dir.exists() {
         return ComplianceCheck {
@@ -521,6 +526,7 @@ pub(crate) fn check_mcp_schema_contracts(project_path: &Path) -> ComplianceCheck
 /// geometry, color, and layout constraint contracts exist with real
 /// preconditions (not placeholders).
 pub(crate) fn check_tui_widget_contracts(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
     // Check if this is a presentar-like project (has presentar-core dep or crate)
     // Only flag as presentar project if it HAS the presentar-core crate as workspace member
@@ -622,6 +628,7 @@ pub(crate) fn check_tui_widget_contracts(project_path: &Path) -> ComplianceCheck
 /// Scans for #[wasm_bindgen] annotations and checks that exported
 /// functions use Result<_, JsValue> (not panic) and have doc comments.
 pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check if WASM target exists
     let has_wasm_dep = project_path.join("Cargo.toml").exists()
         && std::fs::read_to_string(project_path.join("Cargo.toml"))
@@ -773,6 +780,7 @@ pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
 /// Every contract YAML without lean_theorem is a FAIL, listed by name.
 /// Behaves like `pmat tdg` — names every violating file.
 pub(crate) fn check_verification_ladder(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {

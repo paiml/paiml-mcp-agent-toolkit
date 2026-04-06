@@ -1,5 +1,6 @@
 impl PersistentCacheManager {
     pub fn new(config: CacheConfig, cache_dir: PathBuf) -> Result<Self> {
+        debug_assert!(cache_dir.exists(), "cache_dir must exist: {}", cache_dir.display());
         // Create individual cache directories
         let ast_cache_dir = cache_dir.join("ast");
 

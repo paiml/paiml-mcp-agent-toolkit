@@ -3,6 +3,7 @@
 
 /// Walk directory recursively for `.sql` files.
 pub fn walkdir_sql_files(dir: &Path) -> Vec<PathBuf> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     walk_sql_recursive(dir, &mut files);
     files
@@ -33,6 +34,7 @@ fn walk_sql_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 
 /// Check if a SQL file is a test file.
 pub fn is_sql_test_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     if stem.ends_with("_test") || stem.starts_with("test_") {
         return true;
@@ -45,6 +47,7 @@ pub fn is_sql_test_file(path: &Path) -> bool {
 
 /// Compute production lines (strip SQL comments).
 pub fn compute_sql_production_lines(content: &str) -> Vec<(usize, String)> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut result = Vec::new();
     let mut in_block_comment = false;
 

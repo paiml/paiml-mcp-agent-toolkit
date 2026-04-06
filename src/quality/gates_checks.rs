@@ -8,6 +8,7 @@
 /// - Time: O(codebase size)
 /// - Cyclomatic: 4
 pub fn execute_clippy(config: &GateConfig, project_dir: &Path) -> Result<GateResult> {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
 
     let start = Instant::now();
@@ -57,6 +58,7 @@ pub fn execute_clippy(config: &GateConfig, project_dir: &Path) -> Result<GateRes
 /// - Time: O(test suite size)
 /// - Cyclomatic: 3
 pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResult> {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
 
     let start = Instant::now();
@@ -120,6 +122,7 @@ pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResu
 /// - Time: O(codebase size)
 /// - Cyclomatic: 5
 pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateResult> {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::time::Instant;
 
     let start = Instant::now();
@@ -261,6 +264,7 @@ fn parse_coverage_from_output(output: &str) -> f64 {
 /// - Time: O(1) - placeholder implementation
 /// - Cyclomatic: 2
 pub fn execute_complexity(config: &GateConfig, _project_dir: &Path) -> Result<GateResult> {
+    debug_assert!(_project_dir.exists(), "_project_dir must exist: {}", _project_dir.display());
     use std::time::Instant;
 
     let start = Instant::now();

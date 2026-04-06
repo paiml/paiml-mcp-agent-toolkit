@@ -27,6 +27,7 @@ pub(crate) fn sort_findings(findings: &mut [KaizenFinding]) {
 /// Enrich findings with tarantula suspiciousness scores from LCOV coverage data.
 /// Gracefully does nothing if no coverage data is available.
 pub(crate) fn enrich_with_tarantula(path: &Path, findings: &mut [KaizenFinding]) {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let lcov_candidates = [
         path.join("target/coverage/lcov.info"),
         path.join("target/llvm-cov/lcov.info"),

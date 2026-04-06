@@ -39,60 +39,70 @@ pub const DIM_CYAN: &str = "\x1b[2;36m";
 /// Format a section header (bold + underline)
 #[inline]
 pub fn header(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD}{UNDERLINE}{text}{RESET}")
 }
 
 /// Format a subheader (bold)
 #[inline]
 pub fn subheader(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD}{text}{RESET}")
 }
 
 /// Format a success/pass item
 #[inline]
 pub fn pass(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{GREEN}✓{RESET} {text}")
 }
 
 /// Format a warning item
 #[inline]
 pub fn warn(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{YELLOW}⚠{RESET} {text}")
 }
 
 /// Format a failure/error item
 #[inline]
 pub fn fail(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{RED}✗{RESET} {text}")
 }
 
 /// Format a skipped item
 #[inline]
 pub fn skip(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{DIM}⏭{RESET} {DIM}{text}{RESET}")
 }
 
 /// Format a dimmed/secondary text
 #[inline]
 pub fn dim(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{DIM}{text}{RESET}")
 }
 
 /// Format a file path (cyan, like rg/fd)
 #[inline]
 pub fn path(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{CYAN}{text}{RESET}")
 }
 
 /// Format a number/score (bold white)
 #[inline]
 pub fn number(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD_WHITE}{text}{RESET}")
 }
 
 /// Format a label (bold)
 #[inline]
 pub fn label(text: &str) -> String {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     format!("{BOLD}{text}{RESET}")
 }
 

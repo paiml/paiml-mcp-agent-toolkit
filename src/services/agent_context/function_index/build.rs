@@ -43,6 +43,11 @@ impl AgentContextIndex {
     /// # Returns
     /// Built index ready for queries
     pub fn build(project_path: &Path) -> Result<Self, String> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let project_root = project_path
             .canonicalize()
             .map_err(|e| format!("Invalid project path: {e}"))?;
@@ -272,6 +277,7 @@ impl AgentContextIndex {
 
     /// Get function by exact name
     pub fn get_by_name(&self, name: &str) -> Vec<&FunctionEntry> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.name_index
             .get(name)
             .map(|indices| indices.iter().map(|&i| &self.functions[i]).collect())

@@ -8,6 +8,7 @@ pub(crate) fn extract_image_metadata(
     relative_path: &str,
     checksum: &str,
 ) -> Result<Vec<DocumentChunk>, String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
 
     let filename = path
@@ -43,6 +44,7 @@ pub(crate) fn extract_plaintext(
     relative_path: &str,
     checksum: &str,
 ) -> Result<Vec<DocumentChunk>, String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = std::fs::read_to_string(path)
         .map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
 

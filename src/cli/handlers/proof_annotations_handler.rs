@@ -26,6 +26,11 @@ pub async fn handle_analyze_proof_annotations(
     _perf: bool,
     clear_cache: bool,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     eprintln!("🔍 Collecting proof annotations from project...");
     let start = Instant::now();
 

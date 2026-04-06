@@ -159,6 +159,7 @@ impl QualityMetricsRegistry {
 
     /// Record file metrics
     pub fn record_file_metrics(&self, _path: &PathBuf, metrics: &Metrics) {
+        debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
         self.complexity_gauge.set(f64::from(metrics.complexity));
         self.cognitive_gauge.set(f64::from(metrics.cognitive));
         self.satd_counter.inc_by(u64::from(metrics.satd_count));

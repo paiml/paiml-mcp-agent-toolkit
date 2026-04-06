@@ -78,6 +78,7 @@ fn compute_impact(index: &AgentContextIndex, file_path: &str) -> SplitImpact {
 /// For each cluster, creates `{base}_{cluster_name}.rs` and replaces the
 /// original file with `include!()` directives.
 pub fn execute_split(plan: &SplitPlan, project_root: &Path) -> anyhow::Result<Vec<PathBuf>> {
+    debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
     use std::fs;
 
     let source_path = project_root.join(&plan.source_file);

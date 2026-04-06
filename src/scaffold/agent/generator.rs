@@ -80,6 +80,11 @@ impl GeneratedFiles {
 
     /// Write all files to disk.
     pub async fn write_to_disk(&self, base_path: &Path) -> Result<()> {
+        debug_assert!(
+            base_path.exists(),
+            "base_path must exist: {}",
+            base_path.display()
+        );
         // Create base directory if it doesn't exist
         fs::create_dir_all(base_path).await?;
 
@@ -127,6 +132,7 @@ impl GeneratedFiles {
     /// Check if a file exists in the collection.
     #[must_use]
     pub fn contains_file(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.files.contains_key(path)
     }
 

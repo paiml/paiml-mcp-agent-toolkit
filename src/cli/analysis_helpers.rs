@@ -8,6 +8,7 @@ pub async fn write_analysis_output(
     output_path: Option<PathBuf>,
     success_message: &str,
 ) -> Result<()> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     if let Some(path) = output_path {
         tokio::fs::write(&path, content).await?;
         eprintln!("✅ {} {}", success_message, path.display());
@@ -23,6 +24,7 @@ pub fn merge_ranking_into_json(
     key: &str,
     ranking_data: Value,
 ) -> Result<String> {
+    debug_assert!(!key.is_empty(), "key must not be empty");
     let mut report_json: Value = serde_json::from_str(json_content)?;
     if let Some(obj) = report_json.as_object_mut() {
         obj.insert(key.to_string(), ranking_data);

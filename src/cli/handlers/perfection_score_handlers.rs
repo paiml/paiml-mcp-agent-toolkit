@@ -17,6 +17,7 @@ pub async fn handle_perfection_score(
     output: Option<&Path>,
     fast: bool,
 ) -> anyhow::Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let calculator = PerfectionScoreCalculator::new().fast_mode(fast);
     let mut result = calculator.calculate(path).await?;
 

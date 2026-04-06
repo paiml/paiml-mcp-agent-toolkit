@@ -268,6 +268,7 @@ impl SemanticSearchEngine {
 
     /// Index a directory using local TF-IDF embeddings
     pub async fn index_directory(&self, path: &Path) -> Result<IndexStats, String> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let start = Instant::now();
         let mut stats = IndexStats {
             total_files: 0,

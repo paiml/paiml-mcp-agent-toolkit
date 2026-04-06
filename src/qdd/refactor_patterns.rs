@@ -24,6 +24,7 @@ impl PatternEngine {
     }
 
     pub fn apply_pattern(&self, code: &str, pattern_name: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         match pattern_name {
             "single_responsibility" => self.apply_single_responsibility(code),
             "dependency_injection" => self.apply_dependency_injection(code),

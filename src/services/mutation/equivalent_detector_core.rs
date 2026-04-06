@@ -234,6 +234,7 @@ impl EquivalentMutantDetector {
 
     /// Save detector to file
     pub fn save(&self, path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let serialized = bincode::serialize(self)?;
         std::fs::write(path, serialized)?;
         Ok(())
@@ -241,6 +242,7 @@ impl EquivalentMutantDetector {
 
     /// Load detector from file
     pub fn load(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let data = std::fs::read(path)?;
         let detector = bincode::deserialize(&data)?;
         Ok(detector)

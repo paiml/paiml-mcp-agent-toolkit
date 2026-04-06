@@ -150,6 +150,7 @@ impl DeepContextConfig {
     }
 
     pub fn load_from_file(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
         let mut config: Self = toml::from_str(&content)?;
 
@@ -165,6 +166,7 @@ impl DeepContextConfig {
     }
 
     pub fn save_to_file(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = toml::to_string_pretty(self)?;
         std::fs::write(path, content)?;
         Ok(())

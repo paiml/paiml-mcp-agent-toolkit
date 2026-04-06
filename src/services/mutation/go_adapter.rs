@@ -90,6 +90,7 @@ impl Default for GoAdapter {
 
 /// Find go.mod by traversing up from source file
 pub fn find_go_mod_root(start: &Path) -> Option<&Path> {
+    debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
 
     loop {

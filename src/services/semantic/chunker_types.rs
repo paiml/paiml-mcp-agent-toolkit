@@ -94,6 +94,7 @@ pub struct CodeChunk {
 /// # Returns
 /// Vector of code chunks (functions, classes, modules)
 pub fn chunk_code(source: &str, language: Language) -> Result<Vec<CodeChunk>, String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     // Handle empty input
     if source.trim().is_empty() {
         return Ok(Vec::new());

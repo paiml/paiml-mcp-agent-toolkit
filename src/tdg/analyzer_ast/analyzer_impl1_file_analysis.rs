@@ -1,5 +1,6 @@
 impl TdgAnalyzerAst {
     pub async fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.analyze_file_with_priority(path, OperationPriority::Medium)
             .await
     }
@@ -171,6 +172,7 @@ impl TdgAnalyzerAst {
 
     /// Analyze file with commit priority (for git hooks, CI/CD)
     pub async fn analyze_file_commit(&self, path: &Path) -> Result<TdgScore> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let _guard = if let Some(scheduler) = &self.scheduler {
             Some(
                 scheduler
@@ -188,6 +190,7 @@ impl TdgAnalyzerAst {
 
     /// Analyze file with background priority (for daemon, IDE plugins)
     pub async fn analyze_file_background(&self, path: &Path) -> Result<TdgScore> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let _guard = if let Some(scheduler) = &self.scheduler {
             Some(
                 scheduler

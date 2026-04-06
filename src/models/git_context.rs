@@ -86,6 +86,11 @@ pub enum GitContextError {
 impl GitContext {
     /// Extract git context from the current working directory
     pub fn from_current_dir(repo_path: &Path) -> Result<Self, GitContextError> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         #[cfg(feature = "git-lib")]
         {
             Self::from_current_dir_git2(repo_path)
@@ -98,6 +103,11 @@ impl GitContext {
 
     /// Extract git context from a specific commit SHA
     pub fn from_commit_sha(repo_path: &Path, sha: &str) -> Result<Self, GitContextError> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         #[cfg(feature = "git-lib")]
         {
             Self::from_commit_sha_git2(repo_path, sha)
@@ -110,6 +120,7 @@ impl GitContext {
 
     /// Check if we're in a git repository
     pub fn is_git_repo(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         #[cfg(feature = "git-lib")]
         {
             git2::Repository::open(path).is_ok()
@@ -127,6 +138,11 @@ impl GitContext {
 
     /// Get git context or return None if not in a git repo
     pub fn try_from_current_dir(repo_path: &Path) -> Option<Self> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         Self::from_current_dir(repo_path).ok()
     }
 

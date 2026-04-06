@@ -16,6 +16,11 @@ use std::path::{Path, PathBuf};
 /// - Flags loadfile/load without "t" mode (bytecode injection risk)
 /// - Reports protection level: full, partial, or none
 pub fn detect_cb614_global_protection(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     if files.is_empty() {
         return Vec::new();
@@ -206,6 +211,11 @@ fn report_protection_level(
 /// - coroutine.resume without pcall (crashes on error)
 /// - Coroutine usage counts for complexity awareness
 pub fn detect_cb615_coroutine_checks(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 

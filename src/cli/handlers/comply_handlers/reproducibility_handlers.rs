@@ -54,6 +54,11 @@ pub struct ReproducibilityReport {
 
 /// Check the reproducibility level of a project (CB-301).
 pub fn check_reproducibility(project_path: &Path) -> ReproducibilityReport {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let has_lockfile = check_lockfile(project_path);
     let has_dockerfile = check_dockerfile(project_path);
     let has_ci_config = check_ci(project_path);
@@ -230,6 +235,11 @@ fn check_golden_traces(project_path: &Path) -> bool {
 /// Check if golden traces are passing (CB-302).
 /// Returns None if no golden traces configured, Some(true) if passing.
 pub fn check_golden_trace_drift(project_path: &Path) -> Option<bool> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     if !project_path.join("renacer.toml").exists() {
         return None; // Not configured
     }

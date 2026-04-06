@@ -5,6 +5,7 @@ impl TicketFile {
     /// - Time: O(n) where n is file size
     /// - Cyclomatic: 2
     pub fn from_file(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
         let mut ticket = Self::parse_content(&content)?;
         ticket.file_path = path.to_path_buf();
@@ -17,6 +18,7 @@ impl TicketFile {
     /// - Time: O(n) where n is content length
     /// - Cyclomatic: 8
     pub fn parse_content(content: &str) -> Result<Self> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
 
         // Extract header (first line)

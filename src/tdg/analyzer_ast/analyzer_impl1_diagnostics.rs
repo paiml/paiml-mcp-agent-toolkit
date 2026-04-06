@@ -18,6 +18,7 @@ impl TdgAnalyzerAst {
 
     /// Get stored score for a specific file
     pub async fn get_stored_score(&self, path: &Path) -> Result<Option<TdgScore>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(storage) = &self.storage {
             // Calculate content hash for the file
             let source = fs::read_to_string(path)?;

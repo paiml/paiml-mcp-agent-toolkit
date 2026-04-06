@@ -20,6 +20,11 @@ pub async fn run_falsification_tests(
     project_path: &Path,
     contract: &WorkContract,
 ) -> Result<FalsificationReport> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut claim_results = Vec::new();
     let total_claims = contract.claims.len();
 

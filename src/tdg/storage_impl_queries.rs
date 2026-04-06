@@ -94,6 +94,7 @@ impl TieredStore {
     ///
     /// Filters records to only those matching the specified file path.
     pub async fn get_by_path(&self, target_path: &Path) -> Result<Vec<FullTdgRecord>> {
+        debug_assert!(target_path.exists(), "target_path must exist: {}", target_path.display());
         let mut results = Vec::new();
 
         // Search warm storage

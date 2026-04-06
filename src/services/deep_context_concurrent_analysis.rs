@@ -4,6 +4,7 @@
 impl ConcurrentDeepContextAnalyzer {
     /// Analyze project with proper parallel processing
     pub async fn analyze_project_concurrent(&self, path: &Path) -> Result<DeepAnalysisResult> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         info!("Starting concurrent analysis for {:?}", path);
 
         // Phase 1: Parse ALL files in parallel ONCE

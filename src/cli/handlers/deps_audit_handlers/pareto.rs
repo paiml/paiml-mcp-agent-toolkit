@@ -7,6 +7,7 @@ use super::types::{DepAnalysis, DepCategory, ParetoEffort, ParetoEntry};
 
 /// Calculate effort to remove a dependency based on its usage
 pub fn estimate_effort(name: &str, category: DepCategory) -> ParetoEffort {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     // High effort: deeply integrated deps
     let high_effort = ["tokio", "serde", "clap", "anyhow", "thiserror", "tracing"];
     if high_effort.contains(&name) {
@@ -45,6 +46,7 @@ pub fn estimate_effort(name: &str, category: DepCategory) -> ParetoEffort {
 
 /// Run Pareto analysis using cargo tree for accurate transitive counts
 pub fn run_pareto_analysis(deps: &[DepAnalysis], path: &Path) -> Vec<ParetoEntry> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut entries = Vec::new();
 
     // Only analyze removable, heavy, and replaceable deps
@@ -87,6 +89,7 @@ pub fn run_pareto_analysis(deps: &[DepAnalysis], path: &Path) -> Vec<ParetoEntry
 
 /// Get transitive dependency count using cargo tree
 pub fn get_transitive_count(dep_name: &str, path: &Path) -> usize {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::process::Command;
 
     let output = Command::new("cargo")

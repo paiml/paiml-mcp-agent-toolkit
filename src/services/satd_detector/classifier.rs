@@ -311,6 +311,7 @@ impl DebtClassifier {
     /// ```
     #[must_use]
     pub fn classify_comment(&self, text: &str) -> Option<(DebtCategory, Severity)> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let matches = self.compiled_patterns.matches(text);
 
         // Find the first matching pattern

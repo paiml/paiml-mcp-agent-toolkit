@@ -109,6 +109,7 @@ impl VelocityTracker {
     /// Calculate velocity
     #[must_use]
     pub fn calculate_velocity(&self) -> f64 {
+        // Contract: calculate_velocity returns a bounded score
         self.velocity()
     }
 

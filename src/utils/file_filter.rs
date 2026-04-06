@@ -61,6 +61,7 @@ impl FileFilter {
     /// Check if a file path should be included based on the filters
     #[must_use]
     pub fn should_include(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // If exclude patterns are specified and the path matches, exclude it
         if let Some(ref exclude_set) = self.exclude_set {
             if exclude_set.is_match(path) {

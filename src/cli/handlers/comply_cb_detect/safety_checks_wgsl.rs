@@ -41,6 +41,7 @@ fn check_wgsl_file_for_bounds_violations(entry: &Path) -> Vec<CbPatternViolation
 
 /// Scan for CB-001 (WGSL without bounds checking)
 pub fn detect_cb001_wgsl_no_bounds_check(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     // Look for .wgsl files
@@ -137,6 +138,7 @@ fn check_wgsl_file_for_barrier_divergence(entry: &Path) -> Vec<CbPatternViolatio
 
 /// Scan for CB-002 (WGSL barrier divergence)
 pub fn detect_cb002_wgsl_barrier_divergence(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     let src_dir = project_path.join("src");

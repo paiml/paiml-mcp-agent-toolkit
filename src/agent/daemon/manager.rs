@@ -81,6 +81,11 @@ impl DaemonManager {
 
     /// Start monitoring a project
     pub async fn start_monitoring(_project_path: &Path, _project_id: &str) -> Result<()> {
+        debug_assert!(
+            _project_path.exists(),
+            "_project_path must exist: {}",
+            _project_path.display()
+        );
         info!("Starting monitoring for project at {:?}", _project_path);
         // Implementation would send start monitoring command to daemon
         Ok(())

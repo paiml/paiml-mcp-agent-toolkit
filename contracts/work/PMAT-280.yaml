@@ -1,0 +1,7 @@
+# Auto-generated from .pmat-work/PMAT-280/contract.json
+name: "PMAT-280"
+surface: work-contract
+verification_summary:
+  target_level: L3
+  current_level: L3
+  total_obligations: 0

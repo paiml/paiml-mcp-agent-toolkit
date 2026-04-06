@@ -44,6 +44,11 @@ impl PerfectionScoreCalculator {
     /// parallel via `tokio::join!`. The entire calculation is wrapped in a 120-second
     /// timeout to prevent runaway CPU usage from unbounded `git log` subprocesses.
     pub async fn calculate(&self, project_path: &Path) -> anyhow::Result<PerfectionScoreResult> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         match tokio::time::timeout(Duration::from_secs(120), self.calculate_inner(project_path))
             .await
         {

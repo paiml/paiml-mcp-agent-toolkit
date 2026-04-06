@@ -19,6 +19,7 @@ impl KotlinComplexityAnalyzer {
 
     /// Analyzes complexity of Kotlin source code (complexity ≤10)
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
         self.cognitive_complexity = 1;
 
@@ -48,6 +49,7 @@ impl KotlinComplexityAnalyzer {
 
     /// Analyzes coroutine complexity (complexity ≤10)
     pub fn analyze_coroutine_complexity(&mut self, source: &str) -> Result<u32, String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.coroutine_complexity = 0;
 
         let lines: Vec<&str> = source.lines().collect();

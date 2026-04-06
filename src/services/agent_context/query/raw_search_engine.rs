@@ -277,6 +277,7 @@ pub fn raw_search(
     project_path: &Path,
     options: &RawSearchOptions,
 ) -> Result<RawSearchOutput, String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let project_root = project_path
         .canonicalize()
         .unwrap_or_else(|_| project_path.to_path_buf());

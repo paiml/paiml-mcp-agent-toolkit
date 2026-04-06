@@ -59,6 +59,11 @@ impl FunctionAnalyzer {
     ///
     /// Returns error if file cannot be read or parsed
     pub fn analyze_file(&mut self, file_path: &Path) -> Result<Vec<FunctionComplexity>> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         // Read source file
         let source_code = std::fs::read_to_string(file_path)
             .with_context(|| format!("Failed to read file: {}", file_path.display()))?;

@@ -415,6 +415,7 @@ impl SurvivabilityPredictor {
     /// After loading, the model will use statistical baseline predictions.
     /// For consistent ML predictions, retrain the model after loading.
     pub fn save(&self, path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let serialized = bincode::serialize(self)?;
         std::fs::write(path, serialized)?;
         Ok(())
@@ -422,6 +423,7 @@ impl SurvivabilityPredictor {
 
     /// Load model from file
     pub fn load(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let data = std::fs::read(path)?;
         let predictor = bincode::deserialize(&data)?;
         Ok(predictor)

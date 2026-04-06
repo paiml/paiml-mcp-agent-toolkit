@@ -231,6 +231,7 @@ impl HttpResponseBuilder {
     /// ```
     #[must_use]
     pub fn text(content: &str) -> UnifiedResponse {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         UnifiedResponse::ok()
             .with_body(Body::from(content.to_string()))
             .with_header("content-type", "text/plain")
@@ -275,6 +276,7 @@ impl HttpResponseBuilder {
     /// ```
     #[must_use]
     pub fn html(content: &str) -> UnifiedResponse {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         UnifiedResponse::ok()
             .with_body(Body::from(content.to_string()))
             .with_header("content-type", "text/html")

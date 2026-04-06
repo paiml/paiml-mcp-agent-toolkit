@@ -64,12 +64,14 @@ impl TDGCalculator {
     /// Set the project root for git-based analysis (churn, etc.)
     #[must_use]
     pub fn with_project_root(mut self, root: PathBuf) -> Self {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         self.project_root = root;
         self
     }
 
     /// Calculate TDG score for a single file
     pub async fn calculate_file(&self, path: &Path) -> Result<TDGScore> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check cache first
         if let Some(cached) = self.cache.get(&path.to_path_buf()) {
             return Ok(cached.clone());

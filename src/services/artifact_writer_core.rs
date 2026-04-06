@@ -11,6 +11,7 @@ impl ArtifactWriter {
     /// // Writer is ready to store artifacts
     /// ```
     pub fn new(root: PathBuf) -> Result<Self, TemplateError> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         // Ensure root directory exists
         fs::create_dir_all(&root).map_err(TemplateError::Io)?;
 

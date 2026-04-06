@@ -55,6 +55,7 @@ impl DeterministicMermaidEngine {
     /// Sanitize ID for Mermaid compatibility
     #[must_use]
     pub fn sanitize_id(&self, id: &str) -> String {
+        debug_assert!(!id.is_empty(), "id must not be empty");
         // Replace common multi-character patterns
         let sanitized = id.replace("::", "_").replace(['/', '.', '-', ' '], "_");
 

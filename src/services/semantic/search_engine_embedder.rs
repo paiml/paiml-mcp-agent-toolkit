@@ -47,6 +47,7 @@ impl LocalEmbedder {
 
     /// Generate embedding for a single text using feature hashing + TF-IDF weighting
     pub fn embed(&self, text: &str) -> Result<Vec<f32>, String> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let tokens = self.tokenize(text);
         let mut embedding = vec![0.0f32; self.dimension];
 

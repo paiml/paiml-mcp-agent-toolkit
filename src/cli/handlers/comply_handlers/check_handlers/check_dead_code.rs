@@ -8,6 +8,11 @@ use std::path::Path;
 /// Scan source files for dead code indicators.
 /// Returns (total_items, dead_items, total_lines, estimated_dead_lines).
 pub(crate) fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize, usize) {
+    debug_assert!(
+        src_dir.exists(),
+        "src_dir must exist: {}",
+        src_dir.display()
+    );
     let mut total_items = 0usize;
     let mut dead_items = 0usize;
     let mut total_lines = 0usize;
@@ -35,6 +40,7 @@ pub(crate) fn scan_dead_code_indicators(src_dir: &Path) -> (usize, usize, usize,
 
 /// Check if a file is heavily cfg-gated (SIMD, arch-specific code).
 pub(crate) fn is_heavily_cfg_gated(content: &str) -> bool {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let cfg_count = content.matches("#[cfg(target").count()
         + content.matches("#[target_feature").count()
         + content.matches("#[cfg(feature").count();
@@ -43,6 +49,11 @@ pub(crate) fn is_heavily_cfg_gated(content: &str) -> bool {
 
 /// Collect production .rs files (skip test files, falsification modules, SIMD code).
 pub(crate) fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
+    debug_assert!(
+        src_dir.exists(),
+        "src_dir must exist: {}",
+        src_dir.display()
+    );
     walkdir::WalkDir::new(src_dir)
         .max_depth(10)
         .into_iter()
@@ -243,6 +254,7 @@ fn handle_inside_block(trimmed: &str, block_lines: usize) -> (bool, usize, usize
 
 /// Check if text contains code-like markers.
 pub(crate) fn has_code_markers(text: &str) -> bool {
+    debug_assert!(!text.is_empty(), "text must not be empty");
     const MARKERS: &[&str] = &[
         "fn ", "let ", "if ", "return ", ";", "struct ", "impl ", "pub ",
     ];

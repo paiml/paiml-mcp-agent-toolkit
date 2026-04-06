@@ -4,6 +4,7 @@ pub async fn git_clone(
     _branch: Option<&str>,
     _depth: Option<u32>,
 ) -> Result<PathBuf> {
+    debug_assert!(!url.is_empty(), "url must not be empty");
     // Return the path where it would be cloned
     Ok(target_dir
         .map(std::path::Path::to_path_buf)
@@ -19,6 +20,7 @@ pub async fn git_clone(
 }
 
 pub async fn git_status(path: &Path) -> Result<Value> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::models::git_context::GitContext;
 
     // Extract git context from the repository

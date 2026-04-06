@@ -38,6 +38,7 @@ pub struct LanguageInfo {
 
 /// Detect primary project language with confidence scoring
 pub fn detect_project_language_enhanced(path: &Path) -> LanguageDetection {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     debug!("Detecting project language at: {:?}", path);
 
     // Start with file extension counting
@@ -136,6 +137,7 @@ fn compute_confidence_boost(lang: &str, path: &Path) -> f64 {
 
 /// Detect all languages in a polyglot project
 pub fn detect_all_languages(path: &Path) -> MultiLanguageDetection {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     debug!("Detecting all languages at: {:?}", path);
 
     let file_counts = count_files_by_extension(path);
@@ -202,6 +204,7 @@ pub fn detect_project_language_with_timeout(
     path: &Path,
     _timeout: Duration,
 ) -> Result<LanguageDetection> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // For now, just use the regular detection
     // Timeout will be implemented at the call site using tokio::time::timeout
     Ok(detect_project_language_enhanced(path))
@@ -209,6 +212,7 @@ pub fn detect_project_language_with_timeout(
 
 /// Override language detection manually
 pub fn override_language_detection(_path: &Path, language: &str) -> LanguageDetection {
+    debug_assert!(_path.exists(), "_path must exist: {}", _path.display());
     LanguageDetection {
         language: language.to_string(),
         confidence: 100.0,
@@ -217,6 +221,7 @@ pub fn override_language_detection(_path: &Path, language: &str) -> LanguageDete
 
 /// Override with multiple languages
 pub fn override_multiple_languages(path: &Path, languages: Vec<String>) -> MultiLanguageDetection {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let file_counts = count_files_by_extension(path);
     let total_files: usize = file_counts.values().sum();
 

@@ -41,6 +41,7 @@ pub async fn search_templates<T: TemplateServerTrait>(
     query: &str,
     toolchain: Option<&str>,
 ) -> Result<Vec<SearchResult>, TemplateError> {
+    debug_assert!(!query.is_empty(), "query must not be empty");
     let templates = list_templates(server.as_ref(), toolchain, None).await?;
     let query_lower = query.to_lowercase();
 

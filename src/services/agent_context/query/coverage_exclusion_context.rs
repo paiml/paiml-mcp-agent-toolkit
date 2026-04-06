@@ -10,6 +10,7 @@ impl ExclusionContext {
         project_path: &Path,
         cached_coverage_off: Option<&HashSet<String>>,
     ) -> Self {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let makefile_regex = parse_makefile_coverage_exclude(project_path);
         let dead_functions = load_dead_code_functions(project_path);
         let coverage_off_files = cached_coverage_off.cloned().unwrap_or_default();

@@ -23,6 +23,7 @@ use super::types::FileComplexityMetrics;
 /// ```
 #[must_use]
 pub fn compute_complexity_cache_key(path: &Path, content: &[u8]) -> String {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
@@ -87,6 +88,7 @@ pub async fn analyze_file_complexity_uncached(
     path: &Path,
     content: Option<&str>,
 ) -> anyhow::Result<FileComplexityMetrics> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use anyhow::Context;
 
     // Read file content if not provided

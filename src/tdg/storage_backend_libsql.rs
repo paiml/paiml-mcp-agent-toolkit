@@ -7,6 +7,7 @@ pub struct LibsqlBackend {
 
 impl LibsqlBackend {
     pub fn new(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Create database directory if needed
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;

@@ -32,6 +32,7 @@ impl DiscoveryService {
     /// 2. Alias match (O(n) where n = alias count)  
     /// 3. Trigram fuzzy match (O(m) where m = tool count)
     pub fn resolve_tool(&self, query: &str) -> Option<&'static str> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         let normalized = query.to_lowercase();
 
         // Short-circuit: empty or single-char queries cannot meaningfully match

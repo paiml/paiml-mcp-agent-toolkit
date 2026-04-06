@@ -72,6 +72,7 @@ pub async fn handle_analyze_defects(
 }
 
 pub(crate) fn collect_rust_files(path: &Path) -> Result<Vec<std::path::PathBuf>> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut files = Vec::new();
 
     for entry in WalkDir::new(path)

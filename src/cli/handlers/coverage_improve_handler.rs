@@ -33,6 +33,11 @@ pub async fn handle_coverage_improve(
     output: Option<PathBuf>,
     format: CoverageImproveOutputFormat,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     eprintln!("📊 PMAT Coverage Improvement");
     eprintln!("🎯 Target: {:.1}%", target);
     eprintln!("📁 Project: {}", project_path.display());

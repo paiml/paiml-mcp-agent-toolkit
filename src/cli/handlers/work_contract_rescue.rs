@@ -77,6 +77,7 @@ pub struct RescueDiagnosis {
 impl RescueRecord {
     /// Save rescue record to .pmat-work/{item-id}/rescue/
     pub fn save(&self, project_path: &Path) -> Result<PathBuf> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let rescue_dir = project_path
             .join(".pmat-work")
             .join(&self.work_item_id)
@@ -92,6 +93,7 @@ impl RescueRecord {
 
     /// Load all rescue records for a work item
     pub fn load_all(project_path: &Path, work_item_id: &str) -> Vec<Self> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let rescue_dir = project_path
             .join(".pmat-work")
             .join(work_item_id)
@@ -176,6 +178,7 @@ pub fn execute_rescue(
     violated_clause: &str,
     strategy: &RescueStrategy,
 ) -> RescueRecord {
+    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     let diagnosis = match strategy {
         RescueStrategy::CoverageGapAnalysis => RescueDiagnosis {
             summary: "Coverage gap analysis: scan for uncovered functions in modified files".to_string(),

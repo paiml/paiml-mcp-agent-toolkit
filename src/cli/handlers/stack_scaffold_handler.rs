@@ -138,6 +138,11 @@ pub fn scaffold_repo(
     force: bool,
     diff: bool,
 ) -> Result<ScaffoldResult> {
+    debug_assert!(
+        repo_path.exists(),
+        "repo_path must exist: {}",
+        repo_path.display()
+    );
     let mut created = 0;
     let mut skipped = 0;
     let mut overwritten = 0;

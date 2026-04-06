@@ -33,6 +33,11 @@ pub async fn handle_cross_crate(
     strict: bool,
     save_baseline: bool,
 ) -> Result<()> {
+    debug_assert!(
+        workspace_path.exists(),
+        "workspace_path must exist: {}",
+        workspace_path.display()
+    );
     let yaml_config = PmatYamlConfig::load(workspace_path).unwrap_or_default();
     let det_config = DetectionConfig::from_yaml(&yaml_config.cross_crate);
 

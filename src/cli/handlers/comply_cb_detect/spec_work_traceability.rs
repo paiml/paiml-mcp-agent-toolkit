@@ -7,6 +7,11 @@ use std::path::Path;
 
 /// CB-148: Detect specs with planned sections that have no work tickets.
 pub fn detect_cb148_spec_work_gaps(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let specs_dir = project_path.join("docs/specifications/components");
     if !specs_dir.exists() {
         return Vec::new();

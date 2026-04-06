@@ -8,6 +8,11 @@ use crate::services::unified_rust_analyzer::UnifiedRustAnalyzer;
 pub async fn analyze_rust_language(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     // Use unified analyzer for single-pass parsing
     let analyzer = UnifiedRustAnalyzer::new(file_path.to_path_buf());
     let analysis = analyzer

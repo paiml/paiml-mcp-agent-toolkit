@@ -347,6 +347,7 @@ impl CheckpointRecord {
 
     /// Save checkpoint to .pmat-work/{item-id}/checkpoints/
     pub fn save(&self, project_path: &Path) -> Result<PathBuf> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let checkpoint_dir = project_path
             .join(".pmat-work")
             .join(&self.work_item_id)
@@ -362,6 +363,7 @@ impl CheckpointRecord {
 
     /// Load all checkpoints for a work item, sorted by timestamp
     pub fn load_all(project_path: &Path, work_item_id: &str) -> Vec<Self> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let checkpoint_dir = project_path
             .join(".pmat-work")
             .join(work_item_id)

@@ -75,6 +75,7 @@ fn collect_contract_equation_names(contracts_dir: &Path) -> Vec<String> {
 /// Preferred: `#[contract("yaml-name", equation = "eq")]` — auto-injects from YAML.
 /// Legacy: `#[requires(...)]` / `#[ensures(...)]` — hand-written assertions.
 pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
     if !contracts_dir.exists() {
         return ComplianceCheck {
@@ -276,6 +277,7 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
 /// emit CONTRACT_*_PRE_COUNT / CONTRACT_*_PRE_0 env vars that the #[contract]
 /// proc macro reads at compile time.
 pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
     let build_rs = project_path.join("build.rs");
 
@@ -379,6 +381,7 @@ pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
 /// MUST have kani_harnesses and sufficient falsification_tests.
 /// pv-compatibility spec §2.2
 pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = project_path.join("contracts");
     if !contracts_dir.exists() {
         return ComplianceCheck {
@@ -475,6 +478,7 @@ pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceChec
 /// Reads proof-status.json from provable-contracts sibling repo.
 /// pv-compatibility spec §2.3
 pub(crate) fn check_verification_levels(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Resolve to absolute path so .parent() works correctly from "."
     let abs_path =
         std::fs::canonicalize(project_path).unwrap_or_else(|_| project_path.to_path_buf());
@@ -701,6 +705,7 @@ fn collect_stems_recursive(dir: &Path, stems: &mut std::collections::HashSet<Str
 /// A contract YAML older than its bound source files by >30 days = drift.
 /// pv-compatibility spec CD5.
 pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -821,6 +826,7 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
 /// the YAML status field (self-attestation) without verifying the Rust function exists.
 /// 16,977 bindings across the stack but only 35 have #[contract] annotations.
 pub(crate) fn check_binding_existence(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
@@ -978,6 +984,7 @@ fn detect_buildrs_enforcement(project_path: &Path) -> bool {
 /// 2. Count trait impl blocks (`impl XxxV1 for`)
 /// 3. Count provable-contracts trait imports
 pub(crate) fn check_contract_trait_enforcement(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Look for contract_traits.rs in tests/ or tests/contract_traits/
     let trait_test = project_path.join("tests").join("contract_traits.rs");
     if !trait_test.exists() {
@@ -1318,6 +1325,7 @@ fn parse_binding_entries(
 
 /// CB-1202: Contract coverage — do repos with critical functions have contracts?
 pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let src_dir = project_path.join("src");
     let contracts_dir = project_path.join("contracts");
     if !src_dir.exists() {
@@ -1452,6 +1460,7 @@ pub(crate) fn check_contract_coverage(project_path: &Path) -> ComplianceCheck {
 /// Checks: (1) pv lint passes, (2) referenced tests EXIST, (3) they PASS.
 /// Missing test = unfalsifiable claim = FAIL (like TDG grade F).
 pub(crate) fn check_pv_lint(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(dir) => dir,
         None => {

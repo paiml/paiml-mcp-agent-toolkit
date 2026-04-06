@@ -24,6 +24,7 @@ pub async fn discover_source_files_for_defect_analysis(
     project_path: &Path,
     config: &DefectPredictionConfig,
 ) -> Result<Vec<(PathBuf, String, usize)>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
 
     let mut discovery_config = FileDiscoveryConfig::default();
@@ -64,6 +65,7 @@ pub async fn discover_source_files_for_defect_analysis(
 /// Calculate simple complexity metric from source code
 #[must_use]
 pub fn calculate_simple_complexity(content: &str) -> u32 {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut complexity = 1u32;
 
     for line in content.lines() {
@@ -114,6 +116,7 @@ fn count_exception_handling(line: &str) -> u32 {
 /// Calculate simple churn score based on file content
 #[must_use]
 pub fn calculate_simple_churn_score(content: &str, lines_of_code: usize) -> f32 {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     // Simple heuristic based on comments and file size
     let todo_count = content.matches("TODO").count() + content.matches("FIXME").count();
     let comment_lines = content

@@ -32,6 +32,7 @@ impl PythonMutationGenerator {
 
     /// Generate all mutants from Python source code
     pub fn generate_mutants(&self, source: &str, file_path: &str) -> Result<Vec<Mutant>> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let tree = self.parse_python(source)?;
         let mut mutants = Vec::new();
 

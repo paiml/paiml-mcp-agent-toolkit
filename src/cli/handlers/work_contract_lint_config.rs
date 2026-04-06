@@ -75,6 +75,7 @@ impl LintConfig {
     /// Load lint configuration from `.pmat-work/dbc-lint.toml`.
     /// Returns default config if file doesn't exist.
     pub fn load(project_path: &Path) -> Self {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_path = project_path.join(".pmat-work").join("dbc-lint.toml");
         if !config_path.exists() {
             return Self::default();
@@ -239,6 +240,7 @@ pub fn apply_lint_config(report: &LintReport, config: &LintConfig) -> LintReport
 /// Scans `.pmat-work/*/contract.json` for contracts modified since `git_ref`.
 /// Returns work item IDs of changed contracts.
 pub fn changed_contracts_since(project_path: &Path, git_ref: &str) -> Vec<String> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let output = std::process::Command::new("git")
         .args(["diff", "--name-only", git_ref, "HEAD"])
         .current_dir(project_path)
@@ -293,6 +295,7 @@ pub struct CodebaseScore {
 
 /// Compute codebase-level scoring across all active work contracts.
 pub fn compute_codebase_score(project_path: &Path) -> CodebaseScore {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let pmat_work = project_path.join(".pmat-work");
     if !pmat_work.exists() {
         return CodebaseScore {

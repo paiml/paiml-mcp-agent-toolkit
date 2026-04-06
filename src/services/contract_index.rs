@@ -28,6 +28,11 @@ pub struct ContractIndex {
 impl ContractIndex {
     /// Load from .pmat/binding-index.json. Returns None if file doesn't exist.
     pub fn load(project_path: &Path) -> Option<Self> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let idx_path = Self::find_index_path(project_path)?;
         let content = std::fs::read_to_string(&idx_path).ok()?;
         let parsed: serde_json::Value = serde_json::from_str(&content).ok()?;

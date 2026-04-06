@@ -25,6 +25,7 @@ impl UniversalFeatureExtractor {
 
     /// Extract features from source code
     pub fn extract_features(&self, source: &str, lang: Language) -> Vec<Token> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let tokens = self.tokenize(source, lang);
         self.normalize_tokens(&tokens)
     }
@@ -377,6 +378,7 @@ impl UniversalFeatureExtractor {
 
     /// Canonicalize identifier names
     pub(crate) fn canonicalize_identifier(&self, name: &str) -> String {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(canonical) = self.identifier_map.get(name) {
             canonical.clone()
         } else {

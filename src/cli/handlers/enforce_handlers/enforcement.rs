@@ -53,6 +53,11 @@ pub async fn run_main_enforcement_loop(
     profile: &QualityProfile,
     config: EnforcementConfig,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let start_time = Instant::now();
 
     // Delegate entire loop logic to extracted function - COMPLEXITY NOW ≤10
@@ -97,6 +102,11 @@ pub async fn execute_enforcement_iteration(
     current_state: EnforcementState,
     config: &EnforcementConfig,
 ) -> Result<EnforcementResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     run_enforcement_step(
         project_path,
         profile,
@@ -159,6 +169,11 @@ pub async fn handle_enforcement_iteration(
     config: &EnforcementConfig,
     iteration: u32,
 ) -> Result<EnforcementIterationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     eprintln!(
         "\n{} {}",
         c::label("Iteration"),
@@ -184,6 +199,11 @@ pub async fn execute_main_loop(
     config: &EnforcementConfig,
     start_time: Instant,
 ) -> Result<EnforcementLoopResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut current_state = EnforcementState::Analyzing;
     let mut iteration = 0;
     let mut current_score = 0.0;
@@ -229,6 +249,11 @@ pub async fn run_enforcement_step(
     include_pattern: Option<&String>,
     exclude_pattern: Option<&String>,
 ) -> Result<EnforcementResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     // Route to extracted state handlers - COMPLEXITY REDUCED FROM 62 TO ≤10
     match current_state {
         EnforcementState::Analyzing => {

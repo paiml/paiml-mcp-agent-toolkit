@@ -158,6 +158,7 @@ impl TemplateRegistry {
     /// - Time: O(1) average
     /// - Cyclomatic: 2 (lookup + error)
     pub fn get(&self, name: &str) -> Result<&Template> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.templates.get(name).ok_or_else(|| {
             ScaffoldError::InvalidProjectName(format!("Template not found: {}", name))
         })

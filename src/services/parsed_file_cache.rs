@@ -81,6 +81,7 @@ impl ParsedFileCache {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<FileContext>>,
     {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let key = self.compute_key(path, content, CacheType::Context)?;
 
         // Check cache first
@@ -120,6 +121,7 @@ impl ParsedFileCache {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Result<FileComplexityMetrics>>,
     {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let key = self.compute_key(path, content, CacheType::Complexity)?;
 
         // Check cache first

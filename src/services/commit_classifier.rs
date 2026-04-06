@@ -113,6 +113,7 @@ impl CommitClassifier {
 
     /// Classify a commit message
     pub fn classify(&self, text: &str) -> ClassificationResult {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let tokens = Self::tokenize(text);
         let mut scores: HashMap<String, f64> = HashMap::new();
 

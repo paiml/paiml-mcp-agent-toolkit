@@ -129,6 +129,7 @@ pub fn validate_command(cmd: &str) -> Option<CommandRestriction> {
 impl StackManifest {
     /// Parse a .dbc-stack.toml file
     pub fn parse(content: &str) -> Result<Self> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let table: toml::Table = content.parse().context("Failed to parse .dbc-stack.toml")?;
 
         let stack = table
@@ -301,6 +302,7 @@ impl StackManifest {
 
     /// Get content hash for TOFU trust model
     pub fn content_hash(content: &str) -> String {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut hasher = Sha256::new();
         hasher.update(content.as_bytes());
         format!("{:x}", hasher.finalize())
@@ -339,6 +341,7 @@ fn stack_claim_to_clause(claim: &StackClaim, kind: ClauseKind, stack_name: &str)
 
 /// Load trust records from .pmat-work/trusted-stacks.json
 pub fn load_trust_records(project_path: &Path) -> HashMap<String, StackTrustRecord> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let trust_path = project_path.join(".pmat-work").join("trusted-stacks.json");
     if let Ok(content) = std::fs::read_to_string(&trust_path) {
         serde_json::from_str(&content).unwrap_or_default()
@@ -349,6 +352,7 @@ pub fn load_trust_records(project_path: &Path) -> HashMap<String, StackTrustReco
 
 /// Save trust records to .pmat-work/trusted-stacks.json
 pub fn save_trust_records(project_path: &Path, records: &HashMap<String, StackTrustRecord>) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let trust_dir = project_path.join(".pmat-work");
     std::fs::create_dir_all(&trust_dir)?;
     let trust_path = trust_dir.join("trusted-stacks.json");
@@ -359,6 +363,7 @@ pub fn save_trust_records(project_path: &Path, records: &HashMap<String, StackTr
 
 /// Check if a manifest is trusted (content hash matches)
 pub fn is_manifest_trusted(project_path: &Path, manifest_path: &str, content: &str) -> bool {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let records = load_trust_records(project_path);
     if let Some(record) = records.get(manifest_path) {
         record.sha256 == StackManifest::content_hash(content)
@@ -369,6 +374,7 @@ pub fn is_manifest_trusted(project_path: &Path, manifest_path: &str, content: &s
 
 /// Execute a stack claim's check command (no sh -c, uses Command::new with arg splitting)
 pub fn execute_stack_check(cmd: &str, project_path: &Path, timeout_secs: u64) -> Result<(bool, String)> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Split on && for sequential commands
     let parts: Vec<&str> = cmd.split("&&").collect();
 

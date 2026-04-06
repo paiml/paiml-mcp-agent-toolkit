@@ -77,6 +77,7 @@ impl Default for LuaAdapter {
 
 /// Find Lua project root by looking for .busted, rockspec, or init.lua
 pub fn find_lua_project_root(start: &Path) -> Option<&Path> {
+    debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
     loop {
         if current.join(".busted").exists()

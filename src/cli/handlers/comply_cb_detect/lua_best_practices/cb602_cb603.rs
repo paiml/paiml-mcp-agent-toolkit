@@ -14,6 +14,11 @@ use std::path::Path;
 /// CB-602: pcall Error Handling -- uncaptured or unchecked pcall/xpcall.
 /// Based on FLuaScan progressive taint analysis.
 pub fn detect_cb602_pcall_error_handling(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -74,6 +79,11 @@ pub fn detect_cb602_pcall_error_handling(project_path: &Path) -> Vec<CbPatternVi
 /// Supports inline suppression: `-- pmat:ignore CB-603` on the same line.
 /// Distinguishes safe usage (hardcoded string arg) from dangerous (concatenation/variable).
 pub fn detect_cb603_deprecated_dangerous_api(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 

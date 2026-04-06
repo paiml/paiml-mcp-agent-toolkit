@@ -6,6 +6,7 @@
 // =============================================================================
 
 pub fn detect_cb1000_missing_model_card(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
 
@@ -59,6 +60,7 @@ pub fn detect_cb1000_missing_model_card(project_path: &Path) -> Vec<CbPatternVio
 // =============================================================================
 
 pub fn detect_cb1001_oversized_tensor_count(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
 
@@ -99,6 +101,7 @@ pub fn detect_cb1001_oversized_tensor_count(project_path: &Path) -> Vec<CbPatter
 // =============================================================================
 
 pub fn detect_cb1002_missing_tokenizer(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
 
@@ -157,6 +160,7 @@ pub fn detect_cb1002_missing_tokenizer(project_path: &Path) -> Vec<CbPatternViol
 // =============================================================================
 
 pub fn detect_cb1006_sharded_without_index(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
 
@@ -212,6 +216,7 @@ pub fn detect_cb1006_sharded_without_index(project_path: &Path) -> Vec<CbPattern
 // =============================================================================
 
 pub fn detect_cb1007_excessive_file_size(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
 
@@ -250,6 +255,7 @@ pub fn detect_cb1007_excessive_file_size(project_path: &Path) -> Vec<CbPatternVi
 // =============================================================================
 
 pub fn detect_cb1004_missing_architecture(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
 
@@ -303,6 +309,7 @@ const QUANT_NAMES: &[&str] = &[
 ];
 
 pub fn detect_cb1005_quantization_mismatch(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
 
@@ -357,6 +364,7 @@ pub fn detect_cb1005_quantization_mismatch(project_path: &Path) -> Vec<CbPattern
 // =============================================================================
 
 pub fn detect_cb1008_apr_missing_crc(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
 

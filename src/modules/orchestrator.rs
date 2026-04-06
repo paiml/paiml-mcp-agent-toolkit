@@ -152,6 +152,7 @@ impl Workflow {
         code: &str,
         orchestrator: &OrchestratorImpl,
     ) -> Result<WorkflowResult, ModuleError> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut results = Vec::new();
         let mut current_code = code.to_string();
 

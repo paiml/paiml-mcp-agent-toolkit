@@ -23,6 +23,7 @@ impl SatdDetector {
     }
 
     pub fn detect(&self, source: &str) -> SatdResult {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut count = 0;
         let mut found_patterns = Vec::new();
 
@@ -43,6 +44,7 @@ impl SatdDetector {
     }
 
     pub fn detect_in_comments(&self, source: &str) -> SatdResult {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Extract only comments from source
         let comments = self.extract_comments(source);
         self.detect(&comments)

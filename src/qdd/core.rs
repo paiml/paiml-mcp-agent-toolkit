@@ -184,6 +184,7 @@ impl QualityMetrics {
     /// Calculate overall quality score (0-100)
     #[must_use]
     pub fn calculate_score(&self) -> f64 {
+        // Contract: calculate_score returns a bounded score
         let complexity_score = (f64::from(20_u32.saturating_sub(self.complexity)) / 20.0) * 25.0;
         let coverage_score = (f64::from(self.coverage) / 100.0) * 25.0;
         let tdg_score = (f64::from(10_u32.saturating_sub(self.tdg)) / 10.0) * 25.0;

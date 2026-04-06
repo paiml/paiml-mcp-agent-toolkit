@@ -85,6 +85,7 @@ impl LanguageMapperFactory {
 
     /// Create a mapper for a file based on its extension
     pub fn create_for_file(path: &Path) -> Result<Arc<dyn LanguageMapper>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let language = Language::from_path(path)
             .ok_or_else(|| anyhow!("Unsupported file type: {:?}", path))?;
 

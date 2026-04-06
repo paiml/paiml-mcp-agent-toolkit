@@ -109,6 +109,7 @@ impl Default for PythonAdapter {
 
 /// Find pytest root by traversing up from source file
 pub fn find_pytest_root(start: &Path) -> Option<&Path> {
+    debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
 
     loop {

@@ -9,6 +9,7 @@ use std::path::Path;
 /// Handles: line comments (--), nested block comments (/- ... -/), inline block comments,
 /// and word-boundary checking to avoid false positives from identifiers like `sorry_helper`.
 pub(crate) fn count_lean_sorry_in_source(source: &str) -> usize {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     let mut count = 0;
     let mut in_block_comment = 0i32;
 
@@ -89,6 +90,11 @@ pub(crate) fn test_formal_proof_verification(
     project_path: &Path,
     max_sorry_count: usize,
 ) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Scanning .lean files for sorry... ");
 
     let mut total_sorry = 0usize;

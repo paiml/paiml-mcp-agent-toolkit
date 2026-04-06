@@ -14,6 +14,11 @@ use std::path::Path;
 /// 3. No loose spec files in docs/specifications/ (only pmat-spec.md)
 /// 4. All component files are under 500 lines
 pub(crate) fn check_mono_spec_structure(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let spec_dir = project_path.join("docs").join("specifications");
     let root_spec = spec_dir.join("pmat-spec.md");
     let components_dir = spec_dir.join("components");
@@ -114,6 +119,11 @@ pub(crate) fn check_mono_spec_structure(project_path: &Path) -> ComplianceCheck 
 /// 2. Profile binary exists (examples/dhat_profile.rs or similar)
 /// 3. Memory baseline file exists (.pmat-metrics/memory-baseline.json)
 pub(crate) fn check_memory_profiling(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let cargo_toml = project_path.join("Cargo.toml");
 
     // Skip if not a Rust project
@@ -215,6 +225,11 @@ fn has_profile_example_in_dir(project_path: &Path) -> bool {
 /// Computes evolution score from test pass/fail data across commits.
 /// Returns Skip if insufficient data.
 pub(crate) fn check_swe_ci_evoscore(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let metrics_dir = project_path.join(".pmat-metrics");
 
     // Collect commit test data files (sorted by filename for chronological order)

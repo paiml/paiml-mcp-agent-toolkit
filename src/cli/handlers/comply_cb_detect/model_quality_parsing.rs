@@ -3,6 +3,7 @@
 
 /// Walk directory for model files (*.gguf, *.apr, *.safetensors).
 pub fn walkdir_model_files(dir: &Path) -> Vec<PathBuf> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     walk_model_recursive(dir, &mut files);
     files

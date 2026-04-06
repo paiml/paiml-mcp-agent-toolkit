@@ -17,6 +17,11 @@ impl ConfigCommand {
     /// Create new config command with specified config file
     #[must_use]
     pub fn new(_config_path: PathBuf) -> Self {
+        debug_assert!(
+            _config_path.exists(),
+            "_config_path must exist: {}",
+            _config_path.display()
+        );
         Self {}
     }
 
@@ -34,6 +39,7 @@ impl ConfigCommand {
 
     /// Get specific configuration value by key path
     pub async fn get(&self, key: &str) -> Result<String> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         let config_service = configuration();
         let config = config_service.get_config()?;
 

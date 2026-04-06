@@ -72,6 +72,7 @@ impl DuplicateDetectionEngine {
         content: &str,
         lang: Language,
     ) -> Result<Vec<CodeFragment>> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let tokens = self.feature_extractor.extract_features(content, lang);
         let lines: Vec<&str> = content.lines().collect();
         let mut fragments = self.extract_function_fragments(path, &lines, lang)?;

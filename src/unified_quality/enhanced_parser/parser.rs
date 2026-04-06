@@ -33,6 +33,7 @@ impl EnhancedParser {
 
     /// Parse file with incremental updates
     pub fn parse_incremental(&mut self, path: &PathBuf, content: &str) -> Result<Metrics> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content_hash = self.calculate_hash(content);
 
         // Check cache for existing result
@@ -86,6 +87,7 @@ impl EnhancedParser {
 
     /// Calculate content hash for caching
     pub(crate) fn calculate_hash(&self, content: &str) -> u64 {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
@@ -97,11 +99,13 @@ impl EnhancedParser {
     /// Get cached metrics if available
     #[must_use]
     pub fn get_cached_metrics(&self, path: &PathBuf) -> Option<Metrics> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.cache.get(path)?.metrics.clone()
     }
 
     /// Clear cache for a file
     pub fn clear_cache(&self, path: &PathBuf) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.cache.remove(path);
     }
 

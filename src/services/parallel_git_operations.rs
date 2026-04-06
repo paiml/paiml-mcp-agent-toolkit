@@ -4,11 +4,13 @@
 impl ParallelGitExecutor {
     #[must_use]
     pub fn new(project_root: PathBuf) -> Self {
+        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         Self::with_config(project_root, ParallelGitConfig::default())
     }
 
     #[must_use]
     pub fn with_config(project_root: PathBuf, config: ParallelGitConfig) -> Self {
+        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let semaphore = Arc::new(Semaphore::new(config.max_concurrent_operations));
         let cache = Arc::new(RwLock::new(rustc_hash::FxHashMap::default()));
 

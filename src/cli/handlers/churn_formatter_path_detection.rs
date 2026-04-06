@@ -2,6 +2,7 @@
 /// Determines if a path represents a source code file
 #[must_use]
 pub fn is_source_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Check if it has a source code extension
     if !has_source_extension(path) {
         return false;

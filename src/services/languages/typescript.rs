@@ -20,6 +20,7 @@ pub struct TypeScriptAstVisitor {
 impl TypeScriptAstVisitor {
     /// Create a new TypeScript AST visitor
     pub fn new(path: &Path) -> Self {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self {
             path: path.to_path_buf(),
         }
@@ -31,6 +32,7 @@ impl TypeScriptAstVisitor {
     /// It creates a temporary file to leverage the existing file-based parser.
     #[cfg(feature = "typescript-ast")]
     pub fn analyze_typescript_source(&self, source: &str) -> Result<Vec<AstItem>> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Create temporary file with .ts extension (builder pattern)
         let temp_file = tempfile::Builder::new()
             .suffix(".ts")

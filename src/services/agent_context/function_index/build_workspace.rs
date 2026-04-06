@@ -72,6 +72,7 @@ impl AgentContextIndex {
     /// a `.pmat/context.idx` or `.pmat/context.db`. Silently skips siblings
     /// without an index.
     pub fn discover_sibling_indexes(project_path: &Path) -> Vec<(PathBuf, String)> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let workspace_config = project_path.join(".pmat/workspace.toml");
         let config_str = match fs::read_to_string(&workspace_config) {
             Ok(s) => s,

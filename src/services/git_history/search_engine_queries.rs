@@ -16,6 +16,7 @@ impl<'a> GitHistorySearchEngine<'a> {
         query: &str,
         options: GitSearchOptions,
     ) -> Result<Vec<GitSearchResult>, GitHistoryError> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         let limit = if options.limit == 0 {
             10
         } else {

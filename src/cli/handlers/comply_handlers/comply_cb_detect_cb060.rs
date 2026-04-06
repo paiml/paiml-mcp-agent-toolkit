@@ -282,6 +282,7 @@ pub fn detect_shared_memory_unbounded_in_str(ptx: &str) -> Vec<(u32, &'static st
 /// Tiled kernels (GEMM, etc.) must check row < m && col < n before storing
 /// to avoid out-of-bounds writes on non-tile-aligned dimensions.
 pub fn detect_tiled_kernel_no_bounds_in_str(code: &str) -> Vec<(u32, &'static str, String)> {
+    debug_assert!(!code.is_empty(), "code must not be empty");
     let mut violations = Vec::new();
     let lines: Vec<&str> = code.lines().collect();
 

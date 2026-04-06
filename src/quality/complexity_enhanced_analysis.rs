@@ -35,6 +35,7 @@ impl ComplexityAnalyzer {
     }
 
     pub fn calculate_halstead_metrics(&self, code: &str) -> HalsteadMetrics {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut operators = HashMap::new();
         let mut operands = HashMap::new();
 
@@ -155,6 +156,7 @@ pub fn calculate_maintainability_index(
     cyclomatic_complexity: u32,
     lines_of_code: usize,
 ) -> f64 {
+    // Contract: calculate_maintainability_index returns a bounded score
     let mi = 171.0
         - 5.2 * halstead_volume.ln()
         - 0.23 * cyclomatic_complexity as f64

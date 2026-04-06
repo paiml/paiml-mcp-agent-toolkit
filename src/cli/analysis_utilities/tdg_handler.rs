@@ -15,6 +15,7 @@ pub async fn handle_analyze_tdg(
     include: Vec<String>,
     watch: bool,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::tdg_calculator::TDGCalculator;
 
     if watch {

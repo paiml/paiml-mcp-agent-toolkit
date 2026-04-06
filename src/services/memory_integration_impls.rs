@@ -101,6 +101,7 @@ impl<T> DerefMut for MemoryVec<T> {
 impl MemoryString {
     /// Create a new memory-aware string with interning
     pub fn new(content: &str) -> Result<Self> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let memory_manager = global_memory_manager()?;
         let interned = memory_manager.intern_string(content)?;
         Ok(Self {
@@ -166,6 +167,7 @@ impl AstBufferPool {
 
     /// Get buffer sized for specific file content
     pub fn get_buffer_for_content(&self, content: &str) -> Result<PooledBuffer> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Size buffer based on content with some overhead for parsing structures
         let size = content.len() * 2; // 2x overhead for AST structures
         self.memory_manager.allocate_buffer(self.pool_type, size)

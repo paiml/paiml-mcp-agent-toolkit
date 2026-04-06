@@ -12,6 +12,7 @@ impl ContextCache {
 
     #[must_use]
     pub fn get(&self, key: &str) -> Option<&AnalysisResult> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         self.entries.get(key).map(|entry| &entry.result)
     }
 

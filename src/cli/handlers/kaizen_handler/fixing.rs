@@ -9,6 +9,7 @@ use std::process::Command;
 /// Apply safe deterministic fixes (clippy --fix + cargo fmt), verify with cargo check.
 /// Returns the number of fixes applied.
 pub(crate) fn apply_safe_fixes(path: &Path, findings: &mut [KaizenFinding]) -> Result<usize> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let has_clippy = findings
         .iter()
         .any(|f| f.source == FindingSource::Clippy && f.auto_fixable);
@@ -94,6 +95,11 @@ pub(crate) fn apply_safe_fixes_for_crate(
     crate_name: &str,
     findings: &mut [KaizenFinding],
 ) -> Result<usize> {
+    debug_assert!(
+        crate_path.exists(),
+        "crate_path must exist: {}",
+        crate_path.display()
+    );
     let has_clippy = findings.iter().any(|f| {
         f.crate_name.as_deref() == Some(crate_name)
             && f.source == FindingSource::Clippy
@@ -181,6 +187,7 @@ pub(crate) fn spawn_agents(
     max_agents: usize,
     commit: bool,
 ) -> Result<usize> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let mut fixed = 0usize;
     let mut attempted = 0usize;
 
@@ -256,6 +263,11 @@ pub(crate) fn spawn_agents_for_crate(
     max_agents: usize,
     commit: bool,
 ) -> Result<usize> {
+    debug_assert!(
+        crate_path.exists(),
+        "crate_path must exist: {}",
+        crate_path.display()
+    );
     let mut fixed = 0usize;
     let mut attempted = 0usize;
 

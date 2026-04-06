@@ -62,6 +62,7 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
 }
 
 pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<Value> {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     use crate::tdg::analyzer_simple::TdgAnalyzer;
 
     if !file_path.exists() {
@@ -296,6 +297,7 @@ pub async fn quality_gate_baseline(paths: &[PathBuf], output: Option<&Path>) -> 
 }
 
 pub async fn quality_gate_compare(baseline: &Path, paths: &[PathBuf]) -> Result<Value> {
+    debug_assert!(baseline.exists(), "baseline must exist: {}", baseline.display());
     use crate::tdg::baseline::TdgBaseline;
 
     if paths.is_empty() {

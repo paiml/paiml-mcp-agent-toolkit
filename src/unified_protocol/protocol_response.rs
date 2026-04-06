@@ -29,6 +29,7 @@ impl UnifiedResponse {
 
     #[must_use]
     pub fn with_header(mut self, key: &str, value: &str) -> Self {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         if let (Ok(name), Ok(val)) = (
             key.parse::<http::HeaderName>(),
             value.parse::<http::HeaderValue>(),

@@ -84,6 +84,7 @@ impl CommandGraph {
 
     /// Get importance score for a command
     pub fn importance(&self, command: &str) -> f32 {
+        debug_assert!(!command.is_empty(), "command must not be empty");
         self.importance_scores.get(command).copied().unwrap_or(0.0)
     }
 

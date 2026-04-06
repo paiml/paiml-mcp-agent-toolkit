@@ -210,6 +210,7 @@ impl QualityRefactoringEngine {
         from_pattern: &str,
         to_pattern: &str,
     ) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut result = code.to_string();
 
         // Simple pattern migrations

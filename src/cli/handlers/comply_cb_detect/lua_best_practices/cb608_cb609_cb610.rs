@@ -18,6 +18,11 @@ use std::path::Path;
 /// Priority P0: Dominant Lua error handling pattern (>80% of real-world error handling).
 /// Reference: Kong (1,725 instances), APISIX (716), xmake (254).
 pub fn detect_cb608_unchecked_nil_err(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -87,6 +92,11 @@ fn captures_error_return(line: &str) -> bool {
 /// assert() is appropriate in tests but problematic in library code.
 /// Reference: AwesomeWM (1,817 asserts), xmake (913).
 pub fn detect_cb609_assert_in_library(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -151,6 +161,11 @@ fn is_assert_call(line: &str) -> bool {
 /// Single-use concatenation like `log("msg: " .. x)` is not flagged.
 /// Reference: Issue #190 false positive reduction.
 pub fn detect_cb610_string_accumulator_in_loop(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 

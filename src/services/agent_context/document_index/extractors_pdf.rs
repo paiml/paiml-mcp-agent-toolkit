@@ -10,6 +10,7 @@ pub(crate) fn extract_pdf(
     relative_path: &str,
     checksum: &str,
 ) -> Result<Vec<DocumentChunk>, String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let bytes =
         std::fs::read(path).map_err(|e| format!("Failed to read PDF {}: {e}", path.display()))?;
     let text = pdf_extract::extract_text_from_mem(&bytes)
@@ -43,6 +44,7 @@ pub(crate) fn extract_pdf(
     relative_path: &str,
     checksum: &str,
 ) -> Result<Vec<DocumentChunk>, String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
     Ok(vec![DocumentChunk {
         file_path: relative_path.to_string(),

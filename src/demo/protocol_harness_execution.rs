@@ -45,6 +45,7 @@ impl DemoEngine {
 
     /// Get metadata for a specific protocol
     pub async fn get_protocol_metadata(&self, name: &str) -> Result<ProtocolMetadata, DemoError> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let protocol = self
             .protocols
             .get(name)

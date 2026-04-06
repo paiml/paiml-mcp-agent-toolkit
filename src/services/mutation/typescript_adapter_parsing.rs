@@ -1,5 +1,6 @@
 /// Find package.json by traversing up from source file
 pub fn find_package_json_root(start: &Path) -> Option<&Path> {
+    debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
 
     loop {

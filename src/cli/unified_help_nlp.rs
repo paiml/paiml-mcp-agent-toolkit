@@ -59,6 +59,7 @@ impl HelpNlpProcessor {
 
     /// Preprocess text for search (tokenize, filter, stem)
     pub fn preprocess(&self, text: &str) -> Vec<String> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         self.tokenize(text)
             .into_iter()
             .filter(|t| !self.stop_words.contains(t))
@@ -68,6 +69,7 @@ impl HelpNlpProcessor {
 
     /// Calculate term frequency for a document
     pub fn term_frequency(&self, text: &str) -> HashMap<String, f64> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let tokens = self.preprocess(text);
         let total = tokens.len() as f64;
 
@@ -86,6 +88,7 @@ impl HelpNlpProcessor {
 
     /// Calculate BM25 score between query and document
     pub fn bm25_score(&self, query: &str, document: &str, k1: f64, b: f64) -> f64 {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         let query_tokens = self.preprocess(query);
         let doc_tf = self.term_frequency(document);
         let avg_dl = 100.0; // Approximate average document length

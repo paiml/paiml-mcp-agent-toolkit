@@ -24,10 +24,12 @@ impl StepRegistry {
     }
 
     pub fn get(&self, name: &str) -> Option<&dyn StepHandler> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self._steps.get(name).map(|b| b.as_ref())
     }
 
     pub fn remove(&mut self, name: &str) -> Option<Box<dyn StepHandler>> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self._steps.remove(name)
     }
 

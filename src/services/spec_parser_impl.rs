@@ -30,6 +30,7 @@ impl SpecParser {
 
     /// Parse a specification file
     pub fn parse_file(&self, path: &Path) -> Result<ParsedSpec> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read specification: {}", path.display()))?;
 
@@ -226,6 +227,7 @@ impl SpecParser {
 
     /// Parse specification content
     pub fn parse_content(&self, content: &str, path: &Path) -> Result<ParsedSpec> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut spec = ParsedSpec {
             path: path.to_path_buf(),
             title: String::new(),
@@ -458,6 +460,7 @@ impl SpecParser {
 
     /// Find all specifications in a directory
     pub fn find_specs(&self, dir: &Path) -> Result<Vec<PathBuf>> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let mut specs = Vec::new();
 
         if dir.is_file() {

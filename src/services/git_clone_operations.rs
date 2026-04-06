@@ -4,6 +4,7 @@
 impl GitCloner {
     #[must_use]
     pub fn new(cache_dir: PathBuf) -> Self {
+        debug_assert!(cache_dir.exists(), "cache_dir must exist: {}", cache_dir.display());
         Self {
             cache_dir,
             progress: Arc::new(Mutex::new(CloneProgress {
@@ -34,6 +35,7 @@ impl GitCloner {
     }
 
     pub async fn clone_or_update(&self, url: &str) -> Result<ClonedRepo, CloneError> {
+        debug_assert!(!url.is_empty(), "url must not be empty");
         // Validate URL format
         let _parsed_url = self.parse_github_url(url)?;
 

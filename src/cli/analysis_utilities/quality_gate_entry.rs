@@ -78,6 +78,7 @@ pub async fn handle_quality_gate(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use std::time::Instant;
 
     let start_time = if perf { Some(Instant::now()) } else { None };

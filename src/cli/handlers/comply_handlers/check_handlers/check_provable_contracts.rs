@@ -79,6 +79,11 @@ use super::types::*;
 /// - Quality score (A-F grade)
 /// - Any validation errors or warnings
 pub(crate) fn check_provable_contracts(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     // Phase 1: Detect if this project uses provable-contracts
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,

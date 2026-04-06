@@ -314,6 +314,11 @@ fn print_csv(columns: &[String], rows: &[Vec<String>]) {
 
 /// Locate the best database path for the project
 pub fn find_db_path(project_path: &Path, workspace: bool) -> Result<std::path::PathBuf> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let db_name = if workspace {
         "workspace.db"
     } else {

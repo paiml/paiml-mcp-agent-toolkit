@@ -9,6 +9,7 @@ impl AgentContextIndex {
         &self,
         query: &str,
     ) -> Result<Vec<(usize, f32)>, String> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         // Try FTS5 BM25 search first (fast path)
         if let Some(ref db_path) = self.db_path {
             if let Ok(results) = self.calculate_relevance_scores_fts5(db_path, query) {
@@ -103,6 +104,7 @@ impl AgentContextIndex {
         query: &str,
         candidates: &[usize],
     ) -> Result<Vec<(usize, f32)>, String> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         if candidates.is_empty() {
             return Ok(Vec::new());
         }

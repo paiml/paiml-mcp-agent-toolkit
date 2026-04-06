@@ -40,6 +40,7 @@ impl ProjectFileDiscovery {
     /// Categorize a file for deep context analysis
     #[must_use]
     pub fn categorize_file(path: &Path) -> FileCategory {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         // Generated deep context reports - MUST EXCLUDE

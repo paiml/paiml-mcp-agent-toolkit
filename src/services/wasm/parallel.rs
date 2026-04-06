@@ -82,6 +82,11 @@ impl ParallelWasmAnalyzer {
 
     /// Analyze files in parallel
     pub async fn analyze_directory(&self, dir_path: &Path) -> Result<AggregatedAnalysis> {
+        debug_assert!(
+            dir_path.exists(),
+            "dir_path must exist: {}",
+            dir_path.display()
+        );
         let _start_time = Instant::now();
         let mut aggregated = AggregatedAnalysis::default();
 

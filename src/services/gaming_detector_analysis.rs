@@ -1,5 +1,6 @@
 /// Detect coverage gaming patterns in a project
 pub fn detect_coverage_gaming(project_path: &Path) -> Result<GamingDetectionResult> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut result = GamingDetectionResult {
         patterns_checked: vec![
             "cfg(not(coverage))".to_string(),
@@ -212,6 +213,7 @@ pub fn detect_test_deletions(
     project_path: &Path,
     baseline_files: &HashSet<PathBuf>,
 ) -> Vec<GamingViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     for baseline_file in baseline_files {
@@ -244,6 +246,7 @@ pub fn detect_critical_file_removals(
     project_path: &Path,
     baseline_files: &HashSet<PathBuf>,
 ) -> Vec<GamingViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     for baseline_file in baseline_files {
@@ -310,6 +313,7 @@ fn is_source_file(path: &Path) -> bool {
 
 /// Run meta-falsification check (verify the detector itself is working)
 pub fn run_meta_falsification(_project_path: &Path) -> Result<bool> {
+    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     // Create a temporary test pattern to verify detection
     let test_content = r#"
         // This is a meta-test pattern

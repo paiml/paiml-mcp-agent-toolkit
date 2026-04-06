@@ -104,6 +104,7 @@ pub fn get_current_commit() -> Result<CommitInfo> {
 /// - Time: O(n) where n is number of files
 /// - Cyclomatic: 2
 pub fn ticket_file_updated(commit: &CommitInfo, ticket_id: &str) -> bool {
+    debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
     let ticket_file = format!("docs/tickets/{}.md", ticket_id);
     commit.files.iter().any(|f| f.contains(&ticket_file))
 }

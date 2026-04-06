@@ -58,6 +58,11 @@ pub enum AnalysisError {
 impl UnifiedBashAnalyzer {
     /// Create new analyzer for a file
     pub fn new(file_path: PathBuf) -> Self {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         Self {
             file_path,
             #[cfg(test)]

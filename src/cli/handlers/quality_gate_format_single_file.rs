@@ -18,6 +18,7 @@ pub fn format_single_file_output(
     violations: &[QualityViolation],
     format: QualityGateOutputFormat,
 ) -> Result<String> {
+    debug_assert!(single_file.exists(), "single_file must exist: {}", single_file.display());
     match format {
         QualityGateOutputFormat::Json => Ok(serde_json::to_string_pretty(&json!({
             "file": single_file,
@@ -53,6 +54,7 @@ pub fn format_single_file_summary(
     results: &QualityGateResults,
     violations: &[QualityViolation],
 ) -> String {
+    debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
     let mut output = String::new();
 
     // Header with file path

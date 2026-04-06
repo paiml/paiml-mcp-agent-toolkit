@@ -28,6 +28,7 @@ pub enum Language {
 impl Language {
     #[must_use]
     pub fn from_extension(path: &Path) -> Self {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         match path.extension().and_then(|s| s.to_str()) {
             Some("rs") => Language::Rust,
             Some("py") => Language::Python,
@@ -115,6 +116,7 @@ pub enum NamingStyle {
 impl NamingStyle {
     #[must_use]
     pub fn matches(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         match self {
             NamingStyle::SnakeCase => name
                 .chars()

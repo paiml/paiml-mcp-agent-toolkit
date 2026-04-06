@@ -22,6 +22,7 @@ use crate::ast::languages::LanguageStrategy;
 pub async fn analyze_cpp_file_with_complexity(
     path: &Path,
 ) -> Result<FileComplexityMetrics, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_cpp_file_with_complexity_and_classifier(path, None).await
 }
 
@@ -30,6 +31,7 @@ pub async fn analyze_cpp_file_with_complexity_and_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileComplexityMetrics, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = tokio::fs::read_to_string(path)
         .await
@@ -100,6 +102,7 @@ pub async fn analyze_cpp_file_with_complexity_and_classifier(
 
 /// Analyze a C++ file and return context (compatibility function)
 pub async fn analyze_cpp_file(path: &Path) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     analyze_cpp_file_with_classifier(path, None).await
 }
 
@@ -108,6 +111,7 @@ pub async fn analyze_cpp_file_with_classifier(
     path: &Path,
     _classifier: Option<&FileClassifier>,
 ) -> Result<FileContext, TemplateError> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Read the file content
     let content = tokio::fs::read_to_string(path)
         .await

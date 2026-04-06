@@ -191,6 +191,7 @@ pub(crate) fn collect_functions_from_context(
 #[must_use]
 #[allow(dead_code)] // Pure function tested in pure_function_tests module
 pub(crate) fn calculate_dead_percentage(total_functions: usize, dead_count: usize) -> f32 {
+    // Contract: calculate_dead_percentage returns a bounded score
     if total_functions > 0 {
         (dead_count as f32 / total_functions as f32) * 100.0
     } else {

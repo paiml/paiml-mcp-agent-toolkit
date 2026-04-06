@@ -67,6 +67,7 @@ pub async fn analyze_typescript_file_with_complexity_cached(
     >,
 ) -> Result<crate::services::complexity::FileComplexityMetrics, crate::models::error::TemplateError>
 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     // Delegate to main complexity function (caching to be implemented in dispatch parser)
     analyze_typescript_file_with_complexity(path).await
 }

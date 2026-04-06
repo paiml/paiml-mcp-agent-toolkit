@@ -26,6 +26,7 @@ fn check_brick_file_for_assertions(entry: &Path) -> Option<CbPatternViolation> {
 }
 
 pub fn detect_bricks_without_assertions(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let brick_dir = project_path.join("src").join("brick");
     if !brick_dir.exists() {
         return vec![];
@@ -97,6 +98,7 @@ fn check_profiler_file(content: &str) -> Vec<ProfilerAnomaly> {
 
 /// Parse BrickProfiler JSON output and detect anomalies
 pub fn detect_profiler_anomalies(project_path: &Path) -> Vec<ProfilerAnomaly> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Check standard profiler output locations
     let profiler_paths = [
         project_path
@@ -142,6 +144,7 @@ fn find_name_field_backwards(lines: &[&str], from: usize) -> Option<String> {
 }
 
 pub fn extract_brick_name(content: &str, target_line: &str) -> String {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let lines: Vec<&str> = content.lines().collect();
     for (i, line) in lines.iter().enumerate() {
         if *line == target_line {

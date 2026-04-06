@@ -6,6 +6,7 @@ pub struct DslCompiler;
 
 impl DslCompiler {
     pub fn compile(source: &str) -> Result<Workflow, WorkflowError> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // For now, use YAML/JSON parsing
         serde_yaml_ng::from_str(source)
             .or_else(|_| serde_json::from_str(source))
@@ -13,6 +14,7 @@ impl DslCompiler {
     }
 
     pub fn compile_step(source: &str) -> Result<WorkflowStep, WorkflowError> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         serde_yaml_ng::from_str(source)
             .or_else(|_| serde_json::from_str(source))
             .map_err(|e| WorkflowError::InvalidDefinition(e.to_string()))

@@ -39,11 +39,13 @@ impl FileHealthBaseline {
     }
 
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let json = serde_json::to_string_pretty(self)?;
         fs::write(path, json)
     }
 
     pub fn load(path: &Path) -> std::io::Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)?;
         serde_json::from_str(&content)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
@@ -87,6 +89,7 @@ pub fn analyze_file(
     avg_complexity: f32,
     churn_30d: usize,
 ) -> Option<FileHealthMetrics> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = fs::read_to_string(path).ok()?;
     let lines = content.lines().count();
 
@@ -101,12 +104,14 @@ pub fn analyze_file(
 
 /// Count lines in a file
 pub fn count_lines(path: &Path) -> Option<usize> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = fs::read_to_string(path).ok()?;
     Some(content.lines().count())
 }
 
 /// Scan a directory for source files and analyze health
 pub fn scan_directory(root: &Path, extensions: &[&str], exclude_patterns: &[&str]) -> Vec<PathBuf> {
+    debug_assert!(root.exists(), "root must exist: {}", root.display());
     let mut files = Vec::new();
 
     fn visit_dir(
@@ -211,11 +216,13 @@ impl StackBaseline {
     }
 
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let json = serde_json::to_string_pretty(self)?;
         fs::write(path, json)
     }
 
     pub fn load(path: &Path) -> std::io::Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = fs::read_to_string(path)?;
         serde_json::from_str(&content)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))

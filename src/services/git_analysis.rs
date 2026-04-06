@@ -53,6 +53,11 @@ impl GitAnalysisService {
         project_path: &Path,
         period_days: u32,
     ) -> Result<CodeChurnAnalysis, TemplateError> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         if !project_path.join(".git").exists() {
             return Err(TemplateError::NotFound(format!(
                 "No git repository found at {project_path:?}"

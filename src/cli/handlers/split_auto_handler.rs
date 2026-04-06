@@ -69,6 +69,7 @@ pub async fn handle_split_auto(
     dry_run: bool,
     commit: bool,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let project_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
 
     println!("{}", c::header("Automated File Splitting"));

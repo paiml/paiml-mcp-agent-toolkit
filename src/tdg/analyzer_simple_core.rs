@@ -13,6 +13,7 @@ impl TdgAnalyzer {
     }
 
     pub fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let language = Language::from_extension(path);
         let source = fs::read_to_string(path)?;
         self.analyze_source(&source, language, Some(path.to_path_buf()))
@@ -24,6 +25,7 @@ impl TdgAnalyzer {
         language: Language,
         file_path: Option<PathBuf>,
     ) -> Result<TdgScore> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut tracker = PenaltyTracker::new();
         let mut score = TdgScore {
             language,
@@ -56,6 +58,7 @@ impl TdgAnalyzer {
     }
 
     pub fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let files = self.discover_files(dir)?;
         let mut scores = Vec::new();
 
@@ -86,6 +89,8 @@ impl TdgAnalyzer {
     }
 
     pub fn compare(&self, path1: &Path, path2: &Path) -> Result<Comparison> {
+        debug_assert!(path1.exists(), "path1 must exist: {}", path1.display());
+        debug_assert!(path2.exists(), "path2 must exist: {}", path2.display());
         let score1 = if path1.is_dir() {
             self.analyze_project(path1)?.average()
         } else {

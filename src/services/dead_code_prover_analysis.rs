@@ -48,6 +48,7 @@ impl DeadCodeProver {
 
     /// Analyze file for dead code with FFI awareness
     pub fn analyze_file(&mut self, file_path: &Path, content: &str) -> Vec<DeadCodeProof> {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let file_path_str = file_path.to_string_lossy().to_string();
         self.ffi_tracker.scan_for_ffi_exports(content, &file_path_str);
 

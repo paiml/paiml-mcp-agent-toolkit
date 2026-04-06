@@ -38,6 +38,7 @@ const AI_COAUTHOR_PATTERNS: &[&str] = &[
 /// contract-first methodology. If agent context files exist but lack contract-first
 /// patterns, the project is not enforcing contract-first for agents.
 pub(crate) fn check_agent_contract_existence(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let agent_files = [
         "CLAUDE.md",
         "GEMINI.md",
@@ -108,6 +109,7 @@ pub(crate) fn check_agent_contract_existence(project_path: &Path) -> ComplianceC
 /// actual evidence commands (not just descriptions). Contracts with empty
 /// evidence fields or placeholder-only claims are flagged.
 pub(crate) fn check_agent_contract_falsifiability(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
     if !work_dir.exists() {
         return ComplianceCheck {
@@ -199,6 +201,7 @@ pub(crate) fn check_agent_contract_falsifiability(project_path: &Path) -> Compli
 /// autonomous agents. L0 (paper-only/human review) is not acceptable
 /// for autonomous agent work.
 pub(crate) fn check_agent_verification_level(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
     if !work_dir.exists() {
         return ComplianceCheck {
@@ -293,6 +296,7 @@ pub(crate) fn check_agent_verification_level(project_path: &Path) -> ComplianceC
 /// Currently checks that contracts with "parent" or "depends_on" references
 /// have matching clause structure.
 pub(crate) fn check_assume_guarantee_chain(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
     if !work_dir.exists() {
         return ComplianceCheck {
@@ -360,6 +364,7 @@ pub(crate) fn check_assume_guarantee_chain(project_path: &Path) -> ComplianceChe
 /// `pmat comply check` or `pmat work checkpoint` was run during the task.
 /// Agents that complete without running comply are operating blind.
 pub(crate) fn check_agent_comply_usage(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
     if !work_dir.exists() {
         return ComplianceCheck {
@@ -438,6 +443,7 @@ pub(crate) fn check_agent_comply_usage(project_path: &Path) -> ComplianceCheck {
 /// Checks that work contracts have research references (arXiv, spec sections,
 /// or oracle links). Contracts without references lack traceability.
 pub(crate) fn check_agent_references_present(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
     if !work_dir.exists() {
         return ComplianceCheck {
@@ -496,6 +502,7 @@ pub(crate) fn check_agent_references_present(project_path: &Path) -> ComplianceC
 /// Checks that work contracts have chain-of-thought entries. The audit trail
 /// documents decision history for future inspection.
 pub(crate) fn check_agent_chain_of_thought(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
     if !work_dir.exists() {
         return ComplianceCheck {
@@ -554,6 +561,7 @@ pub(crate) fn check_agent_chain_of_thought(project_path: &Path) -> ComplianceChe
 /// For work contracts related to defects (status=blocked, or tagged as bug/fix),
 /// checks that a five_whys_id reference exists in the contract references.
 pub(crate) fn check_agent_five_whys_linked(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
     if !work_dir.exists() {
         return ComplianceCheck {
@@ -630,6 +638,7 @@ pub(crate) fn check_agent_five_whys_linked(project_path: &Path) -> ComplianceChe
 /// "falsification_method": "MethodName" (Popperian claims format).
 /// Contracts with placeholder-only evidence are flagged.
 pub(crate) fn check_agent_evidence_executable(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
     if !work_dir.exists() {
         return ComplianceCheck {
@@ -739,6 +748,7 @@ pub(crate) fn check_agent_evidence_executable(project_path: &Path) -> Compliance
 /// that a corresponding work contract exists in .pmat-work/. AI-authored
 /// commits without contracts indicate L0 (paper-only) autonomous code.
 pub(crate) fn check_no_l0_autonomous_code(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Get recent commits (last 20)
     let output = match std::process::Command::new("git")
         .args(["log", "--format=%H %s%n%b", "-20"])
@@ -916,6 +926,7 @@ fn process_commit_for_ai_check(
 /// reference their predecessor's postconditions. Checks that the
 /// contract chain is continuous.
 pub(crate) fn check_subagent_contract_composition(project_path: &Path) -> ComplianceCheck {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let work_dir = project_path.join(".pmat-work");
     if !work_dir.exists() {
         return ComplianceCheck {

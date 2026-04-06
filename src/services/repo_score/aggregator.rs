@@ -16,6 +16,11 @@ impl ScoreAggregator {
 
     /// Aggregate all scores for a repository
     pub async fn aggregate(&self, repo_path: &Path, config: &ScorerConfig) -> Result<RepoScore> {
+        debug_assert!(
+            repo_path.exists(),
+            "repo_path must exist: {}",
+            repo_path.display()
+        );
         tracing::debug!("ScoreAggregator::aggregate START");
         let start = Instant::now();
 

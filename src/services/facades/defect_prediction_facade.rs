@@ -283,6 +283,11 @@ impl DefectPredictionFacade {
 
     /// Quick analysis with defaults
     pub async fn quick_analysis(&self, project_path: PathBuf) -> Result<DefectPredictionResult> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let request = DefectPredictionRequest {
             project_path,
             confidence_threshold: 0.5,

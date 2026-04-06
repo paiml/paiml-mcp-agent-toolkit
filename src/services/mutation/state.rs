@@ -51,6 +51,11 @@ impl MutationState {
         parallel: bool,
         worker_count: Option<usize>,
     ) -> Self {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         Self {
             project_path: project_path.to_path_buf(),
             timestamp: chrono::Utc::now(),
@@ -102,6 +107,7 @@ impl MutationState {
 
     /// Save mutation state to disk
     pub async fn save(&self, path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Serialize to JSON with pretty formatting
         let json =
             serde_json::to_string_pretty(self).context("Failed to serialize mutation state")?;
@@ -116,6 +122,7 @@ impl MutationState {
 
     /// Load mutation state from disk
     pub async fn load(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Read file
         let json = fs::read_to_string(path)
             .await
@@ -129,11 +136,17 @@ impl MutationState {
 
     /// Get default state file path for a project
     pub fn default_state_path(project_path: &Path) -> PathBuf {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         project_path.join(".pmat").join("mutation_state.json")
     }
 
     /// Create backup of state before saving
     pub async fn save_with_backup(&self, path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Create backup if file exists
         if path.exists() {
             let backup_path = path.with_extension("json.bak");

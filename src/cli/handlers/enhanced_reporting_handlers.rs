@@ -188,6 +188,11 @@ pub async fn handle_generate_report(
     output: Option<PathBuf>,
     perf: bool,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let start_time = Instant::now();
 
     let actual_format = determine_output_format(output_format, text, markdown, csv);

@@ -11,6 +11,7 @@ pub async fn handle_analyze_makefile(
     gnu_version: Option<String>,
     _top_files: usize,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use crate::services::makefile_linter;
 
     eprintln!("🔧 Analyzing Makefile...");

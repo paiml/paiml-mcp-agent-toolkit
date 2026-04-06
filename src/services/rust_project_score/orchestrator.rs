@@ -99,6 +99,11 @@ impl RustProjectScoreOrchestrator {
     ///
     /// Runs all 10 category scorers and aggregates results
     pub fn score(&self, project_path: &Path) -> ScorerResult<ProjectScore> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         self.score_with_mode(project_path, ScoringMode::default())
     }
 

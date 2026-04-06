@@ -61,6 +61,7 @@ impl SymbolTable {
     /// Resolve a symbol by name
     /// Complexity: 4 (lookup + visibility check)
     pub fn resolve(&self, name: &str, from_module: &str) -> Option<&SymbolEntry> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.symbols.get(name).and_then(|entries| {
             entries.iter().find(|entry| {
                 // Check visibility rules
@@ -88,6 +89,7 @@ impl SymbolTable {
     /// Get all symbols for a file
     /// Complexity: 2
     pub fn get_file_symbols(&self, path: &Path) -> Vec<&SymbolEntry> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         self.file_symbols
             .get(path)
             .map(|names| {
@@ -106,6 +108,7 @@ impl SymbolTable {
     /// Increment usage count for a symbol
     /// Complexity: 3
     pub fn increment_usage(&mut self, name: &str, from_module: &str) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(entries) = self.symbols.get_mut(name) {
             for entry in entries.iter_mut() {
                 // Check visibility without borrowing self

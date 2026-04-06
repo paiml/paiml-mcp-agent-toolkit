@@ -42,6 +42,7 @@ impl ReadmeCompressor {
     }
 
     pub fn compress(&self, content: &str) -> CompressedReadme {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let sections = self.parse_markdown_sections(content);
         let mut scored_sections = Vec::new();
 

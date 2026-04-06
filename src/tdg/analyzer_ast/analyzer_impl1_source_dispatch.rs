@@ -5,6 +5,7 @@ impl TdgAnalyzerAst {
         language: Language,
         file_path: Option<PathBuf>,
     ) -> Result<TdgScore> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let mut tracker = PenaltyTracker::new();
         let mut score = TdgScore {
             language,

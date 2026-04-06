@@ -217,21 +217,25 @@ pub struct TreeRenderer;
 impl TreeRenderer {
     /// Render a tree item (not last in group)
     pub fn branch(text: &str) -> String {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         format!("├── {}", text)
     }
 
     /// Render a tree item (last in group)
     pub fn last_branch(text: &str) -> String {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         format!("└── {}", text)
     }
 
     /// Render a continuation line
     pub fn continuation(text: &str) -> String {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         format!("│   {}", text)
     }
 
     /// Render empty continuation
     pub fn empty_continuation(text: &str) -> String {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         format!("    {}", text)
     }
 }

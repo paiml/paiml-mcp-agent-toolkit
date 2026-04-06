@@ -16,6 +16,7 @@ impl WasmLanguageDetector {
     /// Detect if content is `AssemblyScript`
     #[must_use]
     pub fn is_assemblyscript(&self, content: &str) -> bool {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Check for AssemblyScript-specific keywords and patterns
         content.contains("@global")
             || content.contains("@inline")
@@ -29,6 +30,7 @@ impl WasmLanguageDetector {
     /// Detect if content is WebAssembly Text Format
     #[must_use]
     pub fn is_wat(&self, content: &str) -> bool {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         content.trim_start().starts_with('(')
             && (content.contains("module") || content.contains("func"))
     }

@@ -44,6 +44,7 @@ impl ComplexityAnalyzer {
     }
 
     pub fn analyze_string(&self, code: &str) -> Result<ComplexityMetrics, syn::Error> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let ast = syn::parse_file(code)?;
         Ok(ComplexityMetrics {
             cyclomatic: self.calculate_cyclomatic(&ast),
@@ -52,6 +53,7 @@ impl ComplexityAnalyzer {
     }
 
     pub fn calculate_shannon_entropy(&self, code: &str) -> f64 {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut char_counts = HashMap::new();
         let total = code.len() as f64;
 

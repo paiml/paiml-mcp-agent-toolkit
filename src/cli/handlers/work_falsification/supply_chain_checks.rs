@@ -365,6 +365,11 @@ pub(crate) async fn test_regression_gate(project_path: &Path) -> Result<Falsific
 
 /// Test meta-falsification: verify the falsifier itself is not broken
 pub(crate) fn test_meta_falsification(project_path: &Path) -> Result<FalsificationResult> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     print!("Injecting dummy failure... ");
 
     let detector_working = crate::services::gaming_detector::run_meta_falsification(project_path)?;

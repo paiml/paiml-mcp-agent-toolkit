@@ -28,6 +28,7 @@ impl SymbolTable {
     /// Resolve a relative location to a canonical location
     #[must_use]
     pub fn resolve_relative(&self, rel: &RelativeLocation, file: &Path) -> Option<Location> {
+        debug_assert!(file.exists(), "file must exist: {}", file.display());
         match rel {
             RelativeLocation::Function { name, module } => {
                 let qname = self.build_qualified_name(file, module.as_deref(), name)?;

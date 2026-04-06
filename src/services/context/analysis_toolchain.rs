@@ -5,6 +5,7 @@ pub async fn analyze_project(
     root_path: &Path,
     toolchain: &str,
 ) -> Result<ProjectContext, TemplateError> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     analyze_project_with_cache(root_path, toolchain, None).await
 }
 
@@ -13,6 +14,7 @@ pub async fn analyze_project_for_dead_code(
     root_path: &Path,
     toolchain: &str,
 ) -> Result<ProjectContext, TemplateError> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let gitignore = build_gitignore(root_path)?;
     let files = scan_rust_files_only(root_path, toolchain, None, &gitignore).await;
     let summary = build_project_summary(&files, root_path, toolchain).await;
@@ -30,6 +32,7 @@ pub async fn analyze_project_with_cache(
     toolchain: &str,
     cache_manager: Option<Arc<SessionCacheManager>>,
 ) -> Result<ProjectContext, TemplateError> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let gitignore = build_gitignore(root_path)?;
     let files = scan_and_analyze_files(root_path, toolchain, cache_manager, &gitignore).await;
     let summary = build_project_summary(&files, root_path, toolchain).await;
@@ -50,6 +53,7 @@ pub async fn analyze_project_with_persistent_cache(
     toolchain: &str,
     cache_manager: Option<Arc<PersistentCacheManager>>,
 ) -> Result<ProjectContext, TemplateError> {
+    debug_assert!(root_path.exists(), "root_path must exist: {}", root_path.display());
     let gitignore = build_gitignore(root_path)?;
     let files =
         scan_and_analyze_files_persistent(root_path, toolchain, cache_manager, &gitignore).await;

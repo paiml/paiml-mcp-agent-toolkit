@@ -155,6 +155,7 @@ impl TdgAnalyzerAst {
     }
 
     pub async fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let files = self.discover_files(dir)?;
         let mut scores = Vec::new();
 
@@ -175,6 +176,8 @@ impl TdgAnalyzerAst {
     }
 
     pub async fn compare(&self, path1: &Path, path2: &Path) -> Result<crate::tdg::Comparison> {
+        debug_assert!(path1.exists(), "path1 must exist: {}", path1.display());
+        debug_assert!(path2.exists(), "path2 must exist: {}", path2.display());
         let score1 = if path1.is_dir() {
             self.analyze_project(path1).await?.average()
         } else {

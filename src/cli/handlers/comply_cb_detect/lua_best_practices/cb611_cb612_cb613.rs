@@ -17,6 +17,11 @@ use std::path::{Path, PathBuf};
 ///
 /// Reference: Kong, AwesomeWM, KOReader weak table usage.
 pub fn detect_cb611_weak_table_misuse(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -154,6 +159,11 @@ impl std::fmt::Display for LuaTestFramework {
 /// Supports hybrid projects (e.g., Kong uses both busted and Test::Nginx).
 /// Reference: Kong, APISIX, xmake, KOReader framework patterns.
 pub fn detect_cb612_test_framework(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let frameworks = detect_lua_test_frameworks(project_path);
     let mut violations = Vec::new();
 
@@ -195,6 +205,11 @@ fn has_require_pattern(content: &str, module: &str) -> bool {
 
 /// Detect which Lua test frameworks are in use based on file patterns and require statements.
 pub fn detect_lua_test_frameworks(project_path: &Path) -> Vec<LuaTestFramework> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut frameworks = Vec::new();
 
     if has_busted_indicators(project_path) {
@@ -289,6 +304,11 @@ fn has_test_nginx_indicators(project_path: &Path) -> bool {
 /// Builds a directed graph from top-level require() calls and finds cycles via DFS.
 /// Function-scoped requires are excluded (they're safe -- deferred loading).
 pub fn detect_cb613_require_cycles(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     if files.len() < 2 {
         return Vec::new();

@@ -18,6 +18,11 @@ use crate::services::quality_gates::QAVerificationResult;
 
 impl DeepContextAnalyzer {
     pub async fn analyze_project(&self, project_path: &PathBuf) -> anyhow::Result<DeepContext> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let start_time = std::time::Instant::now();
         info!(
             "Starting deep context analysis for project: {:?}",

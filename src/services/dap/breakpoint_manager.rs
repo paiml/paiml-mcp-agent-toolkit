@@ -49,6 +49,7 @@ impl BreakpointManager {
 
     /// Remove a breakpoint
     pub fn remove_breakpoint(&mut self, source: &str, line: i64) -> Result<(), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(file_breakpoints) = self.breakpoints.get_mut(source) {
             file_breakpoints.remove(&line);
             if file_breakpoints.is_empty() {
@@ -62,6 +63,7 @@ impl BreakpointManager {
 
     /// Check if a breakpoint exists at the given location
     pub fn has_breakpoint(&self, source: &str, line: i64) -> bool {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.breakpoints
             .get(source)
             .map(|file_bp| file_bp.contains_key(&line))
@@ -70,6 +72,7 @@ impl BreakpointManager {
 
     /// Get a breakpoint at the given location
     pub fn get_breakpoint(&self, source: &str, line: i64) -> Option<Breakpoint> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.breakpoints
             .get(source)
             .and_then(|file_bp| file_bp.get(&line))
@@ -83,6 +86,7 @@ impl BreakpointManager {
 
     /// Get all breakpoints in a specific file
     pub fn breakpoints_in_file(&self, source: &str) -> Vec<Breakpoint> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.breakpoints
             .get(source)
             .map(|file_bp| {
@@ -101,6 +105,7 @@ impl BreakpointManager {
 
     /// Clear all breakpoints in a specific file
     pub fn clear_file(&mut self, source: &str) {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.breakpoints.remove(source);
     }
 
@@ -114,6 +119,7 @@ impl BreakpointManager {
 
     /// Record a hit on a breakpoint
     pub fn record_hit(&mut self, source: &str, line: i64) {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(file_breakpoints) = self.breakpoints.get_mut(source) {
             if let Some(metadata) = file_breakpoints.get_mut(&line) {
                 metadata.hit_count += 1;
@@ -123,6 +129,7 @@ impl BreakpointManager {
 
     /// Get hit count for a breakpoint
     pub fn get_hit_count(&self, source: &str, line: i64) -> u64 {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.breakpoints
             .get(source)
             .and_then(|file_bp| file_bp.get(&line))
@@ -134,6 +141,7 @@ impl BreakpointManager {
     ///
     /// Evaluates conditional breakpoints if variables are provided
     pub fn should_break(&self, source: &str, line: i64, variables: Option<&Value>) -> bool {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         if let Some(breakpoint) = self.get_breakpoint(source, line) {
             if let Some(condition) = &breakpoint.condition {
                 // Evaluate condition

@@ -151,6 +151,7 @@ impl CommandMetadata {
 
     /// Find a subcommand by name
     pub fn find_subcommand(&self, name: &str) -> Option<&CommandMetadata> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.subcommands
             .iter()
             .find(|sub| sub.name == name || sub.aliases.iter().any(|a| a == name))

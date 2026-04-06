@@ -60,6 +60,7 @@ pub fn get_effective_languages(
 /// - "CPP" -> "cpp"
 /// - "TypeScript" -> "typescript"
 pub fn normalize_language_name(name: &str) -> Result<String> {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     let normalized = name.to_lowercase().trim().to_string();
 
     if normalized.is_empty() {

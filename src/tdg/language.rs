@@ -24,6 +24,7 @@ pub enum Language {
 
 impl Language {
     pub fn from_extension(path: &Path) -> Self {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         match path.extension().and_then(|s| s.to_str()) {
             Some("rs") => Language::Rust,
             Some("py") => Language::Python,

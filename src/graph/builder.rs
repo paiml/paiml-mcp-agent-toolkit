@@ -39,6 +39,7 @@ impl DependencyGraphBuilder {
     /// Build from workspace path
     /// Complexity: 8 (file collection + analysis loop)
     pub fn from_workspace(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut builder = Self::new();
 
         // Collect source files

@@ -38,6 +38,7 @@ impl Bm25SearchEngine {
     /// * `content` - File content
     /// * `language` - Programming language
     pub fn index_file(&mut self, file_path: &str, content: &str, _language: &str) {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Split content into lines and index each
         for (line_num, line) in content.lines().enumerate() {
             if line.trim().is_empty() {
@@ -69,6 +70,7 @@ impl Bm25SearchEngine {
     /// # Returns
     /// Results with true BM25 scores (not rank-based)
     pub fn search(&self, query: &str, limit: usize) -> Vec<(KeywordMatch, f32)> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         let results = self.index.search(query, limit);
 
         results

@@ -1,0 +1,7 @@
+# Auto-generated from .pmat-work/falsify-rag/contract.json
+name: "falsify-rag"
+surface: work-contract
+verification_summary:
+  target_level: L1
+  current_level: L1
+  total_obligations: 0

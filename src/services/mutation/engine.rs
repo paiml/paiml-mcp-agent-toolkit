@@ -55,6 +55,11 @@ impl MutationEngine {
     }
     /// Generate mutants from source file
     pub async fn generate_mutants_from_file(&self, source_file: &Path) -> Result<Vec<Mutant>> {
+        debug_assert!(
+            source_file.exists(),
+            "source_file must exist: {}",
+            source_file.display()
+        );
         let source = tokio::fs::read_to_string(source_file)
             .await
             .context("Failed to read source file")?;
@@ -67,6 +72,7 @@ impl MutationEngine {
         file_path: &Path,
         source: &str,
     ) -> Result<Vec<Mutant>> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         let syntax_tree: File = syn::parse_file(source).context("Failed to parse source")?;
         let mut visitor = MutationVisitor {
             mutants: Vec::new(),

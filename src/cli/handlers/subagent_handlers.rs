@@ -238,6 +238,11 @@ fn report_validation_results(issues: &[String], warnings: &[String]) -> Result<(
 
 /// Validate a sub-agent definition file.
 pub fn validate_subagent(file_path: &Path) -> Result<()> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     println!(
         "{} {}",
         c::label("Validating sub-agent:"),

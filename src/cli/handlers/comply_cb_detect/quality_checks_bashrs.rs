@@ -3,6 +3,7 @@
 
 /// CB-400: Check git hooks with bashrs
 pub fn detect_cb400_git_hooks_quality(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let hooks_dir = project_path.join(".git/hooks");
     if !hooks_dir.exists() {
         return Vec::new();
@@ -47,6 +48,7 @@ fn lint_single_hook(hooks_dir: &Path, hook_name: &str) -> Vec<CbPatternViolation
 
 /// CB-401: Check Makefile with bashrs
 pub fn detect_cb401_makefile_quality(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
     let makefile_path = project_path.join("Makefile");
 
@@ -90,6 +92,7 @@ pub fn detect_cb401_makefile_quality(project_path: &Path) -> Vec<CbPatternViolat
 
 /// CB-402: Check shell scripts with bashrs
 pub fn detect_cb402_shell_script_quality(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut violations = Vec::new();
 
     // Find all .sh files (limit to reasonable depth)

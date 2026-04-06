@@ -16,6 +16,7 @@ pub struct FileManifest {
 impl FileManifest {
     /// Build manifest from project directory
     pub fn build(project_path: &Path) -> Result<Self> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut files = HashMap::new();
         let mut coverage_required = Vec::new();
 
@@ -80,6 +81,7 @@ impl FileManifest {
 
     /// Verify manifest integrity (find missing files)
     pub fn verify_integrity(&self, project_path: &Path) -> Vec<PathBuf> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let mut missing = Vec::new();
 
         for rel_path in self.files.keys() {
@@ -115,6 +117,7 @@ pub struct FileEntry {
 impl FileEntry {
     /// Create file entry from path
     pub fn from_path(path: &Path) -> Result<Option<Self>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let extension = path.extension().and_then(|e| e.to_str());
 
         // Only process source files

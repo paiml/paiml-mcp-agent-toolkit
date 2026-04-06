@@ -32,6 +32,7 @@ const SKIP_DIRS: &[&str] = &[
 
 /// Walk directory recursively for `.scala` and `.sc` files.
 pub fn walkdir_scala_files(dir: &Path) -> Vec<PathBuf> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     walk_scala_recursive(dir, &mut files);
     files
@@ -62,6 +63,7 @@ fn walk_scala_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 
 /// Check if a Scala file is a test file.
 pub fn is_scala_test_file(path: &Path) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     if stem.ends_with("Test")
         || stem.ends_with("Spec")
@@ -78,6 +80,7 @@ pub fn is_scala_test_file(path: &Path) -> bool {
 
 /// Compute production lines (strip Scala comments).
 pub fn compute_scala_production_lines(content: &str) -> Vec<(usize, String)> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut result = Vec::new();
     let mut in_block_comment = false;
 

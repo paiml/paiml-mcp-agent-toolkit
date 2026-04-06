@@ -98,6 +98,7 @@ impl DocAccuracyValidator {
         content: &str,
         filename: &str,
     ) -> Result<Vec<ValidationResult>> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Extract claims
         let mut claims = self.extractor.extract_claims(content);
 

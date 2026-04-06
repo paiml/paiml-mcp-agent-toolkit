@@ -128,6 +128,7 @@ impl AgentsMdDiscovery {
     /// Find nearest AGENTS.md file from path
     #[must_use]
     pub fn find_nearest(&self, path: &Path) -> Option<PathBuf> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check cache first
         if let Some(cached) = self.get_from_cache(path) {
             return Some(cached.path);
@@ -163,6 +164,7 @@ impl AgentsMdDiscovery {
     /// Discover all AGENTS.md files in project
     #[must_use]
     pub fn discover_all(&self, root: &Path) -> Vec<AgentsMdFile> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let mut files = Vec::new();
         self.discover_recursive(root, 0, &mut files);
 

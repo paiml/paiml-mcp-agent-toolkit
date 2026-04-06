@@ -28,6 +28,7 @@ impl AgentsMdParser {
 
     /// Parse AGENTS.md content
     pub fn parse(&self, content: &str) -> Result<AgentsMdDocument> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         // Check size limit
         if content.len() > self.validation_rules.max_size {
             return Err(anyhow::anyhow!(

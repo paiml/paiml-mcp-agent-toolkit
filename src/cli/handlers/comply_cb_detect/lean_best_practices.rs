@@ -26,6 +26,7 @@ const SKIP_DIRS: &[&str] = &[
 
 /// Walk directory recursively for `.lean` files, skipping common non-source dirs.
 pub fn walkdir_lean_files(dir: &Path) -> Vec<PathBuf> {
+    debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
     let mut files = Vec::new();
     walk_lean_recursive(dir, &mut files);
     files
@@ -60,6 +61,11 @@ fn walk_lean_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 /// CB-1050: Detect sorry usage (incomplete proofs).
 /// Sorry is Lean's escape hatch for unfinished proofs — it should be zero in production.
 pub fn detect_cb1050_sorry_usage(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lean_files(project_path);
     let mut violations = Vec::new();
 
@@ -102,6 +108,11 @@ pub fn detect_cb1050_sorry_usage(project_path: &Path) -> Vec<CbPatternViolation>
 /// CB-1051: Detect non-standard axiom usage.
 /// Custom axioms weaken the trust base — flag any `axiom` declaration.
 pub fn detect_cb1051_axiom_usage(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lean_files(project_path);
     let mut violations = Vec::new();
 
@@ -132,6 +143,11 @@ pub fn detect_cb1051_axiom_usage(project_path: &Path) -> Vec<CbPatternViolation>
 /// CB-1052: Theorem coverage check.
 /// Warns if sorry/theorem ratio exceeds 20% (more than 1 in 5 theorems incomplete).
 pub fn detect_cb1052_theorem_coverage(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lean_files(project_path);
     let mut total_theorems = 0usize;
     let mut total_sorrys = 0usize;
@@ -187,6 +203,11 @@ pub fn detect_cb1052_theorem_coverage(project_path: &Path) -> Vec<CbPatternViola
 /// CB-1053: Missing doc comments on public theorems.
 /// Public theorems should have doc comments (`/-- ... -/`) for maintainability.
 pub fn detect_cb1053_undocumented_theorems(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lean_files(project_path);
     let mut violations = Vec::new();
 

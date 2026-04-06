@@ -73,6 +73,7 @@ impl DocGenerator {
 
     /// Generate documentation for any code
     pub fn generate_documentation(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let mut docs = String::new();
 
         docs.push_str("# Generated Code Documentation\n\n");

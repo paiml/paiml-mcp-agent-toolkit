@@ -15,6 +15,7 @@ impl DriftDetector {
 
     /// Detect drift in a markdown file
     pub fn detect_in_file(&self, path: &Path) -> Result<Vec<DriftError>, std::io::Error> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
         let file_name = path.to_string_lossy().to_string();
         Ok(self.detect_in_content(&content, &file_name))
@@ -22,6 +23,8 @@ impl DriftDetector {
 
     /// Detect drift in markdown content
     pub fn detect_in_content(&self, content: &str, file_name: &str) -> Vec<DriftError> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
+        debug_assert!(!file_name.is_empty(), "file_name must not be empty");
         let mut errors = Vec::new();
 
         // Track line numbers

@@ -34,6 +34,7 @@ impl StateManager {
 
     #[must_use]
     pub fn with_temp_dir(temp_dir: &Path) -> Self {
+        debug_assert!(temp_dir.exists(), "temp_dir must exist: {}", temp_dir.display());
         Self {
             state: None,
             snapshot_manager: SnapshotManager::with_path(temp_dir),

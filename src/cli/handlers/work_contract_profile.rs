@@ -20,6 +20,7 @@ impl ContractProfile {
     /// Auto-detect profile from project structure.
     /// Evaluated top-down, first match wins.
     pub fn detect(project_path: &Path) -> Self {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         // Check for explicit config override first
         let config_path = project_path.join(".pmat-work").join("config.toml");
         if config_path.exists() {
@@ -209,6 +210,7 @@ fn which_tool(name: &str) -> bool {
 
 /// Check toolchain requirements for a profile. Returns list of missing tools.
 pub fn check_toolchain(profile: &ContractProfile, _project_path: &Path) -> Vec<MissingTool> {
+    debug_assert!(_project_path.exists(), "_project_path must exist: {}", _project_path.display());
     profile
         .required_tools()
         .into_iter()
@@ -245,12 +247,14 @@ pub struct DbcThresholdOverrides {
 impl DbcConfig {
     /// Load DbC config from .pmat-work/config.toml
     pub fn load(project_path: &Path) -> Self {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_path = project_path.join(".pmat-work").join("config.toml");
         Self::load_from_path(&config_path).unwrap_or_default()
     }
 
     /// Load from a specific path
     pub fn load_from_path(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read config: {}", path.display()))?;
         Self::parse_toml(&content)

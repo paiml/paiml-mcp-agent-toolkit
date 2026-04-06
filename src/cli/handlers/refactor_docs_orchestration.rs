@@ -24,6 +24,8 @@ pub async fn handle_refactor_docs(
     backup_dir: PathBuf,
     perf: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
+    debug_assert!(backup_dir.exists(), "backup_dir must exist: {}", backup_dir.display());
     let start_time = std::time::Instant::now();
 
     let scan_dirs =

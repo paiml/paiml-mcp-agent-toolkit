@@ -27,6 +27,7 @@ impl Roadmap {
     /// - Short: "unwrap"
     /// - Any case: "UNWRAP"
     pub fn find_item(&self, id: &str) -> Option<&RoadmapItem> {
+        debug_assert!(!id.is_empty(), "id must not be empty");
         let id_lower = id.to_lowercase();
 
         // 1. Exact match (fastest, case-sensitive)
@@ -67,6 +68,7 @@ impl Roadmap {
 
     /// Find item by ID (mutable)
     pub fn find_item_mut(&mut self, id: &str) -> Option<&mut RoadmapItem> {
+        debug_assert!(!id.is_empty(), "id must not be empty");
         self.roadmap.iter_mut().find(|item| item.id == id)
     }
 
@@ -81,6 +83,7 @@ impl Roadmap {
 
     /// Remove item by ID
     pub fn remove_item(&mut self, id: &str) -> Option<RoadmapItem> {
+        debug_assert!(!id.is_empty(), "id must not be empty");
         if let Some(pos) = self.roadmap.iter().position(|item| item.id == id) {
             Some(self.roadmap.remove(pos))
         } else {

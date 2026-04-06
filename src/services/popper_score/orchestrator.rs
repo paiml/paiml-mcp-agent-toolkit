@@ -296,6 +296,11 @@ impl Default for PopperOrchestrator {
 /// println!("Score: {:.1}% ({})", score.normalized_score, score.grade);
 /// ```
 pub fn score_project(project_path: &Path) -> PopperScorerResult<PopperScore> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     PopperOrchestrator::new().score(project_path)
 }
 

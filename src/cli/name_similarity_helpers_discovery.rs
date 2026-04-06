@@ -4,6 +4,7 @@ pub fn discover_source_files(
     include: &Option<String>,
     exclude: &Option<String>,
 ) -> Result<Vec<(PathBuf, String)>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let mut discovery_config = FileDiscoveryConfig::default();
 
     if let Some(exclude_pattern) = exclude {

@@ -35,6 +35,7 @@ impl FiveWhysAnalyzer {
     /// # Returns
     /// Complete debug analysis with root cause and recommendations
     pub async fn analyze(&self, issue: &str, path: &Path, depth: u8) -> Result<DebugAnalysis> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Validation
         if issue.is_empty() {
             bail!("Issue description cannot be empty");

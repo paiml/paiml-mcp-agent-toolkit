@@ -8,6 +8,7 @@ pub struct StorageBackendFactory;
 impl StorageBackendFactory {
     /// Create default backend (libsql)
     pub fn create_default(path: &Path) -> Result<Box<dyn StorageBackend>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Ok(Box::new(LibsqlBackend::new(path)?))
     }
 
@@ -19,6 +20,7 @@ impl StorageBackendFactory {
 
     /// Create libsql backend
     pub fn create_libsql(path: &Path) -> Result<Box<dyn StorageBackend>> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Ok(Box::new(LibsqlBackend::new(path)?))
     }
 

@@ -9,6 +9,11 @@ use crate::services::semantic::chunker::{self, Language};
 
 /// Handle `pmat extract --list <FILE>`
 pub async fn handle_extract_list(file_path: &Path) -> Result<()> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     let source = std::fs::read_to_string(file_path)
         .with_context(|| format!("Cannot read {}", file_path.display()))?;
 

@@ -27,6 +27,7 @@ impl PdcaLoop {
 
     /// Run the PDCA loop until convergence or max iterations
     pub async fn run(&self, project_path: &Path) -> Result<Vec<PdcaIterationResult>> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         if !project_path.exists() {
             bail!("Project path does not exist: {}", project_path.display());
         }
@@ -121,6 +122,7 @@ impl PdcaLoop {
 
     /// Run a single PDCA iteration (for CI/CD)
     pub async fn run_single(&self, project_path: &Path) -> Result<PdcaIterationResult> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let results = self.run_iterations(project_path, 1).await?;
         results
             .into_iter()

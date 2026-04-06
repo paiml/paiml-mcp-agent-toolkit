@@ -218,6 +218,7 @@ impl SessionCacheManager {
 
     /// Invalidate entries for a specific file
     pub fn invalidate_file(&self, path: &Path) {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         // Invalidate AST cache for this file
@@ -233,6 +234,7 @@ impl SessionCacheManager {
 
     /// Invalidate entries for a directory
     pub fn invalidate_directory(&self, dir: &Path) {
+        debug_assert!(dir.exists(), "dir must exist: {}", dir.display());
         let dir_str = dir.to_string_lossy();
 
         // Invalidate all caches that might reference this directory

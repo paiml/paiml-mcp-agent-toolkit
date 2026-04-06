@@ -26,6 +26,7 @@ const MUTABLE_COLLECTIONS: &[&str] = &[
 ];
 
 pub fn detect_cb800_mutable_collection(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
 
@@ -75,6 +76,7 @@ pub fn detect_cb800_mutable_collection(project_path: &Path) -> Vec<CbPatternViol
 // =============================================================================
 
 pub fn detect_cb801_null_usage(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
 
@@ -144,6 +146,7 @@ fn contains_null_literal(line: &str) -> bool {
 // =============================================================================
 
 pub fn detect_cb802_wildcard_import(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
 

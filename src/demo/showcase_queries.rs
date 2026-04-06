@@ -57,6 +57,7 @@ impl ShowcaseGallery {
 
     #[must_use]
     pub fn get_repository_by_name(&self, name: &str) -> Option<&ShowcaseRepository> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.repositories.get(name)
     }
 

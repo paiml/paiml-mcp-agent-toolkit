@@ -114,6 +114,8 @@ pub fn get_removable() -> HashMap<&'static str, &'static str> {
 
 /// Analyze a single dependency (graph metrics populated later)
 pub fn analyze_dep(name: &str, version: &str, is_dev: bool) -> DepAnalysis {
+    debug_assert!(!name.is_empty(), "name must not be empty");
+    debug_assert!(!version.is_empty(), "version must not be empty");
     let replacements = get_replacements();
     let heavy = get_heavy_deps();
     let removable = get_removable();

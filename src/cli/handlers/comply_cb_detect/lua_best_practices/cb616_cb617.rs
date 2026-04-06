@@ -31,6 +31,11 @@ impl std::fmt::Display for LuaAnnotationSystem {
 /// CB-616: Detect type annotation system and report doc coverage.
 /// Supports LuaLS (---@param, ---@return) and LDoc (-- @tparam, -- @treturn).
 pub fn detect_cb616_type_annotations(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     if files.is_empty() {
         return Vec::new();
@@ -189,6 +194,11 @@ fn is_openresty_project(files: &[PathBuf]) -> bool {
 /// - Flags stdlib globals used in handler functions without local caching
 /// - Flags ngx.var access without nil check
 pub fn detect_cb617_openresty_checks(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     if !is_openresty_project(&files) {
         return Vec::new();

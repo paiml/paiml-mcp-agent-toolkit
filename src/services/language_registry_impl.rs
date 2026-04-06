@@ -92,6 +92,7 @@ impl Language {
     /// Detect language from file path
     #[must_use]
     pub fn from_path(path: &Path) -> Self {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Handle special cases by filename
         if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
             match filename.to_lowercase().as_str() {

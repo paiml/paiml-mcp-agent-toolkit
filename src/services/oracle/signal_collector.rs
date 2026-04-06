@@ -59,6 +59,11 @@ impl AggregatedCollector {
 
     /// Collect signals from all sources
     pub async fn collect_all(&self, project_path: &Path) -> Result<Vec<SignalEvidence>> {
+        debug_assert!(
+            project_path.exists(),
+            "project_path must exist: {}",
+            project_path.display()
+        );
         let mut all_signals = Vec::new();
 
         for collector in &self.collectors {

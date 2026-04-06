@@ -34,6 +34,7 @@ pub fn extract_file_details(
     source: &str,
     language: Language,
 ) -> Result<FileExtract, String> {
+    debug_assert!(!source.is_empty(), "source must not be empty");
     if source.trim().is_empty() {
         return Ok(FileExtract {
             file: path.to_string(),

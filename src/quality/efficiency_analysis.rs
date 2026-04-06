@@ -17,6 +17,7 @@ impl EfficiencyAnalyzer {
     }
 
     pub fn analyze_string(&self, code: &str) -> Result<EfficiencyResult, syn::Error> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let ast = syn::parse_file(code)?;
         Ok(EfficiencyResult {
             time_complexity: self.analyze(&ast),

@@ -27,6 +27,7 @@ impl SimdWidth {
 
     /// Typical speedup factor (from trueno-zram measurements)
     pub fn compute_speedup(&self) -> f64 {
+        // Contract: compute_speedup returns a bounded score
         let result = match self {
             SimdWidth::Scalar => 1.0,
             SimdWidth::Neon128 | SimdWidth::Sse2 | SimdWidth::WasmSimd128 => 4.0,

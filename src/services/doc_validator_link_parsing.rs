@@ -11,6 +11,7 @@
 /// assert_eq!(links.len(), 2);
 /// ```ignore
 pub fn extract_links(content: &str, source_file: &Path) -> Vec<Link> {
+    debug_assert!(source_file.exists(), "source_file must exist: {}", source_file.display());
     let mut links = Vec::new();
     let regex = Regex::new(r"\[([^\]]+)\]\(([^)]+)\)").expect("Invalid regex");
 

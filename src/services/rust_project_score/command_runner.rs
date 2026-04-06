@@ -73,6 +73,11 @@ pub fn run_with_timeout(
 
 /// Run cargo clippy with timeout
 pub fn run_clippy(project_path: &Path, _timeout_secs: Option<u64>) -> io::Result<Option<Output>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut cmd = Command::new("cargo");
     cmd.arg("clippy")
         .arg("--all-targets")
@@ -93,6 +98,11 @@ pub fn run_rustfmt_check(
     project_path: &Path,
     _timeout_secs: Option<u64>,
 ) -> io::Result<Option<Output>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut cmd = Command::new("cargo");
     cmd.arg("fmt")
         .arg("--")
@@ -111,6 +121,11 @@ pub fn run_cargo_audit(
     project_path: &Path,
     _timeout_secs: Option<u64>,
 ) -> io::Result<Option<Output>> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut cmd = Command::new("cargo");
     cmd.arg("audit").arg("--json").current_dir(project_path);
 

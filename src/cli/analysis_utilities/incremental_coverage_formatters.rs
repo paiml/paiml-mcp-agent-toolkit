@@ -238,6 +238,7 @@ fn write_file_entries(
 
 /// Extract filename from path for display
 pub fn extract_filename(path: &std::path::Path) -> &str {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     path.file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")

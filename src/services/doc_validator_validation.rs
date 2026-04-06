@@ -289,6 +289,7 @@ impl DocValidator {
     /// }
     /// ```
     pub async fn validate_directory(&self, root: &Path) -> Result<ValidationSummary> {
+        debug_assert!(root.exists(), "root must exist: {}", root.display());
         let start = Instant::now();
         let mut all_links = Vec::new();
         let mut file_count = 0;

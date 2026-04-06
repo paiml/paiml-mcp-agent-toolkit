@@ -12,6 +12,7 @@ impl DefectReportService {
 
     /// Generate a comprehensive defect report
     pub async fn generate_report(&self, project_path: &Path) -> Result<DefectReport> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let start_time = std::time::Instant::now();
         info!(
             "Starting comprehensive defect analysis for: {}",

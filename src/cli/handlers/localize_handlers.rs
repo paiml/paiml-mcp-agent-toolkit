@@ -18,6 +18,16 @@ pub async fn handle_localize(
     output: Option<&Path>,
     format: &str,
 ) -> Result<()> {
+    debug_assert!(
+        passed_coverage.exists(),
+        "passed_coverage must exist: {}",
+        passed_coverage.display()
+    );
+    debug_assert!(
+        failed_coverage.exists(),
+        "failed_coverage must exist: {}",
+        failed_coverage.display()
+    );
     println!("\n🔍 Tarantula Fault Localization");
     println!("   Formula: {}", formula);
     println!("   Passed tests: {}", passed_count);

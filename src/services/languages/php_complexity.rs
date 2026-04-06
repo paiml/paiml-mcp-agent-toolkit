@@ -19,6 +19,7 @@ impl PhpComplexityAnalyzer {
 
     /// Analyzes complexity of PHP script (complexity ≤10)
     pub fn analyze_complexity(&mut self, source: &str) -> Result<(u32, u32), String> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         self.cyclomatic_complexity = 1;
         self.cognitive_complexity = 1;
 

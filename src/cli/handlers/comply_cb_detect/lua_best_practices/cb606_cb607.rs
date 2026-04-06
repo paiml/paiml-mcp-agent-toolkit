@@ -10,6 +10,11 @@ use std::path::Path;
 
 /// CB-606: Missing Module Return -- `local M = {}` pattern without final `return M`.
 pub fn detect_cb606_missing_module_return(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 
@@ -57,6 +62,11 @@ pub fn detect_cb606_missing_module_return(project_path: &Path) -> Vec<CbPatternV
 /// CB-607: Colon/Dot Confusion -- mixed `:` and `.` method calls on same table.
 /// Based on Luau type system research.
 pub fn detect_cb607_colon_dot_confusion(project_path: &Path) -> Vec<CbPatternViolation> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let files = walkdir_lua_files(project_path);
     let mut violations = Vec::new();
 

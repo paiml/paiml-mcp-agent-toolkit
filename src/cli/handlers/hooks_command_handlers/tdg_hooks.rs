@@ -97,6 +97,11 @@ pub(crate) async fn install_tdg_hooks(project_root: &Path) -> Result<()> {
 
 /// Install pre-commit hook with TDG enforcement
 pub(crate) fn install_tdg_pre_commit_hook(hooks_dir: &Path, config: &TdgHooksConfig) -> Result<()> {
+    debug_assert!(
+        hooks_dir.exists(),
+        "hooks_dir must exist: {}",
+        hooks_dir.display()
+    );
     let hook_path = hooks_dir.join("pre-commit");
 
     // Read template
@@ -147,6 +152,11 @@ pub(crate) fn install_tdg_post_commit_hook(
     hooks_dir: &Path,
     config: &TdgHooksConfig,
 ) -> Result<()> {
+    debug_assert!(
+        hooks_dir.exists(),
+        "hooks_dir must exist: {}",
+        hooks_dir.display()
+    );
     let hook_path = hooks_dir.join("post-commit");
 
     // Read template

@@ -7,6 +7,11 @@ use std::path::{Path, PathBuf};
 
 /// Read a cached metric from .pmat-metrics/
 pub(crate) fn read_cached_metric(project_path: &Path, filename: &str) -> Option<CachedMetric> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let cache_path = project_path.join(".pmat-metrics").join(filename);
     if !cache_path.exists() {
         return None;
@@ -33,6 +38,11 @@ pub(crate) fn read_cached_metric(project_path: &Path, filename: &str) -> Option<
 /// Fallback: try reading deny cache from .pmat-work/<item>/ or .pmat/ directories.
 /// Converts raw text output to the expected JSON format with `passed` field.
 pub(crate) fn read_deny_cache_fallback(project_path: &Path) -> Option<CachedMetric> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     // Try .pmat-work/**/deny-cache.txt then .pmat/deny-cache.txt
     let candidates = find_cache_file(project_path, "deny-cache.txt");
     for path in candidates {
@@ -52,6 +62,11 @@ pub(crate) fn read_deny_cache_fallback(project_path: &Path) -> Option<CachedMetr
 
 /// Fallback: try reading lint cache from .pmat-work/<item>/ or .pmat/ directories.
 pub(crate) fn read_lint_cache_fallback(project_path: &Path) -> Option<CachedMetric> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let candidates = find_cache_file(project_path, "lint-cache.txt");
     for path in candidates {
         if let Ok(content) = std::fs::read_to_string(&path) {
@@ -71,6 +86,11 @@ pub(crate) fn read_lint_cache_fallback(project_path: &Path) -> Option<CachedMetr
 
 /// Find cache file candidates in .pmat-work/*/ and .pmat/ directories.
 pub(crate) fn find_cache_file(project_path: &Path, filename: &str) -> Vec<PathBuf> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let mut candidates = Vec::new();
 
     // Check .pmat-work/*/<filename> (most specific, sorted by mtime desc)
@@ -104,6 +124,7 @@ pub(crate) fn find_cache_file(project_path: &Path, filename: &str) -> Vec<PathBu
 
 /// Get file age in minutes.
 pub(crate) fn file_age_minutes(path: &Path) -> i64 {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     std::fs::metadata(path)
         .and_then(|m| m.modified())
         .ok()
@@ -114,6 +135,11 @@ pub(crate) fn file_age_minutes(path: &Path) -> i64 {
 
 /// Capture baseline metrics for a new work contract
 pub async fn capture_baseline(project_path: &Path) -> Result<(f64, f64, Option<f64>)> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     println!("   \u{1f4ca} Capturing baseline metrics...");
 
     // Capture TDG score

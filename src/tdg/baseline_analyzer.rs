@@ -54,6 +54,11 @@ pub struct BaselineComparison {
 /// Full git integration will be added in REFACTOR phase.
 #[cfg(feature = "rust-ast")]
 pub fn compare_with_baseline(file_path: &Path, baseline_ref: &str) -> Result<BaselineComparison> {
+    debug_assert!(
+        file_path.exists(),
+        "file_path must exist: {}",
+        file_path.display()
+    );
     // Analyze current state
     let mut analyzer = FunctionAnalyzer::new().context("Failed to create FunctionAnalyzer")?;
 

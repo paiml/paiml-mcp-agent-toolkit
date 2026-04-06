@@ -27,6 +27,7 @@ pub async fn handle_analyze_tdg_enhanced(
     _include: Vec<String>,
     watch: bool,
 ) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     // Handle watch mode
     if watch {
         handle_watch_mode();

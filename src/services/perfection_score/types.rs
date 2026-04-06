@@ -49,6 +49,7 @@ pub struct CategoryScore {
 
 impl CategoryScore {
     pub fn new(name: &str, raw_score: f64, max_points: u16) -> Self {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let earned_points = (raw_score / 100.0) * f64::from(max_points);
         let grade = Self::calculate_grade(raw_score);
         Self {

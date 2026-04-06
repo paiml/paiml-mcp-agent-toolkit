@@ -91,6 +91,11 @@ impl MudaGrade {
 /// Inventory (SATD) elevated to 20% — stale TODO/FIXME/HACK accumulation
 /// is a primary signal of unmaintained code and must not be masked.
 pub fn calculate_muda_score(project_path: &Path) -> MudaReport {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     let overproduction = measure_overproduction(project_path);
     let waiting = measure_waiting(project_path);
     let inventory = measure_inventory(project_path);

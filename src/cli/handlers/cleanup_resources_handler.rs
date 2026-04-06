@@ -65,6 +65,11 @@ pub async fn handle_cleanup_resources(
     min_age_days: u32,
     format: OutputFormat,
 ) -> Result<()> {
+    debug_assert!(
+        project_dir.exists(),
+        "project_dir must exist: {}",
+        project_dir.display()
+    );
     // Parse targets
     let parsed_targets: Vec<CleanupTarget> = targets
         .iter()

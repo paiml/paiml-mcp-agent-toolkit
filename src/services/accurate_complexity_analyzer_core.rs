@@ -3,6 +3,7 @@
 impl AccurateComplexityAnalyzer {
     /// Analyze a single Rust file
     pub async fn analyze_file(&self, path: &Path) -> Result<FileComplexityResult> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = tokio::fs::read_to_string(path).await?;
         let ast = syn::parse_file(&content)?;
 
@@ -28,6 +29,7 @@ impl AccurateComplexityAnalyzer {
 
     /// Analyze an entire project
     pub async fn analyze_project(&self, path: &Path) -> Result<ProjectComplexityResult> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut file_metrics = Vec::new();
         let mut files_analyzed = 0;
 

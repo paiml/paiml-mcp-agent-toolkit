@@ -8,6 +8,7 @@ pub fn calculate_similarities(
     fuzzy: bool,
     phonetic: bool,
 ) -> Vec<NameSimilarityResult> {
+    debug_assert!(!query.is_empty(), "query must not be empty");
     let mut similarities = Vec::new();
     let query_lower = if case_sensitive {
         query.to_string()

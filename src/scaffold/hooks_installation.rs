@@ -4,6 +4,7 @@
 /// - Time: O(1)
 /// - Cyclomatic: 3
 pub fn install_pre_commit_hook(project_dir: &Path, script: &str) -> Result<()> {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::fs;
 
     let hook_path = project_dir.join(".git/hooks/pre-commit");
@@ -35,6 +36,7 @@ pub fn install_pre_commit_hook(project_dir: &Path, script: &str) -> Result<()> {
 /// - Time: O(1)
 /// - Cyclomatic: 2
 pub fn install_post_commit_hook(project_dir: &Path) -> Result<()> {
+    debug_assert!(project_dir.exists(), "project_dir must exist: {}", project_dir.display());
     use std::fs;
 
     let hook_path = project_dir.join(".git/hooks/post-commit");

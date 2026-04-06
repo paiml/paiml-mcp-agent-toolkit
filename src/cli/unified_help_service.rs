@@ -60,6 +60,7 @@ impl UnifiedHelpService {
     /// 3. Semantic search via BM25 (intent understanding)
     /// 4. Importance ranking via PageRank (relevance)
     pub fn lookup(&self, query: &str) -> HelpResponse {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         // 1. Try exact match
         if let Some(cmd) = self.registry.find_command(query) {
             return HelpResponse::Exact(cmd.clone());
@@ -101,6 +102,7 @@ impl UnifiedHelpService {
 
     /// Search commands by query
     pub fn search(&self, query: &str, top_k: usize) -> Vec<HelpSearchResult> {
+        debug_assert!(!query.is_empty(), "query must not be empty");
         let mut scored: Vec<_> = self
             .command_docs
             .iter()

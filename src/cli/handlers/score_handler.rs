@@ -50,6 +50,7 @@ pub async fn handle_score(
     regression_check: bool,
     stack: bool,
 ) -> Result<()> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     if !path.exists() || !path.is_dir() {
         anyhow::bail!("Path is not a valid directory: {}", path.display());
     }

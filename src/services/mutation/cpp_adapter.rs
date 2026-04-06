@@ -90,6 +90,7 @@ impl Default for CppAdapter {
 
 /// Find CMakeLists.txt by traversing up from source file
 pub fn find_cmake_root(start: &Path) -> Option<&Path> {
+    debug_assert!(start.exists(), "start must exist: {}", start.display());
     let mut current = start;
 
     loop {

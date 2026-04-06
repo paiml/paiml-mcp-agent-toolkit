@@ -7,6 +7,7 @@
 /// that only compiles on certain platforms, leading to false positives in dead code analysis.
 #[must_use]
 pub fn is_heavily_cfg_gated(content: &str) -> bool {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let cfg_count = content.matches("#[cfg(target").count()
         + content.matches("#[target_feature").count()
         + content.matches("#[cfg(feature").count();

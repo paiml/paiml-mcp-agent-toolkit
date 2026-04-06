@@ -85,6 +85,7 @@ impl SimpleFairScheduler {
 
     /// Schedule high-priority commit operation
     pub async fn schedule_commit(&self, path: PathBuf) -> Result<ScheduleGuard, ScheduleError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Commits always get immediate priority
         let permit = self.high_priority.acquire().await?;
 
@@ -133,6 +134,7 @@ impl SimpleFairScheduler {
 
     /// Schedule background operation (preemptible)
     pub async fn schedule_background(&self, path: PathBuf) -> Result<ScheduleGuard, ScheduleError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check if commit is active on this path
         let ops = self.active_ops.read().await;
         if matches!(ops.get(&path), Some(OperationType::Commit { .. })) {
@@ -215,6 +217,7 @@ impl SimpleFairScheduler {
 
     /// Force preemption of background operations for a specific path
     pub async fn preempt_background(&self, path: &PathBuf) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let mut ops = self.active_ops.write().await;
         if let Some(OperationType::Background {
             preemptible: true, ..

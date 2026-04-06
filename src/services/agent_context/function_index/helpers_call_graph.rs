@@ -4,6 +4,7 @@
 /// creating O(n^2) spurious edges. Excluding them reduces call graph size by ~99%
 /// for large repos (e.g., 58GB -> <100MB for 230K-function repos).
 pub(crate) fn is_generic_callee(name: &str) -> bool {
+    debug_assert!(!name.is_empty(), "name must not be empty");
     matches!(
         name,
         "new" | "from" | "into" | "default" | "clone" | "fmt"

@@ -23,6 +23,7 @@ impl PolyglotPathValidator {
     /// * `Ok(())` if path exists and is a directory
     /// * `Err` with descriptive message otherwise
     pub fn validate_directory_path(path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         PathValidator::validate_directory_anyhow(path)
             .map_err(|e| anyhow!("Invalid polyglot directory path: {}", e))
     }
@@ -36,6 +37,7 @@ impl PolyglotPathValidator {
     /// * `Ok(())` if path exists and is a file
     /// * `Err` with descriptive message otherwise
     pub fn validate_file_path(path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         PathValidator::validate_file_anyhow(path)
             .map_err(|e| anyhow!("Invalid polyglot file path: {}", e))
     }
@@ -50,6 +52,7 @@ impl PolyglotPathValidator {
     /// * `true` if path is a valid file for the specified language (or any supported language if None)
     /// * `false` otherwise
     pub fn is_valid_language_file(path: &Path, language: Option<Language>) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if !PathValidator::is_valid_file(path) {
             return false;
         }
@@ -70,6 +73,7 @@ impl PolyglotPathValidator {
     /// * `true` if the file extension matches the language
     /// * `false` otherwise
     pub fn is_file_for_language(path: &Path, language: Language) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         path.extension()
             .and_then(|ext| ext.to_str())
             .map(|ext| {
@@ -90,6 +94,7 @@ impl PolyglotPathValidator {
     /// * `true` if the file extension matches any supported language
     /// * `false` otherwise
     pub fn is_any_supported_language_file(path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Language::from_path(path).is_some()
     }
 
@@ -107,6 +112,11 @@ impl PolyglotPathValidator {
         language: Language,
         recursive: bool,
     ) -> Result<Vec<PathBuf>> {
+        debug_assert!(
+            directory.exists(),
+            "directory must exist: {}",
+            directory.display()
+        );
         Self::validate_directory_path(directory)?;
 
         let mut result = Vec::new();

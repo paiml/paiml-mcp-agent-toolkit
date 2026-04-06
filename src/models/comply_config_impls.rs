@@ -63,6 +63,7 @@ impl PmatYamlConfig {
     /// Returns default configuration if file doesn't exist.
     /// Returns error if file exists but is malformed.
     pub fn load(project_path: &Path) -> Result<Self, ConfigError> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_path = project_path.join(".pmat.yaml");
 
         if !config_path.exists() {
@@ -79,6 +80,7 @@ impl PmatYamlConfig {
 
     /// Load configuration from a specific file path
     pub fn load_from_path(path: &Path) -> Result<Self, ConfigError> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content =
             std::fs::read_to_string(path).map_err(|e| ConfigError::IoError(e.to_string()))?;
 
@@ -87,6 +89,7 @@ impl PmatYamlConfig {
 
     /// Save configuration to .pmat.yaml in the given directory
     pub fn save(&self, project_path: &Path) -> Result<(), ConfigError> {
+        debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
         let config_path = project_path.join(".pmat.yaml");
         let content =
             serde_yaml_ng::to_string(self).map_err(|e| ConfigError::SerializeError(e.to_string()))?;

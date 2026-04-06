@@ -21,6 +21,7 @@ impl TwoTierCache {
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = AnalysisResult>,
     {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         let hash = self.hash_key(key);
 
         // L1 lookup - ~100ns
@@ -74,6 +75,7 @@ impl TwoTierCache {
     /// Hash key using FNV-1a
     #[inline(always)]
     pub fn hash_key(&self, key: &str) -> u64 {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         let mut hasher = FnvHasher::default();
         hasher.write(key.as_bytes());
         hasher.finish()

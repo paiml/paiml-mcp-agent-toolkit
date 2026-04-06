@@ -240,6 +240,7 @@ mod {} {{
 
     /// Check if function needs decomposition based on complexity
     pub(crate) fn needs_decomposition(&self, code: &str) -> Result<bool> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let complexity = self.estimate_complexity(code);
         Ok(complexity > self.profile.thresholds.max_complexity)
     }
@@ -253,6 +254,7 @@ mod {} {{
 
     /// Estimate cyclomatic complexity (simple heuristic for now)
     pub fn estimate_complexity(&self, code: &str) -> u32 {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let if_count = code.matches("if ").count() as u32;
         let match_count = code.matches("match ").count() as u32;
         let loop_count =
@@ -263,6 +265,7 @@ mod {} {{
 
     /// Calculate quality score for generated code
     pub(crate) fn calculate_quality_score(&self, code: &str) -> Result<QualityScore> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         let complexity = self.estimate_complexity(code);
         let coverage = 100.0; // Generated code will have full coverage
         let tdg = if complexity <= 5 { 1 } else { complexity / 2 };
@@ -277,6 +280,7 @@ mod {} {{
 
     /// Calculate detailed metrics
     pub fn calculate_metrics(&self, code: &str, tests: &str) -> Result<QualityMetrics> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         Ok(QualityMetrics {
             complexity: self.estimate_complexity(code),
             cognitive_complexity: self.estimate_complexity(code), // Same for now
@@ -303,11 +307,13 @@ mod {} {{
 
     /// Generate tests for given code
     pub fn generate_tests(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         self.test_generator.generate_tests(code)
     }
 
     /// Generate documentation for code
     pub fn generate_documentation(&self, code: &str) -> Result<String> {
+        debug_assert!(!code.is_empty(), "code must not be empty");
         self.doc_generator.generate_documentation(code)
     }
 

@@ -5,6 +5,7 @@ impl Roadmap {
     /// - Time: O(n) where n is number of lines
     /// - Cyclomatic: 2
     pub fn from_file(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)?;
         Self::parse_content(&content)
     }
@@ -15,6 +16,7 @@ impl Roadmap {
     /// - Time: O(n) where n is number of lines
     /// - Cyclomatic: 9
     pub fn parse_content(content: &str) -> Result<Self> {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let mut state = ParseState {
             sprints: Vec::new(),
             current_sprint: None,

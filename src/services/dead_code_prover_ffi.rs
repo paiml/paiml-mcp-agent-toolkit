@@ -26,6 +26,7 @@ impl FFIReferenceTracker {
 
     /// Scan AST for FFI exports
     pub fn scan_for_ffi_exports(&mut self, content: &str, file_path: &str) {
+        debug_assert!(!content.is_empty(), "content must not be empty");
         let lines: Vec<&str> = content.lines().collect();
 
         for (line_num, line) in lines.iter().enumerate() {

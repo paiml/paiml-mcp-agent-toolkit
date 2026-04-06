@@ -23,6 +23,11 @@ pub async fn handle_analyze_name_similarity(
     fuzzy: bool,
     case_sensitive: bool,
 ) -> Result<()> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     // Temporarily delegate to the original implementation
     // This will be refactored once the module structure is in place
     crate::cli::handle_analyze_name_similarity(

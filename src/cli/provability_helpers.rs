@@ -9,6 +9,11 @@ use std::path::Path;
 
 /// Parse function specification string into `FunctionId`
 pub fn parse_function_spec(spec: &str, project_path: &Path) -> Result<FunctionId> {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     // Parse function specification in format: path/to/file.rs:function_name
     // or just function_name (search all files)
     if let Some((file_part, func_part)) = spec.split_once(':') {

@@ -125,6 +125,7 @@ impl ContractRegistry {
     where
         T: Serialize,
     {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         let json_contract = VersionedContract {
             version: contract.version,
             contract: serde_json::to_value(contract.contract)
@@ -143,6 +144,7 @@ impl ContractRegistry {
     /// Get the latest version of a contract
     #[must_use]
     pub fn get_latest(&self, name: &str) -> Option<&VersionedContract<serde_json::Value>> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.contracts
             .get(name)?
             .iter()
@@ -156,6 +158,7 @@ impl ContractRegistry {
         name: &str,
         version: &ContractVersion,
     ) -> Option<&VersionedContract<serde_json::Value>> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.contracts
             .get(name)?
             .iter()
@@ -168,6 +171,7 @@ impl ContractRegistry {
         &self,
         name: &str,
     ) -> Option<&Vec<VersionedContract<serde_json::Value>>> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.contracts.get(name)
     }
 
@@ -189,6 +193,7 @@ impl ContractRegistry {
         to_version: &ContractVersion,
         contract: serde_json::Value,
     ) -> Result<serde_json::Value, ContractError> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(migration) = self
             .migrations
             .get(&(from_version.clone(), to_version.clone()))
@@ -204,6 +209,7 @@ impl ContractRegistry {
     /// Check if a contract version is deprecated
     #[must_use]
     pub fn is_deprecated(&self, name: &str, version: &ContractVersion) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(contract) = self.get_version(name, version) {
             contract.metadata.deprecated
         } else {
@@ -214,6 +220,7 @@ impl ContractRegistry {
     /// Get deprecation info for a contract version
     #[must_use]
     pub fn get_deprecation_info(&self, name: &str, version: &ContractVersion) -> Option<String> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         if let Some(contract) = self.get_version(name, version) {
             if contract.metadata.deprecated {
                 contract.metadata.migration_notes.clone()

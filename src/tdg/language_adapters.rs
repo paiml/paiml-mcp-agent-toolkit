@@ -213,6 +213,7 @@ impl LanguageRegistry {
     }
 
     pub fn detect_and_get(&self, path: &Path) -> Result<&dyn LanguageAdapter> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let language = Language::from_extension(path);
         if language == Language::Unknown {
             return Err(anyhow::anyhow!("Unknown language for file: {}", path.display()));

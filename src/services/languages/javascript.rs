@@ -20,6 +20,7 @@ pub struct JavaScriptAstVisitor {
 impl JavaScriptAstVisitor {
     /// Create a new JavaScript AST visitor
     pub fn new(path: &Path) -> Self {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         Self {
             path: path.to_path_buf(),
         }
@@ -32,6 +33,7 @@ impl JavaScriptAstVisitor {
     /// (which also handles JavaScript).
     #[cfg(feature = "typescript-ast")]
     pub fn analyze_javascript_source(&self, source: &str) -> Result<Vec<AstItem>> {
+        debug_assert!(!source.is_empty(), "source must not be empty");
         // Create temporary file with .js extension (builder pattern)
         let temp_file = tempfile::Builder::new()
             .suffix(".js")

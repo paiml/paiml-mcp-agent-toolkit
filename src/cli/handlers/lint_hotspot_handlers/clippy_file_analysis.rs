@@ -223,6 +223,7 @@ fn log_file_not_found_debug(
 ///
 /// Returns an error if the operation fails
 pub(crate) fn find_workspace_root(start_path: &Path) -> Result<Option<PathBuf>> {
+    debug_assert!(start_path.exists(), "start_path must exist: {}", start_path.display());
     let mut current = start_path;
 
     loop {

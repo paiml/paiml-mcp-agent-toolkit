@@ -13,6 +13,7 @@ impl Winnowing {
 
     #[must_use]
     pub fn fingerprint(&self, text: &str) -> Vec<u64> {
+        debug_assert!(!text.is_empty(), "text must not be empty");
         let k_grams = self.extract_k_grams(text);
         self.select_fingerprints(&k_grams)
     }

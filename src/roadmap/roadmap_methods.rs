@@ -3,6 +3,7 @@
 impl Roadmap {
     /// Load roadmap from a markdown file
     pub fn from_file(path: &Path) -> Result<Self> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read roadmap from {}", path.display()))?;
         parser::parse_roadmap(&content)
@@ -10,6 +11,7 @@ impl Roadmap {
 
     /// Save roadmap to a markdown file
     pub fn to_file(&self, path: &Path) -> Result<()> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let content = parser::roadmap_to_markdown(self)?;
         std::fs::write(path, content)
             .with_context(|| format!("Failed to write roadmap to {}", path.display()))?;

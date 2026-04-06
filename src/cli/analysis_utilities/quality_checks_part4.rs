@@ -41,6 +41,7 @@ fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str
 // Helper functions
 #[must_use]
 pub fn detect_toolchain(path: &Path) -> Option<String> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     super::detect_primary_language(path)
 }
 
@@ -106,6 +107,7 @@ pub async fn analyze_project_files(
     cyclomatic_threshold: u16,
     cognitive_threshold: u16,
 ) -> Result<Vec<crate::services::complexity::FileComplexityMetrics>> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::services::file_discovery::{FileDiscoveryConfig, ProjectFileDiscovery};
 
     // CRITICAL FIX: Use ProjectFileDiscovery instead of WalkDir
@@ -250,6 +252,8 @@ pub fn should_analyze_file(
     extensions: &[&str],
     include: &[String],
 ) -> bool {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
 
     if !extensions.contains(&extension) {

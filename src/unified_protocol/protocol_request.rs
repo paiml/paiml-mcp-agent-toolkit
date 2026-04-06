@@ -19,6 +19,7 @@ impl UnifiedRequest {
 
     #[must_use]
     pub fn with_header(mut self, key: &str, value: &str) -> Self {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         if let (Ok(name), Ok(val)) = (
             key.parse::<http::HeaderName>(),
             value.parse::<http::HeaderValue>(),
@@ -29,6 +30,7 @@ impl UnifiedRequest {
     }
 
     pub fn with_extension<T: Serialize>(mut self, key: &str, value: T) -> Self {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         if let Ok(json_value) = serde_json::to_value(value) {
             self.extensions.insert(key.to_string(), json_value);
         }
@@ -37,6 +39,7 @@ impl UnifiedRequest {
 
     #[must_use]
     pub fn get_extension<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Option<T> {
+        debug_assert!(!key.is_empty(), "key must not be empty");
         self.extensions
             .get(key)
             .and_then(|v| serde_json::from_value(v.clone()).ok())

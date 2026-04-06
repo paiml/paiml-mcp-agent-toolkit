@@ -132,6 +132,7 @@ pmat query --coverage-gaps --limit 30 --exclude-tests
 
 /// Handle upgrade to a specific style (e.g., Popperian)
 pub async fn handle_upgrade(project_path: &Path, target: &str, dry_run: bool) -> Result<()> {
+    debug_assert!(project_path.exists(), "project_path must exist: {}", project_path.display());
     use crate::cli::colors as c;
     use crate::cli::handlers::work_contract::{WorkContract, FileManifest};
     use crate::cli::handlers::work_falsification;

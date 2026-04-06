@@ -116,6 +116,7 @@ impl SATDDetector {
 
     /// Check if a file is a supported source file
     pub(crate) fn is_source_file(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             matches!(
                 ext,
@@ -148,6 +149,7 @@ impl SATDDetector {
 
     /// Check if a file is a test file
     pub(crate) fn is_test_file(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check if path contains test directories
         let path_str = path.to_string_lossy();
         if path_str.contains("/tests/")
@@ -178,6 +180,7 @@ impl SATDDetector {
     /// Check if file is minified or in vendor directory
     /// Check if file should be excluded from SATD analysis
     pub(crate) fn should_exclude_file(&self, file_path: &Path) -> bool {
+        debug_assert!(file_path.exists(), "file_path must exist: {}", file_path.display());
         let path_str = file_path.to_string_lossy();
 
         self.is_satd_analysis_tool(&path_str)
@@ -218,6 +221,7 @@ impl SATDDetector {
     }
 
     pub(crate) fn is_minified_or_vendor_file(&self, path: &Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Check if path contains vendor directory
         if path.components().any(|c| c.as_os_str() == "vendor") {
             return true;

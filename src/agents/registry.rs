@@ -46,10 +46,12 @@ impl AgentRegistry {
     }
 
     pub async fn get_agent(&self, name: &str) -> Option<AgentId> {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.agents_by_name.get(name).map(|entry| *entry.value())
     }
 
     pub async fn register_agent_with_name(&self, name: &str, agent_id: AgentId) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.agents_by_name.insert(name.to_string(), agent_id);
     }
 
@@ -69,10 +71,12 @@ impl AgentRegistry {
     }
 
     pub async fn remove_agent(&self, name: &str) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.agents_by_name.remove(name);
     }
 
     pub async fn mark_agent_healthy(&self, name: &str) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.agent_health.insert(
             name.to_string(),
             AgentHealth {
@@ -83,6 +87,7 @@ impl AgentRegistry {
     }
 
     pub async fn mark_agent_unhealthy(&self, name: &str, error: &str) {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.agent_health.insert(
             name.to_string(),
             AgentHealth {
@@ -93,6 +98,7 @@ impl AgentRegistry {
     }
 
     pub async fn is_agent_healthy(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         self.agent_health
             .get(name)
             .map(|entry| entry.healthy)

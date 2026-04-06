@@ -62,6 +62,7 @@ impl DefectTaxonomy {
     /// Get defect pattern by ticket ID
     #[must_use]
     pub fn get(&self, ticket_id: &str) -> Option<&DefectClass> {
+        debug_assert!(!ticket_id.is_empty(), "ticket_id must not be empty");
         self.patterns.get(ticket_id)
     }
 

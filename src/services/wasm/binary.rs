@@ -40,6 +40,11 @@ impl WasmBinaryAnalyzer {
 
     /// Analyze a WebAssembly binary file
     pub async fn analyze_file(&self, file_path: &Path) -> Result<WasmMetrics> {
+        debug_assert!(
+            file_path.exists(),
+            "file_path must exist: {}",
+            file_path.display()
+        );
         let content = tokio::fs::read(file_path).await?;
 
         if content.len() > self.max_file_size {

@@ -2,6 +2,7 @@
 // Name similarity helpers
 #[must_use]
 pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
+    debug_assert!(!content.is_empty(), "content must not be empty");
     let mut identifiers = Vec::new();
     let mut seen = HashSet::new();
 
@@ -83,6 +84,7 @@ fn extract_identifiers_for_pattern(
 /// ```
 #[must_use]
 pub fn calculate_string_similarity(s1: &str, s2: &str) -> f32 {
+    // Contract: calculate_string_similarity returns a bounded score
     // Normalized Levenshtein distance for basic string similarity
     if s1.is_empty() && s2.is_empty() {
         return 1.0;

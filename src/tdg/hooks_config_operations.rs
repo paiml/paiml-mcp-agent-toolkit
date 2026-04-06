@@ -4,6 +4,7 @@
 impl TdgHooksConfig {
     /// Load configuration from .pmat/tdg-rules.toml
     pub fn load(project_root: &Path) -> Result<Self> {
+        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let config_path = project_root.join(".pmat").join("tdg-rules.toml");
 
         if !config_path.exists() {
@@ -22,6 +23,7 @@ impl TdgHooksConfig {
 
     /// Create default configuration file at .pmat/tdg-rules.toml
     pub fn create_default(project_root: &Path) -> Result<()> {
+        debug_assert!(project_root.exists(), "project_root must exist: {}", project_root.display());
         let pmat_dir = project_root.join(".pmat");
         let config_path = pmat_dir.join("tdg-rules.toml");
 

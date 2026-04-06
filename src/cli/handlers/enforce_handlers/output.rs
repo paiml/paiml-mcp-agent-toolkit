@@ -136,6 +136,11 @@ pub fn print_progress_bar(result: &EnforcementResult) {
 
 /// Print enforcement header
 pub fn print_enforcement_header(project_path: &std::path::Path) {
+    debug_assert!(
+        project_path.exists(),
+        "project_path must exist: {}",
+        project_path.display()
+    );
     eprintln!("{}", c::header("Starting Extreme Quality Enforcement"));
     eprintln!(
         "{} {}",

@@ -1,5 +1,6 @@
 impl NamingStyle {
     pub fn matches(&self, name: &str) -> bool {
+        debug_assert!(!name.is_empty(), "name must not be empty");
         match self {
             NamingStyle::SnakeCase => {
                 name.chars().all(|c| c.is_lowercase() || c == '_' || c.is_numeric())

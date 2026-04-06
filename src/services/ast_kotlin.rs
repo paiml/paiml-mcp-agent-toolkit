@@ -52,6 +52,7 @@ impl KotlinAstParser {
 
     /// Parse a Kotlin file into an AST DAG with memory safety guarantees
     pub fn parse_file(&mut self, path: &Path, content: &str) -> Result<AstDag> {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         // Input validation
         if content.len() > MAX_STRING_LENGTH {
             return Err(anyhow::anyhow!(

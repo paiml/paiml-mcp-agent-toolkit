@@ -132,6 +132,7 @@ impl RuchyAstAnalyzer {
 /// Parse a Ruchy file using the real Ruchy parser and analyze its complexity
 #[cfg(feature = "ruchy-ast")]
 pub async fn analyze_ruchy_file_with_parser(path: &Path) -> Result<FileComplexityMetrics> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     use ruchy::{get_parse_error, is_valid_syntax, Parser};
 
     let content = tokio::fs::read_to_string(path).await?;
@@ -161,6 +162,7 @@ pub async fn analyze_ruchy_file_with_parser(path: &Path) -> Result<FileComplexit
 
 /// Parse a Ruchy file and analyze its complexity (fallback heuristic method)
 pub async fn analyze_ruchy_file(path: &Path) -> Result<FileComplexityMetrics> {
+    debug_assert!(path.exists(), "path must exist: {}", path.display());
     let content = tokio::fs::read_to_string(path).await?;
 
     // For now, use a simple heuristic-based analysis

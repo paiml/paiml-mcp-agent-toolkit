@@ -105,6 +105,7 @@ impl DeepContextAnalyzer {
     }
 
     pub(crate) fn should_exclude_path(&self, path: &std::path::Path) -> bool {
+        debug_assert!(path.exists(), "path must exist: {}", path.display());
         let path_str = path.to_string_lossy();
 
         for pattern in &self.config.exclude_patterns {
