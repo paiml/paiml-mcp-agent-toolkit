@@ -442,7 +442,7 @@ CB-1338..1343 break the whack-a-mole cycle.
 **apr-cli Level A Enforcement (v3.4):** ALL 48 apr-cli commands require Grade A
 TDG (≤0.2) + L3 provable-contracts. apr-cli at 63% penetration, needs ≥95%
 (#686). #691 closed — per-crate reporting implemented. **pmat self-enforcement:**
-**38.4%** (5784 sites, 0 test failures). All pub fn covered via sub-agents.
+**38.4%** overall (5784 sites), **99.7% pub fn** (5008/5022). 0 test failures.
 
 **O(1) Firm Requirement:** All pre-commit checks < 45ms total from cached data.
 No cold verification in the commit path. Caches populated by `pmat work
