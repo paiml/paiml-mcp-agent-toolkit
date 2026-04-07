@@ -140,3 +140,9 @@ include!("commands_validation.rs");
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "tests.rs"]
 mod tests;
+#[cfg(all(test, feature = "broken-tests"))]
+mod tests_part2;
+#[cfg(all(test, feature = "broken-tests"))]
+mod tests_part3;
+#[cfg(all(test, feature = "broken-tests"))]
+mod tests_part4;

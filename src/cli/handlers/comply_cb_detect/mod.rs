@@ -42,3 +42,7 @@ mod tests;
 mod tests_part2;
 #[cfg(test)]
 mod tests_part3;
+#[cfg(test)]
+mod tests_part4;
+#[cfg(test)]
+mod tests_part5;
