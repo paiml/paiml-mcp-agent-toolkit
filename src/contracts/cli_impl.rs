@@ -23,6 +23,7 @@ impl ContractCliHandler {
     }
 
     /// Process CLI commands using uniform contracts
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn handle_command(&self, cmd: Commands) -> Result<()> {
         if let Commands::Analyze(analyze_cmd) = cmd {
             self.handle_analyze_command(analyze_cmd).await

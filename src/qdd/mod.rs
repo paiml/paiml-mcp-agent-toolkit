@@ -132,6 +132,7 @@ pub struct QddTool {
 
 impl QddTool {
     /// Create new QDD tool with specified quality profile
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn with_profile(profile: QualityProfile) -> Self {
         Self {
@@ -142,6 +143,7 @@ impl QddTool {
     }
 
     /// Execute QDD operation with quality guarantees
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute(&self, operation: QddOperation) -> Result<QddResult> {
         match operation {
             QddOperation::Create(spec) => self.create_code(spec).await,

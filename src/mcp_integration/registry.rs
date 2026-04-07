@@ -124,10 +124,12 @@ impl ResourceRegistry {
             .insert(template.uri_template.clone(), template);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn list(&self) -> Vec<ResourceTemplate> {
         self.templates.values().cloned().collect()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, uri_template: &str) -> Option<Arc<dyn McpResource>> {
         self.resources.get(uri_template).cloned()
     }
@@ -214,16 +216,19 @@ impl PromptRegistry {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&mut self, prompt: Arc<dyn McpPrompt>) {
         let metadata = prompt.metadata();
         self.prompts.insert(metadata.name.clone(), prompt);
         self.metadata.insert(metadata.name.clone(), metadata);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn list(&self) -> Vec<PromptMetadata> {
         self.metadata.values().cloned().collect()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get(&self, name: &str) -> Option<Arc<dyn McpPrompt>> {
         self.prompts.get(name).cloned()
     }

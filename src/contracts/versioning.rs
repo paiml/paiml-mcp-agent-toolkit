@@ -90,6 +90,7 @@ impl ContractMetadata {
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn deprecated(mut self, migration_notes: &str) -> Self {
         debug_assert!(
@@ -124,6 +125,7 @@ impl ContractRegistry {
     }
 
     /// Register a contract version
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register<T>(
         &mut self,
         name: &str,
@@ -148,6 +150,7 @@ impl ContractRegistry {
     }
 
     /// Get the latest version of a contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn get_latest(&self, name: &str) -> Option<&VersionedContract<serde_json::Value>> {
         self.contracts
@@ -157,6 +160,7 @@ impl ContractRegistry {
     }
 
     /// Get a specific version of a contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn get_version(
         &self,
@@ -170,6 +174,7 @@ impl ContractRegistry {
     }
 
     /// Get all versions of a contract
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn get_all_versions(
         &self,
@@ -179,6 +184,7 @@ impl ContractRegistry {
     }
 
     /// Register a migration between versions
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register_migration(
         &mut self,
         from: ContractVersion,
@@ -189,6 +195,7 @@ impl ContractRegistry {
     }
 
     /// Migrate contract from one version to another
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn migrate(
         &self,
         name: &str,
@@ -209,6 +216,7 @@ impl ContractRegistry {
     }
 
     /// Check if a contract version is deprecated
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn is_deprecated(&self, name: &str, version: &ContractVersion) -> bool {
         if let Some(contract) = self.get_version(name, version) {
@@ -219,6 +227,7 @@ impl ContractRegistry {
     }
 
     /// Get deprecation info for a contract version
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn get_deprecation_info(&self, name: &str, version: &ContractVersion) -> Option<String> {
         if let Some(contract) = self.get_version(name, version) {
@@ -284,12 +293,14 @@ impl ParameterRenameMapping {
 
     /// Standard migration for `project_path` -> path
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn project_path_to_path() -> Self {
         Self::new().add_mapping("project_path", "path")
     }
 
     /// Standard migration for file -> files array
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn file_to_files() -> Box<dyn ContractMigration> {
         Box::new(FileToFilesMigration)
     }
@@ -327,16 +338,19 @@ impl<T> ContractBuilder<T> {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn version(mut self, major: u32, minor: u32, patch: u32) -> Self {
         self.version = ContractVersion::new(major, minor, patch);
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn description(mut self, description: &str) -> Self {
         self.metadata = self.metadata.with_description(description);
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn deprecated(mut self, migration_notes: &str) -> Self {
         debug_assert!(
             !migration_notes.is_empty(),

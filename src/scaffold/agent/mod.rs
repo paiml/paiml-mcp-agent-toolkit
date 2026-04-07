@@ -77,12 +77,14 @@ pub async fn scaffold_agent(context: &AgentContext, output: &Path) -> Result<()>
 
 /// List all available agent templates.
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn list_templates() -> Vec<String> {
     let registry = TemplateRegistry::new();
     registry.list_available()
 }
 
 /// Validate a template file.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn validate_template(path: &Path) -> Result<()> {
     let registry = TemplateRegistry::new();
     registry.validate_template_file(path)

@@ -48,6 +48,7 @@ pub enum QualityMode {
 
 impl QualityMode {
     /// Teams progress through modes as they mature
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn recommended_progression() -> Vec<(Self, Duration)> {
         vec![

@@ -1,5 +1,6 @@
 impl QualityCodeGenerator {
     /// Create high-quality code from specification
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn create(&self, spec: &CreateSpec) -> Result<QddResult> {
         match spec.code_type {
             CodeType::Function => self.create_function(spec).await,

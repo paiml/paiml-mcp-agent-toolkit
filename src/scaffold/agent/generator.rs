@@ -52,33 +52,39 @@ impl GeneratedFiles {
     }
 
     /// Add a text file to the collection.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_text_file(&mut self, path: impl Into<PathBuf>, content: impl Into<String>) {
         self.files
             .insert(path.into(), FileContent::Text(content.into()));
     }
 
     /// Add a binary file to the collection.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_binary_file(&mut self, path: impl Into<PathBuf>, content: Vec<u8>) {
         self.files.insert(path.into(), FileContent::Binary(content));
     }
 
     /// Add a template file to the collection.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_template_file(&mut self, path: impl Into<PathBuf>, template: impl Into<String>) {
         self.files
             .insert(path.into(), FileContent::Template(template.into()));
     }
 
     /// Set permissions for a file (Unix only).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn set_permissions(&mut self, path: impl Into<PathBuf>, permissions: u32) {
         self.permissions.insert(path.into(), permissions);
     }
 
     /// Add a symlink to create.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_symlink(&mut self, source: impl Into<PathBuf>, target: impl Into<PathBuf>) {
         self.symlinks.push((source.into(), target.into()));
     }
 
     /// Write all files to disk.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn write_to_disk(&self, base_path: &Path) -> Result<()> {
         // Create base directory if it doesn't exist
         fs::create_dir_all(base_path).await?;
@@ -125,18 +131,21 @@ impl GeneratedFiles {
     }
 
     /// Check if a file exists in the collection.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn contains_file(&self, path: &Path) -> bool {
         self.files.contains_key(path)
     }
 
     /// Get the number of files in the collection.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn file_count(&self) -> usize {
         self.files.len()
     }
 
     /// Merge another collection of generated files into this one.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn merge(&mut self, other: GeneratedFiles) {
         self.files.extend(other.files);
         self.permissions.extend(other.permissions);
@@ -163,6 +172,7 @@ pub enum FileContent {
 
 impl FileContent {
     /// Get the content as a string, if possible.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         match self {
@@ -172,6 +182,7 @@ impl FileContent {
     }
 
     /// Get the content as bytes.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn as_bytes(&self) -> &[u8] {
         match self {
