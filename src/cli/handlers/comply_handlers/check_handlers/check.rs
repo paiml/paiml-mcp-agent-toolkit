@@ -688,6 +688,8 @@ include!("check_pv_enforcement.rs");
 include!("check_pv_quality.rs");
 include!("check_contract_surfaces.rs");
 include!("check_agent_contracts.rs");
+include!("check_agent_iteration.rs");
+include!("check_agent_autonomous.rs");
 include!("check_commit_enforcement.rs");
 include!("check_commit_enforcement_p2.rs");
 include!("check_commit_enforcement_p3.rs");
