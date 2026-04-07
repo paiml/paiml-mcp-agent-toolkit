@@ -689,6 +689,15 @@ include!("check_pv_quality.rs");
 include!("check_contract_surfaces.rs");
 include!("check_agent_contracts.rs");
 include!("check_commit_enforcement.rs");
+include!("check_commit_enforcement_p2.rs");
+include!("check_commit_enforcement_p3.rs");
+include!("check_commit_enforcement_p4.rs");
+include!("check_commit_enforcement_p5.rs");
+include!("check_commit_enforcement_p6.rs");
+include!("check_commit_enforcement_p7.rs");
+include!("check_commit_enforcement_p8.rs");
+include!("check_commit_enforcement_p9.rs");
+include!("check_commit_enforcement_p10.rs");
 
 /// CB-533: Stale path references in Makefiles and CI workflows.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
