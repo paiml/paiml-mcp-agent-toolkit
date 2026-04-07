@@ -144,6 +144,7 @@ pub(crate) use entropy_semantic::{
 /// - Parameter forwarding: O(1) move semantics
 /// - Memory: Minimal overhead, parameters moved to handlers
 /// - Concurrency: Handlers may implement parallel processing internally
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn route_analyze_command(cmd: AnalyzeCommands) -> Result<()> {
     use cli::AnalyzeCommands;
 

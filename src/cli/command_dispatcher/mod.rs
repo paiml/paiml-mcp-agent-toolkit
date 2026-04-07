@@ -54,6 +54,7 @@ pub struct CommandDispatcher;
 
 impl CommandDispatcher {
     /// Execute a command using the handler pattern (reduces CC from dispatch match)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute_command(
         command: Commands,
         server: Arc<StatelessTemplateServer>,

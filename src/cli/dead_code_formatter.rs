@@ -298,6 +298,7 @@ pub struct DeadCodeFormatterFactory;
 
 impl DeadCodeFormatterFactory {
     /// Create a formatter for the given output format
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn create(format: crate::cli::DeadCodeOutputFormat) -> Box<dyn DeadCodeFormatter> {
         match format {
@@ -310,6 +311,7 @@ impl DeadCodeFormatterFactory {
 }
 
 /// Format and output dead code analysis result
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_and_output_dead_code(
     format: crate::cli::DeadCodeOutputFormat,
     result: &DeadCodeResult,

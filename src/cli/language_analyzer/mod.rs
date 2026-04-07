@@ -43,6 +43,7 @@ pub async fn analyze_file_complexity(path: &Path, content: &str) -> Result<FileC
 ///
 /// These files are included via `include!()` into a parent module and are not
 /// valid standalone Rust. Attempting `syn::parse_file()` on them always fails.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_include_fragment(path: &Path) -> bool {
     let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
     // Part files: part1.rs, part2.rs, etc.

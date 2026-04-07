@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Test manifest integrity: verify all baseline files still exist
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_manifest_integrity(
     project_path: &Path,
     manifest: &FileManifest,
@@ -29,6 +30,7 @@ pub(crate) fn test_manifest_integrity(
 }
 
 /// Test for coverage gaming patterns
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_coverage_gaming(project_path: &Path) -> Result<FalsificationResult> {
     print!("Scanning for gaming patterns... ");
 
@@ -50,6 +52,7 @@ pub(crate) fn test_coverage_gaming(project_path: &Path) -> Result<FalsificationR
 }
 
 /// Test differential coverage: all changed lines must be covered
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_differential_coverage(
     project_path: &Path,
     baseline_commit: &str,
@@ -90,6 +93,7 @@ pub(crate) async fn test_differential_coverage(
 }
 
 /// Test absolute coverage threshold
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_absolute_coverage(
     project_path: &Path,
     threshold: f64,
@@ -137,6 +141,7 @@ pub(crate) async fn test_absolute_coverage(
 }
 
 /// Test TDG score regression
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_tdg_regression(
     project_path: &Path,
     baseline_tdg: f64,
@@ -179,6 +184,7 @@ pub(crate) async fn test_tdg_regression(
 }
 
 /// Test complexity regression: no function should exceed threshold
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_complexity_regression(
     project_path: &Path,
     max_complexity: u32,
@@ -248,6 +254,7 @@ pub(crate) fn test_complexity_regression(
 }
 
 /// Test file size regression: no file should exceed threshold
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_file_size_regression(
     project_path: &Path,
     max_lines: usize,
@@ -332,6 +339,7 @@ fn evaluate_spec_score(score: u32, min_score: u32) -> FalsificationResult {
 }
 
 /// Test spec quality: spec score must meet threshold
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_spec_quality(
     project_path: &Path,
     work_item_id: &str,
@@ -379,6 +387,7 @@ pub(crate) fn test_spec_quality(
 }
 
 /// Test roadmap update: roadmap must be modified since baseline
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_roadmap_update(
     project_path: &Path,
     baseline_commit: &str,
@@ -427,6 +436,7 @@ pub(crate) fn test_roadmap_update(
 }
 
 /// Test GitHub sync: all commits must be pushed
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_github_sync(project_path: &Path) -> Result<FalsificationResult> {
     print!("Checking git status... ");
 

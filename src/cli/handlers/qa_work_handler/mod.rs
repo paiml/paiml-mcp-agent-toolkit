@@ -140,6 +140,7 @@ pub enum ValidationStatus {
 }
 
 /// Handle all qa-work subcommands
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_qa_work_command(command: QaWorkCommands) -> Result<()> {
     match command {
         QaWorkCommands::GenerateChecklist {

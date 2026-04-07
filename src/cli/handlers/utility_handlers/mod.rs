@@ -211,6 +211,7 @@ include!("context_output.rs");
 pub use super::utility_serve_handlers::handle_serve;
 
 /// Handle diagnose command
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_diagnose(args: crate::cli::diagnose::DiagnoseArgs) -> Result<()> {
     crate::cli::diagnose::handle_diagnose(args).await
 }

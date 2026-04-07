@@ -86,6 +86,7 @@ fn contains_sorry_word_boundary(line: &str) -> bool {
 }
 
 /// Test formal proof verification: count sorry occurrences in .lean files
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_formal_proof_verification(
     project_path: &Path,
     max_sorry_count: usize,

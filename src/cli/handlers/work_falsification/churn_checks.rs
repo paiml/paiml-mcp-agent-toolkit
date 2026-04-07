@@ -10,6 +10,7 @@ use std::process::Command;
 ///
 /// Scans changed `.rs` files for `match` expressions with 5+ arms and checks
 /// whether each arm's pattern appears in at least one test function.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_variant_coverage(
     project_path: &Path,
     baseline_commit: &str,
@@ -168,6 +169,7 @@ pub(crate) fn extract_large_match_variants(content: &str) -> Vec<String> {
 }
 
 /// Extract test section content (everything after #[cfg(test)] or in test functions)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn extract_test_section(content: &str) -> String {
     let mut in_test = false;
     let mut test_content = String::new();
@@ -189,6 +191,7 @@ pub(crate) fn extract_test_section(content: &str) -> String {
 ///
 /// Analyzes recent git history for patterns where 3+ consecutive commits with "fix"
 /// in the message touch the same file -- a signal of inadequate pre-merge testing.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_fix_chain_limit(
     project_path: &Path,
     max_chain: usize,

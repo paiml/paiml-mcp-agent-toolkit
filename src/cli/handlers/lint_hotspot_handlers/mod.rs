@@ -55,6 +55,7 @@ use std::path::{Path, PathBuf};
 /// pmat analyze lint-hotspot --enforce
 /// ```ignore
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_lint_hotspot(
     project_path: PathBuf,
     file: Option<PathBuf>,

@@ -102,6 +102,7 @@ pub struct AgentSpec {
 
 // System initialization
 // Note: actix::System::new() returns SystemRunner, not System
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn init_agent_system() {
     // actix::System::new() returns SystemRunner which auto-runs
 }

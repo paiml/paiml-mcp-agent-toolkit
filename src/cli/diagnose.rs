@@ -55,6 +55,7 @@ pub struct BuildInfo {
 }
 
 impl BuildInfo {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn current() -> Self {
         Self {
             rust_version: option_env!("RUSTC_VERSION")
@@ -123,6 +124,7 @@ pub struct EnvironmentSnapshot {
 }
 
 impl EnvironmentSnapshot {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn capture() -> Self {
         Self {

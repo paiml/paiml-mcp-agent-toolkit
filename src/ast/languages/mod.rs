@@ -85,17 +85,20 @@ impl LanguageRegistry {
     }
 
     /// Register a custom strategy
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&mut self, strategy: Arc<dyn LanguageStrategy>) {
         self.strategies.push(strategy);
     }
 
     /// Find a strategy for the given file
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn find_strategy(&self, path: &Path) -> Option<Arc<dyn LanguageStrategy>> {
         self.strategies.iter().find(|s| s.can_parse(path)).cloned()
     }
 
     /// Get strategy for a specific language
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn get_strategy(&self, language: Language) -> Option<Arc<dyn LanguageStrategy>> {
         self.strategies

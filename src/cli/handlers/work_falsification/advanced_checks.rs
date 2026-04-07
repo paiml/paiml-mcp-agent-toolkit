@@ -14,6 +14,7 @@ use std::process::Command;
 // ============================================================================
 
 /// Test SATD detection: find new TODO/FIXME/HACK markers since baseline
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_satd_detection(
     project_path: &Path,
     baseline_commit: &str,
@@ -162,6 +163,7 @@ fn detect_new_satd_since_baseline(
 }
 
 /// Test dead code detection: find new unreachable code since baseline
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_dead_code_detection(
     project_path: &Path,
     baseline_commit: &str,
@@ -320,6 +322,7 @@ fn build_per_file_coverage_result(
 }
 
 /// Test per-file coverage: all files must meet threshold
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_per_file_coverage(
     project_path: &Path,
     threshold: f64,
@@ -344,6 +347,7 @@ pub(crate) async fn test_per_file_coverage(
 }
 
 /// Test lint pass: O(1) - reads from cached lint status
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_lint_pass(project_path: &Path) -> Result<FalsificationResult> {
     print!("Reading lint cache... ");
 

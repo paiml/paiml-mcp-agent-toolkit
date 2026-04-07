@@ -74,6 +74,7 @@ fn collect_contract_equation_names(contracts_dir: &Path) -> Vec<String> {
 /// A production `pub fn <equation_name>` without a contract macro = FAIL.
 /// Preferred: `#[contract("yaml-name", equation = "eq")]` — auto-injects from YAML.
 /// Legacy: `#[requires(...)]` / `#[ensures(...)]` — hand-written assertions.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck {
     let contracts_dir = project_path.join("contracts");
     if !contracts_dir.exists() {
@@ -275,6 +276,7 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
 /// The escape-proof pipeline requires build.rs to read contracts/*.yaml and
 /// emit CONTRACT_*_PRE_COUNT / CONTRACT_*_PRE_0 env vars that the #[contract]
 /// proc macro reads at compile time.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
     let contracts_dir = project_path.join("contracts");
     let build_rs = project_path.join("build.rs");
@@ -823,6 +825,7 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
 /// This closes the enforcement gap where build.rs AllImplemented policy only checks
 /// the YAML status field (self-attestation) without verifying the Rust function exists.
 /// 16,977 bindings across the stack but only 35 have #[contract] annotations.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn check_binding_existence(project_path: &Path, thresholds: &ComplyThresholds) -> ComplianceCheck {
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,

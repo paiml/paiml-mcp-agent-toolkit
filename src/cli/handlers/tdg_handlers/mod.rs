@@ -190,6 +190,7 @@ fn truncate_string(s: &str, max_len: usize) -> String {
 }
 
 /// Handle TDG command execution
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_tdg_command(config: TdgCommandConfig) -> Result<()> {
     if should_skip_path(&config) {
         if !config.quiet {

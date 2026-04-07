@@ -120,6 +120,7 @@ pub fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usiz
 
 /// Scan Rust files for CB-020 (unsafe without SAFETY comment)
 /// NOTE: Skips test code (#[cfg(test)], mod tests, #[test]) - test code can use .unwrap() freely
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn detect_cb020_unsafe_without_safety(project_path: &Path) -> Vec<CbPatternViolation> {
     let src_dir = project_path.join("src");
     let entries = match walkdir_rs_files(&src_dir) {

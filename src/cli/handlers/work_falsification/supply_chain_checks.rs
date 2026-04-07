@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Test supply chain integrity: O(1) - reads from cached cargo deny status
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_supply_chain_integrity(
     project_path: &Path,
 ) -> Result<FalsificationResult> {
@@ -70,6 +71,7 @@ pub(crate) async fn test_supply_chain_integrity(
 }
 
 /// Test examples compile: O(1) - reads from cached examples status
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_examples_compile(project_path: &Path) -> Result<FalsificationResult> {
     print!("Reading examples cache... ");
 
@@ -198,6 +200,7 @@ fn try_book_chapter_tests(book_path: &Path) -> Option<FalsificationResult> {
 }
 
 /// Test pmat-book validation: book tests must pass
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_book_validation(project_path: &Path) -> Result<FalsificationResult> {
     print!("Validating pmat-book... ");
 
@@ -230,6 +233,7 @@ pub(crate) async fn test_book_validation(project_path: &Path) -> Result<Falsific
 ///
 /// Reads `.pmat-work/cross-crate.json` config for sibling project paths and test commands.
 /// Only runs if config exists (opt-in per project).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_cross_crate_parity(project_path: &Path) -> Result<FalsificationResult> {
     print!("Checking cross-crate config... ");
 
@@ -305,6 +309,7 @@ pub(crate) async fn test_cross_crate_parity(project_path: &Path) -> Result<Falsi
 /// Test regression gate: verify no performance regressions from cached benchmarks.
 ///
 /// Reads `.pmat-metrics/benchmark-status.json` for cached benchmark results.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_regression_gate(project_path: &Path) -> Result<FalsificationResult> {
     print!("Reading benchmark cache... ");
 
@@ -364,6 +369,7 @@ pub(crate) async fn test_regression_gate(project_path: &Path) -> Result<Falsific
 }
 
 /// Test meta-falsification: verify the falsifier itself is not broken
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn test_meta_falsification(project_path: &Path) -> Result<FalsificationResult> {
     print!("Injecting dummy failure... ");
 

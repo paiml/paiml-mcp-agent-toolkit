@@ -134,6 +134,7 @@ struct CrossStackAccumulator {
 // ---------------------------------------------------------------------------
 
 /// Main kaizen handler entry point
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_kaizen(config: KaizenConfig) -> Result<()> {
     let path = config.path.canonicalize().unwrap_or(config.path.clone());
 

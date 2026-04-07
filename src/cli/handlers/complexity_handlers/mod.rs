@@ -276,6 +276,7 @@ impl ComplexityConfig {
 ///
 /// JSON-structured complexity analysis suitable for MCP tool chaining
 #[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_complexity(
     project_path: PathBuf,
     file: Option<PathBuf>,
@@ -412,6 +413,7 @@ pub async fn handle_analyze_complexity(
 /// assert!(result.is_ok());
 /// # });
 /// ```
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_analyze_dag(
     _dag_type: DagType,
     project_path: PathBuf,

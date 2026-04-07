@@ -62,6 +62,7 @@ pub struct SplitTarget {
 // ── Entry point ──────────────────────────────────────────────────────────────
 
 /// Handle the `pmat split --auto` command.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_split_auto(
     path: &Path,
     max_lines: usize,
