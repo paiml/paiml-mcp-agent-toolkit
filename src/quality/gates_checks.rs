@@ -188,6 +188,7 @@ pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateR
 /// # Complexity
 /// - Time: O(n) where n is number of files to clean
 /// - Cyclomatic: 3
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn cleanup_coverage_artifacts(project_dir: &Path) {
     // Clean llvm-cov-target in project dir
     let llvm_cov_target = project_dir.join("target").join("llvm-cov-target");
@@ -209,6 +210,7 @@ fn cleanup_coverage_artifacts(project_dir: &Path) {
 }
 
 /// Remove files older than max_age_secs from a directory
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn clean_old_files(dir: &Path, max_age_secs: u64) {
     use std::time::{Duration, SystemTime};
 
@@ -242,6 +244,7 @@ fn clean_old_files(dir: &Path, max_age_secs: u64) {
 /// # Complexity
 /// - Time: O(n) where n is output length
 /// - Cyclomatic: 4
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn parse_coverage_from_output(output: &str) -> f64 {
     // Look for "TOTAL.*X.XX%"
     for line in output.lines() {

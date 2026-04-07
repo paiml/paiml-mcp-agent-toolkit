@@ -361,6 +361,7 @@ pub(crate) fn serve_analysis_data(state: &Arc<RwLock<DemoState>>) -> Response<By
 // Helper functions for statistics calculation
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn calculate_graph_density(graph: &DependencyGraph) -> f64 {
     let n = graph.nodes.len() as f64;
     if n <= 1.0 {
@@ -371,6 +372,7 @@ fn calculate_graph_density(graph: &DependencyGraph) -> f64 {
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn calculate_avg_degree(graph: &DependencyGraph) -> f64 {
     let n = graph.nodes.len() as f64;
     if n == 0.0 {

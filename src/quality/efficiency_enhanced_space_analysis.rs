@@ -54,6 +54,7 @@ impl SpaceComplexityAnalyzer {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn check_call_allocation(call: &syn::ExprCall) -> Option<Allocation> {
     if let syn::Expr::Path(path) = &*call.func {
         let path_str = path_to_string(&path.path);

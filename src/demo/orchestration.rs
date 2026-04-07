@@ -23,6 +23,7 @@ pub async fn run_demo(
 }
 
 // Configuration loading and validation
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn load_demo_config(
     args: DemoArgs,
     server: std::sync::Arc<crate::stateless_server::StatelessTemplateServer>,
@@ -38,6 +39,7 @@ async fn load_demo_config(
 }
 
 // Create the appropriate analyzer based on configuration
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn create_analyzer(config: DemoConfig) -> Result<DemoAnalyzer> {
     use super::adapters::{cli::CliDemoAdapter, http::HttpDemoAdapter, mcp::McpDemoAdapter};
     use super::protocol_harness::DemoEngine;
@@ -51,6 +53,7 @@ fn create_analyzer(config: DemoConfig) -> Result<DemoAnalyzer> {
 }
 
 // Run the actual analyses based on protocol
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn run_analyses(analyzer: DemoAnalyzer, config: &DemoConfig) -> Result<AnalysisResults> {
     if config.args.web {
         return Ok(AnalysisResults::Web);
@@ -69,6 +72,7 @@ async fn run_analyses(analyzer: DemoAnalyzer, config: &DemoConfig) -> Result<Ana
 }
 
 // Generate output based on results and protocol
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_output(results: AnalysisResults, _protocol: Protocol) -> Result<DemoOutput> {
     match results {
         AnalysisResults::Web => Ok(DemoOutput::Web),
@@ -80,6 +84,7 @@ fn generate_output(results: AnalysisResults, _protocol: Protocol) -> Result<Demo
 }
 
 // Handle the final output based on configuration
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn handle_protocol_output(output: DemoOutput, config: &DemoConfig) -> Result<()> {
     match output {
         DemoOutput::Web => {
@@ -111,6 +116,7 @@ async fn handle_protocol_output(output: DemoOutput, config: &DemoConfig) -> Resu
 }
 
 // Run demo for all protocols
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn run_all_protocols(analyzer: DemoAnalyzer, config: &DemoConfig) -> Result<AnalysisResults> {
     println!("🎯 All Protocols Demo");
     let mut traces = Vec::new();
@@ -131,6 +137,7 @@ async fn run_all_protocols(analyzer: DemoAnalyzer, config: &DemoConfig) -> Resul
 }
 
 // Run demo for a single protocol
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn run_single_protocol(
     analyzer: DemoAnalyzer,
     config: &DemoConfig,

@@ -172,6 +172,7 @@ pub(crate) fn serve_showcase_gallery(
 
 #[cfg(not(feature = "demo"))]
 #[allow(dead_code)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn calculate_graph_density(_graph: &DependencyGraph) -> f64 {
     0.0
 }

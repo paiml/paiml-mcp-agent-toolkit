@@ -52,6 +52,7 @@ pub async fn resolve_repository_async(
 }
 
 /// Parse different repository specification formats
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
     // Try each format in order of specificity
     if let Some(result) = try_local_path(repo_spec) {
@@ -75,6 +76,7 @@ fn resolve_repo_spec(repo_spec: &str) -> Result<PathBuf> {
 }
 
 /// Try to resolve as local path (cognitive complexity ≤2)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn try_local_path(repo_spec: &str) -> Option<Result<PathBuf>> {
     let path = PathBuf::from(repo_spec);
     if path.exists() {
@@ -85,6 +87,7 @@ fn try_local_path(repo_spec: &str) -> Option<Result<PathBuf>> {
 }
 
 /// Try to resolve GitHub shorthand format (gh:owner/repo) (cognitive complexity ≤2)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn try_github_shorthand(repo_spec: &str) -> Option<Result<PathBuf>> {
     if repo_spec.starts_with("gh:") {
         let repo_name = repo_spec
@@ -98,6 +101,7 @@ fn try_github_shorthand(repo_spec: &str) -> Option<Result<PathBuf>> {
 }
 
 /// Try to resolve full GitHub URLs (cognitive complexity ≤2)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn try_github_url(repo_spec: &str) -> Option<Result<PathBuf>> {
     if repo_spec.starts_with("https://github.com/") || repo_spec.starts_with("git@github.com:") {
         Some(Ok(PathBuf::from(repo_spec)))
@@ -107,6 +111,7 @@ fn try_github_url(repo_spec: &str) -> Option<Result<PathBuf>> {
 }
 
 /// Try to resolve owner/repo format (cognitive complexity ≤3)
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn try_owner_repo_format(repo_spec: &str) -> Option<Result<PathBuf>> {
     if repo_spec.contains('/') && !repo_spec.contains('.') {
         let github_url = format!("https://github.com/{repo_spec}");
@@ -116,6 +121,7 @@ fn try_owner_repo_format(repo_spec: &str) -> Option<Result<PathBuf>> {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn get_canonical_path(hint: Option<PathBuf>) -> Result<PathBuf> {
     match hint {
         Some(p) => {
@@ -131,6 +137,7 @@ fn get_canonical_path(hint: Option<PathBuf>) -> Result<PathBuf> {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn find_git_root(start_path: &Path) -> Option<PathBuf> {
     // Fast path: direct .git check
     if start_path.join(".git").is_dir() {
@@ -162,11 +169,13 @@ fn find_git_root(start_path: &Path) -> Option<PathBuf> {
     None
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn is_interactive_environment() -> bool {
     use std::io::IsTerminal;
     std::io::stdout().is_terminal() && env::var("CI").is_err()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn read_repository_path_from_user() -> Result<PathBuf> {
     eprintln!("No git repository found in current directory");
     eprint!("Enter path to a git repository (or press Enter to cancel): ");

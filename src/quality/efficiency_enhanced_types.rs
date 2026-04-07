@@ -1,4 +1,5 @@
 /// Helper function to convert a syn::Path to a string
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn path_to_string(path: &syn::Path) -> String {
     path.segments
         .iter()

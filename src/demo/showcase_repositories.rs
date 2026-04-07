@@ -2,11 +2,13 @@
 // Included from showcase.rs — no `use` imports or `#!` attributes allowed
 
 impl ShowcaseGallery {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn initialize_showcase_repositories(&mut self) {
         self.add_systems_and_web_repositories();
         self.add_cloud_and_tools_repositories();
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn add_systems_and_web_repositories(&mut self) {
         // Rust - Systems Programming
         self.add_repository(ShowcaseRepository {
@@ -146,6 +148,7 @@ impl ShowcaseGallery {
         });
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn add_cloud_and_tools_repositories(&mut self) {
         // TypeScript - Developer Tools
         self.add_repository(ShowcaseRepository {
@@ -291,6 +294,7 @@ impl ShowcaseGallery {
         });
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn add_repository(&mut self, repo: ShowcaseRepository) {
         let category = repo.category.clone();
         let name = repo.name.clone();

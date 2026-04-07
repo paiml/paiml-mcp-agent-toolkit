@@ -74,6 +74,7 @@ impl SymbolicExecutor {
         Complexity::ON
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn analyze_range_complexity(&self, range: &syn::ExprRange) -> Complexity {
         if self.is_logarithmic_range(range) {
             return Complexity::OLogN;
@@ -81,10 +82,12 @@ impl SymbolicExecutor {
         Complexity::ON
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn is_logarithmic_range(&self, _range: &syn::ExprRange) -> bool {
         false
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn is_iterator_pattern(&self, expr: &Expr) -> bool {
         match expr {
             Expr::MethodCall(call) => {
@@ -95,16 +98,19 @@ impl SymbolicExecutor {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn is_sorting_algorithm(&self, func: &syn::ItemFn) -> bool {
         let name = func.sig.ident.to_string();
         name.contains("sort") || name.contains("heap") || name.contains("quick")
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn is_search_algorithm(&self, func: &syn::ItemFn) -> bool {
         let name = func.sig.ident.to_string();
         name.contains("search") || name.contains("find") || name.contains("binary")
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn is_graph_algorithm(&self, func: &syn::ItemFn) -> bool {
         let name = func.sig.ident.to_string();
         name.contains("dfs") || name.contains("bfs") || name.contains("dijkstra")

@@ -8,25 +8,30 @@ impl<N, E> SimpleDiGraph<N, E> {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn add_node(&mut self, node: N) -> CfgNodeIndex {
         let idx = CfgNodeIndex(self.nodes.len());
         self.nodes.push(node);
         idx
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn add_edge(&mut self, from: CfgNodeIndex, to: CfgNodeIndex, edge: E) {
         self.edges.push((from, to, edge));
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn node_count(&self) -> usize {
         self.nodes.len()
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn edge_count(&self) -> usize {
         self.edges.len()
     }
 
     // Simple SCC using Kosaraju's algorithm
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn kosaraju_scc(&self) -> Vec<Vec<CfgNodeIndex>> {
         let n = self.nodes.len();
         if n == 0 {
@@ -67,6 +72,7 @@ impl<N, E> SimpleDiGraph<N, E> {
         sccs
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn dfs_finish(
         &self,
         adj: &[Vec<usize>],
@@ -83,6 +89,7 @@ impl<N, E> SimpleDiGraph<N, E> {
         finish.push(node);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn dfs_collect(
         &self,
         adj: &[Vec<usize>],

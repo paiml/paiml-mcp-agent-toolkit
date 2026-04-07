@@ -56,6 +56,7 @@ impl EntropyCalculator {
         entropy
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn tokenize(&self, source: &str) -> Vec<String> {
         // Simple tokenization based on whitespace and common delimiters
         let mut tokens = Vec::new();

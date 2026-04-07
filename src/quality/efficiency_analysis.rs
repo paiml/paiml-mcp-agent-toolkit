@@ -27,6 +27,7 @@ impl EfficiencyAnalyzer {
         })
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn analyze_space(&self, ast: &syn::File) -> String {
         let mut visitor = SpaceComplexityVisitor {
             allocations: 0,
@@ -38,6 +39,7 @@ impl EfficiencyAnalyzer {
 }
 
 impl EfficiencyVisitor {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn compute_complexity(&self) -> String {
         match self.max_loop_depth {
             0 => "O(1)".to_string(),
@@ -95,6 +97,7 @@ impl<'ast> Visit<'ast> for EfficiencyVisitor {
 }
 
 impl SpaceComplexityVisitor {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn compute_space_complexity(&self) -> String {
         if self.recursive_depth > 0 {
             "O(n)".to_string() // Recursive calls use stack space

@@ -30,6 +30,7 @@ impl ContextCache {
         self.evict_if_needed();
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn evict_if_needed(&mut self) {
         if self.entries.len() > self.config.max_cache_entries {
             // Simple LRU eviction

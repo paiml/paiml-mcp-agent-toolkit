@@ -140,6 +140,7 @@ mod implementation {
         pub static ref DEMO_ROUTES: Router = build_router();
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn build_router() -> Router {
         Router::new()
             // Dashboard and main UI

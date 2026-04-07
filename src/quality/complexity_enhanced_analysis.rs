@@ -80,10 +80,12 @@ impl ComplexityAnalyzer {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn count_lines(block: &syn::Block) -> usize {
     block.stmts.len()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn tokenize(code: &str) -> Vec<String> {
     let mut tokens = Vec::new();
     let mut current = String::new();
@@ -109,6 +111,7 @@ fn tokenize(code: &str) -> Vec<String> {
     tokens
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn is_operator(token: &str) -> bool {
     matches!(
         token,

@@ -26,6 +26,7 @@ impl SymbolicExecutor {
         patterns
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn is_dynamic_programming(&self, func: &syn::ItemFn) -> bool {
         for stmt in &func.block.stmts {
             if is_dp_cache_statement(stmt) {
@@ -36,6 +37,7 @@ impl SymbolicExecutor {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn is_dp_cache_statement(stmt: &Stmt) -> bool {
     let Stmt::Local(local) = stmt else {
         return false;
@@ -50,6 +52,7 @@ fn is_dp_cache_statement(stmt: &Stmt) -> bool {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn is_cache_constructor_call(call: &syn::ExprCall) -> bool {
     if let syn::Expr::Path(path) = &*call.func {
         let path_str = path_to_string(&path.path);
@@ -59,6 +62,7 @@ fn is_cache_constructor_call(call: &syn::ExprCall) -> bool {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn is_cache_macro(mac: &syn::ExprMacro) -> bool {
     let mac_name = mac
         .mac

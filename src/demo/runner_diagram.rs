@@ -1,4 +1,5 @@
 impl DemoRunner {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn generate_system_diagram(&self, _steps: &[DemoStep]) -> Result<String> {
         // Extract component relationships from analysis results
         let mut components = HashMap::new();
@@ -132,6 +133,7 @@ impl DemoRunner {
         self.render_system_mermaid(&components)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn render_system_mermaid(&self, _components: &HashMap<String, Component>) -> Result<String> {
         let mut output = String::with_capacity(1024);
         output.push_str("graph TD\n");

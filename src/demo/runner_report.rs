@@ -9,6 +9,7 @@ impl DemoReport {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn render_cli(&self) -> String {
         let mut output = String::with_capacity(4096);
 
@@ -96,6 +97,7 @@ impl DemoReport {
         output
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn format_highlight(capability: &str, result: &Value) -> Option<String> {
         let v: Value = serde_json::from_value(result.clone()).ok()?;
         match capability {
@@ -135,6 +137,7 @@ impl DemoReport {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn render_step_highlights(&self, output: &mut String, capability: &str, result: &Value) {
         if let Some(line) = Self::format_highlight(capability, result) {
             writeln!(output, "{line}").expect("Writing to String buffer cannot fail");

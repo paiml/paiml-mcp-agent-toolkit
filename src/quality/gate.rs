@@ -179,26 +179,31 @@ impl QualityGateRunner {
         Ok(QualityReport::passed())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn analyze_complexity(&self, ast: &syn::File) -> Result<u32, QualityViolation> {
         let analyzer = ComplexityAnalyzer::new();
         Ok(analyzer.calculate_cyclomatic(ast))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn detect_satd(&self, source: &str) -> Result<SatdResult, QualityViolation> {
         let detector = SatdDetector::new();
         Ok(detector.detect(source))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn analyze_efficiency(&self, ast: &syn::File) -> Result<String, QualityViolation> {
         let analyzer = EfficiencyAnalyzer::new();
         Ok(analyzer.analyze(ast))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn calculate_entropy(&self, source: &str) -> f64 {
         let calculator = EntropyCalculator::new();
         calculator.calculate(source)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn is_efficiency_acceptable(&self, efficiency: &str) -> bool {
         // Simple comparison logic for now
         let order = self.parse_big_o(&self.thresholds.max_big_o);
@@ -206,6 +211,7 @@ impl QualityGateRunner {
         actual <= order
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn parse_big_o(&self, notation: &str) -> u32 {
         // Simplified parsing - assign numeric values to complexity classes
         match notation {

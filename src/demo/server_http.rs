@@ -111,6 +111,7 @@ impl LocalDemoServer {
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn handle_connection(mut stream: TcpStream, state: Arc<RwLock<DemoState>>) -> Result<()> {
     let mut buffer = BytesMut::with_capacity(4096);
     stream.read_buf(&mut buffer).await?;
@@ -136,6 +137,7 @@ struct MinimalRequest {
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn parse_minimal_request(buffer: &[u8]) -> Result<MinimalRequest> {
     let request_str = std::str::from_utf8(buffer)?;
     let first_line = request_str
@@ -154,6 +156,7 @@ fn parse_minimal_request(buffer: &[u8]) -> Result<MinimalRequest> {
 }
 
 #[cfg(feature = "demo")]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn serialize_response(response: Response<Bytes>) -> Vec<u8> {
     let mut output = Vec::new();
 

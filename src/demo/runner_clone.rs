@@ -1,5 +1,6 @@
 impl DemoRunner {
     #[cfg(feature = "git-lib")]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn clone_and_prepare(&self, url: &str) -> Result<PathBuf> {
         println!("🔄 Cloning repository: {url}");
 
@@ -69,6 +70,7 @@ impl DemoRunner {
     }
 
     #[cfg(not(feature = "git-lib"))]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn clone_and_prepare(&self, url: &str) -> Result<PathBuf> {
         use std::process::Command;
 

@@ -53,6 +53,7 @@ impl SatdDetector {
         self.detect(&comments)
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn extract_comments(&self, source: &str) -> String {
         let mut in_block_comment = false;
         let mut comments = String::new();

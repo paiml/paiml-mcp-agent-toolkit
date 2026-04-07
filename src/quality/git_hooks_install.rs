@@ -23,6 +23,7 @@ impl GitHookManager {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn install_pre_commit_hook(&self, hooks_dir: &Path) -> Result<()> {
         let hook_path = hooks_dir.join("pre-commit");
 
@@ -88,6 +89,7 @@ echo "✅ All quality gates passed!"
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn install_commit_msg_hook(&self, hooks_dir: &Path) -> Result<()> {
         let hook_path = hooks_dir.join("commit-msg");
 
@@ -133,6 +135,7 @@ echo "✅ Commit message format valid"
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn install_pre_push_hook(&self, hooks_dir: &Path) -> Result<()> {
         let hook_path = hooks_dir.join("pre-push");
 
