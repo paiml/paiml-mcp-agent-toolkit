@@ -9,6 +9,7 @@ use crate::models::mcp::{McpRequest, McpResponse};
 use crate::TemplateServerTrait;
 use std::sync::Arc;
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_request<T: TemplateServerTrait>(
     server: Arc<T>,
     request: McpRequest,

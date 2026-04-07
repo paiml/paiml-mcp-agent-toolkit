@@ -100,6 +100,7 @@ impl TransformerImpl {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_analyzer(mut self, analyzer: Arc<dyn AnalyzerModule>) -> Self {
         self.analyzer = Some(analyzer);
         self

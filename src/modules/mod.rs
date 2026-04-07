@@ -54,6 +54,7 @@ impl ModuleRegistry {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register<T>(&self, name: String, module: Arc<T>)
     where
         T: std::any::Any + Send + Sync + 'static,
@@ -62,6 +63,7 @@ impl ModuleRegistry {
             .insert(name, module as Arc<dyn std::any::Any + Send + Sync>);
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get<T>(&self, name: &str) -> Option<Arc<T>>
     where
         T: std::any::Any + Send + Sync + 'static,

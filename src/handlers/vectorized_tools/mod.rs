@@ -34,11 +34,13 @@ pub const VECTORIZED_TOOLS: &[&str] = &[
 /// assert!(!is_vectorized_tool("unknown_tool"));
 /// ```
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_vectorized_tool(tool_name: &str) -> bool {
     VECTORIZED_TOOLS.contains(&tool_name)
 }
 
 /// Handle vectorized tool calls
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_vectorized_tools(
     request_id: Value,
     tool_params: ToolCallParams,

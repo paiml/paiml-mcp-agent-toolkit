@@ -33,6 +33,7 @@ pub enum Language {
 impl Language {
     /// Detect language from file extension
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_path(path: &Path) -> Self {
         match path.extension().and_then(|e| e.to_str()) {
             Some("rs") => Language::Rust,

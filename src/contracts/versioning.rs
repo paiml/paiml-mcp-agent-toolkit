@@ -370,6 +370,7 @@ impl<T> ContractBuilder<T> {
 }
 
 /// Initialize the global contract registry with current contracts
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn initialize_registry() -> Result<ContractRegistry, ContractError> {
     let mut registry = ContractRegistry::new();
 

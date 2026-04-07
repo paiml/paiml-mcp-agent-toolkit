@@ -53,6 +53,7 @@ pub enum Language {
 impl Language {
     /// Detect language from file extension
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_extension(path: &Path) -> Self {
         path.extension()
             .and_then(|ext| ext.to_str())
@@ -75,6 +76,7 @@ impl Language {
 
     /// Get the language name as a string
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn name(&self) -> &'static str {
         match self {
             Language::Rust => "Rust",
@@ -94,6 +96,7 @@ impl Language {
 
     /// Get file extensions for this language
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn extensions(&self) -> &'static [&'static str] {
         match self {
             Language::Rust => &["rs"],

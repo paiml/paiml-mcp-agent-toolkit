@@ -19,6 +19,7 @@ use super::{
 
 impl DeepContextAnalyzer {
     /// Format as comprehensive markdown output using simple formatting
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn format_as_comprehensive_markdown(
         &self,
         context: &DeepContext,
@@ -37,6 +38,7 @@ impl DeepContextAnalyzer {
     }
 
     /// Format as JSON output for machine consumption and API responses
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn format_as_json(&self, context: &DeepContext) -> anyhow::Result<String> {
         serde_json::to_string_pretty(context)
             .map_err(|e| anyhow::anyhow!("Failed to serialize to JSON: {e}"))

@@ -44,6 +44,7 @@ impl OrchestratorImpl {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_thresholds(mut self, thresholds: Thresholds) -> Self {
         self.thresholds = thresholds;
         self
@@ -132,11 +133,13 @@ impl WorkflowBuilder {
         Self { steps: Vec::new() }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_step(mut self, step: WorkflowStep) -> Self {
         self.steps.push(step);
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn build(self) -> Workflow {
         Workflow { steps: self.steps }
     }
@@ -147,6 +150,7 @@ pub struct Workflow {
 }
 
 impl Workflow {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn execute(
         &self,
         code: &str,

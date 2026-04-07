@@ -102,31 +102,37 @@ impl RichReporter {
     }
 
     /// Add multiple findings
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_findings(&mut self, findings: impl IntoIterator<Item = Finding>) {
         self.report.findings.extend(findings);
     }
 
     /// Add file dependencies for PageRank/Louvain analysis
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_dependency(&mut self, from: impl Into<String>, to: impl Into<String>) {
         self.dependencies.push((from.into(), to.into()));
     }
 
     /// Add metric history for trend analysis
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_metric_history(&mut self, name: impl Into<String>, data: Vec<(i64, f64)>) {
         self.metric_history.push((name.into(), data));
     }
 
     /// Set quality score
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn set_quality_score(&mut self, score: f64) {
         self.report.quality_score = score;
     }
 
     /// Add a summary metric
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_summary(&mut self, key: impl Into<String>, value: impl Into<String>) {
         self.report.summary.insert(key.into(), value.into());
     }
 
     /// Add a recommendation
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn add_recommendation(&mut self, recommendation: impl Into<String>) {
         self.report.recommendations.push(recommendation.into());
     }

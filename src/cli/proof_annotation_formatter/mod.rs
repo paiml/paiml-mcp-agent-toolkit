@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 
 /// Format confidence level statistics
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_confidence_stats(
     annotations: &[(Location, ProofAnnotation)],
     output: &mut String,
@@ -28,6 +29,7 @@ pub fn format_confidence_stats(
 }
 
 /// Format verification method statistics
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_method_stats(
     annotations: &[(Location, ProofAnnotation)],
     output: &mut String,
@@ -56,6 +58,7 @@ pub fn format_method_stats(
 }
 
 /// Format property type statistics
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_property_stats(
     annotations: &[(Location, ProofAnnotation)],
     output: &mut String,
@@ -76,6 +79,7 @@ pub fn format_property_stats(
 }
 
 /// Group annotations by file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn group_by_file(
     annotations: &[(Location, ProofAnnotation)],
 ) -> HashMap<std::path::PathBuf, Vec<(Location, ProofAnnotation)>> {
@@ -96,6 +100,7 @@ pub fn group_by_file(
 }
 
 /// Format a single proof annotation
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_single_proof(
     location: &Location,
     annotation: &ProofAnnotation,
@@ -159,6 +164,7 @@ fn format_proof_evidence(annotation: &ProofAnnotation, output: &mut String) -> R
 }
 
 /// Format provability-specific output
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_provability_summary(
     summaries: &[crate::services::lightweight_provability_analyzer::ProofSummary],
     output: &mut String,
@@ -208,6 +214,7 @@ pub fn format_provability_summary(
 
 /// Generate SARIF rules for proof annotations
 #[must_use]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_proof_sarif_rules() -> Vec<serde_json::Value> {
     vec![
         serde_json::json!({

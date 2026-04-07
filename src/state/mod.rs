@@ -34,6 +34,7 @@ impl StateEvent {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn partition_key(&self) -> String {
         self.partition_key.clone()
     }

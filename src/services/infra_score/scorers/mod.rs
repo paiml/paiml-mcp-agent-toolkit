@@ -36,6 +36,7 @@ pub trait InfraScorer: Send + Sync {
 }
 
 /// Read all workflow YAML files from .github/workflows/
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn read_workflow_files(repo_path: &Path) -> Vec<(String, String)> {
     let workflows_dir = repo_path.join(".github/workflows");
     let mut files = Vec::new();
@@ -65,6 +66,7 @@ pub(crate) fn read_workflow_files(repo_path: &Path) -> Vec<(String, String)> {
 }
 
 /// Read Cargo.toml content if it exists
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn read_cargo_toml(repo_path: &Path) -> Option<String> {
     let path = repo_path.join("Cargo.toml");
     std::fs::read_to_string(path).ok()

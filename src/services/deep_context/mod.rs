@@ -132,6 +132,7 @@ impl Default for DeepContextConfig {
 
 impl DeepContextConfig {
     /// Create configuration with auto-scaling concurrency based on system capabilities
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_auto_scaling() -> Self {
         let mut config = Self::default();
         let logical_cores = num_cpus::get();

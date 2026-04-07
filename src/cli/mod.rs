@@ -117,6 +117,7 @@ pub struct EarlyCliArgs {
 /// ```ignore
 #[must_use]
 #[cfg_attr(coverage_nightly, coverage(off))]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn parse_early_for_tracing() -> EarlyCliArgs {
     let args: Vec<String> = std::env::args().collect();
 

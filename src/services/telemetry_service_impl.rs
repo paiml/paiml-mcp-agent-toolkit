@@ -142,6 +142,7 @@ impl TelemetryService {
 
     /// Reset all telemetry data (for testing)
     #[cfg(test)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn reset(&self) {
         self.services.clear();
         self.event_counter.store(0, Ordering::Relaxed);

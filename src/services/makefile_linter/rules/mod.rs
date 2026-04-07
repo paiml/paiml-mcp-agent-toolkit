@@ -32,6 +32,7 @@ pub struct LintResult {
 
 impl LintResult {
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn has_errors(&self) -> bool {
         self.violations
             .iter()
@@ -39,6 +40,7 @@ impl LintResult {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn error_count(&self) -> usize {
         self.violations
             .iter()
@@ -47,6 +49,7 @@ impl LintResult {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn max_severity(&self) -> Option<&Severity> {
         self.violations
             .iter()
@@ -106,11 +109,13 @@ impl RuleRegistry {
         registry
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&mut self, rule: Box<dyn MakefileRule>) {
         self.rules.push(rule);
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn check_all(&self, ast: &MakefileAst) -> Vec<Violation> {
         let mut violations = Vec::new();
 

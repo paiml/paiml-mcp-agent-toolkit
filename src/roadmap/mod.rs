@@ -131,6 +131,7 @@ pub struct Task {
 impl Task {
     /// Generate a deterministic seed from the task ID
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn seed(&self) -> u64 {
         // Extract number from PMAT-XXXX format
         if let Some(captures) = Regex::new(r"PMAT-(\d+)")

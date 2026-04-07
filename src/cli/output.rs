@@ -115,21 +115,25 @@ impl TestWriter {
     }
 
     /// Check if any output contains the given substring
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn contains(&self, needle: &str) -> bool {
         self.all_output().any(|s| s.contains(needle))
     }
 
     /// Check if result output contains the given substring
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn result_contains(&self, needle: &str) -> bool {
         self.results.iter().any(|s| s.contains(needle))
     }
 
     /// Check if status output contains the given substring
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn status_contains(&self, needle: &str) -> bool {
         self.status_messages.iter().any(|s| s.contains(needle))
     }
 
     /// Get all output as an iterator
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn all_output(&self) -> impl Iterator<Item = &String> {
         self.status_messages
             .iter()
@@ -141,6 +145,7 @@ impl TestWriter {
     }
 
     /// Get combined output as a single string
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn combined_output(&self) -> String {
         let mut output = String::new();
         for msg in self.all_output() {
@@ -150,6 +155,7 @@ impl TestWriter {
     }
 
     /// Clear all captured output
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn clear(&mut self) {
         self.status_messages.clear();
         self.results.clear();
@@ -160,6 +166,7 @@ impl TestWriter {
     }
 
     /// Check if no output was produced
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn is_empty(&self) -> bool {
         self.status_messages.is_empty()
             && self.results.is_empty()

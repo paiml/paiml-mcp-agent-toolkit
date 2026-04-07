@@ -41,6 +41,7 @@ pub use statistical_rigor::StatisticalRigorScorer;
 pub use transparency::TransparencyScorer;
 
 /// Create all scorers in order
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn all_scorers() -> Vec<Box<dyn super::PopperScorer>> {
     vec![
         Box::new(FalsifiabilityScorer::new()),

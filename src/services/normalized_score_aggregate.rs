@@ -41,11 +41,13 @@ impl AggregateScore {
     }
 
     /// Add a component score with weight.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn add<S: NormalizedScoreClone + 'static>(&mut self, score: S, weight: f64) {
         self.components.push((Box::new(score), weight.max(0.0)));
     }
 
     /// Get the total weight.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn total_weight(&self) -> f64 {
         self.components.iter().map(|(_, w)| w).sum()
     }

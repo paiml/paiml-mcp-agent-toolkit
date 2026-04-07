@@ -127,12 +127,14 @@ impl UnifiedService {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_template_service<T: TemplateService + 'static>(mut self, service: T) -> Self {
         let state = Arc::make_mut(&mut self.state);
         state.template_service = Arc::new(service);
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_analysis_service<A: AnalysisService + 'static>(mut self, service: A) -> Self {
         let state = Arc::make_mut(&mut self.state);
         state.analysis_service = Arc::new(service);
@@ -140,11 +142,13 @@ impl UnifiedService {
     }
 
     /// Get the router for HTTP server usage
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn router(&self) -> Router {
         self.router.clone()
     }
 
     /// Process a unified request through the router
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn process_request(
         &self,
         request: UnifiedRequest,

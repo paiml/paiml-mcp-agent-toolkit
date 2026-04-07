@@ -60,6 +60,7 @@ impl Default for EntropyConfig {
 
 impl EntropyConfig {
     /// Load additional exclude patterns from `.pmatignore` and `.gitignore`.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_project_ignores(mut self, project_path: &std::path::Path) -> Self {
         for ignore_file in &[".pmatignore", ".paimlignore"] {
             let path = project_path.join(ignore_file);
@@ -100,6 +101,7 @@ impl EntropyAnalyzer {
 
     /// Create analyzer with custom config
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_config(config: EntropyConfig) -> Self {
         Self {
             config: config.clone(),
@@ -110,6 +112,7 @@ impl EntropyAnalyzer {
     }
 
     /// Analyze entropy for a project
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze(&self, project_path: &Path) -> Result<EntropyReport> {
         // Step 1: Extract AST patterns from project context
         let patterns = self

@@ -55,6 +55,7 @@ where
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn count_nodes_of_kind(node: Node, kind: &str) -> usize {
     let mut count = 0;
     walk_tree(node, |n| {
@@ -65,6 +66,7 @@ pub fn count_nodes_of_kind(node: Node, kind: &str) -> usize {
     count
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn max_depth(node: Node) -> usize {
     if node.child_count() == 0 {
         return 0;
@@ -77,6 +79,7 @@ pub fn max_depth(node: Node) -> usize {
         .unwrap_or(0)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn get_node_text<'a>(node: Node, source: &'a str) -> &'a str {
     &source[node.byte_range()]
 }

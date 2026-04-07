@@ -77,6 +77,7 @@ impl UnifiedPythonAnalyzer {
 
     /// Get parse count (test-only, for verifying single parse)
     #[cfg(test)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn parse_count(&self) -> usize {
         self.parse_count.load(Ordering::SeqCst)
     }

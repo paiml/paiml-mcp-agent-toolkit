@@ -97,6 +97,7 @@ impl AstRegistry {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register(&mut self, strategy: Arc<dyn AstStrategy>) {
         for ext in strategy.supported_extensions() {
             self.strategies.insert(ext.to_string(), strategy.clone());
@@ -104,11 +105,13 @@ impl AstRegistry {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_strategy(&self, extension: &str) -> Option<Arc<dyn AstStrategy>> {
         self.strategies.get(extension).cloned()
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn list_supported_extensions(&self) -> Vec<&str> {
         self.strategies
             .keys()

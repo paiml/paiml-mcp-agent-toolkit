@@ -6,6 +6,7 @@ use serde_json::Value;
 pub struct RecoveryManager;
 
 impl RecoveryManager {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn handle_error(
         error: &WorkflowError,
         strategy: &ErrorStrategy,

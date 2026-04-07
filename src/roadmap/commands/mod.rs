@@ -84,6 +84,7 @@ pub enum RoadmapSubcommand {
 }
 
 /// Execute roadmap commands
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn execute(cmd: RoadmapCommand, config: RoadmapConfig) -> Result<()> {
     let roadmap_path = config.path.clone();
 

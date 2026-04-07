@@ -14,6 +14,7 @@ pub use self::parser::MakefileParser;
 pub use self::rules::{LintResult, MakefileRule, RuleRegistry, Severity, Violation};
 
 /// Main entry point for linting a Makefile
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "lint_valid")]
 pub async fn lint_makefile(path: &Path) -> Result<LintResult, AnalysisError> {
     let content = tokio::fs::read_to_string(path)
         .await

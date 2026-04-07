@@ -68,30 +68,35 @@ impl LanguageRegistry {
     }
 
     /// Register Python adapter
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register_python(&mut self) {
         use crate::services::mutation::PythonAdapter;
         self.register(Arc::new(PythonAdapter::new()));
     }
 
     /// Register Go adapter
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register_go(&mut self) {
         use crate::services::mutation::GoAdapter;
         self.register(Arc::new(GoAdapter::new()));
     }
 
     /// Register C/C++ adapter
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register_cpp(&mut self) {
         use crate::services::mutation::CppAdapter;
         self.register(Arc::new(CppAdapter::new()));
     }
 
     /// Register WASM adapter
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register_wasm(&mut self) {
         use crate::services::mutation::WasmAdapter;
         self.register(Arc::new(WasmAdapter::new()));
     }
 
     /// Detect language from file path using centralized Language enum (Sprint 63)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_language(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
         // Use centralized language detection from language_detector module
         let detected_language = Language::from_extension(path);
@@ -108,6 +113,7 @@ impl LanguageRegistry {
     }
 
     /// Detect language from file path (legacy extension-based detection)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn detect_language_by_extension(&self, path: &Path) -> Option<Arc<dyn LanguageAdapter>> {
         let extension = path.extension()?.to_str()?;
 
@@ -121,11 +127,13 @@ impl LanguageRegistry {
     }
 
     /// Get adapter by name
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_adapter(&self, name: &str) -> Option<Arc<dyn LanguageAdapter>> {
         self.adapters.get(name).map(Arc::clone)
     }
 
     /// List all registered languages
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn languages(&self) -> Vec<&str> {
         self.adapters.keys().map(|s| s.as_str()).collect()
     }
