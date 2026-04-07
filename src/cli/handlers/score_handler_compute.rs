@@ -374,6 +374,58 @@ fn geometric_mean(values: &[f64]) -> f64 {
     (log_sum / n).exp()
 }
 
+/// Kani bounded model checking proofs for scoring functions.
+/// Run: `cargo kani --harness verify_geometric_mean_bounded`
+#[cfg(kani)]
+mod kani_proofs {
+    use super::geometric_mean;
+
+    /// Prove: geometric_mean always returns a value in [0, 100] for inputs in [0, 100].
+    /// Exhaustively checks all f64 values within the bound (Kani explores symbolically).
+    #[kani::proof]
+    #[kani::unwind(8)]
+    fn verify_geometric_mean_bounded() {
+        let n: usize = kani::any();
+        kani::assume(n > 0 && n <= 7);
+        let mut values = Vec::with_capacity(n);
+        for _ in 0..n {
+            let v: f64 = kani::any();
+            kani::assume(v >= 0.0 && v <= 100.0 && v.is_finite());
+            values.push(v);
+        }
+        let result = geometric_mean(&values);
+        assert!(result >= 0.0, "geometric_mean must be non-negative");
+        assert!(result <= 100.0, "geometric_mean must not exceed max input");
+        assert!(result.is_finite() || result == 0.0, "geometric_mean must be finite or zero");
+    }
+
+    /// Prove: geometric_mean of empty slice returns 0.
+    #[kani::proof]
+    fn verify_geometric_mean_empty() {
+        let result = geometric_mean(&[]);
+        assert_eq!(result, 0.0);
+    }
+
+    /// Prove: geometric_mean of single value returns that value.
+    #[kani::proof]
+    fn verify_geometric_mean_identity() {
+        let v: f64 = kani::any();
+        kani::assume(v > 0.0 && v <= 100.0 && v.is_finite());
+        let result = geometric_mean(&[v]);
+        // Allow small floating-point epsilon
+        assert!((result - v).abs() < 1e-10, "single-value geometric mean must equal the value");
+    }
+
+    /// Prove: geometric_mean with any zero input returns 0.
+    #[kani::proof]
+    fn verify_geometric_mean_zero_absorbing() {
+        let a: f64 = kani::any();
+        kani::assume(a >= 0.0 && a <= 100.0 && a.is_finite());
+        let result = geometric_mean(&[a, 0.0]);
+        assert_eq!(result, 0.0, "any zero input must make geometric mean zero");
+    }
+}
+
 fn get_head_sha(path: &Path) -> String {
     std::process::Command::new("git")
         .args(["rev-parse", "--short", "HEAD"])

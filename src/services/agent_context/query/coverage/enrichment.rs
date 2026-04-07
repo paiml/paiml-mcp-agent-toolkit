@@ -274,3 +274,48 @@ pub fn compute_impact_score(missed_lines: u32, pagerank: f32, complexity: u32) -
     let score = missed_lines as f32 * pr_factor / complexity_factor;
     score
 }
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::compute_impact_score;
+
+    /// Prove: impact score is always non-negative for non-negative inputs.
+    #[kani::proof]
+    fn verify_impact_score_non_negative() {
+        let missed: u32 = kani::any();
+        let pagerank: f32 = kani::any();
+        let complexity: u32 = kani::any();
+        kani::assume(missed <= 10000);
+        kani::assume(pagerank >= 0.0 && pagerank <= 1.0 && pagerank.is_finite());
+        kani::assume(complexity <= 1000);
+        let result = compute_impact_score(missed, pagerank, complexity);
+        assert!(result >= 0.0, "impact score must be non-negative");
+        assert!(result.is_finite(), "impact score must be finite");
+    }
+
+    /// Prove: zero missed lines always produces zero impact.
+    #[kani::proof]
+    fn verify_impact_score_zero_missed() {
+        let pagerank: f32 = kani::any();
+        let complexity: u32 = kani::any();
+        kani::assume(pagerank >= 0.0 && pagerank.is_finite());
+        kani::assume(complexity <= 1000);
+        let result = compute_impact_score(0, pagerank, complexity);
+        assert_eq!(result, 0.0, "zero missed lines must produce zero impact");
+    }
+
+    /// Prove: higher missed lines → higher or equal score (monotonicity).
+    #[kani::proof]
+    fn verify_impact_score_monotonic_missed() {
+        let m1: u32 = kani::any();
+        let m2: u32 = kani::any();
+        let pagerank: f32 = kani::any();
+        let complexity: u32 = kani::any();
+        kani::assume(m1 <= m2 && m2 <= 1000);
+        kani::assume(pagerank >= 0.0 && pagerank <= 1.0 && pagerank.is_finite());
+        kani::assume(complexity > 0 && complexity <= 100);
+        let s1 = compute_impact_score(m1, pagerank, complexity);
+        let s2 = compute_impact_score(m2, pagerank, complexity);
+        assert!(s2 >= s1, "more missed lines must not decrease score");
+    }
+}

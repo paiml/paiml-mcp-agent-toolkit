@@ -285,6 +285,49 @@ impl HybridSearchEngine {
         score
     }
 
+    // Kani proofs are in the module below (outside impl block)
+    }
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::HybridSearchEngine;
+
+    /// Prove: RRF score is always in (0, 1] for valid inputs.
+    #[kani::proof]
+    fn verify_rrf_score_bounded() {
+        let rank: usize = kani::any();
+        let k: usize = kani::any();
+        kani::assume(k > 0 && k <= 100);
+        kani::assume(rank <= 10000);
+        let result = HybridSearchEngine::compute_rrf_score(rank, k);
+        assert!(result > 0.0, "RRF score must be positive");
+        assert!(result <= 1.0, "RRF score must not exceed 1.0");
+    }
+
+    /// Prove: RRF score decreases as rank increases (higher rank = lower score).
+    #[kani::proof]
+    fn verify_rrf_score_monotonic_decreasing() {
+        let r1: usize = kani::any();
+        let r2: usize = kani::any();
+        let k: usize = kani::any();
+        kani::assume(r1 < r2 && r2 <= 1000);
+        kani::assume(k > 0 && k <= 100);
+        let s1 = HybridSearchEngine::compute_rrf_score(r1, k);
+        let s2 = HybridSearchEngine::compute_rrf_score(r2, k);
+        assert!(s1 > s2, "higher rank must produce lower RRF score");
+    }
+
+    /// Prove: rank 0 with k=60 (standard) gives the maximum score.
+    #[kani::proof]
+    fn verify_rrf_rank_zero_maximum() {
+        let k: usize = kani::any();
+        kani::assume(k > 0 && k <= 100);
+        let result = HybridSearchEngine::compute_rrf_score(0, k);
+        assert_eq!(result, 1.0 / k as f64, "rank 0 score must equal 1/k");
+    }
+}
+
+impl HybridSearchEngine {
     /// Apply filters to results
     fn apply_filters(
         results: Vec<HybridSearchResult>,

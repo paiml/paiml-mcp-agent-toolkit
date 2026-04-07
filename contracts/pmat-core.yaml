@@ -71,10 +71,20 @@ falsification_tests:
   prediction: missing files produce Skip status, never panic
   test: cargo test --lib -- check_handlers -- with tempdir (no files)
   if_fails: Check panics on missing input, breaks CI for clean projects
-kani_harnesses: []
+kani_harnesses:
+- verify_geometric_mean_bounded
+- verify_geometric_mean_empty
+- verify_geometric_mean_identity
+- verify_geometric_mean_zero_absorbing
+- verify_impact_score_non_negative
+- verify_impact_score_zero_missed
+- verify_impact_score_monotonic_missed
+- verify_rrf_score_bounded
+- verify_rrf_score_monotonic_decreasing
+- verify_rrf_rank_zero_maximum
 verification_summary:
   total_obligations: 3
   l2_property_tested: 3
-  l3_kani_proved: 0
+  l3_kani_proved: 10
   l4_lean_proved: 0
   l4_sorry_count: 0

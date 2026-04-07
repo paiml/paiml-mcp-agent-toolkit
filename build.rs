@@ -20,6 +20,7 @@ fn main() {
     // Declare custom cfg flags
     println!("cargo:rustc-check-cfg=cfg(cargo_publish)");
     println!("cargo:rustc-check-cfg=cfg(coverage)");
+    println!("cargo:rustc-check-cfg=cfg(kani)");
 
     // Fast build mode for development - skip heavy operations but generate stubs
     if env::var("PMAT_FAST_BUILD").is_ok() {
