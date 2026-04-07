@@ -84,6 +84,7 @@ impl ContractMetadata {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn with_description(mut self, description: &str) -> Self {
         self.description = Some(description.to_string());
@@ -284,6 +285,7 @@ impl ParameterRenameMapping {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn add_mapping(mut self, old_name: &str, new_name: &str) -> Self {
         self.mappings
@@ -360,6 +362,7 @@ impl<T> ContractBuilder<T> {
         self
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn build(self) -> VersionedContract<T> {
         VersionedContract {
             version: self.version,

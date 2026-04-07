@@ -41,6 +41,7 @@ impl TdgAnalyzerAst {
 
     /// Create analyzer with in-memory storage for testing (no file I/O conflicts)
     #[cfg(test)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_in_memory_storage(config: TdgConfig) -> Self {
         let storage = TieredStorageFactory::create_in_memory();
         let scheduler = SchedulerFactory::create_balanced();

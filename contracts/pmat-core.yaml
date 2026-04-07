@@ -26,6 +26,16 @@ equations:
     preconditions:
     - checks.len() > 0
     lean_theorem: Theorems.Check_Determinism
+  score_range:
+    formula: score = hit_rate * throughput
+    domain: hit_rate in [0.0, 1.0], throughput in [0.0, +inf)
+    codomain: score in [0.0, +inf)
+    invariants:
+    - score >= 0.0 (non-negative product of non-negative factors)
+    preconditions:
+    - hit_rate >= 0.0
+    - throughput >= 0.0
+    lean_theorem: Theorems.Score_Range_NonNeg
 proof_obligations:
 - type: invariant
   property: TDG baseline valid JSON after every commit

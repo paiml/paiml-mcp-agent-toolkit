@@ -27,6 +27,7 @@ pub struct ClippyDiagnostic {
 
 impl ClippyDiagnostic {
     /// Parse from JSON output (complexity: 3)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn from_json(json: &str) -> Result<Self> {
         let value: serde_json::Value = serde_json::from_str(json)?;
         Self::parse_json_value(&value)

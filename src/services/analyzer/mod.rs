@@ -120,6 +120,7 @@ impl AnalyzerRegistry {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn register<T>(&mut self, analyzer: T)
     where
         T: AnalyzerInfo + 'static,
@@ -129,11 +130,13 @@ impl AnalyzerRegistry {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn get_info(&self, name: &str) -> Option<&dyn AnalyzerInfo> {
         self.analyzers.get(name).map(std::convert::AsRef::as_ref)
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn list_analyzers(&self) -> Vec<&str> {
         self.analyzers
             .keys()

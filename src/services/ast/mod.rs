@@ -120,6 +120,7 @@ impl AstRegistry {
     }
 
     /// Analyze a file using the appropriate strategy
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_file(
         &self,
         file_path: &Path,
@@ -193,6 +194,7 @@ impl UnifiedAstAnalyzer {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn analyze_file(&self, file_path: &Path) -> Result<AstAnalysisResult> {
         let start = std::time::Instant::now();
 
@@ -214,6 +216,7 @@ impl UnifiedAstAnalyzer {
     }
 
     #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn supported_languages(&self) -> Vec<&str> {
         self.registry.list_supported_extensions()
     }

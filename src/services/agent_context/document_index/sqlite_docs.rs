@@ -207,6 +207,7 @@ pub(crate) fn remove_file_documents(conn: &Connection, file_path: &str) -> Resul
 
 /// Get the count of indexed documents.
 #[cfg(test)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn document_count(conn: &Connection) -> usize {
     conn.query_row(
         "SELECT COUNT(DISTINCT file_path) FROM documents",

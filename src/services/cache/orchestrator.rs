@@ -136,10 +136,12 @@ struct StrategyEvaluation {
 
 #[cfg(test)]
 impl StrategyEvaluation {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub(crate) fn score(&self) -> f64 {
         self.performance.hit_rate * self.performance.throughput
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn is_valid(&self) -> bool {
         self.timestamp.elapsed().as_secs() < 3600
     }

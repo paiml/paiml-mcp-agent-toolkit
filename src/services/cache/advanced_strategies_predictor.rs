@@ -90,6 +90,7 @@ where
 
     /// Get access history length for testing
     #[cfg(test)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn access_history_len(&self) -> usize {
         self.access_history.read().len()
     }

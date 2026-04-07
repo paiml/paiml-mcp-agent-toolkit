@@ -63,6 +63,7 @@ impl Token {
         Self { kind, text }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
     pub fn hash(&self) -> u64 {
         xxh64(self.text.as_bytes(), 0)

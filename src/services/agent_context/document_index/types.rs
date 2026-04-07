@@ -28,6 +28,7 @@ impl fmt::Display for DocumentType {
 
 impl DocumentType {
     #[cfg(test)]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub(crate) fn from_str_label(s: &str) -> Option<Self> {
         match s {
             "pdf" => Some(Self::Pdf),
