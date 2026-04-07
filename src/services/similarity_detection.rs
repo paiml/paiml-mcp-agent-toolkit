@@ -209,8 +209,7 @@ impl SimilarityDetector {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
     pub fn calculate_entropy(&self, text: &str) -> f64 {
-        let result = self.entropy_calculator.calculate(text);
-        result
+        self.entropy_calculator.calculate(text)
     }
 
     // --- Private helper methods ---

@@ -271,8 +271,7 @@ pub fn compute_impact_score(missed_lines: u32, pagerank: f32, complexity: u32) -
     }
     let pr_factor = (pagerank * 10000.0).max(0.1);
     let complexity_factor = (complexity as f32).max(1.0);
-    let score = missed_lines as f32 * pr_factor / complexity_factor;
-    score
+    missed_lines as f32 * pr_factor / complexity_factor
 }
 
 #[cfg(kani)]

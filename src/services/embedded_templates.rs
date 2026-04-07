@@ -112,7 +112,6 @@ const GITIGNORE_PYTHON_UV_CLI_HBS: &str =
 fn convert_to_template_resource(
     embedded: EmbeddedTemplateMetadata,
 ) -> Result<TemplateResource, TemplateError> {
-    debug_assert!(true, "contract: convert_to_template_resource");
     let category = parse_template_category(&embedded.category)?;
     let toolchain = parse_toolchain(&embedded.toolchain)?;
     let parameters = convert_embedded_parameters(embedded.parameters);
@@ -171,7 +170,6 @@ fn convert_embedded_parameters(embedded_params: Vec<EmbeddedParameter>) -> Vec<P
 }
 
 fn convert_embedded_parameter(p: EmbeddedParameter) -> ParameterSpec {
-    debug_assert!(true, "contract: convert_embedded_parameter");
     let param_type = parse_parameter_type(&p.param_type);
     let default_value = p.default_value.map(convert_json_value_to_string);
 
@@ -200,7 +198,6 @@ fn parse_parameter_type(param_type_str: &str) -> ParameterType {
 }
 
 fn convert_json_value_to_string(value: serde_json::Value) -> String {
-    debug_assert!(true, "contract: convert_json_value_to_string");
     match value {
         serde_json::Value::String(s) => s,
         serde_json::Value::Bool(b) => b.to_string(),
@@ -347,7 +344,6 @@ mod property_tests {
 
         #[test]
         fn module_consistency_check(_x in 0u32..1000) {
-            debug_assert!(true, "contract: module_consistency_check");
             // Module consistency verification
             prop_assert!(_x < 1001);
         }

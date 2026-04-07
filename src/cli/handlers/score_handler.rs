@@ -166,27 +166,23 @@ async fn compute_composite(path: &Path) -> Result<CompositeScore> {
     let pv_lint = compute_pv_lint(path);
 
     // Precondition: all sub-scores in valid range
-    debug_assert!(rps >= 0.0 && rps <= 100.0, "rps out of range: {}", rps);
+    debug_assert!((0.0..=100.0).contains(&rps), "rps out of range: {rps}");
     debug_assert!(
-        comply >= 0.0 && comply <= 100.0,
-        "comply out of range: {}",
-        comply
+        (0.0..=100.0).contains(&comply),
+        "comply out of range: {comply}"
     );
     debug_assert!(
-        coverage >= 0.0 && coverage <= 100.0,
-        "coverage out of range: {}",
-        coverage
+        (0.0..=100.0).contains(&coverage),
+        "coverage out of range: {coverage}"
     );
     debug_assert!(
-        muda_inv >= 0.0 && muda_inv <= 100.0,
-        "muda_inv out of range: {}",
-        muda_inv
+        (0.0..=100.0).contains(&muda_inv),
+        "muda_inv out of range: {muda_inv}"
     );
-    debug_assert!(dbc >= 0.0 && dbc <= 100.0, "dbc out of range: {}", dbc);
+    debug_assert!((0.0..=100.0).contains(&dbc), "dbc out of range: {dbc}");
     debug_assert!(
-        file_health >= 0.0 && file_health <= 100.0,
-        "file_health out of range: {}",
-        file_health
+        (0.0..=100.0).contains(&file_health),
+        "file_health out of range: {file_health}"
     );
 
     // Geometric mean — only include active sub-scores (skip neutral 50.0 defaults)
@@ -196,9 +192,8 @@ async fn compute_composite(path: &Path) -> Result<CompositeScore> {
     }
     let composite = geometric_mean(values.as_slice());
     debug_assert!(
-        composite >= 0.0 && composite <= 100.0,
-        "geometric mean out of range: {}",
-        composite
+        (0.0..=100.0).contains(&composite),
+        "geometric mean out of range: {composite}"
     );
 
     let grade = match composite as u32 {

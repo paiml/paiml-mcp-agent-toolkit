@@ -396,7 +396,6 @@ fn format_deep_context_text(
     report: &crate::services::simple_deep_context::SimpleAnalysisReport,
     top_files: usize,
 ) -> String {
-    debug_assert!(true, "contract: format_deep_context_text");
     use crate::cli::colors as c;
     use std::fmt::Write;
 
