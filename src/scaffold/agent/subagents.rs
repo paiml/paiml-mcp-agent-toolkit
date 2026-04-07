@@ -282,22 +282,27 @@ impl SubAgentGenerator {
     }
 
     // Template generation methods (to be implemented)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn generate_complexity_analyst(&self) -> Result<String> {
         Ok(include_str!("subagent_templates/complexity_analyst.md.tmpl").to_string())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn generate_mutation_tester(&self) -> Result<String> {
         Ok(include_str!("subagent_templates/mutation_tester.md.tmpl").to_string())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn generate_satd_detector(&self) -> Result<String> {
         Ok(include_str!("subagent_templates/satd_detector.md.tmpl").to_string())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn generate_dead_code_eliminator(&self) -> Result<String> {
         Ok(include_str!("subagent_templates/dead_code_eliminator.md.tmpl").to_string())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn generate_documentation_enforcer(&self) -> Result<String> {
         Ok(include_str!("subagent_templates/documentation_enforcer.md.tmpl").to_string())
     }

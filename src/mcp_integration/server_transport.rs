@@ -1,3 +1,4 @@
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn handle_session(
     session: McpSession,
     config: ServerConfig,

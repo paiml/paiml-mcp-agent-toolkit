@@ -24,6 +24,7 @@ pub fn generate_pre_commit_hook(config: &HookConfig) -> Result<String> {
 /// # Complexity
 /// - Time: O(1)
 /// - Cyclomatic: 1
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_pforge_hook(_config: &HookConfig) -> String {
     r#"#!/bin/bash
 # Pre-commit hook for pforge project
@@ -58,6 +59,7 @@ exit 0
 /// # Complexity
 /// - Time: O(1)
 /// - Cyclomatic: 1
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_wasm_hook(_config: &HookConfig) -> String {
     r#"#!/bin/bash
 # Pre-commit hook for WASM project

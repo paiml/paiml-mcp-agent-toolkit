@@ -42,6 +42,7 @@ impl TemplateGenerator for StateMachineTemplate {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_state_machine_cargo_toml(ctx: &AgentContext) -> String {
     format!(
         r#"[package]
@@ -64,6 +65,7 @@ tokio-test = "0.4"
     )
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_state_machine_main(ctx: &AgentContext) -> String {
     format!(
         r#"//! {} - State Machine Agent
@@ -83,6 +85,7 @@ async fn main() -> Result<()> {{
     )
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_state_machine_mod() -> String {
     r"//! State machine implementation.
 
@@ -93,6 +96,7 @@ pub mod invariants;
     .to_string()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_state_definitions(ctx: &AgentContext) -> String {
     format!(
         r"//! State definitions for {}.
@@ -119,6 +123,7 @@ pub enum Event {{
     )
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_transitions() -> String {
     r"//! State transition logic.
 
@@ -138,6 +143,7 @@ pub fn transition(state: &State, event: &Event) -> Result<State> {
     .to_string()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_state_invariants() -> String {
     r#"//! State invariants.
 
@@ -157,6 +163,7 @@ pub fn check_invariants(state: &State) -> Result<()> {
     .to_string()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_state_tests() -> String {
     r"//! State transition tests.
 
@@ -173,6 +180,7 @@ fn test_invalid_transitions() {
     .to_string()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_invariant_tests() -> String {
     r"//! Invariant tests.
 

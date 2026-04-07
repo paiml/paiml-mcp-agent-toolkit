@@ -1,6 +1,7 @@
 // Included from tdg_tools.rs — helper functions for TDG tools
 
 // Helper function to determine if severity should be included
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn should_include_severity(severity: &str, min_severity: &str) -> bool {
     let severity_levels = ["low", "medium", "high", "critical"];
     let min_index = severity_levels
@@ -15,6 +16,7 @@ fn should_include_severity(severity: &str, min_severity: &str) -> bool {
 }
 
 // Helper function to generate actionable suggestions
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn generate_suggestion(reason: &str, category: &str) -> String {
     let reason_lower = reason.to_lowercase();
 

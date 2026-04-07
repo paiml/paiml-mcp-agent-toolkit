@@ -1,4 +1,5 @@
 /// Analyzes a single Scala file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn analyze_scala_file(
     path: &std::path::Path,
     include_metrics: bool,
@@ -34,6 +35,7 @@ async fn analyze_scala_file(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn count_by_kinds(items: &[crate::services::context::AstItem], kinds: &[&str]) -> usize {
     items
         .iter()
@@ -44,6 +46,7 @@ fn count_by_kinds(items: &[crate::services::context::AstItem], kinds: &[&str]) -
         .count()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn count_classes(items: &[crate::services::context::AstItem]) -> usize {
     items
         .iter()
@@ -57,6 +60,7 @@ fn count_classes(items: &[crate::services::context::AstItem]) -> usize {
         .count()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn count_case_classes(items: &[crate::services::context::AstItem]) -> usize {
     items
         .iter()
@@ -70,6 +74,7 @@ fn count_case_classes(items: &[crate::services::context::AstItem]) -> usize {
         .count()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn build_file_summary(path: &std::path::Path, items: &[crate::services::context::AstItem]) -> Value {
     let package_name = items
         .iter()
@@ -96,6 +101,7 @@ fn build_file_summary(path: &std::path::Path, items: &[crate::services::context:
     })
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn build_file_metrics(
     items: &[crate::services::context::AstItem],
     method_count: usize,
@@ -132,6 +138,7 @@ struct DirectoryAccumulator {
 }
 
 impl DirectoryAccumulator {
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn new() -> Self {
         Self {
             total_classes: 0, total_traits: 0, total_objects: 0,
@@ -141,6 +148,7 @@ impl DirectoryAccumulator {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn accumulate_summary(&mut self, summary: &serde_json::Map<String, Value>) {
         if let Some(v) = summary["class_count"].as_u64() { self.total_classes += v; }
         if let Some(v) = summary["trait_count"].as_u64() { self.total_traits += v; }
@@ -149,6 +157,7 @@ impl DirectoryAccumulator {
         if let Some(v) = summary["method_count"].as_u64() { self.total_methods += v; }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn accumulate_metrics(&mut self, metrics: &serde_json::Map<String, Value>) {
         if let Some(v) = metrics["total_complexity"].as_u64() { self.total_complexity += v; }
         if let Some(v) = metrics["max_complexity"].as_u64() {
@@ -165,6 +174,7 @@ impl DirectoryAccumulator {
 }
 
 /// Analyzes a directory of Scala files recursively
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn analyze_scala_directory(
     path: &std::path::Path,
     max_depth: u64,
@@ -247,6 +257,7 @@ async fn analyze_scala_directory(
 }
 
 /// Helper function to find all Scala files in a directory
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn find_scala_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<PathBuf>> {
     let mut scala_files = Vec::new();
 
@@ -270,6 +281,7 @@ fn find_scala_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<Path
 }
 
 /// Helper function to calculate the percentage of functional code patterns vs imperative
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn calculate_functional_percentage(items: &[crate::services::context::AstItem]) -> f64 {
     let mut functional_score = 0.0;
     let mut imperative_score = 0.0;

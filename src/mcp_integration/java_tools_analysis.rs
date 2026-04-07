@@ -88,6 +88,7 @@ impl McpTool for JavaAnalysisTool {
 }
 
 /// Analyzes a single Java file
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn analyze_java_file(
     path: &std::path::Path,
     include_metrics: bool,
@@ -178,6 +179,7 @@ async fn analyze_java_file(
 }
 
 /// Analyzes a directory of Java files recursively
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn analyze_java_directory(
     path: &std::path::Path,
     max_depth: u64,
@@ -262,6 +264,7 @@ async fn analyze_java_directory(
 }
 
 /// Helper function to find all Java files in a directory
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn find_java_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<PathBuf>> {
     let mut java_files = Vec::new();
 
@@ -280,6 +283,7 @@ fn find_java_files(path: &std::path::Path, max_depth: usize) -> Result<Vec<PathB
     Ok(java_files)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn accumulate_summary_counts(
     result: &Value,
     total_classes: &mut u64,
@@ -299,6 +303,7 @@ fn accumulate_summary_counts(
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn accumulate_metrics(
     result: &Value,
     total_complexity: &mut u64,

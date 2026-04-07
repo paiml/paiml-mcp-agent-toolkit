@@ -29,6 +29,7 @@ impl McpServer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn register_agent_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         use crate::mcp_integration::tools::*;
 
@@ -66,6 +67,7 @@ impl McpServer {
     /// - Semantic Entropy (Farquhar et al., Nature 2024)
     /// - MIND framework (IJCAI 2025)
     /// - Unified Detection Framework (Complex & Intelligent Systems 2025)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn register_hallucination_detection_tools(
         &self,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -98,6 +100,7 @@ impl McpServer {
     /// Tools:
     /// - `analyze_technical_debt`: Analyze quality scores for files/projects
     /// - `get_quality_recommendations`: Get actionable refactoring suggestions
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn register_tdg_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         use crate::mcp_integration::tdg_tools::*;
 
@@ -130,6 +133,7 @@ impl McpServer {
     /// - Mutation testing for Java and Scala code
     ///
     /// Both tools are feature-gated behind the "java-ast" and "scala-ast" features.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn register_jvm_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         let mut tools = self.context.tools.write();
         let mut registered_tools = 0;
@@ -196,6 +200,7 @@ impl McpServer {
     /// Tools:
     /// - analyze_polyglot: Analyzes cross-language relationships in a project
     /// - detect_language_boundaries: Detects language boundaries and interop points
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn register_polyglot_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         use crate::mcp_integration::polyglot_tools::*;
 
@@ -255,6 +260,7 @@ impl McpServer {
     /// - PMAT_WORKSPACE: Workspace path for code indexing (default: current directory)
     ///
     /// NOTE: No API keys required - uses local embeddings via aprender/trueno-rag
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn register_semantic_tools(&self) -> Result<(), Box<dyn std::error::Error>> {
         // Check if semantic search is enabled
         if !self.config.semantic_enabled {
@@ -321,6 +327,7 @@ impl McpServer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn register_agent_resources(&self) -> Result<(), Box<dyn std::error::Error>> {
         use crate::mcp_integration::resources::*;
 
@@ -342,6 +349,7 @@ impl McpServer {
         Ok(())
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn register_agent_prompts(&self) -> Result<(), Box<dyn std::error::Error>> {
         use crate::mcp_integration::prompts::*;
 

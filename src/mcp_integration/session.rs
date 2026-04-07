@@ -83,6 +83,7 @@ impl McpSession {
         }
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn handle_initialize(&self, _params: Option<Value>) -> Result<Value, McpError> {
         Ok(serde_json::json!({
             "protocolVersion": MCP_VERSION,
@@ -91,11 +92,13 @@ impl McpSession {
         }))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn handle_tools_list(&self) -> Result<Value, McpError> {
         let tools = self.context.tools.read().list();
         Ok(serde_json::json!({ "tools": tools }))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn handle_tool_call(&self, params: Option<Value>) -> Result<Value, McpError> {
         let params = params.ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
@@ -126,11 +129,13 @@ impl McpSession {
         Ok(serde_json::json!({ "content": [result] }))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn handle_resources_list(&self) -> Result<Value, McpError> {
         let resources = self.context.resources.read().list();
         Ok(serde_json::json!({ "resources": resources }))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn handle_resource_read(&self, params: Option<Value>) -> Result<Value, McpError> {
         let params = params.ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
@@ -159,6 +164,7 @@ impl McpSession {
         Ok(serde_json::json!({ "contents": [content] }))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn handle_resource_subscribe(&self, params: Option<Value>) -> Result<Value, McpError> {
         let params = params.ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
@@ -211,11 +217,13 @@ impl McpSession {
         Ok(serde_json::json!({}))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn handle_prompts_list(&self) -> Result<Value, McpError> {
         let prompts = self.context.prompts.read().list();
         Ok(serde_json::json!({ "prompts": prompts }))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn handle_prompt_get(&self, params: Option<Value>) -> Result<Value, McpError> {
         let params = params.ok_or_else(|| McpError {
             code: error_codes::INVALID_PARAMS,
@@ -250,6 +258,7 @@ impl McpSession {
         Ok(serde_json::json!({ "messages": messages }))
     }
 
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn handle_completion(&self, params: Option<Value>) -> Result<Value, McpError> {
         // Integrate with agent system for completions
         let _params = params.ok_or_else(|| McpError {

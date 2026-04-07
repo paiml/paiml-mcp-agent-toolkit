@@ -130,6 +130,7 @@ impl TemplateRegistry {
     }
 
     /// Load a custom template from a path.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn load_custom_template(&self, path: &Path) -> ScaffoldResult<Arc<dyn TemplateGenerator>> {
         if !path.exists() {
             return Err(ScaffoldError::TemplateNotFound(format!(

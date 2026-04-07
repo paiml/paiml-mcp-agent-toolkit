@@ -68,6 +68,7 @@ impl McpTool for LanguageBoundaryTool {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn parse_language_param(value: &Value, key: &str) -> Option<Language> {
     value[key].as_str().and_then(|l| match l.to_lowercase().as_str() {
         "java" => Some(Language::Java),
@@ -79,6 +80,7 @@ fn parse_language_param(value: &Value, key: &str) -> Option<Language> {
     })
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn parse_boundary_params(params: &Value) -> Result<(PathBuf, usize, Option<Language>, Option<Language>), McpError> {
     let path_str = params["path"].as_str().ok_or_else(|| McpError {
         code: crate::mcp_integration::error_codes::INVALID_PARAMS,
@@ -104,6 +106,7 @@ fn parse_boundary_params(params: &Value) -> Result<(PathBuf, usize, Option<Langu
     Ok((path, max_depth, source_language, target_language))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn resolve_languages(source: Option<Language>, target: Option<Language>) -> Vec<Language> {
     if source.is_none() && target.is_none() {
         vec![Language::Java, Language::Kotlin, Language::Scala, Language::TypeScript, Language::JavaScript]
@@ -117,6 +120,7 @@ fn resolve_languages(source: Option<Language>, target: Option<Language>) -> Vec<
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn collect_language_nodes(path: &Path, max_depth: usize, languages: &[Language]) -> Vec<UnifiedNode> {
     let mut all_nodes = Vec::new();
     for language in languages {
@@ -131,6 +135,7 @@ async fn collect_language_nodes(path: &Path, max_depth: usize, languages: &[Lang
     all_nodes
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn filter_dependencies<'a>(
     deps: &'a [crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency],
     source: Option<Language>,
@@ -144,12 +149,14 @@ fn filter_dependencies<'a>(
         .collect()
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn node_to_json(nodes: &[UnifiedNode], id: &str) -> Value {
     nodes.iter().find(|n| n.id == id).map(|n| {
         json!({"id": n.id, "name": n.name, "fqn": n.fqn, "kind": n.kind.as_str(), "file": n.file_path.display().to_string()})
     }).unwrap_or_else(|| json!({"id": id}))
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn build_boundaries_json(
     filtered_deps: &[&crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency],
     all_nodes: &[UnifiedNode],
@@ -165,6 +172,7 @@ fn build_boundaries_json(
     json!(boundaries)
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn build_boundary_stats(
     filtered_deps: &[&crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency],
 ) -> Value {
@@ -182,6 +190,7 @@ fn build_boundary_stats(
     stats
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn recommendations_for_pair(a: &str, b: &str) -> Value {
     match (a, b) {
         ("Java", "Kotlin") | ("Kotlin", "Java") => json!([
@@ -217,6 +226,7 @@ fn recommendations_for_pair(a: &str, b: &str) -> Value {
     }
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn analyze_boundary_patterns(
     deps: Vec<&crate::ast::polyglot::cross_language_dependencies::CrossLanguageDependency>,
     _nodes: &[UnifiedNode],

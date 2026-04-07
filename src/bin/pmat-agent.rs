@@ -157,6 +157,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn initialize_agents(
     registry: &Arc<AgentRegistry>,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -184,6 +185,7 @@ async fn initialize_agents(
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn serve_mcp(
     registry: Arc<AgentRegistry>,
     bind: String,
@@ -219,6 +221,7 @@ async fn serve_mcp(
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn execute_workflow(
     registry: Arc<AgentRegistry>,
     file: String,
@@ -265,6 +268,7 @@ async fn execute_workflow(
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn validate_workflow(file: String) -> Result<(), Box<dyn std::error::Error>> {
     println!("🔍 Validating workflow: {}", file);
 
@@ -289,6 +293,7 @@ async fn validate_workflow(file: String) -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn analyze_code(
     _registry: Arc<AgentRegistry>,
     path: String,
@@ -354,6 +359,7 @@ async fn analyze_code(
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn run_quality_gate(
     _registry: Arc<AgentRegistry>,
     path: String,
@@ -407,6 +413,7 @@ async fn run_quality_gate(
     Ok(())
 }
 
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 async fn show_info() -> Result<(), Box<dyn std::error::Error>> {
     println!("PMAT Agent System v{}", env!("CARGO_PKG_VERSION"));
     println!("═══════════════════════════════════════");
