@@ -82,7 +82,7 @@ pub enum DeadCodeKind {
     Module,
     Trait,
     TypeAlias,
-    /// Layer 1: Code explicitly marked with #[allow(dead_code)]
+    /// Layer 1: Code explicitly marked with
     /// This is an admission that the code is unused
     Suppressed,
     Other(String),

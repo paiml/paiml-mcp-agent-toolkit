@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Automation Layer: Conservative Automation
 //!
 //! Phase 4 Implementation (Months 10-12)

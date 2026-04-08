@@ -65,7 +65,7 @@ pub struct ClaudeBridge {
     config: BridgeConfig,
     pool: Arc<ResilientConnectionPool>,
     cache: Arc<TwoTierCache>,
-    #[allow(dead_code)]
+
     sandbox: BridgeSandbox,
     init_time: Duration,
 }
@@ -182,7 +182,7 @@ impl ClaudeBridge {
     }
 
     /// Spawn bridge process
-    #[allow(dead_code)]
+
     async fn spawn_bridge_process(&self) -> Result<BridgeProcess, BridgeError> {
         // Always use tokio::process for consistency
         let mut child = tokio::process::Command::new("node")
@@ -227,9 +227,8 @@ impl ClaudeBridge {
 
 /// Bridge process handle
 struct BridgeProcess {
-    #[allow(dead_code)]
     child: tokio::process::Child,
-    #[allow(dead_code)]
+
     transport: StdioTransport,
 }
 

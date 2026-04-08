@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::Semaphore;
 
 /// Global test performance tracker for Kaizen improvements
-#[allow(dead_code)] // Used for future global metrics collection
+ // Used for future global metrics collection
 static TEST_METRICS: Mutex<TestMetrics> = Mutex::new(TestMetrics::new());
 
 /// Test metrics collector for continuous improvement
@@ -35,18 +35,18 @@ pub struct SlowTest {
 pub struct FlakyTest {
     pub name: String,
     pub failure_rate: f64,
-    #[allow(dead_code)] // Future use for flaky test analysis
+     // Future use for flaky test analysis
     pub last_failure: String,
 }
 
 #[derive(Debug, Clone)]
 pub enum TestCategory {
     Unit,
-    #[allow(dead_code)] // Future use for integration test categorization
+     // Future use for integration test categorization
     Integration,
-    #[allow(dead_code)] // Future use for E2E test categorization
+     // Future use for E2E test categorization
     E2E,
-    #[allow(dead_code)] // Future use for property test categorization
+     // Future use for property test categorization
     Property,
 }
 
@@ -183,7 +183,7 @@ impl KaizenTestRunner {
 pub mod utils {
 
     /// Fast setup for unit tests - minimal dependencies
-    #[allow(dead_code)] // Utility function for future test optimization
+     // Utility function for future test optimization
     pub fn fast_unit_test_setup() -> anyhow::Result<()> {
         // Initialize only essential components
         std::env::set_var("RUST_LOG", "warn"); // Reduce logging noise
@@ -203,7 +203,7 @@ pub mod utils {
     }
 
     /// Parallel-safe test data generator
-    #[allow(dead_code)] // Utility function for future test data generation
+     // Utility function for future test data generation
     pub fn generate_test_data(size: usize) -> Vec<String> {
         (0..size).map(|i| format!("test_data_{i}")).collect()
     }
@@ -212,7 +212,7 @@ pub mod utils {
     pub struct MockHeavyOperation;
 
     impl MockHeavyOperation {
-        #[allow(dead_code)] // Mock function for future performance testing
+         // Mock function for future performance testing
         pub async fn fast_analysis() -> anyhow::Result<String> {
             // Return pre-computed result instead of actual analysis
             Ok("mock_result".to_string())

@@ -46,7 +46,7 @@ impl TruenoOlapAnalytics {
     /// # Note
     ///
     /// This is a placeholder for future schema creation using trueno-db's API.
-    #[allow(dead_code)]
+    
     async fn create_schema(_db: &trueno_db::Database) -> Result<()> {
         // Schema creation using trueno-db's Arrow-based schema
         // This is a placeholder - actual implementation depends on trueno-db API

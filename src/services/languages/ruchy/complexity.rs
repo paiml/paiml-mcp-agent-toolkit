@@ -29,7 +29,6 @@ pub struct RuchyComplexityAnalyzer {
     pub(super) defined_variables: HashSet<String>,
     pub(super) used_variables: HashSet<String>,
     // Type inference tracking
-    #[allow(dead_code)]
     pub(super) type_environment: HashMap<String, RuchyType>,
     // Import/dependency tracking
     pub(super) imports: Vec<RuchyImport>,

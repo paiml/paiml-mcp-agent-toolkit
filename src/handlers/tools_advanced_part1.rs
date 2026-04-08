@@ -122,7 +122,7 @@ async fn calculate_file_metrics(
     }
 }
 
-#[allow(dead_code)]
+
 /// Toyota Way: Extract Method - Handle defect probability analysis (complexity ≤8)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn handle_analyze_defect_probability(

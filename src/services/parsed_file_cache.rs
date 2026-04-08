@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! High-level caching for parsed file results
 //!
@@ -45,7 +46,6 @@ struct CachedEntry {
     /// When this entry was created
     created_at: SystemTime,
     /// Size of the original source file
-    #[allow(dead_code)]
     source_size: usize,
 }
 

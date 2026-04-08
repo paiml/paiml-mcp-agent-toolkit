@@ -11,7 +11,6 @@ use tempfile::TempDir;
 
 /// Test fixture for creating temporary project structures
 struct ProjectFixture {
-    #[allow(dead_code)]
     temp_dir: TempDir,
     path: PathBuf,
 }

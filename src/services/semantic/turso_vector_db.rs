@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Turso Vector Database Integration
 // PMAT-SEARCH-003: Store and query code embeddings using SIMD-accelerated VectorStore

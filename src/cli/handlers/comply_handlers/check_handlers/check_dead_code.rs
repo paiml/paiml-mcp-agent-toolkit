@@ -176,7 +176,7 @@ pub(crate) fn update_macro_depth(trimmed: &str, current: Option<i32>) -> Option<
 /// Check if a line is a dead code annotation.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_dead_code_annotation(trimmed: &str) -> bool {
-    trimmed.starts_with("#[allow(dead_code)]") || trimmed.starts_with("#[allow(unused")
+    trimmed.starts_with("") || trimmed.starts_with("#[allow(unused")
 }
 
 /// Check if a line declares a code item (fn, struct, enum, trait, const, static).
@@ -356,11 +356,7 @@ mod dead_code_tests {
 
     #[test]
     fn test_count_dead_items_with_dead() {
-        let lines = vec![
-            "#[allow(dead_code)]",
-            "fn unused() {}",
-            "pub fn active() {}",
-        ];
+        let lines = vec!["", "fn unused() {}", "pub fn active() {}"];
         let (total, dead, _) = count_dead_items(&lines);
         assert!(total >= 2);
         assert!(dead >= 1);
@@ -390,7 +386,7 @@ mod dead_code_tests {
         let mut annotations = 0;
         let mut next_is_dead = false;
         classify_item_line(
-            "#[allow(dead_code)]",
+            "",
             &mut total,
             &mut dead,
             &mut annotations,

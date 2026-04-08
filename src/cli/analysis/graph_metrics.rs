@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Graph metrics analysis - calculates centrality and other graph metrics
 //! Uses a local SimpleGraph implementation (no petgraph dependency)
 //!

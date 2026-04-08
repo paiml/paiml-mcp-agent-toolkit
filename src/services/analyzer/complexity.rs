@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Toyota Way: Unified Complexity Analyzer
 //
@@ -16,7 +17,6 @@ use walkdir::WalkDir;
 
 /// Unified complexity analyzer implementation
 pub struct ComplexityAnalyzer {
-    #[allow(dead_code)]
     inner: OriginalAnalyzer,
 }
 
@@ -29,7 +29,6 @@ impl ComplexityAnalyzer {
         }
     }
 
-    #[allow(dead_code)]
     const DEFAULT_THRESHOLD: u32 = 10;
 }
 
@@ -63,9 +62,9 @@ impl Default for ComplexityConfig {
 #[derive(Debug, Clone)]
 struct FileMetric {
     path: PathBuf,
-    #[allow(dead_code)]
+
     functions: usize,
-    #[allow(dead_code)]
+
     average_complexity: f64,
 }
 

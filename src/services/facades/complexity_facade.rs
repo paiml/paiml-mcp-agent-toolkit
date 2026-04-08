@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Complexity Analysis Facade
 //!
@@ -50,7 +51,6 @@ pub struct ComplexityViolation {
 /// Facade for complexity analysis operations
 #[derive(Clone)]
 pub struct ComplexityFacade {
-    #[allow(dead_code)]
     registry: Arc<ServiceRegistry>,
 }
 

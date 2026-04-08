@@ -253,7 +253,7 @@ impl StateManager {
         Ok(())
     }
 
-    #[allow(dead_code)]
+    
     fn load_from_snapshot(&mut self) -> Result<(), String> {
         match self.snapshot_manager.load_snapshot() {
             Ok(state) => {

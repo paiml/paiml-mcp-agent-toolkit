@@ -38,7 +38,7 @@ pub struct DemoAnalysisResult {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+
 struct Component {
     id: String,
     label: String,

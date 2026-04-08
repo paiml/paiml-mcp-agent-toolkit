@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Tree-sitter visitor for C/C++ AST conversion
 
@@ -7,16 +8,15 @@ use crate::ast::core::{
 };
 
 /// Tree-sitter visitor for C/C++ AST conversion
-#[allow(dead_code)]
+
 pub struct CTreeSitterVisitor<'a> {
     dag: &'a mut AstDag,
-    #[allow(dead_code)]
+
     content: &'a str,
     pub(crate) language: Language,
     pub(crate) current_parent: Option<u32>,
 }
 
-#[allow(dead_code)]
 impl<'a> CTreeSitterVisitor<'a> {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(dag: &'a mut AstDag, content: &'a str, language: Language) -> Self {

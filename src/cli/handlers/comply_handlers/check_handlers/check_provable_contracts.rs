@@ -1,3 +1,4 @@
+#![allow(unused)]
 // Provable Contracts compliance checks (CB-1200)
 //
 // Detects if a project uses provable-contracts YAML contract files
@@ -304,7 +305,6 @@ fn check_binding_coverage(project_path: &Path) -> BindingResult {
 
 // --- Result types ---
 
-#[allow(dead_code)]
 struct PvLintResult {
     passed: bool,
     contracts_checked: usize,
@@ -313,7 +313,6 @@ struct PvLintResult {
     error_details: Vec<String>,
 }
 
-#[allow(dead_code)]
 struct PvScoreResult {
     overall_score: f64,
     grade: String,
@@ -321,7 +320,6 @@ struct PvScoreResult {
     error: Option<String>,
 }
 
-#[allow(dead_code)]
 struct BindingResult {
     has_bindings: bool,
     total_bindings: usize,

@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Commit Message Embedder (GH-RAG-002)
 // Toyota Way: Jidoka - Automation with quality built-in
@@ -97,7 +98,6 @@ impl SimpleVectorizer {
             .collect()
     }
 
-    #[allow(dead_code)]
     fn vocabulary_size(&self) -> usize {
         self.vocabulary.len().max(self.dimension)
     }

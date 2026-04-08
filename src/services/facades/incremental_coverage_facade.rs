@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Incremental Coverage Analysis Facade
 //!
 //! Provides a simplified interface for incremental coverage analysis operations.

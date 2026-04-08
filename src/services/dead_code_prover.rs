@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Dead code prover using reachability analysis and formal verification.
 //!
@@ -80,13 +81,10 @@ pub struct ReachabilityAnalyzer {
     /// Known entry points
     entry_points: HashSet<SymbolId>,
     /// Reachable symbols discovered during analysis
-    #[allow(dead_code)]
     reachable: HashSet<SymbolId>,
     /// FFI exports that should never be marked as dead
-    #[allow(dead_code)]
     ffi_exports: HashSet<SymbolId>,
     /// Dynamic dispatch targets
-    #[allow(dead_code)]
     dynamic_targets: HashSet<SymbolId>,
 }
 
@@ -156,7 +154,6 @@ pub enum EvidenceType {
 
 /// Main dead code prover with FFI awareness
 pub struct DeadCodeProver {
-    #[allow(dead_code)]
     reachability: ReachabilityAnalyzer,
     ffi_tracker: FFIReferenceTracker,
     dynamic_analyzer: DynamicDispatchAnalyzer,

@@ -17,7 +17,7 @@
 // Sub-files share this module's scope (all imports from parent mod.rs).
 // Each sub-file contains a logical grouping of related functionality.
 
-// #![allow(dead_code)] // Functions are being integrated iteratively
+//  // Functions are being integrated iteratively
 
 use crate::cli::RefactorAutoOutputFormat;
 

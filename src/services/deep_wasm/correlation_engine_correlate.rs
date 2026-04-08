@@ -120,7 +120,7 @@ fn correlate_dwarf_entry(
 
 impl CorrelationEngine {
     /// Create mapping from DWARF entry with default values
-    #[allow(dead_code)] // May be used in future iterations
+     // May be used in future iterations
     fn create_dwarf_mapping(
         &self,
         dwarf_entry: &DwarfDebugEntry,

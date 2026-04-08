@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use std::collections::HashMap;
@@ -24,7 +25,7 @@ pub enum SchedulePermit {
 /// Guard for scheduled operations with automatic cleanup
 pub struct ScheduleGuard {
     path: PathBuf,
-    #[allow(dead_code)]
+
     permit: SchedulePermit,
     active_ops: Arc<RwLock<HashMap<PathBuf, OperationType>>>,
 }

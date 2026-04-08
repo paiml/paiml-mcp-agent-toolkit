@@ -3,7 +3,7 @@
 
 /// Aggregated community data for efficient calculations.
 #[derive(Debug)]
-#[allow(dead_code)]
+
 struct CommunityData {
     /// Node to community mapping
     node_to_community: Vec<usize>,

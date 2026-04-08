@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Data Science Integration for PMAT-REPORT-V1
 //!
@@ -20,10 +21,8 @@ pub struct DataScienceAnalyzer {
     /// Number of clusters for K-means
     k_clusters: usize,
     /// PageRank damping factor (reserved for future PageRank tuning)
-    #[allow(dead_code)]
     pagerank_damping: f64,
     /// Louvain resolution (reserved for future Louvain tuning)
-    #[allow(dead_code)]
     louvain_resolution: f64,
     /// Anomaly threshold
     anomaly_threshold: f64,

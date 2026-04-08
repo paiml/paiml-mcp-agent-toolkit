@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! TypeScript language support module
 //!
@@ -13,7 +14,6 @@ use crate::services::ast_typescript::analyze_typescript_file;
 
 /// Visitor for TypeScript AST analysis
 pub struct TypeScriptAstVisitor {
-    #[allow(dead_code)]
     path: std::path::PathBuf,
 }
 

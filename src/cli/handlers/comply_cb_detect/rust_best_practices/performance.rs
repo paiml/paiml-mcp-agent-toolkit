@@ -69,7 +69,7 @@ pub fn detect_cb517_stale_debug_artifacts(project_path: &Path) -> Vec<CbPatternV
             }
 
             // Detect #[allow(unused)] on static variables (often leftover instrumentation)
-            if trimmed == "#[allow(unused)]" || trimmed == "#[allow(dead_code)]" {
+            if trimmed == "#[allow(unused)]" || trimmed == "" {
                 // Check if next non-empty line is a static declaration
                 for j in (i + 1)..std::cmp::min(i + 3, lines.len()) {
                     let next = lines[j].trim();

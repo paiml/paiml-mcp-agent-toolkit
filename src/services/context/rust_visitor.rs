@@ -10,7 +10,7 @@ use syn::{ItemEnum, ItemFn, ItemImpl, ItemMod, ItemStruct, ItemTrait, ItemUse};
 
 pub(crate) struct RustVisitor {
     pub items: Vec<AstItem>,
-    #[allow(dead_code)]
+    
     source: String,
 }
 

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// Agent request router
-#[allow(dead_code)]
+
 pub struct AgentRouter {
     /// Registered handlers
     handlers: Arc<RwLock<Vec<Box<dyn Handler>>>>,
@@ -64,7 +64,7 @@ pub struct RouteDecision {
 }
 
 /// Circuit breaker for failing agents
-#[allow(dead_code)]
+
 #[derive(Debug, Clone)]
 pub struct CircuitBreaker {
     /// Failure threshold
@@ -81,9 +81,9 @@ pub struct CircuitBreaker {
 #[derive(Debug, Clone)]
 enum CircuitState {
     Closed,
-    #[allow(dead_code)]
+
     Open,
-    #[allow(dead_code)]
+
     HalfOpen,
 }
 

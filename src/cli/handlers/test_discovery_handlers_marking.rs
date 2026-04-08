@@ -6,7 +6,7 @@ struct TestEdit {
     /// Test function name
     test_name: String,
     /// Line number (if known)
-    #[allow(dead_code)]
+    
     line: Option<u32>,
     /// Ignore reason
     reason: String,

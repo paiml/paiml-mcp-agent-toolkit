@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! JavaScript language support module
 //!
@@ -13,7 +14,6 @@ use crate::services::ast_typescript::analyze_typescript_file;
 
 /// Visitor for JavaScript AST analysis
 pub struct JavaScriptAstVisitor {
-    #[allow(dead_code)]
     path: std::path::PathBuf,
 }
 

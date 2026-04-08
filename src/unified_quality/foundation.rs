@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Foundation Layer: Real-time Monitoring Engine
 //!
@@ -27,7 +28,7 @@ type WatcherType = RecommendedWatcher;
 type WatcherType = ();
 
 /// Practical monitoring using proven technologies
-#[allow(dead_code)]
+
 pub struct QualityMonitor {
     /// FSEvents/inotify for cross-platform file watching
     watcher: Arc<ParkingLotRwLock<Option<WatcherType>>>,

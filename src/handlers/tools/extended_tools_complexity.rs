@@ -34,7 +34,7 @@ fn prepare_complexity_analysis(args: &AnalyzeComplexityArgs) -> ComplexityAnalys
     }
 }
 
-#[allow(dead_code)]
+
 async fn perform_complexity_analysis(
     context: &ComplexityAnalysisContext,
     args: &AnalyzeComplexityArgs,

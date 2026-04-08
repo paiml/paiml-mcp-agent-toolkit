@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Coupling analysis for measuring component dependencies and stability.
 //!
@@ -140,7 +141,7 @@ impl CouplingAnalyzer {
     }
 
     /// Extract file path from node key
-    #[allow(dead_code)]
+
     fn extract_file_path(node_key: &str) -> Option<PathBuf> {
         // Simple extraction - assumes node key contains file path
         if node_key.contains("::") {

@@ -15,7 +15,7 @@
 /// # Returns
 /// Set of all reachable function names
 #[must_use]
-#[allow(dead_code)] // Pure function tested in pure_function_tests module
+ // Pure function tested in pure_function_tests module
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
 pub(crate) fn compute_reachability(
     entry_points: &HashSet<String>,
@@ -49,7 +49,7 @@ pub(crate) fn compute_reachability(
 /// using a simple heuristic: the function whose declaration line is closest to (but not
 /// after) the given line number.
 #[must_use]
-#[allow(dead_code)]
+
 fn find_containing_function(
     file_path: &str,
     line_number: usize,
@@ -72,7 +72,7 @@ fn find_containing_function(
 /// Checks each known function to see if it is called (not defined) on this line,
 /// excluding self-calls from the caller.
 #[must_use]
-#[allow(dead_code)]
+
 fn find_calls_in_line(
     line: &str,
     caller: &str,
@@ -104,7 +104,7 @@ fn find_calls_in_line(
 /// # Returns
 /// Map from caller qualified name to set of callee qualified names
 #[must_use]
-#[allow(dead_code)] // Pure function tested in pure_function_tests module
+ // Pure function tested in pure_function_tests module
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn detect_function_calls_in_lines(
     file_path: &str,
@@ -138,7 +138,7 @@ pub(crate) fn detect_function_calls_in_lines(
 /// # Returns
 /// Vector of dead function items (without cfg-gated filtering)
 #[must_use]
-#[allow(dead_code)] // Pure function tested in pure_function_tests module
+ // Pure function tested in pure_function_tests module
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn classify_dead_functions_pure(
     all_functions: &HashMap<String, (String, u32)>,
@@ -164,7 +164,7 @@ pub(crate) fn classify_dead_functions_pure(
 /// # Returns
 /// Tuple of (all_functions map, entry_points set)
 #[must_use]
-#[allow(dead_code)] // Pure function reserved for future integration
+ // Pure function reserved for future integration
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn collect_functions_from_context(
     files: &[crate::services::context::FileContext],
@@ -193,7 +193,7 @@ pub(crate) fn collect_functions_from_context(
 
 /// Calculate dead code percentage (pure function).
 #[must_use]
-#[allow(dead_code)] // Pure function tested in pure_function_tests module
+ // Pure function tested in pure_function_tests module
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn calculate_dead_percentage(total_functions: usize, dead_count: usize) -> f32 {
     if total_functions > 0 {

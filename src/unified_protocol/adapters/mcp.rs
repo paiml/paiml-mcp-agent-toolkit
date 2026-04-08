@@ -13,7 +13,6 @@ use crate::unified_protocol::{
 
 /// MCP (Model Context Protocol) adapter for JSON-RPC over STDIO
 pub struct McpAdapter {
-    #[allow(dead_code)]
     stdin: Option<AsyncBufReader<Stdin>>,
 }
 

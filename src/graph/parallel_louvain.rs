@@ -1,8 +1,8 @@
+#![allow(unused)]
 // Parallel Louvain community detection algorithm
 // Implementation based on Blondel et al. (2008) with parallel optimization
 // Complexity: All functions <= 10
 // SATD: Zero tolerance
-
 #![cfg_attr(coverage_nightly, coverage(off))]
 use super::types::UndirectedGraph;
 use rayon::prelude::*;

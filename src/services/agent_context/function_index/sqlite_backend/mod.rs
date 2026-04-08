@@ -53,7 +53,6 @@ pub(super) use insert::{
 };
 #[cfg(test)]
 #[allow(unused_imports)]
-#[allow(dead_code)]
 pub(crate) use load::load_functions;
 #[cfg(test)]
 #[allow(unused_imports)]

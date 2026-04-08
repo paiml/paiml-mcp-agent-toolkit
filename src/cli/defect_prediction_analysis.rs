@@ -1,7 +1,7 @@
 // Core analysis functions for defect prediction
 // Included from defect_prediction_helpers.rs - shares parent module scope
 
-#[allow(dead_code)]
+
 pub struct DefectPredictionConfig {
     pub confidence_threshold: f32,
     pub min_lines: usize,
@@ -12,7 +12,7 @@ pub struct DefectPredictionConfig {
     pub exclude: Option<String>,
 }
 
-#[allow(dead_code)]
+
 pub struct DefectAnalysisResult {
     pub file_metrics: Vec<FileMetrics>,
     pub filtered_predictions: Vec<(String, DefectScore)>,

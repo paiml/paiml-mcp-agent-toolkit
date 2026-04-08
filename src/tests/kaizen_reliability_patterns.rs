@@ -200,7 +200,7 @@ pub mod muda_elimination {
     }
 
     /// Create minimal test data instead of large realistic data
-    #[allow(dead_code)] // Utility function for future minimal test data
+     // Utility function for future minimal test data
     pub fn create_minimal_test_data<T: Default>() -> T {
         T::default()
     }

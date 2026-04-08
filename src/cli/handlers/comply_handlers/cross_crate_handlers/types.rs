@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use crate::services::agent_context::FunctionEntry;
@@ -68,11 +69,11 @@ pub struct CrossCrateReport {
 pub(super) struct SignedFunction {
     pub(super) crate_name: String,
     pub(super) function_name: String,
-    #[allow(dead_code)]
+
     pub(super) signature: String,
     pub(super) file_path: String,
     pub(super) minhash: MinHashSignature,
-    #[allow(dead_code)]
+
     pub(super) language: Language,
 }
 

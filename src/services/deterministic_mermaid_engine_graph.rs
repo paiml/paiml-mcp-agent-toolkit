@@ -49,7 +49,7 @@ impl<N: Clone, E: Clone> SimpleStableGraph<N, E> {
         })
     }
 
-    #[allow(dead_code)]
+    
     fn get_node(&self, idx: NodeIndex) -> Option<&N> {
         self.nodes.get(idx.0).and_then(|n| n.as_ref())
     }

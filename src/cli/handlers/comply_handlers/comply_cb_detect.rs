@@ -1,3 +1,4 @@
+#![allow(unused)]
 // CB-050/CB-060 Detection Logic
 // Implements stub and GPU quality checks per specification COMPLY-008
 //

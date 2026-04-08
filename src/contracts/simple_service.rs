@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Simplified service layer that compiles and demonstrates uniform contracts
 //! This is a minimal implementation to show the contract system working
 
@@ -463,7 +464,7 @@ struct QualityViolation {
 }
 
 #[derive(serde::Serialize)]
-#[allow(dead_code)]
+
 enum ViolationSeverity {
     Error,
     Warning,

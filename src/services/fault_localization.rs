@@ -31,7 +31,6 @@ impl StatementId {
         }
     }
 
-    #[allow(dead_code)]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_column(mut self, column: usize) -> Self {
         self.column = Some(column);

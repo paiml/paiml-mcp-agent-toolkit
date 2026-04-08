@@ -396,14 +396,13 @@ impl KotlinAstParser {
 
 /// Parse context for building the AST with safety limits
 struct ParseContext<'a> {
-    #[allow(dead_code)]
     content: &'a str,
     dag: &'a mut AstDag,
-    #[allow(dead_code)]
+
     path: String,
-    #[allow(dead_code)]
+
     stack: Vec<usize>,
-    #[allow(dead_code)]
+
     node_map: HashMap<usize, usize>,
     // Safety fields to prevent memory exhaustion
     start_time: Instant,

@@ -17,7 +17,7 @@ struct AgentEntry {
 
 struct AgentHealth {
     healthy: bool,
-    #[allow(dead_code)]
+
     last_error: Option<String>,
 }
 

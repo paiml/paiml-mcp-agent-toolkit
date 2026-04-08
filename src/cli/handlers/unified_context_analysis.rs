@@ -259,7 +259,7 @@ struct SatdComment {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
+
 enum Error {
     NotImplemented,
     AnalysisFailed(String),

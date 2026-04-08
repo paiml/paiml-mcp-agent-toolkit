@@ -371,7 +371,7 @@ impl ClaudeCodeAgentMcpServer {
     }
 
     /// Send server information and capabilities
-    #[allow(dead_code)]
+    
     async fn send_server_info(&self, stdout: &mut Stdout) -> Result<()> {
         let server_info = json!({
             "jsonrpc": "2.0",

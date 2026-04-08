@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Query options, data structures, and argument parsing.
 
 use crate::services::agent_context::{
@@ -124,7 +125,7 @@ pub(super) struct CoChangePair {
 }
 
 /// Per-commit enrichment (reserved for JSON output format)
-#[allow(dead_code)]
+
 pub(super) struct CommitAnnotation {
     pub(super) work_ticket: Option<WorkTicketInfo>,
     pub(super) commit_quality: Option<CommitQualityMeta>,
@@ -137,13 +138,13 @@ pub(super) struct WorkTicketInfo {
     pub(super) ticket_id: String,
     pub(super) claims_passed: usize,
     pub(super) claims_total: usize,
-    #[allow(dead_code)]
+
     pub(super) baseline_tdg: f64,
 }
 
 /// Quality metadata from .pmat-metrics/commit-*-meta.json
 #[derive(serde::Deserialize)]
-#[allow(dead_code)]
+
 pub(super) struct CommitQualityMeta {
     #[serde(default)]
     pub(super) work_item_id: String,
@@ -185,7 +186,7 @@ pub(super) struct BugHunterCache {
 }
 
 #[derive(serde::Deserialize)]
-#[allow(dead_code)]
+
 pub(super) struct BugHunterFinding {
     #[serde(default)]
     pub(super) file: String,

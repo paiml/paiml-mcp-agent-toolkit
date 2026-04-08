@@ -132,7 +132,7 @@ impl ConservativeAutomator {
                         file: PathBuf::from("test.rs"),
                         fix_type: FixType::DeadCodeRemoval,
                         change: Change {
-                            before: "#[allow(dead_code)] fn unused() {}".to_string(),
+                            before: " fn unused() {}".to_string(),
                             after: String::new(),
                             line_range: (1, 1),
                         },

@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Types, enums, and structs for dead code analysis.
 
 use crate::models::unified_ast::NodeKey;
@@ -7,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 /// Hierarchical bitset for efficient reachability tracking
 pub struct HierarchicalBitSet {
     levels: Vec<roaring::RoaringBitmap>,
-    #[allow(dead_code)]
+
     total_nodes: usize,
 }
 
@@ -186,7 +187,6 @@ pub struct VTableResolver {
 
 #[derive(Clone)]
 struct VTable {
-    #[allow(dead_code)]
     base_type: String,
     methods: HashMap<String, NodeKey>,
 }

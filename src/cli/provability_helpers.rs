@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Helper functions for provability analysis to reduce complexity
 
@@ -29,7 +30,7 @@ pub fn parse_function_spec(spec: &str, project_path: &Path) -> Result<FunctionId
 }
 
 /// Extract function name from a line
-#[allow(dead_code)]
+
 fn extract_function_name(line: &str) -> Option<String> {
     let line = line.trim();
     let start = line.find("fn ")? + 3;

@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Unified parser orchestration for all languages - PLACEHOLDER
 
@@ -32,7 +33,6 @@ pub struct ParseResult {
 
 /// Unified parser placeholder
 pub struct UnifiedParser {
-    #[allow(dead_code)]
     config: ParserConfig,
 }
 

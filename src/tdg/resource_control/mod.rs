@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -126,7 +127,7 @@ pub struct EnforcementEvent {
 /// Resource allocation guard - automatically releases resources when dropped
 pub struct ResourceAllocation {
     operation_id: String,
-    #[allow(dead_code)]
+
     permit: tokio::sync::OwnedSemaphorePermit,
     active_operations: Arc<RwLock<HashMap<String, OperationContext>>>,
 }

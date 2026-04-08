@@ -73,7 +73,7 @@ fn format_quality_claude(target_path: &str, all_passed: bool, quality_result: &Q
 
 impl ClaudeCodeAgentMcpServer {
     /// Handle quality gates request
-    #[allow(dead_code)]
+    
     async fn handle_quality_gates(&self, params: &Value) -> Result<Value> {
         let target_path = params["target_path"]
             .as_str()

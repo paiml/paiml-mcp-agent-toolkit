@@ -10,7 +10,7 @@ struct Allocation {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+
 enum AllocationSize {
     Constant(usize),
     Linear,

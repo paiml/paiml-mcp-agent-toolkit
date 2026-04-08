@@ -56,7 +56,7 @@ async fn init_sprint(
 }
 
 /// Initialize a new sprint in the roadmap
-#[allow(dead_code)]
+
 fn handle_init(
     version: String,
     title: String,

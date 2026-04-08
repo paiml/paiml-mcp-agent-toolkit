@@ -174,7 +174,7 @@ pub fn create_markdown_refactor_request(
 }
 
 /// Print markdown analysis summary
-#[allow(dead_code)]
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn print_markdown_summary(refactor_request: &serde_json::Value) {
     eprintln!("📄 Markdown Analysis:");

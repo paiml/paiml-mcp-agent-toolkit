@@ -1,10 +1,10 @@
 pub struct UnifiedEngine {
     // Core analysis infrastructure
-    #[allow(dead_code)]
+    
     pub(crate) ast_engine: Arc<UnifiedAstEngine>,
-    #[allow(dead_code)]
+    
     pub(crate) cache: Arc<UnifiedCacheManager>,
-    #[allow(dead_code)]
+    
     pub(crate) analyzers: AnalyzerPool,
 
     // Mode-specific components
@@ -12,7 +12,7 @@ pub struct UnifiedEngine {
     pub(crate) state_machine: Arc<RwLock<RefactorStateMachine>>,
 
     // Shared metrics
-    #[allow(dead_code)]
+    
     pub(crate) metrics: Arc<EngineMetrics>,
 }
 

@@ -18,7 +18,6 @@ use std::sync::Arc;
 
 /// Analyzes cross-language relationships in a project
 pub struct PolyglotAnalysisTool {
-    #[allow(dead_code)]
     agent_registry: Arc<crate::agents::registry::AgentRegistry>,
 }
 
@@ -31,7 +30,6 @@ impl PolyglotAnalysisTool {
 
 /// Detects language boundaries in a project
 pub struct LanguageBoundaryTool {
-    #[allow(dead_code)]
     agent_registry: Arc<crate::agents::registry::AgentRegistry>,
 }
 

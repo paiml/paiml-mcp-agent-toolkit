@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Enhanced AST visitor that preserves real source locations and qualified names
 //!
@@ -14,7 +15,7 @@ use syn::{ItemEnum, ItemFn, ItemImpl, ItemMod, ItemStruct, ItemTrait, ItemUse, V
 /// Enhanced AST visitor that preserves real source information
 pub struct EnhancedAstVisitor {
     items: Vec<AstItem>,
-    #[allow(dead_code)]
+
     file_path: PathBuf,
     module_path: Vec<String>,
 }

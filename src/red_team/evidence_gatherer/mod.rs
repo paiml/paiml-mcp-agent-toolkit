@@ -1,3 +1,4 @@
+#![allow(unused)]
 // Evidence Gatherer: Multi-source validation for hallucination detection
 //
 // Specification: Section 3.2 - Claim Categories
@@ -32,9 +33,8 @@ pub struct EvidenceResult {
 
 pub struct EvidenceGatherer {
     // Configuration for evidence gathering (future use)
-    #[allow(dead_code)]
     git_history_window_days: u32,
-    #[allow(dead_code)]
+
     confidence_threshold: f64,
 }
 

@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Big-O Complexity Analyzer - Phase 5 implementation
 //!
@@ -60,7 +61,6 @@ use tracing::info;
 
 /// Big-O complexity analyzer service
 pub struct BigOAnalyzer {
-    #[allow(dead_code)]
     pattern_matcher: ComplexityPatternMatcher,
 }
 

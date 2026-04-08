@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! C++ Language Support for PMAT
 //!
@@ -16,7 +17,7 @@ pub struct CppAstVisitor {
     _file_path: PathBuf,
     current_namespace: Vec<String>,
     current_class: Option<String>,
-    #[allow(dead_code)]
+
     is_header: bool,
 }
 

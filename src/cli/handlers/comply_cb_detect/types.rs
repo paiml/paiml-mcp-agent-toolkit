@@ -32,7 +32,7 @@ pub enum Severity {
 
 /// ComputeBrick pattern detection result
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[allow(dead_code)]
+
 pub struct CbPatternViolation {
     pub pattern_id: String,
     pub file: String,

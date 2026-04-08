@@ -1,3 +1,4 @@
+#![allow(unused)]
 // Scripting language analysis (Python, TypeScript/JS, Bash, Ruby, Lua,
 // Elixir, Erlang, Haskell, OCaml)
 // Extracted for file health (CB-040)
@@ -210,7 +211,7 @@ pub async fn analyze_ocaml_language(
 // --- Fallback / simple analysis functions ---
 
 /// Simple TypeScript/JavaScript file analysis
-#[allow(dead_code)]
+
 async fn analyze_typescript_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -228,7 +229,7 @@ async fn analyze_typescript_file(
 }
 
 /// Simple Python file analysis
-#[allow(dead_code)]
+
 async fn analyze_python_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -266,7 +267,7 @@ async fn analyze_bash_file(
 }
 
 #[cfg(not(feature = "shell-ast"))]
-#[allow(dead_code)]
+
 async fn analyze_bash_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {

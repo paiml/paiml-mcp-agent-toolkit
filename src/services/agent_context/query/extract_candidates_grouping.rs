@@ -108,7 +108,7 @@ fn collect_neighbors(
 }
 
 /// Find the longest common prefix among a set of strings, trimmed to underscore boundary.
-#[allow(dead_code)]
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn longest_common_prefix(names: &[&str]) -> String {
     if names.is_empty() {

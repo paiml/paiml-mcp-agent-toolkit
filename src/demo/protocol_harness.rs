@@ -42,7 +42,6 @@ pub struct ProtocolMetadata {
 /// Unified demo engine that coordinates multiple protocols
 pub struct DemoEngine {
     /// Cached context analysis results
-    #[allow(dead_code)]
     context_cache: Arc<RwLock<ContextCache>>,
     /// Registered protocol adapters
     protocols: HashMap<
@@ -52,7 +51,6 @@ pub struct DemoEngine {
     /// Trace storage for API introspection
     trace_store: Arc<TraceStore>,
     /// Configuration settings
-    #[allow(dead_code)]
     config: DemoConfig,
 }
 

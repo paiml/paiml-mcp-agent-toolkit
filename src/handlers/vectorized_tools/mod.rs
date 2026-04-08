@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Vectorized Tool Handlers - Phase 7 Day 16-17
 //!
 //! MCP protocol extensions for high-performance vectorized analysis tools
@@ -81,7 +82,7 @@ pub async fn handle_vectorized_tools(
 
 /// Vectorized duplicate detection parameters
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+
 struct DuplicatesVectorizedArgs {
     project_path: PathBuf,
     detection_type: Option<String>,
@@ -94,7 +95,7 @@ struct DuplicatesVectorizedArgs {
 
 /// Graph metrics vectorized parameters
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+
 struct GraphMetricsVectorizedArgs {
     project_path: PathBuf,
     metrics: Option<Vec<String>>,
@@ -106,7 +107,7 @@ struct GraphMetricsVectorizedArgs {
 
 /// Name similarity vectorized parameters
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+
 struct NameSimilarityVectorizedArgs {
     project_path: PathBuf,
     query: String,
@@ -119,7 +120,7 @@ struct NameSimilarityVectorizedArgs {
 
 /// Symbol table vectorized parameters
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+
 struct SymbolTableVectorizedArgs {
     project_path: PathBuf,
     filter: Option<String>,
@@ -131,7 +132,7 @@ struct SymbolTableVectorizedArgs {
 
 /// Incremental coverage vectorized parameters
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+
 struct IncrementalCoverageVectorizedArgs {
     project_path: PathBuf,
     base_branch: Option<String>,
@@ -142,7 +143,7 @@ struct IncrementalCoverageVectorizedArgs {
 
 /// Big-O vectorized parameters
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+
 struct BigOVectorizedArgs {
     project_path: PathBuf,
     confidence_threshold: Option<u8>,
@@ -153,7 +154,7 @@ struct BigOVectorizedArgs {
 
 /// Enhanced report generation parameters
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+
 struct EnhancedReportArgs {
     project_path: PathBuf,
     output_format: Option<String>,

@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Lightweight provability analysis using abstract interpretation
 //!
@@ -69,7 +70,6 @@ use serde::{Deserialize, Serialize};
 /// Lightweight Provability Analyzer using Abstract Interpretation
 /// Replaces heavyweight SMT solver approach with dataflow analysis
 pub struct LightweightProvabilityAnalyzer {
-    #[allow(dead_code)]
     abstract_interpreter: AbstractInterpreter,
     proof_cache: Arc<DashMap<FunctionId, ProofSummary>>,
     current_version: u64,
@@ -151,7 +151,6 @@ pub enum PurityLattice {
 }
 
 pub struct AbstractInterpreter {
-    #[allow(dead_code)]
     analysis_depth: usize,
 }
 

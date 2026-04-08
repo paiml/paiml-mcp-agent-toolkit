@@ -87,7 +87,7 @@ impl TdgAnalyzerAst {
     }
 
     #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
-    #[allow(dead_code)]
+    
     fn calculate_cognitive_complexity(&self, _node: &str) -> u32 {
         // Simplified implementation for rust-only builds
         // Estimate based on source patterns
@@ -120,7 +120,7 @@ impl TdgAnalyzerAst {
     }
 
     #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
-    #[allow(dead_code)]
+    
     fn calculate_max_nesting(&self, _node: &str) -> usize {
         // Simplified implementation for rust-only builds
         5 // Default approximation
@@ -148,7 +148,7 @@ impl TdgAnalyzerAst {
     }
 
     #[cfg(not(any(feature = "c-ast", feature = "cpp-ast")))]
-    #[allow(dead_code)]
+    
     fn calculate_max_function_length(&self, _source: &str) -> usize {
         // Simplified implementation for rust-only builds
         20 // Default approximation

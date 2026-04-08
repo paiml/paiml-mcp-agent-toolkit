@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! TDG (Technical Debt Grading) MCP tool handlers for Sprint 31.
 //!
 //! This module provides comprehensive MCP tools for the Transactional Hashed TDG System,
@@ -56,10 +57,8 @@ struct TdgAnalyzeWithStorageArgs {
 #[derive(Debug, Deserialize)]
 struct TdgPerformanceMetricsArgs {
     #[serde(default)]
-    #[allow(dead_code)]
     include_history: bool,
     #[serde(default)]
-    #[allow(dead_code)]
     metrics: Vec<String>,
 }
 
@@ -79,13 +78,10 @@ struct TdgConfigureStorageArgs {
 #[derive(Debug, Deserialize)]
 struct TdgHealthCheckArgs {
     #[serde(default = "default_true")]
-    #[allow(dead_code)]
     include_recommendations: bool,
     #[serde(default = "default_true")]
-    #[allow(dead_code)]
     check_storage: bool,
     #[serde(default = "default_true")]
-    #[allow(dead_code)]
     check_performance: bool,
 }
 

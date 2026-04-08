@@ -11,7 +11,6 @@ use wasmparser::{Operator, ValType};
 
 /// Incremental verifier for property-based safety checks
 pub struct IncrementalVerifier {
-    #[allow(dead_code)]
     invariants: InvariantChecker,
     stack_analyzer: StackAnalyzer,
 }
@@ -37,7 +36,6 @@ pub enum VerificationResult {
 /// Invariant checker for safety properties
 #[derive(Debug, Clone)]
 struct InvariantChecker {
-    #[allow(dead_code)]
     invariants: Vec<SafetyInvariant>,
 }
 
@@ -52,7 +50,7 @@ enum SafetyInvariant {
 
 /// Invariant violation record
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+
 struct InvariantViolation {
     invariant: SafetyInvariant,
     location: usize,
@@ -62,13 +60,11 @@ struct InvariantViolation {
 /// Stack type analyzer for type checking
 #[derive(Debug, Clone)]
 struct StackAnalyzer {
-    #[allow(dead_code)]
     type_stack: Vec<ValType>,
 }
 
 /// Differential testing for cross-runtime validation
 pub struct DifferentialTester {
-    #[allow(dead_code)]
     test_cases: Vec<TestCase>,
 }
 

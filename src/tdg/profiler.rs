@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Sprint 31 Week 2 - Performance Profiling Tools
 //!
@@ -96,7 +97,6 @@ pub struct PerformanceProfiler {
     /// Completed profiles
     completed_profiles: Arc<RwLock<Vec<OperationProfile>>>,
     /// Call stack traces
-    #[allow(dead_code)]
     call_stacks: Arc<RwLock<Vec<Vec<CallFrame>>>>,
     /// Memory samples
     memory_samples: Arc<RwLock<Vec<MemorySample>>>,

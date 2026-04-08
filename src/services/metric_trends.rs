@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! O(1) Quality Gates Phase 3 - Metric Trend Analysis
 //!

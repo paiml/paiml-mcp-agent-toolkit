@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,6 @@ use std::collections::HashMap;
 pub(super) struct LlvmCoverageExport {
     pub(super) data: Vec<LlvmCoverageData>,
     #[serde(rename = "type")]
-    #[allow(dead_code)]
     pub(super) export_type: Option<String>,
 }
 
@@ -23,17 +23,15 @@ pub(super) struct LlvmCoverageData {
 pub(super) struct LlvmFileCoverage {
     pub(super) filename: String,
     pub(super) segments: Vec<Vec<serde_json::Value>>,
-    #[allow(dead_code)]
+
     pub(super) summary: Option<LlvmSummary>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub(super) struct LlvmSummary {
     pub(super) lines: Option<LlvmLineSummary>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub(super) struct LlvmLineSummary {
     pub(super) count: u32,

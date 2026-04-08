@@ -5,7 +5,7 @@ impl CargoDeadCodeAnalyzer {
     /// Perform accurate dead code analysis using cargo with O(1) caching
     ///
     /// Uses a four-layer detection strategy:
-    /// 1. SUPPRESSION_SCAN: Detect #[allow(dead_code)] attributes (explicit admissions)
+    /// 1. SUPPRESSION_SCAN: Detect  attributes (explicit admissions)
     /// 2. COMPILER_LINT: Run cargo check with -W dead_code
     /// 3. REFERENCE_GRAPH: (future) Build call graph for unreachable code
     /// 4. HEURISTICS: (future) Pattern-based detection
@@ -43,7 +43,7 @@ impl CargoDeadCodeAnalyzer {
             .map_err(|_| anyhow::anyhow!("Dead code analysis timed out after 90 seconds"))?
     }
 
-    /// Layer 1: Scan for #[allow(dead_code)] attributes
+    /// Layer 1: Scan for  attributes
     ///
     /// These attributes are explicit admissions that code is unused.
     /// Detecting them is fast (~10ms for large projects) and catches
@@ -55,7 +55,7 @@ impl CargoDeadCodeAnalyzer {
         let mut suppressed_items = Vec::new();
 
         // Patterns for dead_code suppression
-        // Matches: #[allow(dead_code)], #[allow(unused)], #![allow(dead_code)]
+        // Matches: , #[allow(unused)], 
         let suppression_re =
             Regex::new(r#"#!?\[allow\((dead_code|unused)\)\]"#).expect("Invalid regex");
 
@@ -100,7 +100,7 @@ impl CargoDeadCodeAnalyzer {
         }
 
         tracing::debug!(
-            "Layer 1 (suppression scan): found {} items with #[allow(dead_code)]",
+            "Layer 1 (suppression scan): found {} items with ",
             suppressed_items.len()
         );
 
@@ -149,7 +149,7 @@ impl CargoDeadCodeAnalyzer {
                                 line: item_line + 1, // 1-indexed
                                 column: 1,
                                 message: format!(
-                                    "{} `{}` has #[allow(dead_code)] suppression (explicit dead code admission)",
+                                    "{} `{}` has  suppression (explicit dead code admission)",
                                     kind_str, name
                                 ),
                             },
@@ -174,7 +174,7 @@ impl CargoDeadCodeAnalyzer {
             .arg("check")
             .arg("--message-format=json");
 
-        // Enable dead_code warning via RUSTFLAGS to catch items with #[allow(dead_code)]
+        // Enable dead_code warning via RUSTFLAGS to catch items with 
         // This forces rustc to emit dead_code warnings even for items that normally suppress them
         cmd.env(
             "RUSTFLAGS",

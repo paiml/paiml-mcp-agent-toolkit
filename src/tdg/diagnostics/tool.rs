@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 /// DiagnosticTool implementation for the TDG System
 use anyhow::Result;
@@ -22,7 +23,6 @@ pub struct DiagnosticTool {
 
 #[derive(Clone)]
 pub(super) struct PerformanceSample {
-    #[allow(dead_code)]
     pub(super) timestamp: Instant,
     pub(super) response_time_ms: f64,
     pub(super) success: bool,

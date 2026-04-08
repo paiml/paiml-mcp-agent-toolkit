@@ -3,7 +3,7 @@
 
 impl<'src> MakefileParser<'src> {
     // SWAR-optimized character search
-    #[allow(dead_code)]
+    
     fn find_char_swar(&self, needle: u8) -> Option<usize> {
         let bytes = self.input.as_bytes();
         let mut pos = self.cursor;
@@ -41,7 +41,7 @@ impl<'src> MakefileParser<'src> {
     }
 
     #[inline(always)]
-    #[allow(dead_code)]
+    
     const fn has_byte(x: u64, n: u8) -> u64 {
         const LO: u64 = 0x0101010101010101;
         const HI: u64 = 0x8080808080808080;

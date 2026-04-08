@@ -121,7 +121,7 @@ impl Default for RetentionConfig {
 }
 
 /// Performance metrics collector
-#[allow(dead_code)]
+
 #[derive(Debug, Clone)]
 pub struct PerformanceMetrics {
     /// Time-series data
@@ -409,14 +409,14 @@ impl Default for BenchmarkConfig {
 /// Performance optimizer
 pub struct PerformanceOptimizer {
     /// Active optimizations
-    #[allow(dead_code)]
+    
     optimizations: Vec<ActiveOptimization>,
 
     /// Optimization history
     history: Vec<OptimizationResult>,
 
     /// Configuration
-    #[allow(dead_code)]
+    
     config: OptimizationConfig,
 }
 

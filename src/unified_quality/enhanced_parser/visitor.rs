@@ -1,10 +1,11 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Complexity visitor using syn's Visit trait for accurate Rust analysis
 
 use syn::visit::Visit;
 
 /// Visitor for calculating complexity metrics
-#[allow(dead_code)]
+
 pub(crate) struct ComplexityVisitor {
     /// Current cyclomatic complexity
     pub(crate) complexity: u32,

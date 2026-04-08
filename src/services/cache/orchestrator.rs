@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Cache Strategy Orchestrator for PMAT
 //!
@@ -126,7 +127,7 @@ pub struct OrchestratorConfig {
 
 /// Historical strategy evaluation
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+
 struct StrategyEvaluation {
     /// Performance achieved
     performance: PerformanceMetrics,

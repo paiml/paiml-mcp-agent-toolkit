@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Hallucination Detection Service - Sprint 37
 //!
@@ -141,7 +142,7 @@ pub struct HallucinationDetector {
     /// Code facts from codebase
     code_facts: CodeFactDatabase,
     /// Similarity calculator
-    #[allow(dead_code)] // Reserved for future semantic similarity Phase 2 integration
+    // Reserved for future semantic similarity Phase 2 integration
     similarity: SemanticSimilarity,
 }
 

@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 use crate::services::cache::{
     config::CacheConfig,
@@ -21,7 +22,7 @@ pub struct PersistentCacheManager {
     config: CacheConfig,
     session_id: Uuid,
     created: Instant,
-    #[allow(dead_code)]
+
     cache_dir: PathBuf,
 }
 

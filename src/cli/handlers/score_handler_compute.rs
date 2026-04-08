@@ -251,7 +251,7 @@ fn compute_pipeline_depth(path: &Path) -> f64 {
 }
 
 /// CD5: Contract drift detection. Compares contract YAML mtimes vs source file mtimes.
-#[allow(dead_code)] // Available for future CD5 scoring integration
+ // Available for future CD5 scoring integration
 /// Returns (stale_count, total_count, drift_ratio).
 /// A contract is "stale" if the YAML is >30 days older than the most recently modified
 /// source file that references it (via #[contract] annotation).

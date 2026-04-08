@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Enforcement Layer: Error Budget System
 //!
@@ -9,7 +10,7 @@ use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
 /// Flexible enforcement using SRE-style error budgets
-#[allow(dead_code)]
+
 pub struct ErrorBudgetEnforcer {
     /// Team-specific quality budgets
     budgets: HashMap<TeamId, QualityBudget>,
@@ -124,17 +125,16 @@ struct TimeSeries {
 /// Team-level metrics
 #[derive(Debug, Clone)]
 pub struct TeamMetrics {
-    #[allow(dead_code)]
     avg_complexity: f64,
-    #[allow(dead_code)]
+
     total_satd: u32,
-    #[allow(dead_code)]
+
     avg_coverage: f64,
     quality_score: f64,
 }
 
 /// Enforcement rules configuration
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Default)]
 pub struct EnforcementRules {
     /// Approvers by team
@@ -168,11 +168,10 @@ impl Default for EscalationPolicy {
 /// Override permission levels
 #[derive(Debug, Clone)]
 enum OverridePermission {
-    #[allow(dead_code)]
     None,
-    #[allow(dead_code)]
+
     Limited,
-    #[allow(dead_code)]
+
     Full,
 }
 

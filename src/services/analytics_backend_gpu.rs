@@ -7,9 +7,9 @@ static INIT: Once = Once::new();
 /// Manages wgpu device lifecycle and compute shader dispatch.
 /// Includes PCIe bandwidth calibration for query optimization.
 pub struct GpuDevice {
-    #[allow(dead_code)] // Used for GPU compute operations
+     // Used for GPU compute operations
     device: wgpu::Device,
-    #[allow(dead_code)] // Used for GPU command submission
+     // Used for GPU command submission
     queue: wgpu::Queue,
     pcie_bandwidth_gbps: f64,
 }

@@ -426,7 +426,7 @@ impl LightweightProvabilityAnalyzer {
 }
 
 impl AbstractInterpreter {
-    #[allow(dead_code)]
+    
     fn analyze_iteration(&self, state: &PropertyDomain) -> PropertyDomain {
         // Lattice narrowing: move from Top toward concrete values.
         // Used as fallback when source analysis is unavailable.

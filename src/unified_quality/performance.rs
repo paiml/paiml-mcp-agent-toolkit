@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Performance benchmarking and optimization for unified quality system
 //!
 //! Provides comprehensive performance monitoring, benchmarking, and optimization

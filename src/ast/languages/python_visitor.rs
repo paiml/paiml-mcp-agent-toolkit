@@ -3,7 +3,7 @@
 #[cfg(feature = "python-ast")]
 struct PythonTreeSitterVisitor<'a> {
     dag: &'a mut AstDag,
-    #[allow(dead_code)]
+    
     content: &'a str,
     current_parent: Option<u32>,
 }

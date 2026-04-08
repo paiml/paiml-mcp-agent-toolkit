@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Column-oriented storage and AST DAG structures for SIMD operations.
 
@@ -7,7 +8,7 @@ use super::types::NodeKey;
 /// Column-oriented storage for SIMD operations
 pub struct ColumnStore<T> {
     data: Vec<T>,
-    #[allow(dead_code)]
+
     capacity: usize,
 }
 

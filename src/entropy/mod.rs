@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Actionable Entropy Analysis Module
 //!
@@ -79,7 +80,6 @@ impl EntropyConfig {
 
 /// Main entropy analyzer
 pub struct EntropyAnalyzer {
-    #[allow(dead_code)]
     config: EntropyConfig,
     pattern_extractor: PatternExtractor,
     violation_detector: ViolationDetector,

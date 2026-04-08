@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! ASCII Visualization Primitives for PMAT-REPORT-V1
 //!

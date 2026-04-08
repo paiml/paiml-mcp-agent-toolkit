@@ -128,7 +128,7 @@ impl QualityAssistant {
                 success_rate: 0.95,
                 contexts: vec!["unused".to_string()],
                 example: Example {
-                    before: "#[allow(dead_code)] fn unused() {}".to_string(),
+                    before: " fn unused() {}".to_string(),
                     after: "// Removed".to_string(),
                     improvement: "Removed 10 lines of dead code".to_string(),
                 },

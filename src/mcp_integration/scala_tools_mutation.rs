@@ -1,6 +1,6 @@
 /// Scala mutation testing tool
 pub struct ScalaMutationTool {
-    #[allow(dead_code)]
+    
     agent_registry: Arc<crate::agents::registry::AgentRegistry>,
 }
 

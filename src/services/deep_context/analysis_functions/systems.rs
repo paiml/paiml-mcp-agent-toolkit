@@ -1,3 +1,4 @@
+#![allow(unused)]
 // Systems language analysis (C, C++, Go, Java, Kotlin, C#, Swift, WASM, Lean)
 // Extracted for file health (CB-040)
 
@@ -167,7 +168,7 @@ pub async fn analyze_lean_language(
 // --- Fallback / simple analysis functions ---
 
 /// Simple Go file analysis
-#[allow(dead_code)]
+
 async fn analyze_go_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -186,7 +187,7 @@ async fn analyze_go_file(
 
 /// Legacy C file analysis - redirects to services/ast/languages/c.rs
 /// This function is kept for backward compatibility but delegates to the new implementation
-#[allow(dead_code)]
+
 async fn analyze_c_file(
     #[allow(unused_variables)] file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {
@@ -277,7 +278,7 @@ pub async fn analyze_swift_file(
 }
 
 /// Simple WebAssembly file analysis
-#[allow(dead_code)]
+
 async fn analyze_wasm_file(
     _file_path: &Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {

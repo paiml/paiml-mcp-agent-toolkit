@@ -63,7 +63,7 @@ impl Scorer for CodeQualityScorer {
         if let Ok(score) = self.score_dead_code(project_path, None) {
             if score < 2.0 {
                 recommendations.push(
-                    "Remove dead code: delete or document unused functions with #[allow(dead_code)]".to_string(),
+                    "Remove dead code: delete or document unused functions with ".to_string(),
                 );
             }
         }

@@ -210,7 +210,7 @@ impl FaultLocalizer {
     }
 
     /// Enrich fault localization results with TDG scores
-    #[allow(dead_code)]
+    
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn enrich_with_tdg(
         result: &mut FaultLocalizationResult,

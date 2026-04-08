@@ -98,7 +98,7 @@ impl SbflLocalizer {
         self
     }
 
-    #[allow(dead_code)]
+    
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn with_min_confidence(mut self, threshold: f32) -> Self {
         self.min_confidence_threshold = threshold;

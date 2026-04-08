@@ -261,7 +261,7 @@ fn test_scan_dead_code_indicators_with_code() {
         src_dir.join("lib.rs"),
         r#"
 pub fn active() {}
-#[allow(dead_code)]
+
 fn dead() {}
 "#,
     )

@@ -5,7 +5,7 @@
 struct NodeIndex(usize);
 
 impl NodeIndex {
-    #[allow(dead_code)]
+    
     fn index(self) -> usize {
         self.0
     }

@@ -61,7 +61,7 @@ impl CrossLanguageDependencies {
     }
 
     /// Detect dependencies between nodes of two specific languages
-    #[allow(dead_code)]
+    
     fn detect_between_languages(
         &mut self,
         nodes1: &[&UnifiedNode],
@@ -114,7 +114,7 @@ impl CrossLanguageDependencies {
     }
 
     /// Add a dependency between two nodes
-    #[allow(dead_code)]
+    
     fn add_dependency(
         &mut self,
         source: &UnifiedNode,

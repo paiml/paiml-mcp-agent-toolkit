@@ -10,7 +10,7 @@ use super::server::{DemoContent, Hotspot, LocalDemoServer};
 
 /// Open URL in default browser using platform-specific command
 /// Replaces webbrowser crate to reduce transitive dependencies
-#[allow(dead_code)] // Used only when "demo" feature is enabled
+// Used only when "demo" feature is enabled
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn open_browser(url: &str) -> std::io::Result<()> {
     #[cfg(target_os = "macos")]
@@ -30,7 +30,6 @@ pub(crate) fn open_browser(url: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-#[allow(dead_code)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn run_web_demo(
     repo_path: std::path::PathBuf,

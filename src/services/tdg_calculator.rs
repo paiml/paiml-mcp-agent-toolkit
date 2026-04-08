@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Technical Debt Gradient (TDG) calculator for code quality assessment
 //!

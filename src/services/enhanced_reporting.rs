@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Enhanced Reporting System - Phase 6 Day 14-15
 //!
 //! Provides a unified reporting framework that consolidates multiple analysis

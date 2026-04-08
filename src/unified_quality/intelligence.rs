@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Intelligence Layer: Pattern-Based Suggestion Engine
 //!

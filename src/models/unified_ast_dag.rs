@@ -1,7 +1,7 @@
 /// Column-oriented storage for SIMD operations
 pub struct ColumnStore<T> {
     data: Vec<T>,
-    #[allow(dead_code)]
+    
     capacity: usize,
 }
 

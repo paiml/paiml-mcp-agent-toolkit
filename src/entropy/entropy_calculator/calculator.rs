@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Core entropy calculation logic.
 //!
@@ -14,7 +15,6 @@ use super::types::EntropyMetrics;
 
 /// Calculates entropy metrics
 pub struct EntropyCalculator {
-    #[allow(dead_code)]
     config: EntropyConfig,
 }
 

@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Quality refactoring engine
 //! Toyota Way: Continuous improvement through systematic refactoring
@@ -40,7 +41,6 @@ pub struct CodeAnalysis {
 
 /// Pattern engine for applying design patterns
 pub struct PatternEngine {
-    #[allow(dead_code)]
     patterns: std::collections::HashMap<String, String>,
 }
 

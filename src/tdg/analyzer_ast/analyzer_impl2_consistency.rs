@@ -7,7 +7,7 @@ impl TdgAnalyzerAst {
         self.config.weights.consistency
     }
 
-    #[allow(dead_code)]
+    
     #[allow(clippy::cast_possible_truncation)]
     fn score_consistency_python(&self, source: &str, _tracker: &mut PenaltyTracker) -> f32 {
         // Check PEP 8 compliance

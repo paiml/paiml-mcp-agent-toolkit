@@ -12,7 +12,7 @@ impl InvariantChecker {
         }
     }
 
-    #[allow(dead_code)]
+    
     fn check_all(&self, _module: &[u8]) -> Vec<InvariantViolation> {
         // Check each invariant
         Vec::new()

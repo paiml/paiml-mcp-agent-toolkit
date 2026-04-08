@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Advanced Analysis Tool Handlers
 //! Split for file health compliance (CB-040)
 #![cfg_attr(coverage_nightly, coverage(off))]

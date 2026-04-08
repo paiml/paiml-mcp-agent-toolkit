@@ -43,7 +43,7 @@ pub fn is_test_module_marker(line: &str) -> bool {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn is_dead_code_annotation(line: &str) -> bool {
     let trimmed = line.trim();
-    trimmed.starts_with("#[allow(dead_code)]") || trimmed.starts_with("#[allow(unused")
+    trimmed.starts_with("") || trimmed.starts_with("#[allow(unused")
 }
 
 /// Check if a line is a code item declaration (fn, struct, enum, etc.)

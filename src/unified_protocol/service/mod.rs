@@ -31,7 +31,7 @@ pub use types::*;
 #[derive(Clone)]
 pub struct UnifiedService {
     router: Router,
-    #[allow(dead_code)]
+
     adapters: Arc<AdapterRegistry>,
     state: Arc<AppState>,
 }
@@ -198,7 +198,6 @@ impl UnifiedService {
         Ok(unified_response)
     }
 
-    #[allow(dead_code)]
     fn record_request_metrics(
         &self,
         request: &UnifiedRequest,
@@ -239,7 +238,7 @@ impl UnifiedService {
     }
 
     /// Extract protocol from request path
-    #[allow(dead_code)]
+
     fn extract_protocol_from_path(&self, path: &str) -> Protocol {
         if path.starts_with("/mcp/") {
             Protocol::Mcp

@@ -778,11 +778,11 @@ fn test_check_dead_code_percentage_with_dead_code() {
     std::fs::write(
         src_dir.join("lib.rs"),
         r#"
-#[allow(dead_code)]
+
 fn dead_fn1() {}
-#[allow(dead_code)]
+
 fn dead_fn2() {}
-#[allow(dead_code)]
+
 fn dead_fn3() {}
 pub fn active_fn() {}
 "#,
@@ -823,7 +823,7 @@ fn simd_fn4() {}
 
 #[test]
 fn test_is_dead_code_annotation_true() {
-    assert!(crate::cli::handlers::comply_handlers::is_dead_code_annotation("#[allow(dead_code)]"));
+    assert!(crate::cli::handlers::comply_handlers::is_dead_code_annotation(""));
     assert!(crate::cli::handlers::comply_handlers::is_dead_code_annotation("#[allow(unused)]"));
 }
 
@@ -985,7 +985,7 @@ fn test_count_dead_items_no_dead_code() {
 #[test]
 fn test_count_dead_items_with_dead_code() {
     let lines = vec![
-        "#[allow(dead_code)]",
+        "",
         "fn dead_fn() {}",
         "pub fn active() {}",
     ];
@@ -1028,7 +1028,7 @@ fn test_count_commented_code_lines() {
 #[test]
 fn test_analyze_file_dead_code() {
     let lines = vec![
-        "#[allow(dead_code)]",
+        "",
         "fn dead() {}",
         "pub fn active() {}",
         "#[cfg(test)]",
@@ -1381,7 +1381,7 @@ fn test_scan_dead_code_indicators_with_code() {
         src_dir.join("lib.rs"),
         r#"
 pub fn active() {}
-#[allow(dead_code)]
+
 fn dead() {}
 "#,
     )

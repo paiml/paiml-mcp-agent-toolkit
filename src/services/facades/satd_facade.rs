@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! SATD (Self-Admitted Technical Debt) Analysis Facade
 //!
@@ -49,7 +50,6 @@ pub enum SatdSeverity {
 /// Facade for SATD analysis operations
 #[derive(Clone)]
 pub struct SatdFacade {
-    #[allow(dead_code)]
     registry: Arc<ServiceRegistry>,
 }
 

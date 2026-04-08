@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Per-language function name extraction.
 use std::path::Path;
@@ -58,7 +59,7 @@ impl SimpleDeepContext {
     }
 
     /// Extract function names using language-specific AST analyzer
-    #[allow(dead_code)]
+
     pub(super) async fn function_names_via_ast<F, E>(
         &self,
         file_path: &Path,

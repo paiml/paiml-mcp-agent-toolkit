@@ -371,7 +371,7 @@ pub(super) fn load_dependency_trend(project_path: &Path) -> Option<DependencyTre
     let content = fs::read_to_string(&metrics_path).ok()?;
 
     #[derive(serde::Deserialize)]
-    #[allow(dead_code)] // Fields used for JSON deserialization structure matching
+     // Fields used for JSON deserialization structure matching
     struct PreviousMetrics {
         direct_count: usize,
         transitive_count: usize,
@@ -421,7 +421,7 @@ pub(super) fn save_dependency_metrics(
 }
 
 /// Recalculate trend deltas with current counts
-#[allow(dead_code)] // Reserved for future trend comparison feature
+ // Reserved for future trend comparison feature
 pub(super) fn calculate_trend_deltas(
     project_path: &Path,
     current_direct: usize,

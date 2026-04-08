@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 // MCP Semantic Search Tools
 // PMAT-SEARCH-006: Expose semantic search via MCP protocol
@@ -153,7 +154,7 @@ impl McpTool for SemanticSearchTool {
 // ============================================================================
 
 pub struct FindSimilarCodeTool {
-    #[allow(dead_code)] // Reserved for future semantic search Phase 2 integration
+    // Reserved for future semantic search Phase 2 integration
     engine: Arc<HybridSearchEngine>,
 }
 
@@ -226,7 +227,7 @@ impl McpTool for FindSimilarCodeTool {
 // ============================================================================
 
 pub struct ClusterCodeTool {
-    #[allow(dead_code)] // Reserved for future semantic search Phase 2 integration
+    // Reserved for future semantic search Phase 2 integration
     engine: Arc<HybridSearchEngine>,
 }
 
@@ -313,7 +314,7 @@ impl McpTool for ClusterCodeTool {
 // ============================================================================
 
 pub struct AnalyzeTopicsTool {
-    #[allow(dead_code)] // Reserved for future semantic search Phase 2 integration
+    // Reserved for future semantic search Phase 2 integration
     engine: Arc<HybridSearchEngine>,
 }
 

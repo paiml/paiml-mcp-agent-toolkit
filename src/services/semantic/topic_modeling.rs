@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Topic Modeling for Code Embeddings
 // PMAT-SEARCH-008: LDA-inspired topic extraction using K-means
@@ -216,7 +217,7 @@ impl TopicEngine {
     ///
     /// # Returns
     /// Array of topics
-    #[allow(dead_code)]
+
     fn simplified_lda(
         &self,
         vectors: &[Vec<f32>],
@@ -280,7 +281,7 @@ impl TopicEngine {
 
 /// Chunk metadata for topic modeling
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+
 struct ChunkMetadata {
     file_path: String,
     chunk_name: String,

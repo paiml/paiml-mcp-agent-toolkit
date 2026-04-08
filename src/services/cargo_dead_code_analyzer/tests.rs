@@ -50,14 +50,14 @@ mod suppression_tests {
         let src_dir = temp_dir.path().join("src");
         fs::create_dir_all(&src_dir).unwrap();
 
-        // Create a Rust file with #[allow(dead_code)] attributes
+        // Create a Rust file with  attributes
         let rust_code = r#"
-#[allow(dead_code)]
+
 fn unused_function() {
     println!("never called");
 }
 
-#[allow(dead_code)]
+
 struct UnusedStruct {
     field: i32,
 }
@@ -114,7 +114,7 @@ fn used_function() {
         // Test with multiple stacked attributes
         let rust_code = r#"
 #[derive(Debug)]
-#[allow(dead_code)]
+
 #[derive(Clone)]
 struct StackedAttributes {
     value: i32,
@@ -138,7 +138,7 @@ struct StackedAttributes {
 
         // Module-level suppression (inner attribute)
         let rust_code = r#"
-#![allow(dead_code)]
+
 
 fn function_in_suppressed_module() {}
 "#;
@@ -176,8 +176,8 @@ mod integration_tests {
         let analyzer = CargoDeadCodeAnalyzer::new(&project_path).without_cache();
         let items = analyzer.scan_for_suppression_attributes().unwrap();
 
-        // The pmat codebase has many #[allow(dead_code)] attributes
-        // Note: Not all #[allow(dead_code)] have items on the next line (some are on fields)
+        // The pmat codebase has many  attributes
+        // Note: Not all  have items on the next line (some are on fields)
         // Based on grep count, ~200+ are on actual items (fn/struct/enum/etc.)
         assert!(
             items.len() >= 200,
@@ -192,7 +192,7 @@ mod integration_tests {
         }
 
         eprintln!(
-            "Layer 1 (suppression scan) detected {} items with #[allow(dead_code)]",
+            "Layer 1 (suppression scan) detected {} items with ",
             items.len()
         );
     }

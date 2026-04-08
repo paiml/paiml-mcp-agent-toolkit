@@ -1,5 +1,5 @@
 // Helper functions for web demo analyses
-#[allow(dead_code)]
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_context(
     repo_path: &std::path::Path,
@@ -49,7 +49,7 @@ pub(crate) async fn analyze_dag(
     Ok(graph)
 }
 
-#[allow(dead_code)]
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_churn(
     repo_path: &std::path::Path,
@@ -58,7 +58,7 @@ pub(crate) async fn analyze_churn(
         .map_err(|e| anyhow::anyhow!("Error analyzing churn: {e}"))
 }
 
-#[allow(dead_code)]
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_system_architecture(
     repo_path: &std::path::Path,
@@ -96,7 +96,7 @@ pub(crate) async fn analyze_system_architecture(
         .map_err(|e| anyhow::anyhow!("Error analyzing architecture: {e}"))
 }
 
-#[allow(dead_code)]
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_defect_probability(
     repo_path: &std::path::Path,

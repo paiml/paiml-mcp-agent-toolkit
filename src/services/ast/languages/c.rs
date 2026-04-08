@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! C Language Support for PMAT
 //!
@@ -14,9 +15,9 @@ use std::path::{Path, PathBuf};
 pub struct CAstVisitor {
     items: Vec<AstItem>,
     _file_path: PathBuf,
-    #[allow(dead_code)]
+
     current_scope: Vec<String>,
-    #[allow(dead_code)]
+
     is_header: bool,
 }
 

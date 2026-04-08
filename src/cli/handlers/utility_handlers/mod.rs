@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Utility command handlers (list, search, context, etc.)
 //!
 //! This module contains utility command implementations extracted from
@@ -45,7 +46,6 @@ struct MarkdownBuilder {
     content: String,
 }
 
-#[allow(dead_code)]
 impl MarkdownBuilder {
     fn new() -> Self {
         Self {

@@ -1,6 +1,6 @@
+#![allow(unused)]
 // UnifiedContextBuilder - Integrates all advanced annotations into unified context output
 // use crate::services::simple_deep_context::SimpleDeepContext;
-#![allow(dead_code)]
 
 use crate::services::context::ProjectContext;
 use std::collections::HashMap;
@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 pub struct UnifiedContextBuilder {
     output: String,
     project_path: PathBuf,
-    #[allow(dead_code)]
+
     annotations: HashMap<String, String>,
 }
 

@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 use super::{MakefileRule, Severity, Violation};
 use crate::services::makefile_linter::ast::{

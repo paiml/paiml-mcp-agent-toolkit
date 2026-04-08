@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Defect Prediction Analysis Facade
 //!
 //! Provides a simplified interface for defect prediction and risk analysis.
@@ -68,7 +69,6 @@ pub struct FileRiskMetrics {
 /// Facade for defect prediction analysis
 #[derive(Clone)]
 pub struct DefectPredictionFacade {
-    #[allow(dead_code)]
     registry: Arc<ServiceRegistry>,
 }
 

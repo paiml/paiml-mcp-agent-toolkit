@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 // Clustering engine implementation for Code Embeddings
 // PMAT-SEARCH-007: K-means, Hierarchical, and DBSCAN clustering
@@ -12,7 +13,7 @@ use std::sync::Arc;
 
 /// Clustering engine
 pub struct ClusteringEngine {
-    #[allow(dead_code)] // Reserved for future clustering Phase 2 integration
+    // Reserved for future clustering Phase 2 integration
     vector_db: Arc<TursoVectorDB>,
 }
 

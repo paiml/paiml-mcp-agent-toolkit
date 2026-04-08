@@ -11,9 +11,8 @@ use crate::wasm::security::{PatternDetector, VulnerabilityMatch};
 
 /// Core WASM analyzer with streaming analysis capabilities
 pub struct WasmAnalyzer {
-    #[allow(dead_code)]
     parser: Parser,
-    #[allow(dead_code)]
+
     validator: Validator,
     instruction_profiler: InstructionProfiler,
     pattern_detector: PatternDetector,

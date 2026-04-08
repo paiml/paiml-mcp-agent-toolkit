@@ -36,14 +36,14 @@ pub(crate) mod contract_query_handlers;
 mod command_dispatcher_scoring;
 
 /// Trait for command handlers to reduce complexity through delegation
-#[allow(dead_code)]
+
 #[allow(async_fn_in_trait)]
 pub trait CommandHandler: Send + Sync {
     async fn execute(&self, server: Arc<StatelessTemplateServer>) -> anyhow::Result<()>;
 }
 
 /// Trait for analyze command handlers
-#[allow(dead_code)]
+
 #[allow(async_fn_in_trait)]
 pub trait AnalyzeCommandHandler: Send + Sync {
     async fn execute(&self) -> anyhow::Result<()>;

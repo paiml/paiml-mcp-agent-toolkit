@@ -1,7 +1,7 @@
 /// Non-blocking profiler using shadow stack instrumentation
 pub struct AsyncProfiler {
     shadow_stacks: Arc<RwLock<Vec<ShadowStack>>>,
-    #[allow(dead_code)]
+    
     sample_interval: Duration,
 }
 

@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Cross-language dependency detection and analysis.
 //! Detects relationships (inheritance, implementation, usage) across language boundaries.

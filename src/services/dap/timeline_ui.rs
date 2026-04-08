@@ -22,10 +22,8 @@ pub struct TimelineUI {
 
     // Legacy fields for backward compatibility with Sprint 73 tests
     /// All snapshots in the recording (legacy)
-    #[allow(dead_code)]
     snapshots_legacy: Vec<ExecutionSnapshot>,
     /// Current position in the timeline (legacy)
-    #[allow(dead_code)]
     current_position_legacy: usize,
 }
 

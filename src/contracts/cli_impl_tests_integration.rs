@@ -82,7 +82,7 @@
         create_test_file(
             &temp_dir,
             "test.rs",
-            "#[allow(dead_code)]\nfn unused() {}\nfn main() {}",
+            "\nfn unused() {}\nfn main() {}",
         );
 
         let cmd = AnalyzeCommands::DeadCode {

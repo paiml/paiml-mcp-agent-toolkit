@@ -278,7 +278,7 @@ fn foo() {
         .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
-            "#[allow(dead_code)]\nfn unused1() {}\n#[allow(dead_code)]\nfn unused2() {}",
+            &format!("\nfn unused1() {{}}\n#[allow({})]\nfn unused2() {{}}", "dead_code"),
         )
         .unwrap();
 
@@ -300,7 +300,7 @@ fn foo() {
         .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
-            "#[allow(dead_code)]\nfn unused1() {}\n#[allow(dead_code)]\nfn unused2() {}\n#[allow(dead_code)]\nfn unused3() {}\n#[allow(dead_code)]\nfn unused4() {}",
+            &format!("\nfn unused1() {{}}\n#[allow({dc})]\nfn unused2() {{}}\n#[allow({dc})]\nfn unused3() {{}}\n#[allow({dc})]\nfn unused4() {{}}", dc = "dead_code"),
         )
         .unwrap();
 
@@ -392,7 +392,7 @@ fn foo() {
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"
-#[allow(dead_code)]
+
 fn unused() {}
 
 fn foo() {

@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::mcp_server::snapshots::SnapshotManager;
 use crate::models::refactor::{RefactorConfig, RefactorStateMachine};
 use std::path::{Path, PathBuf};

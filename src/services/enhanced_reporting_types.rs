@@ -1,6 +1,6 @@
 /// Enhanced reporting service
 pub struct EnhancedReportingService {
-    #[allow(dead_code)]
+    
     renderer: crate::services::renderer::TemplateRenderer,
 }
 

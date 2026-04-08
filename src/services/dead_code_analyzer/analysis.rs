@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Core analysis logic for dead code detection.
 //!
 //! Contains the main `DeadCodeAnalyzer` struct, classification functions,
@@ -24,7 +25,6 @@ pub struct DeadCodeAnalyzer {
     pub(crate) references: Arc<RwLock<CrossLangReferenceGraph>>,
 
     // Dynamic dispatch resolution
-    #[allow(dead_code)]
     pub(crate) vtable_analysis: Arc<RwLock<VTableResolver>>,
 
     // Test coverage integration

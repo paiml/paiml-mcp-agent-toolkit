@@ -16,7 +16,7 @@ use tokio::time::{interval, Duration};
 use warp::{Filter, Reply};
 
 /// Prometheus metrics registry for quality tracking
-#[allow(dead_code)]
+
 pub struct QualityMetricsRegistry {
     /// Registry for all metrics
     registry: Registry,

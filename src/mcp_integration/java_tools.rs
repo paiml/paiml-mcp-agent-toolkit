@@ -12,7 +12,6 @@ use tracing::{info, warn};
 
 /// Analyzes Java source code for complexity and structure
 pub struct JavaAnalysisTool {
-    #[allow(dead_code)]
     agent_registry: Arc<crate::agents::registry::AgentRegistry>,
 }
 
@@ -25,7 +24,6 @@ impl JavaAnalysisTool {
 
 /// Java mutation testing tool
 pub struct JavaMutationTool {
-    #[allow(dead_code)]
     agent_registry: Arc<crate::agents::registry::AgentRegistry>,
 }
 

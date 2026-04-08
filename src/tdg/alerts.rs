@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Sprint 31 Week 2 - Alert System with Configurable Thresholds
 //!
@@ -123,7 +124,7 @@ pub struct AlertManager {
     alert_history: Arc<RwLock<VecDeque<Alert>>>,
     metric_values: Arc<RwLock<HashMap<String, MetricValue>>>,
     notification_tx: mpsc::UnboundedSender<Alert>,
-    #[allow(dead_code)]
+
     notification_rx: Arc<RwLock<mpsc::UnboundedReceiver<Alert>>>,
     statistics: Arc<RwLock<AlertStatistics>>,
     config: AlertManagerConfig,

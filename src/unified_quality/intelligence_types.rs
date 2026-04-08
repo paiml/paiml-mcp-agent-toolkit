@@ -85,7 +85,7 @@ pub struct FeedbackCollector {
 
 /// Accepted suggestion record
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+
 struct AcceptedSuggestion {
     pattern_id: String,
     violation_type: ViolationType,
@@ -95,7 +95,7 @@ struct AcceptedSuggestion {
 
 /// Rejected suggestion record
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+
 struct RejectedSuggestion {
     pattern_id: String,
     violation_type: ViolationType,
@@ -104,7 +104,7 @@ struct RejectedSuggestion {
 }
 
 /// Outcome of applying a suggestion
-#[allow(dead_code)]
+
 #[derive(Debug, Clone)]
 enum SuggestionOutcome {
     Success,

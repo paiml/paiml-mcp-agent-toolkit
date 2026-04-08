@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Types, enums, and structs for the SATD detection system.
 
 use regex::RegexSet;
@@ -7,7 +8,6 @@ use std::path::PathBuf;
 
 /// Self-Admitted Technical Debt detector with pattern matching
 pub struct SATDDetector {
-    #[allow(dead_code)]
     pub(crate) patterns: RegexSet,
     pub(crate) debt_classifier: DebtClassifier,
 }
@@ -46,7 +46,6 @@ pub struct SATDSummary {
 
 /// Test-only structures for SATD metrics
 #[cfg(test)]
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct DebtFileMetrics {
     pub(crate) file: PathBuf,
@@ -57,7 +56,6 @@ pub(crate) struct DebtFileMetrics {
 }
 
 #[cfg(test)]
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct DebtCategoryMetrics {
     pub(crate) count: usize,
@@ -185,7 +183,7 @@ pub(crate) struct DebtPattern {
     pub(crate) regex: String,
     pub(crate) category: DebtCategory,
     pub(crate) severity: Severity,
-    #[allow(dead_code)]
+
     pub(crate) description: String,
 }
 

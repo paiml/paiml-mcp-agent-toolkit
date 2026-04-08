@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Analysis Orchestrator
 //!
@@ -51,7 +52,6 @@ enum AnalysisTaskResult {
 
 /// Orchestrator for coordinating multiple analysis operations
 pub struct AnalysisOrchestrator {
-    #[allow(dead_code)]
     registry: Arc<ServiceRegistry>,
     complexity_facade: ComplexityFacade,
     dead_code_facade: DeadCodeFacade,

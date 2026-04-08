@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Test discovery and fixing handlers for GH-98
 //!
 //! Systematic test fixing agent with 5-phase automation:

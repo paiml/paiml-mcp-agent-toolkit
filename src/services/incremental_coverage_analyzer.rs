@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Incremental code coverage analyzer for CI/CD pipelines
 //!
@@ -129,7 +130,6 @@ pub struct ChangeSet {
 }
 
 pub struct CallGraph {
-    #[allow(dead_code)]
     edges: DashMap<String, HashSet<String>>,
     reverse_edges: DashMap<String, HashSet<String>>,
 }

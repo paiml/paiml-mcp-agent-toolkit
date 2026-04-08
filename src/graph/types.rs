@@ -129,7 +129,7 @@ pub struct UndirectedEdgeRef<'a> {
     source: NodeId,
     target: NodeId,
     weight: f64,
-    #[allow(dead_code)]
+
     _phantom: std::marker::PhantomData<&'a ()>,
 }
 

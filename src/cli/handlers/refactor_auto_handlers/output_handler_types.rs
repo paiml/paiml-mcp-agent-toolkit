@@ -3,7 +3,7 @@
 
 /// Result of a refactoring iteration
 #[derive(Debug)]
-#[allow(dead_code)] // Used in refactoring workflow
+ // Used in refactoring workflow
 struct IterationResult {
     iteration_number: u32,
     successful_requests: Vec<RefactoringSuccess>,
@@ -14,7 +14,7 @@ struct IterationResult {
 
 /// Successful refactoring application
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // Used in refactoring workflow
+ // Used in refactoring workflow
 struct RefactoringSuccess {
     request: RefactoringRequest,
     changes_made: Vec<String>,
@@ -24,7 +24,7 @@ struct RefactoringSuccess {
 
 /// Failed refactoring application
 #[derive(Debug)]
-#[allow(dead_code)] // Used in refactoring workflow
+ // Used in refactoring workflow
 struct RefactoringFailure {
     request: RefactoringRequest,
     error_message: String,
@@ -33,7 +33,7 @@ struct RefactoringFailure {
 
 /// Verification status for refactoring
 #[derive(Debug, Clone)]
-#[allow(dead_code)] // Used by RefactoringSuccess
+ // Used by RefactoringSuccess
 enum VerificationStatus {
     Pending,
     Verified,
@@ -42,7 +42,7 @@ enum VerificationStatus {
 
 /// Result of validation checks
 #[derive(Debug)]
-#[allow(dead_code)] // Used in refactoring workflow
+ // Used in refactoring workflow
 struct ValidationResult {
     overall_success: bool,
     compilation_passed: bool,
@@ -53,7 +53,7 @@ struct ValidationResult {
 
 /// Quality improvement metrics
 #[derive(Debug)]
-#[allow(dead_code)] // Used in refactoring workflow
+ // Used in refactoring workflow
 struct QualityImprovement {
     complexity_reduced: u32,
     violations_fixed: u32,
@@ -64,7 +64,7 @@ struct QualityImprovement {
 
 /// Compilation validation result
 #[derive(Debug)]
-#[allow(dead_code)] // Used in refactoring workflow
+ // Used in refactoring workflow
 struct CompilationResult {
     success: bool,
     error_message: String,
@@ -73,7 +73,7 @@ struct CompilationResult {
 
 /// Test execution result
 #[derive(Debug)]
-#[allow(dead_code)] // Used in refactoring workflow
+ // Used in refactoring workflow
 struct TestResult {
     success: bool,
     passed_count: u32,

@@ -1,6 +1,6 @@
 /// Analyzes Scala source code for complexity and structure
 pub struct ScalaAnalysisTool {
-    #[allow(dead_code)]
+    
     agent_registry: Arc<crate::agents::registry::AgentRegistry>,
 }
 

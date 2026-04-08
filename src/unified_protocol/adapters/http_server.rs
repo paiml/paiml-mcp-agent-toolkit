@@ -1,7 +1,7 @@
 /// Adapter for handling individual HTTP streams
 pub struct HttpStreamAdapter {
     stream: Option<TcpStream>,
-    #[allow(dead_code)]
+    
     remote_addr: SocketAddr,
 }
 

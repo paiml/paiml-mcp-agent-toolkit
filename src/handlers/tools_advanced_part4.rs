@@ -200,7 +200,7 @@ pub(crate) async fn handle_analyze_satd(
 }
 
 #[derive(Deserialize)]
-#[allow(dead_code)]
+
 struct LintHotspotArgs {
     #[serde(default = "default_project_path")]
     project_path: String,

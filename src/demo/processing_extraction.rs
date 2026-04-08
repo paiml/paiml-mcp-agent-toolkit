@@ -1,5 +1,5 @@
 /// Extract actual analysis results and timings from demo report
-#[allow(dead_code)]
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn extract_analysis_from_demo_report(
     demo_report: &crate::demo::DemoReport,
@@ -95,7 +95,7 @@ pub(crate) fn extract_dag_from_result(
     parse_dag_data(&dag_data)
 }
 
-#[allow(dead_code)]
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn parse_dag_data(
     dag_data: &serde_json::Value,

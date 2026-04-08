@@ -39,7 +39,7 @@ fn score_from_complexities(function_complexities: &[usize], line_count: usize) -
 
 impl TDGCalculator {
     /// Compute complexity gradient with variance analysis
-    #[allow(dead_code)]
+    
     fn compute_complexity_gradient(&self, ast: &UnifiedAstNode) -> ComplexityVariance {
         let mut analyzer = VerifiedComplexityAnalyzer::new();
         let complexities: Vec<u32> = if matches!(ast.kind, AstKind::Function(_)) {

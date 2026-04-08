@@ -255,7 +255,6 @@ impl CpuLimiter {
         Ok(())
     }
 
-    #[allow(dead_code)]
     fn start_monitor(&mut self) {
         let limits = self.limits.clone();
         let system = self.system.clone();

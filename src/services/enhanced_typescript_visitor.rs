@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Enhanced TypeScript/JavaScript AST visitor that preserves real source locations and qualified names
 //!
@@ -25,7 +26,7 @@ use swc_ecma_visit::{Visit, VisitWith};
 #[cfg(feature = "typescript-ast")]
 pub struct EnhancedTypeScriptVisitor {
     items: Vec<AstItem>,
-    #[allow(dead_code)]
+
     file_path: PathBuf,
     module_path: Vec<String>,
     class_stack: Vec<String>,

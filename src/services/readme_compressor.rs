@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! README file compression for efficient context generation
 //!
@@ -21,7 +22,7 @@ use tracing::debug;
 
 pub struct ReadmeCompressor {
     section_importance: HashMap<String, f32>,
-    #[allow(dead_code)]
+
     max_section_tokens: usize,
 }
 
@@ -37,7 +38,7 @@ struct Section {
     level: u8,
     paragraphs: Vec<String>,
     lists: Vec<List>,
-    #[allow(dead_code)]
+
     code_snippets: Vec<String>,
 }
 

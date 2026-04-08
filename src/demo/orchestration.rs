@@ -167,7 +167,7 @@ pub(crate) struct DemoConfig {
 
 pub(crate) struct DemoAnalyzer {
     pub(crate) engine: super::protocol_harness::DemoEngine,
-    #[allow(dead_code)]
+
     pub(crate) config: DemoConfig,
 }
 

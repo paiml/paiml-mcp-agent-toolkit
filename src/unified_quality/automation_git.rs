@@ -36,7 +36,7 @@ impl RollbackManager {
         }
     }
 
-    #[allow(dead_code)]
+    
     fn add_rollback_point(&mut self, branch: String, commit: String, files: Vec<PathBuf>) {
         let point = RollbackPoint {
             timestamp: std::time::SystemTime::now(),

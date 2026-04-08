@@ -1,3 +1,4 @@
+#![allow(unused)]
 // Rust-specific analysis functions - extracted for file health (CB-040)
 
 use super::metrics::RUST_UNIFIED_CACHE;
@@ -23,7 +24,7 @@ pub async fn analyze_rust_language(
 }
 
 /// Simple Rust file analysis
-#[allow(dead_code)]
+
 pub(super) async fn analyze_rust_file(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {

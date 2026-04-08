@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 //! Load operations for functions, call graph, metrics, and metadata.
@@ -35,7 +36,7 @@ fn read_quality_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QualityMet
 }
 
 /// Load all functions from the SQLite database.
-#[allow(dead_code)]
+
 #[allow(clippy::cast_possible_truncation)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, String> {

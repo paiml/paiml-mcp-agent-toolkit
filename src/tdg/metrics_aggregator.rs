@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Sprint 31 Week 2 - Advanced Metrics Aggregation and Trending
 //!

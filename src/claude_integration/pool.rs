@@ -116,7 +116,6 @@ impl ResilientConnectionPool {
         true
     }
 
-    #[allow(dead_code)]
     fn should_open_circuit(&self) -> bool {
         let failures = self.failure_count.load(Ordering::Relaxed);
         let successes = self.success_count.load(Ordering::Relaxed);

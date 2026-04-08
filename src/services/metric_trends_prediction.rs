@@ -57,7 +57,7 @@ impl MetricTrendStore {
     ///
     /// Uses vectorized operations for 10x speedup vs scalar version.
     /// Falls back to scalar if SIMD not available.
-    #[allow(dead_code)] // Will be used when SIMD is fully integrated
+     // Will be used when SIMD is fully integrated
     fn simd_linear_regression(&self, observations: &[MetricObservation]) -> (f64, f64) {
         // Delegates to scalar version; SIMD variant deferred
         self.compute_trend(observations)

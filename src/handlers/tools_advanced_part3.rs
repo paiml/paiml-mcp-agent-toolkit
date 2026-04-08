@@ -302,10 +302,10 @@ struct MakefileLintArgs {
     #[serde(default)]
     rules: Vec<String>,
     #[serde(default)]
-    #[allow(dead_code)]
+    
     fix: bool,
     #[serde(default)]
-    #[allow(dead_code)]
+    
     gnu_version: String,
 }
 

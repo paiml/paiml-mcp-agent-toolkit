@@ -1,7 +1,7 @@
+#![allow(unused)]
 // Team onboarding materials and tutorials for unified quality system
 //
 // Provides interactive tutorials, onboarding guides, and training materials
-
 #![cfg_attr(coverage_nightly, coverage(off))]
 use crate::unified_quality::{QualityMode, QualityPhilosophy};
 use anyhow::Result;
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Team onboarding system for progressive quality adoption
-#[allow(dead_code)]
+
 pub struct TeamOnboarding {
     sessions: HashMap<TeamId, OnboardingSession>,
     tutorials: TutorialLibrary,

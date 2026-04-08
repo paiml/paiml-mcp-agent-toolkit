@@ -54,7 +54,7 @@ impl MakefileRule for UndefinedVariableRule {
 #[derive(Debug)]
 struct VariableRef {
     name: String,
-    #[allow(dead_code)]
+    
     position: usize,
     ref_type: VarRefType,
 }

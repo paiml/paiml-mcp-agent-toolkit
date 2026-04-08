@@ -1,3 +1,4 @@
+#![allow(unused)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 //! Advanced code similarity detection with entropy analysis
 //!
@@ -125,7 +126,7 @@ pub struct Metrics {
 /// Main similarity detector
 pub struct SimilarityDetector {
     config: SimilarityConfig,
-    #[allow(dead_code)] // Will be used in future winnowing implementation
+    // Will be used in future winnowing implementation
     winnower: Winnowing,
     token_analyzer: TokenAnalyzer,
     entropy_calculator: EntropyCalculator,

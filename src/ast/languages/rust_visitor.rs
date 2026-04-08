@@ -12,7 +12,7 @@ impl<'a> RustAstVisitor<'a> {
         }
     }
 
-    #[allow(dead_code)]
+    
     fn add_node(&mut self, kind: AstKind) -> u32 {
         let mut node = UnifiedAstNode::new(kind, Language::Rust);
 
