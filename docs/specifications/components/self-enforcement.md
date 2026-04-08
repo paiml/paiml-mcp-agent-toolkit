@@ -140,17 +140,23 @@ Dependency Health (66.7%) is the structural accept — 113 deps, no practical re
 | Dependency Health | 66.7% | 66.7% | — |
 | Testing Excellence | 82.5% | **47.5%** | -35% |
 
-**Full-mode grade: B+ (80.7%, 237.3/289)**
+### Phase 5: Coverage Scorer Fix (2026-04-08)
 
-Key findings:
-- Rust Tooling jumps +7% (real clippy 10/10, fmt 5/5, audit with risk scoring)
-- Formal Verification gains +7% (Kani proofs verified, Miri detected on nightly)
-- **Testing Excellence crashes to 47.5%** (real coverage/mutation scores replace defaults)
-- Code Quality stable (mutation testing defaulted, build time unchanged)
+| Category | Full v1 | Full v2 | Delta |
+|----------|---------|---------|-------|
+| Rust Tooling | 87.7% | 87.7% | — |
+| Build Performance | 83.3% | 83.3% | — |
+| Formal Verification | 71.2% | 71.2% | — |
+| Testing Excellence | 47.5% | **57.5%** | **+10%** |
+| Code Quality | 61.5% | 61.5% | — |
 
-**Critical blocker**: Testing Excellence full-mode score. The scorer runs
-`cargo llvm-cov` which either fails or reports low coverage. Fix: ensure
-`make coverage` generates cached results the scorer can read.
+**Full-mode grade: B+ (81.3%, 238.3/289)**
+
+Fixed: Coverage scorer now reads `.pmat-metrics/coverage.result` cache
+(written by `make coverage`) before falling back to `cargo llvm-cov --lib`.
+Previous version used `--no-report` which produced no parseable output.
+
+Also fixed: Miri nightly detection via `RUSTUP_TOOLCHAIN=nightly` fallback.
 
 ### Structural Limits
 

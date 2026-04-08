@@ -5,18 +5,37 @@ impl TestingScorer {
     /// Score test coverage (8pts)
     /// >=85% line coverage = full points
     fn score_coverage(&self, project_path: &Path) -> ScorerResult<f64> {
+        // First try reading cached coverage results (much faster than running llvm-cov)
+        // Check .pmat-metrics/coverage.result (written by `make coverage`)
+        let metrics_path = project_path.join(".pmat-metrics/coverage.result");
+        if let Ok(content) = std::fs::read_to_string(&metrics_path) {
+            if let Some(coverage) = self.parse_coverage_json(&content) {
+                return Ok(Self::coverage_to_score(coverage));
+            }
+        }
+        // Check .pmat/coverage-cache.json (written by `pmat query --coverage`)
+        let cache_path = project_path.join(".pmat/coverage-cache.json");
+        if let Ok(cache_content) = std::fs::read_to_string(&cache_path) {
+            if let Some(coverage) = self.parse_coverage_json(&cache_content) {
+                return Ok(Self::coverage_to_score(coverage));
+            }
+        }
+
+        // Fall back to running cargo llvm-cov with text summary
         let output = Command::new("cargo")
             .arg("llvm-cov")
-            .arg("--all-targets")
-            .arg("--no-report")
+            .arg("--lib")
             .current_dir(project_path)
             .output();
 
         match output {
             Ok(result) if result.status.success() => {
                 let stdout = String::from_utf8_lossy(&result.stdout);
+                let stderr = String::from_utf8_lossy(&result.stderr);
+                // Parse from stdout (text report) or stderr (summary line)
+                let combined = format!("{}\n{}", stdout, stderr);
                 Ok(self
-                    .parse_coverage(&stdout)
+                    .parse_coverage(&combined)
                     .map(Self::coverage_to_score)
                     .unwrap_or(4.0))
             }
@@ -125,6 +144,25 @@ impl TestingScorer {
         } else {
             2.0 // Minimal credit
         }
+    }
+
+    /// Parse coverage from cached JSON (e.g., .pmat-metrics/coverage.result)
+    fn parse_coverage_json(&self, json_str: &str) -> Option<f64> {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(json_str) {
+            // Format from `make coverage`: { "coverage_pct": 45.02, ... }
+            if let Some(pct) = json.get("coverage_pct").and_then(|v| v.as_f64()) {
+                return Some(pct);
+            }
+            // Format: { "line_coverage_percent": 94.2, ... }
+            if let Some(pct) = json.get("line_coverage_percent").and_then(|v| v.as_f64()) {
+                return Some(pct);
+            }
+            // Alternative format: { "coverage": 94.2, ... }
+            if let Some(pct) = json.get("coverage").and_then(|v| v.as_f64()) {
+                return Some(pct);
+            }
+        }
+        None
     }
 
     /// Parse coverage percentage from cargo-llvm-cov output
