@@ -56,7 +56,6 @@ async fn init_sprint(
 }
 
 /// Initialize a new sprint in the roadmap
-
 fn handle_init(
     version: String,
     title: String,

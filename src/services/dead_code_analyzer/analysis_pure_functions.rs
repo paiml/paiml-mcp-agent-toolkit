@@ -49,7 +49,6 @@ pub(crate) fn compute_reachability(
 /// using a simple heuristic: the function whose declaration line is closest to (but not
 /// after) the given line number.
 #[must_use]
-
 fn find_containing_function(
     file_path: &str,
     line_number: usize,
@@ -72,7 +71,6 @@ fn find_containing_function(
 /// Checks each known function to see if it is called (not defined) on this line,
 /// excluding self-calls from the caller.
 #[must_use]
-
 fn find_calls_in_line(
     line: &str,
     caller: &str,

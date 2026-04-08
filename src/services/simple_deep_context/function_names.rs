@@ -59,7 +59,6 @@ impl SimpleDeepContext {
     }
 
     /// Extract function names using language-specific AST analyzer
-
     pub(super) async fn function_names_via_ast<F, E>(
         &self,
         file_path: &Path,

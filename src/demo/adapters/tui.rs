@@ -91,7 +91,6 @@ struct Hotspot {
 
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone)]
-
 enum Severity {
     Critical,
     Warning,
@@ -100,7 +99,6 @@ enum Severity {
 
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone)]
-
 struct FileInfo {
     path: PathBuf,
     complexity: f32,
@@ -124,7 +122,6 @@ struct AnalysisUpdate {
 
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone)]
-
 enum UpdateType {
     FileDiscovered(PathBuf),
     ComplexityComputed(FileComplexity),

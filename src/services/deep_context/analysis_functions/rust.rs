@@ -24,7 +24,6 @@ pub async fn analyze_rust_language(
 }
 
 /// Simple Rust file analysis
-
 pub(super) async fn analyze_rust_file(
     file_path: &std::path::Path,
 ) -> anyhow::Result<Vec<crate::services::context::AstItem>> {

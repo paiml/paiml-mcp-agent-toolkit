@@ -91,7 +91,6 @@ async fn complete_task(
 }
 
 /// Start working on a task
-
 fn handle_start(task_id: String, create_branch: bool) -> Result<()> {
     // Validate task ID format (basic check)
     if !task_id.starts_with("PMAT-") {

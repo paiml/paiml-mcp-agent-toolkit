@@ -45,7 +45,6 @@ impl CStrategy {
     }
 
     #[cfg(not(feature = "c-ast"))]
-
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
         Err(anyhow::anyhow!(
             "C AST parsing not available - compile with 'c-ast' feature"
@@ -170,7 +169,6 @@ impl CppStrategy {
     }
 
     #[cfg(not(feature = "cpp-ast"))]
-
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
         Err(anyhow::anyhow!(
             "C++ AST parsing not available - compile with 'cpp-ast' feature"

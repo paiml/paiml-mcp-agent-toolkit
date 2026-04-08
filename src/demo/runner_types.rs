@@ -42,7 +42,6 @@ pub struct DemoAnalysisResult {
 }
 
 #[derive(Debug, Clone)]
-
 struct Component {
     id: String,
     label: String,

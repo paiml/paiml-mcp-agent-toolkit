@@ -38,7 +38,6 @@ fn read_quality_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QualityMet
 }
 
 /// Load all functions from the SQLite database.
-
 #[allow(clippy::cast_possible_truncation)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, String> {

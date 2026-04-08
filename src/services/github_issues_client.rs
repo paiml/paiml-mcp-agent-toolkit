@@ -341,7 +341,6 @@ impl GitHubIssuesService {
     }
 
     /// Validate repository format (owner/repo)
-    
     fn validate_repo_format(owner: &str, repo: &str) -> Result<(), GitHubError> {
         if owner.is_empty() || repo.is_empty() {
             return Err(GitHubError::InvalidRepo {

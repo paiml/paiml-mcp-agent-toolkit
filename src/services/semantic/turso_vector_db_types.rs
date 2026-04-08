@@ -12,7 +12,6 @@ pub struct TursoVectorDB {
 
 /// Internal metadata for each embedding
 #[derive(Debug, Clone)]
-
 struct EmbeddingMetadata {
     id: i64,
     file_path: String,

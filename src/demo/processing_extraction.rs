@@ -1,5 +1,4 @@
 /// Extract actual analysis results and timings from demo report
-
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn extract_analysis_from_demo_report(
     demo_report: &crate::demo::DemoReport,

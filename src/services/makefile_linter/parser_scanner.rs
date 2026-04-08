@@ -41,7 +41,6 @@ impl<'src> MakefileParser<'src> {
     }
 
     #[inline(always)]
-    
     const fn has_byte(x: u64, n: u8) -> u64 {
         const LO: u64 = 0x0101010101010101;
         const HI: u64 = 0x8080808080808080;

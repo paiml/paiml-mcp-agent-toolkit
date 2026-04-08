@@ -217,7 +217,6 @@ impl TopicEngine {
     ///
     /// # Returns
     /// Array of topics
-
     fn simplified_lda(
         &self,
         vectors: &[Vec<f32>],
@@ -281,7 +280,6 @@ impl TopicEngine {
 
 /// Chunk metadata for topic modeling
 #[derive(Debug, Clone)]
-
 struct ChunkMetadata {
     file_path: String,
     chunk_name: String,

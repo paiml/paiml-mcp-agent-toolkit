@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Team onboarding system for progressive quality adoption
-
 pub struct TeamOnboarding {
     sessions: HashMap<TeamId, OnboardingSession>,
     tutorials: TutorialLibrary,

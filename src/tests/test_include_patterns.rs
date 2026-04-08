@@ -5,7 +5,6 @@ mod tests {
     use clap::Parser;
 
     #[test]
-
     fn test_analyze_complexity_with_include_patterns() {
         // Test that include patterns are parsed correctly
         let args = vec![
@@ -34,7 +33,6 @@ mod tests {
     }
 
     #[test]
-
     fn test_glob_pattern_matching() {
         use glob::Pattern;
 

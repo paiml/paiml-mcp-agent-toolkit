@@ -127,7 +127,6 @@ pub struct OrchestratorConfig {
 
 /// Historical strategy evaluation
 #[derive(Debug, Clone)]
-
 struct StrategyEvaluation {
     /// Performance achieved
     performance: PerformanceMetrics,

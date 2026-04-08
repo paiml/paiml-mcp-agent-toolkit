@@ -74,7 +74,6 @@ mod tests {
     }
 
     /// Helper to create a simple Makefile for testing
-
     fn create_test_makefile(dir: &TempDir) {
         let makefile = dir.path().join("Makefile");
         fs::write(

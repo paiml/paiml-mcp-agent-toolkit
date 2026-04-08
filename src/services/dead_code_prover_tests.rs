@@ -39,13 +39,13 @@ mod tests {
         let renamed_symbol = SymbolId {
             file_path: "test.rs".to_string(),
             function_name: "renamed_export".to_string(),
-            line_number: 8,
+            line_number: 9,
         };
 
         let internal_symbol = SymbolId {
             file_path: "test.rs".to_string(),
             function_name: "internal_function".to_string(),
-            line_number: 12,
+            line_number: 13,
         };
 
         assert!(tracker.is_externally_visible(&exported_symbol));

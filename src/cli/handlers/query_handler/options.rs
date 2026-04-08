@@ -125,7 +125,6 @@ pub(super) struct CoChangePair {
 }
 
 /// Per-commit enrichment (reserved for JSON output format)
-
 pub(super) struct CommitAnnotation {
     pub(super) work_ticket: Option<WorkTicketInfo>,
     pub(super) commit_quality: Option<CommitQualityMeta>,
@@ -144,7 +143,6 @@ pub(super) struct WorkTicketInfo {
 
 /// Quality metadata from .pmat-metrics/commit-*-meta.json
 #[derive(serde::Deserialize)]
-
 pub(super) struct CommitQualityMeta {
     #[serde(default)]
     pub(super) work_item_id: String,
@@ -186,7 +184,6 @@ pub(super) struct BugHunterCache {
 }
 
 #[derive(serde::Deserialize)]
-
 pub(super) struct BugHunterFinding {
     #[serde(default)]
     pub(super) file: String,

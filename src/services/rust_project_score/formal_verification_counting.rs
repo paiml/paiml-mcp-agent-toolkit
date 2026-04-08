@@ -32,7 +32,6 @@ impl FormalVerificationScorer {
     }
 
     /// Check if Verus is available (reserved for future use)
-    
     fn is_verus_available(&self) -> bool {
         Command::new("verus")
             .arg("--version")
@@ -158,7 +157,6 @@ impl FormalVerificationScorer {
     }
 
     /// Check for vstd dependency in Cargo.toml (indicates Verus project)
-    
     fn has_vstd_dependency(&self, project_path: &Path) -> bool {
         let cargo_toml = project_path.join("Cargo.toml");
         if let Ok(content) = std::fs::read_to_string(cargo_toml) {

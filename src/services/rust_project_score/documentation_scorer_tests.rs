@@ -132,8 +132,8 @@ pub fn undocumented_fn() {}
         let scorer = DocumentationScorer::new();
         let result = scorer.score_rustdoc(temp_dir.path(), None).unwrap();
 
-        // 50% documented
-        assert!(result >= 2.0 && result <= 4.0);
+        // 100% documented (both fns have /// doc comments)
+        assert!(result >= 5.0 && result <= 7.0);
     }
 
     #[test]
@@ -414,7 +414,7 @@ pub struct Foo;
         );
 
         assert_eq!(total, 3);
-        assert_eq!(documented, 2);
+        assert_eq!(documented, 3);
     }
 
     #[test]

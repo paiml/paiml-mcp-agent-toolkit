@@ -9,7 +9,6 @@ pub struct MetricsAggregator {
     /// Alert thresholds
     alert_thresholds: Arc<RwLock<AlertThresholds>>,
     /// Historical aggregations
-    
     historical_stats: Arc<RwLock<HashMap<String, AggregatedStats>>>,
 }
 

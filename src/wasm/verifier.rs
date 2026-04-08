@@ -50,7 +50,6 @@ enum SafetyInvariant {
 
 /// Invariant violation record
 #[derive(Debug, Clone)]
-
 struct InvariantViolation {
     invariant: SafetyInvariant,
     location: usize,

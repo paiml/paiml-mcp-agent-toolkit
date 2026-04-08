@@ -132,7 +132,6 @@ mod integration_falsification {
 
 /// Generates a summary report of falsification test status
 #[cfg(test)]
-
 fn generate_falsification_report() {
     println!("=== POPPERIAN FALSIFICATION REPORT ===");
     println!();

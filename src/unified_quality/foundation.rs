@@ -28,7 +28,6 @@ type WatcherType = RecommendedWatcher;
 type WatcherType = ();
 
 /// Practical monitoring using proven technologies
-
 pub struct QualityMonitor {
     /// FSEvents/inotify for cross-platform file watching
     watcher: Arc<ParkingLotRwLock<Option<WatcherType>>>,

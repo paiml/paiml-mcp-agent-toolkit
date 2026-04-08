@@ -210,7 +210,6 @@
 }
 
 /// Property-based tests for LanguageAnalyzer
-
 mod language_property_tests {
     use super::*;
     use proptest::prelude::*;

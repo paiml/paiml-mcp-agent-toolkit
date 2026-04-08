@@ -82,7 +82,6 @@ pub async fn handle_vectorized_tools(
 
 /// Vectorized duplicate detection parameters
 #[derive(Debug, Deserialize)]
-
 struct DuplicatesVectorizedArgs {
     project_path: PathBuf,
     detection_type: Option<String>,
@@ -95,7 +94,6 @@ struct DuplicatesVectorizedArgs {
 
 /// Graph metrics vectorized parameters
 #[derive(Debug, Deserialize)]
-
 struct GraphMetricsVectorizedArgs {
     project_path: PathBuf,
     metrics: Option<Vec<String>>,
@@ -107,7 +105,6 @@ struct GraphMetricsVectorizedArgs {
 
 /// Name similarity vectorized parameters
 #[derive(Debug, Deserialize)]
-
 struct NameSimilarityVectorizedArgs {
     project_path: PathBuf,
     query: String,
@@ -120,7 +117,6 @@ struct NameSimilarityVectorizedArgs {
 
 /// Symbol table vectorized parameters
 #[derive(Debug, Deserialize)]
-
 struct SymbolTableVectorizedArgs {
     project_path: PathBuf,
     filter: Option<String>,
@@ -132,7 +128,6 @@ struct SymbolTableVectorizedArgs {
 
 /// Incremental coverage vectorized parameters
 #[derive(Debug, Deserialize)]
-
 struct IncrementalCoverageVectorizedArgs {
     project_path: PathBuf,
     base_branch: Option<String>,
@@ -143,7 +138,6 @@ struct IncrementalCoverageVectorizedArgs {
 
 /// Big-O vectorized parameters
 #[derive(Debug, Deserialize)]
-
 struct BigOVectorizedArgs {
     project_path: PathBuf,
     confidence_threshold: Option<u8>,
@@ -154,7 +148,6 @@ struct BigOVectorizedArgs {
 
 /// Enhanced report generation parameters
 #[derive(Debug, Deserialize)]
-
 struct EnhancedReportArgs {
     project_path: PathBuf,
     output_format: Option<String>,

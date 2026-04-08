@@ -175,7 +175,6 @@ pub struct MLQualityScorer {
     pub(crate) tdg_model: Option<LinearRegression>,
     /// Fallback heuristic weights (when ML unavailable)
     /// Used internally by heuristic_complexity() and heuristic_tdg()
-    
     pub(crate) heuristic_weights: HashMap<String, f64>,
     /// Is the model trained?
     pub(crate) trained: bool,

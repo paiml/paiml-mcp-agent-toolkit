@@ -6,7 +6,6 @@ use tree_sitter::{Node, Tree};
 
 impl VariableInspector {
     /// Extract variables from Python AST
-
     pub(super) fn extract_variables_python(
         &self,
         tree: &Tree,
@@ -52,7 +51,6 @@ impl VariableInspector {
     }
 
     /// Extract Python assignments
-
     pub(super) fn extract_python_assignments(
         &self,
         node: Node,
@@ -91,7 +89,6 @@ impl VariableInspector {
     }
 
     /// Extract Python function parameters
-
     pub(super) fn extract_python_function_params(
         &self,
         func_node: Node,

@@ -6,7 +6,6 @@ impl MutantExecutor {
     /// Kept for backward compatibility
     /// Create backup of original file (deprecated)
     #[deprecated(since = "2.171.0", note = "Use MutantGuard instead")]
-    
     async fn create_backup(&self, original_path: &Path) -> Result<PathBuf> {
         let backup_path = original_path.with_extension("pmat_backup");
         fs::copy(original_path, &backup_path)
@@ -17,7 +16,6 @@ impl MutantExecutor {
 
     /// Restore original file from backup (deprecated)
     #[deprecated(since = "2.171.0", note = "Use MutantGuard instead")]
-    
     async fn restore_backup(&self, original_path: &Path, backup_path: &Path) -> Result<()> {
         fs::copy(backup_path, original_path)
             .await

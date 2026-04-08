@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.12.0"
+version = "3.13.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -730,6 +730,7 @@ pre-release-replacements = [
 unsafe_op_in_unsafe_fn = "warn"
 unreachable_pub = "warn"
 missing_docs = "allow"
+dead_code = "allow"
 # Coverage: Allow coverage cfg flags from cargo-llvm-cov
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)', 'cfg(coverage_nightly)'] }
 
@@ -770,7 +771,7 @@ members = ["crates/pmat-dashboard"]
 resolver = "2"
 
 [workspace.package]
-version = "3.12.0"
+version = "3.13.0"
 edition = "2021"
 authors = ["Pragmatic AI Labs"]
 homepage = "https://paiml.com"

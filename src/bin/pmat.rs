@@ -16,7 +16,6 @@ enum ExecutionMode {
 /// POSIX-compliant exit codes for CLI interface
 /// Per SPECIFICATION.md Section 23: CLI Interface
 #[derive(Debug, Clone, Copy)]
-
 pub enum ExitCode {
     /// Success
     Success = 0,

@@ -18,7 +18,6 @@ impl JavaMapper {
     }
 
     /// Process Java-specific nodes
-    
     fn process_java_specific(&self, nodes: &mut [UnifiedNode]) {
         for node in nodes.iter_mut() {
             // Add Java-specific metadata
@@ -102,7 +101,6 @@ impl KotlinMapper {
     }
 
     /// Process Kotlin-specific nodes
-    
     fn process_kotlin_specific(&self, nodes: &mut [UnifiedNode]) {
         for node in nodes.iter_mut() {
             // Add Kotlin-specific metadata
@@ -170,7 +168,6 @@ impl ScalaMapper {
     }
 
     /// Process Scala-specific nodes
-    
     fn process_scala_specific(&self, nodes: &mut [UnifiedNode]) {
         for node in nodes.iter_mut() {
             // Add Scala-specific metadata

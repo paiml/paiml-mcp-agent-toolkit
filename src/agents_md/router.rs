@@ -8,7 +8,6 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 /// Agent request router
-
 pub struct AgentRouter {
     /// Registered handlers
     handlers: Arc<RwLock<Vec<Box<dyn Handler>>>>,
@@ -64,7 +63,6 @@ pub struct RouteDecision {
 }
 
 /// Circuit breaker for failing agents
-
 #[derive(Debug, Clone)]
 pub struct CircuitBreaker {
     /// Failure threshold

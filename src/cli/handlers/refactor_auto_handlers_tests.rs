@@ -1273,7 +1273,6 @@ mod extended_property_tests {
 
 /// Comprehensive coverage tests for refactor_auto_handlers
 /// Tests all async functions and edge cases
-
 /// Comprehensive coverage tests for refactor_auto_handlers
 #[path = "refactor_auto_comprehensive_tests.rs"]
 mod comprehensive_coverage_tests;

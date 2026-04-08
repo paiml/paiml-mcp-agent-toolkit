@@ -103,7 +103,6 @@ struct Outcome {
 /// Scenario can be either "Baseline" or {"Mutant": {...}}
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-
 enum ScenarioType {
     Baseline(String),
     Mutant {

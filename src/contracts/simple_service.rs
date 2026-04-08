@@ -465,7 +465,6 @@ struct QualityViolation {
 }
 
 #[derive(serde::Serialize)]
-
 enum ViolationSeverity {
     Error,
     Warning,

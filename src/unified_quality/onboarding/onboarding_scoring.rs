@@ -108,7 +108,6 @@ impl TeamOnboarding {
     }
 
     /// Get next phase in progression
-    
     fn next_phase(&self, current: &OnboardingPhase) -> OnboardingPhase {
         match current {
             OnboardingPhase::Introduction => OnboardingPhase::MonitoringSetup,
@@ -122,7 +121,6 @@ impl TeamOnboarding {
     }
 
     /// Get recommended quality mode for phase
-    
     fn recommended_quality_mode(&self, phase: &OnboardingPhase) -> QualityMode {
         match phase {
             OnboardingPhase::Introduction => QualityMode::Observe,

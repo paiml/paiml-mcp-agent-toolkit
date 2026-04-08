@@ -153,7 +153,6 @@ impl QualityCheck {
 }
 
 /// Extract coverage percentage from output
-
 fn extract_coverage_from_output(output: &str) -> Option<u8> {
     // Try "Coverage: 85%" pattern first
     extract_coverage_with_prefix(output, "Coverage:", 9)

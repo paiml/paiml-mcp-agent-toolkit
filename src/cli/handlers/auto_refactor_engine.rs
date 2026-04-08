@@ -335,7 +335,6 @@ impl<'a> OutputFormatter<'a> {
     /// # Errors
     ///
     /// Returns an error if the operation fails
-    
     fn format_summary(&self) -> Result<String> {
         // Implementation details...
         Ok(String::new())
@@ -343,7 +342,6 @@ impl<'a> OutputFormatter<'a> {
     /// # Errors
     ///
     /// Returns an error if the operation fails
-    
     fn format_detailed(&self) -> Result<String> {
         // Implementation details...
         Ok(String::new())
@@ -351,7 +349,6 @@ impl<'a> OutputFormatter<'a> {
     /// # Errors
     ///
     /// Returns an error if the operation fails
-    
     fn format_json(&self, enforcement: bool) -> Result<String> {
         // Implementation details...
         Ok(String::new())
@@ -359,7 +356,6 @@ impl<'a> OutputFormatter<'a> {
     /// # Errors
     ///
     /// Returns an error if the operation fails
-    
     fn format_sarif(&self) -> Result<String> {
         // Implementation details...
         Ok(String::new())

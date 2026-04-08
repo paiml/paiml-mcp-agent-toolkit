@@ -8,7 +8,6 @@ use crate::ast::core::{
 };
 
 /// Tree-sitter visitor for C/C++ AST conversion
-
 pub struct CTreeSitterVisitor<'a> {
     dag: &'a mut AstDag,
 

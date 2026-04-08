@@ -78,7 +78,6 @@ pub struct Change {
 }
 
 /// Git safety net for automated changes
-
 pub struct GitSafetyNet {
     /// Working directory
     work_dir: PathBuf,
@@ -88,7 +87,6 @@ pub struct GitSafetyNet {
 }
 
 /// Rollback manager for undoing changes
-
 pub struct RollbackManager {
     /// Rollback points
     rollback_points: Vec<RollbackPoint>,
@@ -101,7 +99,6 @@ pub struct RollbackManager {
 #[derive(Debug, Clone)]
 struct RollbackPoint {
     /// Timestamp
-    
     timestamp: std::time::SystemTime,
 
     /// Branch name
@@ -111,7 +108,6 @@ struct RollbackPoint {
     commit: String,
 
     /// Files changed
-    
     files: Vec<PathBuf>,
 }
 

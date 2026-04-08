@@ -172,7 +172,10 @@ fn process_commit_for_ai_check(
     } else {
         let truncated = if subject.len() > 60 {
             // Safe truncation: find char boundary at or before byte 57
-            let end = subject.floor_char_boundary(57);
+            let mut end = 57.min(subject.len());
+            while end > 0 && !subject.is_char_boundary(end) {
+                end -= 1;
+            }
             format!("{}...", &subject[..end])
         } else {
             subject.to_string()

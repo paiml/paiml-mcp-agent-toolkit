@@ -85,7 +85,6 @@ pub struct FeedbackCollector {
 
 /// Accepted suggestion record
 #[derive(Debug, Clone)]
-
 struct AcceptedSuggestion {
     pattern_id: String,
     violation_type: ViolationType,
@@ -95,7 +94,6 @@ struct AcceptedSuggestion {
 
 /// Rejected suggestion record
 #[derive(Debug, Clone)]
-
 struct RejectedSuggestion {
     pattern_id: String,
     violation_type: ViolationType,
@@ -104,7 +102,6 @@ struct RejectedSuggestion {
 }
 
 /// Outcome of applying a suggestion
-
 #[derive(Debug, Clone)]
 enum SuggestionOutcome {
     Success,

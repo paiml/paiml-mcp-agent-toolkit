@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
 /// Flexible enforcement using SRE-style error budgets
-
 pub struct ErrorBudgetEnforcer {
     /// Team-specific quality budgets
     budgets: HashMap<TeamId, QualityBudget>,
@@ -134,7 +133,6 @@ pub struct TeamMetrics {
 }
 
 /// Enforcement rules configuration
-
 #[derive(Debug, Clone, Default)]
 pub struct EnforcementRules {
     /// Approvers by team

@@ -259,7 +259,6 @@ struct SatdComment {
 }
 
 #[derive(Debug)]
-
 enum Error {
     NotImplemented,
     AnalysisFailed(String),

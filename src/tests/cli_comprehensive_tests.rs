@@ -23,7 +23,6 @@ use std::path::PathBuf;
 // ===== Generate Command Tests =====
 
 #[test]
-
 fn test_generate_command_full_parsing() {
     let args = vec![
         "pmat",
@@ -67,7 +66,6 @@ fn test_generate_command_full_parsing() {
 }
 
 #[test]
-
 fn test_generate_command_aliases() {
     // Test 'gen' alias
     let args = vec![
@@ -93,7 +91,6 @@ fn test_generate_command_aliases() {
 }
 
 #[test]
-
 fn test_generate_missing_required_args() {
     // Missing template path
     let args = vec!["pmat", "generate", "makefile"];
@@ -107,7 +104,6 @@ fn test_generate_missing_required_args() {
 // ===== Scaffold Command Tests =====
 
 #[test]
-
 fn test_scaffold_command_parsing() {
     let args = vec![
         "pmat",
@@ -149,7 +145,6 @@ fn test_scaffold_command_parsing() {
 }
 
 #[test]
-
 fn test_scaffold_template_delimiter() {
     // Test comma-separated templates
     let args = vec![
@@ -178,7 +173,6 @@ fn test_scaffold_template_delimiter() {
 }
 
 #[test]
-
 fn test_scaffold_default_parallel() {
     let args = vec![
         "pmat",
@@ -209,7 +203,6 @@ fn test_scaffold_default_parallel() {
 // ===== List Command Tests =====
 
 #[test]
-
 fn test_list_command_all_formats() {
     let formats = vec!["table", "json", "yaml"];
 
@@ -233,7 +226,6 @@ fn test_list_command_all_formats() {
 }
 
 #[test]
-
 fn test_list_command_filters() {
     let args = vec![
         "pmat",
@@ -262,7 +254,6 @@ fn test_list_command_filters() {
 }
 
 #[test]
-
 fn test_list_default_format() {
     let args = vec!["pmat", "list"];
     let cli = Cli::try_parse_from(&args).unwrap();
@@ -278,7 +269,6 @@ fn test_list_default_format() {
 // ===== Search Command Tests =====
 
 #[test]
-
 fn test_search_command_parsing() {
     let args = vec![
         "pmat",
@@ -306,7 +296,6 @@ fn test_search_command_parsing() {
 }
 
 #[test]
-
 fn test_search_default_limit() {
     let args = vec!["pmat", "search", "template"];
     let cli = Cli::try_parse_from(&args).unwrap();
@@ -322,7 +311,6 @@ fn test_search_default_limit() {
 // ===== Validate Command Tests =====
 
 #[test]
-
 fn test_validate_command_parsing() {
     let args = vec![
         "pmat",
@@ -347,7 +335,6 @@ fn test_validate_command_parsing() {
 // ===== Context Command Tests =====
 
 #[test]
-
 fn test_context_command_parsing() {
     let args = vec![
         "pmat",
@@ -388,7 +375,6 @@ fn test_context_command_parsing() {
 }
 
 #[test]
-
 fn test_context_formats() {
     let formats = vec![
         ("markdown", ContextFormat::Markdown),
@@ -416,7 +402,6 @@ fn test_context_formats() {
 }
 
 #[test]
-
 fn test_context_default_values() {
     let args = vec!["pmat", "context"];
     let cli = Cli::try_parse_from(&args).unwrap();
@@ -439,7 +424,6 @@ fn test_context_default_values() {
 // ===== Analyze Churn Tests =====
 
 #[test]
-
 fn test_analyze_churn_full_options() {
     let args = vec![
         "pmat",
@@ -476,7 +460,6 @@ fn test_analyze_churn_full_options() {
 }
 
 #[test]
-
 fn test_analyze_churn_all_formats() {
     let formats = vec![
         ("summary", ChurnOutputFormat::Summary),
@@ -501,7 +484,6 @@ fn test_analyze_churn_all_formats() {
 // ===== Analyze Complexity Tests =====
 
 #[test]
-
 fn test_analyze_complexity_full_options() {
     let args = vec![
         "pmat",
@@ -562,7 +544,6 @@ fn test_analyze_complexity_full_options() {
 }
 
 #[test]
-
 fn test_analyze_complexity_formats() {
     let formats = vec![
         ("summary", ComplexityOutputFormat::Summary),
@@ -587,7 +568,6 @@ fn test_analyze_complexity_formats() {
 // ===== Analyze DAG Tests =====
 
 #[test]
-
 fn test_analyze_dag_full_options() {
     let args = vec![
         "pmat",
@@ -632,7 +612,6 @@ fn test_analyze_dag_full_options() {
 }
 
 #[test]
-
 fn test_analyze_dag_types() {
     let dag_types = vec![
         ("call-graph", DagType::CallGraph),
@@ -657,7 +636,6 @@ fn test_analyze_dag_types() {
 // ===== Parameter Parsing Tests =====
 
 #[test]
-
 fn test_parse_key_val_basic() {
     let test_cases = vec![
         ("key=value", ("key", json!("value"))),
@@ -675,7 +653,6 @@ fn test_parse_key_val_basic() {
 }
 
 #[test]
-
 fn test_parse_key_val_edge_cases() {
     // Value with equals signs
     let (key, val) = parse_key_val("url=https://example.com?foo=bar&baz=qux").unwrap();
@@ -694,7 +671,6 @@ fn test_parse_key_val_edge_cases() {
 // ===== Validation Tests =====
 
 #[test]
-
 fn test_validate_params_comprehensive() {
     let specs = vec![
         ParameterSpec {
@@ -751,7 +727,6 @@ fn test_validate_params_comprehensive() {
 // ===== Environment Variable Tests =====
 
 #[test]
-
 fn test_expand_env_vars_complex() {
     std::env::set_var("TEST_PROJECT", "my-project");
     std::env::set_var("TEST_VERSION", "1.0.0");
@@ -781,7 +756,6 @@ Nested: ${TEST_PROJECT}-${TEST_VERSION}
 // ===== Error Handling Tests =====
 
 #[test]
-
 fn test_cli_error_scenarios() {
     // Unknown command
     let args = vec!["pmat", "unknown-command"];
@@ -803,7 +777,6 @@ fn test_cli_error_scenarios() {
 // ===== Help and Version Tests =====
 
 #[test]
-
 fn test_help_flags() {
     let args = vec!["pmat", "--help"];
     let result = Cli::try_parse_from(&args);
@@ -822,7 +795,6 @@ fn test_help_flags() {
 }
 
 #[test]
-
 fn test_version_flag() {
     let args = vec!["pmat", "--version"];
     let result = Cli::try_parse_from(&args);
@@ -835,7 +807,6 @@ fn test_version_flag() {
 // ===== Mode Detection Tests =====
 
 #[test]
-
 fn test_mode_flag() {
     // Force CLI mode
     let args = vec!["pmat", "--mode", "cli", "list"];
@@ -851,7 +822,6 @@ fn test_mode_flag() {
 // ===== Complex Scenario Tests =====
 
 #[test]
-
 fn test_multiple_parameter_types() {
     let args = vec![
         "pmat",
@@ -889,7 +859,6 @@ fn test_multiple_parameter_types() {
 }
 
 #[test]
-
 fn test_nested_subcommand_parsing() {
     // Test all analyze subcommands
     let subcommands = vec![

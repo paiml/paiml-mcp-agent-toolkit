@@ -50,7 +50,6 @@ impl PythonStrategy {
     }
 
     #[cfg(not(feature = "python-ast"))]
-    
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
         Err(anyhow::anyhow!(
             "Python AST parsing not available - compile with 'python-ast' feature"

@@ -30,7 +30,6 @@ pub fn parse_function_spec(spec: &str, project_path: &Path) -> Result<FunctionId
 }
 
 /// Extract function name from a line
-
 fn extract_function_name(line: &str) -> Option<String> {
     let line = line.trim();
     let start = line.find("fn ")? + 3;

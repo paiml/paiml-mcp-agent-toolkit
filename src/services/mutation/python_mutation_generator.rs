@@ -112,7 +112,6 @@ mod tests {
     use super::*;
 
     #[test]
-
     fn test_python_generator_basic() {
         // RED: Test should fail because generate_mutants returns empty vec
         let source = r#"
@@ -139,7 +138,6 @@ def add(a, b):
     }
 
     #[test]
-
     fn test_python_generator_multiple_operators() {
         // RED: Test should fail
         let source = r#"

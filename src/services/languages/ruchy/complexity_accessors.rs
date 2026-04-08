@@ -24,7 +24,6 @@ impl RuchyComplexityAnalyzer {
     }
 
     /// Infer type from a literal token
-    
     fn infer_literal_type(&self, lit: &RuchyToken) -> RuchyType {
         match lit {
             RuchyToken::Integer(_) => RuchyType::Integer,
@@ -37,7 +36,6 @@ impl RuchyComplexityAnalyzer {
     }
 
     /// Infer type of a binary operation
-    
     fn infer_binary_type(
         &self,
         op: &RuchyToken,

@@ -241,7 +241,6 @@ impl UnifiedService {
     }
 
     /// Extract protocol from request path
-
     fn extract_protocol_from_path(&self, path: &str) -> Protocol {
         if path.starts_with("/mcp/") {
             Protocol::Mcp

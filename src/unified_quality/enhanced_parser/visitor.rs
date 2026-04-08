@@ -5,7 +5,6 @@
 use syn::visit::Visit;
 
 /// Visitor for calculating complexity metrics
-
 pub(crate) struct ComplexityVisitor {
     /// Current cyclomatic complexity
     pub(crate) complexity: u32,

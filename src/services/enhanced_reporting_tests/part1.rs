@@ -96,7 +96,6 @@ mod property_tests {
 }
 
 /// Comprehensive test coverage for enhanced reporting service
-
 mod coverage_tests {
     use super::*;
     use std::path::PathBuf;

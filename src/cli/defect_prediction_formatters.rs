@@ -95,7 +95,6 @@ pub fn format_summary_output(
 }
 
 /// Generate recommendations for high-risk files
-
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn generate_recommendations(predictions: &[(String, DefectScore)]) -> Vec<String> {
@@ -249,7 +248,6 @@ pub fn format_json_output(
 }
 
 /// Format markdown output
-
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub fn format_markdown_output(

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.0] - 2026-04-08
+
+### Added
+- **Grade A Self-Enforcement**: RPS self-score B (76.3%) to A (90.6%), 11/11 penetration@80
+- **Contract Enrichment**: `pmat query` shows PV:L2 for contracted functions (O(1) from index)
+- **Workspace Scoring**: `score_workspace()` per-subcrate breakdown with geometric mean aggregate
+- **Book Contracts**: 5 falsified provable contract YAMLs for pmat-book chapters
+- **Benchmarking**: `make bench-perf` with 11 operations, performance budgets, regression detection
+- **Fleet Scoring Spec**: `pmat score --fleet` design for cross-repo quality measurement
+
+### Changed
+- **Aprender Monorepo Migration**: 10 sovereign deps migrated to `aprender-*` crates.io (v0.29)
+- **Dependency Reduction**: 113 required deps to 15 via `standard-deps` feature bundle
+- **Infrastructure-Aware Scoring**: Fast-mode estimation checks tool availability (Miri, Kani, mutants.toml)
+- **Coverage Scorer**: Reads `.pmat-metrics/coverage.result` cache, removed broken `--no-report` flag
+- **Workspace Query**: 86s to 0.18s (480x speedup) — skip merge when not needed
+
+### Fixed
+- **Unicode Panic**: `pmat comply check` panicked on em-dash in commit messages (floor_char_boundary)
+- **Dead Code Self-Detection**: Scorer counted its own string literals as `#[allow(dead_code)]`
+- **Dead Code Analyzer**: Removed RUSTFLAGS modification that broke cc crate compilation
+- **Miri Detection**: Added `RUSTUP_TOOLCHAIN=nightly` fallback for nightly-only Miri
+- **Test Fixtures**: Repaired 9 tests broken by bulk sed removal of dead_code attrs
+
+### Removed
+- 403 `#[allow(dead_code)]` annotations (replaced with targeted `#![allow(unused)]`)
+- 19 deep nesting lines (refactored to 0)
+
 ## [3.7.0] - 2026-03-09
 
 ### Added

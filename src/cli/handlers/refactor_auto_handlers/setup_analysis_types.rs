@@ -154,7 +154,6 @@ struct GitHubIssueRef {
 
 /// GitHub issue content structure
 #[derive(Debug, Clone)]
-
 struct GitHubIssueContent {
     title: String,
     body: String,

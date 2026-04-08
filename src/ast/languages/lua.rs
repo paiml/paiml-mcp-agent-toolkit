@@ -71,7 +71,6 @@ impl LuaStrategy {
     }
 
     #[cfg(not(feature = "lua-ast"))]
-
     fn parse_with_tree_sitter(&self, _content: &str) -> Result<()> {
         Err(anyhow::anyhow!(
             "Lua AST parsing not available - compile with 'lua-ast' feature"

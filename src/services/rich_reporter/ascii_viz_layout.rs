@@ -114,7 +114,6 @@ pub struct TableRenderer {
     /// Column alignments (true = right, false = left)
     alignments: Vec<bool>,
     /// Use box drawing characters (reserved for future use)
-    
     use_box_chars: bool,
 }
 

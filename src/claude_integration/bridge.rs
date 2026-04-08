@@ -182,7 +182,6 @@ impl ClaudeBridge {
     }
 
     /// Spawn bridge process
-
     async fn spawn_bridge_process(&self) -> Result<BridgeProcess, BridgeError> {
         // Always use tokio::process for consistency
         let mut child = tokio::process::Command::new("node")

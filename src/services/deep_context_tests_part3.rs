@@ -6,7 +6,6 @@ use super::*;
 
 /// Comprehensive coverage tests for deep_context helper functions
 /// Toyota Way: EXTREME TDD for 95% coverage
-
 mod coverage_tests {
     use super::*;
     use std::path::PathBuf;

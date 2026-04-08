@@ -3,7 +3,6 @@
 
 /// Aggregated community data for efficient calculations.
 #[derive(Debug)]
-
 struct CommunityData {
     /// Node to community mapping
     node_to_community: Vec<usize>,

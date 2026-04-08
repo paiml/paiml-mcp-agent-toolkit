@@ -98,8 +98,8 @@ mod tests {
         // cfg_test_line should be the line of #[cfg(test)]
         assert!(result.cfg_test_line.is_some());
         let test_line = result.cfg_test_line.unwrap();
-        // #[cfg(test)] is on line 5
-        assert_eq!(test_line, 5);
+        // #[cfg(test)] is on line 6 (doc comment on production_code shifts it)
+        assert_eq!(test_line, 6);
     }
 
     #[test]

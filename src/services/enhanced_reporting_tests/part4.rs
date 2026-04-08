@@ -171,7 +171,6 @@
 }
 
 /// Property-based tests for enhanced reporting
-
 mod enhanced_property_tests {
     use super::*;
     use proptest::prelude::*;

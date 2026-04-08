@@ -53,7 +53,6 @@ mod property_tests {
 }
 
 /// Comprehensive coverage tests for LanguageAnalyzer
-
 mod coverage_tests {
     use super::*;
     use std::io::Write;

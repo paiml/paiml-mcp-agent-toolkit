@@ -121,7 +121,6 @@ impl Default for RetentionConfig {
 }
 
 /// Performance metrics collector
-
 #[derive(Debug, Clone)]
 pub struct PerformanceMetrics {
     /// Time-series data
@@ -409,14 +408,12 @@ impl Default for BenchmarkConfig {
 /// Performance optimizer
 pub struct PerformanceOptimizer {
     /// Active optimizations
-    
     optimizations: Vec<ActiveOptimization>,
 
     /// Optimization history
     history: Vec<OptimizationResult>,
 
     /// Configuration
-    
     config: OptimizationConfig,
 }
 

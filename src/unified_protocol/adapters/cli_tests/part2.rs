@@ -410,7 +410,6 @@ mod property_tests {
 
 /// EXTREME TDD Coverage Tests for CLI Adapter
 /// Sprint 46 Phase 6: Comprehensive coverage for uncovered lines
-
 mod coverage_tests {
     use super::*;
     use crate::cli::{
