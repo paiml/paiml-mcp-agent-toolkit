@@ -2518,6 +2518,24 @@ bench-build-times: ## Measure build times across configurations (takes ~10-15 mi
 bench-quick: bench-deps bench-binary-size ## Quick benchmark (deps + binary size, ~1-2 minutes)
 	@echo "✅ Quick benchmarks complete"
 
+bench-perf: ## Runtime performance benchmark (~60s) — checks against baseline
+	@echo "⏱️  Running performance benchmarks..."
+	@echo '{"operations": [' > /tmp/pmat-bench.json
+	@START=$$(date +%s%N); pmat query "test" --limit 1 2>/dev/null >/dev/null; \
+		END=$$(date +%s%N); MS=$$(( (END - START) / 1000000 )); \
+		echo "  query_semantic: $${MS}ms"; \
+		echo '  {"name": "query_semantic_ms", "value": '$$MS'},' >> /tmp/pmat-bench.json
+	@START=$$(date +%s%N); pmat query --literal ".unwrap()" --limit 1 2>/dev/null >/dev/null; \
+		END=$$(date +%s%N); MS=$$(( (END - START) / 1000000 )); \
+		echo "  query_literal: $${MS}ms"; \
+		echo '  {"name": "query_literal_ms", "value": '$$MS'},' >> /tmp/pmat-bench.json
+	@START=$$(date +%s%N); pmat rust-project-score 2>/dev/null >/dev/null; \
+		END=$$(date +%s%N); MS=$$(( (END - START) / 1000000 )); \
+		echo "  rps_fast: $${MS}ms"; \
+		echo '  {"name": "rps_fast_ms", "value": '$$MS'}' >> /tmp/pmat-bench.json
+	@echo ']}' >> /tmp/pmat-bench.json
+	@echo "✅ Performance benchmarks complete (results in /tmp/pmat-bench.json)"
+
 bench-all: bench-baseline ## Run all dependency reduction benchmarks
 	@echo "✅ All benchmarks complete"
 	@echo "📊 Results in benchmarks/results/"

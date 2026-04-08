@@ -1,0 +1,60 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-04-08"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    Benchmarking and profiling contract — performance budgets for all
+    critical pmat operations. Regression detection via recorded baselines.
+  contract: benchmarking
+  status: enforced
+
+equations:
+  query_latency:
+    formula: latency = time(pmat query "q" --limit N)
+    domain: q in String, N in {1..100}
+    codomain: latency in Duration
+    invariants:
+    - warm_latency < 500ms for semantic/regex/literal queries
+    - cold_latency < 5s for local-only index load
+    preconditions:
+    - .pmat/context.db exists (index pre-built)
+    lean_theorem: Theorems.Query_Latency_Bounded
+
+  index_build:
+    formula: duration = time(build_index(project_path))
+    domain: project_path in Path
+    codomain: duration in Duration
+    invariants:
+    - duration < 60s for projects with <5000 .rs files
+    - incremental_duration < 5s when <10 files changed
+    preconditions:
+    - project_path.join("Cargo.toml").exists()
+
+  scoring_latency:
+    formula: latency = time(pmat rust-project-score)
+    domain: project_path in Path
+    codomain: latency in Duration
+    invariants:
+    - fast_mode < 5s
+    - full_mode < 300s
+    preconditions:
+    - project_path.join("Cargo.toml").exists()
+
+preconditions:
+  - "pmat binary installed"
+  - ".pmat/context.db exists"
+
+falsification:
+  - condition: "pmat query 'test' --limit 1 takes >500ms warm"
+    severity: P1
+    action: investigate_regression
+  - condition: "pmat rust-project-score takes >5s in fast mode"
+    severity: P1
+    action: investigate_regression
+  - condition: "pmat comply check takes >30s"
+    severity: P2
+    action: investigate_regression
+  - condition: "Index build >60s for <5000 files"
+    severity: P2
+    action: optimize_indexer

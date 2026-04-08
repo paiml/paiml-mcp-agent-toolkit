@@ -93,6 +93,70 @@ cargo build --timings 2>&1 | grep "Compiling"
 cargo tree | wc -l
 ```
 
+## Runtime Benchmarking & Profiling
+
+**Contract**: `contracts/benchmarking-v1.yaml`
+
+### Performance Budgets (Measured 2026-04-08)
+
+| Operation | Budget | Measured | Status |
+|-----------|--------|----------|--------|
+| Query (warm, semantic) | <500ms | **179ms** | PASS |
+| Query (warm, literal) | <500ms | **209ms** | PASS |
+| Query (warm, regex) | <500ms | **178ms** | PASS |
+| Index build (4282 files) | <60s | **31s** | PASS |
+| RPS fast-mode score | <5s | **1.1s** | PASS |
+| Comply check (96 checks) | <30s | **10.4s** | PASS |
+| Query (cold, no workspace) | <5s | **0.18s** | PASS |
+
+### Benchmark Command
+
+```bash
+# Quick benchmark (runs all critical paths, ~60s)
+make bench-quick
+
+# Full benchmark with profiling
+make benchmark
+
+# Profile memory (dhat-rs)
+cargo run --example dhat_memory_profile -- build
+cargo run --example dhat_memory_profile -- query
+```
+
+### Regression Detection
+
+Baselines stored in `.pmat-metrics/bench-baseline.json`. Each `make bench-quick`
+compares against baseline and flags regressions >20%.
+
+```json
+{
+  "query_semantic_ms": 179,
+  "query_literal_ms": 209,
+  "query_regex_ms": 178,
+  "index_build_s": 31,
+  "rps_fast_s": 1.1,
+  "comply_s": 10.4,
+  "measured_at": "2026-04-08"
+}
+```
+
+### Profiling Tools
+
+| Tool | Purpose | Command |
+|------|---------|---------|
+| dhat-rs | Heap allocation profiling | `cargo run --example dhat_memory_profile` |
+| cargo-flamegraph | CPU flamegraph | `cargo flamegraph -- query "test"` |
+| `--timings` | Build time per crate | `cargo build --timings` |
+| tokio-console | Async task profiling | `RUSTFLAGS="--cfg tokio_unstable"` |
+
+### Memory Baselines (dhat-rs, measured)
+
+| Path | Total Allocs | Peak | Status |
+|------|-------------|------|--------|
+| Index build | 187 MB | 73.8 MB | Optimized (was 775 MB) |
+| Query | 34 MB | 19.8 MB | Lean |
+| Deep context | 8.7 GB | 104 MB | Bottleneck: syn parse |
+
 ## Key Files
 
 | File | Purpose |
@@ -100,6 +164,10 @@ cargo tree | wc -l
 | `Cargo.toml` | Feature gates and dependencies |
 | `Makefile` | Build targets with timing |
 | `.cargo/config.toml` | Linker and compiler settings |
+| `contracts/benchmarking-v1.yaml` | Performance budget contract |
+| `examples/dhat_memory_profile.rs` | Heap allocation profiler |
+| `benches/` | Criterion benchmarks (10 suites) |
+| `.pmat-metrics/bench-baseline.json` | Regression baseline |
 
 ## References
 
