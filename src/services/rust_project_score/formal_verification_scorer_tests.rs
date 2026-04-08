@@ -56,6 +56,7 @@ edition = "2021"
         std::fs::create_dir_all(&src_dir).expect("internal error");
 
         // Create file with unsafe blocks
+        // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
         std::fs::write(
             src_dir.join("lib.rs"),
             r#"

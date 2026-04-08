@@ -627,6 +627,7 @@ mod provability_tests {
             }
             
             // Impure function - mutable state
+            // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
             static mut COUNTER: i32 = 0;
             fn increment_counter() -> i32 {
                 unsafe {

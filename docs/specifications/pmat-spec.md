@@ -33,6 +33,7 @@
 | 23 | [Contract Surface Types](#23-contract-surface-types) | [contract-surface-types.md](components/contract-surface-types.md) | Active |
 | 24 | [Verification Backends](#24-verification-backends) | [verification-backends.md](components/verification-backends.md) | Active |
 | 25 | [Commit-Level Contract Enforcement & Asset Contracts](#25-commit-level-contract-enforcement--asset-contracts) | [commit-level-contract-enforcement.md](components/commit-level-contract-enforcement.md) | Active |
+| 26 | [Self-Enforcement & Dogfooding](#26-self-enforcement--dogfooding) | [self-enforcement.md](components/self-enforcement.md) | Active |
 
 ---
 
@@ -447,6 +448,19 @@ TDG (≤0.2) + L3 provable-contracts. apr-cli at 63% penetration, needs ≥95%
 **O(1) Firm Requirement:** All pre-commit checks < 45ms total from cached data.
 No cold verification in the commit path. Caches populated by `pmat work
 checkpoint`, `pmat comply refresh-contracts`, `pmat asset validate`.
+
+---
+
+## 26. Self-Enforcement & Dogfooding
+
+**Sub-spec**: [components/self-enforcement.md](components/self-enforcement.md)
+
+PMAT dogfooding: self-scoring at Grade A with 95% category penetration.
+Gap analysis, penetration model, continuous self-assessment workflow, and
+pre-release quality gate. CB-160 (self-score gate), CB-161 (penetration gate).
+
+**Key metrics**: RPS Grade A (≥90%), penetration ≥95% at 80% threshold,
+all 11 categories ≥70%, 10/11 categories ≥80%.
 
 ---
 

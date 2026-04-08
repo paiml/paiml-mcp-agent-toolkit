@@ -682,9 +682,14 @@ fn try_pv_lint_sarif(project_path: &Path) -> Option<String> {
     }
 }
 
-// Provable-contracts enforcement checks (CB-1201 through CB-1209)
-// Extracted for file health (CB-040) — check_pv_enforcement.rs
+// Provable-contracts enforcement helpers (shared by CB-1201 through CB-1209)
+include!("check_pv_enforcement_helpers.rs");
+// Provable-contracts enforcement checks (CB-1201, CB-1203)
 include!("check_pv_enforcement.rs");
+// Provable-contracts verification ladder (CB-1204 through CB-1207)
+include!("check_pv_verification_ladder.rs");
+// Provable-contracts quality gate (CB-1202, CB-1208, CB-1209)
+include!("check_pv_quality_gate.rs");
 include!("check_pv_quality.rs");
 include!("check_contract_surfaces.rs");
 include!("check_agent_contracts.rs");

@@ -327,6 +327,7 @@ mod tests {
     #[test]
     fn test_analyze_rust_simd_content() {
         let analyzer = CudaSimdAnalyzer::new();
+        // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
         let rust_content = r#"
             use std::arch::x86_64::*;
 

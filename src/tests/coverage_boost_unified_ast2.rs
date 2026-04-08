@@ -338,6 +338,7 @@ fn test_qualified_name_hash_eq() {
 #[test]
 fn test_node_metadata_default() {
     let meta = NodeMetadata::default();
+    // SAFETY: Test-only: NodeMetadata is a Copy union initialized to zero; reading `raw` is sound.
     assert_eq!(unsafe { meta.raw }, 0);
 }
 
@@ -345,6 +346,7 @@ fn test_node_metadata_default() {
 fn test_node_metadata_clone() {
     let meta = NodeMetadata { raw: 42 };
     let cloned = meta;
+    // SAFETY: Test-only: reading the same union field (`raw`) that was just written, no UB.
     assert_eq!(unsafe { cloned.raw }, 42);
 }
 

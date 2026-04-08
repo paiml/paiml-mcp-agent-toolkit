@@ -45,6 +45,7 @@
 
         // Create file with unsafe block without SAFETY comment
         let rs_file = src_dir.join("lib.rs");
+        // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
         std::fs::write(
             &rs_file,
             r#"

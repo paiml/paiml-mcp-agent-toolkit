@@ -11,6 +11,7 @@
 
     #[test]
     fn test_simd_unsafe_no_safety_comment() {
+        // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
         let content = "use std::arch::x86_64::*;\nfn f() {\nunsafe {\nlet a = _mm_add_ps(x, y);\n}\n}";
         let analysis = analyze_simd(content);
         assert!(has_defect(&analysis, "SIMD_UNSAFE_NO_SAFETY"));
@@ -18,6 +19,7 @@
 
     #[test]
     fn test_simd_unsafe_with_safety_comment() {
+        // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
         let content = "\
 use std::arch::x86_64::*;
 fn f() {
@@ -32,6 +34,7 @@ let a = _mm_add_ps(x, y);
 
     #[test]
     fn test_simd_unsafe_with_doc_safety_comment() {
+        // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
         let content = "\
 use std::arch::x86_64::*;
 fn f() {

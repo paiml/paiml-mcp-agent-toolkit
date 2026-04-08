@@ -705,8 +705,13 @@ required-features = ["lua-ast"]
 # Use default features for documentation (which excludes python-ast due to malachite-bigint build issues)
 features = ["default"]
 # Set DOCS_RS environment variable to skip network operations
-rustdoc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
 rustc-args = ["--cfg", "docsrs"]
+
+[package.metadata.release]
+pre-release-replacements = [
+    { file = "CHANGELOG.md", search = "\\[Unreleased\\]", replace = "[{{version}}] - {{date}}" },
+]
 
 # Lints (v2.0 - Learn from Rust Giants)
 # Source: Elite Rust projects (tokio, serde, clap, syn, regex)
@@ -748,6 +753,17 @@ opt-level = 0
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+[workspace]
+members = ["crates/pmat-dashboard"]
+resolver = "2"
+
+[workspace.package]
+version = "3.12.0"
+edition = "2021"
+authors = ["Pragmatic AI Labs"]
+homepage = "https://paiml.com"
+repository = "https://github.com/paiml/paiml-mcp-agent-toolkit"
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"

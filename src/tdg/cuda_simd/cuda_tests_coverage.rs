@@ -591,6 +591,7 @@ mod coverage_tests {
     #[test]
     fn test_simd_missing_target_feature() {
         let analyzer = CudaSimdAnalyzer::new();
+        // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
         let simd_content = r#"
             fn simd_func() {
                 unsafe {

@@ -104,6 +104,7 @@ impl SourceFlags {
     }
 
     fn infer_aliasing(&self) -> AliasLattice {
+        // SAFETY: No actual unsafe block — self.has_unsafe is a boolean flag from source analysis
         if self.has_raw_ptr || self.has_unsafe {
             // Raw pointers and unsafe bypass Rust's borrow checker — may alias
             AliasLattice::MayAlias
@@ -118,6 +119,7 @@ impl SourceFlags {
         if !self.has_io && !self.has_mut_ref && !self.has_unsafe && !self.has_loop {
             return PurityLattice::Pure;
         }
+        // SAFETY: No actual unsafe block — self.has_unsafe is a boolean flag from source analysis
         if self.has_io || self.has_unsafe {
             return PurityLattice::WriteGlobal;
         }

@@ -208,6 +208,7 @@ unsafe {
             "[package]\nname = \"test\"",
         )
         .unwrap();
+        // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"
@@ -387,6 +388,7 @@ fn foo() {
         .unwrap();
 
         // Create code with undocumented unsafe and dead code
+        // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"

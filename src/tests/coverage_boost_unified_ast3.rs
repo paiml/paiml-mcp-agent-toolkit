@@ -532,18 +532,21 @@ fn test_qualified_name_clone() {
 #[test]
 fn test_node_metadata_complexity_field() {
     let meta = NodeMetadata { complexity: 42 };
+    // SAFETY: Test-only: reading the same union field that was just written, no UB.
     assert_eq!(unsafe { meta.complexity }, 42);
 }
 
 #[test]
 fn test_node_metadata_hash_field() {
     let meta = NodeMetadata { hash: 0xDEADBEEF };
+    // SAFETY: Test-only: reading the same union field that was just written, no UB.
     assert_eq!(unsafe { meta.hash }, 0xDEADBEEF);
 }
 
 #[test]
 fn test_node_metadata_flags_field() {
     let meta = NodeMetadata { flags: 0xFF };
+    // SAFETY: Test-only: reading the same union field that was just written, no UB.
     assert_eq!(unsafe { meta.flags }, 0xFF);
 }
 
@@ -551,6 +554,7 @@ fn test_node_metadata_flags_field() {
 fn test_node_metadata_copy() {
     let meta = NodeMetadata { raw: 123 };
     let copied = meta;
+    // SAFETY: Test-only: reading the same union field that was just written, no UB.
     assert_eq!(unsafe { copied.raw }, 123);
 }
 

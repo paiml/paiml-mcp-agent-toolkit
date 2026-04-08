@@ -607,6 +607,7 @@ mod unified_ast_types_tests {
     #[test]
     fn test_node_metadata_default() {
         let metadata = NodeMetadata::default();
+        // SAFETY: Test-only: NodeMetadata is a Copy union initialized to zero; reading `raw` is sound.
         unsafe {
             assert_eq!(metadata.raw, 0);
         }
@@ -616,6 +617,7 @@ mod unified_ast_types_tests {
     fn test_node_metadata_clone() {
         let metadata = NodeMetadata { complexity: 42 };
         let cloned = metadata;
+        // SAFETY: Test-only: reading the same union field (`complexity`) that was just written, no UB.
         unsafe {
             assert_eq!(metadata.complexity, cloned.complexity);
         }

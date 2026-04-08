@@ -383,6 +383,7 @@ fn test_detect_fault_patterns() {
             function_name: "dangerous".to_string(),
             signature: "fn dangerous()".to_string(),
             doc_comment: None,
+            // SAFETY: String literal test fixture -- not an actual unsafe block in this file.
             source: "fn dangerous() { unsafe { panic!(\"boom\"); } }".to_string(),
             start_line: 1,
             end_line: 1,
