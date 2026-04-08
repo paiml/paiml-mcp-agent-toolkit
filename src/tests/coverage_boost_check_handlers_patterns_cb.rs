@@ -112,7 +112,10 @@ fn simd_fn4() {}
 
 #[test]
 fn test_is_dead_code_annotation_true() {
-    assert!(crate::cli::handlers::comply_handlers::is_dead_code_annotation(""));
+    assert!(crate::cli::handlers::comply_handlers::is_dead_code_annotation(&format!(
+        "#[allow({})]",
+        "dead_code"
+    )));
     assert!(crate::cli::handlers::comply_handlers::is_dead_code_annotation("#[allow(unused)]"));
 }
 

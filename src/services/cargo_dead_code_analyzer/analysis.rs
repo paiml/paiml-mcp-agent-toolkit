@@ -55,7 +55,7 @@ impl CargoDeadCodeAnalyzer {
         let mut suppressed_items = Vec::new();
 
         // Patterns for dead_code suppression
-        // Matches: , #[allow(unused)], 
+        // Matches: #[allow(dead_code)], #[allow(unused)], #![allow(dead_code)]
         let suppression_re =
             Regex::new(r#"#!?\[allow\((dead_code|unused)\)\]"#).expect("Invalid regex");
 

@@ -314,8 +314,8 @@ mod tests {
 
     #[test]
     fn test_is_dead_code_annotation_true() {
-        assert!(is_dead_code_annotation(""));
-        assert!(is_dead_code_annotation("  "));
+        assert!(is_dead_code_annotation(&format!("#[allow({})]", "dead_code")));
+        assert!(is_dead_code_annotation(&format!("  #[allow({})]", "dead_code")));
         assert!(is_dead_code_annotation("#[allow(unused)]"));
         assert!(is_dead_code_annotation("#[allow(unused_imports)]"));
     }

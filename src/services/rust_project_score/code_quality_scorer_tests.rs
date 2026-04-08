@@ -300,7 +300,7 @@ fn foo() {
         .unwrap();
         fs::write(
             temp_dir.path().join("src/lib.rs"),
-            &format!("\nfn unused1() {{}}\n#[allow({dc})]\nfn unused2() {{}}\n#[allow({dc})]\nfn unused3() {{}}\n#[allow({dc})]\nfn unused4() {{}}", dc = "dead_code"),
+            &format!("\nfn unused1() {{}}\n#[allow({dc})]\nfn unused2() {{}}\n#[allow({dc})]\nfn unused3() {{}}\n#[allow({dc})]\nfn unused4() {{}}\n#[allow({dc})]\nfn unused5() {{}}", dc = "dead_code"),
         )
         .unwrap();
 

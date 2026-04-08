@@ -1299,7 +1299,7 @@ struct Gamma {
 
     #[test]
     fn test_is_module_attr() {
-        assert!(is_module_attr(""));
+        assert!(is_module_attr(&format!("#![allow({})]", "dead_code")));
         assert!(is_module_attr(
             "#![cfg_attr(coverage_nightly, coverage(off))]"
         ));

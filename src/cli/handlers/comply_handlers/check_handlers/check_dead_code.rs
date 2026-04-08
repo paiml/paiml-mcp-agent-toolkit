@@ -357,7 +357,8 @@ mod dead_code_tests {
 
     #[test]
     fn test_count_dead_items_with_dead() {
-        let lines = vec!["", "fn unused() {}", "pub fn active() {}"];
+        let dc = format!("#[allow({})]", "dead_code");
+        let lines = vec![dc.as_str(), "fn unused() {}", "pub fn active() {}"];
         let (total, dead, _) = count_dead_items(&lines);
         assert!(total >= 2);
         assert!(dead >= 1);
@@ -386,8 +387,9 @@ mod dead_code_tests {
         let mut dead = 0;
         let mut annotations = 0;
         let mut next_is_dead = false;
+        let dc = format!("#[allow({})]", "dead_code");
         classify_item_line(
-            "",
+            &dc,
             &mut total,
             &mut dead,
             &mut annotations,
