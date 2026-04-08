@@ -4,13 +4,12 @@ metadata:
   author: PAIML Engineering
   registry: true
   description: >
-    PMAT-BOOK Chapter 35: Semantic Search and Code Clustering (pmat query)
-  contract: pmat-book-ch35-query
+    PMAT-BOOK file:ch35 — Semantic Search and Code Clustering (pmat query)
+  contract: pmat-book-ch35
   status: enforced
   title: "Semantic Search and Code Clustering"
   part: VI
   chapter_file: ch35-00-semantic-search.md
-  summary_chapter: 35
   critical: true
 
 preconditions:

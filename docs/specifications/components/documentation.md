@@ -74,15 +74,15 @@ about the chapter — no claim exists without a test.
 ```
 contracts/
   pmat-book-build-v1.yaml       # Build + deploy contract (mdbook, CI)
-  pmat-book-ch05-v1.yaml        # Ch 5: Analyze Suite (critical)
-  pmat-book-ch07-v1.yaml        # Ch 7: Quality Gates (critical)
-  pmat-book-ch13-v1.yaml        # Ch 14/file:ch13: Multi-Language (critical)
-  pmat-book-ch14-v1.yaml        # Ch 35/file:ch35: Semantic Search (critical)
+  pmat-book-ch05-v1.yaml        # file:ch05 — Analyze Suite (critical)
+  pmat-book-ch07-v1.yaml        # file:ch07 — Quality Gates (critical)
+  pmat-book-ch13-v1.yaml        # file:ch13 — Multi-Language Examples (critical)
+  pmat-book-ch35-v1.yaml        # file:ch35 — Semantic Search / pmat query (critical)
 ```
 
-**IMPORTANT**: Chapter numbers in SUMMARY.md don't match filenames.
-The `chapter_file` field is the authoritative path. `summary_chapter`
-records the display number. Falsification caught this mismatch.
+**Naming convention**: Contract filenames match the SOURCE FILE identifier
+(`ch05`, `ch07`, `ch13`, `ch35`), NOT the SUMMARY.md chapter number.
+The `chapter_file` field is the authoritative path to the .md source.
 
 ### Contract Structure (Per Chapter)
 
@@ -133,7 +133,7 @@ falsification:
 | `src/cli/handlers/readme_validate_handlers/` | README validation (module) |
 | `src/services/doc_validator.rs` | Link and reference checking |
 | `contracts/pmat-book-build-v1.yaml` | Book build/deploy contract |
-| `contracts/pmat-book-ch*.yaml` | Per-chapter falsification contracts |
+| `contracts/pmat-book-ch{NN}-v1.yaml` | Per-chapter falsification contracts (ch05, ch07, ch13, ch35) |
 
 ## References
 
