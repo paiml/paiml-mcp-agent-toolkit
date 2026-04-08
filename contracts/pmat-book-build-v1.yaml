@@ -1,0 +1,71 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-04-08"
+  author: PAIML Engineering
+  registry: true
+  references:
+    - "../pmat-book/book.toml"
+  description: >
+    Provable contract for the PMAT mdBook build and GitHub Pages deployment.
+    62 chapters covering CLI, MCP, TDG, quality gates, compliance, and
+    provable contracts. Falsification-first: every claim must be testable.
+  contract: pmat-book-build
+  status: enforced
+  title: "PMAT Book Build Contract"
+  tool: mdbook
+  source: "../pmat-book/"
+  config: "../pmat-book/book.toml"
+  summary: "../pmat-book/src/SUMMARY.md"
+  deploy: GitHub Pages via actions/deploy-pages@v4
+
+invariants:
+  structure:
+    - "book.toml exists and is valid TOML"
+    - "src/SUMMARY.md exists and lists all chapters"
+    - "Every .md path in SUMMARY.md exists on disk"
+    - "No include directive references a nonexistent file"
+
+  build:
+    - "mdbook build exits 0 with zero ERROR lines"
+    - "book/index.html exists after build"
+    - "No missing font errors in build output"
+
+  content:
+    - "SUMMARY.md spine covers chapters 1-62"
+    - "No stub-only chapters (every chapter has substantive content)"
+    - "Critical chapters (5, 7, 13, 14) pass validate-book"
+    - "All pmat CLI examples in chapters are valid commands"
+
+  ci:
+    - "Workflow triggers on push to main for pmat-book/** changes"
+    - "mdBook version pinned to specific release"
+
+preconditions:
+  - "mdbook binary available"
+  - "All chapter .md files committed to git"
+  - "pmat binary installed (for CLI example validation)"
+
+postconditions:
+  - "book/ contains valid HTML site"
+  - "GitHub Pages deployment succeeds on push to main"
+
+falsification:
+  - condition: "mdbook build exits non-zero"
+    severity: P0
+    action: reject_push
+  - condition: "SUMMARY.md references nonexistent .md file"
+    severity: P0
+    action: reject_push
+  - condition: "Critical chapter (5, 7, 13, 14) fails validate-book"
+    severity: P0
+    action: reject_push
+  - condition: "Chapter contains pmat command that exits non-zero"
+    severity: P1
+    action: fix_example
+  - condition: "SUMMARY.md contains stub-only chapter (< 50 words)"
+    severity: P0
+    action: delete_or_expand
+
+verification:
+  local: "make validate-book"
+  ci: ".github/workflows/book.yml"

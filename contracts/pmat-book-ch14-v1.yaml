@@ -1,0 +1,39 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-04-08"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    PMAT-BOOK Chapter 14: Semantic Search (pmat query)
+  contract: pmat-book-ch14
+  status: enforced
+  title: "Semantic Search"
+  part: IV
+  chapter_file: ch14-00-query.md
+  critical: true
+
+preconditions:
+  - "pmat binary installed and in PATH"
+  - ".pmat/context.db exists (index built)"
+
+postconditions:
+  - "All pmat query flags documented"
+  - "Contract metadata enrichment (PV:L2) shown in examples"
+  - "Coverage gaps mode documented with examples"
+
+falsification:
+  - condition: "pmat query 'test' --limit 1 exits non-zero"
+    severity: P0
+    action: reject_chapter
+  - condition: "Chapter documents --flag that doesn't exist in pmat query --help"
+    severity: P0
+    action: reject_chapter
+  - condition: "Chapter omits PV: contract enrichment (new in v3.12)"
+    severity: P1
+    action: add_section
+  - condition: "Example query output doesn't show TDG grade"
+    severity: P1
+    action: update_examples
+  - condition: "Chapter claims O(1) but query latency >500ms on cached index"
+    severity: P2
+    action: investigate_perf

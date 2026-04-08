@@ -1,0 +1,36 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-04-08"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    PMAT-BOOK Chapter 5: The Analyze Command Suite
+  contract: pmat-book-ch05
+  status: enforced
+  title: "The Analyze Command Suite"
+  part: III
+  chapter_file: ch05-00-analyze-suite.md
+
+preconditions:
+  - "pmat binary installed and in PATH"
+  - "pmat analyze complexity --help exits 0"
+  - "pmat analyze dead-code --help exits 0"
+  - "pmat analyze satd --help exits 0"
+
+postconditions:
+  - "All pmat analyze subcommands documented"
+  - "Example output matches current pmat version"
+
+falsification:
+  - condition: "pmat analyze complexity --path . exits non-zero on test project"
+    severity: P0
+    action: reject_chapter
+  - condition: "pmat analyze dead-code --path . exits non-zero on test project"
+    severity: P0
+    action: reject_chapter
+  - condition: "Chapter claims feature that doesn't exist in current pmat --help"
+    severity: P0
+    action: reject_chapter
+  - condition: "Example output doesn't match pmat version in Cargo.toml"
+    severity: P1
+    action: update_examples

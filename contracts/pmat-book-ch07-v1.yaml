@@ -1,0 +1,34 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-04-08"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    PMAT-BOOK Chapter 7: Quality Gates
+  contract: pmat-book-ch07
+  status: enforced
+  title: "Quality Gates"
+  part: III
+  chapter_file: ch07-00-quality-gate.md
+
+preconditions:
+  - "pmat binary installed and in PATH"
+  - ".pmat-metrics/ directory exists (from make lint/test-fast)"
+
+postconditions:
+  - "O(1) quality gate concept explained with timing evidence"
+  - "Pre-commit hook configuration documented"
+
+falsification:
+  - condition: "Pre-commit hook takes >45ms on cached metrics"
+    severity: P0
+    action: reject_chapter
+  - condition: "Chapter references .pmat-metrics.toml thresholds that don't match actual file"
+    severity: P0
+    action: reject_chapter
+  - condition: "make lint exits non-zero"
+    severity: P0
+    action: reject_chapter
+  - condition: "Chapter claims metric name not in .pmat-metrics.toml"
+    severity: P1
+    action: fix_claim
