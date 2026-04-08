@@ -1,0 +1,74 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-04-08"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    Workspace-aware rust-project-score: detect and score subcrates in
+    monorepo workspaces (e.g., aprender with 60+ crates). Each subcrate
+    gets its own RPS score. Aggregate scores into workspace-level grade.
+  contract: workspace-scoring
+  status: planned
+  references:
+    - docs/specifications/components/repo-health.md
+
+equations:
+  subcrate_discovery:
+    formula: subcrates = discover_workspace_members(project_path)
+    domain: project_path in Path, Cargo.toml exists
+    codomain: subcrates in Vec<(String, PathBuf)>
+    invariants:
+    - subcrates.len() >= 1 (workspace always has at least the root)
+    - all paths in subcrates are valid directories with Cargo.toml
+    preconditions:
+    - project_path.join("Cargo.toml").exists()
+    lean_theorem: Theorems.Workspace_Discovery_Nonempty
+
+  workspace_aggregate:
+    formula: workspace_score = geometric_mean(subcrate_scores)
+    domain: subcrate_scores in Vec<f64>, all >= 0.0
+    codomain: workspace_score in [0.0, 100.0]
+    invariants:
+    - workspace_score >= min(subcrate_scores) (geometric mean property)
+    - workspace_score <= max(subcrate_scores)
+    preconditions:
+    - subcrate_scores.len() > 0
+    lean_theorem: Theorems.Geometric_Mean_Bounded
+
+  per_crate_scoring:
+    formula: crate_score = rps_score(subcrate_path)
+    domain: subcrate_path in Path, subcrate_path.join("Cargo.toml").exists()
+    codomain: crate_score in CategoryScore
+    invariants:
+    - crate_score.earned >= 0.0
+    - crate_score.earned <= crate_score.max
+    preconditions:
+    - subcrate_path.join("src").exists() || subcrate_path.join("lib.rs").exists()
+    lean_theorem: Theorems.Score_Range_NonNeg
+
+preconditions:
+  - "pmat rust-project-score --help exits 0"
+  - "Target workspace (e.g., ../aprender) has Cargo.toml with [workspace]"
+  - "At least 1 workspace member has src/ directory"
+
+postconditions:
+  - "pmat rust-project-score --path ../aprender produces per-crate table"
+  - "Workspace aggregate score is geometric mean of subcrate scores"
+  - "Subcrates without src/ are skipped (not errored)"
+
+falsification:
+  - condition: "pmat rust-project-score --path ../aprender panics"
+    severity: P0
+    action: fix_panic
+  - condition: "Workspace with 0 members returns non-zero score"
+    severity: P0
+    action: fix_logic
+  - condition: "Per-crate score exceeds 289 (max RPS)"
+    severity: P0
+    action: fix_bounds
+  - condition: "Subcrate without Cargo.toml is included in scoring"
+    severity: P1
+    action: skip_invalid
+  - condition: "Aggregate geometric mean exceeds max individual score"
+    severity: P0
+    action: fix_math

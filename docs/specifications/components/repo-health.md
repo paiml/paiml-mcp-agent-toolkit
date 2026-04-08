@@ -80,6 +80,37 @@ before the full score is computed.
 
 Scoring derived from 15 peer-reviewed papers (2022-2025) on Rust project quality.
 
+### Workspace-Aware Scoring (Planned)
+
+**Contract**: `contracts/workspace-scoring-v1.yaml`
+
+Monorepo workspaces (e.g., aprender with 60+ crates) need per-subcrate
+scoring, not just root-level. Design:
+
+```bash
+pmat rust-project-score --path ../aprender
+# Output:
+#   aprender (workspace): A- (87.5%)
+#   ├── aprender-core: A (92%)
+#   ├── aprender-compute: B+ (85%)
+#   ├── aprender-graph: A- (88%)
+#   └── ... (60+ crates)
+```
+
+**Discovery**: Parse `[workspace] members` from root `Cargo.toml`,
+expand globs, filter to directories with `src/` or `lib.rs`.
+
+**Per-crate scoring**: Run the 11 RPS category scorers on each
+subcrate's path independently. Reuse `FileCache` across subcrates
+for shared dependencies.
+
+**Aggregate**: Workspace score = geometric mean of subcrate scores.
+One failing crate drags the workspace score (same principle as
+composite score geometric mean).
+
+**O(1) caching**: Per-crate scores cached in `.pmat-metrics/workspace-scores.json`.
+Invalidated by Cargo.toml mtime or `[workspace] members` change.
+
 ## pmat comply (90+ Checks)
 
 ### Check Categories
