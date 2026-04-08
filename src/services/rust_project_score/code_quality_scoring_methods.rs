@@ -78,6 +78,64 @@ impl CodeQualityScorer {
         }
     }
 
+    /// Fast-mode mutation testing estimation
+    ///
+    /// Checks for mutation testing infrastructure (mutants.toml, cargo-mutants in Makefile)
+    /// and gives proportional credit without running the expensive tool.
+    fn estimate_mutation_fast(&self, project_path: &Path) -> f64 {
+        let has_config = project_path.join("mutants.toml").exists()
+            || project_path.join(".config/mutants.toml").exists();
+        let makefile_content =
+            std::fs::read_to_string(project_path.join("Makefile")).unwrap_or_default();
+        let has_makefile_target = makefile_content.contains("cargo mutants")
+            || makefile_content.contains("mutation");
+
+        if has_config && has_makefile_target {
+            5.0 // Infrastructure + build target = good credit
+        } else if has_config || has_makefile_target {
+            4.0 // Partial infrastructure
+        } else {
+            3.0 // Minimal credit (tests exist but no mutation setup)
+        }
+    }
+
+    /// Fast-mode build time estimation
+    ///
+    /// Checks build configuration quality (LTO, profiles, .cargo/config.toml)
+    /// and gives proportional credit without running a full build.
+    fn estimate_build_time_fast(
+        &self,
+        project_path: &Path,
+        cache: Option<&FileCache>,
+    ) -> f64 {
+        let cargo_content = cache
+            .and_then(|c| c.get(&project_path.join("Cargo.toml")))
+            .cloned()
+            .or_else(|| std::fs::read_to_string(project_path.join("Cargo.toml")).ok())
+            .unwrap_or_default();
+
+        let mut score: f64 = 1.0; // Base credit for having a Rust project
+
+        // Release profile optimization
+        if cargo_content.contains("[profile.release]") {
+            score += 0.5;
+        }
+        // LTO configured (build optimization)
+        if cargo_content.contains("lto = ") {
+            score += 0.5;
+        }
+        // .cargo/config.toml (build settings)
+        if project_path.join(".cargo/config.toml").exists() {
+            score += 0.5;
+        }
+        // Makefile or justfile (build automation)
+        if project_path.join("Makefile").exists() || project_path.join("justfile").exists() {
+            score += 0.5;
+        }
+
+        score.min(3.0) // Cap at 3.0 — reserve 4.0 for verified <30s builds
+    }
+
     /// Internal scoring logic that accepts optional cache
     fn score_internal(
         &self,
@@ -109,7 +167,7 @@ impl CodeQualityScorer {
                 Err(_) => total_earned += 4.0,
             }
         } else {
-            total_earned += 4.0;
+            total_earned += self.estimate_mutation_fast(project_path);
         }
 
         if mode.is_full() {
@@ -118,7 +176,7 @@ impl CodeQualityScorer {
                 Err(_) => total_earned += 2.0,
             }
         } else {
-            total_earned += 2.0;
+            total_earned += self.estimate_build_time_fast(project_path, cache);
         }
 
         match self.score_dead_code(project_path, cache) {

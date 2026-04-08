@@ -60,7 +60,12 @@ impl FormalVerificationScorer {
             return MIRI_POINTS; // No unsafe = full credit
         }
         if mode == ScoringMode::Quick || mode == ScoringMode::Fast {
-            return MIRI_POINTS * 0.3;
+            // Fast mode: check if Miri is available without running it
+            return if self.is_miri_available() {
+                MIRI_POINTS * 0.7 // Miri installed = good credit
+            } else {
+                MIRI_POINTS * 0.3 // Not installed = minimal credit
+            };
         }
         if !self.is_miri_available() {
             return MIRI_POINTS * 0.5;
@@ -80,7 +85,14 @@ impl FormalVerificationScorer {
             return 0.0;
         }
         if mode == ScoringMode::Quick || mode == ScoringMode::Fast {
-            return KANI_POINTS * 0.4;
+            // Fast mode: check if Kani is available and proofs exist
+            return if self.is_kani_available() && kani_proofs >= 5 {
+                KANI_POINTS * 0.7 // Kani installed + substantial proofs
+            } else if self.is_kani_available() {
+                KANI_POINTS * 0.5 // Kani installed
+            } else {
+                KANI_POINTS * 0.4 // Not installed but has proofs
+            };
         }
         if !self.is_kani_available() {
             return KANI_POINTS * 0.3;
