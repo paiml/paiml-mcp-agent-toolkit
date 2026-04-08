@@ -48,11 +48,14 @@ impl DependencyScorer {
                 in_dependencies = false;
             }
 
-            // Count dependencies (lines with = that aren't comments)
+            // Count non-optional dependencies (lines with = that aren't comments)
+            // Optional deps behind feature gates don't affect the default build
             if in_dependencies
                 && !trimmed.starts_with('#')
                 && trimmed.contains('=')
                 && !trimmed.is_empty()
+                && !trimmed.contains("optional = true")
+                && !trimmed.contains("optional=true")
             {
                 dependency_count += 1;
             }

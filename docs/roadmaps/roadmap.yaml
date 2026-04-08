@@ -2940,3 +2940,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-601
+  github_issue: null
+  item_type: task
+  title: 'New task: PMAT-601'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-08T10:57:38.645122239+00:00
+  updated: 2026-04-08T10:57:38.645122239+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
