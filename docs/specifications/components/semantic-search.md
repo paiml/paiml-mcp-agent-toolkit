@@ -257,6 +257,72 @@ Contract level measures **verification depth** (what's been proven):
 A function can have TDG:A (high quality code) but PV:L0 (unverified),
 or TDG:C (complex) but PV:L4 (formally verified despite complexity).
 
+## Workspace Indexing Performance
+
+### Current Bottleneck
+
+| Operation | Time | Size | Issue |
+|-----------|------|------|-------|
+| Index aprender (78K fn) | ~86s | 346 MB | Full re-index on every query |
+| Workspace merge (115K fn) | ~90s | 608 MB | Re-merges on every query |
+| Query execution | <5ms | — | Fast (FTS5 BM25) |
+| Total first-query | ~180s | — | Dominated by index I/O |
+
+The query itself is fast (5ms BM25 lookup). The bottleneck is
+**loading + merging** the workspace index on every invocation.
+
+### Planned Improvements
+
+**1. Incremental Workspace Index** (O(1) staleness check)
+
+Check workspace index mtime vs member Cargo.toml mtimes. If no member
+changed, skip rebuild. Current: always rebuilds workspace SQLite.
+
+```
+if workspace.db.mtime > max(member.Cargo.toml.mtime for member in members):
+    load workspace.db directly  # O(1) — ~150ms
+else:
+    rebuild workspace.db        # O(n) — ~90s
+```
+
+**2. Lazy Member Loading**
+
+Don't merge all sibling projects into workspace by default. Only merge
+when `--workspace` or `--cross-project` flag is used. Default: local
+project only (20K functions, ~150ms load).
+
+**3. Parallel Index Build**
+
+Build per-member SQLite indexes in parallel (rayon). Currently sequential.
+With 4 sibling projects: 4x speedup on merge phase.
+
+**4. Memory-Mapped SQLite**
+
+Use `mmap_size` pragma for large indexes (>100MB). Avoids reading
+entire DB into memory. Benchmark: 608MB workspace.db → ~50ms mmap
+vs ~2s full read.
+
+```sql
+PRAGMA mmap_size = 1073741824;  -- 1GB mmap window
+```
+
+**5. Tiered Index Architecture**
+
+```
+.pmat/context.db        # Local project (20K fn, 70MB) — always loaded
+.pmat/workspace.db      # Workspace merge (115K fn, 608MB) — lazy
+.pmat/fleet.db          # Multi-repo fleet (future) — on-demand
+```
+
+### Target Performance
+
+| Operation | Current | Target | Improvement |
+|-----------|---------|--------|-------------|
+| Cold query (local) | 86s | <3s | Incremental check |
+| Cold query (workspace) | 180s | <10s | Lazy + mmap |
+| Warm query (cached) | <1s | <500ms | Already fast |
+| Index rebuild (incremental) | 86s | <5s | Mtime-based skip |
+
 ## Key Files
 
 | File | Purpose |

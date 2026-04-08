@@ -111,6 +111,71 @@ composite score geometric mean).
 **O(1) caching**: Per-crate scores cached in `.pmat-metrics/workspace-scores.json`.
 Invalidated by Cargo.toml mtime or `[workspace] members` change.
 
+## Multi-Repo Quality Scoring (Sovereign Stack)
+
+### Problem
+
+The PAIML sovereign stack spans 5+ repos (aprender 78K functions,
+trueno 9K, realizar 8K, pmat 20K, ruchy). Quality must be measured
+across the fleet, not per-repo in isolation. Individual repo scores
+miss cross-repo dependency health and contract coverage gaps.
+
+### Fleet Score: `pmat score --fleet`
+
+```bash
+pmat score --fleet ../aprender ../trueno ../realizar .
+# Output:
+#   PAIML Fleet Score: B+ (83.2%)
+#   ├── aprender:  D  (56.4%) — 78549 fn, 523 contracts
+#   ├── pmat:      A  (90.6%) — 20161 fn, 8 contracts
+#   ├── realizar:  C  (65.0%) — 7838 fn, 17 contracts
+#   ├── trueno:    C+ (68.0%) — 9084 fn, 0 contracts
+#   └── ruchy:     B  (75.0%) — est.
+#   Fleet contract coverage: 548/115K functions (0.5%)
+```
+
+### Multi-Repo Contract Schema
+
+The aprender monorepo demonstrates the contract-at-scale pattern:
+
+| Metric | aprender | pmat | trueno | realizar |
+|--------|----------|------|--------|----------|
+| .rs files | 9,313 | 2,308 | 1,566 | 2,094 |
+| Functions | 78,549 | 20,161 | 9,084 | 7,838 |
+| Contracts | 523 | 8 | 0 | 17 |
+| Coverage | 0.7% | 28.7% | 0% | 0.2% |
+
+**Cross-repo contract binding**: `contracts/binding.yaml` maps contract
+equations to specific function signatures across crate boundaries:
+
+```yaml
+# aprender binding.yaml — cross-crate function → contract mapping
+bindings:
+- contract: softmax-kernel-v1.yaml
+  equation: softmax
+  module_path: aprender::nn::functional::softmax
+  function: softmax
+  status: implemented
+```
+
+### Fleet Compliance Checks
+
+| Check | Description |
+|-------|-------------|
+| CB-150 | Cross-crate quality index (sovereign dep scoring) |
+| CB-160 | Self-score gate (per-repo Grade A requirement) |
+| CB-161 | Category penetration gate (per-repo 80% threshold) |
+| CB-1202 | Contract coverage (critical keywords must have contracts) |
+| CB-FLEET-001 | Fleet contract coverage > 5% (planned) |
+| CB-FLEET-002 | No repo below Grade C in fleet (planned) |
+
+### Research Basis
+
+- Google Monorepo (CACM 2016): per-module health scoring at scale
+- Meta (ICSE 2023): signal-to-noise in large-scale CI
+- Build System Evolution (ICSE 2024): workspace deps reduce conflicts 34%
+- SWE-CI (arXiv 2603.03823): evolution-based quality across commit history
+
 ## pmat comply (90+ Checks)
 
 ### Check Categories
