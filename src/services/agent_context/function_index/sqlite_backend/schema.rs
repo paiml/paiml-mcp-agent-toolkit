@@ -71,7 +71,9 @@ pub(crate) fn create_schema(conn: &Connection) -> Result<(), String> {
             churn_score REAL NOT NULL DEFAULT 0.0,
             clone_count INTEGER NOT NULL DEFAULT 0,
             pattern_diversity REAL NOT NULL DEFAULT 0.0,
-            fault_annotations TEXT NOT NULL DEFAULT '[]'
+            fault_annotations TEXT NOT NULL DEFAULT '[]',
+            contract_level TEXT,
+            contract_equation TEXT
         );
 
         CREATE TABLE IF NOT EXISTS call_graph (

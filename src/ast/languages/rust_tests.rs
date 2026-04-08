@@ -387,7 +387,7 @@ mod coverage_tests {
                 }
             }
 
-            /// State of state lifecycle.
+            /// Refactoring state machine lifecycle state.
             pub enum State {
                 Active,
                 Inactive,

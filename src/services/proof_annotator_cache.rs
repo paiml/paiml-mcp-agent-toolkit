@@ -14,7 +14,7 @@ impl ProofCache {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Retrieve a value.
+    /// Get a registered service by name.
     pub fn get(&self, key: &str) -> Option<&Vec<ProofAnnotation>> {
         self.cache.get(key)
     }

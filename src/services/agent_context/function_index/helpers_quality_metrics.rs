@@ -1,3 +1,38 @@
+/// Extract contract metadata from context around the function definition.
+///
+/// Scans the 5 lines BEFORE `start_line` in the full file content for
+/// `#[provable_contracts_macros::contract("yaml", equation = "eq")]`.
+/// O(1) per function — no file I/O, just line indexing of already-loaded content.
+fn extract_contract_metadata_from_context(
+    full_content: &str,
+    start_line: usize,
+) -> (Option<String>, Option<String>) {
+    let lines: Vec<&str> = full_content.lines().collect();
+    // Scan 5 lines before the function definition (attributes are above)
+    let scan_start = start_line.saturating_sub(5).max(1);
+    for line_num in scan_start..start_line {
+        if line_num == 0 || line_num > lines.len() {
+            continue;
+        }
+        let trimmed = lines[line_num - 1].trim(); // lines are 0-indexed, start_line is 1-indexed
+        if trimmed.contains("contract(") && trimmed.contains("equation") {
+            // Extract equation name: equation = "name"
+            if let Some(eq_start) = trimmed.find("equation") {
+                let after_eq = &trimmed[eq_start..];
+                if let Some(q1) = after_eq.find('"') {
+                    let after_q1 = &after_eq[q1 + 1..];
+                    if let Some(q2) = after_q1.find('"') {
+                        let equation = after_q1[..q2].to_string();
+                        return (Some("L2".to_string()), Some(equation));
+                    }
+                }
+            }
+            return (Some("L2".to_string()), None);
+        }
+    }
+    (None, None)
+}
+
 /// Check if directory should be ignored
 pub(super) fn is_ignored_dir(path: &Path) -> bool {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -96,6 +131,11 @@ pub(super) fn extract_quality_metrics(chunk: &CodeChunk, _full_content: &str) ->
     let tdg_score = calculate_simple_tdg(complexity, satd_count, effective_loc);
     let tdg_grade = score_to_grade(tdg_score);
 
+    // Extract contract annotation from the lines preceding the function in full file content
+    let (contract_level, contract_equation) = extract_contract_metadata_from_context(
+        _full_content, chunk.start_line
+    );
+
     QualityMetrics {
         tdg_score,
         tdg_grade,
@@ -106,6 +146,8 @@ pub(super) fn extract_quality_metrics(chunk: &CodeChunk, _full_content: &str) ->
         loc,
         commit_count: 0,  // Populated later by churn enrichment
         churn_score: 0.0, // Populated later by churn enrichment
+        contract_level,
+        contract_equation,
     }
 }
 

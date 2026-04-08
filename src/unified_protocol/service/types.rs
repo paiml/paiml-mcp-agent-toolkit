@@ -48,7 +48,7 @@ pub struct GenerateParams {
 }
 
 #[derive(Debug, Serialize)]
-/// Template for generated generation.
+/// Generated template output with content and metadata.
 pub struct GeneratedTemplate {
     pub template_id: String,
     pub content: String,

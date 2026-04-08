@@ -10,8 +10,11 @@ pub fn format_text_with_code(results: &[QueryResult], highlight: Option<(&str, b
 
     for r in results.iter() {
         // Header line
+        let pv = r.contract_level.as_deref()
+            .map(|l| format!(" │ PV:\x1b[33m{l}\x1b[0m"))
+            .unwrap_or_default();
         output.push_str(&format!(
-            "\x1b[36m{}\x1b[0m:\x1b[33m{}-{}\x1b[0m │ \x1b[1;37m{}\x1b[0m │ TDG: \x1b[32m{}\x1b[0m │ \x1b[35m{}\x1b[0m\n",
+            "\x1b[36m{}\x1b[0m:\x1b[33m{}-{}\x1b[0m │ \x1b[1;37m{}\x1b[0m │ TDG: \x1b[32m{}\x1b[0m │ \x1b[35m{}\x1b[0m{pv}\n",
             r.file_path, r.start_line, r.end_line, r.function_name, r.tdg_grade, r.big_o
         ));
 
@@ -78,6 +81,18 @@ fn build_text_metrics(r: &QueryResult) -> String {
         ));
     }
     format_coverage_metrics_text(r, &mut m);
+    // Contract verification level
+    if let Some(ref level) = r.contract_level {
+        let pv_color = match level.as_str() {
+            "L4" | "L5" => "\x1b[1;32m", // green
+            "L2" | "L3" => "\x1b[33m",   // yellow
+            _ => "\x1b[2m",              // dim
+        };
+        m.push_str(&format!(" | PV:{pv_color}{level}\x1b[0m"));
+        if let Some(ref eq) = r.contract_equation {
+            m.push_str(&format!("\x1b[2m({eq})\x1b[0m"));
+        }
+    }
     m
 }
 

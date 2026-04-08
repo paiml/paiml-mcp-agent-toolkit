@@ -29,7 +29,7 @@ impl StepRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Retrieve a value.
+    /// Get a step by identifier.
     pub fn get(&self, name: &str) -> Option<&dyn StepHandler> {
         self._steps.get(name).map(|b| b.as_ref())
     }
@@ -41,7 +41,7 @@ impl StepRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// List.
+    /// List all available step types.
     pub fn list(&self) -> Vec<&String> {
         self._steps.keys().collect()
     }

@@ -32,6 +32,8 @@ fn read_quality_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<QualityMet
         loc: row.get::<_, i64>(16)? as u32,
         commit_count: row.get::<_, i64>(17)? as u32,
         churn_score: row.get::<_, f64>(18)? as f32,
+        contract_level: row.get(22).ok().flatten(),
+        contract_equation: row.get(23).ok().flatten(),
     })
 }
 
@@ -46,7 +48,7 @@ pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, St
                     source, start_line, end_line, language, checksum,
                     tdg_score, tdg_grade, complexity, cognitive_complexity, big_o,
                     satd_count, loc, commit_count, churn_score, clone_count,
-                    pattern_diversity, fault_annotations
+                    pattern_diversity, fault_annotations, contract_level, contract_equation
              FROM functions ORDER BY id",
         )
         .map_err(|e| format!("Failed to prepare load: {e}"))?;
@@ -129,6 +131,8 @@ pub(crate) fn load_functions_lightweight(conn: &Connection) -> Result<Vec<Functi
                     loc: row.get::<_, i64>(15)? as u32,
                     commit_count: row.get::<_, i64>(16)? as u32,
                     churn_score: row.get::<_, f64>(17)? as f32,
+                    contract_level: None,
+                    contract_equation: None,
                 },
                 checksum: row.get(8)?,
                 commit_count: row.get::<_, i64>(16)? as u32,

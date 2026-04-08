@@ -26,7 +26,7 @@ impl<T: Clone> ColumnStore<T> {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Retrieve a value.
+    /// Get a node by identifier.
     pub fn get(&self, key: NodeKey) -> Option<&T> {
         self.data.get(key as usize)
     }

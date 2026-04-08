@@ -30,6 +30,12 @@ pub struct QualityMetrics {
     /// Churn score (0.0-1.0, higher = more volatile)
     #[serde(default)]
     pub churn_score: f32,
+    /// Contract verification level (L0-L5, None if no contract)
+    #[serde(default)]
+    pub contract_level: Option<String>,
+    /// Contract equation name (from #[contract] attribute)
+    #[serde(default)]
+    pub contract_equation: Option<String>,
 }
 
 /// Definition type for indexed items (issue #150)

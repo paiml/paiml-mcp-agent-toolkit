@@ -57,13 +57,13 @@ impl ToolRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// List.
+    /// List all registered tools.
     pub fn list(&self) -> Vec<ToolMetadata> {
         self.metadata.values().cloned().collect()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Retrieve a value.
+    /// Get a registered tool by name.
     pub fn get(&self, name: &str) -> Option<Arc<dyn McpTool>> {
         self.tools.get(name).cloned()
     }
@@ -139,13 +139,13 @@ impl ResourceRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// List.
+    /// List all registered resource templates.
     pub fn list(&self) -> Vec<ResourceTemplate> {
         self.templates.values().cloned().collect()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Retrieve a value.
+    /// Get a registered resource by URI template.
     pub fn get(&self, uri_template: &str) -> Option<Arc<dyn McpResource>> {
         self.resources.get(uri_template).cloned()
     }
@@ -250,13 +250,13 @@ impl PromptRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// List.
+    /// List all registered prompts.
     pub fn list(&self) -> Vec<PromptMetadata> {
         self.metadata.values().cloned().collect()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Retrieve a value.
+    /// Get a registered prompt by name.
     pub fn get(&self, name: &str) -> Option<Arc<dyn McpPrompt>> {
         self.prompts.get(name).cloned()
     }

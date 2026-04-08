@@ -9,7 +9,7 @@ pub struct RefactorStateMachine {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-/// State of state lifecycle.
+/// Refactoring state machine lifecycle state.
 pub enum State {
     Scan { targets: Vec<PathBuf> },
     Analyze { current: FileId },

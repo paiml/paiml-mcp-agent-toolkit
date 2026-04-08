@@ -27,7 +27,7 @@ impl AdapterRegistry {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Retrieve a value.
+    /// Get a handler by method name.
     pub fn get(
         &self,
         protocol: Protocol,

@@ -14,7 +14,7 @@ impl ContextCache {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Retrieve a value.
+    /// Get a cached value by key.
     pub fn get(&self, key: &str) -> Option<&AnalysisResult> {
         self.entries.get(key).map(|entry| &entry.result)
     }

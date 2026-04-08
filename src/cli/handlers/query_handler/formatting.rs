@@ -204,7 +204,12 @@ fn print_context_for_result(
     };
     let lines: Vec<&str> = content.lines().collect();
     let end = (r.end_line + ctx_after).min(lines.len());
-    println!("{BOLD}{CYAN}{}{RESET}:{YELLOW}{}{RESET}-{YELLOW}{}{RESET}  {WHITE}{}{RESET}  TDG:{GREEN}{}{RESET}",
+    let pv_display = r
+        .contract_level
+        .as_deref()
+        .map(|l| format!("  PV:{GREEN}{l}{RESET}"))
+        .unwrap_or_default();
+    println!("{BOLD}{CYAN}{}{RESET}:{YELLOW}{}{RESET}-{YELLOW}{}{RESET}  {WHITE}{}{RESET}  TDG:{GREEN}{}{RESET}{pv_display}",
         r.file_path, start, end, r.function_name, r.tdg_grade);
     for (line_idx, line) in lines
         .iter()

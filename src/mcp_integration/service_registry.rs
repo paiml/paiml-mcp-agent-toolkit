@@ -65,13 +65,13 @@ impl ServiceRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Retrieve a value.
+    /// Get a registered service by name.
     pub fn get(&self, name: &str) -> Option<Arc<dyn Service>> {
         self.services.read().get(name).cloned()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// List.
+    /// List all registered services.
     pub fn list(&self) -> Vec<ServiceMetadata> {
         self.metadata.read().values().cloned().collect()
     }

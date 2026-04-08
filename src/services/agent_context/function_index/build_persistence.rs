@@ -1,3 +1,30 @@
+/// Enrich functions with contract metadata from SQLite (optional columns).
+///
+/// Handles old schema gracefully — if contract_level/contract_equation
+/// columns don't exist, silently skips enrichment.
+fn enrich_contract_metadata(conn: &rusqlite::Connection, functions: &mut [FunctionEntry]) {
+    let query = "SELECT id, contract_level, contract_equation FROM functions WHERE contract_level IS NOT NULL ORDER BY id";
+    let Ok(mut stmt) = conn.prepare(query) else {
+        return; // Column doesn't exist in old schema — skip
+    };
+    let Ok(rows) = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, i64>(0)? as usize,
+            row.get::<_, Option<String>>(1)?,
+            row.get::<_, Option<String>>(2)?,
+        ))
+    }) else {
+        return;
+    };
+    for row in rows.flatten() {
+        let (id, level, equation) = row;
+        if id >= 1 && id <= functions.len() {
+            functions[id - 1].quality.contract_level = level;
+            functions[id - 1].quality.contract_equation = equation;
+        }
+    }
+}
+
 impl AgentContextIndex {
     /// Save index to directory
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
@@ -70,7 +97,9 @@ impl AgentContextIndex {
 
         let conn = open_db(db_path)?;
         let manifest = load_metadata(&conn)?;
-        let functions = load_functions_lightweight(&conn)?;
+        let mut functions = load_functions_lightweight(&conn)?;
+        // Enrich with contract metadata (optional columns, may not exist in old schemas)
+        enrich_contract_metadata(&conn, &mut functions);
         let graph_metrics = load_graph_metrics(&conn)?;
         // Call graph loaded on-demand via get_calls()/get_called_by() SQLite fallback
         let calls = HashMap::new();

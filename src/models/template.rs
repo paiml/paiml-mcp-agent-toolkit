@@ -119,7 +119,7 @@ pub enum ParameterType {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-/// Template for generated generation.
+/// Generated template output with content and metadata.
 pub struct GeneratedTemplate {
     pub content: String,
     pub filename: String,

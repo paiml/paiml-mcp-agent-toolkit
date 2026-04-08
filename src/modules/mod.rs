@@ -69,7 +69,7 @@ impl ModuleRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    /// Retrieve a value.
+    /// Get a module by name.
     pub fn get<T>(&self, name: &str) -> Option<Arc<T>>
     where
         T: std::any::Any + Send + Sync + 'static,

@@ -218,6 +218,12 @@ pub struct QueryResult {
     /// Suggested extraction module name
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub suggested_module: String,
+    /// Contract verification level (L0-L5, None if no contract)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_level: Option<String>,
+    /// Contract equation name
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_equation: Option<String>,
 }
 
 fn is_zero_f32(v: &f32) -> bool {
@@ -277,6 +283,8 @@ impl QueryResult {
             io_classification: String::new(),
             io_patterns: Vec::new(),
             suggested_module: String::new(),
+            contract_level: entry.quality.contract_level.clone(),
+            contract_equation: entry.quality.contract_equation.clone(),
         }
     }
 

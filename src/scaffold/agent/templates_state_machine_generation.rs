@@ -104,7 +104,7 @@ fn generate_state_definitions(ctx: &AgentContext) -> String {
 use serde::{{Deserialize, Serialize}};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-/// State of state lifecycle.
+/// Refactoring state machine lifecycle state.
 pub enum State {{
     Initial,
     Processing,

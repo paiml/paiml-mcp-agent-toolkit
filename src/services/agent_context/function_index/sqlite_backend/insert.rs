@@ -32,8 +32,8 @@ pub(crate) fn insert_functions(
                     source, start_line, end_line, language, checksum,
                     tdg_score, tdg_grade, complexity, cognitive_complexity, big_o,
                     satd_count, loc, commit_count, churn_score, clone_count,
-                    pattern_diversity, fault_annotations
-                ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
+                    pattern_diversity, fault_annotations, contract_level, contract_equation
+                ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)",
             )
             .map_err(|e| format!("Failed to prepare insert: {e}"))?;
 
@@ -71,6 +71,8 @@ pub(crate) fn insert_functions(
                 func.clone_count,
                 func.pattern_diversity,
                 faults_json,
+                func.quality.contract_level,
+                func.quality.contract_equation,
             ])
             .map_err(|e| format!("Failed to insert function {}: {e}", idx))?;
 
