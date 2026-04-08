@@ -22,6 +22,8 @@ fn make_test_index() -> AgentContextIndex {
             loc: 5,
             commit_count: 0,
             churn_score: 0.0,
+            contract_level: None,
+            contract_equation: None,
         },
         checksum: "test".to_string(),
         definition_type: DefinitionType::default(),

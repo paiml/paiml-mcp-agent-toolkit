@@ -48,6 +48,8 @@ mod tests {
             io_classification: String::new(),
             io_patterns: Vec::new(),
             suggested_module: String::new(),
+            contract_level: None,
+            contract_equation: None,
         }
     }
 

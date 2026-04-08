@@ -119,6 +119,8 @@ mod tests {
             "clone_count",
             "pattern_diversity",
             "fault_annotations",
+            "contract_level",
+            "contract_equation",
         ];
         for col in &expected {
             assert!(cols.contains(&col.to_string()), "missing column: {col}");
