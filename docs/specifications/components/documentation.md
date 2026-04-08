@@ -76,10 +76,13 @@ contracts/
   pmat-book-build-v1.yaml       # Build + deploy contract (mdbook, CI)
   pmat-book-ch05-v1.yaml        # Ch 5: Analyze Suite (critical)
   pmat-book-ch07-v1.yaml        # Ch 7: Quality Gates (critical)
-  pmat-book-ch13-v1.yaml        # Ch 13: Multi-Language (critical)
-  pmat-book-ch14-v1.yaml        # Ch 14: Semantic Search (critical)
-  pmat-book-ch{NN}-v1.yaml      # Template for remaining chapters
+  pmat-book-ch13-v1.yaml        # Ch 14/file:ch13: Multi-Language (critical)
+  pmat-book-ch14-v1.yaml        # Ch 35/file:ch35: Semantic Search (critical)
 ```
+
+**IMPORTANT**: Chapter numbers in SUMMARY.md don't match filenames.
+The `chapter_file` field is the authoritative path. `summary_chapter`
+records the display number. Falsification caught this mismatch.
 
 ### Contract Structure (Per Chapter)
 

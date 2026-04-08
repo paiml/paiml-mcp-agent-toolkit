@@ -4,12 +4,13 @@ metadata:
   author: PAIML Engineering
   registry: true
   description: >
-    PMAT-BOOK Chapter 13: Multi-Language Analysis (CRITICAL)
-  contract: pmat-book-ch13
+    PMAT-BOOK Chapter 14: Multi-Language Project Examples (CRITICAL)
+  contract: pmat-book-ch14-multilang
   status: enforced
-  title: "Multi-Language Analysis"
+  title: "Multi-Language Project Examples"
   part: IV
-  chapter_file: ch13-00-multi-language.md
+  chapter_file: ch13-00-language-examples.md
+  summary_chapter: 14
   critical: true
 
 preconditions:
