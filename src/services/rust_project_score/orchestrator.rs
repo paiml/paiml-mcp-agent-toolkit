@@ -285,6 +285,178 @@ impl RustProjectScoreOrchestrator {
     }
 }
 
+/// Workspace member with its score
+#[derive(Debug, Clone)]
+pub struct WorkspaceMemberScore {
+    /// Crate name
+    pub name: String,
+    /// Path relative to workspace root
+    pub path: String,
+    /// Score (None if scoring failed)
+    pub score: Option<ProjectScore>,
+}
+
+/// Workspace scoring result
+#[derive(Debug, Clone)]
+pub struct WorkspaceScore {
+    /// Root workspace score
+    pub root: ProjectScore,
+    /// Per-member scores
+    pub members: Vec<WorkspaceMemberScore>,
+    /// Aggregate percentage (geometric mean)
+    pub aggregate_percentage: f64,
+    /// Aggregate grade
+    pub aggregate_grade: Grade,
+}
+
+/// Discover workspace members from Cargo.toml
+fn discover_workspace_members(project_path: &Path) -> Vec<(String, std::path::PathBuf)> {
+    let cargo_toml = project_path.join("Cargo.toml");
+    let content = match std::fs::read_to_string(&cargo_toml) {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+
+    // Parse [workspace] members
+    let mut in_members = false;
+    let mut members = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("members") && trimmed.contains('[') {
+            in_members = true;
+            // Handle inline: members = ["crate1", "crate2"]
+            if let Some(bracket_content) = trimmed.split('[').nth(1) {
+                for item in bracket_content.split(']').next().unwrap_or("").split(',') {
+                    let member = item.trim().trim_matches('"').trim_matches('\'');
+                    if !member.is_empty() {
+                        expand_member(project_path, member, &mut members);
+                    }
+                }
+            }
+            continue;
+        }
+        if in_members {
+            if trimmed.starts_with(']') {
+                break;
+            }
+            let member = trimmed
+                .trim_matches('"')
+                .trim_matches('\'')
+                .trim_matches(',');
+            if !member.is_empty() && !member.starts_with('#') {
+                expand_member(project_path, member, &mut members);
+            }
+        }
+    }
+    members
+}
+
+/// Expand a workspace member path (with glob support)
+fn expand_member(root: &Path, pattern: &str, members: &mut Vec<(String, std::path::PathBuf)>) {
+    if pattern.contains('*') {
+        // Glob expansion
+        let full_pattern = root.join(pattern).to_string_lossy().to_string();
+        if let Ok(paths) = glob::glob(&full_pattern) {
+            for path in paths.flatten() {
+                if path.join("Cargo.toml").exists() {
+                    let name = path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+                    members.push((name, path));
+                }
+            }
+        }
+    } else {
+        let member_path = root.join(pattern);
+        if member_path.join("Cargo.toml").exists() {
+            let name = member_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown")
+                .to_string();
+            members.push((name, member_path));
+        }
+    }
+}
+
+impl RustProjectScoreOrchestrator {
+    /// Score a workspace with per-crate breakdown
+    #[provable_contracts_macros::contract(
+        "workspace-scoring-v1.yaml",
+        equation = "workspace_aggregate"
+    )]
+    pub fn score_workspace(
+        &self,
+        project_path: &Path,
+        mode: ScoringMode,
+    ) -> ScorerResult<WorkspaceScore> {
+        // Score the root project first
+        let root = self.score_with_mode(project_path, mode)?;
+
+        // Discover workspace members
+        let workspace_members = discover_workspace_members(project_path);
+
+        let mut members = Vec::new();
+        let mut valid_percentages = Vec::new();
+
+        for (name, member_path) in &workspace_members {
+            // Skip the root (already scored)
+            if member_path == project_path {
+                continue;
+            }
+            // Skip members without src/
+            if !member_path.join("src").exists() && !member_path.join("lib.rs").exists() {
+                continue;
+            }
+            match self.score_with_mode(member_path, mode) {
+                Ok(score) => {
+                    valid_percentages.push(score.percentage);
+                    members.push(WorkspaceMemberScore {
+                        name: name.clone(),
+                        path: member_path
+                            .strip_prefix(project_path)
+                            .unwrap_or(member_path)
+                            .to_string_lossy()
+                            .to_string(),
+                        score: Some(score),
+                    });
+                }
+                Err(_) => {
+                    members.push(WorkspaceMemberScore {
+                        name: name.clone(),
+                        path: member_path
+                            .strip_prefix(project_path)
+                            .unwrap_or(member_path)
+                            .to_string_lossy()
+                            .to_string(),
+                        score: None,
+                    });
+                }
+            }
+        }
+
+        // Aggregate: geometric mean of all valid scores (including root)
+        valid_percentages.push(root.percentage);
+        let aggregate_percentage = if valid_percentages.is_empty() {
+            0.0
+        } else {
+            let product: f64 = valid_percentages.iter().map(|p| p.max(0.1)).product();
+            product.powf(1.0 / valid_percentages.len() as f64)
+        };
+
+        let aggregate_grade = Grade::from_normalized(aggregate_percentage);
+
+        Ok(WorkspaceScore {
+            root,
+            members,
+            aggregate_percentage,
+            aggregate_grade,
+        })
+    }
+}
+
 impl Default for RustProjectScoreOrchestrator {
     fn default() -> Self {
         Self::new()
