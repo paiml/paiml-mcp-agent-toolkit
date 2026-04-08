@@ -5,6 +5,7 @@ pub use super::satd::SatdDetector;
 
 use super::gate::QualityMetrics;
 
+/// Trait defining Quality analyzer behavior.
 pub trait QualityAnalyzer: Send + Sync {
     fn analyze(&self, ast: &syn::File) -> QualityMetrics;
     fn name(&self) -> &'static str;

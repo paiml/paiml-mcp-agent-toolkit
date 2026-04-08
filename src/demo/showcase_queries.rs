@@ -1,6 +1,7 @@
 impl ShowcaseGallery {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         let mut gallery = Self {
             repositories: HashMap::new(),
@@ -12,12 +13,14 @@ impl ShowcaseGallery {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get all repositories.
     pub fn get_all_repositories(&self) -> Vec<&ShowcaseRepository> {
         self.repositories.values().collect()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get repositories by category.
     pub fn get_repositories_by_category(
         &self,
         category: &RepositoryCategory,
@@ -34,6 +37,7 @@ impl ShowcaseGallery {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get repositories by complexity.
     pub fn get_repositories_by_complexity(
         &self,
         tier: &ComplexityTier,
@@ -46,6 +50,7 @@ impl ShowcaseGallery {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get repositories by language.
     pub fn get_repositories_by_language(&self, language: &str) -> Vec<&ShowcaseRepository> {
         let lang_lower = language.to_lowercase();
         self.repositories
@@ -62,18 +67,21 @@ impl ShowcaseGallery {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get repository by name.
     pub fn get_repository_by_name(&self, name: &str) -> Option<&ShowcaseRepository> {
         self.repositories.get(name)
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get categories.
     pub fn get_categories(&self) -> Vec<&RepositoryCategory> {
         self.categories.keys().collect()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get quick start recommendations.
     pub fn get_quick_start_recommendations(&self) -> Vec<&ShowcaseRepository> {
         // Return beginner and intermediate repositories for quick starts
         self.repositories
@@ -90,6 +98,7 @@ impl ShowcaseGallery {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get featured repositories.
     pub fn get_featured_repositories(&self) -> Vec<&ShowcaseRepository> {
         // Return a curated selection of featured repositories
         let featured_names = vec!["Tokio", "Django", "React", "VS Code"];
@@ -101,6 +110,7 @@ impl ShowcaseGallery {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Generate showcase summary.
     pub fn generate_showcase_summary(&self) -> ShowcaseSummary {
         let total_repositories = self.repositories.len();
         let languages: std::collections::HashSet<String> = self

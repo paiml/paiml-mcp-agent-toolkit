@@ -12,6 +12,7 @@ use tokio::process::Command as TokioCommand;
 pub struct RustAdapter;
 
 impl RustAdapter {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

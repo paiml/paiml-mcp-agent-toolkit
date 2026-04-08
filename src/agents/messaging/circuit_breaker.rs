@@ -6,12 +6,14 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::time::timeout;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// State of circuit lifecycle.
 pub enum CircuitState {
     Closed,
     Open,
     HalfOpen,
 }
 
+/// Circuit breaker.
 pub struct CircuitBreaker {
     failure_count: AtomicU32,
     success_count: AtomicU32,
@@ -21,6 +23,7 @@ pub struct CircuitBreaker {
 }
 
 #[derive(Clone)]
+/// Configuration for circuit breaker.
 pub struct CircuitBreakerConfig {
     pub failure_threshold: u32,     // Failures before opening
     pub success_threshold: u32,     // Successes to close from half-open
@@ -40,6 +43,7 @@ impl Default for CircuitBreakerConfig {
 }
 
 #[derive(Debug)]
+/// Circuit metrics.
 pub struct CircuitMetrics {
     pub failure_count: u32,
     pub success_count: u32,
@@ -48,6 +52,7 @@ pub struct CircuitMetrics {
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for circuit breaker operations.
 pub enum CircuitBreakerError<E: std::error::Error> {
     #[error("Circuit is open")]
     CircuitOpen,
@@ -58,6 +63,7 @@ pub enum CircuitBreakerError<E: std::error::Error> {
 }
 
 // Circuit breaker manager for multiple dependencies
+/// Circuit breaker manager.
 pub struct CircuitBreakerManager {
     breakers: dashmap::DashMap<String, Arc<CircuitBreaker>>,
     default_config: CircuitBreakerConfig,

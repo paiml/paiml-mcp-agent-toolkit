@@ -19,12 +19,14 @@ pub struct McpAdapter {
 impl McpAdapter {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self { stdin: None }
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With stdin.
     pub fn with_stdin(stdin: Stdin) -> Self {
         Self {
             stdin: Some(AsyncBufReader::new(stdin)),
@@ -59,6 +61,7 @@ pub struct JsonRpcRequest {
 impl JsonRpcRequest {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(method: String, params: Option<Value>, id: Option<Value>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -70,12 +73,14 @@ impl JsonRpcRequest {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Notification.
     pub fn notification(method: String, params: Option<Value>) -> Self {
         Self::new(method, params, None)
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Request.
     pub fn request(method: String, params: Option<Value>, id: Value) -> Self {
         Self::new(method, params, Some(id))
     }
@@ -96,6 +101,7 @@ pub struct JsonRpcResponse {
 impl JsonRpcResponse {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Success.
     pub fn success(result: Value, id: Option<Value>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -107,6 +113,7 @@ impl JsonRpcResponse {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Error.
     pub fn error(error: JsonRpcError, id: Option<Value>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -136,6 +143,7 @@ impl JsonRpcError {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Parse error.
     pub fn parse_error() -> Self {
         Self {
             code: Self::PARSE_ERROR,
@@ -146,6 +154,7 @@ impl JsonRpcError {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Invalid request.
     pub fn invalid_request() -> Self {
         Self {
             code: Self::INVALID_REQUEST,
@@ -156,6 +165,7 @@ impl JsonRpcError {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Method not found.
     pub fn method_not_found(method: &str) -> Self {
         Self {
             code: Self::METHOD_NOT_FOUND,
@@ -166,6 +176,7 @@ impl JsonRpcError {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Invalid params.
     pub fn invalid_params(message: &str) -> Self {
         Self {
             code: Self::INVALID_PARAMS,
@@ -176,6 +187,7 @@ impl JsonRpcError {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Internal error.
     pub fn internal_error(message: &str) -> Self {
         Self {
             code: Self::INTERNAL_ERROR,

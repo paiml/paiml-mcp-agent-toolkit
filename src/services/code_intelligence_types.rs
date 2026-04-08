@@ -10,6 +10,7 @@ pub struct AnalysisRequest {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Type classification for analysis.
 pub enum AnalysisType {
     DuplicateDetection,
     DeadCodeAnalysis,
@@ -83,6 +84,7 @@ pub struct AnalysisReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Report containing complexity data.
 pub struct ComplexityReport {
     pub total_files: usize,
     pub average_complexity: f32,
@@ -90,6 +92,7 @@ pub struct ComplexityReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Hotspot identified in complexity analysis.
 pub struct ComplexityHotspot {
     pub file_path: String,
     pub function_name: String,
@@ -98,6 +101,7 @@ pub struct ComplexityHotspot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Report containing dependency graph data.
 pub struct DependencyGraphReport {
     pub nodes: usize,
     pub edges: usize,
@@ -106,6 +110,7 @@ pub struct DependencyGraphReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Defect score.
 pub struct DefectScore {
     pub entity: String,
     pub score: f32,
@@ -114,6 +119,7 @@ pub struct DefectScore {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Report containing graph metrics data.
 pub struct GraphMetricsReport {
     pub centrality_scores: Vec<CentralityScore>,
     pub clustering_coefficient: f32,
@@ -121,6 +127,7 @@ pub struct GraphMetricsReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Centrality score.
 pub struct CentralityScore {
     pub node: String,
     pub degree: f32,

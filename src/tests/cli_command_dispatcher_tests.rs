@@ -24,10 +24,12 @@ mod cli_command_dispatcher_tests {
         std::fs::write(
             src_dir.join("lib.rs"),
             r#"
+            /// Test function.
             pub fn test_function() {
                 println!("test");
             }
             
+            /// Complex function.
             pub fn complex_function(x: i32) -> i32 {
                 if x > 0 {
                     if x > 10 {

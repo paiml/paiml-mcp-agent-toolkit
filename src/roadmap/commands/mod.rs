@@ -14,12 +14,14 @@ use std::str::FromStr;
 
 #[derive(Debug, Parser)]
 #[command(about = "Roadmap management with PDMT todos and quality gates")]
+/// Roadmap command.
 pub struct RoadmapCommand {
     #[command(subcommand)]
     pub command: RoadmapSubcommand,
 }
 
 #[derive(Debug, Subcommand)]
+/// Roadmap subcommand.
 pub enum RoadmapSubcommand {
     /// Initialize a new sprint in the roadmap
     Init {

@@ -22,6 +22,7 @@ pub enum CleanupTarget {
 
 impl CleanupTarget {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Parse the input.
     pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "rust" => Some(Self::Rust),

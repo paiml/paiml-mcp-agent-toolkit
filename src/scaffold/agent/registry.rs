@@ -347,6 +347,7 @@ async fn main() {{
             r#"//! Deterministic core implementation.
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Deterministic analyze.
 pub fn deterministic_analyze(input: &str) -> String {
     // Deterministic implementation
     format!("Analyzed: {}", input)

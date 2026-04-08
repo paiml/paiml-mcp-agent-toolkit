@@ -52,6 +52,7 @@ const BATUTA_CRATES: &[&str] = &[
 // ── Data Types ────────────────────────────────────────────────────────────
 
 #[derive(Debug, serde::Serialize)]
+/// Information about repo.
 pub struct RepoInfo {
     pub name: String,
     pub path: PathBuf,
@@ -59,6 +60,7 @@ pub struct RepoInfo {
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+/// Information about dep.
 pub struct DepInfo {
     pub name: String,
     pub version: Option<String>,
@@ -67,6 +69,7 @@ pub struct DepInfo {
 }
 
 #[derive(Debug, Clone, serde::Serialize, PartialEq)]
+/// Dep source.
 pub enum DepSource {
     Registry,
     Path(String),
@@ -74,6 +77,7 @@ pub enum DepSource {
 }
 
 #[derive(Debug, serde::Serialize)]
+/// Dep mismatch.
 pub struct DepMismatch {
     pub repo: String,
     pub crate_name: String,
@@ -82,6 +86,7 @@ pub struct DepMismatch {
 }
 
 #[derive(Debug, serde::Serialize)]
+/// Stack status.
 pub struct StackStatus {
     pub repos_found: usize,
     pub repos_missing: usize,
@@ -91,6 +96,7 @@ pub struct StackStatus {
 }
 
 #[derive(Debug, serde::Serialize)]
+/// Stack graph.
 pub struct StackGraph {
     pub repos: Vec<RepoInfo>,
     pub edges: Vec<(usize, usize, String)>, // (from_repo, to_repo, crate_name)
@@ -164,6 +170,7 @@ fn resolve_repo_path(base: &Path, repo_name: &str) -> PathBuf {
 // ── Cargo.toml Parsing ───────────────────────────────────────────────────
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Parse cargo dependencies.
 pub fn parse_cargo_dependencies(cargo_toml_path: &Path) -> Result<Vec<DepInfo>> {
     let content = std::fs::read_to_string(cargo_toml_path)
         .with_context(|| format!("Failed to read {}", cargo_toml_path.display()))?;
@@ -257,6 +264,7 @@ fn check_latest_version(crate_name: &str) -> Result<Option<String>> {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Parse cargo search output.
 pub fn parse_cargo_search_output(output: &str, crate_name: &str) -> Result<Option<String>> {
     // Format: `crate_name = "0.4.30"    # Description`
     for line in output.lines() {
@@ -280,6 +288,7 @@ pub fn parse_cargo_search_output(output: &str, crate_name: &str) -> Result<Optio
 // ── Batuta Crate Detection ───────────────────────────────────────────────
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Is batuta crate.
 pub fn is_batuta_crate(name: &str) -> bool {
     BATUTA_CRATES.contains(&name)
 }
@@ -287,6 +296,7 @@ pub fn is_batuta_crate(name: &str) -> bool {
 // ── Mismatch Detection ──────────────────────────────────────────────────
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Detect mismatches.
 pub fn detect_mismatches(
     repo_name: &str,
     deps: &[DepInfo],

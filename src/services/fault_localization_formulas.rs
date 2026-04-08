@@ -71,6 +71,7 @@ pub fn dstar(failed: usize, passed: usize, total_failed: usize, star: u32) -> f3
 
 impl SbflLocalizer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             formula: SbflFormula::Tarantula,
@@ -81,18 +82,21 @@ impl SbflLocalizer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With formula.
     pub fn with_formula(mut self, formula: SbflFormula) -> Self {
         self.formula = formula;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With top n.
     pub fn with_top_n(mut self, n: usize) -> Self {
         self.top_n = n;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With explanations.
     pub fn with_explanations(mut self, include: bool) -> Self {
         self.include_explanations = include;
         self
@@ -100,6 +104,7 @@ impl SbflLocalizer {
 
     
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With min confidence.
     pub fn with_min_confidence(mut self, threshold: f32) -> Self {
         self.min_confidence_threshold = threshold;
         self

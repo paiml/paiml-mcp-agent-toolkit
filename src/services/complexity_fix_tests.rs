@@ -13,6 +13,7 @@ mod tests {
     #[test]
     fn test_base_complexity_is_correct() {
         let code = r#"
+            /// Simple.
             pub fn simple() -> i32 {
                 42
             }
@@ -32,6 +33,7 @@ mod tests {
     #[test]
     fn test_single_if_complexity() {
         let code = r#"
+            /// With if.
             pub fn with_if(x: i32) -> i32 {
                 if x > 0 {
                     x
@@ -58,6 +60,7 @@ mod tests {
     #[test]
     fn test_match_complexity() {
         let code = r#"
+            /// With match.
             pub fn with_match(x: i32) -> &'static str {
                 match x {
                     1 => "one",
@@ -81,10 +84,13 @@ mod tests {
     #[test]
     fn test_no_cross_function_contamination() {
         let code = r#"
+            /// First.
             pub fn first() -> i32 { 42 }
+            /// Second.
             pub fn second(x: i32) -> i32 {
                 if x > 0 { x } else { 0 }
             }
+            /// Third.
             pub fn third() -> i32 { 84 }
         "#;
         

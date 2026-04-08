@@ -59,6 +59,7 @@ async fn discover_source_files(path: &Path) -> Result<Vec<PathBuf>> {
 pub struct ComplexityDefectAnalyzer;
 
 #[derive(Clone)]
+/// Configuration for complexity.
 pub struct ComplexityConfig {
     pub max_tdg_score: f64,
     pub high_threshold: f64,
@@ -76,6 +77,7 @@ impl Default for ComplexityConfig {
 impl AnalyzerConfig for ComplexityConfig {}
 
 #[derive(Clone, Default)]
+/// Configuration for s a t d.
 pub struct SATDConfig {
     pub include_test_files: bool,
 }
@@ -91,6 +93,7 @@ pub struct SATDDefectAnalyzer {
 pub struct DeadCodeDefectAnalyzer;
 
 #[derive(Clone)]
+/// Configuration for dead code.
 pub struct DeadCodeConfig {
     pub min_confidence: f64,
 }
@@ -111,6 +114,7 @@ pub struct DuplicationDefectAnalyzer {
 }
 
 #[derive(Clone)]
+/// Configuration for duplication.
 pub struct DuplicationConfig {
     pub min_similarity: f64,
 }
@@ -131,6 +135,7 @@ pub struct PerformanceDefectAnalyzer {
 }
 
 #[derive(Clone, Default)]
+/// Configuration for performance.
 pub struct PerformanceConfig {
     pub include_nlogn: bool,
 }
@@ -141,6 +146,7 @@ impl AnalyzerConfig for PerformanceConfig {}
 pub struct ArchitectureDefectAnalyzer;
 
 #[derive(Clone)]
+/// Configuration for architecture.
 pub struct ArchitectureConfig {
     pub max_coupling: usize,
 }

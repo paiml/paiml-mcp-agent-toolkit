@@ -75,6 +75,7 @@ where
     T::Value: Serialize + for<'de> Deserialize<'de>,
 {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(strategy: T, cache_dir: PathBuf) -> Result<Self> {
         // Create cache directory if it doesn't exist
         fs::create_dir_all(&cache_dir).with_context(|| {

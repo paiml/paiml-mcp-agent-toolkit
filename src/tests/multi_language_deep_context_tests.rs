@@ -260,6 +260,7 @@ module.exports = { Calculator, calculateSum };
         fs::write(
             temp_dir.path().join("lib.rs"),
             r#"
+/// Rust func.
 pub fn rust_func(x: i32) -> i32 {
     x * 2
 }

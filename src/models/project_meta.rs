@@ -61,6 +61,7 @@ pub struct BuildInfo {
 impl BuildInfo {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From makefile.
     pub fn from_makefile(compressed: CompressedMakefile) -> Self {
         Self {
             toolchain: compressed
@@ -89,6 +90,7 @@ pub struct ProjectOverview {
 impl CompressedReadme {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// To summary.
     pub fn to_summary(&self) -> ProjectOverview {
         let mut overview = ProjectOverview {
             compressed_description: self.project_description.clone().unwrap_or_default(),

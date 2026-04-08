@@ -96,6 +96,7 @@ pub struct DeepContextReport {
 }
 
 #[derive(Debug)]
+/// Summary of complexity analysis.
 pub struct ComplexitySummary {
     pub total_functions: usize,
     pub high_complexity_functions: usize,
@@ -105,6 +106,7 @@ pub struct ComplexitySummary {
 }
 
 #[derive(Debug)]
+/// Hotspot identified in code analysis.
 pub struct CodeHotspot {
     pub file_path: PathBuf,
     pub function_name: String,
@@ -114,6 +116,7 @@ pub struct CodeHotspot {
 }
 
 #[derive(Debug)]
+/// Type classification for hotspot.
 pub enum HotspotType {
     HighComplexity,
     HighChurn,
@@ -124,6 +127,7 @@ pub enum HotspotType {
 }
 
 #[derive(Debug)]
+/// Severity level classification for hotspot.
 pub enum HotspotSeverity {
     Critical,
     High,
@@ -132,6 +136,7 @@ pub enum HotspotSeverity {
 }
 
 #[derive(Debug)]
+/// Hotspot metrics.
 pub struct HotspotMetrics {
     pub complexity_score: f64,
     pub defect_probability: f64,
@@ -139,6 +144,7 @@ pub struct HotspotMetrics {
 }
 
 #[derive(Debug)]
+/// Recommendation.
 pub struct Recommendation {
     pub category: RecommendationCategory,
     pub title: String,
@@ -148,6 +154,7 @@ pub struct Recommendation {
 }
 
 #[derive(Debug)]
+/// Category classification for recommendation.
 pub enum RecommendationCategory {
     Refactoring,
     Performance,
@@ -157,6 +164,7 @@ pub enum RecommendationCategory {
 }
 
 #[derive(Debug)]
+/// Recommendation impact.
 pub enum RecommendationImpact {
     High,
     Medium,
@@ -164,6 +172,7 @@ pub enum RecommendationImpact {
 }
 
 #[derive(Debug)]
+/// Recommendation effort.
 pub enum RecommendationEffort {
     High,
     Medium,

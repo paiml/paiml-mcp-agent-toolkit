@@ -6,6 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 use tracing::{debug, info};
 
+/// Snapshot manager.
 pub struct SnapshotManager {
     snapshot_path: PathBuf,
 }
@@ -13,10 +14,12 @@ pub struct SnapshotManager {
 impl SnapshotManager {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::with_path(".pmat-cache")
     }
 
+    /// With path.
     pub fn with_path<P: Into<PathBuf>>(cache_dir: P) -> Self {
         let snapshot_dir = cache_dir.into();
 

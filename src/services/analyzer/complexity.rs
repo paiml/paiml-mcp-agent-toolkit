@@ -23,6 +23,7 @@ pub struct ComplexityAnalyzer {
 impl ComplexityAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             inner: OriginalAnalyzer::new(),
@@ -77,6 +78,7 @@ pub struct ComplexityOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Report containing file complexity data.
 pub struct FileComplexityReport {
     pub file_path: String,
     pub functions: Vec<FunctionComplexityReport>,
@@ -84,6 +86,7 @@ pub struct FileComplexityReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Report containing function complexity data.
 pub struct FunctionComplexityReport {
     pub name: String,
     pub line_start: u32,
@@ -93,6 +96,7 @@ pub struct FunctionComplexityReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Summary of complexity analysis.
 pub struct ComplexitySummary {
     pub total_functions: usize,
     pub high_complexity_functions: usize,
@@ -303,12 +307,14 @@ pub struct ComplexityAnalyzerFactory;
 impl ComplexityAnalyzerFactory {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create.
     pub fn create() -> ComplexityAnalyzer {
         ComplexityAnalyzer::new()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create with thresholds.
     pub fn create_with_thresholds(_max_cyclomatic: u32, _max_cognitive: u32) -> ComplexityAnalyzer {
         // Create analyzer with specified threshold values
         // The thresholds are used during analysis to determine violations

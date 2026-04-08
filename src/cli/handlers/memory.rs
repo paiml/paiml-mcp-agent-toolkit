@@ -23,6 +23,7 @@ use std::collections::HashMap;
 use tracing::info;
 
 #[derive(Debug, Clone, Subcommand)]
+/// Command variants for memory.
 pub enum MemoryCommand {
     /// Show current memory usage statistics
     Stats {
@@ -86,6 +87,7 @@ pub struct MemoryStatsOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Pool stats output.
 pub struct PoolStatsOutput {
     pub buffer_count: usize,
     pub total_size: usize,

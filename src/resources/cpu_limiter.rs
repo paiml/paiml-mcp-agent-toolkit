@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 use sysinfo::System;
 
 // CPU resource limiter using cgroups v2 and affinity
+/// Limiter for controlling cpu usage.
 pub struct CpuLimiter {
     limits: Arc<RwLock<CpuLimits>>,
     system: Arc<RwLock<System>>,
@@ -18,6 +19,7 @@ pub struct CpuLimiter {
 
 impl CpuLimiter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(limits: CpuLimits) -> Result<Self, ResourceError> {
         let mut system = System::new_all();
         system.refresh_all();

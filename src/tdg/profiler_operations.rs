@@ -4,6 +4,7 @@
 impl PerformanceProfiler {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(config: ProfilerConfig) -> Self {
         Self {
             active_profiles: Arc::new(RwLock::new(HashMap::new())),
@@ -301,6 +302,7 @@ impl ProfileHandle {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Summary of profiling analysis.
 pub struct ProfilingSummary {
     pub total_operations: usize,
     pub completed_operations: usize,

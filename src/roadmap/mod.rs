@@ -38,6 +38,7 @@ pub enum TaskStatus {
 impl TaskStatus {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// To emoji.
     pub fn to_emoji(&self) -> &'static str {
         match self {
             Self::Planned => "\u{1f4cb}",
@@ -50,6 +51,7 @@ impl TaskStatus {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From emoji.
     pub fn from_emoji(emoji: &str) -> Option<Self> {
         match emoji {
             "\u{1f4cb}" => Some(Self::Planned),
@@ -86,6 +88,7 @@ impl std::str::FromStr for Complexity {
 impl Complexity {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// To string.
     pub fn to_string(&self) -> &str {
         match self {
             Self::Low => "low",

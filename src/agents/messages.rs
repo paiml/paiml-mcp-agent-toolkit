@@ -4,6 +4,7 @@ use actix::prelude::*;
 
 #[derive(Message, Clone, Debug)]
 #[rtype(result = "Result<AgentResponse, AgentError>")]
+/// Analyze message.
 pub struct AnalyzeMessage {
     pub code: String,
     pub priority: Priority,
@@ -11,6 +12,7 @@ pub struct AnalyzeMessage {
 
 #[derive(Message, Clone, Debug)]
 #[rtype(result = "Result<AgentResponse, AgentError>")]
+/// Transform message.
 pub struct TransformMessage {
     pub code: String,
     pub rules: Vec<String>,
@@ -19,6 +21,7 @@ pub struct TransformMessage {
 
 #[derive(Message, Clone, Debug)]
 #[rtype(result = "Result<AgentResponse, AgentError>")]
+/// Validate message.
 pub struct ValidateMessage {
     pub metrics: crate::modules::analyzer::Metrics,
     pub thresholds: crate::modules::validator::Thresholds,

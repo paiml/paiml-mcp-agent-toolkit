@@ -130,6 +130,7 @@ impl ClaimExtractor {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Extract.
     pub fn extract(&self, commit_message: &str) -> Vec<Claim> {
         let mut claims_with_pos: Vec<(usize, Claim)> = Vec::new();
 

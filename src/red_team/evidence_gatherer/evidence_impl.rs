@@ -1,5 +1,6 @@
 impl EvidenceGatherer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             git_history_window_days: 30,
@@ -8,6 +9,7 @@ impl EvidenceGatherer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Gather evidence.
     pub fn gather_evidence(
         &self,
         claim: &Claim,

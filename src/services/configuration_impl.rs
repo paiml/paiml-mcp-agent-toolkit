@@ -143,24 +143,29 @@ impl ConfigurationService {
         Ok(self.get_config()?.quality)
     }
 
+    /// Get analysis config.
     pub fn get_analysis_config(&self) -> Result<AnalysisConfig> {
         Ok(self.get_config()?.analysis)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get performance config.
     pub fn get_performance_config(&self) -> Result<PerformanceConfig> {
         Ok(self.get_config()?.performance)
     }
 
+    /// Get mcp config.
     pub fn get_mcp_config(&self) -> Result<McpConfig> {
         Ok(self.get_config()?.mcp)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get roadmap config.
     pub fn get_roadmap_config(&self) -> Result<RoadmapConfig> {
         Ok(self.get_config()?.roadmap)
     }
 
+    /// Get telemetry config.
     pub fn get_telemetry_config(&self) -> Result<TelemetryConfig> {
         Ok(self.get_config()?.telemetry)
     }

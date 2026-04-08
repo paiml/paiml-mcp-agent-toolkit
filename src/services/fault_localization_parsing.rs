@@ -12,6 +12,7 @@ impl LcovParser {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Parse the input.
     pub fn parse(content: &str) -> Result<Vec<(StatementId, usize)>> {
         let mut results = Vec::new();
         let mut current_file: Option<PathBuf> = None;

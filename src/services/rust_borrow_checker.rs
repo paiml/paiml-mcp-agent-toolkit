@@ -54,6 +54,7 @@ impl CollectionState {
 
 impl RustBorrowChecker {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Use a simple default version since we don't have rustc_version crate
         let version = "1.70.0 (unknown)".to_string();

@@ -55,6 +55,7 @@ pub struct AstRegistry {
 
 impl AstRegistry {
     #[must_use]
+    /// Create a new instance.
     pub fn new() -> Self {
         let mut registry = Self {
             strategies: std::collections::HashMap::new(),
@@ -98,6 +99,7 @@ impl AstRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register(&mut self, strategy: Arc<dyn AstStrategy>) {
         for ext in strategy.supported_extensions() {
             self.strategies.insert(ext.to_string(), strategy.clone());
@@ -106,12 +108,14 @@ impl AstRegistry {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get strategy.
     pub fn get_strategy(&self, extension: &str) -> Option<Arc<dyn AstStrategy>> {
         self.strategies.get(extension).cloned()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// List supported extensions.
     pub fn list_supported_extensions(&self) -> Vec<&str> {
         self.strategies
             .keys()
@@ -187,6 +191,7 @@ pub struct UnifiedAstAnalyzer {
 
 impl UnifiedAstAnalyzer {
     #[must_use]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             registry: AstRegistry::new(),
@@ -217,6 +222,7 @@ impl UnifiedAstAnalyzer {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Supported languages.
     pub fn supported_languages(&self) -> Vec<&str> {
         self.registry.list_supported_extensions()
     }

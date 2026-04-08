@@ -25,6 +25,7 @@ where
 {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(confidence_threshold: f64) -> Self {
         Self {
             access_history: RwLock::new(VecDeque::new()),
@@ -34,6 +35,7 @@ where
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Record access.
     pub fn record_access(&self, key: K) {
         let mut history = self.access_history.write();
         history.push_back(key);
@@ -48,6 +50,7 @@ where
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Predict next.
     pub fn predict_next(&self, current_sequence: &[K]) -> Vec<K> {
         let patterns = self.patterns.read();
         let mut predictions = Vec::new();
@@ -65,6 +68,7 @@ where
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Predict value.
     pub fn predict_value(&self, _key: &K) -> Option<()> {
         // Simplified prediction - in practice this would predict actual values
         None

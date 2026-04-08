@@ -52,6 +52,7 @@ use std::time::Instant;
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for file classifier.
 pub struct FileClassifierConfig {
     pub skip_vendor: bool,
     pub max_line_length: usize,
@@ -137,6 +138,7 @@ lazy_static! {
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// File classifier.
 pub struct FileClassifier {
     pub max_line_length: usize,
     pub max_file_size: usize,
@@ -160,12 +162,14 @@ impl Default for FileClassifier {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Parse decision.
 pub enum ParseDecision {
     Parse,
     Skip(SkipReason),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Skip reason.
 pub enum SkipReason {
     VendorDirectory,
     MinifiedContent,

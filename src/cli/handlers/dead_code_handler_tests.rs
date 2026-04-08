@@ -252,6 +252,7 @@ name = "test_library"
         // Create many files for timeout test
         for i in 0..20 {
             fs::write(src_dir.join(format!("mod{}.rs", i)), format!(r#"
+                /// Func .
                 pub fn func_{}() -> i32 {{
                     {}
                 }}

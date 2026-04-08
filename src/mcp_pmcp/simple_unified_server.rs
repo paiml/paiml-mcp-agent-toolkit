@@ -25,6 +25,7 @@ pub struct SimpleUnifiedServer {
 
 impl SimpleUnifiedServer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
             state_manager: Arc::new(Mutex::new(StateManager::new())),

@@ -88,6 +88,7 @@ updated: {}
 
 ```rust
 // Example API design
+/// Example.
 pub struct Example {{
     // ...
 }}

@@ -79,6 +79,7 @@ pub struct InfraFinding {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Severity level classification for infra.
 pub enum InfraSeverity {
     Pass,    // Check passed
     Warning, // Partial compliance
@@ -98,6 +99,7 @@ pub struct InfraRecommendation {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+/// Priority level for infra.
 pub enum InfraPriority {
     Low = 1,
     Medium = 2,
@@ -144,6 +146,7 @@ impl fmt::Display for InfraScore {
 
 impl InfraGrade {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// From score.
     pub fn from_score(score: f64) -> Self {
         match score {
             s if s >= 95.0 => InfraGrade::APlus,
@@ -156,6 +159,7 @@ impl InfraGrade {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// As str.
     pub fn as_str(&self) -> &'static str {
         match self {
             InfraGrade::APlus => "A+",
@@ -207,6 +211,7 @@ impl Default for InfraCategoryScores {
 
 impl InfraCategoryScore {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Empty.
     pub fn empty(max_score: f64) -> Self {
         Self {
             score: 0.0,
@@ -218,6 +223,7 @@ impl InfraCategoryScore {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(max_score: f64, checks: Vec<InfraCheck>, findings: Vec<InfraFinding>) -> Self {
         let score: f64 = checks.iter().map(|c| c.score).sum();
         let percentage = if max_score > 0.0 {
@@ -238,6 +244,7 @@ impl InfraCategoryScore {
 
 impl InfraCheck {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Pass.
     pub fn pass(id: &str, name: &str, max_score: f64, evidence: Vec<String>) -> Self {
         Self {
             id: id.to_string(),
@@ -250,6 +257,7 @@ impl InfraCheck {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Fail.
     pub fn fail(id: &str, name: &str, max_score: f64, evidence: Vec<String>) -> Self {
         Self {
             id: id.to_string(),
@@ -262,6 +270,7 @@ impl InfraCheck {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Partial.
     pub fn partial(
         id: &str,
         name: &str,
@@ -282,6 +291,7 @@ impl InfraCheck {
 
 impl InfraScoreMetadata {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(repository_path: PathBuf) -> Self {
         Self {
             timestamp: chrono::Utc::now().to_rfc3339(),

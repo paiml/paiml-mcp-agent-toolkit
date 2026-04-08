@@ -183,6 +183,7 @@ pub enum AstKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Function kind.
 pub enum FunctionKind {
     Regular,
     Method,
@@ -196,6 +197,7 @@ pub enum FunctionKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Class kind.
 pub enum ClassKind {
     Regular,
     Abstract,
@@ -206,6 +208,7 @@ pub enum ClassKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Var kind.
 pub enum VarKind {
     Let,
     Const,
@@ -215,6 +218,7 @@ pub enum VarKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Import kind.
 pub enum ImportKind {
     Module,
     Named,
@@ -224,6 +228,7 @@ pub enum ImportKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Expr kind.
 pub enum ExprKind {
     Call,
     Member,
@@ -241,6 +246,7 @@ pub enum ExprKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Stmt kind.
 pub enum StmtKind {
     Block,
     If,
@@ -261,6 +267,7 @@ pub enum StmtKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Type kind.
 pub enum TypeKind {
     Primitive,
     Array,
@@ -286,6 +293,7 @@ pub enum TypeKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Module kind.
 pub enum ModuleKind {
     File,
     Namespace,
@@ -293,6 +301,7 @@ pub enum ModuleKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Macro kind.
 pub enum MacroKind {
     ObjectLike,   // #define PI 3.14
     FunctionLike, // #define MAX(a,b) ((a)>(b)?(a):(b))

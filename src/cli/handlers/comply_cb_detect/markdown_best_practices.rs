@@ -64,6 +64,7 @@ fn walk_md_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb900 broken internal link.
 pub fn detect_cb900_broken_internal_link(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_markdown_files(project_path);
     let mut violations = Vec::new();
@@ -134,6 +135,7 @@ pub fn detect_cb900_broken_internal_link(project_path: &Path) -> Vec<CbPatternVi
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb901 heading hierarchy skip.
 pub fn detect_cb901_heading_hierarchy_skip(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_markdown_files(project_path);
     let mut violations = Vec::new();
@@ -197,6 +199,7 @@ pub fn detect_cb901_heading_hierarchy_skip(project_path: &Path) -> Vec<CbPattern
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb902 missing alt text.
 pub fn detect_cb902_missing_alt_text(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_markdown_files(project_path);
     let mut violations = Vec::new();
@@ -247,6 +250,7 @@ pub fn detect_cb902_missing_alt_text(project_path: &Path) -> Vec<CbPatternViolat
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb903 bare url.
 pub fn detect_cb903_bare_url(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_markdown_files(project_path);
     let mut violations = Vec::new();
@@ -313,6 +317,7 @@ pub fn detect_cb903_bare_url(project_path: &Path) -> Vec<CbPatternViolation> {
 const MD_LINE_LENGTH_THRESHOLD: usize = 120;
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb904 long line.
 pub fn detect_cb904_long_line(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_markdown_files(project_path);
     let mut violations = Vec::new();

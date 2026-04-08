@@ -8,6 +8,7 @@ use super::*;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
+/// Louvain detector.
 pub struct LouvainDetector {
     pub resolution: f64,
     pub max_iterations: usize,
@@ -24,10 +25,12 @@ impl Default for LouvainDetector {
 
 impl LouvainDetector {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// With resolution.
     pub fn with_resolution(mut self, resolution: f64) -> Self {
         self.resolution = resolution;
         self

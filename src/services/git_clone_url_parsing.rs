@@ -4,6 +4,7 @@
 impl GitCloner {
     #[inline]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Parse github url.
     pub fn parse_github_url(&self, url: &str) -> Result<ParsedGitHubUrl, CloneError> {
         // Support various GitHub URL formats
         let url = url.trim();
@@ -116,6 +117,7 @@ impl GitCloner {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// Compute cache key.
     pub fn compute_cache_key(&self, url: &str) -> String {
         // Create a cache key from the URL
         // In production, you might want to use a hash

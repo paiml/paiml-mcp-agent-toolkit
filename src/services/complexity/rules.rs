@@ -28,6 +28,7 @@ pub struct CyclomaticComplexityRule {
 impl CyclomaticComplexityRule {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(thresholds: &ComplexityThresholds) -> Self {
         Self {
             warn_threshold: thresholds.cyclomatic_warn,
@@ -85,6 +86,7 @@ pub struct CognitiveComplexityRule {
 impl CognitiveComplexityRule {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(thresholds: &ComplexityThresholds) -> Self {
         Self {
             warn_threshold: thresholds.cognitive_warn,

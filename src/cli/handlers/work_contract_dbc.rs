@@ -239,6 +239,7 @@ pub struct ContractQuality {
 
 impl ContractQuality {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// Calculate.
     pub fn calculate(active: usize, applicable: usize) -> Self {
         let score = if applicable == 0 {
             0.0

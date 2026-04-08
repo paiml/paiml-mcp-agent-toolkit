@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // Message metadata for extended functionality
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Metadata for message.
 pub struct MessageMetadata {
     pub content_type: String,
     pub encoding: String,
@@ -15,21 +16,25 @@ pub struct MessageMetadata {
 }
 
 // Extensions for AgentMessage
+/// Trait defining Message extensions behavior.
 pub trait MessageExtensions {
     fn with_metadata(self, metadata: MessageMetadata) -> MessageWithMetadata;
     fn is_expired(&self) -> bool;
     fn size_bytes(&self) -> usize;
 }
 
+/// Metadata for message with.
 pub struct MessageWithMetadata {
     pub message: AgentMessage,
     pub metadata: MessageMetadata,
 }
 
 // Efficient binary protocol for network transmission
+/// Binary protocol.
 pub struct BinaryProtocol;
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for protocol operations.
 pub enum ProtocolError {
     #[error("Encoding error: {0}")]
     EncodingError(String),
@@ -44,6 +49,7 @@ pub enum ProtocolError {
 }
 
 // Message batching for efficiency
+/// Message batch.
 pub struct MessageBatch {
     messages: Vec<AgentMessage>,
     total_size: usize,
@@ -51,6 +57,7 @@ pub struct MessageBatch {
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for batch operations.
 pub enum BatchError {
     #[error("Batch is full")]
     BatchFull,

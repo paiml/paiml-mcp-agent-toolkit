@@ -120,6 +120,7 @@ impl DeepContextConfig {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Detect entry points.
     pub fn detect_entry_points(&self) -> Vec<String> {
         let mut entry_points = Vec::new();
 
@@ -138,6 +139,7 @@ impl DeepContextConfig {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Merge with detected.
     pub fn merge_with_detected(&mut self) {
         if self.entry_points.is_empty() {
             self.entry_points = self.detect_entry_points();
@@ -153,6 +155,7 @@ impl DeepContextConfig {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Load from file.
     pub fn load_from_file(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         let content = std::fs::read_to_string(path)?;
         let mut config: Self = toml::from_str(&content)?;
@@ -169,6 +172,7 @@ impl DeepContextConfig {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Save to file.
     pub fn save_to_file(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         let content = toml::to_string_pretty(self)?;
         std::fs::write(path, content)?;

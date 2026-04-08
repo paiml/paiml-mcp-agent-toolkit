@@ -8,6 +8,7 @@ use anyhow::Result;
 use std::path::Path;
 
 // Stub types for backward compatibility
+/// Analyzer pool.
 pub struct AnalyzerPool;
 
 impl Default for AnalyzerPool {
@@ -19,11 +20,13 @@ impl Default for AnalyzerPool {
 impl AnalyzerPool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
 }
 
+/// Rust analyzer.
 pub struct RustAnalyzer;
 
 impl Default for RustAnalyzer {
@@ -35,11 +38,13 @@ impl Default for RustAnalyzer {
 impl RustAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Analyze file.
     pub fn analyze_file(&self, _path: &Path) -> Result<()> {
         Ok(())
     }

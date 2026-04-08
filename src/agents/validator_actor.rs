@@ -5,6 +5,7 @@ use crate::modules::validator::{ValidatorImpl, ValidatorModule};
 use actix::prelude::*;
 
 #[derive(Default)]
+/// Validator actor.
 pub struct ValidatorActor {
     validator: ValidatorImpl,
 }

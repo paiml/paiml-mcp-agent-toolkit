@@ -2,12 +2,14 @@
 use super::*;
 
 // Fluent DSL for workflow creation
+/// Fluent workflow.
 pub struct FluentWorkflow {
     builder: WorkflowBuilder,
 }
 
 impl FluentWorkflow {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Define.
     pub fn define(name: impl Into<String>) -> Self {
         Self {
             builder: WorkflowBuilder::new(name),
@@ -15,6 +17,7 @@ impl FluentWorkflow {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Then.
     pub fn then(self, step: WorkflowStep) -> Self {
         Self {
             builder: self.builder.add_step(step),
@@ -22,6 +25,7 @@ impl FluentWorkflow {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Parallel.
     pub fn parallel(self, steps: Vec<WorkflowStep>) -> Self {
         let parallel_step = WorkflowStep {
             id: format!("parallel_{}", uuid::Uuid::new_v4()),
@@ -37,6 +41,7 @@ impl FluentWorkflow {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// When.
     pub fn when(self, condition: impl Into<String>) -> ConditionalFlow {
         ConditionalFlow {
             workflow: self,
@@ -45,6 +50,7 @@ impl FluentWorkflow {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Repeat.
     pub fn repeat(self, condition: impl Into<String>, step: WorkflowStep) -> Self {
         let loop_step = WorkflowStep {
             id: format!("loop_{}", uuid::Uuid::new_v4()),
@@ -64,23 +70,27 @@ impl FluentWorkflow {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// On error.
     pub fn on_error(mut self, strategy: ErrorStrategy) -> Self {
         self.builder = self.builder.error_strategy(strategy);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With timeout.
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.builder = self.builder.timeout(timeout);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Build and return the final result.
     pub fn build(self) -> Workflow {
         self.builder.build()
     }
 }
 
+/// Conditional flow.
 pub struct ConditionalFlow {
     workflow: FluentWorkflow,
     condition: String,
@@ -88,6 +98,7 @@ pub struct ConditionalFlow {
 
 impl ConditionalFlow {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Do this.
     pub fn do_this(self, step: WorkflowStep) -> ConditionalElse {
         ConditionalElse {
             workflow: self.workflow,
@@ -97,6 +108,7 @@ impl ConditionalFlow {
     }
 }
 
+/// Conditional else.
 pub struct ConditionalElse {
     workflow: FluentWorkflow,
     condition: String,
@@ -105,6 +117,7 @@ pub struct ConditionalElse {
 
 impl ConditionalElse {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Otherwise.
     pub fn otherwise(self, step: WorkflowStep) -> FluentWorkflow {
         let conditional = WorkflowStep {
             id: format!("cond_{}", uuid::Uuid::new_v4()),
@@ -124,6 +137,7 @@ impl ConditionalElse {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// End if.
     pub fn end_if(self) -> FluentWorkflow {
         let conditional = WorkflowStep {
             id: format!("cond_{}", uuid::Uuid::new_v4()),

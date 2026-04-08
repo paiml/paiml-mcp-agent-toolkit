@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use super::{Claim, ClaimCategory};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Evidence source.
 pub enum EvidenceSource {
     GitHistory,       // Subsequent commits contradicting claim
     TestExecution,    // Running tests to verify claim
@@ -23,6 +24,7 @@ pub enum EvidenceSource {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of evidence operation.
 pub struct EvidenceResult {
     pub source: EvidenceSource,
     pub supports_claim: bool,
@@ -31,6 +33,7 @@ pub struct EvidenceResult {
     pub timestamp: Option<i64>,
 }
 
+/// Evidence gatherer.
 pub struct EvidenceGatherer {
     // Configuration for evidence gathering (future use)
     git_history_window_days: u32,
@@ -48,6 +51,7 @@ impl Default for EvidenceGatherer {
 
 // Supporting types for repository context
 #[derive(Debug, Clone)]
+/// Information about commit.
 pub struct CommitInfo {
     pub message: String,
     pub timestamp: i64,
@@ -55,6 +59,7 @@ pub struct CommitInfo {
 }
 
 #[derive(Debug, Clone, Default)]
+/// Information about test execution.
 pub struct TestExecutionInfo {
     pub has_results: bool,
     pub passed_count: usize,
@@ -64,6 +69,7 @@ pub struct TestExecutionInfo {
 
 // RepositoryContext: Mock-friendly context for evidence gathering
 #[derive(Debug, Clone)]
+/// Context for repository operations.
 pub struct RepositoryContext {
     pub subsequent_commits: Option<Vec<String>>,
     pub test_results: Option<(bool, usize)>, // (passing, ignored_count)

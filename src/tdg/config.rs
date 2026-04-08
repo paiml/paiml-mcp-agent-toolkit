@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Configuration for tdg.
 pub struct TdgConfig {
     pub weights: WeightConfig,
     pub thresholds: ThresholdConfig,
@@ -13,6 +14,7 @@ pub struct TdgConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for weight.
 pub struct WeightConfig {
     pub structural_complexity: f32,
     pub semantic_complexity: f32,
@@ -36,6 +38,7 @@ impl Default for WeightConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for threshold.
 pub struct ThresholdConfig {
     pub max_cyclomatic_complexity: u32,
     pub max_cognitive_complexity: u32,
@@ -61,6 +64,7 @@ impl Default for ThresholdConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for penalty.
 pub struct PenaltyConfig {
     pub complexity_penalty_base: PenaltyCurve,
     pub duplication_penalty_curve: PenaltyCurve,
@@ -78,6 +82,7 @@ impl Default for PenaltyConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Penalty curve.
 pub enum PenaltyCurve {
     Linear,
     Logarithmic,
@@ -88,6 +93,7 @@ pub enum PenaltyCurve {
 impl PenaltyCurve {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Apply the operation.
     pub fn apply(&self, value: f32, base: f32) -> f32 {
         match self {
             PenaltyCurve::Linear => value * base,
@@ -105,6 +111,7 @@ impl PenaltyCurve {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Language override.
 pub struct LanguageOverride {
     pub max_cognitive_complexity: Option<u32>,
     pub min_doc_coverage: Option<f32>,
@@ -114,6 +121,7 @@ pub struct LanguageOverride {
 
 impl TdgConfig {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// From file.
     pub fn from_file(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)?;
         let config: Self = toml::from_str(&content)?;
@@ -121,6 +129,7 @@ impl TdgConfig {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Save data to the destination.
     pub fn save(&self, path: &Path) -> Result<()> {
         let content = toml::to_string_pretty(self)?;
         std::fs::write(path, content)?;

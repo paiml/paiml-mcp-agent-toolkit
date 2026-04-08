@@ -9,11 +9,13 @@ use crate::services::deep_wasm::{DeepWasmReport, DeepWasmResult};
 pub struct ReportGenerator;
 
 impl ReportGenerator {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Generate markdown.
     pub fn generate_markdown(&self, report: &DeepWasmReport) -> DeepWasmResult<String> {
         let mut output = String::new();
 

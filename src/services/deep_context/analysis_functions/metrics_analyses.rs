@@ -253,6 +253,7 @@ pub async fn analyze_provability_with_context(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect project language.
 pub fn detect_project_language(path: &std::path::Path) -> &'static str {
     use crate::services::file_discovery::ProjectFileDiscovery;
     let discovery = ProjectFileDiscovery::new(path.to_path_buf());

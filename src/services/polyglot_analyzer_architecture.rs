@@ -280,6 +280,7 @@ impl PolyglotAnalyzer {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Generate polyglot insights.
     pub fn generate_polyglot_insights(&self, analysis: &PolyglotAnalysis) -> Vec<String> {
         let mut insights = Vec::new();
 

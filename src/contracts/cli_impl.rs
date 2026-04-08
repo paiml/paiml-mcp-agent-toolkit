@@ -16,6 +16,7 @@ pub struct ContractCliHandler {
 }
 
 impl ContractCliHandler {
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         Ok(Self {
             service: Arc::new(crate::contracts::service::ContractService::new()?),

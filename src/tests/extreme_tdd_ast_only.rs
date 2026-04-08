@@ -84,21 +84,25 @@ async fn test_ast_has_proper_annotations() {
 
     let code = r#"use std::collections::HashMap;
 
+/// Configuration for config.
 pub struct Config {
     name: String,
     port: u16,
 }
 
 impl Config {
+    /// Create a new instance.
     pub fn new(name: String, port: u16) -> Self {
         Config { name, port }
     }
 }
 
+/// Trait defining Handler behavior.
 pub trait Handler {
     fn handle(&self);
 }
 
+/// Process the input.
 pub fn process() -> Result<(), Error> {
     Ok(())
 }

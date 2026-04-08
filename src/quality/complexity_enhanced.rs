@@ -5,6 +5,7 @@ use super::complexity::ComplexityAnalyzer;
 
 // Simple directed graph for CFG analysis (no petgraph dependency)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Cfg node index.
 pub struct CfgNodeIndex(usize);
 
 struct SimpleDiGraph<N, E> {
@@ -12,6 +13,7 @@ struct SimpleDiGraph<N, E> {
     edges: Vec<(CfgNodeIndex, CfgNodeIndex, E)>,
 }
 
+/// Control flow graph.
 pub struct ControlFlowGraph {
     graph: SimpleDiGraph<CfgNode, CfgEdge>,
     _entry: CfgNodeIndex,
@@ -19,6 +21,7 @@ pub struct ControlFlowGraph {
 }
 
 #[derive(Debug, Clone)]
+/// Cfg node.
 pub enum CfgNode {
     Entry,
     Exit,
@@ -28,6 +31,7 @@ pub enum CfgNode {
 }
 
 #[derive(Debug, Clone)]
+/// Cfg edge.
 pub enum CfgEdge {
     Sequential,
     True,
@@ -44,6 +48,7 @@ struct CfgBuilder {
 }
 
 #[derive(Debug, Clone)]
+/// Complexity metrics.
 pub struct ComplexityMetrics {
     pub cyclomatic: u32,
     pub cognitive: u32,
@@ -52,6 +57,7 @@ pub struct ComplexityMetrics {
 }
 
 #[derive(Debug, Clone)]
+/// Function metrics.
 pub struct FunctionMetrics {
     pub name: String,
     pub complexity: u32,
@@ -60,6 +66,7 @@ pub struct FunctionMetrics {
 }
 
 #[derive(Debug, Clone)]
+/// Halstead metrics.
 pub struct HalsteadMetrics {
     pub vocabulary: usize, // n = n1 + n2
     pub length: usize,     // N = N1 + N2

@@ -451,8 +451,10 @@ mod tests {
         let service = CoverageImprovementService::new(config);
 
         let code = r#"
+            /// Public fn.
             pub fn public_fn() {}
             fn private_fn() {}
+            /// Another public.
             pub fn another_public() -> i32 { 42 }
             pub(crate) fn crate_public() {}
         "#;

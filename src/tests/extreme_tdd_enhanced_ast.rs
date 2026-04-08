@@ -129,23 +129,28 @@ async fn test_ast_shows_hierarchical_structure() {
 
     let code = r#"
 mod utils {
+    /// Helper.
     pub fn helper() -> i32 { 1 }
 }
 
+/// Server.
 pub struct Server {
     port: u16,
 }
 
 impl Server {
+    /// Create a new instance.
     pub fn new(port: u16) -> Self {
         Server { port }
     }
 
+    /// Start the operation.
     pub fn start(&self) {
         // start server
     }
 }
 
+/// Trait defining Handler behavior.
 pub trait Handler {
     fn handle(&self);
 }

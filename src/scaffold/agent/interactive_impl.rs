@@ -1,3 +1,4 @@
+/// Interactive scaffolder.
 pub struct InteractiveScaffolder {
     /// Terminal for I/O.
     term: Term,

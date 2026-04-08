@@ -207,6 +207,7 @@ pub struct MultiStageProgress {
 
 impl MultiStageProgress {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(stages: Vec<String>) -> Self {
         Self {
             stages,
@@ -219,6 +220,7 @@ impl MultiStageProgress {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Next stage.
     pub fn next_stage(&mut self, _message: &str) {
         if self.current_stage_index < self.stages.len() - 1 {
             self.current_stage_index += 1;
@@ -226,30 +228,36 @@ impl MultiStageProgress {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Current stage.
     pub fn current_stage(&self) -> &str {
         &self.stages[self.current_stage_index]
     }
 
+    /// Current stage index.
     pub fn current_stage_index(&self) -> usize {
         self.current_stage_index
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Set progress.
     pub fn set_progress(&mut self, current: u64, total: u64) {
         self.completed_items = current;
         self.total_items = total;
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Completed items.
     pub fn completed_items(&self) -> u64 {
         self.completed_items
     }
 
+    /// Total items.
     pub fn total_items(&self) -> u64 {
         self.total_items
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get eta.
     pub fn get_eta(&self) -> Duration {
         if self.completed_items == 0 || self.total_items == 0 {
             return Duration::from_secs(0);
@@ -264,6 +272,7 @@ impl MultiStageProgress {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Finalize the operation.
     pub fn finish(&self, _message: &str) {
         if let Some(ref pb) = self.progress_bar {
             pb.finish_and_clear();
@@ -283,6 +292,7 @@ pub struct CategoryProgress {
 
 impl CategoryProgress {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(categories: Vec<String>) -> Self {
         Self {
             categories,
@@ -295,6 +305,7 @@ impl CategoryProgress {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Next category.
     pub fn next_category(&mut self, _name: &str) {
         if self.current_category_index < self.categories.len() - 1 {
             self.current_category_index += 1;
@@ -305,30 +316,36 @@ impl CategoryProgress {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Current category.
     pub fn current_category(&self) -> &str {
         &self.categories[self.current_category_index]
     }
 
+    /// Current category index.
     pub fn current_category_index(&self) -> usize {
         self.current_category_index
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Set file progress.
     pub fn set_file_progress(&mut self, current: usize, total: usize) {
         self.files_processed = current;
         self.total_files = total;
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Files processed.
     pub fn files_processed(&self) -> usize {
         self.files_processed
     }
 
+    /// Total files.
     pub fn total_files(&self) -> usize {
         self.total_files
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Category percent.
     pub fn category_percent(&self) -> f64 {
         if self.total_files == 0 {
             return 0.0;
@@ -337,6 +354,7 @@ impl CategoryProgress {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Overall percent.
     pub fn overall_percent(&self) -> f64 {
         if self.categories.is_empty() {
             return 0.0;
@@ -351,10 +369,12 @@ impl CategoryProgress {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Elapsed.
     pub fn elapsed(&self) -> Duration {
         self.start_time.elapsed()
     }
 
+    /// Finalize the operation.
     pub fn finish(&self) {
         if let Some(ref pb) = self.progress_bar {
             pb.finish_and_clear();
@@ -370,6 +390,7 @@ pub struct Spinner {
 
 impl Spinner {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             frames: vec!['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
@@ -378,10 +399,12 @@ impl Spinner {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Advance one frame or step.
     pub fn tick(&mut self) {
         self.current_frame_index = (self.current_frame_index + 1) % self.frames.len();
     }
 
+    /// Current frame.
     pub fn current_frame(&self) -> char {
         self.frames[self.current_frame_index]
     }

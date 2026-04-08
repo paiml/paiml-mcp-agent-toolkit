@@ -2,6 +2,7 @@
 // Included from mod.rs - shares parent module scope (no `use` imports)
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Quality scorecard.
 pub struct QualityScorecard {
     pub overall_health: f64,
     pub complexity_score: f64,
@@ -12,6 +13,7 @@ pub struct QualityScorecard {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Template provenance.
 pub struct TemplateProvenance {
     pub scaffold_timestamp: DateTime<Utc>,
     pub templates_used: Vec<String>,
@@ -20,6 +22,7 @@ pub struct TemplateProvenance {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Analysis results for drift.
 pub struct DriftAnalysis {
     pub added_files: Vec<PathBuf>,
     pub modified_files: Vec<PathBuf>,
@@ -28,6 +31,7 @@ pub struct DriftAnalysis {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Summary of defect analysis.
 pub struct DefectSummary {
     pub total_defects: usize,
     pub by_severity: FxHashMap<String, usize>,
@@ -36,6 +40,7 @@ pub struct DefectSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Hotspot identified in defect analysis.
 pub struct DefectHotspot {
     pub location: FileLocation,
     pub composite_score: f32,
@@ -44,6 +49,7 @@ pub struct DefectHotspot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// File location.
 pub struct FileLocation {
     pub file: PathBuf,
     pub line: u32,
@@ -51,6 +57,7 @@ pub struct FileLocation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Defect factor.
 pub enum DefectFactor {
     DeadCode {
         confidence: ConfidenceLevel,
@@ -74,6 +81,7 @@ pub enum DefectFactor {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Refactoring estimate.
 pub struct RefactoringEstimate {
     pub estimated_hours: f32,
     pub priority: Priority,
@@ -82,6 +90,7 @@ pub struct RefactoringEstimate {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Priority level for priority.
 pub enum Priority {
     Critical,
     High,
@@ -90,6 +99,7 @@ pub enum Priority {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Impact.
 pub enum Impact {
     High,
     Medium,
@@ -97,6 +107,7 @@ pub enum Impact {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Prioritized recommendation.
 pub struct PrioritizedRecommendation {
     pub title: String,
     pub description: String,

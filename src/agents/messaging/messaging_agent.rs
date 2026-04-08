@@ -2,6 +2,7 @@
 
 impl AgentMessage {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(from: Uuid, to: Uuid, payload: impl Serialize) -> Result<Self, bincode::Error> {
         let payload_bytes = bincode::serialize(&payload)?;
 
@@ -23,24 +24,28 @@ impl AgentMessage {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With priority.
     pub fn with_priority(mut self, priority: Priority) -> Self {
         self.header.priority = priority;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With correlation.
     pub fn with_correlation(mut self, correlation_id: Uuid) -> Self {
         self.header.correlation_id = Some(correlation_id);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With ttl.
     pub fn with_ttl(mut self, ttl: Duration) -> Self {
         self.header.ttl_ms = ttl.as_millis() as u32;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is expired.
     pub fn is_expired(&self) -> bool {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -52,6 +57,7 @@ impl AgentMessage {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Deserialize payload.
     pub fn deserialize_payload<T: for<'de> Deserialize<'de>>(&self) -> Result<T, bincode::Error> {
         bincode::deserialize(&self.payload)
     }

@@ -15,9 +15,11 @@ use async_trait::async_trait;
 use std::path::Path;
 use walkdir::WalkDir;
 
+/// Ci scorer.
 pub struct CiScorer;
 
 impl CiScorer {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

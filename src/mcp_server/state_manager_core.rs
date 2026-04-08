@@ -35,6 +35,7 @@ impl StateManager {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// With temp dir.
     pub fn with_temp_dir(temp_dir: &Path) -> Self {
         Self {
             state: None,
@@ -220,16 +221,19 @@ impl StateManager {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get state.
     pub fn get_state(&self) -> Result<&RefactorStateMachine, String> {
         self.state.as_ref().ok_or("No active session".to_string())
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get session id.
     pub fn get_session_id(&self) -> &str {
         &self.session_id
     }
 
+    /// Stop session.
     pub fn stop_session(&mut self) -> Result<(), String> {
         if self.state.is_none() {
             return Err("No active session to stop".to_string());

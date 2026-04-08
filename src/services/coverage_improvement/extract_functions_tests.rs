@@ -8,9 +8,11 @@ mod extract_functions_tests {
 
         // extract_public_functions only extracts top-level functions, not impl methods
         let code = r#"
+            /// Top level.
             pub fn top_level() {}
 
             impl Foo {
+                /// Method.
                 pub fn method(&self) {}
             }
         "#;
@@ -30,6 +32,7 @@ mod extract_functions_tests {
 
         let code = r#"
             pub async fn async_fn() {}
+            /// Sync fn.
             pub fn sync_fn() {}
         "#;
 
@@ -45,7 +48,9 @@ mod extract_functions_tests {
         let service = CoverageImprovementService::new(config);
 
         let code = r#"
+            /// Generic.
             pub fn generic<T: Clone>(x: T) -> T { x }
+            /// With lifetime.
             pub fn with_lifetime<'a>(x: &'a str) -> &'a str { x }
         "#;
 
@@ -62,9 +67,11 @@ mod extract_functions_tests {
 
         let code = r#"
             #[inline]
+            /// Inlined.
             pub fn inlined() {}
 
             #[cfg(test)]
+            /// Test only.
             pub fn test_only() {}
         "#;
 

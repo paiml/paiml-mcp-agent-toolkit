@@ -7,6 +7,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// Git hook manager.
 pub struct GitHookManager {
     repo_path: PathBuf,
     quality_runner: QualityGateRunner,
@@ -14,6 +15,7 @@ pub struct GitHookManager {
 
 impl GitHookManager {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(repo_path: impl AsRef<Path>) -> Self {
         Self {
             repo_path: repo_path.as_ref().to_path_buf(),
@@ -23,12 +25,14 @@ impl GitHookManager {
 }
 
 #[derive(Debug)]
+/// Report containing quality data.
 pub struct QualityReport {
     pub file: String,
     pub passed: bool,
     pub violations: Vec<String>,
 }
 
+/// Incremental checker.
 pub struct IncrementalChecker {
     cache: HashMap<String, FileChecksum>,
 }

@@ -23,16 +23,19 @@ pub trait McpTool: Send + Sync {
 // semantic_search Tool
 // ============================================================================
 
+/// Semantic search tool.
 pub struct SemanticSearchTool {
     engine: Arc<HybridSearchEngine>,
 }
 
 impl SemanticSearchTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self { engine }
     }
 
+    /// Schema.
     pub fn schema() -> Value {
         json!({
             "name": "semantic_search",
@@ -153,6 +156,7 @@ impl McpTool for SemanticSearchTool {
 // find_similar_code Tool
 // ============================================================================
 
+/// Find similar code tool.
 pub struct FindSimilarCodeTool {
     // Reserved for future semantic search Phase 2 integration
     engine: Arc<HybridSearchEngine>,
@@ -160,10 +164,12 @@ pub struct FindSimilarCodeTool {
 
 impl FindSimilarCodeTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self { engine }
     }
 
+    /// Schema.
     pub fn schema() -> Value {
         json!({
             "name": "find_similar_code",
@@ -226,6 +232,7 @@ impl McpTool for FindSimilarCodeTool {
 // cluster_code Tool
 // ============================================================================
 
+/// Cluster code tool.
 pub struct ClusterCodeTool {
     // Reserved for future semantic search Phase 2 integration
     engine: Arc<HybridSearchEngine>,
@@ -233,10 +240,12 @@ pub struct ClusterCodeTool {
 
 impl ClusterCodeTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self { engine }
     }
 
+    /// Schema.
     pub fn schema() -> Value {
         json!({
             "name": "cluster_code",
@@ -313,6 +322,7 @@ impl McpTool for ClusterCodeTool {
 // analyze_topics Tool
 // ============================================================================
 
+/// Analyze topics tool.
 pub struct AnalyzeTopicsTool {
     // Reserved for future semantic search Phase 2 integration
     engine: Arc<HybridSearchEngine>,
@@ -320,10 +330,12 @@ pub struct AnalyzeTopicsTool {
 
 impl AnalyzeTopicsTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self { engine }
     }
 
+    /// Schema.
     pub fn schema() -> Value {
         json!({
             "name": "analyze_topics",

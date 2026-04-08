@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+/// Entropy calculator.
 pub struct EntropyCalculator;
 
 impl Default for EntropyCalculator {

@@ -67,6 +67,7 @@ fn dead_function() {
             (
                 "src/lib.rs",
                 r#"
+/// Duplicate code.
 pub fn duplicate_code() {
     let mut sum = 0;
     for i in 0..100 {
@@ -80,6 +81,7 @@ pub fn duplicate_code() {
 }
 
 // FIXME: This is a security vulnerability
+/// Unsafe function.
 pub fn unsafe_function(input: &str) {
     // TODO: Validate input
     println!("{}", input);

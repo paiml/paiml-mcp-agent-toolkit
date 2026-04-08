@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 // Default workflow monitor implementation
+/// Monitor for default workflow resources.
 pub struct DefaultWorkflowMonitor {
     metrics: Arc<RwLock<HashMap<Uuid, WorkflowMetrics>>>,
 }
@@ -17,6 +18,7 @@ impl Default for DefaultWorkflowMonitor {
 
 impl DefaultWorkflowMonitor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             metrics: Arc::new(RwLock::new(HashMap::new())),

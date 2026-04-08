@@ -1,3 +1,4 @@
+/// Complexity ranker.
 pub struct ComplexityRanker {
     /// Weight for cyclomatic complexity (0.0 - 1.0)
     pub cyclomatic_weight: f64,
@@ -20,6 +21,7 @@ impl Default for ComplexityRanker {
 impl ComplexityRanker {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(cyclomatic_weight: f64, cognitive_weight: f64, function_count_weight: f64) -> Self {
         Self {
             cyclomatic_weight,

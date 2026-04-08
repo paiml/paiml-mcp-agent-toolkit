@@ -124,6 +124,7 @@ async fn try_ast_analysis(path: &Path, language: Language) -> Option<FileComplex
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Analyze with heuristics.
 pub fn analyze_with_heuristics(
     path: &Path,
     content: &str,
@@ -299,6 +300,7 @@ mod tests {
     println!("hello");
 }
 
+/// Second function.
 pub fn second_function() {
     if true {
         println!("world");
@@ -346,6 +348,7 @@ pub fn second_function() {
     println!("hello");
 }
 
+/// Second function.
 pub fn second_function() {
     if true {
         println!("world");

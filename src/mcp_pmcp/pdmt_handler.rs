@@ -28,6 +28,7 @@ fn default_granularity() -> String {
 }
 
 #[derive(Debug, Deserialize)]
+/// Quality config input.
 pub struct QualityConfigInput {
     #[serde(default = "default_enforcement_mode")]
     pub enforcement_mode: String,
@@ -125,6 +126,7 @@ pub struct PdmtTool {
 impl PdmtTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             service: PdmtService::new(),

@@ -10,6 +10,7 @@ impl Default for McpDemoAdapter {
 impl McpDemoError {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// To mcp error.
     pub fn to_mcp_error(&self) -> McpError {
         match self {
             McpDemoError::InvalidJsonRpc(_) => McpError {

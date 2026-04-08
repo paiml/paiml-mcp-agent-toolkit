@@ -1,5 +1,6 @@
 // MessageRouter with priority queue and RouterError
 
+/// Message router.
 pub struct MessageRouter {
     routes: dashmap::DashMap<Uuid, Recipient<AgentMessage>>,
     priority_queue: crossbeam::queue::SegQueue<(Priority, AgentMessage)>,
@@ -13,6 +14,7 @@ impl Default for MessageRouter {
 
 impl MessageRouter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             routes: dashmap::DashMap::new(),
@@ -21,10 +23,12 @@ impl MessageRouter {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register(&self, agent_id: Uuid, recipient: Recipient<AgentMessage>) {
         self.routes.insert(agent_id, recipient);
     }
 
+    /// Route.
     pub fn route(&self, message: AgentMessage) -> Result<(), RouterError> {
         // Check if message is expired
         if message.is_expired() {
@@ -59,6 +63,7 @@ impl MessageRouter {
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for router operations.
 pub enum RouterError {
     #[error("Message expired")]
     Expired,

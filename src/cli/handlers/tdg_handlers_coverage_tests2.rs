@@ -18,6 +18,7 @@ mod execute_tdg_analysis_tests {
         std::fs::write(
             &rust_file,
             r#"
+/// Simple function.
 pub fn simple_function() {
     println!("hello");
 }
@@ -58,6 +59,7 @@ pub fn simple_function() {
         std::fs::write(
             &rust_file,
             r#"
+/// Hello.
 pub fn hello() -> &'static str {
     "hello"
 }
@@ -543,12 +545,14 @@ mod handle_explain_mode_tests {
         std::fs::write(
             &rust_file,
             r#"
+/// Simple function.
 pub fn simple_function() -> i32 {
     let x = 1;
     let y = 2;
     x + y
 }
 
+/// Complex function.
 pub fn complex_function(n: i32) -> i32 {
     if n > 0 {
         if n > 10 {

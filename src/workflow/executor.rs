@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tokio::time::{sleep, timeout};
 
 // Default workflow executor implementation
+/// Default workflow executor.
 pub struct DefaultWorkflowExecutor {
     agent_registry: Arc<AgentRegistry>,
     monitor: Option<Arc<dyn WorkflowMonitor>>,

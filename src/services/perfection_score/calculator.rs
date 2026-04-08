@@ -27,6 +27,7 @@ impl Default for PerfectionScoreCalculator {
 
 impl PerfectionScoreCalculator {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             weights: CategoryWeights::default(),
@@ -35,6 +36,7 @@ impl PerfectionScoreCalculator {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Fast mode.
     pub fn fast_mode(mut self, fast: bool) -> Self {
         self.fast_mode = fast;
         self

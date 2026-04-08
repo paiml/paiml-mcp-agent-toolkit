@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Threshold values for qualitys.
 pub struct QualityThresholds {
     pub max_complexity: u32,
     pub max_satd_items: usize,
@@ -10,12 +11,14 @@ pub struct QualityThresholds {
 }
 
 #[derive(Debug, Clone)]
+/// Result of quality gate operation.
 pub struct QualityGateResult {
     pub passed: bool,
     pub violations: Vec<String>,
     pub metrics: HashMap<String, String>,
 }
 
+/// Quality gate runner.
 pub struct QualityGateRunner {
     _analyzers: Vec<Box<dyn std::any::Any + Send>>,
     _thresholds: QualityThresholds,
@@ -23,6 +26,7 @@ pub struct QualityGateRunner {
 
 impl QualityGateRunner {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(
         analyzers: Vec<Box<dyn std::any::Any + Send>>,
         thresholds: QualityThresholds,

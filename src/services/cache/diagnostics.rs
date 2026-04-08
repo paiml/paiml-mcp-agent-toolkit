@@ -60,6 +60,7 @@ pub struct CacheDiagnosticReport {
 impl CacheDiagnosticReport {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(diagnostics: CacheDiagnostics) -> Self {
         let mut warnings = Vec::new();
         let mut recommendations = Vec::new();
@@ -101,6 +102,7 @@ impl CacheDiagnosticReport {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is healthy.
     pub fn is_healthy(&self) -> bool {
         self.warnings.is_empty()
     }

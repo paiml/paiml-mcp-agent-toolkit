@@ -23,6 +23,7 @@ impl StdioTransport {
     const MAGIC: &'static [u8; 4] = b"PMAT";
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(stdin: ChildStdin, stdout: ChildStdout) -> Self {
         Self {
             stdin,

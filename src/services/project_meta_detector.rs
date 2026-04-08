@@ -57,6 +57,7 @@ use tokio::task::JoinSet;
 use tracing::debug;
 use walkdir::WalkDir;
 
+/// Project meta detector.
 pub struct ProjectMetaDetector {
     patterns: Vec<(Regex, MetaFileType)>,
 }
@@ -64,6 +65,7 @@ pub struct ProjectMetaDetector {
 impl ProjectMetaDetector {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             patterns: vec![

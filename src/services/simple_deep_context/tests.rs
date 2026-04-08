@@ -828,6 +828,7 @@ fn main() {
     helper();
 }
 
+/// Helper.
 pub fn helper() -> i32 {
     42
 }

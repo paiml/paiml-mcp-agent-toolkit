@@ -285,6 +285,7 @@ impl fmt::Display for ComplexityBound {
 impl CacheComplexity {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(hit_ratio: u8, miss_penalty: u8, working_set: BigOClass) -> Self {
         Self {
             hit_ratio: hit_ratio.min(100),

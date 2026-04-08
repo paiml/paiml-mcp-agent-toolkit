@@ -2,6 +2,7 @@
 
 impl<S: AgentState> ConsensusStorage<S> {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(node_id: NodeId, initial_state: S) -> Self {
         Self {
             node_id,

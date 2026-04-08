@@ -1,6 +1,7 @@
 impl UnifiedResponse {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(status: StatusCode) -> Self {
         Self {
             status,
@@ -12,18 +13,21 @@ impl UnifiedResponse {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Ok.
     pub fn ok() -> Self {
         Self::new(StatusCode::OK)
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With body.
     pub fn with_body(mut self, body: Body) -> Self {
         self.body = body;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With json.
     pub fn with_json<T: Serialize>(self, data: &T) -> Result<Self, serde_json::Error> {
         let json = serde_json::to_vec(data)?;
         Ok(self
@@ -33,6 +37,7 @@ impl UnifiedResponse {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With header.
     pub fn with_header(mut self, key: &str, value: &str) -> Self {
         if let (Ok(name), Ok(val)) = (
             key.parse::<http::HeaderName>(),

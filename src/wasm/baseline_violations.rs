@@ -4,6 +4,7 @@
 impl Violation {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Severity.
     pub fn severity(&self) -> &Severity {
         match self {
             Self::ComplexityRegression { severity, .. }
@@ -16,6 +17,7 @@ impl Violation {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Description.
     pub fn description(&self) -> String {
         match self {
             Self::ComplexityRegression { current, limit, .. } => {

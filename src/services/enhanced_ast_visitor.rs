@@ -254,6 +254,7 @@ mod tests {
     #[test]
     fn test_extract_real_function_names() {
         let code = r#"
+            /// Calculate complexity.
             pub fn calculate_complexity() -> u32 { 42 }
             async fn process_data(input: &str) -> Result<String, Error> { Ok(input.to_string()) }
             pub(crate) fn helper_function() {}
@@ -301,6 +302,7 @@ mod tests {
         let code = r#"
             mod services {
                 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+                /// Service function.
                 pub fn service_function() {}
 
                 mod internal {
@@ -329,6 +331,7 @@ mod tests {
     fn test_extract_struct_details() {
         let code = r#"
             #[derive(Debug, Clone)]
+            /// Configuration.
             pub struct Configuration {
                 pub name: String,
                 value: u32,
@@ -361,6 +364,7 @@ mod tests {
     fn test_visibility_modifiers() {
         let code = r#"
             #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+            /// Public fn.
             pub fn public_fn() {}
             pub(crate) fn crate_fn() {}
             pub(super) fn super_fn() {}

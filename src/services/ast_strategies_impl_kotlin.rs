@@ -1,5 +1,6 @@
 // Kotlin language strategy
 #[cfg(feature = "kotlin-ast")]
+/// Kotlin ast strategy.
 pub struct KotlinAstStrategy;
 
 #[cfg(feature = "kotlin-ast")]

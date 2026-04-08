@@ -141,15 +141,18 @@ impl DependencyGraph {
 
 impl<'a> EdgeRef<'a> {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Source.
     pub fn source(&self) -> NodeId {
         self.source
     }
 
+    /// Target.
     pub fn target(&self) -> NodeId {
         self.target
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Weight.
     pub fn weight(&self) -> &'a EdgeData {
         self.weight
     }

@@ -4,6 +4,7 @@
 impl QualityBaseline {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(release_metrics: Metrics, stable_metrics: Metrics) -> Self {
         Self {
             release_anchor: release_metrics,
@@ -132,6 +133,7 @@ impl QualityBaseline {
 impl RollingStats {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(window_days: usize) -> Self {
         Self {
             window_days,
@@ -140,6 +142,7 @@ impl RollingStats {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add point.
     pub fn add_point(&mut self, metrics: Metrics) {
         self.data_points.push_back(metrics);
 

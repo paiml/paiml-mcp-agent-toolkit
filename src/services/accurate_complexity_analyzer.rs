@@ -26,6 +26,7 @@ impl Default for AccurateComplexityAnalyzer {
 impl AccurateComplexityAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             exclude_tests: false,
@@ -35,6 +36,7 @@ impl AccurateComplexityAnalyzer {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Exclude tests.
     pub fn exclude_tests(mut self, exclude: bool) -> Self {
         self.exclude_tests = exclude;
         self
@@ -42,6 +44,7 @@ impl AccurateComplexityAnalyzer {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Respect annotations.
     pub fn respect_annotations(mut self, respect: bool) -> Self {
         self.respect_annotations = respect;
         self

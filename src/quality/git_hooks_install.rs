@@ -3,6 +3,7 @@
 
 impl GitHookManager {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Install hooks.
     pub fn install_hooks(&self) -> Result<()> {
         let hooks_dir = self.repo_path.join(".git/hooks");
 

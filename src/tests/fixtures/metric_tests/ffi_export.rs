@@ -25,6 +25,7 @@ pub static EXPORTED_STATIC: i32 = 100;
 pub static mut MUTABLE_GLOBAL: i32 = 0;
 
 #[export_name = "custom_name"]
+/// Renamed export.
 pub fn renamed_export() -> i32 {
     200
 }
@@ -32,6 +33,7 @@ pub fn renamed_export() -> i32 {
 // WASM bindgen example
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
+/// Wasm function.
 pub fn wasm_function(input: &str) -> String {
     format!("Hello, {}!", input)
 }

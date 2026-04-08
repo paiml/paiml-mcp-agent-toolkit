@@ -37,6 +37,7 @@ pub struct UnifiedAnalysisReport {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Metadata for report.
 pub struct ReportMetadata {
     pub project_name: String,
     pub project_path: String,
@@ -48,6 +49,7 @@ pub struct ReportMetadata {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Summary of executive analysis.
 pub struct ExecutiveSummary {
     pub overall_health_score: f64,
     pub critical_issues: usize,
@@ -57,6 +59,7 @@ pub struct ExecutiveSummary {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Level classification for risk.
 pub enum RiskLevel {
     Low,
     Medium,
@@ -65,6 +68,7 @@ pub enum RiskLevel {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Report section.
 pub struct ReportSection {
     pub title: String,
     pub section_type: SectionType,
@@ -74,6 +78,7 @@ pub struct ReportSection {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Type classification for section.
 pub enum SectionType {
     Complexity,
     DeadCode,
@@ -88,6 +93,7 @@ pub enum SectionType {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Metric value.
 pub struct MetricValue {
     pub value: f64,
     pub unit: String,
@@ -96,6 +102,7 @@ pub struct MetricValue {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Trend.
 pub enum Trend {
     Improving,
     Stable,
@@ -104,6 +111,7 @@ pub enum Trend {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Finding.
 pub struct Finding {
     pub severity: Severity,
     pub category: String,
@@ -114,6 +122,7 @@ pub struct Finding {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Severity level classification for severity.
 pub enum Severity {
     Info,
     Low,
@@ -123,6 +132,7 @@ pub enum Severity {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Location.
 pub struct Location {
     pub file: String,
     pub line: Option<usize>,
@@ -130,6 +140,7 @@ pub struct Location {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Level classification for effort.
 pub enum EffortLevel {
     Trivial,
     Easy,
@@ -139,6 +150,7 @@ pub enum EffortLevel {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Recommendation.
 pub struct Recommendation {
     pub priority: Priority,
     pub category: String,
@@ -150,6 +162,7 @@ pub struct Recommendation {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Priority level for priority.
 pub enum Priority {
     Low,
     Medium,
@@ -158,6 +171,7 @@ pub enum Priority {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Visualization.
 pub struct Visualization {
     pub title: String,
     pub viz_type: VisualizationType,
@@ -166,6 +180,7 @@ pub struct Visualization {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Type classification for visualization.
 pub enum VisualizationType {
     LineChart,
     BarChart,
@@ -191,6 +206,7 @@ pub struct AnalysisResults {
 
 // Analysis result types (simplified versions)
 #[derive(Debug, Serialize, Deserialize)]
+/// Analysis results for complexity.
 pub struct ComplexityAnalysis {
     pub total_cyclomatic: u32,
     pub total_cognitive: u32,
@@ -201,6 +217,7 @@ pub struct ComplexityAnalysis {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Analysis results for dead code.
 pub struct DeadCodeAnalysis {
     pub dead_lines: usize,
     pub dead_functions: usize,
@@ -208,6 +225,7 @@ pub struct DeadCodeAnalysis {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Analysis results for duplication.
 pub struct DuplicationAnalysis {
     pub duplicated_lines: usize,
     pub duplicate_blocks: usize,
@@ -215,6 +233,7 @@ pub struct DuplicationAnalysis {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Analysis results for tdg.
 pub struct TdgAnalysis {
     pub average_tdg: f64,
     pub max_tdg: f64,
@@ -222,6 +241,7 @@ pub struct TdgAnalysis {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Analysis results for big o.
 pub struct BigOAnalysis {
     pub analyzed_functions: usize,
     pub high_complexity_count: usize,

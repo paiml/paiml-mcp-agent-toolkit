@@ -33,6 +33,7 @@ pub struct IncrementalChurnAnalyzer {
 impl IncrementalChurnAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(project_root: PathBuf) -> Self {
         Self {
             cache: Arc::new(DashMap::new()),

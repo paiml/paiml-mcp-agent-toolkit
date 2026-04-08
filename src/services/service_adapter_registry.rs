@@ -6,6 +6,7 @@ pub struct ServiceRegistryBuilder {
 impl ServiceRegistryBuilder {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             registry: super::service_base::ServiceRegistry::new(),

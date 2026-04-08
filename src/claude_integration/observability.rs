@@ -41,6 +41,7 @@ impl Default for MetricsCollector {
 
 impl MetricsCollector {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             requests_total: AtomicU64::new(0),
@@ -268,6 +269,7 @@ pub struct Timer {
 
 impl Timer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             start: Instant::now(),
@@ -275,6 +277,7 @@ impl Timer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Elapsed.
     pub fn elapsed(&self) -> Duration {
         self.start.elapsed()
     }

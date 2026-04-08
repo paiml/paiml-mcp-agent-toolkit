@@ -1,5 +1,6 @@
 impl RateLimiter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(capacity: u32, refill_rate: u32) -> Self {
         Self {
             capacity,
@@ -10,6 +11,7 @@ impl RateLimiter {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Try acquire.
     pub fn try_acquire(&self, tokens: u32) -> bool {
         self.refill();
 
@@ -56,6 +58,7 @@ impl RateLimiter {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Available tokens.
     pub fn available_tokens(&self) -> u32 {
         self.refill();
         self.tokens.load(Ordering::Relaxed)

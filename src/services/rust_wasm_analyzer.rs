@@ -249,6 +249,7 @@ mod tests {
     fn test_detect_wasm_bindgen_function() {
         let code = quote! {
             #[wasm_bindgen]
+            /// Add.
             pub fn add(a: i32, b: i32) -> i32 {
                 a + b
             }
@@ -285,6 +286,7 @@ mod tests {
         let code = quote! {
             #[wasm_bindgen]
             #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+            /// Process data.
             pub fn process_data(input: Vec<u8>) -> Box<String> {
                 Box::new(String::from_utf8_lossy(&input).to_string())
             }
@@ -318,6 +320,7 @@ mod tests {
     fn test_non_boundary_function_ignored() {
         let code = quote! {
             #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+            /// Regular function.
             pub fn regular_function() -> i32 {
                 42
             }
@@ -352,6 +355,7 @@ mod tests {
         let code = quote! {
             #[wasm_bindgen]
             #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+            /// Wasm func.
             pub fn wasm_func() {}
 
             #[no_mangle]
@@ -362,6 +366,7 @@ mod tests {
             }
 
             #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+            /// Regular func.
             pub fn regular_func() {}
         };
 

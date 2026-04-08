@@ -4,6 +4,7 @@
 impl ProofAnnotator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(symbol_table: Arc<SymbolTable>) -> Self {
         Self {
             sources: Vec::new(),

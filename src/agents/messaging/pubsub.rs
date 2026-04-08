@@ -7,15 +7,18 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
+/// Topic.
 pub struct Topic(pub String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Event.
 pub struct Event {
     pub topic: String,
     pub data: serde_json::Value,
     pub timestamp: u64,
 }
 
+/// Pub sub broker.
 pub struct PubSubBroker {
     topics: Arc<DashMap<Topic, Vec<Uuid>>>,
     subscribers: Arc<DashMap<Uuid, Recipient<AgentMessage>>>,
@@ -28,12 +31,14 @@ impl Default for PubSubBroker {
 }
 
 #[derive(Debug, Clone)]
+/// Statistics for topic.
 pub struct TopicStats {
     pub topic_name: String,
     pub subscriber_count: usize,
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for pub sub operations.
 pub enum PubSubError {
     #[error("Serialization error: {0}")]
     Serialization(#[from] bincode::Error),
@@ -42,6 +47,7 @@ pub enum PubSubError {
 }
 
 // Wildcard subscription support
+/// Wildcard matcher.
 pub struct WildcardMatcher {
     patterns: Vec<(String, Uuid)>,
 }
@@ -53,6 +59,7 @@ impl Default for WildcardMatcher {
 }
 
 // Event sourcing support
+/// Event store.
 pub struct EventStore {
     events: Arc<RwLock<Vec<StoredEvent>>>,
     max_events: usize,

@@ -104,6 +104,7 @@ fn generate_state_definitions(ctx: &AgentContext) -> String {
 use serde::{{Deserialize, Serialize}};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// State of state lifecycle.
 pub enum State {{
     Initial,
     Processing,
@@ -112,6 +113,7 @@ pub enum State {{
 }}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Event.
 pub enum Event {{
     Start,
     Process,

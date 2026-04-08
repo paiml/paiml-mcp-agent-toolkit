@@ -22,6 +22,7 @@ impl Default for MetricsAggregator {
 impl MetricsAggregator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             storage_metrics: Arc::new(RwLock::new(RollingWindow::new(

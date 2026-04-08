@@ -73,6 +73,7 @@ fn dead_fn1() {}
 fn dead_fn2() {}
 
 fn dead_fn3() {}
+/// Active fn.
 pub fn active_fn() {}
 "#,
     )

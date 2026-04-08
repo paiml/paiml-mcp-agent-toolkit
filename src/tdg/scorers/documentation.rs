@@ -4,10 +4,12 @@ use tree_sitter::{Node, Tree};
 use crate::tdg::{Language, MetricCategory, PenaltyTracker, TdgConfig};
 use super::{Scorer, walk_tree, get_node_text};
 
+/// Documentation scorer.
 pub struct DocumentationScorer;
 
 impl DocumentationScorer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -332,6 +334,7 @@ mod tests {
                 42
             }
             
+            /// Undocumented function.
             pub fn undocumented_function() -> i32 {
                 24
             }

@@ -2,12 +2,14 @@
 use super::*;
 
 // Disk I/O throttle
+/// Io throttle.
 pub struct IoThrottle {
     _limits: DiskIoLimits,
 }
 
 impl IoThrottle {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(limits: DiskIoLimits) -> Result<Self, ResourceError> {
         Ok(Self { _limits: limits })
     }

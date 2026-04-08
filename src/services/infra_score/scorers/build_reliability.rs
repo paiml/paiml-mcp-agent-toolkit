@@ -14,9 +14,11 @@ use crate::services::infra_score::models::*;
 use async_trait::async_trait;
 use std::path::Path;
 
+/// Build reliability scorer.
 pub struct BuildReliabilityScorer;
 
 impl BuildReliabilityScorer {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

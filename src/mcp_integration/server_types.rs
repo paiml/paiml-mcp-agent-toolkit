@@ -1,4 +1,5 @@
 // MCP server implementation
+/// Mcp server.
 pub struct McpServer {
     context: Arc<McpContext>,
     config: ServerConfig,
@@ -6,6 +7,7 @@ pub struct McpServer {
 }
 
 #[derive(Clone)]
+/// Configuration for server.
 pub struct ServerConfig {
     pub name: String,
     pub version: String,

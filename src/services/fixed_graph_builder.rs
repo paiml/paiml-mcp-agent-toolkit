@@ -75,6 +75,7 @@ impl Default for GraphConfig {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Strategy options for grouping.
 pub enum GroupingStrategy {
     Module,
     Directory,
@@ -89,6 +90,7 @@ pub struct FixedGraph {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+/// Fixed node.
 pub struct FixedNode {
     pub id: String,
     pub display_name: String,

@@ -1,6 +1,7 @@
 // Feature test implementations for self-diagnostic
 // Included from diagnose.rs - do NOT add `use` imports or `#!` attributes here
 
+/// Rust ast test.
 pub struct RustAstTest;
 
 #[async_trait::async_trait]
@@ -13,6 +14,7 @@ impl FeatureTest for RustAstTest {
         use syn::parse_file;
 
         const TEST_CODE: &str = r"
+            /// Fibonacci.
             pub fn fibonacci(n: u32) -> u32 {
                 match n {
                     0 => 0,
@@ -37,6 +39,7 @@ impl FeatureTest for RustAstTest {
     }
 }
 
+/// Type script ast test.
 pub struct TypeScriptAstTest;
 
 #[async_trait::async_trait]
@@ -67,6 +70,7 @@ impl FeatureTest for TypeScriptAstTest {
     }
 }
 
+/// Python ast test.
 pub struct PythonAstTest;
 
 #[async_trait::async_trait]
@@ -101,6 +105,7 @@ def quicksort(arr):
     }
 }
 
+/// Cache subsystem test.
 pub struct CacheSubsystemTest;
 
 #[async_trait::async_trait]
@@ -132,6 +137,7 @@ impl FeatureTest for CacheSubsystemTest {
     }
 }
 
+/// Mermaid generator test.
 pub struct MermaidGeneratorTest;
 
 #[async_trait::async_trait]
@@ -158,6 +164,7 @@ impl FeatureTest for MermaidGeneratorTest {
     }
 }
 
+/// Complexity analysis test.
 pub struct ComplexityAnalysisTest;
 
 #[async_trait::async_trait]
@@ -180,6 +187,7 @@ impl FeatureTest for ComplexityAnalysisTest {
     }
 }
 
+/// Deep context test.
 pub struct DeepContextTest;
 
 #[async_trait::async_trait]
@@ -208,6 +216,7 @@ impl FeatureTest for DeepContextTest {
     }
 }
 
+/// Git integration test.
 pub struct GitIntegrationTest;
 
 #[async_trait::async_trait]

@@ -41,6 +41,7 @@ pub struct ServiceMetrics {
 
 impl ServiceMetrics {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Record request.
     pub fn record_request(&mut self, duration: Duration, success: bool) {
         self.request_count += 1;
         if success {
@@ -56,6 +57,7 @@ impl ServiceMetrics {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Success rate.
     pub fn success_rate(&self) -> f64 {
         if self.request_count == 0 {
             return 0.0;
@@ -100,6 +102,7 @@ pub struct ServiceRegistry {
 impl ServiceRegistry {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             services: DashMap::new(),

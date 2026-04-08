@@ -1,6 +1,7 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 use syn::{self, visit::Visit};
 
+/// Efficiency analyzer.
 pub struct EfficiencyAnalyzer {
     _max_loop_depth: u32,
     _recursive_calls: u32,
@@ -12,6 +13,7 @@ impl Default for EfficiencyAnalyzer {
     }
 }
 
+/// Result of efficiency operation.
 pub struct EfficiencyResult {
     pub time_complexity: String,
     pub space_complexity: String,

@@ -2,6 +2,7 @@ impl DemoContent {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From analysis results.
     pub fn from_analysis_results(
         dag: &DependencyGraph,
         files_analyzed: usize,
@@ -93,6 +94,7 @@ impl DemoContent {
 // For backwards compatibility with synchronous API
 #[cfg(feature = "demo")]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Spawn sync.
 pub fn spawn_sync(initial_content: DemoContent) -> Result<LocalDemoServer> {
     // Create a tokio runtime for the synchronous API
     let runtime = tokio::runtime::Runtime::new()?;

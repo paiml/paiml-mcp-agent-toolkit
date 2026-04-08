@@ -32,6 +32,7 @@ pub struct CorrelationEngine {
 
 impl CorrelationEngine {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             confidence_threshold: 0.7, // 70% confidence minimum

@@ -3,12 +3,14 @@ use crate::agents::registry::AgentRegistry;
 use std::sync::Arc;
 
 // Agent state resource
+/// Agent state resource.
 pub struct AgentStateResource {
     _registry: Arc<AgentRegistry>,
 }
 
 impl AgentStateResource {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -43,12 +45,14 @@ impl McpResource for AgentStateResource {
 }
 
 // Metrics resource
+/// Metrics resource.
 pub struct MetricsResource {
     _registry: Arc<AgentRegistry>,
 }
 
 impl MetricsResource {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -83,6 +87,7 @@ impl McpResource for MetricsResource {
 }
 
 // Quality report resource
+/// Quality report resource.
 pub struct QualityReportResource;
 
 impl Default for QualityReportResource {
@@ -93,6 +98,7 @@ impl Default for QualityReportResource {
 
 impl QualityReportResource {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

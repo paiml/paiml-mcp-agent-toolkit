@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Analysis results for code churn.
 pub struct CodeChurnAnalysis {
     pub generated_at: DateTime<Utc>,
     pub period_days: u32,
@@ -14,6 +15,7 @@ pub struct CodeChurnAnalysis {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// File churn metrics.
 pub struct FileChurnMetrics {
     pub path: PathBuf,
     pub relative_path: String,
@@ -27,6 +29,7 @@ pub struct FileChurnMetrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Summary of churn analysis.
 pub struct ChurnSummary {
     pub total_commits: usize,
     pub total_files_changed: usize,
@@ -85,6 +88,7 @@ impl FileChurnMetrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, clap::ValueEnum)]
+/// Output format options for churn output.
 pub enum ChurnOutputFormat {
     Json,
     Markdown,

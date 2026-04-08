@@ -21,6 +21,7 @@ pub enum SatdMarker {
 }
 
 impl SatdMarker {
+    /// As str.
     pub fn as_str(&self) -> &str {
         match self {
             SatdMarker::Todo => "TODO",
@@ -45,6 +46,7 @@ pub enum CommentStyle {
 }
 
 impl CommentStyle {
+    /// Wrap.
     pub fn wrap(&self, content: &str) -> String {
         match self {
             CommentStyle::SingleLine => format!("// {}", content),
@@ -70,6 +72,7 @@ pub struct SatdDetector {
 }
 
 impl SatdDetector {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             markers: vec![

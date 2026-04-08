@@ -27,11 +27,13 @@ mod tests {
             use std::collections::HashMap;
             use crate::module::SomeType;
 
+            /// My struct.
             pub struct MyStruct {
                 field: HashMap<String, SomeType>,
             }
 
             impl MyStruct {
+                /// Create a new instance.
                 pub fn new() -> Self {
                     Self {
                         field: HashMap::new(),
@@ -131,10 +133,13 @@ mod tests {
     #[test]
     fn test_afferent_coupling_with_public_items() {
         let source = r#"
+            /// Public function.
             pub fn public_function() {}
             fn private_function() {}
+            /// Public struct.
             pub struct PublicStruct;
             struct PrivateStruct;
+            /// Trait defining Public trait behavior.
             pub trait PublicTrait {}
         "#;
 
@@ -293,6 +298,7 @@ mod tests {
             }
 
             mod module_b {
+                /// Some type.
                 pub struct SomeType;
             }
         "#;

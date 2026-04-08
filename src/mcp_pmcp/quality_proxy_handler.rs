@@ -28,6 +28,7 @@ fn default_mode() -> String {
 }
 
 #[derive(Debug, Deserialize)]
+/// Quality config input.
 pub struct QualityConfigInput {
     #[serde(default = "default_max_complexity")]
     pub max_complexity: u32,

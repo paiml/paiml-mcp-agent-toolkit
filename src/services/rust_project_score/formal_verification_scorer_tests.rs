@@ -60,6 +60,7 @@ edition = "2021"
         std::fs::write(
             src_dir.join("lib.rs"),
             r#"
+/// With unsafe.
 pub fn with_unsafe() {
     unsafe {
         // do something
@@ -140,6 +141,7 @@ verus! {
 
 #[requires(x > 0)]
 #[ensures(result > x)]
+/// Add one.
 pub fn add_one(x: u32) -> u32 {
     x + 1
 }
@@ -147,11 +149,13 @@ pub fn add_one(x: u32) -> u32 {
 #[requires(len > 0)]
 #[ensures(result <= len)]
 #[decreases(len)]
+/// Recursive fn.
 pub fn recursive_fn(len: u32) -> u32 {
     if len == 1 { 1 } else { recursive_fn(len - 1) }
 }
 
 #[invariant(self.value >= 0)]
+/// Counter.
 pub struct Counter {
     value: i32,
 }
@@ -224,9 +228,11 @@ serde = "1.0"
             src_dir.join("lib.rs"),
             r#"
 #[contract("softmax-v1", equation = "softmax")]
+/// Softmax.
 pub fn softmax(x: &[f32]) -> Vec<f32> { vec![1.0] }
 
 #[provable_contracts_macros::contract("relu-v1", equation = "relu")]
+/// Relu.
 pub fn relu(x: &[f32]) -> Vec<f32> { vec![0.0] }
 "#,
         )

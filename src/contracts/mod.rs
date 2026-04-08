@@ -28,6 +28,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+/// Error variants for contract operations.
 pub enum ContractError {
     #[error("Path not found: {0}")]
     PathNotFound(PathBuf),

@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Commit intent.
 pub enum CommitIntent {
     HallucinationFix, // Fixing a false claim from previous commit
     PlannedIteration, // Expected follow-up work
@@ -6,6 +7,7 @@ pub enum CommitIntent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Information about commit.
 pub struct CommitInfo {
     pub message: String,
     pub timestamp_seconds: i64,
@@ -17,6 +19,7 @@ pub struct CommitInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Test changes.
 pub struct TestChanges {
     pub added_tests: usize,
     pub fixed_tests: usize,
@@ -24,6 +27,7 @@ pub struct TestChanges {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Intent classification.
 pub struct IntentClassification {
     pub intent: CommitIntent,
     pub confidence: f64, // 0.0 to 1.0
@@ -32,6 +36,7 @@ pub struct IntentClassification {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of signal operation.
 pub struct SignalResult {
     pub signal_name: String,
     pub vote: CommitIntent,
@@ -39,6 +44,7 @@ pub struct SignalResult {
     pub evidence: String,
 }
 
+/// Intent classifier.
 pub struct IntentClassifier {
     hallucination_keywords: Vec<String>,
     iteration_keywords: Vec<String>,

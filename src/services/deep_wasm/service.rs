@@ -27,6 +27,7 @@ pub struct DeepWasmService {
 
 impl DeepWasmService {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             wasm_inspector: WasmInspector::new(),
@@ -41,12 +42,14 @@ impl DeepWasmService {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With quality gates.
     pub fn with_quality_gates(mut self, gates: WasmQualityGates) -> Self {
         self.quality_gates = gates;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With deep analysis.
     pub fn with_deep_analysis(mut self, enabled: bool) -> Self {
         self.enable_deep_analysis = enabled;
         self.bytecode_analyzer = BytecodeAnalyzer::with_deep_analysis(enabled);

@@ -15,6 +15,7 @@ pub struct ColumnStore<T> {
 impl<T: Clone> ColumnStore<T> {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(capacity: usize) -> Self {
         Self {
             data: Vec::with_capacity(capacity),
@@ -23,6 +24,7 @@ impl<T: Clone> ColumnStore<T> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add an element.
     pub fn push(&mut self, item: T) -> NodeKey {
         let key = self.data.len() as NodeKey;
         self.data.push(item);
@@ -31,27 +33,32 @@ impl<T: Clone> ColumnStore<T> {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Retrieve a value.
     pub fn get(&self, key: NodeKey) -> Option<&T> {
         self.data.get(key as usize)
     }
 
+    /// Get mut.
     pub fn get_mut(&mut self, key: NodeKey) -> Option<&mut T> {
         self.data.get_mut(key as usize)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Iter.
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.data.iter()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Return the number of elements.
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check whether the collection is empty.
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }

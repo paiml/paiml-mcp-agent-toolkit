@@ -7,10 +7,12 @@ use crate::services::repo_score::scorers::*;
 use std::path::Path;
 use std::time::Instant;
 
+/// Score aggregator.
 pub struct ScoreAggregator;
 
 impl ScoreAggregator {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

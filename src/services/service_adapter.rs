@@ -20,6 +20,7 @@ pub struct ServiceAdapter<T, I, O> {
 
 impl<T, I, O> ServiceAdapter<T, I, O> {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(inner: T) -> Self {
         Self {
             inner: Arc::new(inner),
@@ -30,6 +31,7 @@ impl<T, I, O> ServiceAdapter<T, I, O> {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Inner.
     pub fn inner(&self) -> &T {
         &self.inner
     }

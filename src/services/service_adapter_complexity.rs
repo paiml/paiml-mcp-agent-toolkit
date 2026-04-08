@@ -5,12 +5,14 @@ pub mod complexity_adapter {
     use std::path::PathBuf;
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
+    /// Complexity input.
     pub struct ComplexityInput {
         pub path: PathBuf,
         pub thresholds: ComplexityThresholds,
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
+    /// Complexity output.
     pub struct ComplexityOutput {
         pub metrics: ComplexityMetrics,
     }
@@ -20,6 +22,7 @@ pub mod complexity_adapter {
     impl ComplexityServiceAdapter {
         #[must_use]
         #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+        /// New complexity service.
         pub fn new_complexity_service() -> Self {
             ServiceAdapter::new(())
         }

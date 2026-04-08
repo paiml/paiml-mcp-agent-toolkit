@@ -2,6 +2,7 @@
 
 impl PubSubBroker {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             topics: Arc::new(DashMap::new()),
@@ -10,6 +11,7 @@ impl PubSubBroker {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Subscribe to updates.
     pub fn subscribe(&self, agent_id: Uuid, topic: Topic, recipient: Recipient<AgentMessage>) {
         // Register subscriber
         self.subscribers.insert(agent_id, recipient);
@@ -19,6 +21,7 @@ impl PubSubBroker {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Unsubscribe.
     pub fn unsubscribe(&self, agent_id: Uuid, topic: &Topic) {
         if let Some(mut subscribers) = self.topics.get_mut(topic) {
             subscribers.retain(|id| *id != agent_id);
@@ -50,6 +53,7 @@ impl PubSubBroker {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get topic stats.
     pub fn get_topic_stats(&self) -> HashMap<String, TopicStats> {
         let mut stats = HashMap::new();
 
@@ -74,6 +78,7 @@ impl PubSubBroker {
 
 impl WildcardMatcher {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             patterns: Vec::new(),
@@ -81,11 +86,13 @@ impl WildcardMatcher {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add pattern.
     pub fn add_pattern(&mut self, pattern: String, agent_id: Uuid) {
         self.patterns.push((pattern, agent_id));
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Matches.
     pub fn matches(&self, topic: &str) -> Vec<Uuid> {
         self.patterns
             .iter()
@@ -114,6 +121,7 @@ impl WildcardMatcher {
 
 impl EventStore {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(max_events: usize) -> Self {
         Self {
             events: Arc::new(RwLock::new(Vec::new())),
@@ -122,6 +130,7 @@ impl EventStore {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Store.
     pub fn store(&self, topic: Topic, event: Event) {
         let mut events = self.events.write();
 
@@ -139,6 +148,7 @@ impl EventStore {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Replay.
     pub fn replay(&self, topic: &Topic, since: u64) -> Vec<Event> {
         self.events
             .read()

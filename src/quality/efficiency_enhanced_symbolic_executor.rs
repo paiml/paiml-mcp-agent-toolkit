@@ -1,3 +1,4 @@
+/// Symbolic executor.
 pub struct SymbolicExecutor {
     loop_depths: Vec<Complexity>,
     recursive_depth: usize,
@@ -13,6 +14,7 @@ impl Default for SymbolicExecutor {
 
 impl SymbolicExecutor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             loop_depths: Vec::new(),
@@ -23,6 +25,7 @@ impl SymbolicExecutor {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze function.
     pub fn analyze_function(&mut self, func: &syn::ItemFn) -> Complexity {
         let name = func.sig.ident.to_string();
 
@@ -59,6 +62,7 @@ impl SymbolicExecutor {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze loop pattern.
     pub fn analyze_loop_pattern(&self, loop_expr: &syn::ExprForLoop) -> Complexity {
         // Analyze loop bounds to determine complexity
         if let syn::Expr::Range(range) = &*loop_expr.expr {

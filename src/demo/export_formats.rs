@@ -89,6 +89,7 @@ impl Exporter for MarkdownExporter {
 impl JsonExporter {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(pretty: bool) -> Self {
         Self { pretty }
     }

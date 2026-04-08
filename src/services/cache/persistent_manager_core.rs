@@ -1,5 +1,6 @@
 impl PersistentCacheManager {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(config: CacheConfig, cache_dir: PathBuf) -> Result<Self> {
         // Create individual cache directories
         let ast_cache_dir = cache_dir.join("ast");

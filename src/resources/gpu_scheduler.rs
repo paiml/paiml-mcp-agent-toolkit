@@ -2,12 +2,14 @@
 use super::*;
 
 // GPU resource scheduler
+/// Gpu scheduler.
 pub struct GpuScheduler {
     _limits: GpuLimits,
 }
 
 impl GpuScheduler {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(limits: GpuLimits) -> Result<Self, ResourceError> {
         Ok(Self { _limits: limits })
     }

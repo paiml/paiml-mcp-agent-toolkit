@@ -1,5 +1,6 @@
 impl EfficiencyAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             _max_loop_depth: 0,
@@ -8,6 +9,7 @@ impl EfficiencyAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze.
     pub fn analyze(&self, ast: &syn::File) -> String {
         let mut visitor = EfficiencyVisitor {
             current_loop_depth: 0,
@@ -19,6 +21,7 @@ impl EfficiencyAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze string.
     pub fn analyze_string(&self, code: &str) -> Result<EfficiencyResult, syn::Error> {
         let ast = syn::parse_file(code)?;
         Ok(EfficiencyResult {

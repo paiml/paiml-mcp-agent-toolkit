@@ -27,6 +27,7 @@ pub struct TDGSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Hotspot identified in t d g analysis.
 pub struct TDGHotspot {
     /// File path
     pub path: String,
@@ -55,6 +56,7 @@ pub struct TDGAnalysis {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// T d g recommendation.
 pub struct TDGRecommendation {
     /// Type of recommendation
     pub recommendation_type: RecommendationType,
@@ -74,6 +76,7 @@ pub struct TDGRecommendation {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+/// Type classification for recommendation.
 pub enum RecommendationType {
     /// Reduce function complexity
     ReduceComplexity,
@@ -108,6 +111,7 @@ pub struct TDGDistribution {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// T d g bucket.
 pub struct TDGBucket {
     /// Lower bound of the bucket (inclusive)
     pub min: f64,
@@ -124,6 +128,7 @@ pub struct TDGBucket {
 
 // Additional types for SATD analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Satd item.
 pub struct SatdItem {
     pub file_path: PathBuf,
     pub line_number: usize,
@@ -134,6 +139,7 @@ pub struct SatdItem {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+/// Severity level classification for satd.
 pub enum SatdSeverity {
     Low,
     Medium,

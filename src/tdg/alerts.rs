@@ -29,6 +29,7 @@ pub struct AlertRule {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Alert condition.
 pub enum AlertCondition {
     GreaterThan,
     LessThan,
@@ -41,6 +42,7 @@ pub enum AlertCondition {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+/// Severity level classification for alert.
 pub enum AlertSeverity {
     Info,
     Warning,
@@ -51,6 +53,7 @@ pub enum AlertSeverity {
 impl AlertSeverity {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Priority.
     pub fn priority(&self) -> u8 {
         match self {
             AlertSeverity::Info => 1,
@@ -62,6 +65,7 @@ impl AlertSeverity {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Notification channel.
 pub enum NotificationChannel {
     Dashboard,
     Email {
@@ -102,6 +106,7 @@ pub struct Alert {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// State of alert lifecycle.
 pub enum AlertState {
     Triggered,
     Active,
@@ -111,6 +116,7 @@ pub enum AlertState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Acknowledgement.
 pub struct Acknowledgement {
     pub acknowledged_by: String,
     pub acknowledged_at: SystemTime,

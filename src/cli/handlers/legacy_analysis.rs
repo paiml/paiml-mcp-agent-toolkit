@@ -105,6 +105,7 @@ async fn route_technical_debt_command(cmd: super::super::AnalyzeCommands) -> Res
     }
 }
 
+/// Analysis handlers.
 pub struct AnalysisHandlers;
 
 #[cfg_attr(coverage_nightly, coverage(off))]

@@ -9,12 +9,14 @@ impl Default for SATDDetector {
 impl SATDDetector {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::with_config(false)
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// New strict.
     pub fn new_strict() -> Self {
         Self::with_classifier(DebtClassifier::new_strict())
     }

@@ -51,6 +51,7 @@ impl TDGCalculator {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With config.
     pub fn with_config(config: TDGConfig) -> Self {
         Self {
             config,

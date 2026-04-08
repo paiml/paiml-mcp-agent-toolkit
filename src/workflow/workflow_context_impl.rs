@@ -1,5 +1,6 @@
 impl WorkflowContext {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(
         workflow_id: Uuid,
         agent_registry: Arc<crate::agents::registry::AgentRegistry>,
@@ -16,35 +17,42 @@ impl WorkflowContext {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Set variable.
     pub fn set_variable(&self, name: String, value: Value) {
         self.variables.write().insert(name, value);
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get variable.
     pub fn get_variable(&self, name: &str) -> Option<Value> {
         self.variables.read().get(name).cloned()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Set step result.
     pub fn set_step_result(&self, step_id: String, result: StepResult) {
         self.step_results.write().insert(step_id, result);
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get step result.
     pub fn get_step_result(&self, step_id: &str) -> Option<StepResult> {
         self.step_results.read().get(step_id).cloned()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Set state.
     pub fn set_state(&self, state: WorkflowState) {
         *self.state.write() = state;
     }
 
+    /// Get state.
     pub fn get_state(&self) -> WorkflowState {
         *self.state.read()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get elapsed.
     pub fn get_elapsed(&self) -> Duration {
         self.started_at.elapsed()
     }
@@ -52,6 +60,7 @@ impl WorkflowContext {
 
 // Workflow executor trait
 #[async_trait]
+/// Trait defining Workflow executor behavior.
 pub trait WorkflowExecutor: Send + Sync {
     async fn execute(
         &self,
@@ -70,6 +79,7 @@ pub trait WorkflowExecutor: Send + Sync {
 
 // Workflow repository
 #[async_trait]
+/// Trait defining Workflow repository behavior.
 pub trait WorkflowRepository: Send + Sync {
     async fn save(&self, workflow: &Workflow) -> Result<(), WorkflowError>;
     async fn get(&self, id: Uuid) -> Result<Option<Workflow>, WorkflowError>;
@@ -80,6 +90,7 @@ pub trait WorkflowRepository: Send + Sync {
 
 // Workflow monitor
 #[async_trait]
+/// Trait defining Workflow monitor behavior.
 pub trait WorkflowMonitor: Send + Sync {
     async fn on_workflow_started(&self, workflow_id: Uuid, execution_id: Uuid);
     async fn on_workflow_completed(&self, workflow_id: Uuid, execution_id: Uuid, result: &Value);
@@ -96,6 +107,7 @@ pub trait WorkflowMonitor: Send + Sync {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Workflow metrics.
 pub struct WorkflowMetrics {
     pub execution_id: Uuid,
     pub workflow_id: Uuid,

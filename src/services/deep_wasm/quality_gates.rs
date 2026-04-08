@@ -49,10 +49,12 @@ impl Default for WasmQualityGates {
 
 impl WasmQualityGates {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Evaluate.
     pub fn evaluate(&self, analysis: &WasmModuleAnalysis) -> DeepWasmResult<QualityGateResults> {
         let mut violations = Vec::new();
 

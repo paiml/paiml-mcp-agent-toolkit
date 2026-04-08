@@ -14,6 +14,7 @@ pub enum SqlOutputFormat {
 
 impl SqlOutputFormat {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From str opt.
     pub fn from_str_opt(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "json" => Self::Json,

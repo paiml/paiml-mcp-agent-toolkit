@@ -1,3 +1,4 @@
+/// Unified engine.
 pub struct UnifiedEngine {
     // Core analysis infrastructure
     
@@ -17,6 +18,7 @@ pub struct UnifiedEngine {
 }
 
 #[derive(Debug)]
+/// Operational mode for engine.
 pub enum EngineMode {
     Server {
         emit_buffer: Arc<RwLock<RingBuffer<DefectPayload>>>,
@@ -34,6 +36,7 @@ pub enum EngineMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Level classification for explain.
 pub enum ExplainLevel {
     Brief,
     Detailed,
@@ -41,12 +44,14 @@ pub enum ExplainLevel {
 }
 
 #[derive(Debug)]
+/// Ring buffer.
 pub struct RingBuffer<T> {
     pub(crate) buffer: VecDeque<T>,
     pub(crate) capacity: usize,
 }
 
 #[derive(Debug, Default)]
+/// Engine metrics.
 pub struct EngineMetrics {
     pub operations_processed: u64,
     pub refactors_applied: u64,
@@ -55,6 +60,7 @@ pub struct EngineMetrics {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Command variants for command.
 pub enum Command {
     Continue,
     Skip,
@@ -65,6 +71,7 @@ pub enum Command {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// State representation for interactive.
 pub struct InteractiveState {
     pub state: StateInfo,
     pub metrics: MetricsInfo,
@@ -74,6 +81,7 @@ pub struct InteractiveState {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Information about state.
 pub struct StateInfo {
     pub state_type: String,
     pub current_file: Option<String>,
@@ -82,12 +90,14 @@ pub struct StateInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Information about metrics.
 pub struct MetricsInfo {
     pub before: Option<ComplexityInfo>,
     pub projected: Option<ComplexityInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Information about complexity.
 pub struct ComplexityInfo {
     pub complexity: [u16; 2], // [cyclomatic, cognitive]
     pub tdg: f32,
@@ -95,6 +105,7 @@ pub struct ComplexityInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Information about suggestion.
 pub struct SuggestionInfo {
     pub suggestion_type: String,
     pub description: String,
@@ -102,6 +113,7 @@ pub struct SuggestionInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Information about operation.
 pub struct OperationInfo {
     pub name: String,
     pub lines: [u32; 2],
@@ -109,6 +121,7 @@ pub struct OperationInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Result of step operation.
 pub struct StepResult {
     pub success: bool,
     pub explanation: String,

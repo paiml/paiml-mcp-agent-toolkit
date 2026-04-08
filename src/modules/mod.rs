@@ -12,6 +12,7 @@ use std::sync::Arc;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+/// Error variants for module operations.
 pub enum ModuleError {
     #[error("Module not found: {0}")]
     NotFound(String),
@@ -23,6 +24,7 @@ pub enum ModuleError {
 
 // Base trait that all modules must implement
 #[async_trait]
+/// Module interface for pmat operations.
 pub trait PmatModule: Send + Sync + 'static {
     type Input: Send + Sync;
     type Output: Send + Sync;
@@ -37,6 +39,7 @@ pub trait PmatModule: Send + Sync + 'static {
 }
 
 // Module registry for dependency injection
+/// Registry of module instances.
 pub struct ModuleRegistry {
     modules: dashmap::DashMap<String, Arc<dyn std::any::Any + Send + Sync>>,
 }
@@ -48,6 +51,7 @@ impl Default for ModuleRegistry {
 }
 
 impl ModuleRegistry {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             modules: dashmap::DashMap::new(),
@@ -55,6 +59,7 @@ impl ModuleRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register<T>(&self, name: String, module: Arc<T>)
     where
         T: std::any::Any + Send + Sync + 'static,
@@ -64,6 +69,7 @@ impl ModuleRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Retrieve a value.
     pub fn get<T>(&self, name: &str) -> Option<Arc<T>>
     where
         T: std::any::Any + Send + Sync + 'static,

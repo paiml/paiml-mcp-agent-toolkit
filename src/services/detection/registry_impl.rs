@@ -4,6 +4,7 @@
 impl DetectionRegistry {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         let mut registry = Self {
             detectors: std::collections::HashMap::new(),
@@ -26,6 +27,7 @@ impl DetectionRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register(
         &mut self,
         name: &str,
@@ -42,6 +44,7 @@ impl DetectionRegistry {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get detector.
     pub fn get_detector(
         &self,
         name: &str,
@@ -59,6 +62,7 @@ impl DetectionRegistry {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// List detectors.
     pub fn list_detectors(&self) -> Vec<&str> {
         self.detectors
             .keys()

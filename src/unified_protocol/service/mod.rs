@@ -63,6 +63,7 @@ pub struct ServiceMetrics {
 }
 
 impl UnifiedService {
+    /// Create a new instance.
     pub fn new() -> Self {
         let state = Arc::new(AppState::default());
 
@@ -128,6 +129,7 @@ impl UnifiedService {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With template service.
     pub fn with_template_service<T: TemplateService + 'static>(mut self, service: T) -> Self {
         let state = Arc::make_mut(&mut self.state);
         state.template_service = Arc::new(service);
@@ -135,6 +137,7 @@ impl UnifiedService {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With analysis service.
     pub fn with_analysis_service<A: AnalysisService + 'static>(mut self, service: A) -> Self {
         let state = Arc::make_mut(&mut self.state);
         state.analysis_service = Arc::new(service);

@@ -20,6 +20,7 @@ pub struct DeadCodeAnalyzer {
 impl DeadCodeAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             inner: OriginalAnalyzer::new(Self::DEFAULT_CAPACITY),
@@ -28,6 +29,7 @@ impl DeadCodeAnalyzer {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With capacity.
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             inner: OriginalAnalyzer::new(capacity),
@@ -175,12 +177,14 @@ pub struct DeadCodeAnalyzerFactory;
 impl DeadCodeAnalyzerFactory {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create.
     pub fn create() -> DeadCodeAnalyzer {
         DeadCodeAnalyzer::new()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create with capacity.
     pub fn create_with_capacity(capacity: usize) -> DeadCodeAnalyzer {
         DeadCodeAnalyzer::with_capacity(capacity)
     }

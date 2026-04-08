@@ -1,6 +1,7 @@
 // Types for WebAssembly profiling reports
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Report containing profiling data.
 pub struct ProfilingReport {
     pub instruction_mix: InstructionMix,
     pub hot_functions: Vec<HotFunction>,
@@ -8,6 +9,7 @@ pub struct ProfilingReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Instruction mix.
 pub struct InstructionMix {
     pub total_instructions: usize,
     pub control_flow: usize,
@@ -17,6 +19,7 @@ pub struct InstructionMix {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Hot function.
 pub struct HotFunction {
     pub name: String,
     pub samples: usize,
@@ -24,6 +27,7 @@ pub struct HotFunction {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Memory profile.
 pub struct MemoryProfile {
     pub initial_pages: u32,
     pub max_pages: Option<u32>,
@@ -31,6 +35,7 @@ pub struct MemoryProfile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Growth event.
 pub struct GrowthEvent {
     pub timestamp: u64,
     pub pages_before: u32,

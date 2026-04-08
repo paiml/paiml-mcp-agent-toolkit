@@ -17,6 +17,7 @@ use tree_sitter::Parser as TsParser;
 pub struct PythonAdapter;
 
 impl PythonAdapter {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

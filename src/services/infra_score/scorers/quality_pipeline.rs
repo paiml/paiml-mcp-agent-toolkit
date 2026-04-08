@@ -12,9 +12,11 @@ use crate::services::infra_score::models::*;
 use async_trait::async_trait;
 use std::path::Path;
 
+/// Quality pipeline scorer.
 pub struct QualityPipelineScorer;
 
 impl QualityPipelineScorer {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

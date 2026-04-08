@@ -57,12 +57,14 @@ use crate::models::error::TemplateError;
 use crate::utils::helpers;
 use serde_json::Value;
 
+/// Template renderer.
 pub struct TemplateRenderer {
     env: minijinja::Environment<'static>,
 }
 
 impl TemplateRenderer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self, anyhow::Error> {
         let mut env = minijinja::Environment::new();
         // Allow undefined variables to render as empty (like handlebars non-strict mode)
@@ -86,6 +88,7 @@ impl TemplateRenderer {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Render template.
 pub fn render_template(
     renderer: &TemplateRenderer,
     template: &str,

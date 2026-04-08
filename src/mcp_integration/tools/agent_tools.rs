@@ -13,6 +13,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 // Analyze tool - invokes analyzer agent
+/// Analyze tool.
 pub struct AnalyzeTool {
     pub(super) _registry: Arc<AgentRegistry>,
     pub(super) analyzer: Option<Addr<AnalyzerActor>>,
@@ -20,6 +21,7 @@ pub struct AnalyzeTool {
 
 impl AnalyzeTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -28,6 +30,7 @@ impl AnalyzeTool {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// New with actor.
     pub fn new_with_actor(registry: Arc<AgentRegistry>, analyzer: Addr<AnalyzerActor>) -> Self {
         Self {
             _registry: registry,
@@ -137,6 +140,7 @@ impl McpTool for AnalyzeTool {
 }
 
 // Transform tool - invokes transformer agent
+/// Transform tool.
 pub struct TransformTool {
     pub(super) _registry: Arc<AgentRegistry>,
     pub(super) transformer: Option<Addr<TransformerActor>>,
@@ -144,6 +148,7 @@ pub struct TransformTool {
 
 impl TransformTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -152,6 +157,7 @@ impl TransformTool {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// New with actor.
     pub fn new_with_actor(
         registry: Arc<AgentRegistry>,
         transformer: Addr<TransformerActor>,
@@ -277,6 +283,7 @@ impl McpTool for TransformTool {
 }
 
 // Validate tool - invokes validator agent
+/// Validate tool.
 pub struct ValidateTool {
     pub(super) _registry: Arc<AgentRegistry>,
     pub(super) analyzer: Option<Addr<AnalyzerActor>>,
@@ -285,6 +292,7 @@ pub struct ValidateTool {
 
 impl ValidateTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -294,6 +302,7 @@ impl ValidateTool {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// New with actors.
     pub fn new_with_actors(
         registry: Arc<AgentRegistry>,
         analyzer: Addr<AnalyzerActor>,

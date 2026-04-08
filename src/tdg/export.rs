@@ -58,6 +58,7 @@ impl Default for ExportOptions {
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Type classification for compression.
 pub enum CompressionType {
     Gzip,
     Zstd,

@@ -86,6 +86,7 @@ impl HalsteadMetrics {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Difficulty.
     pub fn difficulty(&self) -> f64 {
         if self.n2 == 0 {
             return 0.0;
@@ -95,6 +96,7 @@ impl HalsteadMetrics {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Effort.
     pub fn effort(&self) -> f64 {
         self.volume() * self.difficulty()
     }

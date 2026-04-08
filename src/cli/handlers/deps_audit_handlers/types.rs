@@ -69,6 +69,7 @@ pub struct ParetoEntry {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+/// Pareto effort.
 pub enum ParetoEffort {
     /// Easy: Just remove from Cargo.toml
     Low = 1,
@@ -80,6 +81,7 @@ pub enum ParetoEffort {
 
 impl ParetoEffort {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Multiplier.
     pub fn multiplier(&self) -> f32 {
         match self {
             ParetoEffort::Low => 1.0,
@@ -89,6 +91,7 @@ impl ParetoEffort {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Label.
     pub fn label(&self) -> &'static str {
         match self {
             ParetoEffort::Low => "Low",
@@ -115,6 +118,7 @@ pub enum SortMode {
 
 impl SortMode {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Parse the input.
     pub fn parse(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "size" | "binary" | "kb" => SortMode::Size,

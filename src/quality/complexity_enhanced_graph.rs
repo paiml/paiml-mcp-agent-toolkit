@@ -111,6 +111,7 @@ impl<N, E> SimpleDiGraph<N, E> {
 
 impl ControlFlowGraph {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From ast.
     pub fn from_ast(ast: &File) -> Self {
         let mut graph = SimpleDiGraph::new();
         let entry = graph.add_node(CfgNode::Entry);
@@ -137,6 +138,7 @@ impl ControlFlowGraph {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Cyclomatic complexity.
     pub fn cyclomatic_complexity(&self) -> u32 {
         let edges = self.graph.edge_count() as u32;
         let nodes = self.graph.node_count() as u32;
@@ -146,15 +148,18 @@ impl ControlFlowGraph {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Node count.
     pub fn node_count(&self) -> usize {
         self.graph.node_count()
     }
 
+    /// Edge count.
     pub fn edge_count(&self) -> usize {
         self.graph.edge_count()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Essential complexity.
     pub fn essential_complexity(&self) -> u32 {
         // Count strongly connected components (loops)
         let sccs = self.graph.kosaraju_scc();

@@ -78,6 +78,7 @@ pub struct BonusScores {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Bonus item.
 pub struct BonusItem {
     pub points: f64,
     pub max_points: f64,
@@ -96,6 +97,7 @@ pub struct Finding {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Severity level classification for severity.
 pub enum Severity {
     Success, // Green - criterion met
     Warning, // Yellow - partial compliance
@@ -104,6 +106,7 @@ pub enum Severity {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Status of score operation.
 pub enum ScoreStatus {
     Pass,    // >=90% of max
     Warning, // 70-89% of max
@@ -123,6 +126,7 @@ pub struct Recommendation {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+/// Priority level for priority.
 pub enum Priority {
     Critical, // Blocks production readiness
     High,     // Important for quality

@@ -49,12 +49,14 @@ use std::sync::Arc;
 // Result types for CLI operations
 
 #[derive(Debug)]
+/// Result of scaffold operation.
 pub struct ScaffoldResult {
     pub files: Vec<GeneratedFile>,
     pub errors: Vec<ScaffoldError>,
 }
 
 #[derive(Debug)]
+/// Generated file.
 pub struct GeneratedFile {
     pub path: String,
     pub content: String,
@@ -62,12 +64,14 @@ pub struct GeneratedFile {
 }
 
 #[derive(Debug)]
+/// Error type for scaffold operations.
 pub struct ScaffoldError {
     pub template: String,
     pub error: String,
 }
 
 #[derive(Debug)]
+/// Result of search operation.
 pub struct SearchResult {
     pub template: crate::models::template::TemplateResource,
     pub relevance: f32,
@@ -75,12 +79,14 @@ pub struct SearchResult {
 }
 
 #[derive(Debug)]
+/// Result of validation operation.
 pub struct ValidationResult {
     pub valid: bool,
     pub errors: Vec<ValidationError>,
 }
 
 #[derive(Debug)]
+/// Error type for validation operations.
 pub struct ValidationError {
     pub field: String,
     pub message: String,

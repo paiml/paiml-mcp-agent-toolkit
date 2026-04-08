@@ -9,6 +9,7 @@ pub enum ChangeType {
 
 impl ChangeType {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// As str.
     pub fn as_str(&self) -> &'static str {
         match self {
             ChangeType::Added => "A",

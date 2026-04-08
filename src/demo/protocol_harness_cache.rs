@@ -4,6 +4,7 @@
 impl ContextCache {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(config: DemoConfig) -> Self {
         Self {
             entries: HashMap::new(),
@@ -13,11 +14,13 @@ impl ContextCache {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Retrieve a value.
     pub fn get(&self, key: &str) -> Option<&AnalysisResult> {
         self.entries.get(key).map(|entry| &entry.result)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Insert an element.
     pub fn insert(&mut self, key: String, result: AnalysisResult) {
         let entry = CacheEntry {
             key: key.clone(),
@@ -50,6 +53,7 @@ impl ContextCache {
 impl TraceStore {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(max_traces: usize) -> Self {
         Self {
             traces: RwLock::new(HashMap::new()),

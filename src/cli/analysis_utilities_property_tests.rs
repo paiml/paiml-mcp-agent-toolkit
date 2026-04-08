@@ -190,6 +190,7 @@ edition = "2021"
         fs::write(
             src_dir.join("lib.rs"),
             r#"
+/// Used function.
 pub fn used_function() {
     println!("I am used");
 }
@@ -247,6 +248,7 @@ use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for config.
 pub struct Config {
     name: String,
     value: i32,
@@ -254,6 +256,7 @@ pub struct Config {
 }
 
 impl Config {
+    /// Create a new instance.
     pub fn new(name: String) -> Self {
         Self { name, value: 42, enabled: true }
     }

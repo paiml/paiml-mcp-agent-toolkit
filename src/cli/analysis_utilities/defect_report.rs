@@ -41,6 +41,7 @@ fn create_defect_report_from_predictions(
 }
 
 #[derive(Debug, Serialize)]
+/// Report containing defect prediction data.
 pub struct DefectPredictionReport {
     pub total_files: usize,
     pub high_risk_files: usize,
@@ -50,6 +51,7 @@ pub struct DefectPredictionReport {
 }
 
 #[derive(Debug, Serialize)]
+/// File prediction.
 pub struct FilePrediction {
     pub file_path: String,
     pub risk_score: f32,

@@ -26,6 +26,7 @@ pub struct ComplexityPattern {
 }
 
 #[derive(Debug, Clone)]
+/// Type classification for pattern.
 pub enum PatternType {
     /// Single loop over collection
     LinearIteration,
@@ -347,6 +348,7 @@ pub struct ComplexityAnalysisResult {
 impl ComplexityAnalysisResult {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(time: ComplexityBound, space: ComplexityBound) -> Self {
         Self {
             time_complexity: time,
@@ -359,6 +361,7 @@ impl ComplexityAnalysisResult {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With pattern.
     pub fn with_pattern(mut self, pattern_name: String) -> Self {
         self.matched_patterns.push(pattern_name);
         self
@@ -366,6 +369,7 @@ impl ComplexityAnalysisResult {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With note.
     pub fn with_note(mut self, note: String) -> Self {
         self.notes.push(note);
         self

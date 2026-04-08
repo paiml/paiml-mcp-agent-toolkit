@@ -4,6 +4,7 @@
 
 impl AdvancedUnifiedContextBuilder {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(project_path: &Path) -> Self {
         Self {
             project_path: project_path.to_path_buf(),

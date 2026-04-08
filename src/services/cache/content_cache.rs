@@ -24,6 +24,7 @@ pub struct ContentCache<T: CacheStrategy> {
 
 impl<T: CacheStrategy> ContentCache<T> {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(strategy: T) -> Self {
         let max_size = NonZeroUsize::new(strategy.max_size())
             .unwrap_or(NonZeroUsize::new(100).expect("internal error"));
@@ -233,6 +234,7 @@ pub struct CacheMetrics {
 impl CacheMetrics {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Memory mb.
     pub fn memory_mb(&self) -> f64 {
         self.memory_bytes as f64 / (1024.0 * 1024.0)
     }

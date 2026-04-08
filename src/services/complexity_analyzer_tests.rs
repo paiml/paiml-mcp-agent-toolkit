@@ -155,6 +155,7 @@ mod accurate_complexity_tests {
         fs::write(
             &src_file,
             r#"
+            /// Actual function.
             pub fn actual_function() -> i32 {
                 42
             }

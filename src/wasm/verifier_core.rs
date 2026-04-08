@@ -2,6 +2,7 @@
 
 impl IncrementalVerifier {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         Ok(Self {
             invariants: InvariantChecker::new(),
@@ -107,6 +108,7 @@ fn check_i32_load_store(
 impl VerificationResult {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is safe.
     pub fn is_safe(&self) -> bool {
         matches!(self, VerificationResult::Safe)
     }

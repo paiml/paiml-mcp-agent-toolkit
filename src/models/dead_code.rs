@@ -422,6 +422,7 @@ mod tests {
 
 // Additional type for handler compatibility
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of dead code operation.
 pub struct DeadCodeResult {
     pub summary: DeadCodeSummary,
     pub files: Vec<FileDeadCodeMetrics>,

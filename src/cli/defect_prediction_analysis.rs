@@ -2,6 +2,7 @@
 // Included from defect_prediction_helpers.rs - shares parent module scope
 
 
+/// Configuration for defect prediction.
 pub struct DefectPredictionConfig {
     pub confidence_threshold: f32,
     pub min_lines: usize,
@@ -13,6 +14,7 @@ pub struct DefectPredictionConfig {
 }
 
 
+/// Result of defect analysis operation.
 pub struct DefectAnalysisResult {
     pub file_metrics: Vec<FileMetrics>,
     pub filtered_predictions: Vec<(String, DefectScore)>,
@@ -208,6 +210,7 @@ pub struct RiskDistribution {
 
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+/// Calculate risk distribution.
 pub fn calculate_risk_distribution(predictions: &[(String, DefectScore)]) -> RiskDistribution {
     RiskDistribution {
         high_risk_count: predictions

@@ -30,6 +30,7 @@ pub struct ResilientConnectionPool {
 }
 
 #[derive(Debug)]
+/// Error variants for pool operations.
 pub enum PoolError {
     CircuitOpen,
     CircuitStillUnhealthy,
@@ -56,6 +57,7 @@ impl ResilientConnectionPool {
     const HALF_OPEN: u8 = 2;
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(pool_size: usize, failure_threshold: usize) -> Self {
         Self {
             semaphore: Arc::new(Semaphore::new(pool_size)),
@@ -166,16 +168,19 @@ pub struct PooledConnection {
 
 impl PooledConnection {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Report success.
     pub fn report_success(&self) {
         self.pool.record_success();
     }
 
+    /// Report failure.
     pub fn report_failure(&self) {
         self.pool.record_failure();
     }
 }
 
 #[derive(Debug, Clone, Copy)]
+/// State of circuit lifecycle.
 pub enum CircuitState {
     Closed,
     Open,
@@ -183,6 +188,7 @@ pub enum CircuitState {
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Statistics for pool.
 pub struct PoolStats {
     pub successes: u64,
     pub failures: u64,

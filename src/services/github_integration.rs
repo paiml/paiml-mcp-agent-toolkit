@@ -26,6 +26,7 @@ pub struct GitHubIssue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Label.
 pub struct Label {
     pub name: String,
 }

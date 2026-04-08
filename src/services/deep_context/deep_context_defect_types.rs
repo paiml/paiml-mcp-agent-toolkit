@@ -2,6 +2,7 @@
 // Included from mod.rs - shares parent module scope (no `use` imports)
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Defect annotations.
 pub struct DefectAnnotations {
     pub dead_code: Option<DeadCodeAnnotation>,
     pub technical_debt: Vec<TechnicalDebtItem>,
@@ -10,6 +11,7 @@ pub struct DefectAnnotations {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Dead code annotation.
 pub struct DeadCodeAnnotation {
     pub confidence: ConfidenceLevel,
     pub reason: String,
@@ -17,6 +19,7 @@ pub struct DeadCodeAnnotation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Level classification for confidence.
 pub enum ConfidenceLevel {
     High,
     Medium,
@@ -24,6 +27,7 @@ pub enum ConfidenceLevel {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Dead code item.
 pub struct DeadCodeItem {
     pub name: String,
     pub item_type: DeadCodeItemType,
@@ -32,6 +36,7 @@ pub struct DeadCodeItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Type classification for dead code item.
 pub enum DeadCodeItemType {
     Function,
     Class,
@@ -40,6 +45,7 @@ pub enum DeadCodeItemType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Technical debt item.
 pub struct TechnicalDebtItem {
     pub category: TechnicalDebtCategory,
     pub severity: TechnicalDebtSeverity,
@@ -49,6 +55,7 @@ pub struct TechnicalDebtItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Category classification for technical debt.
 pub enum TechnicalDebtCategory {
     Design,
     Requirements,
@@ -58,6 +65,7 @@ pub enum TechnicalDebtCategory {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Severity level classification for technical debt.
 pub enum TechnicalDebtSeverity {
     Critical,
     High,
@@ -66,6 +74,7 @@ pub enum TechnicalDebtSeverity {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Violation record for complexity.
 pub struct ComplexityViolation {
     pub metric_type: ComplexityMetricType,
     pub actual_value: u32,
@@ -75,6 +84,7 @@ pub struct ComplexityViolation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Type classification for complexity metric.
 pub enum ComplexityMetricType {
     Cyclomatic,
     Cognitive,
@@ -82,6 +92,7 @@ pub enum ComplexityMetricType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Cross lang reference.
 pub struct CrossLangReference {
     pub source_file: PathBuf,
     pub target_file: PathBuf,
@@ -90,6 +101,7 @@ pub struct CrossLangReference {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Type classification for cross lang reference.
 pub enum CrossLangReferenceType {
     WasmBinding,
     FfiCall,

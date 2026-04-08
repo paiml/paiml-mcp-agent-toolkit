@@ -63,6 +63,7 @@ impl TemplateService for DefaultTemplateService {
 }
 
 #[derive(Default)]
+/// Default analysis service.
 pub struct DefaultAnalysisService;
 
 #[async_trait::async_trait]

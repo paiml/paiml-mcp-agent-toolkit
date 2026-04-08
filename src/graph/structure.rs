@@ -8,6 +8,7 @@ use serde::Serialize;
 use trueno_graph::{connected_components, is_cyclic, kosaraju_scc};
 
 #[derive(Debug, Clone, Serialize)]
+/// Structural metrics.
 pub struct StructuralMetrics {
     pub density: f64,
     pub diameter: Option<usize>,
@@ -22,12 +23,14 @@ pub struct StructuralMetrics {
     pub reciprocity: Option<f64>,
 }
 
+/// Structural analyzer.
 pub struct StructuralAnalyzer {
     pub directed: bool,
 }
 
 impl StructuralAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(directed: bool) -> Self {
         StructuralAnalyzer { directed }
     }

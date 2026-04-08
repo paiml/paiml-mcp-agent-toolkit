@@ -14,6 +14,7 @@ pub struct ComplexityVisitor<'a> {
 
 impl<'a> ComplexityVisitor<'a> {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(complexity: &'a mut ComplexityMetrics) -> Self {
         Self {
             complexity,

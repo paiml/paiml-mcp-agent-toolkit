@@ -9,12 +9,14 @@ use std::sync::Arc;
 
 // Orchestrator can depend on all other modules
 #[async_trait]
+/// Module interface for orchestrator operations.
 pub trait OrchestratorModule: Send + Sync {
     async fn analyze_and_validate(&self, code: &str) -> Result<ValidationResult, ModuleError>;
     async fn analyze_transform_validate(&self, code: &str) -> Result<ProcessResult, ModuleError>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of process operation.
 pub struct ProcessResult {
     pub original_metrics: super::analyzer::Metrics,
     pub transformed_code: String,
@@ -23,6 +25,7 @@ pub struct ProcessResult {
     pub improved: bool,
 }
 
+/// Orchestrator impl.
 pub struct OrchestratorImpl {
     analyzer: Arc<dyn AnalyzerModule>,
     transformer: Arc<dyn TransformerModule>,
@@ -31,6 +34,7 @@ pub struct OrchestratorImpl {
 }
 
 impl OrchestratorImpl {
+    /// Create a new instance.
     pub fn new(
         analyzer: Arc<dyn AnalyzerModule>,
         transformer: Arc<dyn TransformerModule>,
@@ -45,6 +49,7 @@ impl OrchestratorImpl {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With thresholds.
     pub fn with_thresholds(mut self, thresholds: Thresholds) -> Self {
         self.thresholds = thresholds;
         self
@@ -110,11 +115,13 @@ impl PmatModule for OrchestratorImpl {
 }
 
 // Workflow builder for complex orchestrations
+/// Builder for constructing workflow instances.
 pub struct WorkflowBuilder {
     steps: Vec<WorkflowStep>,
 }
 
 #[derive(Clone)]
+/// Step type in workflow workflow.
 pub enum WorkflowStep {
     Analyze,
     Transform,
@@ -129,22 +136,26 @@ impl Default for WorkflowBuilder {
 }
 
 impl WorkflowBuilder {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self { steps: Vec::new() }
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add step.
     pub fn add_step(mut self, step: WorkflowStep) -> Self {
         self.steps.push(step);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Build and return the final result.
     pub fn build(self) -> Workflow {
         Workflow { steps: self.steps }
     }
 }
 
+/// Workflow.
 pub struct Workflow {
     steps: Vec<WorkflowStep>,
 }
@@ -192,12 +203,14 @@ impl Workflow {
 }
 
 #[derive(Debug)]
+/// Result of workflow operation.
 pub struct WorkflowResult {
     pub final_code: String,
     pub step_results: Vec<StepResult>,
 }
 
 #[derive(Debug)]
+/// Result variants for step.
 pub enum StepResult {
     Analysis(super::analyzer::Metrics),
     Transform(super::transformer::TransformResult),

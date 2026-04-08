@@ -1,6 +1,7 @@
 impl DemoReport {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Render the content.
     pub fn render(&self, mode: ExecutionMode) -> String {
         match mode {
             ExecutionMode::Cli => self.render_cli(),

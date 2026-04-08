@@ -20,6 +20,7 @@ pub struct ContentCacheAdapter<T: CacheStrategy> {
 impl<T: CacheStrategy> ContentCacheAdapter<T> {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(cache: ContentCache<T>) -> Self {
         Self {
             inner: Arc::new(RwLock::new(cache)),
@@ -28,6 +29,7 @@ impl<T: CacheStrategy> ContentCacheAdapter<T> {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check whether the collection is empty.
     pub fn is_empty(&self) -> bool {
         self.inner.read().len() == 0
     }
@@ -83,6 +85,7 @@ pub struct PersistentCacheAdapter<T: CacheStrategy> {
 impl<T: CacheStrategy> PersistentCacheAdapter<T> {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(cache: PersistentCache<T>) -> Self {
         Self {
             inner: Arc::new(RwLock::new(cache)),

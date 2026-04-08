@@ -12,6 +12,7 @@ include!("recovery_types.rs");
 include!("recovery_scheduler.rs");
 
 // State recovery orchestrator with adaptive snapshot scheduling
+/// Recovery manager.
 pub struct RecoveryManager<S: AgentState> {
     event_store: Arc<EventStore>,
     snapshot_store: Arc<SnapshotStore>,

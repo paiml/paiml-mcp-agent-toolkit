@@ -18,6 +18,7 @@ pub struct DebugReporter {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Debug event.
 pub struct DebugEvent {
     pub timestamp_ms: u64,
     pub file: std::path::PathBuf,
@@ -30,6 +31,7 @@ pub struct DebugEvent {
 impl DebugReporter {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(output_path: Option<std::path::PathBuf>) -> Self {
         Self {
             start_time: Instant::now(),
@@ -39,6 +41,7 @@ impl DebugReporter {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Record decision.
     pub fn record_decision(&mut self, file: &Path, decision: &ParseDecision) {
         let event = DebugEvent {
             timestamp_ms: self.start_time.elapsed().as_millis() as u64,
@@ -52,6 +55,7 @@ impl DebugReporter {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Record parse result.
     pub fn record_parse_result(
         &mut self,
         file: &Path,
@@ -67,6 +71,7 @@ impl DebugReporter {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Generate report.
     pub fn generate_report(&self) -> Result<DebugReport> {
         let total_files = self.events.len();
         let parsed_files = self
@@ -128,6 +133,7 @@ impl DebugReporter {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Report containing debug data.
 pub struct DebugReport {
     pub summary: DebugSummary,
     pub skip_reasons: std::collections::HashMap<String, usize>,
@@ -135,6 +141,7 @@ pub struct DebugReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Summary of debug analysis.
 pub struct DebugSummary {
     pub total_files: usize,
     pub parsed_files: usize,

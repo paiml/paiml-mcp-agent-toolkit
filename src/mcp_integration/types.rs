@@ -9,6 +9,7 @@ pub const MCP_VERSION: &str = "2024-11-05";
 
 // MCP server capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Server capabilities.
 pub struct ServerCapabilities {
     pub experimental: Option<HashMap<String, Value>>,
     pub logging: Option<LoggingCapabilities>,
@@ -18,22 +19,26 @@ pub struct ServerCapabilities {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Logging capabilities.
 pub struct LoggingCapabilities {
     pub level: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Prompts capability.
 pub struct PromptsCapability {
     pub list_changed: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Resources capability.
 pub struct ResourcesCapability {
     pub subscribe: Option<bool>,
     pub list_changed: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Tools capability.
 pub struct ToolsCapability {
     pub list_changed: Option<bool>,
 }
@@ -41,6 +46,7 @@ pub struct ToolsCapability {
 // MCP message types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "jsonrpc")]
+/// Message variants for mcp.
 pub enum McpMessage {
     #[serde(rename = "2.0")]
     JsonRpc(JsonRpcMessage),
@@ -48,6 +54,7 @@ pub enum McpMessage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+/// Message variants for json rpc.
 pub enum JsonRpcMessage {
     Request(McpRequest),
     Response(McpResponse),
@@ -55,6 +62,7 @@ pub enum JsonRpcMessage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Request for mcp operation.
 pub struct McpRequest {
     pub id: RequestId,
     pub method: String,
@@ -63,12 +71,14 @@ pub struct McpRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+/// Request id.
 pub enum RequestId {
     String(String),
     Number(i64),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Response from mcp operation.
 pub struct McpResponse {
     pub id: RequestId,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -78,6 +88,7 @@ pub struct McpResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Error type for mcp operations.
 pub struct McpError {
     pub code: i32,
     pub message: String,
@@ -94,6 +105,7 @@ impl std::fmt::Display for McpError {
 impl std::error::Error for McpError {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Mcp notification.
 pub struct McpNotification {
     pub method: String,
     pub params: Option<Value>,
@@ -109,6 +121,7 @@ pub mod error_codes {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Information about server.
 pub struct ServerInfo {
     pub name: String,
     pub version: String,

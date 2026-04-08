@@ -18,11 +18,13 @@ struct QualityGateArgs {
     file: Option<String>,
 }
 
+/// Quality gate tool.
 pub struct QualityGateTool;
 
 impl QualityGateTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -44,11 +46,13 @@ struct QualityGateSummaryArgs {
     format: Option<String>,
 }
 
+/// Quality gate summary tool.
 pub struct QualityGateSummaryTool;
 
 impl QualityGateSummaryTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -70,11 +74,13 @@ struct QualityGateBaselineArgs {
     output: Option<String>,
 }
 
+/// Quality gate baseline tool.
 pub struct QualityGateBaselineTool;
 
 impl QualityGateBaselineTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -95,11 +101,13 @@ struct QualityGateCompareArgs {
     paths: Vec<String>,
 }
 
+/// Quality gate compare tool.
 pub struct QualityGateCompareTool;
 
 impl QualityGateCompareTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

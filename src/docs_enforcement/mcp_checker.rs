@@ -47,6 +47,7 @@ pub struct ParameterReport {
 
 impl McpDocumentationReport {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is valid.
     pub fn is_valid(&self) -> bool {
         self.has_description
             && self.description_length > 20
@@ -59,6 +60,7 @@ impl McpDocumentationReport {
 
 impl ParameterReport {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is valid.
     pub fn is_valid(&self) -> bool {
         self.has_description
             && !self.description_is_generic

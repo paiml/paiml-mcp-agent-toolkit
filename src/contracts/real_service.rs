@@ -18,6 +18,7 @@ pub struct RealContractService {
 
 impl RealContractService {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         Ok(Self {
             inner: Arc::new(SimpleContractService::new()?),

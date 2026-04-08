@@ -3,6 +3,7 @@
 impl DagBuilder {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             graph: DependencyGraph::new(),
@@ -14,6 +15,7 @@ impl DagBuilder {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Build from project.
     pub fn build_from_project(project: &ProjectContext) -> DependencyGraph {
         let mut builder = Self::new();
 
@@ -80,6 +82,7 @@ impl DagBuilder {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Build from project with limit.
     pub fn build_from_project_with_limit(
         project: &ProjectContext,
         max_nodes: usize,

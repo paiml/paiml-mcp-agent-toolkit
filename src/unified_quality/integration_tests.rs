@@ -535,11 +535,13 @@ fn very_complex_function(a: i32, b: i32, c: i32) -> i32 {
         fs::write(
             src_dir.join("auth.rs"),
             r#"
+            /// User.
             pub struct User {
                 pub id: u64,
                 pub username: String,
             }
             
+            /// Authenticate user.
             pub fn authenticate_user(username: &str, password: &str) -> Option<User> {
                 if username == "admin" && password == "secret" {
                     Some(User {

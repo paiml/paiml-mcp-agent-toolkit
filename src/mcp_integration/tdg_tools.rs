@@ -17,6 +17,7 @@ pub struct AnalyzeTechnicalDebtTool {
 
 impl AnalyzeTechnicalDebtTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -31,6 +32,7 @@ pub struct GetQualityRecommendationsTool {
 
 impl GetQualityRecommendationsTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,

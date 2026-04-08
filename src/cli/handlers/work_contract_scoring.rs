@@ -58,6 +58,7 @@ pub enum ScoreGrade {
 
 impl ScoreGrade {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// From score.
     pub fn from_score(score: f64) -> Self {
         if score >= 0.90 {
             ScoreGrade::A

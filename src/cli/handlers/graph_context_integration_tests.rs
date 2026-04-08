@@ -283,6 +283,7 @@ mod tests {
 
         // Complex file (high complexity - nested loops and conditions)
         let complex_code = r#"
+/// Complex function.
 pub fn complex_function(data: &[i32]) -> Vec<i32> {
     let mut result = Vec::new();
     for i in 0..data.len() {

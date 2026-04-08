@@ -1,4 +1,5 @@
 impl TestHarness {
+    /// Create a new instance.
     pub fn new() -> Self {
         // Create service with default implementations
         let service = UnifiedService::new()
@@ -20,6 +21,7 @@ impl TestHarness {
         self
     }
 
+    /// With analysis service.
     pub fn with_analysis_service<A: AnalysisService + 'static>(mut self, service: A) -> Self {
         self.service = self.service.with_analysis_service(service);
         self

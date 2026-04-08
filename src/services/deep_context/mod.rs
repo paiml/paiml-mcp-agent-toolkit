@@ -36,6 +36,7 @@ use tracing::{debug, info};
 // --- Configuration types ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for deep context.
 pub struct DeepContextConfig {
     pub include_analyses: Vec<AnalysisType>,
     pub period_days: u32,
@@ -51,6 +52,7 @@ pub struct DeepContextConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Type classification for analysis.
 pub enum AnalysisType {
     Ast,
     Complexity,
@@ -65,6 +67,7 @@ pub enum AnalysisType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Type classification for dag.
 pub enum DagType {
     CallGraph,
     ImportGraph,
@@ -73,12 +76,14 @@ pub enum DagType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Threshold values for complexitys.
 pub struct ComplexityThresholds {
     pub max_cyclomatic: u16,
     pub max_cognitive: u16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Strategy options for cache.
 pub enum CacheStrategy {
     Normal,
     ForceRefresh,

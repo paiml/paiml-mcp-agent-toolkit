@@ -33,10 +33,12 @@ mod tests {
             r#"
             pub mod utils;
 
+            /// Process data.
             pub fn process_data(data: &[u8]) -> Vec<u8> {
                 data.iter().map(|&b| b * 2).collect()
             }
 
+            /// Validate input.
             pub fn validate_input(input: &str) -> bool {
                 !input.is_empty() && input.len() < 1000
             }
@@ -49,10 +51,12 @@ mod tests {
             r#"
             use std::collections::HashMap;
 
+            /// Create cache.
             pub fn create_cache() -> HashMap<String, String> {
                 HashMap::new()
             }
 
+            /// Parse config.
             pub fn parse_config(config: &str) -> Option<Config> {
                 if config.is_empty() {
                     return None;
@@ -60,6 +64,7 @@ mod tests {
                 Some(Config { name: config.to_string() })
             }
 
+            /// Configuration for config.
             pub struct Config {
                 pub name: String,
             }

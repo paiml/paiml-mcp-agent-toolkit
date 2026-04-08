@@ -9,6 +9,7 @@ fn path_to_string(path: &syn::Path) -> String {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+/// Complexity.
 pub enum Complexity {
     O1,         // O(1) - Constant
     OLogN,      // O(log n) - Logarithmic
@@ -37,6 +38,7 @@ impl Display for Complexity {
 
 impl Complexity {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Combine.
     pub fn combine(&self, other: &Complexity) -> Complexity {
         // When combining complexities (e.g., nested loops), multiply
         use Complexity::*;
@@ -52,6 +54,7 @@ impl Complexity {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Find the maximum value.
     pub fn max(&self, other: &Complexity) -> Complexity {
         if self > other {
             self.clone()
@@ -62,6 +65,7 @@ impl Complexity {
 }
 
 #[derive(Debug, Clone)]
+/// Algorithm pattern.
 pub enum AlgorithmPattern {
     Sorting,
     Search,

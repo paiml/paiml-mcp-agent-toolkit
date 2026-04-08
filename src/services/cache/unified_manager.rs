@@ -18,6 +18,7 @@ pub struct UnifiedCacheManager {
 
 impl UnifiedCacheManager {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(config: UnifiedCacheConfig) -> Result<Self> {
         Ok(Self {
             inner: SessionCacheManager::new(config),
@@ -26,6 +27,7 @@ impl UnifiedCacheManager {
 
     // Add any other methods that are needed by refactor_engine
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Clear all.
     pub fn clear_all(&self) {
         self.inner.clear_all();
     }

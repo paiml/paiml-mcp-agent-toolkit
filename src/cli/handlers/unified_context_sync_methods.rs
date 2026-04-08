@@ -4,6 +4,7 @@
 impl UnifiedContextBuilder {
     // Add basic project structure with context
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add basic structure with context.
     pub fn add_basic_structure_with_context(&mut self, context: &ProjectContext) -> &mut Self {
         self.output.push_str("# Project Context\n\n");
         self.output.push_str("## Project Structure\n\n");
@@ -35,6 +36,7 @@ impl UnifiedContextBuilder {
 
     // Add key components with function names
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add key components.
     pub fn add_key_components(&mut self, context: &ProjectContext) -> &mut Self {
         self.output.push_str("## Key Components\n\n");
 
@@ -51,6 +53,7 @@ impl UnifiedContextBuilder {
 
     // Add quality insights (existing functionality)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add quality insights.
     pub fn add_quality_insights(&mut self, context: &ProjectContext) -> &mut Self {
         self.output.push_str("## Quality Insights\n\n");
 
@@ -75,6 +78,7 @@ impl UnifiedContextBuilder {
 
     // Add recommendations (existing functionality)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add recommendations.
     pub fn add_recommendations(&mut self, _context: &ProjectContext) -> &mut Self {
         self.output.push_str("## Recommendations\n\n");
 
@@ -94,12 +98,14 @@ impl UnifiedContextBuilder {
 
     // Build the final output
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Build and return the final result.
     pub fn build(self) -> String {
         self.output
     }
 
     // Synchronous test-friendly methods
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add basic structure.
     pub fn add_basic_structure(&mut self) -> &mut Self {
         self.output.push_str("# Project Context\n\n");
         self.output.push_str("## Project Structure\n\n");
@@ -114,6 +120,7 @@ impl UnifiedContextBuilder {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add big o analysis.
     pub fn add_big_o_analysis(&mut self) -> &mut Self {
         self.output.push_str("## Big-O Complexity Analysis\n\n");
         self.output.push_str("- `function_name`: O(n)\n");
@@ -124,6 +131,7 @@ impl UnifiedContextBuilder {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add entropy analysis.
     pub fn add_entropy_analysis(&mut self) -> &mut Self {
         self.output.push_str("## Entropy Analysis\n\n");
         self.output.push_str("- Pattern Entropy: 0.750\n");
@@ -138,6 +146,7 @@ impl UnifiedContextBuilder {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add tdg analysis.
     pub fn add_tdg_analysis(&mut self) -> &mut Self {
         self.output.push_str("## Technical Debt Gradient (TDG)\n\n");
         self.output.push_str("### Overall TDG Score: 3.25\n\n");

@@ -61,6 +61,7 @@ pub struct StdoutWriter {
 }
 
 impl StdoutWriter {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self { _private: () }
     }
@@ -110,6 +111,7 @@ pub struct TestWriter {
 }
 
 impl TestWriter {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::default()
     }
@@ -212,6 +214,7 @@ impl OutputWriter for TestWriter {
 pub struct NullWriter;
 
 impl NullWriter {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

@@ -1,5 +1,6 @@
 // C++ language strategy
 #[cfg(feature = "c-ast")]
+/// Cpp ast strategy.
 pub struct CppAstStrategy;
 
 #[cfg(feature = "c-ast")]

@@ -179,6 +179,7 @@ pub struct DiscoveryMetrics {
 impl DiscoveryMetrics {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Success rate.
     pub fn success_rate(&self) -> f64 {
         if self.total_queries == 0 {
             return 0.0;

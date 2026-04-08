@@ -13,6 +13,7 @@ impl Default for DebtClassifier {
 impl DebtClassifier {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         // Default mode includes all patterns
         let patterns = vec![
@@ -245,6 +246,7 @@ impl DebtClassifier {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// New strict.
     pub fn new_strict() -> Self {
         // Strict mode only includes explicit SATD markers
         let patterns = vec![

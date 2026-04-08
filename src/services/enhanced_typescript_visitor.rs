@@ -40,16 +40,19 @@ include!("enhanced_typescript_visitor_visit.rs");
 
 // Stub implementation when typescript-ast feature is disabled
 #[cfg(not(feature = "typescript-ast"))]
+/// Enhanced type script visitor.
 pub struct EnhancedTypeScriptVisitor;
 
 #[cfg(not(feature = "typescript-ast"))]
 impl EnhancedTypeScriptVisitor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(_file_path: &std::path::Path) -> Self {
         Self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Extract items.
     pub fn extract_items(self, _module: &()) -> Vec<crate::services::context::AstItem> {
         vec![]
     }

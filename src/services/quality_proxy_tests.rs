@@ -11,6 +11,7 @@ mod tests {
             file_path: "test.rs".to_string(),
             content: Some(
                 r#"/// A simple greeting function
+/// Greet.
 pub fn greet(name: &str) -> String {
     format!("Hello, {}!", name)
 }"#

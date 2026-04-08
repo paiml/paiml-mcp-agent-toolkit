@@ -6,6 +6,7 @@
 impl SimilarityDetector {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(config: SimilarityConfig) -> Self {
         Self {
             winnower: Winnowing::new(config.window_size, config.k_gram_size),

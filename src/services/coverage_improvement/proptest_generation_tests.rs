@@ -24,8 +24,11 @@ mod proptest_generation_tests {
         let service = CoverageImprovementService::new(config);
 
         let code = r#"
+            /// Func a.
             pub fn func_a(x: i32) -> i32 { x }
+            /// Func b.
             pub fn func_b(s: String) -> String { s }
+            /// Func c.
             pub fn func_c() {}
         "#;
         let syntax_tree = syn::parse_file(code).unwrap();

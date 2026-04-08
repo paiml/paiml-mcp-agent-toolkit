@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+/// Language.
 pub enum Language {
     Rust,
     Python,
@@ -28,6 +29,7 @@ pub enum Language {
 impl Language {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// From extension.
     pub fn from_extension(path: &Path) -> Self {
         match path.extension().and_then(|s| s.to_str()) {
             Some("rs") => Language::Rust,
@@ -54,6 +56,7 @@ impl Language {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Confidence.
     pub fn confidence(&self) -> f32 {
         match self {
             Language::Rust => 1.0,
@@ -106,6 +109,7 @@ impl std::fmt::Display for Language {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+/// Naming style convention for naming.
 pub enum NamingStyle {
     SnakeCase,
     CamelCase,
@@ -117,6 +121,7 @@ pub enum NamingStyle {
 impl NamingStyle {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Matches.
     pub fn matches(&self, name: &str) -> bool {
         match self {
             NamingStyle::SnakeCase => name
@@ -145,6 +150,7 @@ impl NamingStyle {
 }
 
 #[derive(Debug, Clone)]
+/// Language rules.
 pub struct LanguageRules {
     pub language: Language,
     pub function_style: NamingStyle,

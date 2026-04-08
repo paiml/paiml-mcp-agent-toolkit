@@ -217,6 +217,7 @@ pub struct QualityGateContract {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
+/// Quality profile.
 pub enum QualityProfile {
     #[default]
     Standard,

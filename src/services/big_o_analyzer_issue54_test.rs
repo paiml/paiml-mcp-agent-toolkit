@@ -227,6 +227,7 @@ const STRINGS_WITH_KEYWORDS: &[&str] = &[
 pub mod analyzer;
 pub mod processor;
 
+/// Initialize the component.
 pub fn init() {
     println!("Initialized");
 }
@@ -235,6 +236,7 @@ pub fn init() {
             (
                 "analyzer.rs",
                 r#"
+/// Analyze data.
 pub fn analyze_data(data: &[i32]) -> i32 {
     data.iter().sum()
 }
@@ -247,10 +249,12 @@ fn helper_function(x: i32) -> i32 {
             (
                 "processor.rs",
                 r#"
+/// Process items.
 pub fn process_items(items: Vec<String>) -> Vec<String> {
     items.into_iter().map(|s| s.to_uppercase()).collect()
 }
 
+/// Validate item.
 pub fn validate_item(item: &str) -> bool {
     !item.is_empty()
 }

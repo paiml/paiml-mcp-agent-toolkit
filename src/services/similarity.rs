@@ -99,6 +99,7 @@ pub struct RefactoringHint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Priority level for priority.
 pub enum Priority {
     High,
     Medium,
@@ -117,6 +118,7 @@ pub struct ComprehensiveReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Metrics.
 pub struct Metrics {
     pub duplication_percentage: f64,
     pub average_entropy: f64,

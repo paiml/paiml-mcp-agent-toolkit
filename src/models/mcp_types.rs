@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Request for mcp operation.
 pub struct McpRequest {
     pub jsonrpc: String,
     pub id: Value,
@@ -7,6 +8,7 @@ pub struct McpRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Response from mcp operation.
 pub struct McpResponse {
     pub jsonrpc: String,
     pub id: Value,
@@ -17,6 +19,7 @@ pub struct McpResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Error type for mcp operations.
 pub struct McpError {
     pub code: i32,
     pub message: String,

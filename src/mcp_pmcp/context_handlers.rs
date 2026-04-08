@@ -16,10 +16,15 @@ pub use self::{
 
 // --- Struct definitions ---
 
+/// Git clone tool.
 pub struct GitCloneTool;
+/// Git status tool.
 pub struct GitStatusTool;
+/// Context generate tool.
 pub struct ContextGenerateTool;
+/// Context analyze tool.
 pub struct ContextAnalyzeTool;
+/// Context summary tool.
 pub struct ContextSummaryTool;
 
 // --- Include files ---

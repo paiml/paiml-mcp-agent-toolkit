@@ -1,4 +1,5 @@
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Context for project operations.
 pub struct ProjectContext {
     pub project_type: String,
     pub files: Vec<FileContext>,
@@ -9,6 +10,7 @@ pub struct ProjectContext {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Summary of project analysis.
 pub struct ProjectSummary {
     pub total_files: usize,
     pub total_functions: usize,
@@ -20,6 +22,7 @@ pub struct ProjectSummary {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+/// Context for file operations.
 pub struct FileContext {
     pub path: String,
     pub language: String,
@@ -31,6 +34,7 @@ pub struct FileContext {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 #[derive(PartialEq)]
+/// Ast item.
 pub enum AstItem {
     Function {
         name: String,
@@ -226,6 +230,7 @@ pub enum AstItem {
 impl AstItem {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Display name.
     pub fn display_name(&self) -> &str {
         match self {
             AstItem::Function { name, .. } => name,

@@ -18,6 +18,7 @@ impl Default for SpecParser {
 
 impl SpecParser {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             frontmatter_regex: Regex::new(r"(?s)^---\n(.*?)\n---").expect("internal error"),

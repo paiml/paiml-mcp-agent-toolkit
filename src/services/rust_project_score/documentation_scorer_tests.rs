@@ -123,6 +123,7 @@ pub enum DocumentedEnum { A, B }
 /// This is documented
 pub fn documented_fn() {}
 
+/// Undocumented fn.
 pub fn undocumented_fn() {}
 "#,
         )
@@ -402,6 +403,7 @@ MIT
 /// Documented function
 pub fn documented() {}
 
+/// Undocumented.
 pub fn undocumented() {}
 
 /// Documented struct

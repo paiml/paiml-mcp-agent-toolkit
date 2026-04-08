@@ -1,4 +1,5 @@
 // Resource pool for sharing resources across agents
+/// Resource pool.
 pub struct ResourcePool {
     _total_limits: ResourceLimits,
     allocated: Arc<RwLock<Vec<(uuid::Uuid, ResourceLimits)>>>,
@@ -7,6 +8,7 @@ pub struct ResourcePool {
 
 impl ResourcePool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(total_limits: ResourceLimits) -> Self {
         Self {
             available: Arc::new(RwLock::new(total_limits.clone())),
@@ -16,6 +18,7 @@ impl ResourcePool {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Request.
     pub fn request(
         &self,
         agent_id: uuid::Uuid,
@@ -53,6 +56,7 @@ impl ResourcePool {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Release.
     pub fn release(&self, agent_id: uuid::Uuid) -> Result<(), ResourceError> {
         let mut allocated = self.allocated.write();
         let mut available = self.available.write();
@@ -71,10 +75,12 @@ impl ResourcePool {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get available.
     pub fn get_available(&self) -> ResourceLimits {
         self.available.read().clone()
     }
 
+    /// Get allocated.
     pub fn get_allocated(&self) -> Vec<(uuid::Uuid, ResourceLimits)> {
         self.allocated.read().clone()
     }

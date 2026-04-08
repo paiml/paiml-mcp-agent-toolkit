@@ -19,6 +19,7 @@ pub struct SATDAnalyzer {
 impl SATDAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             inner: SATDDetector::new(),
@@ -27,6 +28,7 @@ impl SATDAnalyzer {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// New with strict mode.
     pub fn new_with_strict_mode(strict: bool) -> Self {
         if strict {
             Self {
@@ -118,18 +120,21 @@ pub struct SATDAnalyzerFactory;
 impl SATDAnalyzerFactory {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create.
     pub fn create() -> SATDAnalyzer {
         SATDAnalyzer::new()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create strict.
     pub fn create_strict() -> SATDAnalyzer {
         SATDAnalyzer::new_with_strict_mode(true)
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create critical only.
     pub fn create_critical_only() -> SATDAnalyzer {
         // Create analyzer with strict mode for critical issues
         SATDAnalyzer::new_with_strict_mode(true)

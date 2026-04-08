@@ -29,9 +29,11 @@ use std::path::Path;
 #[cfg(test)]
 use patterns::matches_pattern;
 
+/// Hygiene scorer.
 pub struct HygieneScorer;
 
 impl HygieneScorer {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

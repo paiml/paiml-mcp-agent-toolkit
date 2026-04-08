@@ -6,12 +6,14 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 #[async_trait]
+/// Module interface for validator operations.
 pub trait ValidatorModule: Send + Sync {
     async fn validate(&self, metrics: &Metrics, thresholds: &Thresholds) -> ValidationResult;
     async fn validate_code(&self, code: &str, thresholds: &Thresholds) -> ValidationResult;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Threshold values for thresholds.
 pub struct Thresholds {
     pub max_complexity: u32,
     pub max_functions: usize,
@@ -31,6 +33,7 @@ impl Default for Thresholds {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of validation operation.
 pub struct ValidationResult {
     pub passed: bool,
     pub violations: Vec<Violation>,
@@ -38,6 +41,7 @@ pub struct ValidationResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Violation record for violation.
 pub struct Violation {
     pub rule: String,
     pub severity: Severity,
@@ -46,6 +50,7 @@ pub struct Violation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Severity level classification for severity.
 pub enum Severity {
     Error,
     Warning,
@@ -53,6 +58,7 @@ pub enum Severity {
 }
 
 #[derive(Clone)]
+/// Validator impl.
 pub struct ValidatorImpl {
     analyzer: Option<Arc<dyn AnalyzerModule>>,
     strict_mode: bool,
@@ -65,6 +71,7 @@ impl Default for ValidatorImpl {
 }
 
 impl ValidatorImpl {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             analyzer: None,
@@ -73,12 +80,14 @@ impl ValidatorImpl {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With analyzer.
     pub fn with_analyzer(mut self, analyzer: Arc<dyn AnalyzerModule>) -> Self {
         self.analyzer = Some(analyzer);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Strict.
     pub fn strict(mut self) -> Self {
         self.strict_mode = true;
         self

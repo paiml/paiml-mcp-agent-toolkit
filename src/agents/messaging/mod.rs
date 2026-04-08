@@ -14,12 +14,14 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Message)]
 #[rtype(result = "Result<crate::agents::AgentResponse, crate::agents::AgentError>")]
+/// Agent message.
 pub struct AgentMessage {
     pub header: MessageHeader,
     pub payload: Bytes, // Zero-copy payload
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Message header.
 pub struct MessageHeader {
     pub id: Uuid,
     pub from: Uuid,
@@ -31,6 +33,7 @@ pub struct MessageHeader {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+/// Priority level for priority.
 pub enum Priority {
     Critical = 0,
     High = 1,

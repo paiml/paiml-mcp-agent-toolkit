@@ -1,6 +1,7 @@
 impl MakefileAst {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             nodes: Vec::new(),
@@ -10,6 +11,7 @@ impl MakefileAst {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add node.
     pub fn add_node(&mut self, node: MakefileNode) -> usize {
         let idx = self.nodes.len();
         self.nodes.push(node);
@@ -18,6 +20,7 @@ impl MakefileAst {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Find rules by target.
     pub fn find_rules_by_target(&self, target: &str) -> Vec<usize> {
         self.nodes
             .iter()
@@ -37,6 +40,7 @@ impl MakefileAst {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get phony targets.
     pub fn get_phony_targets(&self) -> Vec<String> {
         let phony_rules = self.find_rules_by_target(".PHONY");
         let mut targets = Vec::new();
@@ -54,6 +58,7 @@ impl MakefileAst {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Count targets.
     pub fn count_targets(&self) -> usize {
         self.nodes
             .iter()
@@ -63,12 +68,14 @@ impl MakefileAst {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Count phony targets.
     pub fn count_phony_targets(&self) -> usize {
         self.get_phony_targets().len()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Has pattern rules.
     pub fn has_pattern_rules(&self) -> bool {
         self.nodes.iter().any(|n| {
             if let NodeData::Rule { is_pattern, .. } = &n.data {
@@ -81,6 +88,7 @@ impl MakefileAst {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Uses automatic variables.
     pub fn uses_automatic_variables(&self) -> bool {
         self.nodes.iter().any(|n| match &n.data {
             NodeData::Recipe { lines } => lines.iter().any(|line| {
@@ -103,6 +111,7 @@ impl MakefileAst {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get variables.
     pub fn get_variables(&self) -> Vec<(&String, &AssignmentOp, &String)> {
         self.nodes
             .iter()

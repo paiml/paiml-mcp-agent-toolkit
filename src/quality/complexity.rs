@@ -2,6 +2,7 @@
 use std::collections::HashMap;
 use syn::{self, visit::Visit};
 
+/// Complexity analyzer.
 pub struct ComplexityAnalyzer {
     _current_complexity: u32,
     _cognitive_complexity: u32,
@@ -17,6 +18,7 @@ impl Default for ComplexityAnalyzer {
 
 impl ComplexityAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             _current_complexity: 1, // Base complexity
@@ -27,6 +29,7 @@ impl ComplexityAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Calculate cyclomatic.
     pub fn calculate_cyclomatic(&self, ast: &syn::File) -> u32 {
         let mut visitor = ComplexityVisitor {
             complexity: 1,
@@ -37,6 +40,7 @@ impl ComplexityAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// Calculate cognitive.
     pub fn calculate_cognitive(&self, ast: &syn::File) -> u32 {
         let mut visitor = CognitiveComplexityVisitor {
             complexity: 0,
@@ -47,6 +51,7 @@ impl ComplexityAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze string.
     pub fn analyze_string(&self, code: &str) -> Result<ComplexityMetrics, syn::Error> {
         let ast = syn::parse_file(code)?;
         Ok(ComplexityMetrics {
@@ -56,6 +61,7 @@ impl ComplexityAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// Calculate shannon entropy.
     pub fn calculate_shannon_entropy(&self, code: &str) -> f64 {
         let mut char_counts = HashMap::new();
         let total = code.len() as f64;
@@ -77,6 +83,7 @@ impl ComplexityAnalyzer {
 }
 
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+/// Complexity metrics.
 pub struct ComplexityMetrics {
     pub cyclomatic: u32,
     pub cognitive: u32,

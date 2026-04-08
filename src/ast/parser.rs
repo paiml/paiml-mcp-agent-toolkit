@@ -39,6 +39,7 @@ pub struct UnifiedParser {
 impl UnifiedParser {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             config: ParserConfig::default(),
@@ -47,12 +48,14 @@ impl UnifiedParser {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With config.
     pub fn with_config(config: ParserConfig) -> Self {
         Self { config }
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Capabilities.
     pub fn capabilities(&self) -> ParserCapabilities {
         ParserCapabilities {
             languages: vec![Language::Rust, Language::Python, Language::TypeScript],

@@ -125,8 +125,14 @@ impl TestingScorer {
             score += 1.0;
         }
 
-        // Cap at 6.0 — reserve top 2 points for verified >85% coverage in full mode
-        score.min(6.0)
+        // Check for cached coverage results (strong signal)
+        let has_metrics = project_path.join(".pmat-metrics/coverage.result").exists();
+        if has_metrics {
+            score += 1.0; // Cached coverage data from `make coverage`
+        }
+
+        // Cap at 7.0 — reserve top point for verified >85% coverage in full mode
+        score.min(7.0)
     }
 
     /// Fast-mode mutation testing estimation from project metadata (#243)

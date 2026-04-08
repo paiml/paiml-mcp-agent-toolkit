@@ -20,6 +20,7 @@ pub struct PdmtTodo {
 impl PdmtTodo {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(content: String, priority: TodoPriority) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
@@ -42,6 +43,7 @@ impl PdmtTodo {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get primary file path.
     pub fn get_primary_file_path(&self) -> String {
         self.implementation_specs
             .primary_files
@@ -53,6 +55,7 @@ impl PdmtTodo {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Status of todo operation.
 pub enum TodoStatus {
     Pending,
     InProgress,
@@ -62,6 +65,7 @@ pub enum TodoStatus {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Priority level for todo.
 pub enum TodoPriority {
     Low,
     Medium,
@@ -70,6 +74,7 @@ pub enum TodoPriority {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Todo quality gates.
 pub struct TodoQualityGates {
     pub coverage_requirement: f32,
     pub doctest_requirement: bool,
@@ -93,6 +98,7 @@ impl Default for TodoQualityGates {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Validation commands.
 pub struct ValidationCommands {
     pub unit_tests: String,
     pub doctests: String,
@@ -116,6 +122,7 @@ impl Default for ValidationCommands {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Implementation specs.
 pub struct ImplementationSpecs {
     pub primary_files: Vec<String>,
     pub test_files: Vec<String>,
@@ -145,6 +152,7 @@ pub struct PdmtTodoList {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for pdmt quality.
 pub struct PdmtQualityConfig {
     pub enforcement_mode: EnforcementMode,
     pub coverage_threshold: f32,
@@ -171,6 +179,7 @@ impl Default for PdmtQualityConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Operational mode for enforcement.
 pub enum EnforcementMode {
     Strict,
     Advisory,
@@ -186,6 +195,7 @@ pub struct QualityValidationResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Quality results.
 pub struct QualityResults {
     pub structure_result: ValidationOutcome,
     pub coverage_result: ValidationOutcome,
@@ -197,6 +207,7 @@ pub struct QualityResults {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Outcome of validation validation.
 pub struct ValidationOutcome {
     pub passed: bool,
     pub message: String,
@@ -206,6 +217,7 @@ pub struct ValidationOutcome {
 impl ValidationOutcome {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Success.
     pub fn success(message: String) -> Self {
         Self {
             passed: true,
@@ -216,6 +228,7 @@ impl ValidationOutcome {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Failure.
     pub fn failure(message: String, violations: Vec<String>) -> Self {
         Self {
             passed: false,

@@ -31,6 +31,7 @@ mod tests {
         fs::write(
             temp_dir.path().join("src/lib.rs"),
             r#"
+            /// Safe function.
             pub fn safe_function() -> Result<i32, String> {
                 Ok(42)
             }

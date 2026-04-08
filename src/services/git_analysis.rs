@@ -45,11 +45,13 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use tracing::info;
 
+/// Git analysis service.
 pub struct GitAnalysisService;
 
 impl GitAnalysisService {
     #[inline]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Analyze code churn.
     pub fn analyze_code_churn(
         project_path: &Path,
         period_days: u32,

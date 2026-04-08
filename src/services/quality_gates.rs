@@ -42,6 +42,7 @@ use crate::services::deep_context::{DeepContextResult, FunctionComplexityForQA};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of q a verification operation.
 pub struct QAVerificationResult {
     pub timestamp: String,
     pub version: String,
@@ -52,6 +53,7 @@ pub struct QAVerificationResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Dead code verification.
 pub struct DeadCodeVerification {
     pub status: VerificationStatus,
     pub expected_range: [f64; 2],
@@ -60,6 +62,7 @@ pub struct DeadCodeVerification {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Complexity verification.
 pub struct ComplexityVerification {
     pub status: VerificationStatus,
     pub entropy: f64,
@@ -69,6 +72,7 @@ pub struct ComplexityVerification {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Provability verification.
 pub struct ProvabilityVerification {
     pub status: VerificationStatus,
     pub pure_reducer_coverage: f64,
@@ -78,6 +82,7 @@ pub struct ProvabilityVerification {
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
+/// Status of verification operation.
 pub enum VerificationStatus {
     Pass,
     Partial,
@@ -86,6 +91,7 @@ pub enum VerificationStatus {
 
 type QualityCheck = Box<dyn Fn(&DeepContextResult) -> Result<(), String> + Send + Sync>;
 
+/// Q a verification.
 pub struct QAVerification {
     checks: Vec<(&'static str, QualityCheck)>,
 }
@@ -93,6 +99,7 @@ pub struct QAVerification {
 impl QAVerification {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         let mut checks: Vec<(&'static str, QualityCheck)> = vec![];
 

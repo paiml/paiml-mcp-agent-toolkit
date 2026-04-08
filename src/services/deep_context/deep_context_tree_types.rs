@@ -2,6 +2,7 @@
 // Included from mod.rs - shares parent module scope (no `use` imports)
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Metadata for context.
 pub struct ContextMetadata {
     pub generated_at: DateTime<Utc>,
     pub tool_version: String,
@@ -11,6 +12,7 @@ pub struct ContextMetadata {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Statistics for cache.
 pub struct CacheStats {
     pub hit_rate: f64,
     pub memory_efficiency: f64,
@@ -18,6 +20,7 @@ pub struct CacheStats {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Annotated file tree.
 pub struct AnnotatedFileTree {
     pub root: AnnotatedNode,
     pub total_files: usize,
@@ -25,6 +28,7 @@ pub struct AnnotatedFileTree {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Annotated node.
 pub struct AnnotatedNode {
     pub name: String,
     pub path: PathBuf,
@@ -34,6 +38,7 @@ pub struct AnnotatedNode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+/// Type classification for node.
 pub enum NodeType {
     Directory,
     #[default]
@@ -41,6 +46,7 @@ pub enum NodeType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Node annotations.
 pub struct NodeAnnotations {
     pub defect_score: Option<f32>,
     pub complexity_score: Option<f32>,
@@ -56,6 +62,7 @@ pub struct NodeAnnotations {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Analysis results.
 pub struct AnalysisResults {
     pub ast_contexts: Vec<EnhancedFileContext>,
     pub complexity_report: Option<ComplexityReport>,
@@ -71,6 +78,7 @@ pub struct AnalysisResults {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Context for enhanced file operations.
 pub struct EnhancedFileContext {
     pub base: FileContext,
     pub complexity_metrics: Option<FileComplexityMetrics>,
@@ -80,6 +88,7 @@ pub struct EnhancedFileContext {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// File churn metrics.
 pub struct FileChurnMetrics {
     pub commits: u32,
     pub authors: u32,

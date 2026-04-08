@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Proxy operation.
 pub enum ProxyOperation {
     Write,
     Edit,
@@ -12,6 +13,7 @@ pub enum ProxyOperation {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
+/// Operational mode for proxy.
 pub enum ProxyMode {
     #[default]
     Strict,
@@ -20,6 +22,7 @@ pub enum ProxyMode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for quality.
 pub struct QualityConfig {
     #[serde(default = "default_max_complexity")]
     pub max_complexity: u32,
@@ -59,6 +62,7 @@ impl Default for QualityConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Request for proxy operation.
 pub struct ProxyRequest {
     pub operation: ProxyOperation,
     pub file_path: String,
@@ -76,6 +80,7 @@ pub struct ProxyRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Status of proxy operation.
 pub enum ProxyStatus {
     Accepted,
     Rejected,
@@ -84,6 +89,7 @@ pub enum ProxyStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Type classification for violation.
 pub enum ViolationType {
     Complexity,
     Satd,
@@ -93,12 +99,14 @@ pub enum ViolationType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Severity level classification for violation.
 pub enum ViolationSeverity {
     Error,
     Warning,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Violation record for quality.
 pub struct QualityViolation {
     #[serde(rename = "type")]
     pub violation_type: ViolationType,
@@ -110,6 +118,7 @@ pub struct QualityViolation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Quality metrics.
 pub struct QualityMetrics {
     pub max_complexity: u32,
     pub satd_count: usize,
@@ -119,6 +128,7 @@ pub struct QualityMetrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Report containing quality data.
 pub struct QualityReport {
     pub passed: bool,
     pub metrics: QualityMetrics,
@@ -126,6 +136,7 @@ pub struct QualityReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Response from proxy operation.
 pub struct ProxyResponse {
     pub status: ProxyStatus,
     pub quality_report: QualityReport,

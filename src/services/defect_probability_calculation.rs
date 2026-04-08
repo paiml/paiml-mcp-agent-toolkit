@@ -1,6 +1,7 @@
 impl DefectProbabilityCalculator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             weights: DefectWeights::default(),
@@ -9,12 +10,14 @@ impl DefectProbabilityCalculator {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With weights.
     pub fn with_weights(weights: DefectWeights) -> Self {
         Self { weights }
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Calculate.
     pub fn calculate(&self, metrics: &FileMetrics) -> DefectScore {
         // Normalize to [0, 1] using empirical CDFs
         let churn_norm = self.normalize_churn(metrics.churn_score);
@@ -67,6 +70,7 @@ impl DefectProbabilityCalculator {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// Calculate batch.
     pub fn calculate_batch(&self, metrics: &[FileMetrics]) -> Vec<(String, DefectScore)> {
         metrics
             .iter()

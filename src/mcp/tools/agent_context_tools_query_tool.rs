@@ -3,10 +3,12 @@
 
 impl QueryCodeTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self { manager }
     }
 
+    /// Schema.
     pub fn schema() -> Value {
         json!({
             "name": "pmat_query_code",

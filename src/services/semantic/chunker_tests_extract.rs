@@ -37,6 +37,7 @@
         let source = r#"use std::collections::HashMap;
 use super::*;
 
+/// Public func.
 pub fn public_func() {}
 
 fn private_func() {}
@@ -78,6 +79,7 @@ pub(crate) fn crate_func() {}
     fn test_extract_rust_cfg_test_line() {
         let source = r#"use std::io;
 
+/// Production code.
 pub fn production_code() {}
 
 #[cfg(test)]
@@ -111,8 +113,10 @@ mod tests {
     fn test_extract_rust_struct_enum_trait() {
         let source = r#"pub struct MyStruct { x: i32 }
 
+/// My enum.
 pub enum MyEnum { A, B }
 
+/// Trait defining My trait behavior.
 pub trait MyTrait {
     fn required(&self);
 }
@@ -137,6 +141,7 @@ pub trait MyTrait {
         let source = r#"struct Foo;
 
 impl Foo {
+    /// Public method.
     pub fn public_method(&self) {}
     fn private_method(&self) {}
 }

@@ -10,6 +10,7 @@ use crate::models::churn::ChurnOutputFormat;
 // Format conversion helper functions
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Format to string.
 pub fn format_to_string(format: &ContextFormat) -> String {
     match format {
         ContextFormat::Markdown => "markdown".to_string(),
@@ -20,6 +21,7 @@ pub fn format_to_string(format: &ContextFormat) -> String {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Churn format to string.
 pub fn churn_format_to_string(format: &ChurnOutputFormat) -> String {
     match format {
         ChurnOutputFormat::Summary => "summary".to_string(),
@@ -30,6 +32,7 @@ pub fn churn_format_to_string(format: &ChurnOutputFormat) -> String {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Complexity format to string.
 pub fn complexity_format_to_string(format: &crate::cli::ComplexityOutputFormat) -> String {
     match format {
         crate::cli::ComplexityOutputFormat::Summary => "summary".to_string(),
@@ -40,6 +43,7 @@ pub fn complexity_format_to_string(format: &crate::cli::ComplexityOutputFormat) 
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Dag type to string.
 pub fn dag_type_to_string(dag_type: &crate::cli::DagType) -> String {
     match dag_type {
         crate::cli::DagType::CallGraph => "call-graph".to_string(),
@@ -50,6 +54,7 @@ pub fn dag_type_to_string(dag_type: &crate::cli::DagType) -> String {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Dead code format to string.
 pub fn dead_code_format_to_string(format: &crate::cli::DeadCodeOutputFormat) -> String {
     match format {
         crate::cli::DeadCodeOutputFormat::Summary => "summary".to_string(),
@@ -60,6 +65,7 @@ pub fn dead_code_format_to_string(format: &crate::cli::DeadCodeOutputFormat) -> 
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Satd format to string.
 pub fn satd_format_to_string(format: &crate::cli::SatdOutputFormat) -> String {
     match format {
         crate::cli::SatdOutputFormat::Summary => "summary".to_string(),
@@ -70,6 +76,7 @@ pub fn satd_format_to_string(format: &crate::cli::SatdOutputFormat) -> String {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Satd severity to string.
 pub fn satd_severity_to_string(severity: &crate::cli::SatdSeverity) -> String {
     match severity {
         crate::cli::SatdSeverity::Critical => "critical".to_string(),
@@ -80,6 +87,7 @@ pub fn satd_severity_to_string(severity: &crate::cli::SatdSeverity) -> String {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Graph metric type to string.
 pub fn graph_metric_type_to_string(metric: &crate::cli::GraphMetricType) -> String {
     match metric {
         crate::cli::GraphMetricType::All => "all".to_string(),
@@ -93,6 +101,7 @@ pub fn graph_metric_type_to_string(metric: &crate::cli::GraphMetricType) -> Stri
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Graph metrics format to string.
 pub fn graph_metrics_format_to_string(format: &crate::cli::GraphMetricsOutputFormat) -> String {
     match format {
         crate::cli::GraphMetricsOutputFormat::Summary => "summary".to_string(),
@@ -106,6 +115,7 @@ pub fn graph_metrics_format_to_string(format: &crate::cli::GraphMetricsOutputFor
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Name similarity format to string.
 pub fn name_similarity_format_to_string(format: &crate::cli::NameSimilarityOutputFormat) -> String {
     match format {
         crate::cli::NameSimilarityOutputFormat::Summary => "summary".to_string(),
@@ -118,6 +128,7 @@ pub fn name_similarity_format_to_string(format: &crate::cli::NameSimilarityOutpu
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Property type filter to string.
 pub fn property_type_filter_to_string(filter: &crate::cli::PropertyTypeFilter) -> String {
     match filter {
         crate::cli::PropertyTypeFilter::All => "all".to_string(),
@@ -133,6 +144,7 @@ pub fn property_type_filter_to_string(filter: &crate::cli::PropertyTypeFilter) -
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Verification method filter to string.
 pub fn verification_method_filter_to_string(
     method: &crate::cli::VerificationMethodFilter,
 ) -> String {
@@ -149,6 +161,7 @@ pub fn verification_method_filter_to_string(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Proof annotation format to string.
 pub fn proof_annotation_format_to_string(
     format: &crate::cli::ProofAnnotationOutputFormat,
 ) -> String {
@@ -162,6 +175,7 @@ pub fn proof_annotation_format_to_string(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Incremental coverage format to string.
 pub fn incremental_coverage_format_to_string(
     format: &crate::cli::IncrementalCoverageOutputFormat,
 ) -> String {
@@ -177,6 +191,7 @@ pub fn incremental_coverage_format_to_string(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Symbol type filter to string.
 pub fn symbol_type_filter_to_string(filter: &crate::cli::SymbolTypeFilter) -> String {
     match filter {
         crate::cli::SymbolTypeFilter::All => "all".to_string(),
@@ -189,6 +204,7 @@ pub fn symbol_type_filter_to_string(filter: &crate::cli::SymbolTypeFilter) -> St
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Symbol table format to string.
 pub fn symbol_table_format_to_string(format: &crate::cli::SymbolTableOutputFormat) -> String {
     match format {
         crate::cli::SymbolTableOutputFormat::Summary => "summary".to_string(),
@@ -200,6 +216,7 @@ pub fn symbol_table_format_to_string(format: &crate::cli::SymbolTableOutputForma
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Big o format to string.
 pub fn big_o_format_to_string(format: &crate::cli::BigOOutputFormat) -> String {
     match format {
         crate::cli::BigOOutputFormat::Summary => "summary".to_string(),
@@ -210,6 +227,7 @@ pub fn big_o_format_to_string(format: &crate::cli::BigOOutputFormat) -> String {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Deep context format to string.
 pub fn deep_context_format_to_string(format: &crate::cli::DeepContextOutputFormat) -> String {
     match format {
         crate::cli::DeepContextOutputFormat::Markdown => "markdown".to_string(),
@@ -219,6 +237,7 @@ pub fn deep_context_format_to_string(format: &crate::cli::DeepContextOutputForma
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Deep context dag type to string.
 pub fn deep_context_dag_type_to_string(dag_type: &crate::cli::DeepContextDagType) -> String {
     match dag_type {
         crate::cli::DeepContextDagType::CallGraph => "call-graph".to_string(),
@@ -229,6 +248,7 @@ pub fn deep_context_dag_type_to_string(dag_type: &crate::cli::DeepContextDagType
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Deep context cache strategy to string.
 pub fn deep_context_cache_strategy_to_string(
     strategy: &crate::cli::DeepContextCacheStrategy,
 ) -> String {
@@ -240,6 +260,7 @@ pub fn deep_context_cache_strategy_to_string(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Tdg format to string.
 pub fn tdg_format_to_string(format: &crate::cli::TdgOutputFormat) -> String {
     match format {
         crate::cli::TdgOutputFormat::Table => "table".to_string(),
@@ -250,6 +271,7 @@ pub fn tdg_format_to_string(format: &crate::cli::TdgOutputFormat) -> String {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Provability format to string.
 pub fn provability_format_to_string(format: &crate::cli::ProvabilityOutputFormat) -> String {
     match format {
         crate::cli::ProvabilityOutputFormat::Summary => "summary".to_string(),

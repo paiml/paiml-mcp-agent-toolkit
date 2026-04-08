@@ -25,6 +25,7 @@ impl MessageExtensions for AgentMessage {
 // Binary protocol encode/decode implementation
 impl BinaryProtocol {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Encode the data.
     pub fn encode(msg: &AgentMessage) -> Result<Bytes, ProtocolError> {
         let mut buf = BytesMut::with_capacity(1024);
 
@@ -49,6 +50,7 @@ impl BinaryProtocol {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Decode the data.
     pub fn decode(data: Bytes) -> Result<AgentMessage, ProtocolError> {
         if data.len() < 5 {
             return Err(ProtocolError::InvalidMessage(

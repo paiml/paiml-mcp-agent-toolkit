@@ -45,6 +45,7 @@ fn format_defect_csv(report: &DefectPredictionReport) -> Result<String> {
 // Replace the format_dead_code_output function body with:
 /*
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Format dead code output.
 pub fn format_dead_code_output(
     format: DeadCodeOutputFormat,
     dead_code_result: &crate::models::dead_code::DeadCodeResult,

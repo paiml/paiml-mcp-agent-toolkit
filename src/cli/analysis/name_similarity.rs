@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Name match.
 pub struct NameMatch {
     pub name: String,
     pub file: String,
@@ -16,6 +17,7 @@ pub struct NameMatch {
 }
 
 #[derive(Debug, Clone, Serialize)]
+/// Result of name similarity operation.
 pub struct NameSimilarityResult {
     pub query: String,
     pub matches: Vec<NameMatch>,

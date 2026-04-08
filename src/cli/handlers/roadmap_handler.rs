@@ -65,6 +65,7 @@ pub struct SprintInfo {
 }
 
 #[derive(Debug, PartialEq, Serialize)]
+/// Status of sprint operation.
 pub enum SprintStatus {
     NotStarted,
     InProgress,

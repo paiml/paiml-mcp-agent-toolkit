@@ -1,5 +1,6 @@
 impl RustAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_rust::language())?;
@@ -32,6 +33,7 @@ impl LanguageAdapter for RustAdapter {
 
 impl PythonAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_python::language())?;
@@ -64,6 +66,7 @@ impl LanguageAdapter for PythonAdapter {
 
 impl JavaScriptAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_javascript::LANGUAGE.into())?;
@@ -96,6 +99,7 @@ impl LanguageAdapter for JavaScriptAdapter {
 
 impl TypeScriptAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_typescript::language_typescript())?;
@@ -128,6 +132,7 @@ impl LanguageAdapter for TypeScriptAdapter {
 
 impl GoAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_go::language())?;
@@ -160,6 +165,7 @@ impl LanguageAdapter for GoAdapter {
 
 impl LuaAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_lua::LANGUAGE.into())?;
@@ -192,6 +198,7 @@ impl LanguageAdapter for LuaAdapter {
 
 impl LanguageRegistry {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         let mut registry = Self {
             adapters: HashMap::new(),
@@ -208,12 +215,14 @@ impl LanguageRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register(&mut self, language: Language, adapter: Box<dyn LanguageAdapter>) -> Result<()> {
         self.adapters.insert(language, adapter);
         Ok(())
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get adapter.
     pub fn get_adapter(&self, language: Language) -> Result<&dyn LanguageAdapter> {
         self.adapters
             .get(&language)
@@ -222,6 +231,7 @@ impl LanguageRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Detect and get.
     pub fn detect_and_get(&self, path: &Path) -> Result<&dyn LanguageAdapter> {
         let language = Language::from_extension(path);
         if language == Language::Unknown {

@@ -16,6 +16,7 @@ pub struct ContractVersion {
 
 impl ContractVersion {
     #[must_use]
+    /// Create a new instance.
     pub fn new(major: u32, minor: u32, patch: u32) -> Self {
         Self {
             major,
@@ -26,12 +27,14 @@ impl ContractVersion {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
+    /// Current.
     pub fn current() -> Self {
         Self::new(1, 0, 0) // Current contract version
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
+    /// Is compatible.
     pub fn is_compatible(&self, other: &Self) -> bool {
         // Same major version = compatible
         // Higher minor version = backward compatible
@@ -40,6 +43,7 @@ impl ContractVersion {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
+    /// Requires migration.
     pub fn requires_migration(&self, other: &Self) -> bool {
         self.major != other.major
     }
@@ -71,6 +75,7 @@ pub struct ContractMetadata {
 
 impl ContractMetadata {
     #[must_use]
+    /// Create a new instance.
     pub fn new(created_by: &str) -> Self {
         Self {
             created_at: std::time::SystemTime::now()
@@ -86,6 +91,7 @@ impl ContractMetadata {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
+    /// With description.
     pub fn with_description(mut self, description: &str) -> Self {
         self.description = Some(description.to_string());
         self
@@ -93,6 +99,7 @@ impl ContractMetadata {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
+    /// Deprecated.
     pub fn deprecated(mut self, migration_notes: &str) -> Self {
         debug_assert!(
             !migration_notes.is_empty(),
@@ -118,6 +125,7 @@ impl Default for ContractRegistry {
 
 impl ContractRegistry {
     #[must_use]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             contracts: HashMap::new(),
@@ -267,6 +275,7 @@ impl ContractMigration for ParameterRenameMapping {
     }
 }
 
+/// Parameter rename mapping.
 pub struct ParameterRenameMapping {
     pub mappings: HashMap<String, String>,
 }
@@ -279,6 +288,7 @@ impl Default for ParameterRenameMapping {
 
 impl ParameterRenameMapping {
     #[must_use]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             mappings: HashMap::new(),
@@ -287,6 +297,7 @@ impl ParameterRenameMapping {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
+    /// Add mapping.
     pub fn add_mapping(mut self, old_name: &str, new_name: &str) -> Self {
         self.mappings
             .insert(old_name.to_string(), new_name.to_string());
@@ -308,6 +319,7 @@ impl ParameterRenameMapping {
     }
 }
 
+/// Migration handler for file to files changes.
 pub struct FileToFilesMigration;
 
 impl ContractMigration for FileToFilesMigration {
@@ -332,6 +344,7 @@ pub struct ContractBuilder<T> {
 }
 
 impl<T> ContractBuilder<T> {
+    /// Create a new instance.
     pub fn new(contract: T, created_by: &str) -> Self {
         Self {
             version: ContractVersion::current(),
@@ -341,18 +354,21 @@ impl<T> ContractBuilder<T> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Version.
     pub fn version(mut self, major: u32, minor: u32, patch: u32) -> Self {
         self.version = ContractVersion::new(major, minor, patch);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Description.
     pub fn description(mut self, description: &str) -> Self {
         self.metadata = self.metadata.with_description(description);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Deprecated.
     pub fn deprecated(mut self, migration_notes: &str) -> Self {
         debug_assert!(
             !migration_notes.is_empty(),
@@ -363,6 +379,7 @@ impl<T> ContractBuilder<T> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Build and return the final result.
     pub fn build(self) -> VersionedContract<T> {
         VersionedContract {
             version: self.version,

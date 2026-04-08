@@ -11,12 +11,14 @@ use crate::cli::colors as c;
 
 // ── Data Types ────────────────────────────────────────────────────────────
 
+/// Scaffold file.
 pub struct ScaffoldFile {
     pub path: &'static str,
     pub content: String,
     pub description: &'static str,
 }
 
+/// Result of scaffold operation.
 pub struct ScaffoldResult {
     pub created: usize,
     pub skipped: usize,
@@ -26,6 +28,7 @@ pub struct ScaffoldResult {
 // ── Template Definitions ──────────────────────────────────────────────────
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Get scaffold files.
 pub fn get_scaffold_files(template: &str) -> Vec<ScaffoldFile> {
     match template {
         "sqi-a-minus" => get_sqi_a_minus_files(),
@@ -134,6 +137,7 @@ updates:
 // ── Scaffold Execution ────────────────────────────────────────────────────
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Scaffold repo.
 pub fn scaffold_repo(
     repo_path: &Path,
     files: &[ScaffoldFile],

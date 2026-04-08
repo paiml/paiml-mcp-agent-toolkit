@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 // Adaptive resource allocator that learns optimal allocations
+/// Custom allocator with adaptive limits.
 pub struct AdaptiveAllocator {
     history: Arc<RwLock<ResourceHistory>>,
     predictor: Arc<RwLock<ResourcePredictor>>,
@@ -13,6 +14,7 @@ pub struct AdaptiveAllocator {
 }
 
 #[derive(Clone)]
+/// Configuration for allocator.
 pub struct AllocatorConfig {
     pub history_window: Duration,
     pub prediction_horizon: Duration,
@@ -53,6 +55,7 @@ struct ResourcePredictor {
 }
 
 #[derive(Debug, Clone, Default)]
+/// Statistics for performance.
 pub struct PerformanceStats {
     pub average_performance_score: f32,
     pub average_cpu_usage: f32,

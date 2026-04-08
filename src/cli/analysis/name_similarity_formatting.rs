@@ -1,5 +1,6 @@
 // Format output
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Format output.
 pub fn format_output(
     result: NameSimilarityResult,
     format: crate::cli::NameSimilarityOutputFormat,

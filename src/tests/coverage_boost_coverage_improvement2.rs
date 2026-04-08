@@ -370,8 +370,10 @@ fn test_parse_and_score_empty() {
 fn test_extract_public_functions() {
     let svc = CoverageImprovementService::new(CoverageImprovementConfig::default());
     let code = r#"
+/// Hello.
 pub fn hello() {}
 fn private_fn() {}
+/// World.
 pub fn world(x: i32) -> bool { true }
 "#;
     let syntax_tree = syn::parse_file(code).unwrap();

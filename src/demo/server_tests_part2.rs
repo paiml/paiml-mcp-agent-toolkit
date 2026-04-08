@@ -13,6 +13,7 @@ pub mod demo_feature_tests {
     use super::*;
     use parking_lot::RwLock;
 
+    /// Create test state.
     pub fn create_test_state() -> Arc<RwLock<DemoState>> {
         Arc::new(RwLock::new(DemoState {
             repository: std::path::PathBuf::from("."),
@@ -30,6 +31,7 @@ pub mod demo_feature_tests {
         }))
     }
 
+    /// Create state with tdg summary.
     pub fn create_state_with_tdg_summary() -> Arc<RwLock<DemoState>> {
         Arc::new(RwLock::new(DemoState {
             repository: std::path::PathBuf::from("."),
@@ -56,6 +58,7 @@ pub mod demo_feature_tests {
         }))
     }
 
+    /// Create state with complexity data.
     pub fn create_state_with_complexity_data() -> Arc<RwLock<DemoState>> {
         use crate::services::complexity::{
             ComplexityMetrics, ComplexityReport, ComplexitySummary, FileComplexityMetrics,
@@ -113,6 +116,7 @@ pub mod demo_feature_tests {
         }))
     }
 
+    /// Create state with churn data.
     pub fn create_state_with_churn_data() -> Arc<RwLock<DemoState>> {
         use crate::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
         use chrono::Utc;

@@ -237,6 +237,7 @@ fn format_file_list(paths: &[PathBuf]) -> String {
 
 // Helper function to normalize code content
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Normalize code content.
 pub fn normalize_code_content(content: &str) -> String {
     content
         .lines()
@@ -251,6 +252,7 @@ pub fn normalize_code_content(content: &str) -> String {
 
 // Helper function to calculate content hash
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+/// Calculate content hash.
 pub fn calculate_content_hash(content: &str) -> u64 {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};

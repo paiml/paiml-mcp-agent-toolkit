@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+/// Category classification for claim.
 pub enum ClaimCategory {
     TestStatus,        // "all tests passing"
     Documentation,     // "fixed all broken links"
@@ -11,6 +12,7 @@ pub enum ClaimCategory {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Claim.
 pub struct Claim {
     pub category: ClaimCategory,
     pub text: String,
@@ -21,6 +23,7 @@ pub struct Claim {
     pub scope: Option<String>,      // The actual scope qualifier
 }
 
+/// Claim extractor.
 pub struct ClaimExtractor {
     // Patterns for each claim category
     test_patterns: Vec<Regex>,

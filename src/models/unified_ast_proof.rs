@@ -35,6 +35,7 @@ pub struct ProofAnnotation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+/// Type classification for property.
 pub enum PropertyType {
     MemorySafety,
     ThreadSafety,
@@ -49,6 +50,7 @@ pub enum PropertyType {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
+/// Level classification for confidence.
 pub enum ConfidenceLevel {
     Low = 1,    // Heuristic-based (e.g., pattern matching)
     Medium = 2, // Sound static analysis with assumptions
@@ -56,6 +58,7 @@ pub enum ConfidenceLevel {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Verification method.
 pub enum VerificationMethod {
     BorrowChecker,
     FormalProof { prover: String },
@@ -65,6 +68,7 @@ pub enum VerificationMethod {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Type classification for evidence.
 pub enum EvidenceType {
     ImplicitTypeSystemGuarantee,
     ProofScriptReference {

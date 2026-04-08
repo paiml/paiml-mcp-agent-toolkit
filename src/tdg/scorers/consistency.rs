@@ -5,10 +5,12 @@ use crate::tdg::{Language, MetricCategory, PenaltyTracker, TdgConfig};
 use crate::tdg::language::{LanguageRules, NamingStyle};
 use super::{Scorer, walk_tree, get_node_text};
 
+/// Consistency analyzer.
 pub struct ConsistencyAnalyzer;
 
 impl ConsistencyAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -377,6 +379,7 @@ impl CodePatterns {
 
 impl LanguageRules {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// For language.
     pub fn for_language(language: Language) -> Self {
         match language {
             Language::Rust => Self::rust_rules(),
@@ -405,10 +408,14 @@ mod tests {
     fn test_naming_consistency() {
         let source = r#"
             #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+            /// Snake case function.
             pub fn snake_case_function() {}
+            /// Camel case function.
             pub fn CamelCaseFunction() {}  // Violation
             
+            /// Pascal case struct.
             pub struct PascalCaseStruct;
+            /// Snake case struct.
             pub struct snake_case_struct;  // Violation
             
             const SCREAMING_SNAKE: i32 = 42;

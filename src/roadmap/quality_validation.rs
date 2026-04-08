@@ -4,6 +4,7 @@
 impl TaskQualityGate {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(task_id: &str, config: QualityGateConfig) -> Self {
         let checks = vec![
             QualityCheck::Complexity(config.complexity_max),

@@ -7,10 +7,12 @@ pub struct AdapterRegistry {
 impl AdapterRegistry {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Register a new item.
     pub fn register<A>(&mut self, adapter: A) -> &mut Self
     where
         A: ProtocolAdapter + 'static,
@@ -25,6 +27,7 @@ impl AdapterRegistry {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Retrieve a value.
     pub fn get(
         &self,
         protocol: Protocol,

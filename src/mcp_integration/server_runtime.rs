@@ -1,5 +1,6 @@
 impl McpServer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(
         agent_registry: Arc<AgentRegistry>,
         config: ServerConfig,
@@ -139,6 +140,7 @@ impl McpServer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Shutdown.
     pub fn shutdown(&self) {
         self.shutdown.notify_waiters();
     }

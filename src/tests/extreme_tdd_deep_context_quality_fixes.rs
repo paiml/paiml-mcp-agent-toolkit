@@ -251,6 +251,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+/// Highly connected.
 pub fn highly_connected() -> Vec<String> {
     vec![]
 }

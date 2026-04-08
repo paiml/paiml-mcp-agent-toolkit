@@ -412,6 +412,7 @@ impl TimeSeriesDB {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Record.
     pub fn record(&mut self, team: TeamId, metrics: TeamMetrics) {
         let entry = TimeSeries {
             timestamp: SystemTime::now(),

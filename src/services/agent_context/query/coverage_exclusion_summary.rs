@@ -3,6 +3,7 @@
 
 impl ExclusionSummary {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From results.
     pub fn from_results(excluded: &[&QueryResult]) -> Self {
         let mut summary = Self::default();
         let mut cov_off_files: HashSet<&str> = HashSet::new();
@@ -33,10 +34,12 @@ impl ExclusionSummary {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Total.
     pub fn total(&self) -> usize {
         self.coverage_off_count + self.dead_code_count + self.makefile_count
     }
 
+    /// Check whether the collection is empty.
     pub fn is_empty(&self) -> bool {
         self.total() == 0
     }

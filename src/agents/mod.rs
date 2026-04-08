@@ -20,6 +20,7 @@ use uuid::Uuid;
 pub type AgentId = Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Agent capabilities.
 pub struct AgentCapabilities {
     pub name: String,
     pub version: String,
@@ -28,6 +29,7 @@ pub struct AgentCapabilities {
 }
 
 #[async_trait]
+/// Trait defining Pmat agent behavior.
 pub trait PmatAgent: Send + Sync + 'static {
     type Config: Send + Sync;
     type State: AgentState;
@@ -41,17 +43,20 @@ pub trait PmatAgent: Send + Sync + 'static {
     async fn checkpoint(&self) -> Result<Self::State, AgentError>;
 }
 
+/// Trait defining Agent state behavior.
 pub trait AgentState: Send + Sync + Clone + Serialize + for<'de> Deserialize<'de> {
     fn last_event_id(&self) -> u64;
     fn events_since_snapshot(&self) -> usize;
     fn time_since_snapshot(&self) -> std::time::Duration;
 }
 
+/// Trait defining Agent message behavior.
 pub trait AgentMessage: Send + Sync + Message<Result = Result<AgentResponse, AgentError>> {
     fn priority(&self) -> Priority;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Agent response.
 pub enum AgentResponse {
     Success(serde_json::Value),
     Analyzed(crate::modules::analyzer::Metrics),
@@ -61,6 +66,7 @@ pub enum AgentResponse {
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for agent operations.
 pub enum AgentError {
     #[error("Agent not found: {0}")]
     NotFound(AgentId),
@@ -75,6 +81,7 @@ pub enum AgentError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+/// Priority level for priority.
 pub enum Priority {
     Critical = 0,
     High = 1,
@@ -83,6 +90,7 @@ pub enum Priority {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+/// Agent class.
 pub enum AgentClass {
     Analyzer,
     Transformer,
@@ -92,6 +100,7 @@ pub enum AgentClass {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+/// Agent spec.
 pub struct AgentSpec {
     pub id: AgentId,
     pub class: AgentClass,
@@ -103,6 +112,7 @@ pub struct AgentSpec {
 // System initialization
 // Note: actix::System::new() returns SystemRunner, not System
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Init agent system.
 pub fn init_agent_system() {
     // actix::System::new() returns SystemRunner which auto-runs
 }

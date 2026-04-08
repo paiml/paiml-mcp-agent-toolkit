@@ -19,6 +19,7 @@ pub struct QueryCodeToolAdapter {
 
 impl QueryCodeToolAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self {
             inner: crate::mcp::tools::agent_context_tools::QueryCodeTool::new(manager),
@@ -68,6 +69,7 @@ pub struct GetFunctionToolAdapter {
 
 impl GetFunctionToolAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self {
             inner: crate::mcp::tools::agent_context_tools::GetFunctionTool::new(manager),
@@ -117,6 +119,7 @@ pub struct FindSimilarToolAdapter {
 
 impl FindSimilarToolAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self {
             inner: crate::mcp::tools::agent_context_tools::FindSimilarTool::new(manager),
@@ -166,6 +169,7 @@ pub struct IndexStatsToolAdapter {
 
 impl IndexStatsToolAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self {
             inner: crate::mcp::tools::agent_context_tools::IndexStatsTool::new(manager),

@@ -7,12 +7,14 @@ use std::sync::Arc;
 
 // Public interface - can ONLY use public interfaces of other modules
 #[async_trait]
+/// Module interface for transformer operations.
 pub trait TransformerModule: Send + Sync {
     async fn transform(&self, ast: &str) -> Result<TransformResult, ModuleError>;
     async fn refactor(&self, code: &str, rules: &[RefactorRule]) -> Result<String, ModuleError>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of transform operation.
 pub struct TransformResult {
     pub original: String,
     pub transformed: String,
@@ -20,6 +22,7 @@ pub struct TransformResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Change.
 pub struct Change {
     pub line: usize,
     pub description: String,
@@ -27,6 +30,7 @@ pub struct Change {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Type classification for change.
 pub enum ChangeType {
     Addition,
     Deletion,
@@ -34,6 +38,7 @@ pub enum ChangeType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Refactor rule.
 pub struct RefactorRule {
     pub pattern: String,
     pub replacement: String,
@@ -81,6 +86,7 @@ impl TransformerCore {
 }
 
 #[derive(Clone)]
+/// Transformer impl.
 pub struct TransformerImpl {
     core: Arc<parking_lot::Mutex<TransformerCore>>,
     analyzer: Option<Arc<dyn AnalyzerModule>>,
@@ -93,6 +99,7 @@ impl Default for TransformerImpl {
 }
 
 impl TransformerImpl {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             core: Arc::new(parking_lot::Mutex::new(TransformerCore::new())),
@@ -101,6 +108,7 @@ impl TransformerImpl {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With analyzer.
     pub fn with_analyzer(mut self, analyzer: Arc<dyn AnalyzerModule>) -> Self {
         self.analyzer = Some(analyzer);
         self

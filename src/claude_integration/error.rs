@@ -108,6 +108,7 @@ pub struct ErrorContext {
 
 impl ErrorCode {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From u32.
     pub fn from_u32(code: u32) -> Option<Self> {
         match code {
             1001 => Some(Self::PipeBrokenPipe),

@@ -11,6 +11,7 @@ pub struct DocGenerator {
 impl DocGenerator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(profile: QualityProfile) -> Self {
         Self { profile }
     }
@@ -63,6 +64,7 @@ impl DocGenerator {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Generate example value.
     pub fn generate_example_value(&self, param_type: &str) -> String {
         match param_type {
             "u32" | "i32" => "42".to_string(),

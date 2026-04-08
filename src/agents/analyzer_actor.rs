@@ -5,6 +5,7 @@ use crate::modules::analyzer::{AnalyzerImpl, AnalyzerModule, Metrics};
 use actix::prelude::*;
 use std::collections::HashMap;
 
+/// Analyzer actor.
 pub struct AnalyzerActor {
     analyzer: AnalyzerImpl,
     complexity_cache: HashMap<String, Metrics>,

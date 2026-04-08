@@ -18,6 +18,7 @@ pub struct DebugAnalysis {
 
 impl DebugAnalysis {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(issue: String) -> Self {
         Self {
             issue,
@@ -41,6 +42,7 @@ pub struct WhyIteration {
 
 impl WhyIteration {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(depth: u8, question: String, hypothesis: String) -> Self {
         Self {
             depth,
@@ -52,12 +54,14 @@ impl WhyIteration {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With confidence.
     pub fn with_confidence(mut self, confidence: f64) -> Self {
         self.confidence = confidence.clamp(0.0, 1.0);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add evidence.
     pub fn add_evidence(&mut self, evidence: Evidence) {
         self.evidence.push(evidence);
     }
@@ -75,6 +79,7 @@ pub struct Evidence {
 
 impl Evidence {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(
         source: EvidenceSource,
         file: PathBuf,
@@ -122,6 +127,7 @@ pub struct Recommendation {
 
 impl Recommendation {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(priority: Priority, action: String, file: Option<PathBuf>) -> Self {
         Self {
             priority,
@@ -131,15 +137,18 @@ impl Recommendation {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// High.
     pub fn high(action: String, file: Option<PathBuf>) -> Self {
         Self::new(Priority::High, action, file)
     }
 
+    /// Medium.
     pub fn medium(action: String, file: Option<PathBuf>) -> Self {
         Self::new(Priority::Medium, action, file)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Low.
     pub fn low(action: String, file: Option<PathBuf>) -> Self {
         Self::new(Priority::Low, action, file)
     }
@@ -231,6 +240,7 @@ impl EvidenceSummary {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From whys.
     pub fn from_whys(whys: &[WhyIteration]) -> Self {
         let mut summary = Self::default();
         for why in whys {

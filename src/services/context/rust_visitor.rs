@@ -16,6 +16,7 @@ pub(crate) struct RustVisitor {
 
 impl RustVisitor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(source: String) -> Self {
         Self {
             items: Vec::new(),

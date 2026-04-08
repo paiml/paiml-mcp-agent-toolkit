@@ -8,6 +8,7 @@ pub struct DeadCodeResult {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+/// Dead function.
 pub struct DeadFunction {
     pub name: String,
     pub file: String,

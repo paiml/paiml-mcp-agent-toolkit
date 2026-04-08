@@ -18,6 +18,7 @@ pub struct WasmAdapter {
 
 impl WasmAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             operators: vec![

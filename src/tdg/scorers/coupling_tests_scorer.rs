@@ -49,12 +49,14 @@ mod scorer_tests {
             use std::path::{Path, PathBuf};
             use std::sync::{Arc, Mutex, RwLock};
 
+            /// High coupling struct.
             pub struct HighCouplingStruct {
                 map: HashMap<String, i32>,
                 set: HashSet<i32>,
                 file: Option<File>,
             }
 
+            /// Use many dependencies.
             pub fn use_many_dependencies() {
                 let path = PathBuf::from("test");
                 let file = File::open(&path).unwrap();
@@ -80,6 +82,7 @@ mod scorer_tests {
         let source = r#"
             use crate::other::Dependency;
 
+            /// Public api.
             pub fn public_api() {}
         "#;
 
@@ -170,6 +173,7 @@ mod scorer_tests {
     #[test]
     fn test_is_public_function() {
         let source = r#"
+            /// Public fn.
             pub fn public_fn() {}
         "#;
 

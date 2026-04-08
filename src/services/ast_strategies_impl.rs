@@ -19,12 +19,14 @@ use crate::services::file_classifier::FileClassifier;
 
 // Strategy trait for language-specific AST analysis
 #[async_trait]
+/// Strategy trait for ast implementations.
 pub trait AstStrategy: Send + Sync {
     async fn analyze(&self, path: &Path, classifier: &FileClassifier) -> Result<FileContext>;
     fn supports_extension(&self, ext: &str) -> bool;
 }
 
 // Rust language strategy
+/// Rust ast strategy.
 pub struct RustAstStrategy;
 
 #[async_trait]
@@ -42,6 +44,7 @@ impl AstStrategy for RustAstStrategy {
 
 #[cfg(feature = "typescript-ast")]
 // TypeScript/TSX strategy
+/// Type script ast strategy.
 pub struct TypeScriptAstStrategy;
 
 #[cfg(feature = "typescript-ast")]
@@ -63,6 +66,7 @@ impl AstStrategy for TypeScriptAstStrategy {
 
 #[cfg(feature = "typescript-ast")]
 // JavaScript/JSX strategy
+/// Java script ast strategy.
 pub struct JavaScriptAstStrategy;
 
 #[cfg(feature = "typescript-ast")]
@@ -84,6 +88,7 @@ impl AstStrategy for JavaScriptAstStrategy {
 
 #[cfg(feature = "python-ast")]
 // Python strategy
+/// Python ast strategy.
 pub struct PythonAstStrategy;
 
 #[cfg(feature = "python-ast")]
@@ -101,6 +106,7 @@ impl AstStrategy for PythonAstStrategy {
 }
 
 // Strategy registry to manage all language strategies
+/// Registry of strategy instances.
 pub struct StrategyRegistry {
     strategies: FxHashMap<String, Arc<dyn AstStrategy>>,
 }
@@ -108,6 +114,7 @@ pub struct StrategyRegistry {
 impl StrategyRegistry {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         let mut strategies: FxHashMap<String, Arc<dyn AstStrategy>> = FxHashMap::default();
 
@@ -158,10 +165,12 @@ impl StrategyRegistry {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get strategy.
     pub fn get_strategy(&self, extension: &str) -> Option<Arc<dyn AstStrategy>> {
         self.strategies.get(extension).cloned()
     }
 
+    /// Register strategy.
     pub fn register_strategy(&mut self, extension: String, strategy: Arc<dyn AstStrategy>) {
         self.strategies.insert(extension, strategy);
     }

@@ -2,12 +2,14 @@
 use super::*;
 
 // Network bandwidth throttle
+/// Network throttle.
 pub struct NetworkThrottle {
     _limits: NetworkLimits,
 }
 
 impl NetworkThrottle {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(limits: NetworkLimits) -> Result<Self, ResourceError> {
         Ok(Self { _limits: limits })
     }

@@ -49,6 +49,7 @@ pub struct CategoryScore {
 
 impl CategoryScore {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(name: &str, raw_score: f64, max_points: u16) -> Self {
         let earned_points = (raw_score / 100.0) * f64::from(max_points);
         let grade = Self::calculate_grade(raw_score);
@@ -63,6 +64,7 @@ impl CategoryScore {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With details.
     pub fn with_details(mut self, details: &str) -> Self {
         self.details = Some(details.to_string());
         self
@@ -101,6 +103,7 @@ pub struct PerfectionScoreResult {
 
 impl PerfectionScoreResult {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(categories: Vec<CategoryScore>) -> Self {
         let total_score: f64 = categories
             .iter()
@@ -122,12 +125,14 @@ impl PerfectionScoreResult {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With target.
     pub fn with_target(mut self, target: u16) -> Self {
         self.target_gap = Some(f64::from(target) - self.total_score);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// Calculate overall grade.
     pub fn calculate_overall_grade(score: f64) -> String {
         // PMAT-454: Use normalized percentage (0-100) for grading
         let normalized = (score / f64::from(MAX_PERFECTION_SCORE)) * 100.0;

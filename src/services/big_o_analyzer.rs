@@ -85,6 +85,7 @@ pub struct BigOAnalysisReport {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Complexity distribution.
 pub struct ComplexityDistribution {
     pub constant: usize,
     pub logarithmic: usize,
@@ -97,6 +98,7 @@ pub struct ComplexityDistribution {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Function complexity.
 pub struct FunctionComplexity {
     pub file_path: PathBuf,
     pub function_name: String,
@@ -108,6 +110,7 @@ pub struct FunctionComplexity {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Pattern match.
 pub struct PatternMatch {
     pub pattern_name: String,
     pub occurrences: usize,

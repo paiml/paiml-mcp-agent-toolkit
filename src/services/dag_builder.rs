@@ -50,6 +50,7 @@ use crate::services::context::{AstItem, FileContext, ProjectContext};
 use crate::services::semantic_naming::SemanticNamer;
 use rustc_hash::{FxHashMap, FxHashSet};
 
+/// Builder for constructing dag instances.
 pub struct DagBuilder {
     graph: DependencyGraph,
     // Track functions by name for call resolution

@@ -6,6 +6,7 @@ pub struct FalsificationLedger {
 
 impl FalsificationLedger {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(project_path: &Path) -> Self {
         Self {
             work_dir: project_path.join(".pmat-work"),

@@ -22,6 +22,7 @@ impl Default for InMemoryWorkflowRepository {
 
 impl InMemoryWorkflowRepository {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             workflows: Arc::new(RwLock::new(HashMap::new())),
@@ -30,10 +31,12 @@ impl InMemoryWorkflowRepository {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Count the number of elements.
     pub fn count(&self) -> usize {
         self.workflows.read().len()
     }
 
+    /// Clear all data.
     pub fn clear(&self) {
         self.workflows.write().clear();
         self.name_index.write().clear();

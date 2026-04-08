@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+/// Error variants for template operations.
 pub enum TemplateError {
     #[error("S3 operation failed: {operation}")]
     S3Error {
@@ -40,6 +41,7 @@ pub enum TemplateError {
 }
 
 #[derive(Error, Debug)]
+/// Error variants for analysis operations.
 pub enum AnalysisError {
     #[error("Failed to parse file: {0}")]
     ParseError(String),
@@ -60,6 +62,7 @@ pub enum AnalysisError {
 impl TemplateError {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// To mcp code.
     pub fn to_mcp_code(&self) -> i32 {
         match self {
             TemplateError::TemplateNotFound { .. } => -32001,

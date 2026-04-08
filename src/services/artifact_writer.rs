@@ -31,6 +31,7 @@ pub struct ArtifactMetadata {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Type classification for artifact.
 pub enum ArtifactType {
     DogfoodingMarkdown,
     DogfoodingJson,
@@ -49,6 +50,7 @@ pub struct VerificationReport {
 }
 
 #[derive(Debug, Clone)]
+/// Integrity failure.
 pub struct IntegrityFailure {
     pub artifact: String,
     pub expected_hash: String,
@@ -66,6 +68,7 @@ pub struct ArtifactStatistics {
 }
 
 #[derive(Debug, Clone)]
+/// Type statistics.
 pub struct TypeStatistics {
     pub count: usize,
     pub size: usize,

@@ -81,6 +81,7 @@ pub(super) fn find_line_within(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+/// Compute test code lines.
 pub fn compute_test_code_lines(lines: &[&str]) -> std::collections::HashSet<usize> {
     let mut test_lines = std::collections::HashSet::new();
 

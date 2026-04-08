@@ -157,6 +157,7 @@ mod binary_integration_tests {
             src_dir.join("lib.rs"),
             r#"
             pub mod utils;
+            /// Lib func.
             pub fn lib_func() {}
             "#
         ).unwrap();
@@ -164,6 +165,7 @@ mod binary_integration_tests {
         std::fs::write(
             src_dir.join("utils.rs"),
             r#"
+            /// Util func.
             pub fn util_func() {}
             "#
         ).unwrap();

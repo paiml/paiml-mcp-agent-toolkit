@@ -844,6 +844,7 @@ fn main() {
     println!("Hello, world!");
 }
 
+/// Helper.
 pub fn helper() -> i32 {
     42
 }
@@ -922,16 +923,19 @@ pub fn helper() -> i32 {
             r#"
 use std::collections::HashMap;
 
+/// My struct.
 pub struct MyStruct {
     field1: i32,
     field2: String,
 }
 
+/// My enum.
 pub enum MyEnum {
     Variant1,
     Variant2(i32),
 }
 
+/// Trait defining My trait behavior.
 pub trait MyTrait {
     fn do_something(&self);
 }
@@ -947,6 +951,7 @@ pub async fn async_function() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 mod inner_module {
+    /// Inner function.
     pub fn inner_function() {}
 }
 "#,

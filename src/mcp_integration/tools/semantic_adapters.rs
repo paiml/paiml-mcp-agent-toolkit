@@ -19,6 +19,7 @@ pub struct SemanticSearchToolAdapter {
 
 impl SemanticSearchToolAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self {
             inner: crate::mcp::tools::semantic_search_tools::SemanticSearchTool::new(engine),
@@ -70,6 +71,7 @@ pub struct FindSimilarCodeToolAdapter {
 
 impl FindSimilarCodeToolAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self {
             inner: crate::mcp::tools::semantic_search_tools::FindSimilarCodeTool::new(engine),
@@ -119,6 +121,7 @@ pub struct ClusterCodeToolAdapter {
 
 impl ClusterCodeToolAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self {
             inner: crate::mcp::tools::semantic_search_tools::ClusterCodeTool::new(engine),
@@ -168,6 +171,7 @@ pub struct AnalyzeTopicsToolAdapter {
 
 impl AnalyzeTopicsToolAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(engine: Arc<HybridSearchEngine>) -> Self {
         Self {
             inner: crate::mcp::tools::semantic_search_tools::AnalyzeTopicsTool::new(engine),

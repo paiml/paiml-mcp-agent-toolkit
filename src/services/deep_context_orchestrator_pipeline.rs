@@ -2,6 +2,7 @@
 
 impl FeatureFlags {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// All.
     pub fn all() -> Self {
         Self {
             ast_analysis: true,
@@ -16,6 +17,7 @@ impl FeatureFlags {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Essential.
     pub fn essential() -> Self {
         Self {
             ast_analysis: true,

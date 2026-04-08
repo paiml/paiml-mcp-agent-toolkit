@@ -9,6 +9,7 @@
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb803 return statement.
 pub fn detect_cb803_return_statement(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
@@ -75,6 +76,7 @@ fn contains_return_keyword(line: &str) -> bool {
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb804 var declaration.
 pub fn detect_cb804_var_declaration(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
@@ -141,6 +143,7 @@ const BLOCKING_CALLS: &[&str] = &[
 ];
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb805 blocking in future.
 pub fn detect_cb805_blocking_in_future(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();

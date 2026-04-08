@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::Semaphore;
 
 // Token bucket algorithm for rate limiting
+/// Limiter for controlling rate usage.
 pub struct RateLimiter {
     capacity: u32,
     tokens: AtomicU32,
@@ -13,6 +14,7 @@ pub struct RateLimiter {
 }
 
 // Adaptive backpressure controller
+/// Backpressure controller.
 pub struct BackpressureController {
     _max_queue_size: usize,
     current_queue_size: AtomicU64,
@@ -21,6 +23,7 @@ pub struct BackpressureController {
 }
 
 #[derive(Debug, Clone, Default)]
+/// Backpressure metrics.
 pub struct BackpressureMetrics {
     pub rejected_count: u64,
     pub accepted_count: u64,
@@ -29,12 +32,14 @@ pub struct BackpressureMetrics {
     pub sample_count: u64,
 }
 
+/// Backpressure permit.
 pub struct BackpressurePermit<'a> {
     _permit: tokio::sync::OwnedSemaphorePermit,
     controller: &'a BackpressureController,
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for backpressure operations.
 pub enum BackpressureError {
     #[error("Queue is full")]
     QueueFull,
@@ -43,6 +48,7 @@ pub enum BackpressureError {
 }
 
 // Adaptive rate controller that adjusts based on system load
+/// Adaptive rate controller.
 pub struct AdaptiveRateController {
     _base_rate: u32,
     current_rate: AtomicU32,
@@ -52,12 +58,14 @@ pub struct AdaptiveRateController {
     load_monitor: Arc<LoadMonitor>,
 }
 
+/// Monitor for load resources.
 pub struct LoadMonitor {
     cpu_threshold: f64,
     memory_threshold: f64,
 }
 
 // Bulkhead pattern for resource isolation
+/// Bulkhead.
 pub struct Bulkhead {
     name: String,
     max_concurrent: usize,
@@ -67,6 +75,7 @@ pub struct Bulkhead {
 }
 
 #[derive(Debug, Clone)]
+/// Bulkhead metrics.
 pub struct BulkheadMetrics {
     pub name: String,
     pub max_concurrent: usize,

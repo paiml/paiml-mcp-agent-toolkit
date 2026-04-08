@@ -25,6 +25,7 @@ pmat embed sync --verbose
 
 # Check status in JSON format
 pmat embed status --format json")]
+/// Embed commands.
 pub enum EmbedCommands {
     /// Sync embeddings for codebase
     Sync {

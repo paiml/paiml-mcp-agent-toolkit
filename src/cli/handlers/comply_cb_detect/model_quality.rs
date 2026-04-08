@@ -41,6 +41,7 @@ const LARGE_MODEL_THRESHOLD: u64 = 10 * 1024 * 1024 * 1024;
 // =============================================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Output format options for model.
 pub enum ModelFormat {
     Gguf,
     Apr,
@@ -49,6 +50,7 @@ pub enum ModelFormat {
 
 impl ModelFormat {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From extension.
     pub fn from_extension(ext: &str) -> Option<Self> {
         match ext {
             "gguf" => Some(Self::Gguf),
@@ -59,6 +61,7 @@ impl ModelFormat {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Name.
     pub fn name(&self) -> &'static str {
         match self {
             Self::Gguf => "GGUF",

@@ -16,6 +16,7 @@ use serde_json::Value;
 pub struct SimpleContractService;
 
 impl SimpleContractService {
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         Ok(Self)
     }

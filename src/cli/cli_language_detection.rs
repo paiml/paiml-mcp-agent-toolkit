@@ -114,6 +114,7 @@ fn detect_by_file_extensions(path: &Path) -> Option<String> {
 
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect primary language.
 pub fn detect_primary_language(path: &Path) -> Option<String> {
     // Check for Ruchy files first
     if has_ruchy_files(path) {
@@ -214,6 +215,7 @@ fn count_files_by_extension(path: &Path) -> Option<(String, f64)> {
 
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect primary language with confidence.
 pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f64)> {
     // Try project markers first
     if let Some(result) = detect_with_confidence_by_markers(path) {

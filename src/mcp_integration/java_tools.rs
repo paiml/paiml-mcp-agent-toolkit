@@ -17,6 +17,7 @@ pub struct JavaAnalysisTool {
 
 impl JavaAnalysisTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(agent_registry: Arc<crate::agents::registry::AgentRegistry>) -> Self {
         Self { agent_registry }
     }
@@ -29,6 +30,7 @@ pub struct JavaMutationTool {
 
 impl JavaMutationTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(agent_registry: Arc<crate::agents::registry::AgentRegistry>) -> Self {
         Self { agent_registry }
     }

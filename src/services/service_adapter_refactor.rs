@@ -4,12 +4,14 @@ pub mod refactor_adapter {
     use std::path::PathBuf;
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
+    /// Refactor input.
     pub struct RefactorInput {
         pub file_path: PathBuf,
         pub refactor_type: RefactorType,
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
+    /// Type classification for refactor.
     pub enum RefactorType {
         ExtractFunction,
         SimplifyCondition,
@@ -18,6 +20,7 @@ pub mod refactor_adapter {
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
+    /// Refactor output.
     pub struct RefactorOutput {
         pub success: bool,
         pub changes: Vec<Change>,
@@ -25,6 +28,7 @@ pub mod refactor_adapter {
     }
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
+    /// Change.
     pub struct Change {
         pub file: String,
         pub line: usize,
@@ -37,6 +41,7 @@ pub mod refactor_adapter {
     impl RefactorServiceAdapter {
         #[must_use]
         #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+        /// New refactor service.
         pub fn new_refactor_service() -> Self {
             ServiceAdapter::new(())
         }

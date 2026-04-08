@@ -6,6 +6,7 @@ use serde_json::Value;
 
 // Data structures for API requests and responses
 #[derive(Debug, Deserialize)]
+/// Query parameters for list templates.
 pub struct ListTemplatesQuery {
     #[serde(default)]
     pub format: Option<String>,
@@ -14,12 +15,14 @@ pub struct ListTemplatesQuery {
 }
 
 #[derive(Debug, Serialize)]
+/// Template list.
 pub struct TemplateList {
     pub templates: Vec<TemplateInfo>,
     pub total: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Information about template.
 pub struct TemplateInfo {
     pub id: String,
     pub name: String,
@@ -29,6 +32,7 @@ pub struct TemplateInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Template parameter.
 pub struct TemplateParameter {
     pub name: String,
     pub description: String,
@@ -37,12 +41,14 @@ pub struct TemplateParameter {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for generate.
 pub struct GenerateParams {
     pub template_uri: String,
     pub parameters: HashMap<String, Value>,
 }
 
 #[derive(Debug, Serialize)]
+/// Template for generated generation.
 pub struct GeneratedTemplate {
     pub template_id: String,
     pub content: String,
@@ -50,6 +56,7 @@ pub struct GeneratedTemplate {
 }
 
 #[derive(Debug, Serialize)]
+/// Metadata for template.
 pub struct TemplateMetadata {
     pub name: String,
     pub version: String,
@@ -57,6 +64,7 @@ pub struct TemplateMetadata {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for complexity.
 pub struct ComplexityParams {
     pub project_path: String,
     pub toolchain: String,
@@ -71,6 +79,7 @@ pub struct ComplexityParams {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for complexity query.
 pub struct ComplexityQueryParams {
     #[serde(default)]
     pub project_path: Option<String>,
@@ -87,12 +96,14 @@ pub struct ComplexityQueryParams {
 }
 
 #[derive(Debug, Serialize)]
+/// Analysis results for complexity.
 pub struct ComplexityAnalysis {
     pub summary: ComplexitySummary,
     pub files: Vec<FileComplexity>,
 }
 
 #[derive(Debug, Serialize)]
+/// Summary of complexity analysis.
 pub struct ComplexitySummary {
     pub total_functions: usize,
     pub average_complexity: f64,
@@ -101,12 +112,14 @@ pub struct ComplexitySummary {
 }
 
 #[derive(Debug, Serialize)]
+/// File complexity.
 pub struct FileComplexity {
     pub path: String,
     pub functions: Vec<FunctionComplexity>,
 }
 
 #[derive(Debug, Serialize)]
+/// Function complexity.
 pub struct FunctionComplexity {
     pub name: String,
     pub cyclomatic: u32,
@@ -115,6 +128,7 @@ pub struct FunctionComplexity {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for churn.
 pub struct ChurnParams {
     pub project_path: String,
     #[serde(default)]
@@ -124,12 +138,14 @@ pub struct ChurnParams {
 }
 
 #[derive(Debug, Serialize)]
+/// Analysis results for churn.
 pub struct ChurnAnalysis {
     pub summary: ChurnSummary,
     pub hotspots: Vec<ChurnHotspot>,
 }
 
 #[derive(Debug, Serialize)]
+/// Summary of churn analysis.
 pub struct ChurnSummary {
     pub total_commits: usize,
     pub files_changed: usize,
@@ -137,6 +153,7 @@ pub struct ChurnSummary {
 }
 
 #[derive(Debug, Serialize)]
+/// Hotspot identified in churn analysis.
 pub struct ChurnHotspot {
     pub file: String,
     pub changes: u32,
@@ -144,6 +161,7 @@ pub struct ChurnHotspot {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for dag.
 pub struct DagParams {
     pub project_path: String,
     #[serde(default)]
@@ -155,6 +173,7 @@ pub struct DagParams {
 }
 
 #[derive(Debug, Serialize)]
+/// Analysis results for dag.
 pub struct DagAnalysis {
     pub graph: String,
     pub nodes: usize,
@@ -163,6 +182,7 @@ pub struct DagAnalysis {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for context.
 pub struct ContextParams {
     pub toolchain: String,
     pub project_path: String,
@@ -171,6 +191,7 @@ pub struct ContextParams {
 }
 
 #[derive(Debug, Serialize)]
+/// Context for project operations.
 pub struct ProjectContext {
     pub project_name: String,
     pub toolchain: String,
@@ -179,12 +200,14 @@ pub struct ProjectContext {
 }
 
 #[derive(Debug, Serialize)]
+/// Project structure.
 pub struct ProjectStructure {
     pub directories: Vec<String>,
     pub files: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
+/// Context metrics.
 pub struct ContextMetrics {
     pub total_files: usize,
     pub total_lines: usize,
@@ -192,6 +215,7 @@ pub struct ContextMetrics {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for dead code.
 pub struct DeadCodeParams {
     pub project_path: String,
     #[serde(default)]
@@ -207,12 +231,14 @@ pub struct DeadCodeParams {
 }
 
 #[derive(Debug, Serialize)]
+/// Analysis results for dead code.
 pub struct DeadCodeAnalysis {
     pub summary: DeadCodeSummary,
     pub files: Vec<FileDeadCode>,
 }
 
 #[derive(Debug, Serialize)]
+/// Summary of dead code analysis.
 pub struct DeadCodeSummary {
     pub total_files_analyzed: usize,
     pub files_with_dead_code: usize,
@@ -221,6 +247,7 @@ pub struct DeadCodeSummary {
 }
 
 #[derive(Debug, Serialize)]
+/// File dead code.
 pub struct FileDeadCode {
     pub path: String,
     pub dead_lines: usize,
@@ -231,6 +258,7 @@ pub struct FileDeadCode {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for makefile lint.
 pub struct MakefileLintParams {
     pub path: String,
     #[serde(default)]
@@ -242,6 +270,7 @@ pub struct MakefileLintParams {
 }
 
 #[derive(Debug, Serialize)]
+/// Analysis results for makefile lint.
 pub struct MakefileLintAnalysis {
     pub path: String,
     pub violations: Vec<MakefileLintViolation>,
@@ -250,6 +279,7 @@ pub struct MakefileLintAnalysis {
 }
 
 #[derive(Debug, Serialize)]
+/// Violation record for makefile lint.
 pub struct MakefileLintViolation {
     pub rule: String,
     pub severity: String,
@@ -260,6 +290,7 @@ pub struct MakefileLintViolation {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for provability.
 pub struct ProvabilityParams {
     pub project_path: String,
     #[serde(default)]
@@ -269,6 +300,7 @@ pub struct ProvabilityParams {
 }
 
 #[derive(Debug, Serialize)]
+/// Analysis results for provability.
 pub struct ProvabilityAnalysis {
     pub project_path: String,
     pub analysis_depth: usize,
@@ -278,6 +310,7 @@ pub struct ProvabilityAnalysis {
 }
 
 #[derive(Debug, Serialize)]
+/// Summary of provability analysis.
 pub struct ProvabilitySummary {
     pub function_id: String,
     pub provability_score: f64,
@@ -287,6 +320,7 @@ pub struct ProvabilitySummary {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for satd.
 pub struct SatdParams {
     pub project_path: String,
     #[serde(default)]
@@ -298,6 +332,7 @@ pub struct SatdParams {
 }
 
 #[derive(Debug, Serialize)]
+/// Analysis results for satd.
 pub struct SatdAnalysis {
     pub project_path: String,
     pub total_debt_items: usize,
@@ -308,6 +343,7 @@ pub struct SatdAnalysis {
 }
 
 #[derive(Debug, Serialize)]
+/// Satd file.
 pub struct SatdFile {
     pub path: String,
     pub debt_count: usize,
@@ -315,6 +351,7 @@ pub struct SatdFile {
 }
 
 #[derive(Debug, Serialize)]
+/// Satd item.
 pub struct SatdItem {
     pub line: usize,
     pub category: String,
@@ -324,6 +361,7 @@ pub struct SatdItem {
 }
 
 #[derive(Debug, Deserialize)]
+/// Parameters for lint hotspot.
 pub struct LintHotspotParams {
     pub project_path: String,
     #[serde(default)]
@@ -337,6 +375,7 @@ pub struct LintHotspotParams {
 }
 
 #[derive(Debug, Serialize)]
+/// Analysis results for lint hotspot.
 pub struct LintHotspotAnalysis {
     pub project_path: String,
     pub total_files_analyzed: usize,
@@ -346,6 +385,7 @@ pub struct LintHotspotAnalysis {
 }
 
 #[derive(Debug, Serialize)]
+/// Hotspot identified in lint analysis.
 pub struct LintHotspot {
     pub file_path: String,
     pub violations: usize,

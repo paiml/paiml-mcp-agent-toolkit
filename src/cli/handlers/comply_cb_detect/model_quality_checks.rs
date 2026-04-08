@@ -6,6 +6,7 @@
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb1000 missing model card.
 pub fn detect_cb1000_missing_model_card(project_path: &Path) -> Vec<CbPatternViolation> {
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
@@ -60,6 +61,7 @@ pub fn detect_cb1000_missing_model_card(project_path: &Path) -> Vec<CbPatternVio
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb1001 oversized tensor count.
 pub fn detect_cb1001_oversized_tensor_count(project_path: &Path) -> Vec<CbPatternViolation> {
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
@@ -101,6 +103,7 @@ pub fn detect_cb1001_oversized_tensor_count(project_path: &Path) -> Vec<CbPatter
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb1002 missing tokenizer.
 pub fn detect_cb1002_missing_tokenizer(project_path: &Path) -> Vec<CbPatternViolation> {
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
@@ -160,6 +163,7 @@ pub fn detect_cb1002_missing_tokenizer(project_path: &Path) -> Vec<CbPatternViol
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb1006 sharded without index.
 pub fn detect_cb1006_sharded_without_index(project_path: &Path) -> Vec<CbPatternViolation> {
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
@@ -216,6 +220,7 @@ pub fn detect_cb1006_sharded_without_index(project_path: &Path) -> Vec<CbPattern
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb1007 excessive file size.
 pub fn detect_cb1007_excessive_file_size(project_path: &Path) -> Vec<CbPatternViolation> {
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
@@ -255,6 +260,7 @@ pub fn detect_cb1007_excessive_file_size(project_path: &Path) -> Vec<CbPatternVi
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb1004 missing architecture.
 pub fn detect_cb1004_missing_architecture(project_path: &Path) -> Vec<CbPatternViolation> {
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
@@ -309,6 +315,7 @@ const QUANT_NAMES: &[&str] = &[
 ];
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb1005 quantization mismatch.
 pub fn detect_cb1005_quantization_mismatch(project_path: &Path) -> Vec<CbPatternViolation> {
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();
@@ -364,6 +371,7 @@ pub fn detect_cb1005_quantization_mismatch(project_path: &Path) -> Vec<CbPattern
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb1008 apr missing crc.
 pub fn detect_cb1008_apr_missing_crc(project_path: &Path) -> Vec<CbPatternViolation> {
     let model_files = walkdir_model_files(project_path);
     let mut violations = Vec::new();

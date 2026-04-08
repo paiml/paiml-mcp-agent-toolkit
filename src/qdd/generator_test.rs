@@ -10,6 +10,7 @@ pub struct TestGenerator {
 
 impl TestGenerator {
     #[must_use]
+    /// Create a new instance.
     pub fn new(profile: QualityProfile) -> Self {
         Self { profile }
     }

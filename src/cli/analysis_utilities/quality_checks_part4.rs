@@ -41,12 +41,14 @@ fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str
 // Helper functions
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect toolchain.
 pub fn detect_toolchain(path: &Path) -> Option<String> {
     super::detect_primary_language(path)
 }
 
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Build complexity thresholds.
 pub fn build_complexity_thresholds(
     max_cyclomatic: Option<u16>,
     max_cognitive: Option<u16>,
@@ -486,6 +488,7 @@ async fn analyze_file_complexity_async(
 
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Add top files ranking.
 pub fn add_top_files_ranking(
     files: Vec<crate::services::complexity::FileComplexityMetrics>,
     top_files: usize,
@@ -498,6 +501,7 @@ pub fn add_top_files_ranking(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Format dead code output.
 pub fn format_dead_code_output(
     format: DeadCodeOutputFormat,
     dead_code_result: &crate::models::dead_code::DeadCodeResult,

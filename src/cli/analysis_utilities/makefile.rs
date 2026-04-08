@@ -204,6 +204,7 @@ fn write_makefile_violations_table(
 
 // Helper: Get severity display string
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Get severity display.
 pub fn get_severity_display(severity: &makefile_linter::Severity) -> &'static str {
     match severity {
         makefile_linter::Severity::Error => "❌ Error",
@@ -326,6 +327,7 @@ fn build_sarif_results(
 
 // Helper: Get SARIF level
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Get sarif level.
 pub fn get_sarif_level(severity: &makefile_linter::Severity) -> &'static str {
     match severity {
         makefile_linter::Severity::Error => "error",
@@ -361,6 +363,7 @@ fn format_makefile_as_gcc(
 
 // Helper: Get GCC level
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Get gcc level.
 pub fn get_gcc_level(severity: &makefile_linter::Severity) -> &'static str {
     match severity {
         makefile_linter::Severity::Error => "error",

@@ -9,6 +9,7 @@ use crate::services::deep_context::DeepContext;
 
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Format context as markdown.
 pub fn format_context_as_markdown(context: &ProjectContext) -> String {
     let mut output = String::new();
 

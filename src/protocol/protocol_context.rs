@@ -3,6 +3,7 @@
 impl RequestContext {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(protocol: &str) -> Self {
         Self {
             request_id: Uuid::new_v4().to_string(),
@@ -14,6 +15,7 @@ impl RequestContext {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From json rpc.
     pub fn from_json_rpc(request: &JsonRpcRequest) -> Self {
         Self {
             request_id: request.id.to_string(),
@@ -25,6 +27,7 @@ impl RequestContext {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From http.
     pub fn from_http(request: &HttpRequest) -> Self {
         Self {
             request_id: request
@@ -41,6 +44,7 @@ impl RequestContext {
 
 // Helper structures for protocol-specific requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Request for json rpc operation.
 pub struct JsonRpcRequest {
     pub jsonrpc: String,
     pub method: String,
@@ -49,6 +53,7 @@ pub struct JsonRpcRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Response from json rpc operation.
 pub struct JsonRpcResponse {
     pub jsonrpc: String,
     pub result: Option<Value>,
@@ -57,6 +62,7 @@ pub struct JsonRpcResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Error type for json rpc operations.
 pub struct JsonRpcError {
     pub code: i32,
     pub message: String,
@@ -64,6 +70,7 @@ pub struct JsonRpcError {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Request for http operation.
 pub struct HttpRequest {
     pub method: String,
     pub path: String,

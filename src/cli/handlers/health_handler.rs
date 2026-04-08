@@ -64,6 +64,7 @@ pub struct HealthCheck {
 }
 
 #[derive(Debug, Serialize, PartialEq)]
+/// Status of check operation.
 pub enum CheckStatus {
     Pass,
     Warn,

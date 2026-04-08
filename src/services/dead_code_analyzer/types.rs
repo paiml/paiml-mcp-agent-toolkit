@@ -15,6 +15,7 @@ pub struct HierarchicalBitSet {
 impl HierarchicalBitSet {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(capacity: usize) -> Self {
         Self {
             levels: vec![roaring::RoaringBitmap::new()],
@@ -56,6 +57,7 @@ impl HierarchicalBitSet {
         self.levels[0].contains(index)
     }
 
+    /// As mut slice.
     pub fn as_mut_slice(&mut self) -> &mut [u8] {
         // For now, we'll use a simple approach without SIMD
         // This method isn't actually used in the current implementation
@@ -128,6 +130,7 @@ impl CrossLangReferenceGraph {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Edges for chunk.
     pub fn edges_for_chunk(&self, _chunk: &[u8]) -> Vec<ReferenceEdge> {
         // TRACKED: Implement efficient edge lookup for chunks
         Vec::new()
@@ -135,6 +138,7 @@ impl CrossLangReferenceGraph {
 }
 
 #[derive(Debug, Clone)]
+/// Reference edge.
 pub struct ReferenceEdge {
     pub from: NodeKey,
     pub to: NodeKey,
@@ -143,6 +147,7 @@ pub struct ReferenceEdge {
 }
 
 #[derive(Debug, Clone)]
+/// Reference node.
 pub struct ReferenceNode {
     pub key: NodeKey,
     pub name: String,
@@ -150,6 +155,7 @@ pub struct ReferenceNode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Type classification for reference.
 pub enum ReferenceType {
     DirectCall,
     IndirectCall,
@@ -200,6 +206,7 @@ impl Default for VTableResolver {
 impl VTableResolver {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             vtables: HashMap::new(),
@@ -209,6 +216,7 @@ impl VTableResolver {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Resolve dynamic call.
     pub fn resolve_dynamic_call(&self, interface: &str, method: &str) -> Vec<NodeKey> {
         let mut targets = Vec::new();
 
@@ -306,6 +314,7 @@ pub struct DeadCodeReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Dead code item.
 pub struct DeadCodeItem {
     pub node_key: NodeKey,
     pub name: String,
@@ -317,6 +326,7 @@ pub struct DeadCodeItem {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// Type classification for dead code.
 pub enum DeadCodeType {
     UnusedFunction,
     UnusedClass,
@@ -326,6 +336,7 @@ pub enum DeadCodeType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Unreachable block.
 pub struct UnreachableBlock {
     pub start_line: u32,
     pub end_line: u32,
@@ -334,6 +345,7 @@ pub struct UnreachableBlock {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Summary of dead code analysis.
 pub struct DeadCodeSummary {
     pub total_dead_code_lines: usize,
     pub percentage_dead: f32,

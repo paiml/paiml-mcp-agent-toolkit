@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 // Stub types for backward compatibility
+/// Unified ast engine.
 pub struct UnifiedAstEngine;
 
 impl Default for UnifiedAstEngine {
@@ -20,6 +21,7 @@ impl Default for UnifiedAstEngine {
 impl UnifiedAstEngine {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -35,11 +37,13 @@ impl UnifiedAstEngine {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// Compute metrics.
     pub fn compute_metrics(&self, _forest: &AstForest) -> Result<ProjectMetrics> {
         Ok(ProjectMetrics::default())
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Extract dependencies.
     pub fn extract_dependencies(
         &self,
         _forest: &AstForest,
@@ -56,6 +60,7 @@ impl UnifiedAstEngine {
 }
 
 #[derive(Default, Debug, Clone)]
+/// Ast forest.
 pub struct AstForest {
     pub modules: Vec<ModuleNode>,
     pub metrics: ProjectMetrics,
@@ -63,12 +68,14 @@ pub struct AstForest {
 
 impl AstForest {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Files.
     pub fn files(&self) -> impl Iterator<Item = (&PathBuf, &ModuleNode)> {
         self.modules.iter().map(|module| (&module.path, module))
     }
 }
 
 #[derive(Default, Debug, Clone)]
+/// Module node.
 pub struct ModuleNode {
     pub path: std::path::PathBuf,
     pub name: String,
@@ -77,6 +84,7 @@ pub struct ModuleNode {
 }
 
 #[derive(Default, Debug, Clone)]
+/// Module metrics.
 pub struct ModuleMetrics {
     pub complexity: u32,
     pub lines: usize,
@@ -85,6 +93,7 @@ pub struct ModuleMetrics {
 }
 
 #[derive(Default, Debug, Clone)]
+/// Project metrics.
 pub struct ProjectMetrics {
     pub total_complexity: u32,
     pub total_lines: usize,
@@ -96,6 +105,7 @@ pub struct ProjectMetrics {
 
 // Additional stub types for deterministic_mermaid_engine
 #[derive(Default, Debug, Clone)]
+/// Artifact tree.
 pub struct ArtifactTree {
     pub dogfooding: BTreeMap<String, String>,
     pub mermaid: MermaidArtifacts,
@@ -103,12 +113,14 @@ pub struct ArtifactTree {
 }
 
 #[derive(Default, Debug, Clone)]
+/// Mermaid artifacts.
 pub struct MermaidArtifacts {
     pub ast_generated: BTreeMap<String, String>,
     pub non_code: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone)]
+/// Template for template generation.
 pub struct Template {
     pub name: String,
     pub content: String,
@@ -128,6 +140,7 @@ impl Default for Template {
 }
 
 // FileAst stub enum for backward compatibility
+/// AST representation for file.
 pub enum FileAst {
     Rust(syn::File),
     TypeScript(String),

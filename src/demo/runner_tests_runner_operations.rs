@@ -319,6 +319,7 @@
         std::fs::write(
             src_dir.join("lib.rs"),
             r#"
+            /// Hello.
             pub fn hello() -> &'static str {
                 "hello"
             }

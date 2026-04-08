@@ -2,6 +2,7 @@
 
 impl ConsensusNetwork {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(node_id: NodeId) -> Self {
         Self {
             node_id,
@@ -10,10 +11,12 @@ impl ConsensusNetwork {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add peer.
     pub fn add_peer(&self, node_id: NodeId, addr: SocketAddr) {
         self.peers.write().insert(node_id, addr);
     }
 
+    /// Remove peer.
     pub fn remove_peer(&self, node_id: NodeId) {
         self.peers.write().remove(&node_id);
     }
@@ -119,10 +122,12 @@ impl<S: AgentState> ConsensusManager<S> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add node.
     pub fn add_node(&self, node_id: NodeId, addr: SocketAddr) {
         self.network.add_peer(node_id, addr);
     }
 
+    /// Remove node.
     pub fn remove_node(&self, node_id: NodeId) {
         self.network.remove_peer(node_id);
     }
@@ -134,6 +139,7 @@ impl<S: AgentState> ConsensusManager<S> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is leader.
     pub fn is_leader(&self) -> bool {
         // Check current Raft state
         true // Placeholder

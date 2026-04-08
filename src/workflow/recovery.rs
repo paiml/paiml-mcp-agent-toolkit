@@ -3,6 +3,7 @@ use super::*;
 use serde_json::Value;
 
 // Error recovery strategies
+/// Recovery manager.
 pub struct RecoveryManager;
 
 impl RecoveryManager {

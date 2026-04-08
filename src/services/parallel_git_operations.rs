@@ -4,12 +4,14 @@
 impl ParallelGitExecutor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(project_root: PathBuf) -> Self {
         Self::with_config(project_root, ParallelGitConfig::default())
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// With config.
     pub fn with_config(project_root: PathBuf, config: ParallelGitConfig) -> Self {
         let semaphore = Arc::new(Semaphore::new(config.max_concurrent_operations));
         let cache = Arc::new(RwLock::new(rustc_hash::FxHashMap::default()));

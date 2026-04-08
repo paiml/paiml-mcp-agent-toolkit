@@ -59,10 +59,12 @@ mod cli_handlers_integration_tests {
         std::fs::write(
             src_dir.join("utils.rs"),
             r#"
+            /// Helper.
             pub fn helper() -> i32 {
                 42
             }
             
+            /// Duplicate logic.
             pub fn duplicate_logic(x: i32) -> i32 {
                 if x > 0 {
                     x * 2
@@ -71,6 +73,7 @@ mod cli_handlers_integration_tests {
                 }
             }
             
+            /// Similar logic.
             pub fn similar_logic(x: i32) -> i32 {
                 if x > 0 {
                     x * 2

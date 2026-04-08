@@ -41,6 +41,7 @@ pub trait UnifiedCache: Send + Sync {
 pub struct LayeredCache;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Vectorized cache key.
 pub struct VectorizedCacheKey {
     data: Vec<u8>,
     pub hash_low: u64,
@@ -50,6 +51,7 @@ pub struct VectorizedCacheKey {
 impl VectorizedCacheKey {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From bytes.
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let hash = blake3::hash(bytes);
         let hash_bytes = hash.as_bytes();
@@ -83,6 +85,7 @@ impl VectorizedCacheKey {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             data: Vec::new(),

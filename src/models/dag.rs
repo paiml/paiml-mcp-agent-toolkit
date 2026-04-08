@@ -3,12 +3,14 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Dependency graph.
 pub struct DependencyGraph {
     pub nodes: FxHashMap<String, NodeInfo>,
     pub edges: Vec<Edge>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Information about node.
 pub struct NodeInfo {
     pub id: String,
     pub label: String,
@@ -21,6 +23,7 @@ pub struct NodeInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Edge.
 pub struct Edge {
     pub from: String,
     pub to: String,
@@ -29,6 +32,7 @@ pub struct Edge {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Type classification for node.
 pub enum NodeType {
     Function,
     Class,
@@ -38,6 +42,7 @@ pub enum NodeType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+/// Type classification for edge.
 pub enum EdgeType {
     Calls,
     Imports,
@@ -48,6 +53,7 @@ pub enum EdgeType {
 
 // DAG generation types
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+/// Type classification for dag.
 pub enum DagType {
     CallGraph,
     ImportGraph,

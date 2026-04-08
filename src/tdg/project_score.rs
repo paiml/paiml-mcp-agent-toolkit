@@ -8,6 +8,7 @@ use super::language_simple::Language;
 use super::score::TdgScore;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Project score.
 pub struct ProjectScore {
     pub files: Vec<TdgScore>,
     pub average_score: f32,
@@ -29,6 +30,7 @@ pub struct ProjectScore {
 impl ProjectScore {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Aggregate.
     pub fn aggregate(scores: Vec<TdgScore>) -> Self {
         let total_files = scores.len();
         let average_score = if total_files > 0 {
@@ -77,6 +79,7 @@ impl ProjectScore {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Calculate the average.
     pub fn average(&self) -> TdgScore {
         if self.files.is_empty() {
             // No files analyzed — return zero score, not perfect score
@@ -125,6 +128,7 @@ impl ProjectScore {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Comparison.
 pub struct Comparison {
     pub source1: TdgScore,
     pub source2: TdgScore,
@@ -138,6 +142,7 @@ pub struct Comparison {
 impl Comparison {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(source1: TdgScore, source2: TdgScore) -> Self {
         let delta = source2.total - source1.total;
         let improvement_percentage = if source1.total > 0.0 {

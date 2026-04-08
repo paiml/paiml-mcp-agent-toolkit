@@ -209,6 +209,7 @@ impl BytecodeAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze.
     pub fn analyze(&self, bytes: &[u8]) -> DeepWasmResult<ModuleBytecodeAnalysis> {
         let parser = Parser::new(0);
         let mut sections = Self::parse_sections(parser, bytes);

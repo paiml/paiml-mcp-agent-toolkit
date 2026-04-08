@@ -117,11 +117,13 @@ pub struct {}Service {{
 }}
 
 #[derive(Debug, Clone)]
+/// Configuration for service.
 pub struct ServiceConfig {{
     pub enabled: bool,
 }}
 
 impl {}Service {{
+    /// Create a new instance.
     pub fn new(config: ServiceConfig) -> Self {{
         Self {{ config }}
     }}

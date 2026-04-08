@@ -76,6 +76,7 @@ pub struct LightweightProvabilityAnalyzer {
 }
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
+/// Function id.
 pub struct FunctionId {
     pub file_path: String,
     pub function_name: String,
@@ -83,6 +84,7 @@ pub struct FunctionId {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+/// Summary of proof analysis.
 pub struct ProofSummary {
     pub provability_score: f64,
     pub verified_properties: Vec<VerifiedProperty>,
@@ -91,6 +93,7 @@ pub struct ProofSummary {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+/// Verified property.
 pub struct VerifiedProperty {
     pub property_type: PropertyType,
     pub confidence: f64,
@@ -98,6 +101,7 @@ pub struct VerifiedProperty {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+/// Type classification for property.
 pub enum PropertyType {
     NullSafety,
     BoundsCheck,
@@ -117,6 +121,7 @@ pub struct PropertyDomain {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+/// Nullability lattice.
 pub enum NullabilityLattice {
     Top,       // Unknown
     NotNull,   // Definitely not null
@@ -126,12 +131,14 @@ pub enum NullabilityLattice {
 }
 
 #[derive(Clone, Debug)]
+/// Interval lattice.
 pub struct IntervalLattice {
     pub lower: Option<i64>,
     pub upper: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
+/// Alias lattice.
 pub enum AliasLattice {
     Top,       // Unknown aliasing
     NoAlias,   // No aliasing
@@ -141,6 +148,7 @@ pub enum AliasLattice {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+/// Purity lattice.
 pub enum PurityLattice {
     Top,         // Unknown purity
     Pure,        // Pure function
@@ -150,6 +158,7 @@ pub enum PurityLattice {
     Bottom,      // Unreachable
 }
 
+/// Abstract interpreter.
 pub struct AbstractInterpreter {
     analysis_depth: usize,
 }

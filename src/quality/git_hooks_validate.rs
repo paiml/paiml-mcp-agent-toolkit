@@ -3,6 +3,7 @@
 
 impl GitHookManager {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Validate staged files.
     pub fn validate_staged_files(&self) -> Result<Vec<QualityReport>> {
         let output = Command::new("git")
             .args(["diff", "--cached", "--name-only", "--diff-filter=ACM"])
@@ -34,6 +35,7 @@ impl GitHookManager {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Run pre commit checks.
     pub fn run_pre_commit_checks(&self) -> Result<bool> {
         let reports = self.validate_staged_files()?;
 
@@ -61,6 +63,7 @@ impl Default for IncrementalChecker {
 
 impl IncrementalChecker {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             cache: HashMap::new(),
@@ -68,6 +71,7 @@ impl IncrementalChecker {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Should check.
     pub fn should_check(&self, file_path: &Path) -> Result<bool> {
         let metadata = fs::metadata(file_path)?;
         let modified = metadata.modified()?;
@@ -80,6 +84,7 @@ impl IncrementalChecker {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Update cache.
     pub fn update_cache(&mut self, file_path: &Path, passed: bool) -> Result<()> {
         use sha2::{Digest, Sha256};
 
@@ -101,6 +106,7 @@ impl IncrementalChecker {
 
 // Integration with CI/CD
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Generate ci config.
 pub fn generate_ci_config() -> String {
     r#"name: PMAT Quality Gates
 on: [push, pull_request]

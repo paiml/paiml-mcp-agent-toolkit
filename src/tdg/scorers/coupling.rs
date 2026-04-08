@@ -4,6 +4,7 @@ use tree_sitter::{Node, Tree};
 use crate::tdg::{Language, MetricCategory, PenaltyTracker, TdgConfig};
 use super::{Scorer, walk_tree, get_node_text};
 
+/// Coupling analyzer.
 pub struct CouplingAnalyzer;
 
 struct DependencyGraph {

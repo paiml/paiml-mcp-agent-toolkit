@@ -1,6 +1,7 @@
 // Types, structs, and error definitions for state recovery
 
 #[derive(Clone)]
+/// Configuration for snapshot scheduler.
 pub struct SnapshotSchedulerConfig {
     pub min_events: usize,
     pub max_events: usize,
@@ -33,6 +34,7 @@ pub(super) struct SnapshotMetrics {
 }
 
 #[derive(Debug, Clone)]
+/// Snapshot scheduler metrics.
 pub struct SnapshotSchedulerMetrics {
     pub total_snapshots: u64,
     pub avg_events_between: usize,
@@ -42,6 +44,7 @@ pub struct SnapshotSchedulerMetrics {
 }
 
 #[derive(Debug, Clone)]
+/// Statistics for recovery.
 pub struct RecoveryStats {
     pub total_events: usize,
     pub total_snapshots: usize,
@@ -50,6 +53,7 @@ pub struct RecoveryStats {
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for recovery operations.
 pub enum RecoveryError {
     #[error("Event store error: {0}")]
     EventStoreError(String),

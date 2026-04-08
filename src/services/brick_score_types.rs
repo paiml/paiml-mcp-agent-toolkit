@@ -189,6 +189,7 @@ pub struct CategoryScore {
 
 impl CategoryScore {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Percentage.
     pub fn percentage(&self) -> f64 {
         if self.max_points == 0.0 {
             100.0

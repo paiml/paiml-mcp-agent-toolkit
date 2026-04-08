@@ -5,6 +5,7 @@ use crate::modules::transformer::{TransformerImpl, TransformerModule};
 use actix::prelude::*;
 
 #[derive(Default)]
+/// Transformer actor.
 pub struct TransformerActor {
     transformer: TransformerImpl,
 }

@@ -38,6 +38,7 @@ pmat repo-score
 pmat agent start"
 )]
 #[cfg_attr(test, derive(Debug))]
+/// Cli.
 pub struct Cli {
     /// Force specific mode (auto-detected by default)
     #[arg(long, value_enum, global = true)]

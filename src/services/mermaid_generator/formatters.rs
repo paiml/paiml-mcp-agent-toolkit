@@ -67,6 +67,7 @@ impl MermaidGenerator {
     #[inline]
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Sanitize id.
     pub fn sanitize_id(&self, id: &str) -> String {
         // First replace common multi-character patterns
         let sanitized = id.replace("::", "_").replace(['/', '.', '-', ' '], "_");
@@ -101,6 +102,7 @@ impl MermaidGenerator {
     #[inline]
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Escape mermaid label.
     pub fn escape_mermaid_label(&self, label: &str) -> String {
         // For IntelliJ compatibility, use simple character replacements instead of HTML entities
         label

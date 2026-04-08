@@ -34,6 +34,7 @@ fn current_date_fn() -> Value {
 
 // Case conversion utilities
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// To snake case.
 pub fn to_snake_case(s: &str) -> String {
     let mut result = String::with_capacity(1024);
     let mut prev_is_upper = false;
@@ -59,6 +60,7 @@ fn to_kebab_case(s: &str) -> String {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// To pascal case.
 pub fn to_pascal_case(s: &str) -> String {
     s.split(['_', '-', ' '])
         .filter(|s| !s.is_empty())

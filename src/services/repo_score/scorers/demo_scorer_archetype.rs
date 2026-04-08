@@ -47,10 +47,12 @@ impl RepoArchetype {
     }
 }
 
+/// Demo scorer.
 pub struct DemoScorer;
 
 impl DemoScorer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

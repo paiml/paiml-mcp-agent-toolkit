@@ -27,6 +27,7 @@ impl Default for CStrategy {
 impl CStrategy {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -151,6 +152,7 @@ impl Default for CppStrategy {
 impl CppStrategy {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

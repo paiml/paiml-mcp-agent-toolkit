@@ -167,6 +167,7 @@ pub struct DagBuilder {
 }
 
 impl DagBuilder {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             modules: Vec::new(),
@@ -174,16 +175,19 @@ impl DagBuilder {
         }
     }
     
+    /// Add modules.
     pub fn add_modules(mut self, modules: Vec<ModuleInfo>) -> Self {
         self.modules = modules;
         self
     }
     
+    /// Add edges.
     pub fn add_edges(mut self, edges: Vec<(usize, usize)>) -> Self {
         self.edges = edges;
         self
     }
     
+    /// Build and return the final result.
     pub fn build(self) -> DependencyGraph {
         let mut graph = DependencyGraph::new();
         

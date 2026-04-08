@@ -15,6 +15,7 @@ use super::types::{
 use super::types::{ServerCapabilities, ServerInfo};
 
 // MCP context for agent integration
+/// Context for mcp operations.
 pub struct McpContext {
     pub server_info: ServerInfo,
     pub capabilities: ServerCapabilities,
@@ -25,6 +26,7 @@ pub struct McpContext {
 }
 
 // MCP session management
+/// Mcp session.
 pub struct McpSession {
     pub id: Uuid,
     pub context: Arc<McpContext>,
@@ -33,6 +35,7 @@ pub struct McpSession {
 }
 
 #[async_trait]
+/// Trait defining Mcp transport behavior.
 pub trait McpTransport: Send + Sync {
     async fn send(&self, message: McpMessage) -> Result<(), McpError>;
     async fn receive(&self) -> Result<McpMessage, McpError>;
@@ -41,6 +44,7 @@ pub trait McpTransport: Send + Sync {
 
 impl McpSession {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(context: Arc<McpContext>, transport: Arc<dyn McpTransport>) -> Self {
         Self {
             id: Uuid::new_v4(),

@@ -1,6 +1,7 @@
 impl UnifiedRequest {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(method: Method, path: String) -> Self {
         Self {
             method,
@@ -14,6 +15,7 @@ impl UnifiedRequest {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With body.
     pub fn with_body(mut self, body: Body) -> Self {
         self.body = body;
         self
@@ -21,6 +23,7 @@ impl UnifiedRequest {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With header.
     pub fn with_header(mut self, key: &str, value: &str) -> Self {
         if let (Ok(name), Ok(val)) = (
             key.parse::<http::HeaderName>(),
@@ -32,6 +35,7 @@ impl UnifiedRequest {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With extension.
     pub fn with_extension<T: Serialize>(mut self, key: &str, value: T) -> Self {
         if let Ok(json_value) = serde_json::to_value(value) {
             self.extensions.insert(key.to_string(), json_value);
@@ -41,6 +45,7 @@ impl UnifiedRequest {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get extension.
     pub fn get_extension<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Option<T> {
         self.extensions
             .get(key)

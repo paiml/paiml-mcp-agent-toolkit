@@ -4,6 +4,7 @@
 impl<'src> MakefileParser<'src> {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(input: &'src str) -> Self {
         Self {
             input,
@@ -54,6 +55,7 @@ impl<'src> MakefileParser<'src> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Parse the input.
     pub fn parse(&mut self) -> Result<MakefileAst, Vec<ParseError>> {
         let mut ast = MakefileAst::new();
 

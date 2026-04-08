@@ -12,9 +12,11 @@ use crate::services::infra_score::models::*;
 use async_trait::async_trait;
 use std::path::Path;
 
+/// Provable contracts scorer.
 pub struct ProvableContractsScorer;
 
 impl ProvableContractsScorer {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

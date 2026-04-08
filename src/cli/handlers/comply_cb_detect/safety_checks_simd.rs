@@ -67,6 +67,7 @@ fn check_file_for_simd_violations(entry: &Path) -> Vec<CbPatternViolation> {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb021 simd without target feature.
 pub fn detect_cb021_simd_without_target_feature(project_path: &Path) -> Vec<CbPatternViolation> {
     let src_dir = project_path.join("src");
     if !src_dir.exists() {

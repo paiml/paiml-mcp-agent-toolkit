@@ -7,6 +7,7 @@ use super::grade::{Grade, MetricCategory, PenaltyAttribution};
 use super::language_simple::Language;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Tdg score.
 pub struct TdgScore {
     pub structural_complexity: f32,
     pub semantic_complexity: f32,
@@ -51,6 +52,7 @@ impl Default for TdgScore {
 
 impl TdgScore {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Calculate total.
     pub fn calculate_total(&mut self) {
         // Clamp individual components to their expected weight ranges
         // This ensures components can never exceed their designated contribution
@@ -107,6 +109,7 @@ impl TdgScore {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Set metric.
     pub fn set_metric(&mut self, category: MetricCategory, value: f32) {
         match category {
             MetricCategory::StructuralComplexity => self.structural_complexity = value,

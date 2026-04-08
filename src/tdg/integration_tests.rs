@@ -225,6 +225,7 @@ def documented():
             (
                 Language::Rust,
                 r#"
+/// Undocumented.
 pub fn undocumented() -> i32 {
     42
 }

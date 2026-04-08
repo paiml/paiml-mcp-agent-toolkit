@@ -13,6 +13,7 @@ use super::types::McpError;
 // ============================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Metadata for tool.
 pub struct ToolMetadata {
     pub name: String,
     pub description: String,
@@ -20,11 +21,13 @@ pub struct ToolMetadata {
 }
 
 #[async_trait]
+/// Trait defining Mcp tool behavior.
 pub trait McpTool: Send + Sync {
     fn metadata(&self) -> ToolMetadata;
     async fn execute(&self, params: Value) -> Result<Value, McpError>;
 }
 
+/// Registry of tool instances.
 pub struct ToolRegistry {
     pub(super) tools: HashMap<String, Arc<dyn McpTool>>,
     pub(super) metadata: HashMap<String, ToolMetadata>,
@@ -37,6 +40,7 @@ impl Default for ToolRegistry {
 }
 
 impl ToolRegistry {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             tools: HashMap::new(),
@@ -45,6 +49,7 @@ impl ToolRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register(&mut self, tool: Arc<dyn McpTool>) {
         let metadata = tool.metadata();
         self.tools.insert(metadata.name.clone(), tool);
@@ -52,11 +57,13 @@ impl ToolRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// List.
     pub fn list(&self) -> Vec<ToolMetadata> {
         self.metadata.values().cloned().collect()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Retrieve a value.
     pub fn get(&self, name: &str) -> Option<Arc<dyn McpTool>> {
         self.tools.get(name).cloned()
     }
@@ -67,6 +74,7 @@ impl ToolRegistry {
 // ============================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Template for resource generation.
 pub struct ResourceTemplate {
     pub uri_template: String,
     pub name: String,
@@ -75,6 +83,7 @@ pub struct ResourceTemplate {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Resource content.
 pub struct ResourceContent {
     pub uri: String,
     pub mime_type: Option<String>,
@@ -84,18 +93,21 @@ pub struct ResourceContent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+/// Type classification for resource content.
 pub enum ResourceContentType {
     Text { text: String },
     Blob { blob: String }, // Base64 encoded
 }
 
 #[async_trait]
+/// Trait defining Mcp resource behavior.
 pub trait McpResource: Send + Sync {
     fn template(&self) -> ResourceTemplate;
     async fn read(&self, uri: &str) -> Result<ResourceContent, McpError>;
     fn subscribe(&self, uri: &str) -> Option<tokio::sync::watch::Receiver<ResourceContent>>;
 }
 
+/// Registry of resource instances.
 pub struct ResourceRegistry {
     pub(super) resources: HashMap<String, Arc<dyn McpResource>>,
     pub(super) templates: HashMap<String, ResourceTemplate>,
@@ -108,6 +120,7 @@ impl Default for ResourceRegistry {
 }
 
 impl ResourceRegistry {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             resources: HashMap::new(),
@@ -116,6 +129,7 @@ impl ResourceRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register(&mut self, resource: Arc<dyn McpResource>) {
         let template = resource.template();
         self.resources
@@ -125,16 +139,19 @@ impl ResourceRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// List.
     pub fn list(&self) -> Vec<ResourceTemplate> {
         self.templates.values().cloned().collect()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Retrieve a value.
     pub fn get(&self, uri_template: &str) -> Option<Arc<dyn McpResource>> {
         self.resources.get(uri_template).cloned()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Find matching.
     pub fn find_matching(&self, uri: &str) -> Option<Arc<dyn McpResource>> {
         // Simple pattern matching - could be enhanced
         for (template, resource) in &self.resources {
@@ -151,6 +168,7 @@ impl ResourceRegistry {
 // ============================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Metadata for prompt.
 pub struct PromptMetadata {
     pub name: String,
     pub description: Option<String>,
@@ -158,6 +176,7 @@ pub struct PromptMetadata {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Prompt argument.
 pub struct PromptArgument {
     pub name: String,
     pub description: Option<String>,
@@ -165,6 +184,7 @@ pub struct PromptArgument {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Prompt message.
 pub struct PromptMessage {
     pub role: String,
     pub content: PromptContent,
@@ -172,6 +192,7 @@ pub struct PromptMessage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+/// Content variants for prompt.
 pub enum PromptContent {
     Text(String),
     Parts(Vec<ContentPart>),
@@ -179,6 +200,7 @@ pub enum PromptContent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
+/// Content part variants for content.
 pub enum ContentPart {
     #[serde(rename = "text")]
     Text { text: String },
@@ -189,6 +211,7 @@ pub enum ContentPart {
 }
 
 #[async_trait]
+/// Trait defining Mcp prompt behavior.
 pub trait McpPrompt: Send + Sync {
     fn metadata(&self) -> PromptMetadata;
     async fn get(
@@ -197,6 +220,7 @@ pub trait McpPrompt: Send + Sync {
     ) -> Result<Vec<PromptMessage>, McpError>;
 }
 
+/// Registry of prompt instances.
 pub struct PromptRegistry {
     pub(super) prompts: HashMap<String, Arc<dyn McpPrompt>>,
     pub(super) metadata: HashMap<String, PromptMetadata>,
@@ -209,6 +233,7 @@ impl Default for PromptRegistry {
 }
 
 impl PromptRegistry {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             prompts: HashMap::new(),
@@ -217,6 +242,7 @@ impl PromptRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register(&mut self, prompt: Arc<dyn McpPrompt>) {
         let metadata = prompt.metadata();
         self.prompts.insert(metadata.name.clone(), prompt);
@@ -224,11 +250,13 @@ impl PromptRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// List.
     pub fn list(&self) -> Vec<PromptMetadata> {
         self.metadata.values().cloned().collect()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Retrieve a value.
     pub fn get(&self, name: &str) -> Option<Arc<dyn McpPrompt>> {
         self.prompts.get(name).cloned()
     }

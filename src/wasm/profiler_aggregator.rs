@@ -12,6 +12,7 @@ impl Default for ProfileAggregator {
 impl ProfileAggregator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             profiles: Vec::new(),
@@ -19,6 +20,7 @@ impl ProfileAggregator {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add profile.
     pub fn add_profile(&mut self, profile: ProfilingReport) {
         self.profiles.push(profile);
     }

@@ -204,14 +204,17 @@ async fn test_analyze_rust_file_simple() {
     fs::write(
         &file_path,
         r#"
+/// Hello.
 pub fn hello() {
     println!("Hello, world!");
 }
 
+/// Test struct.
 pub struct TestStruct {
     field: String,
 }
 
+/// Test enum.
 pub enum TestEnum {
     Variant1,
     Variant2,
@@ -301,6 +304,7 @@ fn test_rust_visitor_struct() {
     use syn::parse_str;
 
     let code = r#"
+        /// Test struct.
         pub struct TestStruct {
             field1: String,
             field2: i32,
@@ -352,6 +356,7 @@ fn test_rust_visitor_enum() {
 
     let code = r#"
         #[derive(Debug, Clone)]
+        /// Test enum.
         pub enum TestEnum {
             Variant1,
             Variant2(String),
@@ -382,6 +387,7 @@ fn test_rust_visitor_trait() {
     use syn::parse_str;
 
     let code = r#"
+        /// Trait defining Test trait behavior.
         pub trait TestTrait {
             fn method(&self);
         }
@@ -438,10 +444,12 @@ async fn test_context_graph_integration() {
     fs::write(
         &file_path,
         r#"
+/// Hello.
 pub fn hello() {
     println!("Hello!");
 }
 
+/// Test struct.
 pub struct TestStruct {
     field: String,
 }

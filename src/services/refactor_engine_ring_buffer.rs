@@ -86,12 +86,14 @@ impl<T> RingBuffer<T> {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Return the number of elements.
     pub fn len(&self) -> usize {
         self.buffer.len()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check whether the collection is empty.
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }

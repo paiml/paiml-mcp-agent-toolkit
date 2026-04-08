@@ -14,9 +14,11 @@ use crate::services::infra_score::models::*;
 use async_trait::async_trait;
 use std::path::Path;
 
+/// Workflow architecture scorer.
 pub struct WorkflowArchitectureScorer;
 
 impl WorkflowArchitectureScorer {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

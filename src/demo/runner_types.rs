@@ -1,9 +1,11 @@
+/// Demo runner.
 pub struct DemoRunner {
     server: Arc<StatelessTemplateServer>,
     execution_log: Vec<DemoStep>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Demo step.
 pub struct DemoStep {
     pub name: String,
     pub capability: &'static str,
@@ -15,6 +17,7 @@ pub struct DemoStep {
 }
 
 #[derive(Debug, Serialize)]
+/// Report containing demo data.
 pub struct DemoReport {
     pub repository: String,
     pub total_time_ms: u64,
@@ -25,6 +28,7 @@ pub struct DemoReport {
 }
 
 #[derive(Debug, Serialize)]
+/// Result of demo analysis operation.
 pub struct DemoAnalysisResult {
     pub files_analyzed: usize,
     pub functions_analyzed: usize,

@@ -10,6 +10,7 @@ use rustc_hash::FxHashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Builder for constructing dependency graph instances.
 pub struct DependencyGraphBuilder {
     graph: DependencyGraph,
     symbol_table: SymbolTable,

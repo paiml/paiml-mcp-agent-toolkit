@@ -21,6 +21,7 @@ pub struct WasmAnalyzer {
 
 impl WasmAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         Ok(Self {
             parser: Parser::new(0),

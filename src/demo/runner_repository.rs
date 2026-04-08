@@ -208,6 +208,7 @@ fn read_repository_path_from_user() -> Result<PathBuf> {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect repository.
 pub fn detect_repository(hint: Option<PathBuf>) -> Result<PathBuf> {
     let candidate = get_canonical_path(hint)?;
 

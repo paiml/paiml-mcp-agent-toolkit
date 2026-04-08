@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+/// Configuration for deep context.
 pub struct DeepContextConfig {
     #[serde(default)]
     pub entry_points: Vec<String>,
@@ -24,6 +25,7 @@ pub struct DeepContextConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+/// Threshold values for complexitys.
 pub struct ComplexityThresholds {
     #[serde(default = "default_cyclomatic_warning")]
     pub cyclomatic_warning: u32,

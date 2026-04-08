@@ -3,6 +3,7 @@
 
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Apply satd filters.
 pub fn apply_satd_filters(
     items: Vec<crate::models::tdg::SatdItem>,
     severity: Option<SatdSeverity>,
@@ -36,6 +37,7 @@ pub fn apply_satd_filters(
 }
 
 #[derive(Debug, Clone)]
+/// Parameters for deep context config.
 pub struct DeepContextConfigParams {
     pub project_path: PathBuf,
     pub output: Option<PathBuf>,
@@ -55,6 +57,7 @@ pub struct DeepContextConfigParams {
 
 #[allow(clippy::too_many_arguments)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Build deep context config.
 pub fn build_deep_context_config(
     _project_path: PathBuf,
     _output: Option<PathBuf>,
@@ -126,6 +129,7 @@ pub fn convert_cache_strategy(strategy: DeepContextCacheStrategy) -> DeepContext
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Parse analysis filters.
 pub fn parse_analysis_filters(
     include: Vec<String>,
     exclude: Vec<String>,

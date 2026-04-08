@@ -77,6 +77,7 @@ pub struct JidokaTestSetup {
 }
 
 impl JidokaTestSetup {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             cleanup_functions: Vec::new(),
@@ -138,6 +139,7 @@ pub struct TestStateInspector {
 }
 
 impl TestStateInspector {
+    /// Create a new instance.
     pub fn new(operation_name: impl Into<String>) -> Self {
         Self {
             start_time: Instant::now(),

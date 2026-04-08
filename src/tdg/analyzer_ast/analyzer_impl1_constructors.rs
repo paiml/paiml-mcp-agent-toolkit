@@ -1,5 +1,6 @@
 impl TdgAnalyzerAst {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         Ok(Self {
             config: TdgConfig::default(),
@@ -12,6 +13,7 @@ impl TdgAnalyzerAst {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With config.
     pub fn with_config(config: TdgConfig) -> Result<Self> {
         Ok(Self {
             config,
@@ -24,6 +26,7 @@ impl TdgAnalyzerAst {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With storage.
     pub fn with_storage(config: TdgConfig) -> Result<Self> {
         let storage = TieredStorageFactory::create_default()?;
         let scheduler = SchedulerFactory::create_balanced();

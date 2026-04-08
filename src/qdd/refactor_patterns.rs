@@ -10,6 +10,7 @@ impl Default for PatternEngine {
 impl PatternEngine {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         let mut patterns = std::collections::HashMap::new();
         patterns.insert(
@@ -25,6 +26,7 @@ impl PatternEngine {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Apply pattern.
     pub fn apply_pattern(&self, code: &str, pattern_name: &str) -> Result<String> {
         match pattern_name {
             "single_responsibility" => self.apply_single_responsibility(code),

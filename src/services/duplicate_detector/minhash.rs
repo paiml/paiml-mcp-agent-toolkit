@@ -15,6 +15,7 @@ pub struct MinHashGenerator {
 impl MinHashGenerator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(num_hashes: usize) -> Self {
         let seeds = (0..num_hashes).map(|i| i as u64).collect();
 

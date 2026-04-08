@@ -40,6 +40,7 @@ pub struct ChurnMetrics {
 }
 
 #[derive(Debug, Clone)]
+/// Hotspot identified in file analysis.
 pub struct FileHotspot {
     pub path: PathBuf,
     pub change_count: usize,
@@ -61,6 +62,7 @@ pub struct DagMetrics {
 impl DogfoodingEngine {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             ast_engine: UnifiedAstEngine::new(),

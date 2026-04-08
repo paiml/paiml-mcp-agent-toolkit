@@ -1,5 +1,6 @@
 // Adaptive snapshot scheduler that learns optimal snapshot intervals
 
+/// Adaptive snapshot scheduler.
 pub struct AdaptiveSnapshotScheduler {
     pub(super) config: parking_lot::RwLock<SnapshotSchedulerConfig>,
     pub(super) metrics: parking_lot::RwLock<SnapshotMetrics>,
@@ -7,6 +8,7 @@ pub struct AdaptiveSnapshotScheduler {
 
 impl AdaptiveSnapshotScheduler {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(config: SnapshotSchedulerConfig) -> Self {
         Self {
             config: parking_lot::RwLock::new(config),
@@ -15,6 +17,7 @@ impl AdaptiveSnapshotScheduler {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Should snapshot.
     pub fn should_snapshot(&self, events_since: usize, time_since: Duration) -> bool {
         let config = self.config.read();
 
@@ -70,6 +73,7 @@ impl AdaptiveSnapshotScheduler {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Record snapshot.
     pub fn record_snapshot(&self, events_between: usize, time_between: Duration) {
         let mut metrics = self.metrics.write();
         metrics.total_snapshots += 1;
@@ -78,6 +82,7 @@ impl AdaptiveSnapshotScheduler {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Record recovery.
     pub fn record_recovery(&self, recovery_time: Duration) {
         let mut metrics = self.metrics.write();
         metrics.last_recovery_time = Some(recovery_time);
@@ -111,10 +116,12 @@ impl AdaptiveSnapshotScheduler {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get config.
     pub fn get_config(&self) -> SnapshotSchedulerConfig {
         self.config.read().clone()
     }
 
+    /// Get metrics.
     pub fn get_metrics(&self) -> SnapshotSchedulerMetrics {
         let metrics = self.metrics.read();
         let config = self.config.read();

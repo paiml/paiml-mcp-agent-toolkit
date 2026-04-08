@@ -2,6 +2,7 @@
 
 impl SnapshotStore {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Find latest snapshot before.
     pub fn find_latest_snapshot_before(&self, event_id: EventId) -> Option<SnapshotMetadata> {
         let snapshots = self.snapshots.read();
         snapshots
@@ -12,12 +13,14 @@ impl SnapshotStore {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Find latest snapshot.
     pub fn find_latest_snapshot(&self) -> Option<SnapshotMetadata> {
         let snapshots = self.snapshots.read();
         snapshots.iter().max_by_key(|s| s.event_id).cloned()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Find partition snapshots.
     pub fn find_partition_snapshots(&self, partition_key: &str) -> Vec<SnapshotMetadata> {
         let snapshots = self.snapshots.read();
         snapshots
@@ -28,6 +31,7 @@ impl SnapshotStore {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get statistics.
     pub fn get_statistics(&self) -> SnapshotStats {
         let snapshots = self.snapshots.read();
 

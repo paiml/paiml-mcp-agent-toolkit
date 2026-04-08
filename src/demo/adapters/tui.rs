@@ -162,6 +162,7 @@ struct DagInfo {
 
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone)]
+/// Tui demo output.
 pub struct TuiDemoOutput {
     pub content: String,
 }
@@ -181,6 +182,7 @@ impl Default for TuiDemoOutput {
 
 #[cfg(feature = "tui")]
 #[derive(Debug, Error)]
+/// Error variants for tui demo operations.
 pub enum TuiDemoError {
     #[error("TUI initialization failed: {0}")]
     Init(String),
@@ -196,6 +198,7 @@ pub enum TuiDemoError {
 
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Request for tui operation.
 pub struct TuiRequest {
     pub action: String,
     pub params: HashMap<String, serde_json::Value>,
@@ -203,6 +206,7 @@ pub struct TuiRequest {
 
 #[cfg(feature = "tui")]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Response from tui operation.
 pub struct TuiResponse {
     pub success: bool,
     pub message: String,
@@ -213,6 +217,7 @@ pub struct TuiResponse {
 // ============================================================================
 
 #[cfg(feature = "tui")]
+/// Language adapter for tui demo.
 pub struct TuiDemoAdapter {
     state: Arc<RwLock<TuiState>>,
     update_rx: Option<mpsc::Receiver<AnalysisUpdate>>,
@@ -222,6 +227,7 @@ pub struct TuiDemoAdapter {
 #[cfg(feature = "tui")]
 impl TuiDemoAdapter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self, TuiDemoError> {
         let (update_tx, update_rx) = mpsc::channel(100);
 
@@ -264,6 +270,7 @@ impl TuiDemoAdapter {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get update sender.
     pub fn get_update_sender(&self) -> mpsc::Sender<AnalysisUpdate> {
         self.update_tx.clone()
     }

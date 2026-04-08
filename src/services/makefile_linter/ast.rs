@@ -2,6 +2,7 @@
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Makefile ast.
 pub struct MakefileAst {
     pub nodes: Vec<MakefileNode>,
     pub source_map: HashMap<usize, SourceSpan>,
@@ -9,6 +10,7 @@ pub struct MakefileAst {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Makefile node.
 pub struct MakefileNode {
     pub kind: MakefileNodeKind,
     pub span: SourceSpan,
@@ -17,6 +19,7 @@ pub struct MakefileNode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+/// Makefile node kind.
 pub enum MakefileNodeKind {
     Rule,
     Variable,
@@ -31,6 +34,7 @@ pub enum MakefileNodeKind {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Node data.
 pub enum NodeData {
     Rule {
         targets: Vec<String>,
@@ -54,6 +58,7 @@ pub enum NodeData {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+/// Available operations for assignment.
 pub enum AssignmentOp {
     Deferred,    // =
     Immediate,   // :=
@@ -63,12 +68,14 @@ pub enum AssignmentOp {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Recipe line.
 pub struct RecipeLine {
     pub text: String,
     pub prefixes: RecipePrefixes,
 }
 
 #[derive(Debug, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]
+/// Recipe prefixes.
 pub struct RecipePrefixes {
     pub silent: bool,       // @
     pub ignore_error: bool, // -
@@ -76,6 +83,7 @@ pub struct RecipePrefixes {
 }
 
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+/// Source span.
 pub struct SourceSpan {
     pub start: usize,
     pub end: usize,
@@ -86,6 +94,7 @@ pub struct SourceSpan {
 impl SourceSpan {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(start: usize, end: usize, line: usize, column: usize) -> Self {
         Self {
             start,
@@ -97,6 +106,7 @@ impl SourceSpan {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// File level.
     pub fn file_level() -> Self {
         Self {
             start: 0,
@@ -108,6 +118,7 @@ impl SourceSpan {
 }
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+/// Metadata for makefile.
 pub struct MakefileMetadata {
     pub has_phony_rules: bool,
     pub has_pattern_rules: bool,

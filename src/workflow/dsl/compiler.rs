@@ -2,10 +2,12 @@
 use super::*;
 
 // DSL compiler
+/// Dsl compiler.
 pub struct DslCompiler;
 
 impl DslCompiler {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Compile.
     pub fn compile(source: &str) -> Result<Workflow, WorkflowError> {
         // For now, use YAML/JSON parsing
         serde_yaml_ng::from_str(source)
@@ -14,6 +16,7 @@ impl DslCompiler {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Compile step.
     pub fn compile_step(source: &str) -> Result<WorkflowStep, WorkflowError> {
         serde_yaml_ng::from_str(source)
             .or_else(|_| serde_json::from_str(source))

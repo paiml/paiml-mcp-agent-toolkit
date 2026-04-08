@@ -545,20 +545,24 @@ async fn test_ast_context_generation() {
 use std::collections::HashMap;
 
 pub mod utils {
+    /// Helper.
     pub fn helper() {}
 }
 
 #[derive(Debug, Clone)]
+/// Test struct.
 pub struct TestStruct {
     field1: String,
     field2: i32,
 }
 
+/// Test enum.
 pub enum TestEnum {
     Variant1,
     Variant2(String),
 }
 
+/// Trait defining Test trait behavior.
 pub trait TestTrait {
     fn method(&self);
 }

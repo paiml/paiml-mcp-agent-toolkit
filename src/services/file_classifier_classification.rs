@@ -4,6 +4,7 @@
 impl FileClassifier {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::default()
     }
@@ -68,6 +69,7 @@ impl FileClassifier {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Should parse.
     pub fn should_parse(&self, path: &Path, content: &[u8]) -> ParseDecision {
         self.should_parse_with_options(path, content, false)
     }

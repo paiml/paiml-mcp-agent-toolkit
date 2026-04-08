@@ -3,6 +3,7 @@
 
 impl DefaultWorkflowExecutor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(agent_registry: Arc<AgentRegistry>) -> Self {
         Self {
             agent_registry,
@@ -12,6 +13,7 @@ impl DefaultWorkflowExecutor {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With monitor.
     pub fn with_monitor(mut self, monitor: Arc<dyn WorkflowMonitor>) -> Self {
         self.monitor = Some(monitor);
         self

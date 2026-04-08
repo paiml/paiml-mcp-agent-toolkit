@@ -202,34 +202,40 @@ impl Default for FeatureFlagsBuilder {
 
 impl FeatureFlagsBuilder {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Enabled.
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Strategy.
     pub fn strategy(mut self, strategy: RolloutStrategy) -> Self {
         self.strategy = strategy;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add to allowlist.
     pub fn add_to_allowlist(mut self, identifier: impl Into<String>) -> Self {
         self.allowlist.insert(identifier.into());
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Max latency.
     pub fn max_latency(mut self, latency_ms: u32) -> Self {
         self.max_latency_ms = latency_ms;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Build and return the final result.
     pub fn build(self) -> FeatureFlags {
         let flags = FeatureFlags::new();
 

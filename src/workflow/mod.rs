@@ -26,6 +26,7 @@ use uuid::Uuid;
 
 // Workflow definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Workflow.
 pub struct Workflow {
     pub id: Uuid,
     pub name: String,
@@ -38,6 +39,7 @@ pub struct Workflow {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Workflow step.
 pub struct WorkflowStep {
     pub id: String,
     pub name: String,
@@ -51,6 +53,7 @@ pub struct WorkflowStep {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
+/// Type classification for step.
 pub enum StepType {
     #[serde(rename = "action")]
     Action {
@@ -81,12 +84,14 @@ pub enum StepType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Step condition.
 pub struct StepCondition {
     pub expression: String,
     pub skip_on_false: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Retry policy.
 pub struct RetryPolicy {
     pub max_attempts: usize,
     pub backoff: BackoffStrategy,
@@ -94,6 +99,7 @@ pub struct RetryPolicy {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Strategy options for backoff.
 pub enum BackoffStrategy {
     Fixed {
         delay: Duration,
@@ -110,6 +116,7 @@ pub enum BackoffStrategy {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Handler options for error.
 pub enum ErrorHandler {
     Skip,
     Fail,
@@ -119,6 +126,7 @@ pub enum ErrorHandler {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Strategy options for error.
 pub enum ErrorStrategy {
     FailFast,
     Continue,
@@ -127,6 +135,7 @@ pub enum ErrorStrategy {
 }
 
 // Workflow execution context
+/// Context for workflow operations.
 pub struct WorkflowContext {
     pub workflow_id: Uuid,
     pub execution_id: Uuid,
@@ -138,6 +147,7 @@ pub struct WorkflowContext {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of step operation.
 pub struct StepResult {
     pub step_id: String,
     pub status: StepStatus,
@@ -151,6 +161,7 @@ pub struct StepResult {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+/// Status of step operation.
 pub enum StepStatus {
     Pending,
     Running,
@@ -161,6 +172,7 @@ pub enum StepStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+/// State of workflow lifecycle.
 pub enum WorkflowState {
     Created,
     Running,
@@ -171,6 +183,7 @@ pub enum WorkflowState {
 }
 
 #[derive(Debug, Clone, thiserror::Error)]
+/// Error variants for workflow operations.
 pub enum WorkflowError {
     #[error("Workflow not found: {0}")]
     NotFound(Uuid),

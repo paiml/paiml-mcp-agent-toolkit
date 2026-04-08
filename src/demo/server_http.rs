@@ -1,3 +1,4 @@
+/// Local demo server.
 pub struct LocalDemoServer {
     port: u16,
     shutdown_tx: tokio::sync::oneshot::Sender<()>,
@@ -101,10 +102,12 @@ impl LocalDemoServer {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Port.
     pub fn port(&self) -> u16 {
         self.port
     }
 
+    /// Shutdown.
     pub fn shutdown(self) {
         let _ = self.shutdown_tx.send(());
     }

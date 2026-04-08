@@ -20,6 +20,7 @@ use pulldown_cmark::{Event, Parser, Tag, TagEnd};
 use std::collections::HashMap;
 use tracing::debug;
 
+/// Readme compressor.
 pub struct ReadmeCompressor {
     section_importance: HashMap<String, f32>,
 

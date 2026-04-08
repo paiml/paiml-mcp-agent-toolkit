@@ -19,6 +19,7 @@ pub type NodeId = u64;
 pub type RaftInstance<S> = Raft<ClientRequest, ClientResponse, ConsensusNetwork, ConsensusStorage<S>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Request for client operation.
 pub struct ClientRequest {
     pub id: Uuid,
     pub operation: StateOperation,
@@ -28,6 +29,7 @@ pub struct ClientRequest {
 impl AppData for ClientRequest {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Response from client operation.
 pub struct ClientResponse {
     pub success: bool,
     pub result: Option<serde_json::Value>,
@@ -37,6 +39,7 @@ pub struct ClientResponse {
 impl AppDataResponse for ClientResponse {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// State operation.
 pub enum StateOperation {
     Apply(StateEvent),
     Snapshot(Vec<u8>),
@@ -44,6 +47,7 @@ pub enum StateOperation {
 }
 
 // Raft storage implementation
+/// Consensus storage.
 pub struct ConsensusStorage<S: AgentState> {
     node_id: NodeId,
     log: Arc<RwLock<BTreeMap<u64, Entry<ClientRequest>>>>,
@@ -63,12 +67,14 @@ struct RaftSnapshot {
 }
 
 // Raft network implementation for inter-node communication
+/// Consensus network.
 pub struct ConsensusNetwork {
     node_id: NodeId,
     peers: Arc<RwLock<BTreeMap<NodeId, SocketAddr>>>,
 }
 
 // Consensus manager coordinating Raft operations
+/// Consensus manager.
 pub struct ConsensusManager<S: AgentState> {
     node_id: NodeId,
     raft: Arc<RaftInstance<S>>,
@@ -78,6 +84,7 @@ pub struct ConsensusManager<S: AgentState> {
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for consensus operations.
 pub enum ConsensusError {
     #[error("Raft error: {0}")]
     RaftError(String),

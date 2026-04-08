@@ -1,6 +1,7 @@
 impl CliInput {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(command: Commands, command_name: String, raw_args: Vec<String>) -> Self {
         Self {
             command,
@@ -90,6 +91,7 @@ impl CliInput {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From commands.
     pub fn from_commands(command: Commands) -> Self {
         // Toyota Way Extract Method: Get command name using categorized dispatch
         let command_name = Self::get_command_name_by_category(&command);

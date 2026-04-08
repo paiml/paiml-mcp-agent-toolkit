@@ -62,6 +62,7 @@ mod implementation {
 
     impl Router {
         #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+        /// Create a new instance.
         pub fn new() -> Self {
             Self {
                 exact_routes: Vec::new(),
@@ -69,6 +70,7 @@ mod implementation {
         }
 
         #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+        /// Route.
         pub fn route(mut self, path: &'static str, handler: RouteHandler) -> Self {
             self.exact_routes.push((path, handler));
             self
@@ -260,6 +262,7 @@ pub use implementation::handle_request;
 
 #[cfg(not(feature = "demo"))]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Handle request.
 pub fn handle_request(
     _path: &str,
     _state: &std::sync::Arc<parking_lot::RwLock<crate::demo::server::DemoState>>,

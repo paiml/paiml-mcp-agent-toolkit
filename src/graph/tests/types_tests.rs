@@ -214,6 +214,7 @@ fn test_flow_direction() {
 
 // Test helper implementations
 impl NodeData {
+    /// Test node.
     pub fn test_node(id: usize) -> Self {
         NodeData {
             path: PathBuf::from(format!("file_{}.rs", id)),
@@ -227,6 +228,7 @@ impl NodeData {
 }
 
 impl EdgeData {
+    /// Test edge.
     pub fn test_edge(weight: f64) -> Self {
         EdgeData::Import {
             weight: weight / 2.0, // Divided by 2 since Import multiplies by 2

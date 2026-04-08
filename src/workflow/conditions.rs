@@ -1,10 +1,12 @@
 use super::*;
 
 // Conditional branching implementation
+/// Condition evaluator.
 pub struct ConditionEvaluator;
 
 impl ConditionEvaluator {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Evaluate.
     pub fn evaluate(_expression: &str, _context: &WorkflowContext) -> Result<bool, WorkflowError> {
         // Simple expression evaluation
         Ok(true)

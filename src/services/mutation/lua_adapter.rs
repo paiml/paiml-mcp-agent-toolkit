@@ -14,6 +14,7 @@ use std::path::Path;
 pub struct LuaAdapter;
 
 impl LuaAdapter {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

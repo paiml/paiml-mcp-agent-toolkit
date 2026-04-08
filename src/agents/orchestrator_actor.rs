@@ -5,11 +5,13 @@ use actix::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+/// Orchestrator actor.
 pub struct OrchestratorActor {
     _state: OrchestratorState,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+/// State representation for orchestrator.
 pub struct OrchestratorState {
     last_event_id: u64,
     events_since_snapshot: usize,
@@ -48,6 +50,7 @@ impl Default for OrchestratorActor {
 
 impl OrchestratorActor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             _state: OrchestratorState::default(),

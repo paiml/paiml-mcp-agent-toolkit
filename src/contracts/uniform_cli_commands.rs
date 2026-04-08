@@ -402,6 +402,7 @@ pub struct UniformCommandHandler {
 
 impl UniformCommandHandler {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> anyhow::Result<Self> {
         Ok(Self {
             service: Arc::new(crate::contracts::service::ContractService::new()?),

@@ -7,6 +7,7 @@ pub struct FileHealthBaseline {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Cache entry holding baseline data.
 pub struct BaselineEntry {
     pub lines: usize,
     pub test_lines: usize,
@@ -17,6 +18,7 @@ pub struct BaselineEntry {
 
 impl FileHealthBaseline {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             version: "1.0".to_string(),
@@ -26,6 +28,7 @@ impl FileHealthBaseline {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add file.
     pub fn add_file(&mut self, metrics: &FileHealthMetrics) {
         let key = metrics.path.to_string_lossy().to_string();
         self.files.insert(
@@ -41,12 +44,14 @@ impl FileHealthBaseline {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Save data to the destination.
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
         let json = serde_json::to_string_pretty(self)?;
         fs::write(path, json)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Load data from the source.
     pub fn load(path: &Path) -> std::io::Result<Self> {
         let content = fs::read_to_string(path)?;
         serde_json::from_str(&content)
@@ -208,6 +213,7 @@ pub struct StackBaseline {
 
 impl StackBaseline {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             version: "1.0".to_string(),
@@ -217,17 +223,20 @@ impl StackBaseline {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add project.
     pub fn add_project(&mut self, name: String, baseline: FileHealthBaseline) {
         self.projects.insert(name, baseline);
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Save data to the destination.
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
         let json = serde_json::to_string_pretty(self)?;
         fs::write(path, json)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Load data from the source.
     pub fn load(path: &Path) -> std::io::Result<Self> {
         let content = fs::read_to_string(path)?;
         serde_json::from_str(&content)

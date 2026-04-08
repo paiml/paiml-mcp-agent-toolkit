@@ -75,6 +75,7 @@ pub(super) fn is_in_string_literal(line: &str, pattern: &str) -> bool {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb120 nan unsafe comparison.
 pub fn detect_cb120_nan_unsafe_comparison(project_path: &Path) -> Vec<CbPatternViolation> {
     scan_rs_production_lines(
         project_path,

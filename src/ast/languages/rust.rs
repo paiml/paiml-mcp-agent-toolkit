@@ -26,6 +26,7 @@ impl Default for RustStrategy {
 impl RustStrategy {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {}
     }

@@ -231,6 +231,7 @@ fn write_summary_top_contributors(
 
 // Helper function to format churn analysis as markdown
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Format churn as markdown.
 pub fn format_churn_as_markdown(
     analysis: &crate::models::churn::CodeChurnAnalysis,
 ) -> Result<String> {
@@ -422,6 +423,7 @@ fn write_markdown_recommendations(output: &mut String) -> Result<()> {
 
 // Helper function to format churn analysis as CSV
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Format churn as csv.
 pub fn format_churn_as_csv(analysis: &crate::models::churn::CodeChurnAnalysis) -> Result<String> {
     use std::fmt::Write;
     let mut output = String::new();

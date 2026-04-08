@@ -3,6 +3,7 @@ use super::{AgentId, AgentSpec};
 use dashmap::DashMap;
 use std::sync::Arc;
 
+/// Registry of agent instances.
 pub struct AgentRegistry {
     agents: Arc<DashMap<AgentId, AgentEntry>>,
     agents_by_name: Arc<DashMap<String, AgentId>>,
@@ -29,6 +30,7 @@ impl Default for AgentRegistry {
 
 impl AgentRegistry {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             agents: Arc::new(DashMap::new()),

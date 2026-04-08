@@ -97,6 +97,7 @@ async fn test_context_shows_ast_annotations() {
     let test_file_path = temp_dir.path().join("lib.rs");
 
     let test_code = r#"
+/// Calculate sum.
 pub fn calculate_sum(a: i32, b: i32) -> i32 {
     a + b
 }
@@ -220,6 +221,7 @@ async fn test_context_includes_structs_and_impls() {
 
     let test_code = r#"
 #[derive(Debug, Clone)]
+/// Configuration for config.
 pub struct Config {
     pub host: String,
     pub port: u16,
@@ -227,6 +229,7 @@ pub struct Config {
 }
 
 impl Config {
+    /// Create a new instance.
     pub fn new(host: String, port: u16) -> Self {
         Config {
             host,
@@ -235,11 +238,13 @@ impl Config {
         }
     }
 
+    /// Is valid.
     pub fn is_valid(&self) -> bool {
         !self.host.is_empty() && self.port > 0
     }
 }
 
+/// Status of status operation.
 pub enum Status {
     Active,
     Inactive,
@@ -301,14 +306,17 @@ async fn test_context_not_just_empty_report() {
     // Create multiple files
     let lib_code = r#"
 pub mod utils {
+    /// Helper.
     pub fn helper() -> i32 { 42 }
 }
 
+/// Application.
 pub struct Application {
     name: String,
 }
 
 impl Application {
+    /// Run the operation.
     pub fn run(&self) {
         println!("Running {}", self.name);
     }

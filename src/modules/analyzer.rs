@@ -6,12 +6,14 @@ use std::sync::Arc;
 
 // Public interface - the ONLY way other modules interact
 #[async_trait]
+/// Module interface for analyzer operations.
 pub trait AnalyzerModule: Send + Sync {
     async fn analyze(&self, input: &str) -> Result<Metrics, ModuleError>;
     async fn analyze_file(&self, path: &std::path::Path) -> Result<Metrics, ModuleError>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Metrics.
 pub struct Metrics {
     pub complexity: u32,
     pub lines_of_code: usize,
@@ -63,6 +65,7 @@ mod internal {
 
 // Concrete implementation hidden from other modules
 #[derive(Clone)]
+/// Analyzer impl.
 pub struct AnalyzerImpl {
     core: Arc<parking_lot::Mutex<internal::AnalyzerCore>>,
 }
@@ -74,6 +77,7 @@ impl Default for AnalyzerImpl {
 }
 
 impl AnalyzerImpl {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             core: Arc::new(parking_lot::Mutex::new(internal::AnalyzerCore::new())),

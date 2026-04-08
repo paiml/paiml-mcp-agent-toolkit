@@ -19,6 +19,7 @@ pub struct SymbolTable {
 }
 
 #[derive(Debug, Clone)]
+/// Cache entry holding symbol data.
 pub struct SymbolEntry {
     pub symbol: Symbol,
     pub file_path: PathBuf,

@@ -3,6 +3,7 @@ use semver::Version;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Template resource.
 pub struct TemplateResource {
     pub uri: String,
     pub name: String,
@@ -18,6 +19,7 @@ pub struct TemplateResource {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
+/// Toolchain.
 pub enum Toolchain {
     #[serde(rename = "rust")]
     RustCli { cargo_features: Vec<String> },
@@ -85,6 +87,7 @@ impl Toolchain {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+/// Category classification for template.
 pub enum TemplateCategory {
     Makefile,
     Readme,
@@ -93,6 +96,7 @@ pub enum TemplateCategory {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Parameter spec.
 pub struct ParameterSpec {
     pub name: String,
     pub param_type: ParameterType,
@@ -104,6 +108,7 @@ pub struct ParameterSpec {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+/// Type classification for parameter.
 pub enum ParameterType {
     ProjectName,
     SemVer,
@@ -114,6 +119,7 @@ pub enum ParameterType {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Template for generated generation.
 pub struct GeneratedTemplate {
     pub content: String,
     pub filename: String,
@@ -122,6 +128,7 @@ pub struct GeneratedTemplate {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Response from template operation.
 pub struct TemplateResponse {
     pub content: String,
 }

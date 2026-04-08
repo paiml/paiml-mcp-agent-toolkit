@@ -1,5 +1,6 @@
 impl RepositoryContext {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// New mock.
     pub fn new_mock() -> Self {
         Self {
             subsequent_commits: Some(vec![]),
@@ -434,54 +435,63 @@ impl RepositoryContext {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With coverage.
     pub fn with_coverage(mut self, coverage: f64) -> Self {
         self.actual_coverage = Some(coverage);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With subsequent commits.
     pub fn with_subsequent_commits(mut self, commits: Vec<String>) -> Self {
         self.subsequent_commits = Some(commits);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With test results.
     pub fn with_test_results(mut self, passing: bool, ignored: usize) -> Self {
         self.test_results = Some((passing, ignored));
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With broken links.
     pub fn with_broken_links(mut self, count: usize) -> Self {
         self.broken_links_count = Some(count);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With vulnerabilities.
     pub fn with_vulnerabilities(mut self, count: usize) -> Self {
         self.vulnerabilities_count = Some(count);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With benchmarks.
     pub fn with_benchmarks(mut self, data: Option<String>) -> Self {
         self.benchmark_results = data;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With issue status.
     pub fn with_issue_status(mut self, _issue_num: u32, status: &str) -> Self {
         self.issue_status = Some(status.to_string());
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With code grep results.
     pub fn with_code_grep_results(mut self, search_term: &str, count: usize) -> Self {
         self.code_grep_results = Some((search_term.to_string(), count));
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With commit timestamps.
     pub fn with_commit_timestamps(mut self, timestamps: Vec<i64>) -> Self {
         self.commit_timestamps = Some(timestamps.clone());
         self.latest_commit_timestamp = timestamps.last().copied();
@@ -489,6 +499,7 @@ impl RepositoryContext {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With coverage error.
     pub fn with_coverage_error(mut self, error: &str) -> Self {
         self.coverage_error = Some(error.to_string());
         self

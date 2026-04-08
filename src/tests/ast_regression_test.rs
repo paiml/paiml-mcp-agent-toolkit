@@ -16,24 +16,29 @@ async fn test_ast_analysis_not_empty_regression() {
     std::fs::write(
         &rust_file,
         r#"
+/// Test struct.
 pub struct TestStruct {
     pub field: i32,
 }
 
 impl TestStruct {
+    /// Create a new instance.
     pub fn new(field: i32) -> Self {
         Self { field }
     }
     
+    /// Get field.
     pub fn get_field(&self) -> i32 {
         self.field
     }
 }
 
+/// Test function.
 pub fn test_function() -> String {
     "hello world".to_string()
 }
 
+/// Test enum.
 pub enum TestEnum {
     Variant1,
     Variant2(i32),
@@ -191,6 +196,7 @@ async fn test_deep_context_includes_ast_analysis() {
     std::fs::write(
         &rust_file,
         r#"
+/// Sample function.
 pub fn sample_function() -> i32 {
     42
 }

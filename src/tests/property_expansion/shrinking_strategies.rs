@@ -16,6 +16,7 @@ pub struct AstStructure {
 }
 
 #[derive(Debug, Clone)]
+/// Ast kind.
 pub enum AstKind {
     Empty,
     Function(String),
@@ -314,6 +315,7 @@ pub struct ConditionalShrinker<T> {
 }
 
 impl<T: Clone> ConditionalShrinker<T> {
+    /// Create a new instance.
     pub fn new(value: T, condition: impl Fn(&T) -> bool + 'static) -> Self {
         Self {
             value,
@@ -321,6 +323,7 @@ impl<T: Clone> ConditionalShrinker<T> {
         }
     }
     
+    /// Shrink if.
     pub fn shrink_if<F>(&self, shrinker: F) -> Vec<T>
     where
         F: Fn(&T) -> Vec<T>,

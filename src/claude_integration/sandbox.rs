@@ -25,6 +25,7 @@ impl Default for BridgeSandbox {
 
 impl BridgeSandbox {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::default()
     }
@@ -100,6 +101,7 @@ impl BridgeSandbox {
 
     #[cfg(not(target_os = "linux"))]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Verify constraints.
     pub fn verify_constraints(&self, _child: &Child) -> io::Result<()> {
         Ok(())
     }

@@ -29,6 +29,7 @@ impl Default for RuchyAstAnalyzer {
 impl RuchyAstAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             _current_complexity: ComplexityMetrics::default(),
@@ -39,6 +40,7 @@ impl RuchyAstAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze ast.
     pub fn analyze_ast(
         &mut self,
         _ast: &ruchy::Expr,

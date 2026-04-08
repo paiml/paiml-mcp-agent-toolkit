@@ -1,10 +1,12 @@
 // Workflow builder for programmatic workflow creation
+/// Builder for constructing workflow instances.
 pub struct WorkflowBuilder {
     workflow: Workflow,
 }
 
 impl WorkflowBuilder {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             workflow: Workflow {
@@ -21,54 +23,63 @@ impl WorkflowBuilder {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Description.
     pub fn description(mut self, desc: impl Into<String>) -> Self {
         self.workflow.description = Some(desc.into());
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Version.
     pub fn version(mut self, version: impl Into<String>) -> Self {
         self.workflow.version = version.into();
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add step.
     pub fn add_step(mut self, step: WorkflowStep) -> Self {
         self.workflow.steps.push(step);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Error strategy.
     pub fn error_strategy(mut self, strategy: ErrorStrategy) -> Self {
         self.workflow.error_strategy = strategy;
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Timeout.
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.workflow.timeout = Some(timeout);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Metadata.
     pub fn metadata(mut self, key: impl Into<String>, value: Value) -> Self {
         self.workflow.metadata.insert(key.into(), value);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Build and return the final result.
     pub fn build(self) -> Workflow {
         self.workflow
     }
 }
 
 // Step builder
+/// Builder for constructing step instances.
 pub struct StepBuilder {
     step: WorkflowStep,
 }
 
 impl StepBuilder {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Action.
     pub fn action(
         id: impl Into<String>,
         name: impl Into<String>,
@@ -94,6 +105,7 @@ impl StepBuilder {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Params.
     pub fn params(mut self, new_params: Value) -> Self {
         if let StepType::Action { params, .. } = &mut self.step.step_type {
             *params = new_params;
@@ -102,6 +114,7 @@ impl StepBuilder {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Condition.
     pub fn condition(mut self, expression: impl Into<String>, skip_on_false: bool) -> Self {
         self.step.condition = Some(StepCondition {
             expression: expression.into(),
@@ -111,6 +124,7 @@ impl StepBuilder {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Retry the operation.
     pub fn retry(mut self, max_attempts: usize, backoff: BackoffStrategy) -> Self {
         self.step.retry = Some(RetryPolicy {
             max_attempts,
@@ -121,18 +135,21 @@ impl StepBuilder {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Timeout.
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.step.timeout = Some(timeout);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// On error.
     pub fn on_error(mut self, handler: ErrorHandler) -> Self {
         self.step.on_error = Some(handler);
         self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Build and return the final result.
     pub fn build(self) -> WorkflowStep {
         self.step
     }

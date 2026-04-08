@@ -60,6 +60,7 @@ use tracing::{debug, info};
 
 // Type definitions for handler compatibility
 #[derive(Debug, Clone)]
+/// Information about name.
 pub struct NameInfo {
     pub name: String,
     pub kind: String,
@@ -68,6 +69,7 @@ pub struct NameInfo {
 }
 
 #[derive(Debug, Clone)]
+/// Result of name similarity operation.
 pub struct NameSimilarityResult {
     pub name: String,
     pub kind: String,
@@ -79,6 +81,7 @@ pub struct NameSimilarityResult {
 }
 
 #[derive(Debug, Clone)]
+/// Configuration for duplicate handler.
 pub struct DuplicateHandlerConfig {
     pub project_path: PathBuf,
     pub detection_type: DuplicateType,

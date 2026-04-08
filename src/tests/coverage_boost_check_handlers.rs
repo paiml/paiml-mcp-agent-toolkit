@@ -784,6 +784,7 @@ fn dead_fn1() {}
 fn dead_fn2() {}
 
 fn dead_fn3() {}
+/// Active fn.
 pub fn active_fn() {}
 "#,
     )
@@ -1383,6 +1384,7 @@ fn test_scan_dead_code_indicators_with_code() {
     std::fs::write(
         src_dir.join("lib.rs"),
         r#"
+/// Active.
 pub fn active() {}
 
 fn dead() {}

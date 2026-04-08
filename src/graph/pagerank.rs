@@ -7,6 +7,7 @@ use super::aprender_adapter::to_aprender_graph;
 use super::*;
 use aprender::graph::GraphCentrality;
 
+/// Page rank computer.
 pub struct PageRankComputer {
     pub damping: f64,
     pub tolerance: f64,
@@ -25,10 +26,12 @@ impl Default for PageRankComputer {
 
 impl PageRankComputer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// With damping.
     pub fn with_damping(mut self, damping: f64) -> Self {
         self.damping = damping;
         self

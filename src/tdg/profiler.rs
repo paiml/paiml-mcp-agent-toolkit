@@ -73,6 +73,7 @@ pub struct Bottleneck {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Type classification for bottleneck.
 pub enum BottleneckType {
     CpuBound,
     IoBound,
@@ -83,6 +84,7 @@ pub enum BottleneckType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Severity level classification for bottleneck.
 pub enum BottleneckSeverity {
     Low,
     Medium,
@@ -107,6 +109,7 @@ pub struct PerformanceProfiler {
 }
 
 #[derive(Debug, Clone)]
+/// Configuration for profiler.
 pub struct ProfilerConfig {
     pub enable_cpu_profiling: bool,
     pub enable_memory_profiling: bool,

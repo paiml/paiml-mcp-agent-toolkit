@@ -17,6 +17,7 @@ pub struct PlaceholderStrategy {
 impl PlaceholderStrategy {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Kotlin.
     pub fn kotlin() -> Self {
         Self {
             language: Language::Kotlin,
@@ -26,6 +27,7 @@ impl PlaceholderStrategy {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Makefile.
     pub fn makefile() -> Self {
         Self {
             language: Language::Makefile,
@@ -35,6 +37,7 @@ impl PlaceholderStrategy {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Shell.
     pub fn shell() -> Self {
         Self {
             language: Language::Shell,

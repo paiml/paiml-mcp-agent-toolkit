@@ -19,6 +19,7 @@ pub use super::ast_typescript_compat::{
 // Dispatch parser removed - functionality moved to new AST module
 
 // Legacy compatibility types (may be referenced by other modules)
+/// Type script parser.
 pub struct TypeScriptParser {}
 
 impl Default for TypeScriptParser {
@@ -30,12 +31,14 @@ impl Default for TypeScriptParser {
 impl TypeScriptParser {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {}
     }
 }
 
 #[derive(Debug, Clone)]
+/// Type script symbol.
 pub struct TypeScriptSymbol {
     pub name: String,
     pub kind: SymbolKind,
@@ -47,6 +50,7 @@ pub struct TypeScriptSymbol {
 }
 
 #[derive(Debug, Clone)]
+/// Symbol kind.
 pub enum SymbolKind {
     Function,
     Class,

@@ -97,6 +97,7 @@ fn check_file_for_lock_poisoning(entry: &Path) -> Vec<CbPatternViolation> {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb121 lock poisoning.
 pub fn detect_cb121_lock_poisoning(project_path: &Path) -> Vec<CbPatternViolation> {
     let mut violations = Vec::new();
 
@@ -164,6 +165,7 @@ pub(super) fn check_serde_line(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb122 serde safety.
 pub fn detect_cb122_serde_safety(project_path: &Path) -> Vec<CbPatternViolation> {
     let serde_patterns = [
         "serde_json::from_str",
@@ -224,6 +226,7 @@ fn check_file_for_undocumented_ignore(entry: &Path) -> Vec<CbPatternViolation> {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb123 undocumented ignore.
 pub fn detect_cb123_undocumented_ignore(project_path: &Path) -> Vec<CbPatternViolation> {
     [project_path.join("src"), project_path.join("tests")]
         .iter()
@@ -287,6 +290,7 @@ fn check_config_file_for_coverage(config_path: &Path) -> Vec<CbPatternViolation>
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb124 coverage threshold.
 pub fn detect_cb124_coverage_threshold(project_path: &Path) -> Vec<CbPatternViolation> {
     let config_files = [
         project_path.join(".cargo").join("config.toml"),

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Showcase repository.
 pub struct ShowcaseRepository {
     pub name: String,
     pub url: String,
@@ -23,6 +24,7 @@ pub struct ShowcaseRepository {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+/// Category classification for repository.
 pub enum RepositoryCategory {
     WebFramework,
     SystemsProgramming,
@@ -37,6 +39,7 @@ pub enum RepositoryCategory {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Copy)]
+/// Complexity tier.
 pub enum ComplexityTier {
     Beginner,
     Intermediate,
@@ -45,6 +48,7 @@ pub enum ComplexityTier {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Analysis preview.
 pub struct AnalysisPreview {
     pub estimated_files: u32,
     pub estimated_functions: u32,
@@ -53,12 +57,14 @@ pub struct AnalysisPreview {
     pub recommended_focus_areas: Vec<String>,
 }
 
+/// Showcase gallery.
 pub struct ShowcaseGallery {
     repositories: HashMap<String, ShowcaseRepository>,
     categories: HashMap<RepositoryCategory, Vec<String>>,
 }
 
 #[derive(Debug, Serialize)]
+/// Summary of showcase analysis.
 pub struct ShowcaseSummary {
     pub total_repositories: usize,
     pub total_languages: usize,

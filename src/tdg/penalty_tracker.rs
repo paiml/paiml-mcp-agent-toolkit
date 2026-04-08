@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use super::grade::{MetricCategory, PenaltyAttribution};
 
+/// Penalty tracker.
 pub struct PenaltyTracker {
     applied: HashMap<String, PenaltyAttribution>,
 }
@@ -17,6 +18,7 @@ impl Default for PenaltyTracker {
 impl PenaltyTracker {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             applied: HashMap::new(),
@@ -24,6 +26,7 @@ impl PenaltyTracker {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Apply the operation.
     pub fn apply(
         &mut self,
         issue_id: String,
@@ -50,6 +53,7 @@ impl PenaltyTracker {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get attributions.
     pub fn get_attributions(&self) -> Vec<PenaltyAttribution> {
         self.applied.values().cloned().collect()
     }

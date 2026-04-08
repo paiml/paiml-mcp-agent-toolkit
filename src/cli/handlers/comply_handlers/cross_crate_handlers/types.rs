@@ -10,6 +10,7 @@ use std::path::PathBuf;
 // --- Public types ---
 
 #[derive(Debug, Clone, Serialize)]
+/// Information about crate.
 pub struct CrateInfo {
     pub name: String,
     pub path: PathBuf,
@@ -17,6 +18,7 @@ pub struct CrateInfo {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+/// Severity level classification for cc.
 pub enum CcSeverity {
     Error,
     Warning,
@@ -34,6 +36,7 @@ impl std::fmt::Display for CcSeverity {
 }
 
 #[derive(Debug, Clone, Serialize)]
+/// Cross crate finding.
 pub struct CrossCrateFinding {
     pub rule: String,
     pub severity: CcSeverity,
@@ -48,6 +51,7 @@ pub struct CrossCrateFinding {
 }
 
 #[derive(Debug, Clone, Serialize)]
+/// Summary of cross crate analysis.
 pub struct CrossCrateSummary {
     pub total_findings: usize,
     pub errors: usize,
@@ -57,6 +61,7 @@ pub struct CrossCrateSummary {
 }
 
 #[derive(Debug, Clone, Serialize)]
+/// Report containing cross crate data.
 pub struct CrossCrateReport {
     pub findings: Vec<CrossCrateFinding>,
     pub summary: CrossCrateSummary,

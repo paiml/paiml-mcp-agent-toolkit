@@ -14,8 +14,10 @@ use super::{Scorer, walk_tree, count_nodes_of_kind, max_depth};
 // Struct definitions
 // ---------------------------------------------------------------------------
 
+/// Structural complexity scorer.
 pub struct StructuralComplexityScorer;
 
+/// Semantic complexity scorer.
 pub struct SemanticComplexityScorer;
 
 // ---------------------------------------------------------------------------

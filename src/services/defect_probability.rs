@@ -106,6 +106,7 @@ pub struct DefectScore {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Level classification for risk.
 pub enum RiskLevel {
     Low,    // 0.0 - 0.3
     Medium, // 0.3 - 0.7

@@ -2,6 +2,7 @@
 // Included from mod.rs - shares parent module scope (no `use` imports)
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Context for deep operations.
 pub struct DeepContext {
     pub metadata: ContextMetadata,
     pub file_tree: AnnotatedFileTree,
@@ -79,6 +80,7 @@ pub struct ComplexityMetricsForQA {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// File complexity metrics for q a.
 pub struct FileComplexityMetricsForQA {
     pub path: std::path::PathBuf,
     pub functions: Vec<FunctionComplexityForQA>,
@@ -88,6 +90,7 @@ pub struct FileComplexityMetricsForQA {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Function complexity for q a.
 pub struct FunctionComplexityForQA {
     pub name: String,
     pub cyclomatic: u32,
@@ -98,6 +101,7 @@ pub struct FunctionComplexityForQA {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Complexity summary for q a.
 pub struct ComplexitySummaryForQA {
     pub total_files: usize,
     pub total_functions: usize,

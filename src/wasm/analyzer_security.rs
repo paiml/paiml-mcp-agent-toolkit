@@ -16,6 +16,7 @@ impl Default for SecurityAuditor {
 impl SecurityAuditor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             checks: vec![
@@ -29,6 +30,7 @@ impl SecurityAuditor {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Audit.
     pub fn audit(&self, binary: &[u8]) -> Result<SecurityReport> {
         let mut report = SecurityReport::new();
 
@@ -60,6 +62,7 @@ impl Default for SecurityReport {
 impl SecurityReport {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             passed_checks: Vec::new(),
@@ -70,6 +73,7 @@ impl SecurityReport {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add check result.
     pub fn add_check_result(&mut self, check_name: &str, passed: bool) {
         if passed {
             self.passed_checks.push(check_name.to_string());

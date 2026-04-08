@@ -298,6 +298,7 @@ impl RuchyComplexityAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze program.
     pub fn analyze_program(&mut self, ast: &RuchyAst) -> FileComplexityMetrics {
         if let RuchyAst::Program { items } = ast {
             for item in items {

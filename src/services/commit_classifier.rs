@@ -25,6 +25,7 @@ pub struct CommitClassifier {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Metadata for classifier.
 pub struct ClassifierMetadata {
     pub train_samples: usize,
     pub vocab_size: usize,

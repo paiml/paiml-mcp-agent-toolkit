@@ -35,6 +35,7 @@ pub struct CliAdapter;
 
 impl CliAdapter {
     #[must_use]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

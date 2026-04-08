@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 
+/// Builder for constructing unified context instances.
 pub struct UnifiedContextBuilder {
     output: String,
     project_path: PathBuf,
@@ -16,6 +17,7 @@ pub struct UnifiedContextBuilder {
 
 impl UnifiedContextBuilder {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(project_path: &Path) -> Self {
         Self {
             output: String::new(),

@@ -120,6 +120,7 @@ pub struct HttpServer {
 impl HttpServer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(bind_addr: SocketAddr, service: Box<dyn HttpServiceHandler>) -> Self {
         Self {
             adapter: HttpAdapter::new(bind_addr),

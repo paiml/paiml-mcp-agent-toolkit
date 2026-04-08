@@ -15,6 +15,7 @@ impl Default for GraphContextAnnotator {
 }
 
 #[derive(Debug, Clone)]
+/// Context annotation.
 pub struct ContextAnnotation {
     pub file_path: String,
     pub importance_score: f64,

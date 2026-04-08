@@ -217,6 +217,7 @@ impl CargoMutantsReport {
         note = "Use from_output_dir() instead - matches actual cargo-mutants v25.3.1 format"
     )]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From json.
     pub fn from_json(json: &str) -> Result<Self> {
         serde_json::from_str(json)
             .map_err(|e| format!("Failed to parse cargo-mutants JSON: {}", e).into())

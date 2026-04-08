@@ -1,5 +1,6 @@
 impl IncrementalCoverageAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(_db_path: &Path) -> Result<Self> {
         Ok(Self {
             coverage_cache: Arc::new(DashMap::new()),

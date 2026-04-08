@@ -24,10 +24,12 @@ mod tests {
         create_minimal_rust_project(
             project_path,
             r#"
+            /// Used function.
             pub fn used_function() -> i32 {
                 42
             }
             
+            /// Main.
             pub fn main() {
                 let _ = used_function();
             }
@@ -58,6 +60,7 @@ mod tests {
                 42
             }
             
+            /// Main.
             pub fn main() {
                 println!("Hello");
             }
@@ -91,6 +94,7 @@ mod tests {
                 100
             }
             
+            /// Main.
             pub fn main() {
                 let _ = used_function();
             }
@@ -197,6 +201,7 @@ mod tests {
                 }
             }
             
+            /// Main.
             pub fn main() {
                 let _ = production_code();
             }

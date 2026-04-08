@@ -23,6 +23,7 @@ pub struct EventStore<P: EventPersistence = JsonFilePersistence> {
 }
 
 #[derive(Clone)]
+/// Configuration for event store.
 pub struct EventStoreConfig {
     pub max_events_in_memory: usize,
     pub compaction_threshold: usize,
@@ -178,6 +179,7 @@ impl<P: EventPersistence> EventStore<P> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get events since.
     pub fn get_events_since(&self, event_id: EventId, limit: Option<usize>) -> Vec<StateEvent> {
         let events = self.events.read();
         let iter = events.range((event_id + 1)..);
@@ -190,6 +192,7 @@ impl<P: EventPersistence> EventStore<P> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get partition events.
     pub fn get_partition_events(
         &self,
         partition_key: &str,
@@ -210,10 +213,12 @@ impl<P: EventPersistence> EventStore<P> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get event.
     pub fn get_event(&self, event_id: EventId) -> Option<StateEvent> {
         self.events.read().get(&event_id).cloned()
     }
 
+    /// Get latest event id.
     pub fn get_latest_event_id(&self) -> EventId {
         *self.next_event_id.read() - 1
     }
@@ -244,6 +249,7 @@ impl<P: EventPersistence> EventStore<P> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get statistics.
     pub fn get_statistics(&self) -> EventStoreStats {
         let events = self.events.read();
         let partitions = self.partitions.read();
@@ -287,6 +293,7 @@ impl EventStore<JsonFilePersistence> {
 }
 
 #[derive(Debug, Default)]
+/// Result of compaction operation.
 pub struct CompactionResult {
     pub events_before: usize,
     pub events_after: usize,
@@ -295,6 +302,7 @@ pub struct CompactionResult {
 }
 
 #[derive(Debug, Clone)]
+/// Statistics for event store.
 pub struct EventStoreStats {
     pub total_events: usize,
     pub total_partitions: usize,
@@ -303,6 +311,7 @@ pub struct EventStoreStats {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Estimate memory usage.
 pub fn estimate_memory_usage(events: &BTreeMap<EventId, StateEvent>) -> usize {
     events.len() * std::mem::size_of::<(EventId, StateEvent)>()
 }

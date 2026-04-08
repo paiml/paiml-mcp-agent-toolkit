@@ -23,6 +23,7 @@ pub struct TDGScore {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
+/// T d g components.
 pub struct TDGComponents {
     /// Complexity contribution (cognitive + cyclomatic)
     pub complexity: f64,
@@ -47,6 +48,7 @@ pub struct TDGComponents {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
+/// Severity level classification for t d g.
 pub enum TDGSeverity {
     /// TDG < 1.5 - Normal technical debt levels
     Normal,

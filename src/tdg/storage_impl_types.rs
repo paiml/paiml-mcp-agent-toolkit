@@ -63,6 +63,7 @@ pub struct HotCacheEntry {
 impl HotCacheEntry {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From record.
     pub fn from_record(record: &FullTdgRecord) -> Self {
         let mut hash_bytes = [0u8; 32];
         hash_bytes.copy_from_slice(record.identity.content_hash.as_bytes());

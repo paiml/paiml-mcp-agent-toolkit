@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Refactor state machine.
 pub struct RefactorStateMachine {
     pub current: State,
     pub history: Vec<StateTransition>,
@@ -8,6 +9,7 @@ pub struct RefactorStateMachine {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// State of state lifecycle.
 pub enum State {
     Scan { targets: Vec<PathBuf> },
     Analyze { current: FileId },
@@ -21,6 +23,7 @@ pub enum State {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// State transition.
 pub struct StateTransition {
     pub from: State,
     pub to: State,
@@ -31,6 +34,7 @@ pub struct StateTransition {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for refactor.
 pub struct RefactorConfig {
     pub target_complexity: u16,
     pub remove_satd: bool,
@@ -45,6 +49,7 @@ pub struct RefactorConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Threshold values for thresholds.
 pub struct Thresholds {
     pub cyclomatic_warn: u16,
     pub cyclomatic_error: u16,
@@ -55,6 +60,7 @@ pub struct Thresholds {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Refactor strategies.
 pub struct RefactorStrategies {
     pub prefer_functional: bool,
     pub use_early_returns: bool,
@@ -62,6 +68,7 @@ pub struct RefactorStrategies {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Metric set.
 pub struct MetricSet {
     pub complexity: (u16, u16), // (cyclomatic, cognitive)
     pub tdg_score: f32,
@@ -71,6 +78,7 @@ pub struct MetricSet {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Available operations for refactor.
 pub enum RefactorOp {
     ExtractFunction {
         name: String,
@@ -97,6 +105,7 @@ pub enum RefactorOp {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Strategy options for nesting.
 pub enum NestingStrategy {
     EarlyReturn,
     ExtractCondition,
@@ -105,6 +114,7 @@ pub enum NestingStrategy {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Byte pos.
 pub struct BytePos {
     pub byte: u32,
     pub line: u32,
@@ -112,6 +122,7 @@ pub struct BytePos {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Location.
 pub struct Location {
     pub file: PathBuf,
     pub line: u32,
@@ -119,6 +130,7 @@ pub struct Location {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Satd fix.
 pub enum SatdFix {
     Remove,
     Replace { with: String },
@@ -126,12 +138,14 @@ pub enum SatdFix {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// File id.
 pub struct FileId {
     pub path: PathBuf,
     pub hash: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Violation record for violation.
 pub struct Violation {
     pub violation_type: ViolationType,
     pub location: Location,
@@ -141,6 +155,7 @@ pub struct Violation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Type classification for violation.
 pub enum ViolationType {
     HighComplexity,
     DeepNesting,
@@ -151,6 +166,7 @@ pub enum ViolationType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Severity level classification for severity.
 pub enum Severity {
     Low,
     Medium,
@@ -160,6 +176,7 @@ pub enum Severity {
 
 #[repr(C, align(64))]
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+/// Defect payload.
 pub struct DefectPayload {
     pub file_hash: u64,
     pub tdg_score: f32,
@@ -175,6 +192,7 @@ pub struct DefectPayload {
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+/// Type classification for refactor.
 pub enum RefactorType {
     None = 0,
     ExtractFunction = 1,
@@ -184,6 +202,7 @@ pub enum RefactorType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Summary of summary analysis.
 pub struct Summary {
     pub files_processed: u32,
     pub refactors_applied: u32,

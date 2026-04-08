@@ -713,9 +713,12 @@ mod coverage_tests {
         let generator = DocGenerator::new(profile);
 
         let code = r#"
+        /// First.
         pub fn first() {}
         fn private() {}
+        /// Second.
         pub fn second() {}
+        /// Third.
         pub fn third() {}
         "#;
 

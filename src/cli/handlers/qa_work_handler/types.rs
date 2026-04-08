@@ -48,6 +48,7 @@ pub struct EpicSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Checklist categories.
 pub struct ChecklistCategories {
     pub safety_ethics: Vec<ChecklistItem>,
     pub code_quality: Vec<ChecklistItem>,
@@ -57,6 +58,7 @@ pub struct ChecklistCategories {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Checklist item.
 pub struct ChecklistItem {
     pub id: String,
     pub description: String,
@@ -77,6 +79,7 @@ pub struct QaValidationResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of category operation.
 pub struct CategoryResult {
     pub name: String,
     pub passed: u32,
@@ -85,6 +88,7 @@ pub struct CategoryResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Validation item.
 pub struct ValidationItem {
     pub id: String,
     pub description: String,
@@ -95,6 +99,7 @@ pub struct ValidationItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Status of validation operation.
 pub enum ValidationStatus {
     Passed,
     Failed,

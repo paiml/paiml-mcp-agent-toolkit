@@ -105,6 +105,7 @@ impl ProtocolAdapter for McpAdapter {
 impl McpReader {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(stdin: Stdin) -> Self {
         Self {
             reader: AsyncBufReader::new(stdin),

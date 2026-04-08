@@ -17,6 +17,7 @@ impl Default for InstructionProfiler {
 impl InstructionProfiler {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             instruction_counts: HashMap::new(),
@@ -25,6 +26,7 @@ impl InstructionProfiler {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Observe.
     pub fn observe(&mut self, payload: &Payload) {
         if let Payload::CodeSectionEntry(body) = payload {
             // Count instructions by category
@@ -40,6 +42,7 @@ impl InstructionProfiler {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Finalize.
     pub fn finalize(&self) -> InstructionMix {
         InstructionMix {
             total_instructions: self.total_instructions,

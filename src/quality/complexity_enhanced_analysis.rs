@@ -3,6 +3,7 @@
 
 impl ComplexityAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze functions.
     pub fn analyze_functions(&self, ast: &File) -> Vec<FunctionMetrics> {
         let mut functions = Vec::new();
 
@@ -36,6 +37,7 @@ impl ComplexityAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// Calculate halstead metrics.
     pub fn calculate_halstead_metrics(&self, code: &str) -> HalsteadMetrics {
         let mut operators = HashMap::new();
         let mut operands = HashMap::new();
@@ -156,6 +158,7 @@ fn is_operand(token: &str) -> bool {
 
 // Maintainability Index calculation
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Calculate maintainability index.
 pub fn calculate_maintainability_index(
     halstead_volume: f64,
     cyclomatic_complexity: u32,

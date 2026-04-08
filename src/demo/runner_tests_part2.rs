@@ -297,6 +297,7 @@ async fn test_demo_runner_execute_with_local_repo() {
     std::fs::write(
         src_dir.join("lib.rs"),
         r#"
+        /// Hello.
         pub fn hello() -> &'static str {
             "hello"
         }

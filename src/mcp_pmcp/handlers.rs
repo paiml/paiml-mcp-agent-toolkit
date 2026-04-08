@@ -26,45 +26,53 @@ struct RefactorStartResult {
 
 // --- Tool structs and constructors ---
 
+/// Refactor start tool.
 pub struct RefactorStartTool {
     state_manager: Arc<Mutex<StateManager>>,
 }
 
 impl RefactorStartTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(state_manager: Arc<Mutex<StateManager>>) -> Self {
         Self { state_manager }
     }
 }
 
+/// Refactor next iteration tool.
 pub struct RefactorNextIterationTool {
     state_manager: Arc<Mutex<StateManager>>,
 }
 
 impl RefactorNextIterationTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(state_manager: Arc<Mutex<StateManager>>) -> Self {
         Self { state_manager }
     }
 }
 
+/// Refactor get state tool.
 pub struct RefactorGetStateTool {
     state_manager: Arc<Mutex<StateManager>>,
 }
 
 impl RefactorGetStateTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(state_manager: Arc<Mutex<StateManager>>) -> Self {
         Self { state_manager }
     }
 }
 
+/// Refactor stop tool.
 pub struct RefactorStopTool {
     state_manager: Arc<Mutex<StateManager>>,
 }
 
 impl RefactorStopTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(state_manager: Arc<Mutex<StateManager>>) -> Self {
         Self { state_manager }
     }

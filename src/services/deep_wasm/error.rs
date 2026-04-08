@@ -3,6 +3,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+/// Error variants for deep wasm operations.
 pub enum DeepWasmError {
     #[error("WASM parsing error: {0}")]
     WasmParse(String),

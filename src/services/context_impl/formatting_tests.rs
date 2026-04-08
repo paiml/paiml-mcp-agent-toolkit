@@ -12,6 +12,7 @@ mod visitor_tests {
         std::fs::write(
             &temp_path,
             r#"
+/// Public function.
 pub fn public_function() {}
 
 async fn async_function() {}
@@ -97,6 +98,7 @@ use std::collections::HashMap;
     fn test_rust_visitor_visibility() {
         // Create a RustVisitor and test visibility parsing
         let source = r#"
+/// Public fn.
 pub fn public_fn() {}
 pub(crate) fn crate_fn() {}
 fn private_fn() {}

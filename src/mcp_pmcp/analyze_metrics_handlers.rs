@@ -8,11 +8,13 @@ struct LintHotspotArgs {
     top_files: Option<usize>,
 }
 
+/// Lint hotspot tool.
 pub struct LintHotspotTool;
 
 impl LintHotspotTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -54,11 +56,13 @@ struct ChurnArgs {
     top_files: Option<usize>,
 }
 
+/// Churn tool.
 pub struct ChurnTool;
 
 impl ChurnTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -98,11 +102,13 @@ struct CouplingArgs {
     threshold: Option<f64>,
 }
 
+/// Coupling tool.
 pub struct CouplingTool;
 
 impl CouplingTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

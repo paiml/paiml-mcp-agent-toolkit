@@ -46,6 +46,7 @@ impl Default for ServiceRegistry {
 
 impl ServiceRegistry {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             services: Arc::new(RwLock::new(HashMap::new())),
@@ -54,6 +55,7 @@ impl ServiceRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register(&self, service: Arc<dyn Service>) {
         let metadata = service.metadata();
         self.services.write().insert(metadata.name.clone(), service);
@@ -63,16 +65,19 @@ impl ServiceRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Retrieve a value.
     pub fn get(&self, name: &str) -> Option<Arc<dyn Service>> {
         self.services.read().get(name).cloned()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// List.
     pub fn list(&self) -> Vec<ServiceMetadata> {
         self.metadata.read().values().cloned().collect()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Unregister an item.
     pub fn unregister(&self, name: &str) -> bool {
         let service_removed = self.services.write().remove(name).is_some();
         let metadata_removed = self.metadata.write().remove(name).is_some();

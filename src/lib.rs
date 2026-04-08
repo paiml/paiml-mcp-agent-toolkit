@@ -357,6 +357,7 @@ pub trait TemplateServerTrait: Send + Sync {
     fn get_bucket_name(&self) -> Option<&str>;
 }
 
+/// Template server.
 pub struct TemplateServer {
     pub s3_client: S3Client,
     pub bucket_name: String,

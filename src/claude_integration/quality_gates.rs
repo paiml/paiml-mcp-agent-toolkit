@@ -23,6 +23,7 @@ impl Default for ClaudeIntegrationQualityGate {
 }
 
 #[derive(Debug)]
+/// Result variants for quality.
 pub enum QualityResult {
     Pass,
     Failure(String),
@@ -30,6 +31,7 @@ pub enum QualityResult {
 
 impl ClaudeIntegrationQualityGate {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check the condition.
     pub fn check(&self, metrics: &QualityMetrics) -> QualityResult {
         // Zero tolerance for SATD in integration layer
         if metrics.satd_count > 0 {
@@ -69,6 +71,7 @@ impl ClaudeIntegrationQualityGate {
 }
 
 #[derive(Debug, Default)]
+/// Quality metrics.
 pub struct QualityMetrics {
     pub cyclomatic_complexity: u32,
     pub cognitive_complexity: u32,

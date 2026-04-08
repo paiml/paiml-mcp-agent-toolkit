@@ -4,6 +4,7 @@
 impl AlertManager {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(config: AlertManagerConfig) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
 

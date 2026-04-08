@@ -13,6 +13,7 @@ impl From<f64> for TDGSeverity {
 impl TDGSeverity {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// As str.
     pub fn as_str(&self) -> &'static str {
         match self {
             TDGSeverity::Normal => "normal",

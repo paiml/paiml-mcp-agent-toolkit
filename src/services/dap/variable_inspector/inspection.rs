@@ -54,6 +54,7 @@ impl VariableInspector {
 
     #[cfg(not(feature = "python-ast"))]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Inspect python.
     pub fn inspect_python(&self, _source: &str, _line: usize) -> Result<Vec<Variable>, String> {
         Err("python-ast feature is disabled".to_string())
     }

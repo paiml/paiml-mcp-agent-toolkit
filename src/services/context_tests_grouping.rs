@@ -258,22 +258,26 @@ use std::io;
 
 mod inner;
 
+/// My struct.
 pub struct MyStruct {
     field: String,
 }
 
 #[derive(Debug)]
+/// My enum.
 pub enum MyEnum {
     A,
     B,
     C,
 }
 
+/// Trait defining My trait behavior.
 pub trait MyTrait {
     fn method(&self);
 }
 
 impl MyStruct {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self { field: String::new() }
     }

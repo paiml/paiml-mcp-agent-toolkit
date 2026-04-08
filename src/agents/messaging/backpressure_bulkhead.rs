@@ -12,6 +12,7 @@ impl Clone for Bulkhead {
 
 impl Bulkhead {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(name: String, max_concurrent: usize) -> Self {
         Self {
             name,
@@ -43,6 +44,7 @@ impl Bulkhead {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get metrics.
     pub fn get_metrics(&self) -> BulkheadMetrics {
         BulkheadMetrics {
             name: self.name.clone(),

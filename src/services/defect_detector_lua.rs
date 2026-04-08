@@ -1,5 +1,6 @@
 impl LuaDefectDetector {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             global_assign_re: Regex::new(r"^([a-zA-Z_]\w*)\s*=").expect("internal error"),
@@ -13,6 +14,7 @@ impl LuaDefectDetector {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Detect.
     pub fn detect(&self, content: &str, file_path: &Path) -> Vec<DefectPattern> {
         let mut defects = Vec::new();
         if self.should_exclude_file(file_path) {

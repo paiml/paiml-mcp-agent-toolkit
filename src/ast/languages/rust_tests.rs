@@ -356,12 +356,14 @@ mod coverage_tests {
         let code = r#"
             use std::collections::HashMap;
 
+            /// Configuration for config.
             pub struct Config {
                 name: String,
                 values: HashMap<String, i32>,
             }
 
             impl Config {
+                /// Create a new instance.
                 pub fn new(name: &str) -> Self {
                     Self {
                         name: name.to_string(),
@@ -374,6 +376,7 @@ mod coverage_tests {
                 }
             }
 
+            /// Trait defining Configurable behavior.
             pub trait Configurable {
                 fn configure(&self);
             }
@@ -384,6 +387,7 @@ mod coverage_tests {
                 }
             }
 
+            /// State of state lifecycle.
             pub enum State {
                 Active,
                 Inactive,

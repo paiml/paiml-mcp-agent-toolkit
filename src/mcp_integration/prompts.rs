@@ -2,6 +2,7 @@ use super::*;
 use std::collections::HashMap;
 
 // Code analysis prompt
+/// Code analysis prompt.
 pub struct CodeAnalysisPrompt;
 
 impl Default for CodeAnalysisPrompt {
@@ -12,12 +13,14 @@ impl Default for CodeAnalysisPrompt {
 
 impl CodeAnalysisPrompt {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
 }
 
 // Refactoring prompt
+/// Refactoring prompt.
 pub struct RefactoringPrompt;
 
 impl Default for RefactoringPrompt {
@@ -28,12 +31,14 @@ impl Default for RefactoringPrompt {
 
 impl RefactoringPrompt {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
 }
 
 // Quality assessment prompt
+/// Quality assessment prompt.
 pub struct QualityAssessmentPrompt;
 
 impl Default for QualityAssessmentPrompt {
@@ -44,12 +49,14 @@ impl Default for QualityAssessmentPrompt {
 
 impl QualityAssessmentPrompt {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
 }
 
 // Repository health scoring prompt
+/// Repo score prompt.
 pub struct RepoScorePrompt;
 
 impl Default for RepoScorePrompt {
@@ -60,6 +67,7 @@ impl Default for RepoScorePrompt {
 
 impl RepoScorePrompt {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

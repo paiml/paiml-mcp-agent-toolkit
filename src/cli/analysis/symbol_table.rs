@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Symbol.
 pub struct Symbol {
     pub name: String,
     pub kind: SymbolKind,
@@ -17,6 +18,7 @@ pub struct Symbol {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+/// Symbol kind.
 pub enum SymbolKind {
     Function,
     Class,
@@ -31,6 +33,7 @@ pub enum SymbolKind {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Visibility.
 pub enum Visibility {
     Public,
     Private,
@@ -39,6 +42,7 @@ pub enum Visibility {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Reference.
 pub struct Reference {
     pub file: String,
     pub line: usize,
@@ -47,6 +51,7 @@ pub struct Reference {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Reference kind.
 pub enum ReferenceKind {
     Definition,
     Usage,
@@ -55,6 +60,7 @@ pub enum ReferenceKind {
 }
 
 #[derive(Debug, Serialize)]
+/// Symbol table.
 pub struct SymbolTable {
     pub symbols: Vec<Symbol>,
     pub total_symbols: usize,

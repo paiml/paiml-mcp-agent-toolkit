@@ -6,6 +6,7 @@
 impl TdgSystemDiagnosticsTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -38,6 +39,7 @@ impl ToolHandler for TdgSystemDiagnosticsTool {
 impl TdgStorageManagementTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -70,6 +72,7 @@ impl ToolHandler for TdgStorageManagementTool {
 impl TdgAnalyzeWithStorageTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -110,6 +113,7 @@ impl ToolHandler for TdgAnalyzeWithStorageTool {
 impl TdgPerformanceMetricsTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -142,6 +146,7 @@ impl ToolHandler for TdgPerformanceMetricsTool {
 impl TdgConfigureStorageTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
@@ -179,6 +184,7 @@ impl ToolHandler for TdgConfigureStorageTool {
 impl TdgHealthCheckTool {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

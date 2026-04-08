@@ -4,6 +4,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+/// Error variants for repo score operations.
 pub enum RepoScoreError {
     #[error("Repository not found: {0}")]
     RepositoryNotFound(String),

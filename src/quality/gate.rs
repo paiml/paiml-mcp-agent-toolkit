@@ -10,6 +10,7 @@ use super::entropy::EntropyCalculator;
 use super::satd::SatdDetector;
 
 #[derive(Debug, Error)]
+/// Quality violation.
 pub enum QualityViolation {
     #[error("Excessive complexity: found {found}, max allowed {max} at {location:?}")]
     ExcessiveComplexity {
@@ -36,6 +37,7 @@ pub enum QualityViolation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Threshold values for qualitys.
 pub struct QualityThresholds {
     pub max_cyclomatic: u32,
     pub max_cognitive: u32,
@@ -63,6 +65,7 @@ impl Default for QualityThresholds {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Report containing quality data.
 pub struct QualityReport {
     pub passed: bool,
     pub metrics: QualityMetrics,
@@ -70,6 +73,7 @@ pub struct QualityReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Quality metrics.
 pub struct QualityMetrics {
     pub cyclomatic_complexity: u32,
     pub cognitive_complexity: u32,
@@ -81,6 +85,7 @@ pub struct QualityMetrics {
 
 impl QualityReport {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Passed.
     pub fn passed() -> Self {
         Self {
             passed: true,
@@ -103,6 +108,7 @@ impl Default for QualityMetrics {
     }
 }
 
+/// Quality gate runner.
 pub struct QualityGateRunner {
     _analyzers: Vec<Box<dyn QualityAnalyzer>>,
     thresholds: QualityThresholds,
@@ -110,6 +116,7 @@ pub struct QualityGateRunner {
 
 impl QualityGateRunner {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(thresholds: QualityThresholds) -> Self {
         Self {
             _analyzers: vec![
@@ -124,11 +131,13 @@ impl QualityGateRunner {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Strict.
     pub fn strict() -> Self {
         Self::new(QualityThresholds::default())
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Validate module.
     pub fn validate_module(&self, module_path: &Path) -> Result<QualityReport, QualityViolation> {
         let source = fs::read_to_string(module_path)
             .map_err(|e| QualityViolation::ParseError(e.to_string()))?;
@@ -227,11 +236,13 @@ impl QualityGateRunner {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Result of satd operation.
 pub struct SatdResult {
     pub count: usize,
     pub patterns: Vec<String>,
 }
 
+/// Trait defining Quality analyzer behavior.
 pub trait QualityAnalyzer: Send + Sync {
     fn analyze(&self, ast: &syn::File) -> QualityMetrics;
 }

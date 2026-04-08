@@ -2,6 +2,7 @@
 use super::*;
 
 // Step implementations
+/// Registry of step instances.
 pub struct StepRegistry {
     _steps: std::collections::HashMap<String, Box<dyn StepHandler>>,
 }
@@ -14,6 +15,7 @@ impl Default for StepRegistry {
 
 impl StepRegistry {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             _steps: std::collections::HashMap::new(),
@@ -21,35 +23,42 @@ impl StepRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register(&mut self, name: impl Into<String>, handler: Box<dyn StepHandler>) {
         self._steps.insert(name.into(), handler);
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Retrieve a value.
     pub fn get(&self, name: &str) -> Option<&dyn StepHandler> {
         self._steps.get(name).map(|b| b.as_ref())
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Remove an element.
     pub fn remove(&mut self, name: &str) -> Option<Box<dyn StepHandler>> {
         self._steps.remove(name)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// List.
     pub fn list(&self) -> Vec<&String> {
         self._steps.keys().collect()
     }
 
+    /// Check whether the collection is empty.
     pub fn is_empty(&self) -> bool {
         self._steps.is_empty()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Return the number of elements.
     pub fn len(&self) -> usize {
         self._steps.len()
     }
 }
 
+/// Trait defining Step handler behavior.
 pub trait StepHandler: Send + Sync {
     fn execute(&self, params: &Value, context: &WorkflowContext) -> Result<Value, WorkflowError>;
 }

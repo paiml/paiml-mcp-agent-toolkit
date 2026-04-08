@@ -18,6 +18,7 @@ use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 pub struct TypeScriptAdapter;
 
 impl TypeScriptAdapter {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

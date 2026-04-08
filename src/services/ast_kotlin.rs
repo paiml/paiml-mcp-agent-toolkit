@@ -34,12 +34,14 @@ impl Default for KotlinAstParser {
 impl KotlinAstParser {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self::with_limits(MAX_RECURSION_DEPTH, MAX_PARSING_TIME)
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With limits.
     pub fn with_limits(max_depth: usize, timeout: Duration) -> Self {
         let mut parser = Parser::new();
         parser

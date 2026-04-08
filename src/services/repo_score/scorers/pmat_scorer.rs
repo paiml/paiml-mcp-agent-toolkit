@@ -11,10 +11,12 @@ use crate::services::repo_score::models::*;
 use async_trait::async_trait;
 use std::path::Path;
 
+/// Pmat scorer.
 pub struct PmatScorer;
 
 impl PmatScorer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

@@ -15,6 +15,7 @@ pub struct RuchyLexer {
 impl RuchyLexer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(input: String) -> Self {
         let lexer = Self {
             input: input.clone(),
@@ -143,6 +144,7 @@ impl RuchyLexer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Next token.
     pub fn next_token(&mut self) -> RuchyToken {
         self.skip_whitespace();
         self.skip_comment();

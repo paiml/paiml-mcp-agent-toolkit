@@ -158,6 +158,7 @@ impl UnifiedNode {
 
     // Helper to extract name from any AstItem
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Extract name from item.
     pub fn extract_name_from_item(item: &AstItem) -> String {
         match item {
             AstItem::Function { name, .. } => name.clone(),

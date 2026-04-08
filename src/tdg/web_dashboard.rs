@@ -57,6 +57,7 @@ pub struct SystemMetrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Storage metrics.
 pub struct StorageMetrics {
     pub total_entries: u64,
     pub cache_hit_ratio: f64,
@@ -66,6 +67,7 @@ pub struct StorageMetrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Performance metrics.
 pub struct PerformanceMetrics {
     pub avg_analysis_time_ms: f64,
     pub active_operations: u32,
@@ -75,6 +77,7 @@ pub struct PerformanceMetrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Health status.
 pub struct HealthStatus {
     pub overall: String, // "healthy", "warning", "critical"
     pub issues: Vec<String>,

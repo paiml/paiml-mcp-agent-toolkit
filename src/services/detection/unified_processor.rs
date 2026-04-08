@@ -9,6 +9,7 @@ pub struct UnifiedDetectionProcessor {
 impl UnifiedDetectionProcessor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             registry: DetectionRegistry::new(),
@@ -72,6 +73,7 @@ impl UnifiedDetectionProcessor {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Available detectors.
     pub fn available_detectors(&self) -> Vec<&str> {
         self.registry.list_detectors()
     }

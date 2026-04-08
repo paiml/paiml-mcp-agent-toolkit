@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub use crate::contracts::OutputFormat;
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Summary of defect analysis.
 pub struct DefectSummary {
     pub total_files_scanned: usize,
     pub files_with_defects: usize,
@@ -15,6 +16,7 @@ pub struct DefectSummary {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Severity count.
 pub struct SeverityCount {
     pub critical: usize,
     pub high: usize,
@@ -23,6 +25,7 @@ pub struct SeverityCount {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Report containing defect data.
 pub struct DefectReport {
     pub summary: DefectSummary,
     pub defects: Vec<DefectPattern>,

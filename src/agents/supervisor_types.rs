@@ -1,3 +1,4 @@
+/// Quality gate supervisor.
 pub struct QualityGateSupervisor {
     analyzer: Addr<AnalyzerActor>,
     _transformer: Addr<TransformerActor>,
@@ -6,6 +7,7 @@ pub struct QualityGateSupervisor {
 
 impl QualityGateSupervisor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(
         analyzer: Addr<AnalyzerActor>,
         transformer: Addr<TransformerActor>,
@@ -31,11 +33,13 @@ impl Supervised for QualityGateSupervisor {
 
 #[derive(Message)]
 #[rtype(result = "Result<ValidationResult, AgentError>")]
+/// Validate code.
 pub struct ValidateCode {
     pub code: String,
     pub thresholds: crate::modules::validator::Thresholds,
 }
 
+/// Result of validation operation.
 pub struct ValidationResult {
     pub passed: bool,
     pub metrics: crate::modules::analyzer::Metrics,

@@ -1,5 +1,6 @@
 impl SatdDetector {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             patterns: SATD_PATTERNS.clone(),
@@ -26,6 +27,7 @@ impl SatdDetector {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Detect.
     pub fn detect(&self, source: &str) -> SatdResult {
         let mut count = 0;
         let mut found_patterns = Vec::new();
@@ -47,6 +49,7 @@ impl SatdDetector {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Detect in comments.
     pub fn detect_in_comments(&self, source: &str) -> SatdResult {
         // Extract only comments from source
         let comments = self.extract_comments(source);

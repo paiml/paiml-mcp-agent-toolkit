@@ -166,6 +166,7 @@ impl SimpleGraph {
 // Public types
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Node metrics.
 pub struct NodeMetrics {
     pub name: String,
     pub degree_centrality: f64,
@@ -177,6 +178,7 @@ pub struct NodeMetrics {
 }
 
 #[derive(Debug, Serialize)]
+/// Result of graph metrics operation.
 pub struct GraphMetricsResult {
     pub nodes: Vec<NodeMetrics>,
     pub total_nodes: usize,

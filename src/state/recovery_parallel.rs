@@ -1,5 +1,6 @@
 // Parallel recovery for partitioned state
 
+/// Parallel recovery.
 pub struct ParallelRecovery<S: AgentState> {
     managers: Vec<Arc<RecoveryManager<S>>>,
 }

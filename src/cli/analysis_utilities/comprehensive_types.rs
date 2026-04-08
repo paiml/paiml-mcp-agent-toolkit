@@ -1,5 +1,6 @@
 // Quality Gate types and helpers
 #[derive(Debug, serde::Serialize)]
+/// Quality gate results.
 pub struct QualityGateResults {
     pub passed: bool,
     pub total_violations: usize,
@@ -157,6 +158,7 @@ struct DuplicateBlock {
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+/// Violation record for quality.
 pub struct QualityViolation {
     pub check_type: String,
     pub severity: String,

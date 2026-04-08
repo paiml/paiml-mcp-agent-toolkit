@@ -4,6 +4,7 @@
 impl GitCloner {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(cache_dir: PathBuf) -> Self {
         Self {
             cache_dir,
@@ -20,6 +21,7 @@ impl GitCloner {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With timeout.
     pub fn with_timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
@@ -27,6 +29,7 @@ impl GitCloner {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With max size.
     pub fn with_max_size(mut self, max_size_bytes: u64) -> Self {
         self.max_size_bytes = max_size_bytes;
         self

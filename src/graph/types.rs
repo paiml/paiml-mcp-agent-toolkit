@@ -75,6 +75,7 @@ pub enum EdgeData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Type kind.
 pub enum TypeKind {
     Generic,
     Trait,
@@ -83,6 +84,7 @@ pub enum TypeKind {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Direction classification for flow.
 pub enum FlowDirection {
     Forward,
     Backward,
@@ -125,6 +127,7 @@ pub struct UndirectedGraph {
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Undirected edge ref.
 pub struct UndirectedEdgeRef<'a> {
     source: NodeId,
     target: NodeId,

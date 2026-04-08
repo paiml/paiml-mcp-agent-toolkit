@@ -127,6 +127,7 @@ pub fn print_pareto_report(entries: &[ParetoEntry]) {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Print text report.
 pub fn print_text_report(report: &DepsAuditReport) {
     println!("{}", colors::rule());
     println!(

@@ -12,11 +12,13 @@ pub struct MinimumGradeGate {
 
 impl MinimumGradeGate {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(config: GateConfig) -> Self {
         Self { config }
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With defaults.
     pub fn with_defaults() -> Self {
         Self::new(GateConfig::default())
     }

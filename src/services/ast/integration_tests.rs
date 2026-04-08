@@ -149,6 +149,7 @@ mod unified_ast_integration_tests {
         
         for (i, file) in files.iter().enumerate() {
             fs::write(file, format!(r#"
+                /// Function .
                 pub fn function_{}() -> i32 {{
                     {}
                 }}
@@ -327,6 +328,7 @@ mod unified_ast_integration_tests {
         fs::write(&rust_file, r#"
             // This is a Rust file for classification testing
             pub mod test_module {
+                /// Test function.
                 pub fn test_function() -> &'static str {
                     "Hello from classified code!"
                 }
@@ -363,6 +365,7 @@ mod unified_ast_integration_tests {
         
         for i in 0..50 {
             content.push_str(&format!(r#"
+                /// Function .
                 pub fn function_{}(input: &[i32]) -> HashMap<i32, String> {{
                     let mut result = HashMap::new();
                     for (index, &value) in input.iter().enumerate() {{
@@ -426,12 +429,14 @@ mod unified_ast_integration_tests {
         fs::write(&lib_rs, r#"
             pub mod module;
             
+            /// Library function.
             pub fn library_function(input: i32) -> String {
                 format!("Processed: {}", input)
             }
         "#).unwrap();
         
         fs::write(&mod_rs, r#"
+            /// Helper function.
             pub fn helper_function(value: i32) -> i32 {
                 if value > 0 {
                     value * 2
@@ -440,6 +445,7 @@ mod unified_ast_integration_tests {
                 }
             }
             
+            /// Another helper.
             pub fn another_helper(data: &[String]) -> Vec<String> {
                 data.iter().map(|s| s.to_uppercase()).collect()
             }

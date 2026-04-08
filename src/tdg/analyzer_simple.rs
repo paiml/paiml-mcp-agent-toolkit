@@ -7,6 +7,7 @@ use super::config::TdgConfig;
 use super::language_simple::Language;
 use crate::tdg::{Comparison, MetricCategory, PenaltyTracker, ProjectScore, TdgScore};
 
+/// Tdg analyzer.
 pub struct TdgAnalyzer {
     config: TdgConfig,
 }

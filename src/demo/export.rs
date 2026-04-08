@@ -17,6 +17,7 @@ use crate::services::deep_context::{
 use crate::services::satd_detector::SATDAnalysisResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Report containing export data.
 pub struct ExportReport {
     pub repository: String,
     pub timestamp: DateTime<Utc>,
@@ -46,6 +47,7 @@ pub struct ExportReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Analysis results for complexity.
 pub struct ComplexityAnalysis {
     pub hotspots: Vec<Hotspot>,
     pub total_files: usize,
@@ -54,12 +56,14 @@ pub struct ComplexityAnalysis {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Analysis results for churn.
 pub struct ChurnAnalysis {
     pub high_churn_files: Vec<ChurnFile>,
     pub analysis_period_days: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Churn file.
 pub struct ChurnFile {
     pub path: String,
     pub churn_score: f32,
@@ -67,6 +71,7 @@ pub struct ChurnFile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Summary of project analysis.
 pub struct ProjectSummary {
     pub total_nodes: usize,
     pub total_edges: usize,
@@ -74,19 +79,24 @@ pub struct ProjectSummary {
     pub analysis_time_ms: u64,
 }
 
+/// Trait defining Exporter behavior.
 pub trait Exporter: Send + Sync {
     fn export(&self, report: &ExportReport) -> Result<String>;
     fn file_extension(&self) -> &'static str;
 }
 
+/// Markdown exporter.
 pub struct MarkdownExporter;
 
+/// Json exporter.
 pub struct JsonExporter {
     pub pretty: bool,
 }
 
+/// Sarif exporter.
 pub struct SarifExporter;
 
+/// Export service.
 pub struct ExportService {
     exporters: std::collections::HashMap<String, Box<dyn Exporter>>,
 }

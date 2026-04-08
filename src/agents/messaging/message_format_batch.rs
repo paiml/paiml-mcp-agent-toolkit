@@ -1,6 +1,7 @@
 // MessageBatch implementation
 impl MessageBatch {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(max_size: usize) -> Self {
         Self {
             messages: Vec::new(),
@@ -10,6 +11,7 @@ impl MessageBatch {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add.
     pub fn add(&mut self, msg: AgentMessage) -> Result<(), BatchError> {
         let msg_size = msg.size_bytes();
 
@@ -23,36 +25,43 @@ impl MessageBatch {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is full.
     pub fn is_full(&self) -> bool {
         self.total_size >= self.max_size
     }
 
+    /// Return the number of elements.
     pub fn len(&self) -> usize {
         self.messages.len()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check whether the collection is empty.
     pub fn is_empty(&self) -> bool {
         self.messages.is_empty()
     }
 
+    /// Size.
     pub fn size(&self) -> usize {
         self.total_size
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Clear all data.
     pub fn clear(&mut self) {
         self.messages.clear();
         self.total_size = 0;
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Drain.
     pub fn drain(&mut self) -> Vec<AgentMessage> {
         self.total_size = 0;
         std::mem::take(&mut self.messages)
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Encode the data.
     pub fn encode(&self) -> Result<Bytes, ProtocolError> {
         let mut buf = BytesMut::with_capacity(self.total_size + 100);
 
@@ -71,6 +80,7 @@ impl MessageBatch {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Decode the data.
     pub fn decode(mut data: Bytes) -> Result<Vec<AgentMessage>, ProtocolError> {
         if data.len() < 8 {
             return Err(ProtocolError::InvalidMessage(

@@ -25,6 +25,7 @@ pub struct TestMetrics {
 }
 
 #[derive(Debug, Clone)]
+/// Slow test.
 pub struct SlowTest {
     pub name: String,
     pub duration: Duration,
@@ -32,6 +33,7 @@ pub struct SlowTest {
 }
 
 #[derive(Debug, Clone)]
+/// Flaky test.
 pub struct FlakyTest {
     pub name: String,
     pub failure_rate: f64,
@@ -40,6 +42,7 @@ pub struct FlakyTest {
 }
 
 #[derive(Debug, Clone)]
+/// Category classification for test.
 pub enum TestCategory {
     Unit,
      // Future use for integration test categorization
@@ -140,6 +143,7 @@ pub struct KaizenTestRunner {
 }
 
 impl KaizenTestRunner {
+    /// Create a new instance.
     pub fn new(max_concurrent: usize) -> Self {
         Self {
             concurrency_limit: Arc::new(Semaphore::new(max_concurrent)),
@@ -218,6 +222,7 @@ pub mod utils {
             Ok("mock_result".to_string())
         }
 
+        /// Fast file system.
         pub fn fast_file_system() -> Vec<std::path::PathBuf> {
             // Return synthetic file list instead of real FS scan
             vec![
@@ -249,6 +254,7 @@ pub mod property_testing {
         "[a-zA-Z0-9]{1,10}".prop_map(|s| s)
     }
 
+    /// Small vec strategy.
     pub fn small_vec_strategy<T: Clone + std::fmt::Debug + 'static>(
         element: impl Strategy<Value = T>,
     ) -> impl Strategy<Value = Vec<T>> {

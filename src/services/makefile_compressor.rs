@@ -51,6 +51,7 @@ use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use tracing::debug;
 
+/// Makefile compressor.
 pub struct MakefileCompressor {
     critical_targets: HashSet<&'static str>,
     critical_vars: HashSet<&'static str>,

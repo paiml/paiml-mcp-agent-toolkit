@@ -34,6 +34,7 @@ pub struct ProjectDefectAnalysis {
 impl ProjectDefectAnalysis {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// From scores.
     pub fn from_scores(scores: Vec<(String, DefectScore)>) -> Self {
         let mut file_scores = HashMap::new();
         let mut high_risk_files = Vec::new();
@@ -83,6 +84,7 @@ impl ProjectDefectAnalysis {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get top risk files.
     pub fn get_top_risk_files(&self, limit: usize) -> Vec<(&String, &DefectScore)> {
         let mut all_files: Vec<_> = self.file_scores.iter().collect();
         all_files.sort_by(|a, b| {

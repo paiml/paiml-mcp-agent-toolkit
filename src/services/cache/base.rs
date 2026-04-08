@@ -38,6 +38,7 @@ pub struct CacheEntry<V> {
 
 impl<V> CacheEntry<V> {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(value: V, size_bytes: usize) -> Self {
         Self {
             value: Arc::new(value),
@@ -49,6 +50,7 @@ impl<V> CacheEntry<V> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Access.
     pub fn access(&self) {
         self.access_count.fetch_add(1, Ordering::Relaxed);
         *self.last_accessed.lock() = Instant::now();
@@ -56,12 +58,14 @@ impl<V> CacheEntry<V> {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Age.
     pub fn age(&self) -> Duration {
         self.created.elapsed()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Last accessed duration.
     pub fn last_accessed_duration(&self) -> Duration {
         self.last_accessed.lock().elapsed()
     }
@@ -79,6 +83,7 @@ pub struct CacheStats {
 impl CacheStats {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             hits: Arc::new(AtomicU64::new(0)),
@@ -89,30 +94,36 @@ impl CacheStats {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Record hit.
     pub fn record_hit(&self) {
         self.hits.fetch_add(1, Ordering::Relaxed);
     }
 
+    /// Record miss.
     pub fn record_miss(&self) {
         self.misses.fetch_add(1, Ordering::Relaxed);
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Record eviction.
     pub fn record_eviction(&self) {
         self.evictions.fetch_add(1, Ordering::Relaxed);
     }
 
+    /// Add bytes.
     pub fn add_bytes(&self, bytes: usize) {
         self.total_bytes.fetch_add(bytes, Ordering::Relaxed);
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Remove bytes.
     pub fn remove_bytes(&self, bytes: usize) {
         self.total_bytes.fetch_sub(bytes, Ordering::Relaxed);
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Hit rate.
     pub fn hit_rate(&self) -> f64 {
         let hits = self.hits.load(Ordering::Relaxed) as f64;
         let total = hits + self.misses.load(Ordering::Relaxed) as f64;
@@ -125,12 +136,14 @@ impl CacheStats {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Total requests.
     pub fn total_requests(&self) -> u64 {
         self.hits.load(Ordering::Relaxed) + self.misses.load(Ordering::Relaxed)
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Memory usage.
     pub fn memory_usage(&self) -> usize {
         self.total_bytes.load(Ordering::Relaxed)
     }

@@ -3,6 +3,7 @@
 
 impl TdgAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         Ok(Self {
             config: TdgConfig::default(),
@@ -10,11 +11,13 @@ impl TdgAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With config.
     pub fn with_config(config: TdgConfig) -> Result<Self> {
         Ok(Self { config })
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Analyze file.
     pub fn analyze_file(&self, path: &Path) -> Result<TdgScore> {
         let language = Language::from_extension(path);
         let source = fs::read_to_string(path)?;
@@ -22,6 +25,7 @@ impl TdgAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Analyze source.
     pub fn analyze_source(
         &self,
         source: &str,
@@ -60,6 +64,7 @@ impl TdgAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Analyze project.
     pub fn analyze_project(&self, dir: &Path) -> Result<ProjectScore> {
         let files = self.discover_files(dir)?;
         let mut scores = Vec::new();
@@ -91,6 +96,7 @@ impl TdgAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Compare.
     pub fn compare(&self, path1: &Path, path2: &Path) -> Result<Comparison> {
         let score1 = if path1.is_dir() {
             self.analyze_project(path1)?.average()

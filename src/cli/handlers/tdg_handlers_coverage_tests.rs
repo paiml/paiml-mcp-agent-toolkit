@@ -34,10 +34,12 @@ fn create_test_project() -> TempDir {
     std::fs::write(
         &rust_file,
         r#"
+/// Hello world.
 pub fn hello_world() {
     println!("Hello, world!");
 }
 
+/// Complex function.
 pub fn complex_function(x: i32) -> i32 {
     if x > 0 {
         if x > 10 {

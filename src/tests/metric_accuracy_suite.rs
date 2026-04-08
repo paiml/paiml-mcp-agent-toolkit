@@ -125,6 +125,7 @@ mod metric_accuracy_tests {
                 pub static EXPORTED_STATIC: i32 = 100;
                 
                 #[export_name = "custom_name"]
+                /// Renamed export.
                 pub fn renamed_export() -> i32 {
                     200
                 }

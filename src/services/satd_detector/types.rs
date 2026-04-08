@@ -164,6 +164,7 @@ pub struct AstContext {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+/// Type classification for ast node.
 pub enum AstNodeType {
     SecurityFunction,
     DataValidation,
@@ -207,6 +208,7 @@ pub struct SATDMetrics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Category metrics.
 pub struct CategoryMetrics {
     pub count: usize,
     pub files: BTreeSet<String>,

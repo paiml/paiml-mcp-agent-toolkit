@@ -23,6 +23,7 @@ pub struct StatementId {
 
 impl StatementId {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(file: impl Into<PathBuf>, line: usize) -> Self {
         Self {
             file: file.into(),
@@ -32,6 +33,7 @@ impl StatementId {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With column.
     pub fn with_column(mut self, column: usize) -> Self {
         self.column = Some(column);
         self
@@ -54,6 +56,7 @@ pub struct StatementCoverage {
 
 impl StatementCoverage {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(id: StatementId, passed: usize, failed: usize) -> Self {
         Self {
             id,

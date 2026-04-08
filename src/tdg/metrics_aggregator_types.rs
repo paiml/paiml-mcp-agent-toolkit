@@ -17,6 +17,7 @@ pub struct RollingWindow<T: Clone> {
 impl<T: Clone> RollingWindow<T> {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(window_size: Duration, max_points: usize) -> Self {
         Self {
             window_size,
@@ -26,6 +27,7 @@ impl<T: Clone> RollingWindow<T> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add an element.
     pub fn push(&mut self, value: T, tags: HashMap<String, String>) {
         let now = SystemTime::now();
 
@@ -54,12 +56,14 @@ impl<T: Clone> RollingWindow<T> {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get window.
     pub fn get_window(&self) -> Vec<DataPoint<T>> {
         self.data.iter().cloned().collect()
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check whether the collection is empty.
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
@@ -81,6 +85,7 @@ pub struct AggregatedStats {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Direction classification for trend.
 pub enum TrendDirection {
     Rising,
     Falling,
@@ -89,6 +94,7 @@ pub enum TrendDirection {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Data point for anomaly.
 pub struct AnomalyPoint {
     pub timestamp: SystemTime,
     pub value: f64,
@@ -97,6 +103,7 @@ pub struct AnomalyPoint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Severity level classification for anomaly.
 pub enum AnomalySeverity {
     Low,
     Medium,
@@ -105,6 +112,7 @@ pub enum AnomalySeverity {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Data point for storage metric.
 pub struct StorageMetricPoint {
     pub total_entries: u64,
     pub cache_hit_ratio: f64,
@@ -115,6 +123,7 @@ pub struct StorageMetricPoint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Data point for performance metric.
 pub struct PerformanceMetricPoint {
     pub avg_analysis_time_ms: f64,
     pub active_operations: u32,
@@ -125,6 +134,7 @@ pub struct PerformanceMetricPoint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Data point for analysis metric.
 pub struct AnalysisMetricPoint {
     pub files_analyzed: u64,
     pub avg_tdg_score: f64,
@@ -135,6 +145,7 @@ pub struct AnalysisMetricPoint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Threshold values for alerts.
 pub struct AlertThresholds {
     pub cpu_critical: f64,
     pub memory_critical_mb: f64,
@@ -158,6 +169,7 @@ impl Default for AlertThresholds {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Alert notification for alert events.
 pub struct Alert {
     pub severity: AlertSeverity,
     pub message: String,
@@ -166,6 +178,7 @@ pub struct Alert {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Severity level classification for alert.
 pub enum AlertSeverity {
     Info,
     Warning,
@@ -174,6 +187,7 @@ pub enum AlertSeverity {
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Output format options for export.
 pub enum ExportFormat {
     Json,
     Csv,

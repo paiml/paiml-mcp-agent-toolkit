@@ -16,6 +16,7 @@ use tree_sitter::Parser;
 pub struct GoAdapter;
 
 impl GoAdapter {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

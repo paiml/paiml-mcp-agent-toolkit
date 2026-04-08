@@ -18,14 +18,17 @@ mod tests {
         fs::write(
             &rust_file,
             r#"
+            /// Hello.
             pub fn hello() -> String {
                 "Hello, World!".to_string()
             }
 
+            /// Configuration for config.
             pub struct Config {
                 pub name: String,
             }
 
+            /// Trait defining Display behavior.
             pub trait Display {
                 fn display(&self) -> String;
             }

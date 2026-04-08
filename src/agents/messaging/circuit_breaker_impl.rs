@@ -1,5 +1,6 @@
 impl CircuitBreaker {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(config: CircuitBreakerConfig) -> Self {
         Self {
             failure_count: AtomicU32::new(0),
@@ -115,10 +116,12 @@ impl CircuitBreaker {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get state.
     pub fn get_state(&self) -> CircuitState {
         *self.state.read()
     }
 
+    /// Get metrics.
     pub fn get_metrics(&self) -> CircuitMetrics {
         CircuitMetrics {
             failure_count: self.failure_count.load(Ordering::Relaxed),
@@ -129,6 +132,7 @@ impl CircuitBreaker {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Reset to initial state.
     pub fn reset(&self) {
         *self.state.write() = CircuitState::Closed;
         self.failure_count.store(0, Ordering::SeqCst);
@@ -139,6 +143,7 @@ impl CircuitBreaker {
 
 impl CircuitBreakerManager {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(default_config: CircuitBreakerConfig) -> Self {
         Self {
             breakers: dashmap::DashMap::new(),
@@ -147,6 +152,7 @@ impl CircuitBreakerManager {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get or create.
     pub fn get_or_create(&self, name: &str) -> Arc<CircuitBreaker> {
         self.breakers
             .entry(name.to_string())
@@ -155,6 +161,7 @@ impl CircuitBreakerManager {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get all metrics.
     pub fn get_all_metrics(&self) -> HashMap<String, CircuitMetrics> {
         self.breakers
             .iter()
@@ -163,6 +170,7 @@ impl CircuitBreakerManager {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Reset all.
     pub fn reset_all(&self) {
         for breaker in self.breakers.iter() {
             breaker.value().reset();

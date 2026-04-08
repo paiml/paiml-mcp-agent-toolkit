@@ -87,6 +87,7 @@ pub struct CallGraph {
 }
 
 #[derive(Debug, Clone)]
+/// Call node.
 pub struct CallNode {
     pub id: String,
     pub name: String,
@@ -95,6 +96,7 @@ pub struct CallNode {
 }
 
 #[derive(Debug, Clone)]
+/// Type classification for call node.
 pub enum CallNodeType {
     Function,
     Method,
@@ -104,6 +106,7 @@ pub enum CallNodeType {
 }
 
 #[derive(Debug, Clone)]
+/// Call edge.
 pub struct CallEdge {
     pub from: String,
     pub to: String,
@@ -112,6 +115,7 @@ pub struct CallEdge {
 }
 
 #[derive(Debug, Clone)]
+/// Type classification for call edge.
 pub enum CallEdgeType {
     FunctionCall,
     MethodCall,
@@ -128,6 +132,7 @@ pub struct QueryResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Metadata for graph.
 pub struct GraphMetadata {
     pub nodes: usize,
     pub edges: usize,
@@ -161,6 +166,7 @@ pub struct ComponentEdge {
 }
 
 #[derive(Debug)]
+/// Type classification for component edge.
 pub enum ComponentEdgeType {
     Import,
     Call,

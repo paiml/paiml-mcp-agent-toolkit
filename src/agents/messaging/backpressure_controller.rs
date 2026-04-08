@@ -1,5 +1,6 @@
 impl BackpressureController {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(max_queue_size: usize) -> Self {
         Self {
             _max_queue_size: max_queue_size,
@@ -33,6 +34,7 @@ impl BackpressureController {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Try acquire permit.
     pub fn try_acquire_permit(&self) -> Result<BackpressurePermit<'_>, BackpressureError> {
         let permit = self.semaphore.clone().try_acquire_owned().map_err(|_| {
             self.metrics.write().rejected_count += 1;
@@ -59,15 +61,18 @@ impl BackpressureController {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get queue depth.
     pub fn get_queue_depth(&self) -> u64 {
         self.current_queue_size.load(Ordering::Relaxed)
     }
 
+    /// Get metrics.
     pub fn get_metrics(&self) -> BackpressureMetrics {
         self.metrics.read().clone()
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get average queue depth.
     pub fn get_average_queue_depth(&self) -> f64 {
         let metrics = self.metrics.read();
         if metrics.sample_count > 0 {

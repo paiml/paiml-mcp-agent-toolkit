@@ -12,9 +12,11 @@ use crate::services::repo_score::models::*;
 use async_trait::async_trait;
 use std::path::Path;
 
+/// Readme scorer.
 pub struct ReadmeScorer;
 
 impl ReadmeScorer {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

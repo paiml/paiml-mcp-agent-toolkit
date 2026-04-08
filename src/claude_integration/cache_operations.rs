@@ -3,6 +3,7 @@
 
 impl TwoTierCache {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             l1: Arc::new(RwLock::new(HashMap::new())),

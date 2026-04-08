@@ -8,12 +8,14 @@ use crate::models::template::TemplateResource;
 use crate::services::renderer::TemplateRenderer;
 use crate::{S3Client, TemplateServerTrait};
 
+/// Stateless template server.
 pub struct StatelessTemplateServer {
     pub renderer: TemplateRenderer,
 }
 
 impl StatelessTemplateServer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         Ok(Self {
             renderer: TemplateRenderer::new()?,

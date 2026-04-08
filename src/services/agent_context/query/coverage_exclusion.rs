@@ -28,10 +28,12 @@ pub enum CoverageExclusion {
 
 impl CoverageExclusion {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is none.
     pub fn is_none(&self) -> bool {
         matches!(self, CoverageExclusion::None)
     }
 
+    /// Label.
     pub fn label(&self) -> &'static str {
         match self {
             CoverageExclusion::None => "testable",

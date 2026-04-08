@@ -27,6 +27,7 @@ pub struct DuplicateDetectionEngine {
 impl DuplicateDetectionEngine {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(config: DuplicateDetectionConfig) -> Self {
         let minhash_generator = MinHashGenerator::new(config.num_hash_functions);
         let feature_extractor = UniversalFeatureExtractor::new(config.clone());

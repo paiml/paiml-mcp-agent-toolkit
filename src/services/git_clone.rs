@@ -86,6 +86,7 @@ lazy_static! {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+/// Clone progress.
 pub struct CloneProgress {
     pub stage: String,
     pub current: usize,
@@ -94,6 +95,7 @@ pub struct CloneProgress {
 }
 
 #[derive(Clone, Debug)]
+/// Cloned repo.
 pub struct ClonedRepo {
     pub path: PathBuf,
     pub url: String,
@@ -101,6 +103,7 @@ pub struct ClonedRepo {
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for clone operations.
 pub enum CloneError {
     #[error("Git error: {0}")]
     GitError(#[from] git2::Error),
@@ -122,6 +125,7 @@ pub enum CloneError {
 }
 
 #[derive(Clone)]
+/// Git cloner.
 pub struct GitCloner {
     cache_dir: PathBuf,
     progress: Arc<Mutex<CloneProgress>>,
@@ -130,6 +134,7 @@ pub struct GitCloner {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+/// Parsed git hub url.
 pub struct ParsedGitHubUrl {
     pub owner: String,
     pub repo: String,

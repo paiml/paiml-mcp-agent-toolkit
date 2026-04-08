@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Information about language.
 pub struct LanguageInfo {
     pub name: String,
     pub file_count: usize,
@@ -7,6 +8,7 @@ pub struct LanguageInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Analysis results for polyglot.
 pub struct PolyglotAnalysis {
     pub languages: Vec<LanguageStats>,
     pub cross_language_dependencies: Vec<CrossLanguageDependency>,
@@ -16,6 +18,7 @@ pub struct PolyglotAnalysis {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Statistics for language.
 pub struct LanguageStats {
     pub language: String,
     pub file_count: usize,
@@ -26,6 +29,7 @@ pub struct LanguageStats {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Cross language dependency.
 pub struct CrossLanguageDependency {
     pub from_language: String,
     pub to_language: String,
@@ -35,6 +39,7 @@ pub struct CrossLanguageDependency {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Type classification for dependency.
 pub enum DependencyType {
     FFI,
     ProcessCommunication,
@@ -45,6 +50,7 @@ pub enum DependencyType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Architecture pattern.
 pub enum ArchitecturePattern {
     Microservices,
     Monolithic,
@@ -56,6 +62,7 @@ pub enum ArchitecturePattern {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Data point for integration.
 pub struct IntegrationPoint {
     pub name: String,
     pub languages: Vec<String>,
@@ -65,6 +72,7 @@ pub struct IntegrationPoint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Type classification for integration.
 pub enum IntegrationType {
     API,
     Database,
@@ -75,6 +83,7 @@ pub enum IntegrationType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Level classification for risk.
 pub enum RiskLevel {
     Low,
     Medium,
@@ -82,6 +91,7 @@ pub enum RiskLevel {
     Critical,
 }
 
+/// Polyglot analyzer.
 pub struct PolyglotAnalyzer {
     language_patterns: HashMap<String, LanguagePattern>,
     architecture_signatures: Vec<ArchitectureSignature>,

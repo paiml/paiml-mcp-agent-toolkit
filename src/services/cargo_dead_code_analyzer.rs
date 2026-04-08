@@ -54,6 +54,7 @@ pub struct AccurateDeadCodeReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// File dead code.
 pub struct FileDeadCode {
     pub file_path: PathBuf,
     pub dead_items: Vec<DeadItem>,
@@ -61,6 +62,7 @@ pub struct FileDeadCode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Dead item.
 pub struct DeadItem {
     pub name: String,
     pub kind: DeadCodeKind,
@@ -70,6 +72,7 @@ pub struct DeadItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Dead code kind.
 pub enum DeadCodeKind {
     Function,
     Method,

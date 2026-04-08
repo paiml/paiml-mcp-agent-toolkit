@@ -6,12 +6,14 @@ pub struct Location {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Span.
 pub struct Span {
     pub start: BytePos,
     pub end: BytePos,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Byte pos.
 pub struct BytePos(pub u32);
 
 impl std::hash::Hash for Location {
@@ -123,6 +125,7 @@ impl Location {
 impl Span {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(start: u32, end: u32) -> Self {
         Self {
             start: BytePos(start),
@@ -132,18 +135,21 @@ impl Span {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Return the number of elements.
     pub fn len(&self) -> u32 {
         self.end.0 - self.start.0
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check whether the collection is empty.
     pub fn is_empty(&self) -> bool {
         self.start.0 >= self.end.0
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check whether the item is contained.
     pub fn contains(&self, pos: BytePos) -> bool {
         self.start <= pos && pos < self.end
     }
@@ -152,6 +158,7 @@ impl Span {
 impl BytePos {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// To usize.
     pub fn to_usize(self) -> usize {
         self.0 as usize
     }
@@ -216,6 +223,7 @@ impl QualifiedName {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// With disambiguator.
     pub fn with_disambiguator(mut self, disambiguator: u32) -> Self {
         self.disambiguator = Some(disambiguator);
         self

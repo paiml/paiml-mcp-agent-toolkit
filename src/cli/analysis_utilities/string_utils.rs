@@ -2,6 +2,7 @@
 // Name similarity helpers
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Extract identifiers.
 pub fn extract_identifiers(content: &str) -> Vec<super::NameInfo> {
     let mut identifiers = Vec::new();
     let mut seen = HashSet::new();
@@ -197,6 +198,7 @@ pub fn calculate_edit_distance(s1: &str, s2: &str) -> usize {
 
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+/// Calculate soundex.
 pub fn calculate_soundex(s: &str) -> String {
     // Soundex phonetic algorithm implementation
     if s.is_empty() {
@@ -259,6 +261,7 @@ fn soundex_code(ch: char) -> char {
 // Helper function for params conversion
 #[must_use]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Params to json.
 pub fn params_to_json(
     params: Vec<(String, serde_json::Value)>,
 ) -> serde_json::Map<String, serde_json::Value> {
@@ -267,6 +270,7 @@ pub fn params_to_json(
 
 // Table printing function
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Print table.
 pub fn print_table(items: &[std::sync::Arc<crate::models::template::TemplateResource>]) {
     if items.is_empty() {
         println!("No templates found.");

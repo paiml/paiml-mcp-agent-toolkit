@@ -116,6 +116,7 @@ pub struct PropertyTestMetrics {
 }
 
 impl PropertyTestMetrics {
+    /// Success rate.
     pub fn success_rate(&self) -> f64 {
         if self.total_cases == 0 {
             0.0
@@ -124,6 +125,7 @@ impl PropertyTestMetrics {
         }
     }
 
+    /// Defect detection rate.
     pub fn defect_detection_rate(&self) -> f64 {
         if self.total_cases == 0 {
             0.0

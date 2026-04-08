@@ -17,6 +17,7 @@ pub struct PdmtService {
 impl PdmtService {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             deterministic_seed: 42, // Fixed seed for determinism

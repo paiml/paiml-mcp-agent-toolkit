@@ -114,6 +114,7 @@ pub trait AnalyzerInfo {
 
 impl AnalyzerRegistry {
     #[must_use]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             analyzers: std::collections::HashMap::new(),
@@ -121,6 +122,7 @@ impl AnalyzerRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register<T>(&mut self, analyzer: T)
     where
         T: AnalyzerInfo + 'static,
@@ -131,12 +133,14 @@ impl AnalyzerRegistry {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get info.
     pub fn get_info(&self, name: &str) -> Option<&dyn AnalyzerInfo> {
         self.analyzers.get(name).map(std::convert::AsRef::as_ref)
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// List analyzers.
     pub fn list_analyzers(&self) -> Vec<&str> {
         self.analyzers
             .keys()

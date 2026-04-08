@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for display.
 pub struct DisplayConfig {
     pub version: String,
     pub panels: PanelConfig,
@@ -17,6 +18,7 @@ pub struct DisplayConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for panel.
 pub struct PanelConfig {
     pub dependency: DependencyPanelConfig,
     pub complexity: ComplexityPanelConfig,
@@ -25,6 +27,7 @@ pub struct PanelConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for dependency panel.
 pub struct DependencyPanelConfig {
     pub max_nodes: usize,
     pub max_edges: usize,
@@ -33,6 +36,7 @@ pub struct DependencyPanelConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+/// Strategy options for grouping.
 pub enum GroupingStrategy {
     Module,
     Directory,
@@ -40,18 +44,21 @@ pub enum GroupingStrategy {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for complexity panel.
 pub struct ComplexityPanelConfig {
     pub threshold: u32,
     pub max_items: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for churn panel.
 pub struct ChurnPanelConfig {
     pub days: u32,
     pub max_items: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for context panel.
 pub struct ContextPanelConfig {
     pub include_ast: bool,
     pub include_metrics: bool,
@@ -59,6 +66,7 @@ pub struct ContextPanelConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for export.
 pub struct ExportConfig {
     pub formats: Vec<String>,
     pub include_metadata: bool,
@@ -66,6 +74,7 @@ pub struct ExportConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for performance.
 pub struct PerformanceConfig {
     pub cache_enabled: bool,
     pub cache_ttl: u64,
@@ -114,6 +123,7 @@ impl Default for DisplayConfig {
     }
 }
 
+/// Config manager.
 pub struct ConfigManager {
     config: Arc<RwLock<DisplayConfig>>,
     update_tx: broadcast::Sender<DisplayConfig>,
@@ -123,6 +133,7 @@ pub struct ConfigManager {
 
 impl ConfigManager {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Result<Self> {
         let (update_tx, _) = broadcast::channel(16);
         let config = Arc::new(RwLock::new(DisplayConfig::default()));
@@ -136,6 +147,7 @@ impl ConfigManager {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Load from file.
     pub fn load_from_file(path: &Path) -> Result<DisplayConfig> {
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read config file: {}", path.display()))?;
@@ -201,6 +213,7 @@ impl ConfigManager {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Subscribe to updates.
     pub fn subscribe(&self) -> broadcast::Receiver<DisplayConfig> {
         self.update_tx.subscribe()
     }

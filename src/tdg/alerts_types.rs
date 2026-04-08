@@ -2,6 +2,7 @@
 // Included from alerts.rs - shares parent module scope
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Configuration for alert manager.
 pub struct AlertManagerConfig {
     pub max_active_alerts: usize,
     pub max_history_size: usize,
@@ -48,6 +49,7 @@ impl Default for AlertManagerConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Metric value.
 pub struct MetricValue {
     pub value: f64,
     pub timestamp: SystemTime,
@@ -55,6 +57,7 @@ pub struct MetricValue {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// Alert statistics.
 pub struct AlertStatistics {
     pub total_triggered: u64,
     pub total_resolved: u64,
@@ -66,6 +69,7 @@ pub struct AlertStatistics {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Alert configuration.
 pub struct AlertConfiguration {
     pub rules: Vec<AlertRule>,
     pub config: AlertManagerConfig,

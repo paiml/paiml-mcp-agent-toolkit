@@ -41,6 +41,7 @@ impl Default for RefactorStrategies {
 impl RefactorStateMachine {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(targets: Vec<PathBuf>, config: RefactorConfig) -> Self {
         let initial_state = if targets.is_empty() {
             State::Complete {
@@ -62,6 +63,7 @@ impl RefactorStateMachine {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Advance.
     pub fn advance(&mut self) -> Result<&State, String> {
         let next = match &self.current {
             State::Scan { targets } => {
@@ -235,6 +237,7 @@ impl Default for Summary {
 impl Violation {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// To op.
     pub fn to_op(&self) -> RefactorOp {
         self.suggested_fix
             .clone()

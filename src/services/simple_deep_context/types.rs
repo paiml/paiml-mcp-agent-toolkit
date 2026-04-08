@@ -26,6 +26,7 @@ pub struct SimpleAnalysisReport {
 }
 
 #[derive(Debug)]
+/// Complexity metrics.
 pub struct ComplexityMetrics {
     pub total_functions: usize,
     pub high_complexity_count: usize,
@@ -33,6 +34,7 @@ pub struct ComplexityMetrics {
 }
 
 #[derive(Debug, Clone)]
+/// File complexity detail.
 pub struct FileComplexityDetail {
     pub file_path: PathBuf,
     pub function_count: usize,

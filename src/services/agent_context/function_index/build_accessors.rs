@@ -211,6 +211,7 @@ impl AgentContextIndex {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "non_empty_index")]
+    /// Load source for.
     pub fn load_source_for(&self, file_path: &str, start_line: usize) -> String {
         let (in_memory, end_line) = self.find_in_memory(file_path, start_line);
         if let Some(src) = in_memory {

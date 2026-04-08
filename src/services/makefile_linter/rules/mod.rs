@@ -7,6 +7,7 @@ use super::ast::{MakefileAst, SourceSpan};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+/// Severity level classification for severity.
 pub enum Severity {
     Error,
     Warning,
@@ -15,6 +16,7 @@ pub enum Severity {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Violation record for violation.
 pub struct Violation {
     pub rule: String,
     pub severity: Severity,
@@ -24,6 +26,7 @@ pub struct Violation {
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
+/// Result of lint operation.
 pub struct LintResult {
     pub path: PathBuf,
     pub violations: Vec<Violation>,
@@ -33,6 +36,7 @@ pub struct LintResult {
 impl LintResult {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Has errors.
     pub fn has_errors(&self) -> bool {
         self.violations
             .iter()
@@ -41,6 +45,7 @@ impl LintResult {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Error count.
     pub fn error_count(&self) -> usize {
         self.violations
             .iter()
@@ -50,6 +55,7 @@ impl LintResult {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Max severity.
     pub fn max_severity(&self) -> Option<&Severity> {
         self.violations
             .iter()
@@ -63,6 +69,7 @@ impl LintResult {
     }
 }
 
+/// Trait defining Makefile rule behavior.
 pub trait MakefileRule: Send + Sync {
     fn id(&self) -> &'static str;
 
@@ -82,12 +89,14 @@ pub trait MakefileRule: Send + Sync {
 }
 
 #[derive(Default)]
+/// Registry of rule instances.
 pub struct RuleRegistry {
     rules: Vec<Box<dyn MakefileRule>>,
 }
 
 impl RuleRegistry {
     #[must_use]
+    /// Create a new instance.
     pub fn new() -> Self {
         let mut registry = Self::default();
 
@@ -110,12 +119,14 @@ impl RuleRegistry {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Register a new item.
     pub fn register(&mut self, rule: Box<dyn MakefileRule>) {
         self.rules.push(rule);
     }
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check all.
     pub fn check_all(&self, ast: &MakefileAst) -> Vec<Violation> {
         let mut violations = Vec::new();
 

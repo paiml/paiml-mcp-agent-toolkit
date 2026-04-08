@@ -5,6 +5,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize)]
+/// Information about symbol.
 pub struct SymbolInfo {
     pub name: String,
     pub kind: String,

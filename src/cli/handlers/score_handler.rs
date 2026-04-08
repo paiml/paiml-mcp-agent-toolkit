@@ -30,6 +30,7 @@ pub struct CompositeScore {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Sub scores.
 pub struct SubScores {
     pub rps: f64,
     pub comply: f64,

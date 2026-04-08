@@ -26,6 +26,7 @@ impl fmt::Display for RepoScore {
 // Grade: conversion and formatting methods
 impl Grade {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// From score.
     pub fn from_score(score: f64) -> Self {
         match score {
             s if s >= 95.0 => Grade::APlus,
@@ -40,6 +41,7 @@ impl Grade {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// As str.
     pub fn as_str(&self) -> &'static str {
         match self {
             Grade::APlus => "A+",
@@ -57,6 +59,7 @@ impl Grade {
 // CategoryScores: aggregate scoring
 impl CategoryScores {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Total.
     pub fn total(&self) -> f64 {
         self.documentation.score
             + self.precommit_hooks.score
@@ -94,6 +97,7 @@ impl CategoryScore {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(
         score: f64,
         max_score: f64,
@@ -128,6 +132,7 @@ impl CategoryScore {
 // BonusScores: aggregate and defaults
 impl BonusScores {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Total.
     pub fn total(&self) -> f64 {
         self.property_tests.points
             + self.fuzzing.points
@@ -196,6 +201,7 @@ impl Ord for Priority {
 // ScoreMetadata: construction
 impl ScoreMetadata {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(repository_path: PathBuf) -> Self {
         Self {
             timestamp: chrono::Utc::now().to_rfc3339(),

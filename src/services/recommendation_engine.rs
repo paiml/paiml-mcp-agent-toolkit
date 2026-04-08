@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Repository recommendation.
 pub struct RepositoryRecommendation {
     pub repository: String,
     pub reason: String,
@@ -13,6 +14,7 @@ pub struct RepositoryRecommendation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Complexity tier.
 pub enum ComplexityTier {
     Beginner,
     Intermediate,
@@ -21,6 +23,7 @@ pub enum ComplexityTier {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Framework signature.
 pub struct FrameworkSignature {
     pub name: String,
     pub files: Vec<String>,
@@ -29,6 +32,7 @@ pub struct FrameworkSignature {
     pub confidence_threshold: f64,
 }
 
+/// Recommendation engine.
 pub struct RecommendationEngine {
     framework_signatures: HashMap<String, Vec<FrameworkSignature>>,
     curated_repositories: HashMap<String, Vec<RepositoryRecommendation>>,
@@ -37,6 +41,7 @@ pub struct RecommendationEngine {
 impl RecommendationEngine {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         let mut engine = Self {
             framework_signatures: HashMap::new(),
@@ -226,6 +231,7 @@ impl RecommendationEngine {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze repository.
     pub fn analyze_repository(
         &self,
         path: &str,
@@ -268,6 +274,7 @@ impl RecommendationEngine {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get recommendations.
     pub fn get_recommendations(
         &self,
         detected_language: &str,
@@ -307,6 +314,7 @@ impl RecommendationEngine {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get framework specific recommendations.
     pub fn get_framework_specific_recommendations(
         &self,
         framework: &str,
@@ -336,6 +344,7 @@ impl RecommendationEngine {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Generate learning path.
     pub fn generate_learning_path(
         &self,
         language: &str,

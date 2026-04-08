@@ -1,6 +1,7 @@
 impl VelocityTracker {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(sprint_id: &str) -> Self {
         Self {
             sprint_id: sprint_id.to_string(),

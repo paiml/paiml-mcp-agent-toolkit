@@ -26,6 +26,7 @@ fn check_brick_file_for_assertions(entry: &Path) -> Option<CbPatternViolation> {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect bricks without assertions.
 pub fn detect_bricks_without_assertions(project_path: &Path) -> Vec<CbPatternViolation> {
     let brick_dir = project_path.join("src").join("brick");
     if !brick_dir.exists() {
@@ -145,6 +146,7 @@ fn find_name_field_backwards(lines: &[&str], from: usize) -> Option<String> {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Extract brick name.
 pub fn extract_brick_name(content: &str, target_line: &str) -> String {
     let lines: Vec<&str> = content.lines().collect();
     for (i, line) in lines.iter().enumerate() {

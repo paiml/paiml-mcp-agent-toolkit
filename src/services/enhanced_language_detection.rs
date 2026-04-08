@@ -29,6 +29,7 @@ pub struct MultiLanguageDetection {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+/// Information about language.
 pub struct LanguageInfo {
     pub language: String,
     pub confidence: f64,

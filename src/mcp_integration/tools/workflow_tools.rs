@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 // Orchestrate tool - invokes orchestrator for complex workflows
+/// Orchestrate tool.
 pub struct OrchestrateTool {
     pub(super) registry: Arc<AgentRegistry>,
     pub(super) executor: Arc<dyn crate::workflow::WorkflowExecutor>,
@@ -14,6 +15,7 @@ pub struct OrchestrateTool {
 
 impl OrchestrateTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         let executor = Arc::new(crate::workflow::executor::DefaultWorkflowExecutor::new(
             registry.clone(),
@@ -22,6 +24,7 @@ impl OrchestrateTool {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// New with executor.
     pub fn new_with_executor(
         registry: Arc<AgentRegistry>,
         executor: Arc<dyn crate::workflow::WorkflowExecutor>,
@@ -146,12 +149,14 @@ impl McpTool for OrchestrateTool {
 }
 
 // Quality gate tool
+/// Quality gate tool.
 pub struct QualityGateTool {
     pub(super) _registry: Arc<AgentRegistry>,
 }
 
 impl QualityGateTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,

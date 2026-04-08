@@ -63,11 +63,13 @@ async fn test_ast_items_have_correct_line_numbers() {
 
     let code = r#"use std::collections::HashMap;
 
+/// Configuration for config.
 pub struct Config {
     name: String,
 }
 
 impl Config {
+    /// Create a new instance.
     pub fn new(name: String) -> Self {
         Config { name }
     }
@@ -77,6 +79,7 @@ fn process_data() -> Vec<u8> {
     vec![1, 2, 3]
 }
 
+/// Trait defining Handler behavior.
 pub trait Handler {
     fn handle(&self);
 }"#;

@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Satd item.
 pub struct SatdItem {
     pub satd_type: String,
     pub line: usize,
     pub comment: String,
 }
 
+/// Satd detector with items.
 pub struct SatdDetectorWithItems;
 
 impl Default for SatdDetectorWithItems {
@@ -17,11 +19,13 @@ impl Default for SatdDetectorWithItems {
 
 impl SatdDetectorWithItems {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Detect.
     pub fn detect(&self, source: &str) -> Vec<SatdItem> {
         let mut items = Vec::new();
 

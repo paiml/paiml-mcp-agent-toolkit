@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Duplicate block.
 pub struct DuplicateBlock {
     pub hash: String,
     pub locations: Vec<DuplicateLocation>,
@@ -8,6 +9,7 @@ pub struct DuplicateBlock {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Duplicate location.
 pub struct DuplicateLocation {
     pub file: String,
     pub start_line: usize,
@@ -16,6 +18,7 @@ pub struct DuplicateLocation {
 }
 
 #[derive(Debug, Serialize)]
+/// Report containing duplicate data.
 pub struct DuplicateReport {
     pub total_duplicates: usize,
     pub duplicate_lines: usize,
@@ -26,6 +29,7 @@ pub struct DuplicateReport {
 }
 
 #[derive(Debug, Serialize)]
+/// Statistics for file.
 pub struct FileStats {
     pub duplicate_lines: usize,
     pub total_lines: usize,

@@ -9,6 +9,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
+/// Centrality metrics.
 pub struct CentralityMetrics {
     pub degree: Vec<f64>,
     pub betweenness: Vec<f64>,
@@ -18,6 +19,7 @@ pub struct CentralityMetrics {
     pub harmonic: Vec<f64>,
 }
 
+/// Centrality computer.
 pub struct CentralityComputer {
     pub normalize: bool,
     pub weighted: bool,
@@ -25,6 +27,7 @@ pub struct CentralityComputer {
 
 impl CentralityComputer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(normalize: bool, weighted: bool) -> Self {
         CentralityComputer {
             normalize,

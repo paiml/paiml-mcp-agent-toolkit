@@ -1,6 +1,7 @@
 use super::*;
 
 // WebSocket transport for browser clients
+/// Web socket transport.
 pub struct WebSocketTransport {
     // Implementation would go here
 }
@@ -13,6 +14,7 @@ impl Default for WebSocketTransport {
 
 impl WebSocketTransport {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {}
     }
@@ -38,6 +40,7 @@ impl McpTransport for WebSocketTransport {
 }
 
 // HTTP/SSE transport for REST clients
+/// Http transport.
 pub struct HttpTransport {
     // Implementation would go here
 }
@@ -50,6 +53,7 @@ impl Default for HttpTransport {
 
 impl HttpTransport {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {}
     }

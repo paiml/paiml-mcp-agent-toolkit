@@ -9,6 +9,7 @@ use std::fmt::Write;
 impl MermaidGenerator {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Generate.
     pub fn generate(&self, graph: &DependencyGraph) -> String {
         // Use the deterministic fixed graph builder
         let config = GraphConfig {
@@ -21,6 +22,7 @@ impl MermaidGenerator {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Generate with config.
     pub fn generate_with_config(&self, graph: &DependencyGraph, config: &GraphConfig) -> String {
         // Build fixed-size graph with PageRank selection
         let builder = FixedGraphBuilder::new(config.clone());

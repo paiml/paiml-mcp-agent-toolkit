@@ -13,10 +13,12 @@
             &rust_file,
             r#"
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Hello.
 pub fn hello() {
     println!("Hello, world!");
 }
 
+/// Complex function.
 pub fn complex_function(x: i32) -> i32 {
     if x > 0 {
         if x > 10 {
@@ -77,6 +79,7 @@ pub fn hello() -> String {
 
 // Note: This function has high cyclomatic complexity
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Complex function.
 pub fn complex_function(x: i32, y: i32) -> i32 {
     if x > 0 {
         if y > 0 {

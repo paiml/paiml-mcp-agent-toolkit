@@ -1,4 +1,5 @@
 #[derive(Debug, Clone, Serialize)]
+/// Demo content.
 pub struct DemoContent {
     pub mermaid_diagram: String,
     pub system_diagram: Option<String>,
@@ -20,6 +21,7 @@ pub struct DemoContent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Hotspot identified in enhanced analysis.
 pub struct EnhancedHotspot {
     pub function: String,
     pub file: String,
@@ -32,6 +34,7 @@ pub struct EnhancedHotspot {
 }
 
 #[derive(Debug, Clone, Serialize)]
+/// Statistics for language.
 pub struct LanguageStats {
     pub file_count: usize,
     pub function_count: usize,
@@ -41,6 +44,7 @@ pub struct LanguageStats {
 
 // Legacy hotspot for compatibility
 #[derive(Debug, Clone, Serialize, serde::Deserialize)]
+/// Hotspot identified in hotspot analysis.
 pub struct Hotspot {
     pub file: String,
     pub complexity: u32,
@@ -48,6 +52,7 @@ pub struct Hotspot {
 }
 
 #[derive(Clone)]
+/// State representation for demo.
 pub struct DemoState {
     pub repository: std::path::PathBuf,
     pub analysis_results: AnalysisResults,
@@ -70,6 +75,7 @@ impl std::fmt::Debug for DemoState {
 }
 
 #[derive(Clone, Serialize)]
+/// Analysis results.
 pub struct AnalysisResults {
     pub files_analyzed: usize,
     pub avg_complexity: f64,

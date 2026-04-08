@@ -50,6 +50,7 @@ pub struct Token {
 impl Token {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(kind: TokenKind) -> Self {
         let text = match &kind {
             TokenKind::Identifier(s) => s.clone(),
@@ -65,6 +66,7 @@ impl Token {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
+    /// Hash.
     pub fn hash(&self) -> u64 {
         xxh64(self.text.as_bytes(), 0)
     }

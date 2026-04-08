@@ -24,6 +24,7 @@ pub enum FileSizeClass {
 
 impl FileSizeClass {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From lines.
     pub fn from_lines(lines: usize) -> Self {
         match lines {
             0..=200 => Self::Ideal,
@@ -35,6 +36,7 @@ impl FileSizeClass {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// As str.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Ideal => "ideal",
@@ -59,6 +61,7 @@ pub enum HealthGrade {
 
 impl HealthGrade {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// From score.
     pub fn from_score(score: u8) -> Self {
         match score {
             90..=100 => Self::A,
@@ -71,6 +74,7 @@ impl HealthGrade {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// As str.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::A => "A",
@@ -83,6 +87,7 @@ impl HealthGrade {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is passing.
     pub fn is_passing(&self) -> bool {
         matches!(self, Self::A | Self::B | Self::C)
     }

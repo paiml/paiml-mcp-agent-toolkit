@@ -3,6 +3,7 @@
 
 impl SymbolicExecutor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze algorithm patterns.
     pub fn analyze_algorithm_patterns(&self, ast: &syn::File) -> Vec<AlgorithmPattern> {
         let mut patterns = Vec::new();
 

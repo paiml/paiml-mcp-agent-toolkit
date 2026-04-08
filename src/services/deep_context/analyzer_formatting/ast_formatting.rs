@@ -82,6 +82,7 @@ struct AstUse {
 
 impl DeepContextAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Format enhanced ast section.
     pub fn format_enhanced_ast_section(
         &self,
         output: &mut String,

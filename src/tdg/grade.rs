@@ -6,6 +6,7 @@ use std::collections::HashSet;
 #[derive(
     Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
+/// Grade.
 pub enum Grade {
     APLus,
     A,
@@ -24,6 +25,7 @@ pub enum Grade {
 impl Grade {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// From score.
     pub fn from_score(score: f32) -> Self {
         match score {
             s if s >= 95.0 => Grade::APLus,
@@ -60,6 +62,7 @@ impl std::fmt::Display for Grade {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+/// Category classification for metric.
 pub enum MetricCategory {
     StructuralComplexity,
     SemanticComplexity,
@@ -70,6 +73,7 @@ pub enum MetricCategory {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Penalty attribution.
 pub struct PenaltyAttribution {
     pub source_metric: MetricCategory,
     pub amount: f32,

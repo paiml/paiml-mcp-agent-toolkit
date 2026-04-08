@@ -80,6 +80,7 @@ mod tests {
     fn test_rust_function_extraction() {
         let analyzer = RustAnalyzer;
         let content = r#"
+/// Test function.
 pub fn test_function() {
     println!("Hello");
 }

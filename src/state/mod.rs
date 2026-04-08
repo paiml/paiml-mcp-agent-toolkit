@@ -15,6 +15,7 @@ pub type EventId = u64;
 pub type SnapshotId = Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// State event.
 pub struct StateEvent {
     pub id: EventId,
     pub timestamp: SystemTime,
@@ -24,6 +25,7 @@ pub struct StateEvent {
 }
 
 impl StateEvent {
+    /// Create a new instance.
     pub fn new(partition_key: String, event_type: String, data: serde_json::Value) -> Self {
         Self {
             id: 0, // Will be assigned by event store
@@ -35,12 +37,14 @@ impl StateEvent {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Partition key.
     pub fn partition_key(&self) -> String {
         self.partition_key.clone()
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Point-in-time snapshot of snapshot.
 pub struct Snapshot {
     pub id: SnapshotId,
     pub timestamp: SystemTime,
@@ -49,12 +53,14 @@ pub struct Snapshot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// State representation for restored.
 pub struct RestoredState<S> {
     pub state: S,
     pub snapshot_id: SnapshotId,
     pub events_to_replay: usize,
 }
 
+/// Trait defining Agent state behavior.
 pub trait AgentState: Clone + Serialize + for<'de> Deserialize<'de> + Send + Sync {
     fn apply_event(&mut self, event: &StateEvent);
     fn last_event_id(&self) -> EventId;
@@ -65,6 +71,7 @@ pub trait AgentState: Clone + Serialize + for<'de> Deserialize<'de> + Send + Syn
 
 // Example implementation of AgentState
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// State representation for example.
 pub struct ExampleState {
     pub data: std::collections::HashMap<String, serde_json::Value>,
     pub last_event_id: EventId,

@@ -1,3 +1,4 @@
+/// Space complexity analyzer.
 pub struct SpaceComplexityAnalyzer {
     allocations: Vec<Allocation>,
     max_depth: usize,
@@ -26,6 +27,7 @@ impl Default for SpaceComplexityAnalyzer {
 
 impl SpaceComplexityAnalyzer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             allocations: Vec::new(),
@@ -34,6 +36,7 @@ impl SpaceComplexityAnalyzer {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Analyze.
     pub fn analyze(&mut self, ast: &syn::File) -> Complexity {
         self.allocations.clear();
         self.visit_file(ast);

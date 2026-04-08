@@ -674,6 +674,7 @@ mod coverage_tests {
             fn helper() -> i32 {
                 42
             }
+            /// Public fn.
             pub fn public_fn() {}
         "#;
 

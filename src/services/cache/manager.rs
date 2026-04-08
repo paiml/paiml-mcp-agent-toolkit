@@ -38,6 +38,7 @@ pub struct SessionCacheManager {
 impl SessionCacheManager {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(config: CacheConfig) -> Self {
         Self {
             ast_cache: Arc::new(RwLock::new(ContentCache::new(AstCacheStrategy))),

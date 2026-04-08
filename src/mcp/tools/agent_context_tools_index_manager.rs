@@ -3,6 +3,7 @@
 
 impl IndexManager {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// Create a new instance.
     pub fn new(project_path: PathBuf) -> Self {
         Self {
             index: RwLock::new(None),

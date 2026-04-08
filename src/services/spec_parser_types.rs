@@ -72,6 +72,7 @@ pub enum ClaimCategory {
 
 impl ClaimCategory {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Max points.
     pub fn max_points(&self) -> u32 {
         match self {
             Self::Falsifiability => 25,
@@ -83,6 +84,7 @@ impl ClaimCategory {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// From section.
     pub fn from_section(section: &str) -> Option<Self> {
         let lower = section.to_lowercase();
         if lower.contains("falsif") || lower.contains("testab") || lower.contains("claim") {

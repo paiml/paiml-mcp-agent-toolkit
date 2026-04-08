@@ -6,6 +6,7 @@
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb950 truthy ambiguity.
 pub fn detect_cb950_truthy_ambiguity(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_yaml_files(project_path);
     let mut violations = Vec::new();
@@ -66,6 +67,7 @@ pub fn detect_cb950_truthy_ambiguity(project_path: &Path) -> Vec<CbPatternViolat
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb951 excessive nesting.
 pub fn detect_cb951_excessive_nesting(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_yaml_files(project_path);
     let mut violations = Vec::new();
@@ -127,6 +129,7 @@ pub fn detect_cb951_excessive_nesting(project_path: &Path) -> Vec<CbPatternViola
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb952 missing required fields.
 pub fn detect_cb952_missing_required_fields(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_yaml_files(project_path);
     let mut violations = Vec::new();
@@ -187,6 +190,7 @@ pub fn detect_cb952_missing_required_fields(project_path: &Path) -> Vec<CbPatter
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb953 unpinned action.
 pub fn detect_cb953_unpinned_action(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_yaml_files(project_path);
     let mut violations = Vec::new();
@@ -267,6 +271,7 @@ pub fn detect_cb953_unpinned_action(project_path: &Path) -> Vec<CbPatternViolati
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb954 plaintext secret.
 pub fn detect_cb954_plaintext_secret(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_yaml_files(project_path);
     let mut violations = Vec::new();

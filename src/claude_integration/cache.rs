@@ -103,6 +103,7 @@ impl Hasher for FnvHasher {
 }
 
 #[derive(Debug, Clone, Copy)]
+/// Cache metrics.
 pub struct CacheMetrics {
     pub l1_hit_rate: f64,
     pub l2_hit_rate: f64,

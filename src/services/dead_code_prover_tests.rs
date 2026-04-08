@@ -18,6 +18,7 @@ mod tests {
             }
 
             #[export_name = "custom_name"]
+            /// Renamed export.
             pub fn renamed_export() -> i32 {
                 200
             }

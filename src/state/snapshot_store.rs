@@ -11,6 +11,7 @@ use tokio::fs::{create_dir_all, OpenOptions};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 // Snapshot storage with compression and integrity checks
+/// Snapshot store.
 pub struct SnapshotStore {
     snapshots: Arc<RwLock<Vec<SnapshotMetadata>>>,
     base_path: String,
@@ -18,6 +19,7 @@ pub struct SnapshotStore {
 }
 
 #[derive(Clone)]
+/// Configuration for snapshot.
 pub struct SnapshotConfig {
     pub max_snapshots: usize,
     pub compression_level: u32,
@@ -37,6 +39,7 @@ impl Default for SnapshotConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Metadata for snapshot.
 pub struct SnapshotMetadata {
     pub id: SnapshotId,
     pub timestamp: SystemTime,
@@ -48,6 +51,7 @@ pub struct SnapshotMetadata {
 }
 
 #[derive(Debug, Clone)]
+/// Statistics for snapshot.
 pub struct SnapshotStats {
     pub total_snapshots: usize,
     pub total_size_bytes: usize,
@@ -58,6 +62,7 @@ pub struct SnapshotStats {
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for snapshot operations.
 pub enum SnapshotError {
     #[error("Snapshot not found: {0}")]
     SnapshotNotFound(SnapshotId),

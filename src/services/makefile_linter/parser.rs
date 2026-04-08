@@ -6,6 +6,7 @@ use super::ast::{
 };
 
 #[derive(Debug)]
+/// Makefile parser.
 pub struct MakefileParser<'src> {
     input: &'src str,
     cursor: usize,
@@ -15,6 +16,7 @@ pub struct MakefileParser<'src> {
 }
 
 #[derive(Debug, Clone)]
+/// Error variants for parse operations.
 pub enum ParseError {
     UnexpectedEof,
     InvalidSyntax(String),

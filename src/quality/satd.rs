@@ -93,6 +93,7 @@ static EXTENDED_PATTERNS: LazyLock<Vec<(&str, Regex)>> = LazyLock::new(|| {
     ]
 });
 
+/// Satd detector.
 pub struct SatdDetector {
     patterns: Vec<(&'static str, Regex)>,
     extended: bool,

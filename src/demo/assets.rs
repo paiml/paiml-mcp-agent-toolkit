@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 #[derive(Debug, Clone, Copy)]
+/// Embedded asset.
 pub struct EmbeddedAsset {
     pub content: &'static [u8],
     pub content_type: &'static str,
@@ -11,6 +12,7 @@ pub struct EmbeddedAsset {
 }
 
 #[derive(Debug, Copy, Clone)]
+/// Asset encoding.
 pub enum AssetEncoding {
     Gzip,
     Identity,
@@ -98,12 +100,14 @@ static ASSETS: LazyLock<HashMap<&'static str, EmbeddedAsset>> = LazyLock::new(||
 
 #[cfg(feature = "demo")]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Get asset.
 pub fn get_asset(path: &str) -> Option<&'static EmbeddedAsset> {
     ASSETS.get(path)
 }
 
 #[cfg(not(feature = "demo"))]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Get asset.
 pub fn get_asset(_path: &str) -> Option<&'static EmbeddedAsset> {
     None
 }

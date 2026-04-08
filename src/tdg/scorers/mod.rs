@@ -14,16 +14,19 @@ pub use documentation::DocumentationScorer;
 pub use duplication::DuplicationDetector;
 pub use consistency::ConsistencyAnalyzer;
 
+/// Trait defining Scorer behavior.
 pub trait Scorer: Send + Sync {
     fn score(&self, tree: &Tree, source: &str, language: Language, config: &TdgConfig, tracker: &mut PenaltyTracker) -> Result<f32>;
     fn category(&self) -> MetricCategory;
 }
 
+/// Scorer set.
 pub struct ScorerSet {
     scorers: Vec<Box<dyn Scorer>>,
 }
 
 impl ScorerSet {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             scorers: vec![
@@ -38,12 +41,14 @@ impl ScorerSet {
     }
     
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Iter.
     pub fn iter(&self) -> impl Iterator<Item = &Box<dyn Scorer>> {
         self.scorers.iter()
     }
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Walk tree.
 pub fn walk_tree<F>(node: Node, mut callback: F)
 where
     F: FnMut(Node),
@@ -56,6 +61,7 @@ where
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Count nodes of kind.
 pub fn count_nodes_of_kind(node: Node, kind: &str) -> usize {
     let mut count = 0;
     walk_tree(node, |n| {
@@ -67,6 +73,7 @@ pub fn count_nodes_of_kind(node: Node, kind: &str) -> usize {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Max depth.
 pub fn max_depth(node: Node) -> usize {
     if node.child_count() == 0 {
         return 0;
@@ -80,6 +87,7 @@ pub fn max_depth(node: Node) -> usize {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Get node text.
 pub fn get_node_text<'a>(node: Node, source: &'a str) -> &'a str {
     &source[node.byte_range()]
 }

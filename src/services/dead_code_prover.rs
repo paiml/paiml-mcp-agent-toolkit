@@ -113,6 +113,7 @@ pub struct DynamicDispatchAnalyzer {
 }
 
 #[derive(Debug, Clone)]
+/// Usage.
 pub enum Usage {
     TraitObject(String),
     FunctionPointer,
@@ -129,6 +130,7 @@ pub struct DeadCodeProof {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Type classification for dead code proof.
 pub enum DeadCodeProofType {
     ProvenDead,      // Definitely unreachable
     ProvenLive,      // Definitely reachable
@@ -136,6 +138,7 @@ pub enum DeadCodeProofType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Evidence.
 pub struct Evidence {
     pub evidence_type: EvidenceType,
     pub description: String,
@@ -143,6 +146,7 @@ pub struct Evidence {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Type classification for evidence.
 pub enum EvidenceType {
     NoReferences,
     FFIExport,

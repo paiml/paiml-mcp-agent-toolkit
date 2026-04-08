@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 use tokio::time::timeout;
 
 #[derive(Debug, Clone, Serialize, Deserialize, clap::ValueEnum)]
+/// Output format options for diagnostic.
 pub enum DiagnosticFormat {
     Pretty,
     Json,
@@ -16,6 +17,7 @@ pub enum DiagnosticFormat {
 }
 
 #[derive(Debug, clap::Args)]
+/// Diagnose args.
 pub struct DiagnoseArgs {
     /// Output format for diagnostic report
     #[arg(long, value_enum, default_value = "pretty")]
@@ -35,6 +37,7 @@ pub struct DiagnoseArgs {
 }
 
 #[derive(Debug, Serialize)]
+/// Report containing diagnostic data.
 pub struct DiagnosticReport {
     pub version: String,
     pub build_info: BuildInfo,
@@ -47,6 +50,7 @@ pub struct DiagnosticReport {
 }
 
 #[derive(Debug, Serialize)]
+/// Information about build.
 pub struct BuildInfo {
     pub rust_version: String,
     pub build_date: String,
@@ -56,6 +60,7 @@ pub struct BuildInfo {
 
 impl BuildInfo {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Current.
     pub fn current() -> Self {
         Self {
             rust_version: option_env!("RUSTC_VERSION")
@@ -69,6 +74,7 @@ impl BuildInfo {
 }
 
 #[derive(Debug, Serialize)]
+/// Result of feature operation.
 pub struct FeatureResult {
     pub status: FeatureStatus,
     pub duration_us: u64,
@@ -80,6 +86,7 @@ pub struct FeatureResult {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
+/// Status of feature operation.
 pub enum FeatureStatus {
     Ok,
     Degraded(String),
@@ -88,6 +95,7 @@ pub enum FeatureStatus {
 }
 
 #[derive(Debug, Serialize)]
+/// Summary of diagnostic analysis.
 pub struct DiagnosticSummary {
     pub total: usize,
     pub passed: usize,
@@ -99,6 +107,7 @@ pub struct DiagnosticSummary {
 }
 
 #[derive(Debug, Serialize)]
+/// Context for compact error operations.
 pub struct CompactErrorContext {
     pub failed_features: Vec<String>,
     pub error_patterns: BTreeMap<String, Vec<String>>,
@@ -107,6 +116,7 @@ pub struct CompactErrorContext {
 }
 
 #[derive(Debug, Serialize)]
+/// Fix suggestion for suggested.
 pub struct SuggestedFix {
     pub feature: String,
     pub error_pattern: String,
@@ -115,6 +125,7 @@ pub struct SuggestedFix {
 }
 
 #[derive(Debug, Serialize)]
+/// Point-in-time snapshot of environment.
 pub struct EnvironmentSnapshot {
     pub os: String,
     pub arch: String,
@@ -126,6 +137,7 @@ pub struct EnvironmentSnapshot {
 impl EnvironmentSnapshot {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     #[must_use]
+    /// Capture.
     pub fn capture() -> Self {
         Self {
             os: std::env::consts::OS.to_string(),
@@ -149,11 +161,13 @@ impl EnvironmentSnapshot {
 }
 
 #[async_trait::async_trait]
+/// Test interface for feature.
 pub trait FeatureTest: Send + Sync {
     fn name(&self) -> &'static str;
     async fn execute(&self) -> Result<serde_json::Value>;
 }
 
+/// Self diagnostic.
 pub struct SelfDiagnostic {
     tests: Vec<Box<dyn FeatureTest>>,
 }

@@ -18,6 +18,7 @@ impl Default for BigOAnalyzer {
 impl BigOAnalyzer {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             analyzer: crate::services::big_o_analyzer::BigOAnalyzer::new(),

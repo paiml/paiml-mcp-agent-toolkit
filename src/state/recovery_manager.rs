@@ -151,6 +151,7 @@ impl<S: AgentState> RecoveryManager<S> {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get recovery stats.
     pub fn get_recovery_stats(&self) -> RecoveryStats {
         let event_stats = self.event_store.get_statistics();
         let snapshot_stats = self.snapshot_store.get_statistics();

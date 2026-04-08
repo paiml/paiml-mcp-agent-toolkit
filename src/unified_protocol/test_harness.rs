@@ -68,6 +68,7 @@ impl TestSuiteResults {
         }
     }
 
+    /// Success rate.
     pub fn success_rate(&self) -> f64 {
         let total = self.passed.len() + self.failed.len();
         if total == 0 {
@@ -77,6 +78,7 @@ impl TestSuiteResults {
         }
     }
 
+    /// Is successful.
     pub fn is_successful(&self) -> bool {
         self.failed.is_empty()
     }

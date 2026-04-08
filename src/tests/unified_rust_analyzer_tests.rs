@@ -92,6 +92,7 @@ async fn red_test_unified_ast_matches_enhanced_visitor() {
 
     let temp_file = create_temp_rust_file(
         r#"
+        /// Multiply.
         pub fn multiply(x: i32, y: i32) -> i32 {
             x * y
         }

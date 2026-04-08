@@ -1,5 +1,6 @@
 // C language strategy
 #[cfg(feature = "c-ast")]
+/// C ast strategy.
 pub struct CAstStrategy;
 
 #[cfg(feature = "c-ast")]

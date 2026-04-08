@@ -26,6 +26,7 @@ const MUTABLE_COLLECTIONS: &[&str] = &[
 ];
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb800 mutable collection.
 pub fn detect_cb800_mutable_collection(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
@@ -76,6 +77,7 @@ pub fn detect_cb800_mutable_collection(project_path: &Path) -> Vec<CbPatternViol
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb801 null usage.
 pub fn detect_cb801_null_usage(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();
@@ -146,6 +148,7 @@ fn contains_null_literal(line: &str) -> bool {
 // =============================================================================
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Detect cb802 wildcard import.
 pub fn detect_cb802_wildcard_import(project_path: &Path) -> Vec<CbPatternViolation> {
     let files = walkdir_scala_files(project_path);
     let mut violations = Vec::new();

@@ -30,6 +30,7 @@ impl PropertyDomain {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Join parts together.
     pub fn join(&self, other: &Self) -> Self {
         Self {
             nullability: self.nullability.join(&other.nullability),
@@ -41,6 +42,7 @@ impl PropertyDomain {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Widen.
     pub fn widen(&self, other: &Self) -> Self {
         Self {
             nullability: self.nullability.join(&other.nullability),
@@ -52,6 +54,7 @@ impl PropertyDomain {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is equal.
     pub fn is_equal(&self, other: &Self) -> bool {
         self.nullability == other.nullability
             && self.bounds.is_equal(&other.bounds)
@@ -63,6 +66,7 @@ impl PropertyDomain {
 impl NullabilityLattice {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Join parts together.
     pub fn join(&self, other: &Self) -> Self {
         use NullabilityLattice::{Bottom, MaybeNull, NotNull, Null, Top};
         match (self, other) {
@@ -79,6 +83,7 @@ impl NullabilityLattice {
 impl IntervalLattice {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Widen.
     pub fn widen(&self, other: &Self) -> Self {
         let lower = match (self.lower, other.lower) {
             (Some(a), Some(b)) if a > b => None, // Widening to -inf
@@ -95,6 +100,7 @@ impl IntervalLattice {
 
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Is equal.
     pub fn is_equal(&self, other: &Self) -> bool {
         self.lower == other.lower && self.upper == other.upper
     }
@@ -103,6 +109,7 @@ impl IntervalLattice {
 impl AliasLattice {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Join parts together.
     pub fn join(&self, other: &Self) -> Self {
         use AliasLattice::{Bottom, MayAlias, MustAlias, NoAlias, Top};
         match (self, other) {
@@ -118,6 +125,7 @@ impl AliasLattice {
 impl PurityLattice {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Meet.
     pub fn meet(&self, other: &Self) -> Self {
         use PurityLattice::{Bottom, Pure, ReadOnly, Top, WriteGlobal, WriteLocal};
         match (self, other) {

@@ -9,6 +9,7 @@ type PressureCallbacks = Arc<RwLock<Vec<Box<dyn Fn(f32) + Send + Sync>>>>;
 use sysinfo::System as SysInfo;
 
 // Memory limiter with custom allocator
+/// Limiter for controlling memory usage.
 pub struct MemoryLimiter {
     limits: Arc<RwLock<MemoryLimits>>,
     allocated: Arc<AtomicUsize>,
@@ -19,6 +20,7 @@ pub struct MemoryLimiter {
 
 impl MemoryLimiter {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(limits: MemoryLimits) -> Result<Self, ResourceError> {
         let mut system = SysInfo::new_all();
         system.refresh_all();
@@ -174,6 +176,7 @@ impl MemoryLimiter {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check allocation.
     pub fn check_allocation(&self, size: usize) -> Result<(), ResourceError> {
         let current = self.allocated.load(Ordering::Relaxed);
         let limit = self.limits.read().max_bytes;
@@ -189,6 +192,7 @@ impl MemoryLimiter {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Record allocation.
     pub fn record_allocation(&self, size: usize) {
         let new_allocated = self.allocated.fetch_add(size, Ordering::SeqCst) + size;
 
@@ -208,15 +212,18 @@ impl MemoryLimiter {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Record deallocation.
     pub fn record_deallocation(&self, size: usize) {
         self.allocated.fetch_sub(size, Ordering::SeqCst);
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Get allocated.
     pub fn get_allocated(&self) -> usize {
         self.allocated.load(Ordering::Relaxed)
     }
 
+    /// Get peak allocated.
     pub fn get_peak_allocated(&self) -> usize {
         self.peak_allocated.load(Ordering::Relaxed)
     }
@@ -279,6 +286,7 @@ impl ResourceController for MemoryLimiter {
 }
 
 // Custom allocator that tracks and limits memory usage
+/// Custom allocator with limited limits.
 pub struct LimitedAllocator {
     limiter: Arc<MemoryLimiter>,
     inner: System,
@@ -286,6 +294,7 @@ pub struct LimitedAllocator {
 
 impl LimitedAllocator {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(limiter: Arc<MemoryLimiter>) -> Self {
         Self {
             limiter,
@@ -348,6 +357,7 @@ unsafe impl GlobalAlloc for LimitedAllocator {
 }
 
 // Memory pressure monitor
+/// Monitor for memory resources.
 pub struct MemoryMonitor {
     limiter: Arc<MemoryLimiter>,
     pressure_callbacks: PressureCallbacks,
@@ -355,6 +365,7 @@ pub struct MemoryMonitor {
 
 impl MemoryMonitor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(limiter: Arc<MemoryLimiter>) -> Self {
         Self {
             limiter,
@@ -363,6 +374,7 @@ impl MemoryMonitor {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Add pressure callback.
     pub fn add_pressure_callback<F>(&self, callback: F)
     where
         F: Fn(f32) + Send + Sync + 'static,
@@ -371,6 +383,7 @@ impl MemoryMonitor {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Check memory pressure.
     pub fn check_memory_pressure(&self) -> f32 {
         let allocated = self.limiter.get_allocated();
         let limit = self.limiter.limits.read().max_bytes;

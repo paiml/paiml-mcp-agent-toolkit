@@ -4,6 +4,7 @@
 impl ReadmeCompressor {
     #[must_use]
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         let mut section_importance = HashMap::new();
 
@@ -43,6 +44,7 @@ impl ReadmeCompressor {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Compress.
     pub fn compress(&self, content: &str) -> CompressedReadme {
         let sections = self.parse_markdown_sections(content);
         let mut scored_sections = Vec::new();

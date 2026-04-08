@@ -13,10 +13,12 @@ use async_trait::async_trait;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
+/// Precommit scorer.
 pub struct PrecommitScorer;
 
 impl PrecommitScorer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }

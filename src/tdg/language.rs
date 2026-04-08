@@ -6,6 +6,7 @@ use std::path::Path;
 use tree_sitter::{Parser, Tree};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+/// Language.
 pub enum Language {
     Rust,
     Python,
@@ -24,6 +25,7 @@ pub enum Language {
 
 impl Language {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    /// From extension.
     pub fn from_extension(path: &Path) -> Self {
         match path.extension().and_then(|s| s.to_str()) {
             Some("rs") => Language::Rust,
@@ -43,6 +45,7 @@ impl Language {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Confidence.
     pub fn confidence(&self) -> f32 {
         match self {
             Language::Rust => 1.0,
@@ -82,6 +85,7 @@ impl std::fmt::Display for Language {
     }
 }
 
+/// Adapter trait for language implementations.
 pub trait LanguageAdapter: Send + Sync {
     fn detect(&self, path: &Path) -> bool;
     fn parse(&self, source: &str) -> Result<Tree>;
@@ -90,35 +94,43 @@ pub trait LanguageAdapter: Send + Sync {
     fn naming_rules(&self) -> LanguageRules;
 }
 
+/// Language adapter for rust.
 pub struct RustAdapter {
     parser: Parser,
 }
 
+/// Language adapter for python.
 pub struct PythonAdapter {
     parser: Parser,
 }
 
+/// Language adapter for java script.
 pub struct JavaScriptAdapter {
     parser: Parser,
 }
 
+/// Language adapter for type script.
 pub struct TypeScriptAdapter {
     parser: Parser,
 }
 
+/// Language adapter for go.
 pub struct GoAdapter {
     parser: Parser,
 }
 
+/// Language adapter for lua.
 pub struct LuaAdapter {
     parser: Parser,
 }
 
+/// Registry of language instances.
 pub struct LanguageRegistry {
     adapters: HashMap<Language, Box<dyn LanguageAdapter>>,
 }
 
 #[derive(Debug, Clone)]
+/// Naming style convention for naming.
 pub enum NamingStyle {
     SnakeCase,
     CamelCase,
@@ -128,6 +140,7 @@ pub enum NamingStyle {
 }
 
 #[derive(Debug, Clone)]
+/// Language rules.
 pub struct LanguageRules {
     pub language: Language,
     pub function_style: NamingStyle,

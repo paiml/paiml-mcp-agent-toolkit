@@ -1,4 +1,5 @@
 // Auto-scaling manager
+/// Auto scaler.
 pub struct AutoScaler {
     allocator: Arc<AdaptiveAllocator>,
     manager: Arc<ResourceManager>,
@@ -7,6 +8,7 @@ pub struct AutoScaler {
 }
 
 #[derive(Clone)]
+/// Configuration for auto scaler.
 pub struct AutoScalerConfig {
     pub enabled: bool,
     pub check_interval: Duration,
@@ -29,6 +31,7 @@ impl Default for AutoScalerConfig {
 
 impl AutoScaler {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(
         allocator: Arc<AdaptiveAllocator>,
         manager: Arc<ResourceManager>,

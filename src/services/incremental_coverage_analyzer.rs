@@ -71,18 +71,21 @@ pub struct IncrementalCoverageAnalyzer {
 }
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+/// File id.
 pub struct FileId {
     pub path: PathBuf,
     pub hash: [u8; 32],
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Ast node.
 pub struct AstNode {
     pub functions: Vec<FunctionInfo>,
     pub dependencies: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Information about function.
 pub struct FunctionInfo {
     pub name: String,
     pub start_line: usize,
@@ -91,6 +94,7 @@ pub struct FunctionInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Coverage update.
 pub struct CoverageUpdate {
     pub file_coverage: HashMap<FileId, FileCoverage>,
     pub aggregate_coverage: AggregateCoverage,
@@ -98,6 +102,7 @@ pub struct CoverageUpdate {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// File coverage.
 pub struct FileCoverage {
     pub line_coverage: f64,
     pub branch_coverage: f64,
@@ -107,6 +112,7 @@ pub struct FileCoverage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Aggregate coverage.
 pub struct AggregateCoverage {
     pub line_percentage: f64,
     pub branch_percentage: f64,
@@ -116,6 +122,7 @@ pub struct AggregateCoverage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Delta coverage.
 pub struct DeltaCoverage {
     pub new_lines_covered: usize,
     pub new_lines_total: usize,
@@ -123,12 +130,14 @@ pub struct DeltaCoverage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Change set.
 pub struct ChangeSet {
     pub modified_files: Vec<FileId>,
     pub added_files: Vec<FileId>,
     pub deleted_files: Vec<FileId>,
 }
 
+/// Call graph.
 pub struct CallGraph {
     edges: DashMap<String, HashSet<String>>,
     reverse_edges: DashMap<String, HashSet<String>>,

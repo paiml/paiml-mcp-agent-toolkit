@@ -20,6 +20,7 @@ fn create_test_dir_with_rust_file() -> TempDir {
     std::fs::write(
         src_dir.join("lib.rs"),
         r#"
+        /// Test function.
         pub fn test_function() {
             println!("test");
         }

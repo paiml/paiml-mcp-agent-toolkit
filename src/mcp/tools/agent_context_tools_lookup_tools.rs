@@ -7,10 +7,12 @@
 
 impl GetFunctionTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self { manager }
     }
 
+    /// Schema.
     pub fn schema() -> Value {
         json!({
             "name": "pmat_get_function",
@@ -96,10 +98,12 @@ impl McpTool for GetFunctionTool {
 
 impl FindSimilarTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self { manager }
     }
 
+    /// Schema.
     pub fn schema() -> Value {
         json!({
             "name": "pmat_find_similar",
@@ -205,10 +209,12 @@ impl McpTool for FindSimilarTool {
 
 impl IndexStatsTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(manager: Arc<IndexManager>) -> Self {
         Self { manager }
     }
 
+    /// Schema.
     pub fn schema() -> Value {
         json!({
             "name": "pmat_index_stats",

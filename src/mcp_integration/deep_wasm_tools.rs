@@ -19,6 +19,7 @@ pub struct DeepWasmAnalyzeTool {
 
 impl DeepWasmAnalyzeTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -33,6 +34,7 @@ pub struct DeepWasmQueryMappingTool {
 
 impl DeepWasmQueryMappingTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -47,6 +49,7 @@ pub struct DeepWasmTraceExecutionTool {
 
 impl DeepWasmTraceExecutionTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -61,6 +64,7 @@ pub struct DeepWasmCompareOptimizationsTool {
 
 impl DeepWasmCompareOptimizationsTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,
@@ -75,6 +79,7 @@ pub struct DeepWasmDetectIssuesTool {
 
 impl DeepWasmDetectIssuesTool {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new(registry: Arc<AgentRegistry>) -> Self {
         Self {
             _registry: registry,

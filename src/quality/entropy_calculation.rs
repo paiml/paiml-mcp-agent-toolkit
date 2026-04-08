@@ -1,10 +1,12 @@
 impl EntropyCalculator {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
     pub fn new() -> Self {
         Self
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// Calculate.
     pub fn calculate(&self, source: &str) -> f64 {
         if source.is_empty() {
             return 0.0;
@@ -31,6 +33,7 @@ impl EntropyCalculator {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+    /// Calculate token entropy.
     pub fn calculate_token_entropy(&self, source: &str) -> f64 {
         // Tokenize source code and calculate entropy based on tokens
         let tokens = self.tokenize(source);
@@ -84,6 +87,7 @@ impl EntropyCalculator {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Calculate ast diversity.
     pub fn calculate_ast_diversity(&self, ast: &syn::File) -> f64 {
         // Calculate diversity based on AST node types
         let mut node_types = HashMap::new();

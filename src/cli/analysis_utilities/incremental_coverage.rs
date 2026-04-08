@@ -4,6 +4,7 @@
 // Tests: incremental_coverage_tests.rs
 
 #[derive(Debug, Serialize)]
+/// Report containing incremental coverage data.
 pub struct IncrementalCoverageReport {
     pub base_branch: String,
     pub target_branch: String,
@@ -13,6 +14,7 @@ pub struct IncrementalCoverageReport {
 }
 
 #[derive(Debug, Serialize, Clone)]
+/// File coverage metrics.
 pub struct FileCoverageMetrics {
     pub path: PathBuf,
     pub base_coverage: f64,
@@ -24,6 +26,7 @@ pub struct FileCoverageMetrics {
 }
 
 #[derive(Debug, Serialize)]
+/// Summary of coverage analysis.
 pub struct CoverageSummary {
     pub total_files_changed: usize,
     pub files_improved: usize,

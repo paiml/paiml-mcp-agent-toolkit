@@ -14,6 +14,7 @@ use std::time::Duration;
 
 // Resource limits configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Resource limits.
 pub struct ResourceLimits {
     pub cpu: CpuLimits,
     pub memory: MemoryLimits,
@@ -23,6 +24,7 @@ pub struct ResourceLimits {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Cpu limits.
 pub struct CpuLimits {
     pub cores: f32,               // Fractional cores (e.g., 1.5)
     pub max_percent: f32,         // Max CPU percentage
@@ -30,6 +32,7 @@ pub struct CpuLimits {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Memory limits.
 pub struct MemoryLimits {
     pub max_bytes: usize,
     pub max_heap_bytes: Option<usize>,
@@ -38,6 +41,7 @@ pub struct MemoryLimits {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Gpu limits.
 pub struct GpuLimits {
     pub device_id: u32,
     pub memory_bytes: usize,
@@ -46,6 +50,7 @@ pub struct GpuLimits {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Network limits.
 pub struct NetworkLimits {
     pub ingress_bytes_per_sec: u64,
     pub egress_bytes_per_sec: u64,
@@ -54,6 +59,7 @@ pub struct NetworkLimits {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Disk io limits.
 pub struct DiskIoLimits {
     pub read_bytes_per_sec: u64,
     pub write_bytes_per_sec: u64,
@@ -94,6 +100,7 @@ impl Default for ResourceLimits {
 
 // Resource usage metrics
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Resource usage.
 pub struct ResourceUsage {
     pub cpu_percent: f32,
     pub memory_bytes: usize,
@@ -107,6 +114,7 @@ pub struct ResourceUsage {
 }
 
 // Resource controller trait
+/// Controller trait for resource management.
 pub trait ResourceController: Send + Sync {
     fn apply_limits(&self, limits: &ResourceLimits) -> Result<(), ResourceError>;
     fn get_usage(&self) -> Result<ResourceUsage, ResourceError>;
@@ -114,6 +122,7 @@ pub trait ResourceController: Send + Sync {
 }
 
 #[derive(Debug, thiserror::Error)]
+/// Error variants for resource operations.
 pub enum ResourceError {
     #[error("CPU limit error: {0}")]
     CpuError(String),

@@ -1,5 +1,6 @@
 impl NamingStyle {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Matches.
     pub fn matches(&self, name: &str) -> bool {
         match self {
             NamingStyle::SnakeCase => {
@@ -25,6 +26,7 @@ impl NamingStyle {
 
 impl LanguageRules {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Rust rules.
     pub fn rust_rules() -> Self {
         LanguageRules {
             language: Language::Rust,
@@ -36,6 +38,7 @@ impl LanguageRules {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Python rules.
     pub fn python_rules() -> Self {
         LanguageRules {
             language: Language::Python,
@@ -47,6 +50,7 @@ impl LanguageRules {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Javascript rules.
     pub fn javascript_rules() -> Self {
         LanguageRules {
             language: Language::JavaScript,
@@ -58,6 +62,7 @@ impl LanguageRules {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Typescript rules.
     pub fn typescript_rules() -> Self {
         LanguageRules {
             language: Language::TypeScript,
@@ -69,6 +74,7 @@ impl LanguageRules {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Go rules.
     pub fn go_rules() -> Self {
         LanguageRules {
             language: Language::Go,
@@ -80,6 +86,7 @@ impl LanguageRules {
     }
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Lua rules.
     pub fn lua_rules() -> Self {
         LanguageRules {
             language: Language::Lua,

@@ -158,6 +158,7 @@ pub struct SimdVerification {
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+/// Verify f32x4 operations.
 pub fn verify_f32x4_operations() -> bool {
     let simd_lanes = 4; // f32x4
     true
