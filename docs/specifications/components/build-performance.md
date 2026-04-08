@@ -50,17 +50,34 @@ Scientific approach to dependency removal:
 
 ## Dependency Policy
 
-### Sovereign Stack Versions (v3.11.1)
+### Sovereign Stack: Path Dep Migration (Planned)
 
-| Crate | Version | Purpose |
-|-------|---------|---------|
-| trueno | 0.17 | SIMD/GPU compute |
-| trueno-graph | 0.1.17 | CSR graph, PageRank |
-| trueno-db | 0.3.16 | Columnar storage |
-| trueno-rag | 0.2.4 | RAG pipeline |
-| trueno-viz | 0.2.3 | Terminal visualization |
-| aprender | 0.27.5 | ML, stats, text similarity |
-| organizational-intelligence-plugin | 0.3.4 | GitHub org analysis |
+Migrate from crates.io versions to local path deps for development velocity
+and shared dependency trees. See [self-enforcement.md](self-enforcement.md) Phase 8.
+
+| Crate | crates.io | Path | Purpose |
+|-------|-----------|------|---------|
+| aprender | 0.27.5 | `../aprender` | ML, stats, text similarity |
+| trueno | 0.17 | `../trueno` | SIMD/GPU compute |
+| trueno-graph | 0.1.17 | `../trueno/crates/trueno-graph` | CSR graph, PageRank |
+| trueno-db | 0.3.16 | `../trueno/crates/trueno-db` | Columnar storage |
+| trueno-rag | 0.2.4 | `../trueno/crates/trueno-rag` | RAG pipeline |
+| trueno-viz | 0.2.3 | `../trueno/crates/trueno-viz` | Terminal visualization |
+| trueno-zram-core | 0.3.1 | `../trueno/crates/trueno-zram-core` | SIMD compression |
+| pmcp | 1.10 | `../pmcp` | MCP protocol SDK |
+| ruchy | 4.2.1 | `../ruchy` | Parser engine |
+| batuta-common | 0.1 | `../batuta-common` | Shared utilities |
+| org-intel | 0.3.4 | `../organizational-intelligence` | GitHub org analysis |
+| pv-macros | latest | `../provable-contracts/crates/macros` | Contract macros |
+
+**Dual-source pattern**: Use path for development, crates.io for release:
+```toml
+# Development (checked in, used by default)
+aprender = { path = "../aprender" }
+# Release override (cargo publish uses crates.io)
+# [patch.crates-io]
+# aprender = { path = "../aprender" }
+```
 
 ### Sovereign Stack Priority
 

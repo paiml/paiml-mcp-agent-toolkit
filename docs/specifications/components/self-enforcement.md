@@ -199,7 +199,91 @@ Fix: Fast-mode estimation now checks for infrastructure presence:
 ### Structural Limits
 
 - **Dependency count**: 113 direct deps (51 required + 62 optional) → 1/5 pts.
-  Caps Dep Health at 66.7%. Only category below 80%. Accepted at 10/11 penetration.
+  Caps Dep Health at 66.7%. Only category below 80%.
+
+### Phase 8: Sovereign Path Deps + Dependency Reduction (Planned)
+
+**Goal**: Reduce `[dependencies]` line count from 113 → ≤30 to score 4/5
+dep count (Dep Health 66.7% → 91.7%). This unlocks 11/11 penetration (100%).
+
+**Strategy**: Three-wave dependency reduction.
+
+#### Wave 1: Sovereign Stack Path Migration
+
+Port all batuta stack deps from crates.io versions to local path deps.
+This doesn't reduce the line count but enables workspace-level dep sharing
+and eliminates version lag.
+
+```toml
+# BEFORE (crates.io — version lag, separate dep trees)
+aprender = "0.27.5"
+trueno-graph = { version = "0.1.17", default-features = false }
+trueno-rag = "0.2.4"
+pmcp = { version = "1.10", features = ["websocket", "http", "sse", "validation"] }
+
+# AFTER (path — always latest, shared dep tree)
+aprender = { path = "../aprender" }
+trueno-graph = { path = "../trueno/crates/trueno-graph", default-features = false }
+trueno-rag = { path = "../trueno/crates/trueno-rag" }
+pmcp = { path = "../pmcp", features = ["websocket", "http", "sse", "validation"] }
+```
+
+Sovereign deps to migrate (12 crates):
+- `aprender` → `../aprender`
+- `trueno` → `../trueno`
+- `trueno-db` → `../trueno/crates/trueno-db`
+- `trueno-graph` → `../trueno/crates/trueno-graph`
+- `trueno-rag` → `../trueno/crates/trueno-rag`
+- `trueno-viz` → `../trueno/crates/trueno-viz`
+- `trueno-zram-core` → `../trueno/crates/trueno-zram-core`
+- `pmcp` → `../pmcp`
+- `ruchy` → `../ruchy`
+- `batuta-common` → `../batuta-common`
+- `organizational-intelligence-plugin` → `../organizational-intelligence`
+- `provable-contracts-macros` → `../provable-contracts/crates/macros`
+
+#### Wave 2: Feature-Gate External Required Deps (113 → ≤50)
+
+Move 20+ external required deps behind feature flags. Target: ≤50 deps
+in `[dependencies]` (scores 2/5 → Dep Health 75%).
+
+| Dep | Feature Gate | Rationale |
+|-----|-------------|-----------|
+| `syntect` | `syntax-highlighting` | Only used by demo/rich output |
+| `octocrab` | `github-api` | Only used by GitHub integration |
+| `sha2`, `blake3`, `xxhash-rust` | `hashing` | 3 hash crates → 1 feature |
+| `chrono` | `timestamps` | Can use `std::time` for basic ops |
+| `uuid` | `identifiers` | Only used by MCP session IDs |
+| `pulldown-cmark` | `markdown` | Only used by README analysis |
+| `minijinja` | `templates` | Only used by context output |
+| `bincode` | `binary-format` | Legacy serialization |
+| `flate2` | `compression` | Only used by asset compression |
+| `crc32fast` | `checksums` | Only used by cache validation |
+| `globset` | `glob-matching` | Can use `glob` only |
+| `dashmap` | `concurrent-maps` | Can use `parking_lot` + HashMap |
+| `roaring` | `bitmap` | Specialized data structure |
+| `crossbeam-channel` | `channels` | Can use `tokio::sync` |
+| `futures` | `async-utils` | Minimal usage |
+| `lru` | `caching` | Can inline simple LRU |
+
+#### Wave 3: Gut Ratatui Residuals + Consolidate (≤50 → ≤30)
+
+Ratatui is already removed from Cargo.toml, but residual references remain
+in source code (`src/demo/adapters/tui.rs`, scorer tests). Clean up:
+- Delete `src/demo/adapters/tui.rs` if unused
+- Remove `crossterm` if only used by ratatui adapter
+- Consolidate: `glob` + `globset` → keep one; `syn` → make optional
+
+**Target**: ≤30 deps → 4/5 dep count → Dep Health 10/12 (83.3%) or 11/12 (91.7%).
+
+#### Scoring Impact
+
+| Dep Count | Score | Dep Health | Penetration |
+|-----------|-------|------------|-------------|
+| 113 (current) | 1/5 | 66.7% (8/12) | 10/11 |
+| ≤50 (Wave 2) | 2/5 | 75.0% (9/12) | 10/11 |
+| ≤30 (Wave 3) | 4/5 | 91.7% (11/12) | **11/11 (100%)** |
+| ≤15 (stretch) | 5/5 | 100% (12/12) | 11/11 |
 
 ## Penetration Model
 
@@ -209,10 +293,12 @@ Fix: Fast-mode estimation now checks for infrastructure presence:
 penetration(threshold) = count(categories where % >= threshold) / total_categories
 ```
 
+**Current**: 10/11 at ≥80% (91% penetration). Grade A- (85.3%).
+
 **Targets**:
-- 80% penetration at ≥80%: 9/11 categories (current: 6/11 = 55%)
-- 95% penetration at ≥80%: 10/11 categories (target)
-- 95% penetration at ≥90%: 10/11 categories (stretch)
+- 91% penetration at ≥80%: 10/11 categories — **ACHIEVED** (Phase 7)
+- 95% penetration at ≥80%: 11/11 categories — requires Dep Health ≥80% (Phase 8)
+- Grade A (≥90% avg): requires +4.7% across categories
 
 **Grade A threshold**: normalized avg ≥ 90% AND penetration(80%) ≥ 95%.
 
