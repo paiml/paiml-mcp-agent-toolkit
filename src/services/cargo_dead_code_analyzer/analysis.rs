@@ -174,12 +174,11 @@ impl CargoDeadCodeAnalyzer {
             .arg("check")
             .arg("--message-format=json");
 
-        // Enable dead_code warning via RUSTFLAGS to catch items with 
-        // This forces rustc to emit dead_code warnings even for items that normally suppress them
-        cmd.env(
-            "RUSTFLAGS",
-            std::env::var("RUSTFLAGS").unwrap_or_default() + " -W dead_code",
-        );
+        // Don't modify RUSTFLAGS — changing flags forces full recompilation
+        // of all deps (including cc, which fails with extra warnings).
+        // Dead code detection uses heuristic source scanning instead.
+        // The compiler-level dead_code lint is only useful for catching
+        // items the heuristic misses, but the cost (full recompile) is too high.
 
         // Use targeted checks instead of --all-targets for faster execution
         if self.exclude_tests {
