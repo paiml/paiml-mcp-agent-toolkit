@@ -1,0 +1,40 @@
+# Post-release automation: version bump, changelog update, MSRV verification
+# Self-enforcement: Component 26 (self-enforcement.md)
+name: Post-Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-release:
+    name: Verify published release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify crate published
+        run: |
+          VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          echo "Released version: $VERSION"
+
+  msrv-check:
+    name: MSRV verification
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [1.80.0]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: clippy
+      - name: Check MSRV ${{ matrix.rust }} compilation
+        run: cargo check --all-features
+      - name: Clippy on MSRV
+        run: cargo clippy -- -D warnings

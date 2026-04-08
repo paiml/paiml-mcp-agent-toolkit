@@ -242,7 +242,7 @@ fn test_location_hash() {
     let mut set = HashSet::new();
     set.insert(Location::new(PathBuf::from("a.rs"), 0, 10));
     set.insert(Location::new(PathBuf::from("a.rs"), 0, 20)); // same start, different end
-                                                             // Hash only uses file_path and start pos, so these may collide
+    // Hash only uses file_path and start pos, so these may collide
     assert!(set.len() >= 1);
 }
 

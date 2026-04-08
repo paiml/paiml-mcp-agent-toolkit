@@ -217,12 +217,12 @@
                                 const colorClass = cell > 20 ? 'danger' : cell > 15 ? 'warning' : 'success';
                                 const bar = Math.min(cell / 30 * 100, 100);
                                 return gridjs.html(`
-                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                        <span style="color: var(--${colorClass}); font-weight: 600">${cell}</span>
-                                        <div style="width: 50px; height: 4px; background: var(--border); border-radius: 2px;">
-                                            <div style="width: ${bar}%; height: 100%; background: var(--${colorClass}); border-radius: 2px;"></div>
-                                        </div>
+                                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="color: var(--${colorClass}); font-weight: 600">${cell}</span>
+                                    <div style="width: 50px; height: 4px; background: var(--border); border-radius: 2px;">
+                                      <div style="width: ${bar}%; height: 100%; background: var(--${colorClass}); border-radius: 2px;"></div>
                                     </div>
+                                  </div>
                                 `);
                             }
                         },

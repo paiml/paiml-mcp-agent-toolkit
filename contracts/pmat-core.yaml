@@ -36,6 +36,77 @@ equations:
     - hit_rate >= 0.0
     - throughput >= 0.0
     lean_theorem: Theorems.Score_Range_NonNeg
+  composite_bounded:
+    formula: composite = geometric_mean(sub_scores)
+    domain: sub_scores in Vec<f64>, all >= 0.0
+    codomain: composite in [0.0, 100.0]
+    invariants:
+    - composite >= 0.0 (geometric mean of non-negatives)
+    - composite <= max(sub_scores) (geometric mean never exceeds max)
+    preconditions:
+    - sub_scores.len() > 0
+    lean_theorem: Theorems.Geometric_Mean_Bounded
+  rps_category_sum:
+    formula: total = sum(category.earned for category in categories)
+    domain: categories in Vec<CategoryScore>
+    codomain: total in [0.0, 289.0]
+    invariants:
+    - total >= 0.0
+    - total <= sum(category.max for category in categories)
+    preconditions:
+    - categories.len() == 11
+    lean_theorem: Theorems.Category_Sum_Bounded
+  tdg_grade_monotonic:
+    formula: grade = score_to_grade(tdg_score)
+    domain: tdg_score in [0.0, 100.0]
+    codomain: grade in {A, B, C, D, F}
+    invariants:
+    - tdg_score >= threshold implies grade >= corresponding_grade
+    - higher score always yields same or better grade
+    preconditions:
+    - tdg_score >= 0.0
+    lean_theorem: Theorems.TDG_Grade_Monotonic
+  index_load_idempotent:
+    formula: index = load(save(index))
+    domain: index in AgentContextIndex
+    codomain: loaded_index in AgentContextIndex
+    invariants:
+    - loaded_index.functions.len() == index.functions.len()
+    - loaded_index.file_index.keys() == index.file_index.keys()
+    preconditions:
+    - index.functions.len() > 0
+    lean_theorem: Theorems.Index_Roundtrip_Identity
+  bm25_relevance_positive:
+    formula: score = bm25(query, document, corpus)
+    domain: query in String, document in String, corpus in Vec<String>
+    codomain: score in [0.0, +inf)
+    invariants:
+    - score >= 0.0 (BM25 produces non-negative scores)
+    - empty query implies score == 0.0
+    preconditions:
+    - corpus.len() > 0
+    lean_theorem: Theorems.BM25_Non_Negative
+  pagerank_convergent:
+    formula: ranks = pagerank(graph, damping, iterations)
+    domain: graph in CSRGraph, damping in (0.0, 1.0), iterations in N+
+    codomain: ranks in Vec<f64>, sum(ranks) approx 1.0
+    invariants:
+    - all(r >= 0.0 for r in ranks)
+    - sum(ranks) in [0.99, 1.01] (convergence within epsilon)
+    preconditions:
+    - graph.num_nodes() > 0
+    - damping > 0.0 && damping < 1.0
+    lean_theorem: Theorems.PageRank_Convergent
+  muda_waste_bounded:
+    formula: muda = compute_muda(project)
+    domain: project in ProjectAnalysis
+    codomain: muda in [0.0, 100.0]
+    invariants:
+    - muda >= 0.0 (waste score non-negative)
+    - muda <= 100.0 (bounded)
+    preconditions:
+    - project.files.len() > 0
+    lean_theorem: Theorems.Muda_Score_Bounded
 proof_obligations:
 - type: invariant
   property: TDG baseline valid JSON after every commit

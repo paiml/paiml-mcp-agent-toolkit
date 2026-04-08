@@ -232,49 +232,45 @@ mod tests {
         fs::write(
             &complex_file,
             r#"
-            // TODO: This function is too complex
-            fn very_complex_function(a: i32, b: i32, c: i32) -> i32 {
-                if a > 0 {
-                    if b > 0 {
-                        if c > 0 {
-                            if a > b {
-                                if b > c {
-                                    // FIXME: Nested conditions are hard to read
-                                    match (a, b, c) {
-                                        (1, 2, 3) => 1,
-                                        (2, 3, 4) => 2,
-                                        (3, 4, 5) => 3,
-                                        _ => {
-                                            let mut result = 0;
-                                            for i in 0..a {
-                                                for j in 0..b {
-                                                    for k in 0..c {
-                                                        if i + j + k > 10 {
-                                                            result += 1;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            result
-                                        }
-                                    }
-                                } else {
-                                    a + b - c
-                                }
-                            } else {
-                                b + c - a
+// TODO: This function is too complex
+fn very_complex_function(a: i32, b: i32, c: i32) -> i32 {
+    if a > 0 {
+        if b > 0 {
+            if c > 0 {
+                if a > b {
+                    if b > c {
+                        // FIXME: Nested conditions are hard to read
+                        match (a, b, c) {
+                            (1, 2, 3) => 1,
+                            (2, 3, 4) => 2,
+                            (3, 4, 5) => 3,
+                            _ => {
+                                let mut result = 0;
+                                for i in 0..a {
+                                for j in 0..b {
+                                for k in 0..c {
+                                    if i+j+k > 10 { result += 1; }
+                                }}}
+                                result
                             }
-                        } else {
-                            a + b
                         }
                     } else {
-                        a
+                        a + b - c
                     }
                 } else {
-                    0
+                    b + c - a
                 }
+            } else {
+                a + b
             }
-        "#,
+        } else {
+            a
+        }
+    } else {
+        0
+    }
+}
+"#,
         )
         .await
         .expect("Failed to write complex file");

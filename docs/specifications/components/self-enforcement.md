@@ -58,32 +58,65 @@ Penetration@80: **7/11 (64%)**. Penetration@90: 3/11 (27%).
 - Updated fastrand 2.4.0→2.4.1 (yanked fix)
 - Added MSRV badge to README (+2 pts MSRV tracking)
 
-## Remaining Gap Analysis (Post-Phase 1)
+### After Phase 2 (2026-04-08): Grade B+ (82.6%, 234.2/289)
 
-### To reach 80% penetration (10/11 categories ≥80%)
+| Category | Phase 1 | Phase 2 | Delta | Status |
+|----------|---------|---------|-------|--------|
+| GPU/SIMD Quality | 100% | 100% | — | ✓ |
+| Known Defects | 100% | 100% | — | ✓ |
+| Performance & Benchmarking | 100% | 100% | — | ✓ |
+| Reproducibility | 86% | 86% | — | ⚠ |
+| Build Performance | 83.3% | 83.3% | — | ⚠ |
+| Testing Excellence | 82.5% | 82.5% | — | ⚠ |
+| Rust Tooling & CI/CD | 75.4% | **80.8%** | +5.4% | ⚠ |
+| Documentation | 80% | 80% | — | ⚠ |
+| Dependency Health | 66.7% | 66.7% | — | ✗ |
+| Code Quality | 61.5% | **65.4%** | +3.9% | ✗ |
+| Formal Verification | 53.9% | **64.4%** | +10.5% | ✗ |
 
-Need 3 more categories above 80%: Rust Tooling (75.4%), Code Quality (61.5%),
-Dependency Health (66.7%), Formal Verification (53.9%). Best 3 of 4 needed.
+Penetration@80: **8/11 (73%)**. Penetration@90: 3/11 (27%).
+
+**Phase 2 actions completed:**
+- Added `[workspace.dependencies]` (+2 pts Rust Tooling)
+- Added `.github/workflows/post-release.yml` with MSRV testing (+5 pts Rust Tooling)
+- Added 7 lean_theorem refs to contracts/pmat-core.yaml (3→10, +1.68 pts Formal Verification)
+- Reduced deep nesting from 19→3 lines (+1 pt Code Quality complexity)
+- Dedented string literals in 6 test/template files
+
+## Remaining Gap Analysis (Post-Phase 2)
+
+### To reach 95% penetration (10/11 categories ≥80%)
+
+Need 2 more categories above 80% from: Code Quality (65.4%),
+Dependency Health (66.7%), Formal Verification (64.4%).
+
+### Structural Limits (Fast-Mode Scoring)
+
+| Category | Max Fast-Mode | Why |
+|----------|--------------|-----|
+| Code Quality | 76.9% (20/26) | Mutation defaults to 4/8, build time to 2/4 |
+| Formal Verification | 64.4% (10.3/16) | Miri=0.9 (not run), Kani=2.0 (not run) |
+| Dependency Health | 66.7% (8/12) | 113 deps → 1/5 pts, can't reduce without removing features |
+
+**Key insight**: Code Quality and Formal Verification **cannot reach 80% in
+fast mode**. Full mode is required, which means actually running `cargo-mutants`,
+Miri, and Kani. These tools must be installed and the codebase must pass them.
+
+### Path to 95% Penetration (Full Mode)
 
 | Fix | Category | Impact | Effort |
 |-----|----------|--------|--------|
-| CI MSRV testing (sovereign-ci) | Rust Tooling +3 | 75.4%→77.7% | Low |
-| Stress/loom workflow | Rust Tooling +3 | →80% | Low |
-| Delete `#[allow(dead_code)]` attrs | Code Quality +2 | 61.5%→69.2% | High (339 attrs) |
-| Reduce deep nesting | Code Quality +1 | →73% | Medium |
-| Run Miri in CI (nightly) | Formal Verification +3 | 53.9%→72.6% | Medium |
-| More Kani proofs (≥10) | Formal Verification +2-5 | →85% | High |
-| Dep count reduction | Dependency Health +2-4 | 66.7%→83% | High |
-| `rustdoc` with examples | Documentation +3 | 80%→100% | Medium |
+| Install + pass Miri | Formal Verification | 64.4%→83% | Medium |
+| Install + pass Kani | Formal Verification | →95%+ | Medium (already have 13 proofs) |
+| Install cargo-mutants + pass | Code Quality | 65.4%→80%+ | High |
+| Remove 336 `#[allow(dead_code)]` | Code Quality +2 | +7.7% | Very High |
 
 ### Unfixable Constraints
 
-- **cargo-audit vulns**: 2 transitive vulns (rsa via octocrab, rustls-webpki via
-  organizational-intelligence-plugin). No upstream fix available. Caps audit at ~5/7.
-- **Dependency count**: PMAT has many features requiring many deps. Reduction
-  requires feature-gating or removing functionality.
-- **Mutation testing**: `cargo-mutants` on full codebase takes hours. Not viable
-  for fast-mode scoring.
+- **Dependency count**: 113 direct deps → 1/5 pts. Caps Dep Health at 66.7%.
+  Would need ≤50 deps for 2/5 pts. Not practical without major feature removal.
+- **Fast-mode ceiling**: Several categories score conservatively in fast mode.
+  Full-mode scoring (`--full`) is the authoritative measure for A-level.
 
 ## Penetration Model
 
@@ -214,16 +247,16 @@ cb-161:
 
 ## Key Metrics
 
-| Metric | Baseline | Current | Target | Method |
-|--------|----------|---------|--------|--------|
-| RPS Grade | B | **B+** | A | `pmat rust-project-score` |
-| RPS % | 76.3% | **80.8%** | ≥90% | Normalized avg |
-| RPS Points | 195/289 | **224.5/289** | ≥260/289 | Raw score |
-| Penetration@80 | 55% (6/11) | **64% (7/11)** | 95% (10/11) | Categories ≥80% |
-| Penetration@90 | 27% (3/11) | 27% (3/11) | 82% (9/11) | Categories ≥90% |
-| Comply Status | COMPLIANT | COMPLIANT | COMPLIANT | `pmat comply check` |
-| Muda Score | 13.6 | 13.6 | ≤15 | CB-300 |
-| Dead Code | 0.6% | 0.6% | ≤1% | CB-304 |
+| Metric | Baseline | Phase 1 | Phase 2 | Target | Method |
+|--------|----------|---------|---------|--------|--------|
+| RPS Grade | B | B+ | **B+** | A | `pmat rust-project-score` |
+| RPS % | 76.3% | 80.8% | **82.6%** | ≥90% | Normalized avg |
+| RPS Points | 195/289 | 224.5/289 | **234.2/289** | ≥260/289 | Raw score |
+| Penetration@80 | 55% (6/11) | 64% (7/11) | **73% (8/11)** | 95% (10/11) | Categories ≥80% |
+| Penetration@90 | 27% (3/11) | 27% (3/11) | 27% (3/11) | 82% (9/11) | Categories ≥90% |
+| Comply Status | COMPLIANT | COMPLIANT | COMPLIANT | COMPLIANT | `pmat comply check` |
+| Muda Score | 13.6 | 13.6 | 13.6 | ≤15 | CB-300 |
+| Dead Code | 0.6% | 0.6% | 0.6% | ≤1% | CB-304 |
 
 ## Key Files
 

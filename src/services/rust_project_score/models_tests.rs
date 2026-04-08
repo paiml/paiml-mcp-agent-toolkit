@@ -163,7 +163,7 @@ fn test_grade_from_score_a_plus() {
     // A+ requires 95%+ normalized
     assert_eq!(Grade::from_score(100.7, 106.0), Grade::APlus); // 95%
     assert_eq!(Grade::from_score(106.0, 106.0), Grade::APlus); // 100%
-                                                               // Perfect score on 100-point scale
+    // Perfect score on 100-point scale
     assert_eq!(Grade::from_score(95.0, 100.0), Grade::APlus);
     assert_eq!(Grade::from_score(100.0, 100.0), Grade::APlus);
 }

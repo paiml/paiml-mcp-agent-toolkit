@@ -165,7 +165,7 @@ fn test_cb1004_passes_with_architecture() {
     header.extend_from_slice(&3u32.to_le_bytes());
     header.extend_from_slice(&10u64.to_le_bytes());
     header.extend_from_slice(&1u64.to_le_bytes()); // 1 metadata entry
-                                                   // Add "general.architecture" as a key string
+    // Add "general.architecture" as a key string
     header.extend_from_slice(b"general.architecture");
     header.resize(200, 0);
     fs::write(temp.path().join("model.gguf"), &header).unwrap();
