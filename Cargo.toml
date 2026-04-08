@@ -27,11 +27,11 @@ path = "src/bin/pmat-agent.rs"
 required-features = ["mcp-integration"]
 
 [dependencies]
-# Batuta stack shared utilities (formatting, display, system info)
+# Sovereign stack: shared utilities (keep batuta-common until aprender-viz migrates internally)
 batuta-common = "0.1"
 
 # Organizational Intelligence Plugin - Phase 4 integration
-organizational-intelligence-plugin = { version = "0.3.4", optional = true }
+organizational-intelligence-plugin = { package = "aprender-orchestrate", version = "0.29", optional = true }
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
@@ -64,17 +64,17 @@ libc = { version = "0.2", optional = true }
 # Migration to aprender complete (Sprint 45)
 # Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
 # See: docs/specifications/aprender-ml-integration.md
-aprender = "0.27.5"  # PAIML next-gen ML (TDG 94.1/100, zero deps, SafeTensors support, text vectorization, LDA topic modeling)
+aprender = "0.29"  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
 
 # High-Performance Compute (SIMD/GPU)
-trueno = { version = "0.17", optional = true }
-trueno-db = { version = "0.3.16", optional = true, default-features = false }
+trueno = { package = "aprender-compute", version = "0.29", optional = true }
+trueno-db = { package = "aprender-db", version = "0.29", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
-trueno-graph = { version = "0.1.17", default-features = false }  # GPU-first graph database (CSR, PageRank, Louvain) — no arrow/parquet
-trueno-rag = "0.2.4"  # Pure-Rust RAG pipeline with VectorStore (replaces TursoVectorDB rusqlite implementation)
-trueno-viz = { version = "0.2.3", optional = true, features = ["terminal", "graph"] }  # Terminal graph visualization
+trueno-graph = { package = "aprender-graph", version = "0.29", default-features = false }  # CSR graph, PageRank, Louvain
+trueno-rag = { package = "aprender-rag", version = "0.29" }  # RAG pipeline with VectorStore
+trueno-viz = { package = "aprender-viz", version = "0.29", optional = true, features = ["terminal", "graph"] }
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
@@ -142,7 +142,7 @@ syntect = { version = "5.2", default-features = false, features = ["default-fanc
 # Storage
 # libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
 lz4_flex = "0.11"  # Keep for backward compat, trueno-zram-core adapter available
-trueno-zram-core = { version = "0.3.1", optional = true }  # SIMD compression (sovereign stack)
+trueno-zram-core = { package = "aprender-zram-core", version = "0.29", optional = true }
 rusqlite = { version = "0.32", features = ["bundled"] }  # SQLite with bundled library
 # sled = REMOVED (unmaintained, migrated to libsql/trueno-db)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
@@ -282,11 +282,11 @@ sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm so
 # ahash = "0.8"  # REMOVED: cargo-machete verified unused
 prettyplease = { version = "0.2.37", optional = true }
 fs2 = "0.4.3"
-provable-contracts-macros = { version = "0.3", path = "../provable-contracts/crates/provable-contracts-macros" }
+provable-contracts-macros = { package = "aprender-contracts-macros", version = "0.29" }
 
 
 [dev-dependencies]
-provable-contracts = { version = "0.3", path = "../provable-contracts/crates/provable-contracts" }
+provable-contracts = { package = "aprender-contracts", version = "0.29" }
 dhat = "0.3"
 tokio-test = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
