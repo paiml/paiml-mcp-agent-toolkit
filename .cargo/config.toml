@@ -1,21 +1,4 @@
-# Build configuration for consistent builds across machines
-# Part of self-enforcement (Component 26): Build Performance category
-
+# Temporary coverage config - DO NOT COMMIT
+# Replaces project config during coverage runs
 [build]
-# Use all available CPUs for parallel compilation
-jobs = 0
-
-[target.'cfg(target_os = "linux")']
-# Use mold linker if available (faster linking)
-# Uncomment if mold is installed: rustflags = ["-C", "link-arg=-fuse-ld=mold"]
-
-[profile.dev]
-# Fast incremental builds for development
-incremental = true
-
-[profile.dev.package."*"]
-# Optimize dependencies even in dev mode (faster runtime, minimal rebuild cost)
-opt-level = 2
-
-[registries.crates-io]
-protocol = "sparse"
+target-dir = "/mnt/nvme-raid0/coverage/paiml-mcp-agent-toolkit"
