@@ -2,10 +2,21 @@
 // Included by formal_verification_scorer.rs — shares parent module scope
 
 impl FormalVerificationScorer {
-    /// Check if Miri is available
+    /// Check if Miri is available (stable or nightly toolchain)
     fn is_miri_available(&self) -> bool {
+        // Try stable first
+        if Command::new("cargo")
+            .args(["miri", "--version"])
+            .output()
+            .map(|output| output.status.success())
+            .unwrap_or(false)
+        {
+            return true;
+        }
+        // Miri requires nightly — try with RUSTUP_TOOLCHAIN override
         Command::new("cargo")
             .args(["miri", "--version"])
+            .env("RUSTUP_TOOLCHAIN", "nightly")
             .output()
             .map(|output| output.status.success())
             .unwrap_or(false)

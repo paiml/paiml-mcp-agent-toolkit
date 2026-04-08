@@ -6,6 +6,7 @@ impl FormalVerificationScorer {
     fn run_miri_tests(&self, project_path: &Path) -> ScorerResult<MiriResult> {
         let output = Command::new("cargo")
             .args(["miri", "test", "--", "--test-threads=1"])
+            .env("RUSTUP_TOOLCHAIN", "nightly")
             .current_dir(project_path)
             .output()
             .map_err(|e| ScorerError::CommandError(e.to_string()))?;

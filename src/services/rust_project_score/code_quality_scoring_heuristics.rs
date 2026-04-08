@@ -55,8 +55,8 @@ fn analyze_unsafe_in_content(content: &str) -> (usize, usize) {
 }
 
 fn count_dead_code_attrs(content: &str) -> usize {
-    content.matches("").count()
-        + content.matches("").count()
+    content.matches("#[allow(dead_code)]").count()
+        + content.matches("#![allow(dead_code)]").count()
 }
 
 fn score_from_nesting(count: usize) -> f64 {

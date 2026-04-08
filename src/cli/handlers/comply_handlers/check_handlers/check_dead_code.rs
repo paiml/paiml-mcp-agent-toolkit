@@ -176,7 +176,7 @@ pub(crate) fn update_macro_depth(trimmed: &str, current: Option<i32>) -> Option<
 /// Check if a line is a dead code annotation.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn is_dead_code_annotation(trimmed: &str) -> bool {
-    trimmed.starts_with("") || trimmed.starts_with("#[allow(unused")
+    trimmed.starts_with("#[allow(dead_code)]") || trimmed.starts_with("#[allow(unused")
 }
 
 /// Check if a line declares a code item (fn, struct, enum, trait, const, static).
