@@ -2518,23 +2518,38 @@ bench-build-times: ## Measure build times across configurations (takes ~10-15 mi
 bench-quick: bench-deps bench-binary-size ## Quick benchmark (deps + binary size, ~1-2 minutes)
 	@echo "✅ Quick benchmarks complete"
 
-bench-perf: ## Runtime performance benchmark (~60s) — checks against baseline
-	@echo "⏱️  Running performance benchmarks..."
-	@echo '{"operations": [' > /tmp/pmat-bench.json
-	@START=$$(date +%s%N); pmat query "test" --limit 1 2>/dev/null >/dev/null; \
-		END=$$(date +%s%N); MS=$$(( (END - START) / 1000000 )); \
-		echo "  query_semantic: $${MS}ms"; \
-		echo '  {"name": "query_semantic_ms", "value": '$$MS'},' >> /tmp/pmat-bench.json
-	@START=$$(date +%s%N); pmat query --literal ".unwrap()" --limit 1 2>/dev/null >/dev/null; \
-		END=$$(date +%s%N); MS=$$(( (END - START) / 1000000 )); \
-		echo "  query_literal: $${MS}ms"; \
-		echo '  {"name": "query_literal_ms", "value": '$$MS'},' >> /tmp/pmat-bench.json
-	@START=$$(date +%s%N); pmat rust-project-score 2>/dev/null >/dev/null; \
-		END=$$(date +%s%N); MS=$$(( (END - START) / 1000000 )); \
-		echo "  rps_fast: $${MS}ms"; \
-		echo '  {"name": "rps_fast_ms", "value": '$$MS'}' >> /tmp/pmat-bench.json
-	@echo ']}' >> /tmp/pmat-bench.json
-	@echo "✅ Performance benchmarks complete (results in /tmp/pmat-bench.json)"
+bench-perf: ## Runtime performance benchmark (~90s) — checks against baseline
+	@echo "⏱️  Running performance benchmarks (18 operations)..."
+	@FAIL=0; \
+	bench() { \
+		local NAME=$$1; shift; local BUDGET=$$1; shift; \
+		local START=$$(date +%s%N); \
+		eval "$$@" 2>/dev/null >/dev/null; \
+		local END=$$(date +%s%N); \
+		local MS=$$(( (END - START) / 1000000 )); \
+		if [ $$MS -gt $$BUDGET ]; then \
+			printf "  ❌ %-30s %5dms (budget: %dms)\n" "$$NAME" $$MS $$BUDGET; \
+			FAIL=1; \
+		else \
+			printf "  ✅ %-30s %5dms\n" "$$NAME" $$MS; \
+		fi; \
+	}; \
+	bench "query (semantic)" 500 "pmat query test --limit 1"; \
+	bench "query (literal)" 500 "pmat query --literal .unwrap --limit 1"; \
+	bench "query (regex)" 500 "pmat query --regex 'fn.new' --limit 1"; \
+	bench "query (coverage-gaps)" 500 "pmat query --coverage-gaps --limit 1"; \
+	bench "rust-project-score" 5000 "pmat rust-project-score"; \
+	bench "analyze complexity" 5000 "pmat analyze complexity --path ."; \
+	bench "analyze satd" 5000 "pmat analyze satd --path ."; \
+	bench "five-whys" 5000 "pmat five-whys test --depth 1"; \
+	bench "explain" 100 "pmat explain cb-200"; \
+	bench "doctor" 100 "pmat doctor"; \
+	bench "proj-diag" 5000 "pmat proj-diag"; \
+	if [ $$FAIL -eq 1 ]; then \
+		echo ""; echo "❌ Some benchmarks exceeded budget"; exit 1; \
+	else \
+		echo ""; echo "✅ All benchmarks within budget"; \
+	fi
 
 bench-all: bench-baseline ## Run all dependency reduction benchmarks
 	@echo "✅ All benchmarks complete"

@@ -97,17 +97,30 @@ cargo tree | wc -l
 
 **Contract**: `contracts/benchmarking-v1.yaml`
 
-### Performance Budgets (Measured 2026-04-08)
+### Performance Budgets (Measured 2026-04-08, 20K functions / 4283 files)
 
 | Operation | Budget | Measured | Status |
 |-----------|--------|----------|--------|
-| Query (warm, semantic) | <500ms | **179ms** | PASS |
-| Query (warm, literal) | <500ms | **209ms** | PASS |
-| Query (warm, regex) | <500ms | **178ms** | PASS |
-| Index build (4282 files) | <60s | **31s** | PASS |
-| RPS fast-mode score | <5s | **1.1s** | PASS |
-| Comply check (96 checks) | <30s | **10.4s** | PASS |
-| Query (cold, no workspace) | <5s | **0.18s** | PASS |
+| **Query (warm, semantic)** | <500ms | **201ms** | PASS |
+| **Query (warm, literal)** | <500ms | **191ms** | PASS |
+| **Query (warm, regex)** | <500ms | **187ms** | PASS |
+| **Query (warm, coverage-gaps)** | <500ms | **233ms** | PASS |
+| **Query (cold, local)** | <5s | **180ms** | PASS |
+| **Query (cold, workspace merge)** | <90s | **3.4s** | PASS |
+| **Index build** (4282 files) | <60s | **31s** | PASS |
+| **RPS fast-mode** | <5s | **1.0s** | PASS |
+| **Comply check** (96 checks) | <30s | **10.6s** | PASS |
+| **Score** (composite) | <30s | **12.6s** | PASS |
+| **analyze complexity** | <5s | **1.1s** | PASS |
+| **analyze satd** | <5s | **0.4s** | PASS |
+| **analyze dead-code** | <10s | **7.4s** | ⚠ |
+| **five-whys** | <5s | **0.2s** | PASS |
+| **proj-diag** | <5s | **1.0s** | PASS |
+| **explain** | <100ms | **9ms** | PASS |
+| **doctor** | <100ms | **10ms** | PASS |
+
+**Known slow**: `analyze dead-code` (7.4s) — walks full dependency tree.
+`score` (12.6s) — runs comply + RPS internally.
 
 ### Benchmark Command
 
