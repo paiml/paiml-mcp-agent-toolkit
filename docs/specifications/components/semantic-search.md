@@ -31,7 +31,11 @@ CREATE TABLE functions (
     complexity INTEGER,
     tdg_grade TEXT,
     tdg_score REAL,
-    pagerank REAL
+    pagerank REAL,
+    -- Contract verification (populated at index build time)
+    contract_level TEXT,     -- 'L0'..'L5' or NULL
+    contract_equation TEXT,  -- equation name from #[contract] attr
+    contract_yaml TEXT       -- YAML file name
 );
 
 CREATE VIRTUAL TABLE functions_fts USING fts5(
@@ -127,6 +131,56 @@ Pattern diversity metrics:
 Batuta fault pattern annotations:
 - `unwrap`, `panic`, `unsafe`, `todo!`, `expect`
 
+### `--contracts` (Planned)
+
+Aprender-contracts verification enrichment. Surfaces contract metadata
+alongside TDG grade for every function — O(1) from pre-built index.
+
+```bash
+pmat query "score" --contracts --limit 5
+# Output per result:
+#   src/scoring.rs:42  score_range  TDG:A  Contract:L3  Eq:score_range
+#   src/scoring.rs:88  calculate    TDG:A  Contract:L2  Eq:check_compliance
+#   src/scoring.rs:120 normalize    TDG:B  Contract:—   (no contract)
+```
+
+**Data model**: Three new fields on `FunctionEntry` / `QualityMetrics`,
+populated at index build time (O(1) query, no runtime contract scan):
+
+```rust
+// In QualityMetrics
+pub contract_level: Option<String>,  // "L0".."L5" or None
+pub contract_equation: Option<String>,  // "score_range", "check_compliance"
+pub contract_yaml: Option<String>,  // "pmat-core.yaml"
+```
+
+**Index build**: During `analyze_project_with_cache()`, scan each function's
+preceding attributes for `#[provable_contracts_macros::contract("yaml", equation = "eq")]`.
+Extract yaml name and equation. Look up verification level from
+`contracts/binding.yaml` if present. Store in SQLite `functions` table.
+
+```sql
+ALTER TABLE functions ADD COLUMN contract_level TEXT;
+ALTER TABLE functions ADD COLUMN contract_equation TEXT;
+```
+
+**Query display**: When `--contracts` flag is set, append contract info
+to each result line. Color-coded: L4-L5 green, L2-L3 yellow, L0-L1 red,
+no contract gray.
+
+**O(1) guarantee**: Contract data is pre-indexed at build time, stored
+in SQLite, and read with the function record. No YAML parsing or
+filesystem scanning at query time.
+
+**Coverage metric**: `--contract-gaps` shows functions WITHOUT contract
+annotations, ranked by PageRank (highest-impact uncovered functions first).
+Analogous to `--coverage-gaps` for test coverage.
+
+```bash
+pmat query --contract-gaps --limit 10
+# Functions with no #[contract] annotation, ranked by importance
+```
+
 ### `--coverage`
 
 LLVM line coverage enrichment:
@@ -155,6 +209,53 @@ by document frequency descending for deterministic HashMap iteration.
 | `.pmat/context.idx` | LZ4 blob | Legacy function index |
 | `.pmat/coverage-cache.json` | JSON | LLVM coverage data |
 | `.pmat/workspace.db` | SQLite | Cross-project workspace index |
+
+## Contract Enrichment Architecture
+
+### Why O(1)
+
+Contract data (YAML name, equation, verification level) is extracted once
+at index build time by scanning `#[provable_contracts_macros::contract(...)]`
+attributes in the AST. The data is stored in the SQLite `functions` table
+alongside TDG grade and complexity. At query time, it's read with the
+function record — zero additional I/O.
+
+### Build-Time Pipeline
+
+```
+source.rs → AST parse → extract #[contract] attrs → lookup binding.yaml
+    → (yaml_name, equation, level) → store in functions table
+```
+
+The contract attribute parser uses the same AST pass that computes
+complexity and TDG — no additional file reads. For projects without
+`contracts/binding.yaml`, the level defaults to the annotation-implied
+level (L2 for `#[contract]` without Lean proof, L4 with `lean_theorem`).
+
+### Display Integration
+
+Contract grade displayed inline with TDG in all output modes:
+
+| Mode | Example |
+|------|---------|
+| Default | `fn score_range  TDG:A  PV:L3` |
+| `--contracts` | `fn score_range  TDG:A  PV:L3  Eq:score_range  YAML:pmat-core` |
+| `--contract-gaps` | `fn normalize  TDG:B  PV:—  (no contract, PageRank: 0.023)` |
+| JSON | `"contract": {"level": "L3", "equation": "score_range"}` |
+
+### Relationship to TDG
+
+TDG measures code quality (complexity, churn, test coverage).
+Contract level measures **verification depth** (what's been proven):
+- L0: No contract
+- L1: YAML spec exists
+- L2: `#[contract]` annotation (runtime debug_assert)
+- L3: Property tests (proptest/quickcheck)
+- L4: Bounded model checking (Kani)
+- L5: Full theorem proving (Lean)
+
+A function can have TDG:A (high quality code) but PV:L0 (unverified),
+or TDG:C (complex) but PV:L4 (formally verified despite complexity).
 
 ## Key Files
 
