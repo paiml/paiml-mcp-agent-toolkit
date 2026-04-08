@@ -266,6 +266,27 @@ pmat query --coverage-gaps --limit 20 --exclude-tests
 pmat query --score-diagnosis --limit 10
 ```
 
+### CLI Smoke Test (82 subcommands)
+
+Tested 2026-04-08. All critical commands pass:
+
+| Command | Status | Notes |
+|---------|--------|-------|
+| `context` | PASS | |
+| `query` (semantic, regex, literal) | PASS | PV:L2 enrichment working |
+| `query --coverage-gaps` | PASS | |
+| `query --contracts` | PASS | Searches YAML contracts |
+| `query --contract-gaps` | PASS | 3851 uncovered functions |
+| `query --contract-score` | NOT IMPL | Returns helpful error + spec ref |
+| `comply check` | PASS | No Unicode panic (PMAT-604 fix) |
+| `rust-project-score` | PASS | Grade A (90.6%) |
+| `score` | PASS | Composite with XV cross-validation |
+| `five-whys` | PASS | |
+| `explain` | PASS | |
+| `work list/status` | PASS | |
+| `doctor` | PASS | 100% success rate |
+| Edge cases (empty/unicode/long) | PASS | No panics |
+
 ### Pre-Release Gate
 
 Before `cargo publish`:
@@ -274,6 +295,7 @@ Before `cargo publish`:
 3. `pmat comply check` — must be COMPLIANT, 0 errors
 4. Penetration ≥ 95% at 80% threshold
 5. No category below 70%
+6. CLI smoke test — all critical commands pass
 
 ### CI Self-Score Job
 
