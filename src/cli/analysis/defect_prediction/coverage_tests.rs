@@ -394,8 +394,7 @@ fn test_format_defect_summary_empty_predictions() {
     let result = format_defect_summary(&predictions, elapsed).unwrap();
 
     assert!(result.contains("Defect Prediction Summary"));
-    assert!(result.contains("0 files")); // Risk distribution shows 0
-                                         // Should NOT contain "Top Risk Files" section when empty
+    assert!(result.contains("0 files")); // Risk distribution shows 0, no "Top Risk Files" section
 }
 
 // ==================== Test write_summary_header ====================

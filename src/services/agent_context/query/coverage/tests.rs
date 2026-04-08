@@ -95,8 +95,7 @@ mod tests {
 
         assert_eq!(results[0].lines_covered, 6); // 10,11,12,13,14,15
         assert_eq!(results[0].lines_total, 11); // 10..=20
-        assert_eq!(results[0].missed_lines, 5); // 16,17,18,19,20
-                                                // Coverage = 6/11 ~ 54.5%
+        assert_eq!(results[0].missed_lines, 5); // 16,17,18,19,20 — Coverage = 6/11 ~ 54.5%
         assert!((results[0].line_coverage_pct - 54.545).abs() < 1.0);
         assert!(results[0].impact_score > 0.0);
         assert_eq!(results[0].coverage_status, "partial");

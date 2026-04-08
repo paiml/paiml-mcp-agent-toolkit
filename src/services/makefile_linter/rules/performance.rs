@@ -147,20 +147,21 @@ impl RecursiveExpansionRule {
                         let vars = extract_var_refs(prereq);
                         for var in vars {
                             if expensive_vars.contains(&var) {
+                                let msg = format!(
+                                    "Expensive variable '{}' in prerequisites \
+                                     will be expanded {} times (once per target)",
+                                    var,
+                                    targets.len()
+                                );
+                                let hint = "Consider using a pattern rule or \
+                                    immediate assignment"
+                                    .to_string();
                                 violations.push(Violation {
                                     rule: self.id().to_string(),
                                     severity: self.default_severity(),
                                     span: node.span,
-                                    message: format!(
-                                        "Expensive variable '{}' in prerequisites will be \
-                                         expanded {} times (once per target)",
-                                        var,
-                                        targets.len()
-                                    ),
-                                    fix_hint: Some(
-                                        "Consider using a pattern rule or immediate assignment"
-                                            .to_string(),
-                                    ),
+                                    message: msg,
+                                    fix_hint: Some(hint),
                                 });
                             }
                         }
