@@ -208,39 +208,51 @@ dep count (Dep Health 66.7% → 91.7%). This unlocks 11/11 penetration (100%).
 
 **Strategy**: Three-wave dependency reduction.
 
-#### Wave 1: Sovereign Stack Path Migration
+#### Wave 1: Aprender Monorepo Migration (crates.io)
 
-Port all batuta stack deps from crates.io versions to local path deps.
-This doesn't reduce the line count but enables workspace-level dep sharing
-and eliminates version lag.
+Migrate all deprecated sovereign crates to unified `aprender-*` monorepo
+namespace on crates.io. All at version `0.29.0`. Old names are deprecated
+shims that re-export the new crates.
 
 ```toml
-# BEFORE (crates.io — version lag, separate dep trees)
+# BEFORE (deprecated separate crates)
 aprender = "0.27.5"
+batuta-common = "0.1"
+trueno = { version = "0.17", optional = true }
 trueno-graph = { version = "0.1.17", default-features = false }
+trueno-db = { version = "0.3.16", optional = true }
 trueno-rag = "0.2.4"
-pmcp = { version = "1.10", features = ["websocket", "http", "sse", "validation"] }
+trueno-viz = { version = "0.2.3", optional = true }
+trueno-zram-core = { version = "0.3.1", optional = true }
+provable-contracts-macros = "0.3"
 
-# AFTER (path — always latest, shared dep tree)
-aprender = { path = "../aprender" }
-trueno-graph = { path = "../trueno/crates/trueno-graph", default-features = false }
-trueno-rag = { path = "../trueno/crates/trueno-rag" }
-pmcp = { path = "../pmcp", features = ["websocket", "http", "sse", "validation"] }
+# AFTER (aprender monorepo — unified version, shared dep tree)
+aprender = "0.29"
+aprender-common = "0.29"
+aprender-compute = { version = "0.29", optional = true }
+aprender-graph = { version = "0.29", default-features = false }
+aprender-db = { version = "0.29", optional = true }
+aprender-rag = "0.29"
+aprender-viz = { version = "0.29", optional = true }
+aprender-zram-core = { version = "0.29", optional = true }
+aprender-contracts-macros = "0.29"
 ```
 
-Sovereign deps to migrate (12 crates):
-- `aprender` → `../aprender`
-- `trueno` → `../trueno`
-- `trueno-db` → `../trueno/crates/trueno-db`
-- `trueno-graph` → `../trueno/crates/trueno-graph`
-- `trueno-rag` → `../trueno/crates/trueno-rag`
-- `trueno-viz` → `../trueno/crates/trueno-viz`
-- `trueno-zram-core` → `../trueno/crates/trueno-zram-core`
-- `pmcp` → `../pmcp`
-- `ruchy` → `../ruchy`
-- `batuta-common` → `../batuta-common`
-- `organizational-intelligence-plugin` → `../organizational-intelligence`
-- `provable-contracts-macros` → `../provable-contracts/crates/macros`
+Migration mapping (9 crates → 9 crates, same count but unified versions):
+
+| Deprecated | Aprender Monorepo | Version |
+|-----------|-------------------|---------|
+| `batuta-common` | `aprender-common` | 0.29 |
+| `trueno` | `aprender-compute` | 0.29 |
+| `trueno-graph` | `aprender-graph` | 0.29 |
+| `trueno-db` | `aprender-db` | 0.29 |
+| `trueno-rag` | `aprender-rag` | 0.29 |
+| `trueno-viz` | `aprender-viz` | 0.29 |
+| `trueno-zram-core` | `aprender-zram-core` | 0.29 |
+| `provable-contracts-macros` | `aprender-contracts-macros` | 0.29 |
+| `organizational-intelligence-plugin` | `aprender-orchestrate` | 0.29 |
+
+Non-migrated (keep as-is): `pmcp`, `ruchy` (separate repos, own release cadence).
 
 #### Wave 2: Feature-Gate External Required Deps (113 → ≤50)
 

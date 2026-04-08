@@ -50,34 +50,27 @@ Scientific approach to dependency removal:
 
 ## Dependency Policy
 
-### Sovereign Stack: Path Dep Migration (Planned)
+### Sovereign Stack: Aprender Monorepo Migration (crates.io)
 
-Migrate from crates.io versions to local path deps for development velocity
-and shared dependency trees. See [self-enforcement.md](self-enforcement.md) Phase 8.
+Migrate from deprecated standalone crates to unified `aprender-*` monorepo
+namespace on crates.io. All at version 0.29. Shared dep tree reduces
+transitive duplicates. See [self-enforcement.md](self-enforcement.md) Phase 8.
 
-| Crate | crates.io | Path | Purpose |
-|-------|-----------|------|---------|
-| aprender | 0.27.5 | `../aprender` | ML, stats, text similarity |
-| trueno | 0.17 | `../trueno` | SIMD/GPU compute |
-| trueno-graph | 0.1.17 | `../trueno/crates/trueno-graph` | CSR graph, PageRank |
-| trueno-db | 0.3.16 | `../trueno/crates/trueno-db` | Columnar storage |
-| trueno-rag | 0.2.4 | `../trueno/crates/trueno-rag` | RAG pipeline |
-| trueno-viz | 0.2.3 | `../trueno/crates/trueno-viz` | Terminal visualization |
-| trueno-zram-core | 0.3.1 | `../trueno/crates/trueno-zram-core` | SIMD compression |
-| pmcp | 1.10 | `../pmcp` | MCP protocol SDK |
-| ruchy | 4.2.1 | `../ruchy` | Parser engine |
-| batuta-common | 0.1 | `../batuta-common` | Shared utilities |
-| org-intel | 0.3.4 | `../organizational-intelligence` | GitHub org analysis |
-| pv-macros | latest | `../provable-contracts/crates/macros` | Contract macros |
+| Deprecated | Aprender Monorepo | Purpose |
+|-----------|-------------------|---------|
+| `batuta-common` 0.1 | `aprender-common` 0.29 | Shared utilities |
+| `trueno` 0.17 | `aprender-compute` 0.29 | SIMD/GPU compute |
+| `trueno-graph` 0.1.17 | `aprender-graph` 0.29 | CSR graph, PageRank |
+| `trueno-db` 0.3.16 | `aprender-db` 0.29 | Columnar storage |
+| `trueno-rag` 0.2.4 | `aprender-rag` 0.29 | RAG pipeline |
+| `trueno-viz` 0.2.3 | `aprender-viz` 0.29 | Terminal visualization |
+| `trueno-zram-core` 0.3.1 | `aprender-zram-core` 0.29 | SIMD compression |
+| `provable-contracts-macros` | `aprender-contracts-macros` 0.29 | Contract macros |
+| `org-intel-plugin` 0.3.4 | `aprender-orchestrate` 0.29 | GitHub org analysis |
 
-**Dual-source pattern**: Use path for development, crates.io for release:
-```toml
-# Development (checked in, used by default)
-aprender = { path = "../aprender" }
-# Release override (cargo publish uses crates.io)
-# [patch.crates-io]
-# aprender = { path = "../aprender" }
-```
+**Benefits**: Unified version (0.29), shared dependency tree (fewer
+transitive duplicates), single release cadence, deprecated crates
+are thin re-export shims.
 
 ### Sovereign Stack Priority
 
