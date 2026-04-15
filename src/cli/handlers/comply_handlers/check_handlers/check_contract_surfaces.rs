@@ -774,18 +774,61 @@ pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-/// CB-1308: Verification Ladder — L5 mandatory, per-file enforcement
+/// GH-292: Read min verification level from .pmat-gates.toml [verification_ladder]
+fn load_verification_min_level(project_path: &Path) -> u8 {
+    let path = project_path.join(".pmat-gates.toml");
+    let content = match std::fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(_) => return 5, // default L5
+    };
+    let table: toml::Table = match content.parse() {
+        Ok(t) => t,
+        Err(_) => return 5,
+    };
+    table
+        .get("verification_ladder")
+        .and_then(|vl| vl.get("min_level"))
+        .and_then(|v| v.as_str())
+        .and_then(|s| s.strip_prefix('L').or(Some(s)))
+        .and_then(|s| s.parse::<u8>().ok())
+        .unwrap_or(5)
+}
+
+fn level_number(content: &str) -> u8 {
+    if content.contains("lean_theorem:") {
+        5
+    } else if content.contains("kani_harnesses:") {
+        4
+    } else if content.contains("falsification:") || content.contains("falsification_tests:") {
+        3
+    } else if content.contains("proof_obligations:") {
+        2
+    } else {
+        1
+    }
+}
+
+fn level_label(n: u8) -> &'static str {
+    match n {
+        5 => "L5",
+        4 => "L4",
+        3 => "L3",
+        2 => "L2",
+        _ => "L1",
+    }
+}
+
+/// CB-1308: Verification Ladder — configurable min level (default L5)
 ///
-/// L5 (lean_theorem) is the ONLY acceptable verification level.
-/// Every contract YAML without lean_theorem is a FAIL, listed by name.
-/// Behaves like `pmat tdg` — names every violating file.
+/// Every contract YAML below the minimum level is a FAIL, listed by name.
+/// Configurable via .pmat-gates.toml [verification_ladder] min_level = "L3"
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_verification_ladder(project_path: &Path) -> ComplianceCheck {
     let contracts_dir = match resolve_contracts_dir(project_path) {
         Some(d) => d,
         None => {
             return ComplianceCheck {
-                name: "CB-1308: Verification Ladder (L5)".into(),
+                name: "CB-1308: Verification Ladder".into(),
                 status: CheckStatus::Skip,
                 message: "No contract YAML files found".into(),
                 severity: Severity::Info,
@@ -834,25 +877,18 @@ pub(crate) fn check_verification_ladder(project_path: &Path) -> ComplianceCheck 
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_default();
 
-        if content.contains("lean_theorem:") {
+        let file_level = level_number(&content);
+        let min_level = load_verification_min_level(project_path);
+        if file_level >= min_level {
             l5_count += 1;
         } else {
-            let level = if content.contains("kani_harnesses:") {
-                "L4"
-            } else if content.contains("falsification_tests:") {
-                "L3"
-            } else if content.contains("proof_obligations:") {
-                "L2"
-            } else {
-                "L1"
-            };
-            violations.push(format!("{filename} ({level})"));
+            violations.push(format!("{filename} ({})", level_label(file_level)));
         }
     }
 
     if total == 0 {
         return ComplianceCheck {
-            name: "CB-1308: Verification Ladder (L5)".into(),
+            name: "CB-1308: Verification Ladder".into(),
             status: CheckStatus::Skip,
             message: "No contract YAML files found".into(),
             severity: Severity::Info,
@@ -861,7 +897,7 @@ pub(crate) fn check_verification_ladder(project_path: &Path) -> ComplianceCheck 
 
     if violations.is_empty() {
         return ComplianceCheck {
-            name: "CB-1308: Verification Ladder (L5)".into(),
+            name: "CB-1308: Verification Ladder".into(),
             status: CheckStatus::Pass,
             message: format!("{total}/{total} contracts at L5 (lean_theorem)"),
             severity: Severity::Info,
@@ -879,7 +915,7 @@ pub(crate) fn check_verification_ladder(project_path: &Path) -> ComplianceCheck 
     };
 
     ComplianceCheck {
-        name: "CB-1308: Verification Ladder (L5)".into(),
+        name: "CB-1308: Verification Ladder".into(),
         status: CheckStatus::Fail,
         message: format!(
             "{}/{total} at L5, {} violations:\n{}",

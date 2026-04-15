@@ -403,6 +403,85 @@ fn build_file_health_check(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+/// Load file health exclude patterns from .pmat-gates.toml [file_health] section
+fn load_file_health_excludes(project_path: &Path) -> Vec<String> {
+    let toml_path = project_path.join(".pmat-gates.toml");
+    let content = match std::fs::read_to_string(&toml_path) {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+    let table: toml::Table = match content.parse() {
+        Ok(t) => t,
+        Err(_) => return Vec::new(),
+    };
+    table
+        .get("file_health")
+        .and_then(|fh| fh.get("exclude"))
+        .and_then(|v| v.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Check if a file path matches any exclude pattern (glob-style)
+fn matches_exclude_pattern(file_path: &std::path::PathBuf, patterns: &[String]) -> bool {
+    let path_str = file_path.to_string_lossy();
+    let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    for pattern in patterns {
+        if pattern.starts_with("**/") {
+            // ** prefix: match filename OR any path containing the suffix
+            let suffix = &pattern[3..];
+            if suffix.contains('/') {
+                // e.g. "**/examples/**" — check if path contains the segment
+                let segment = suffix.trim_end_matches("/**").trim_end_matches("/*");
+                if path_str.contains(segment) {
+                    return true;
+                }
+            } else if suffix.contains('*') {
+                // e.g. "**/*_tests.rs" — glob match on filename
+                if glob_match_simple(file_name, suffix) {
+                    return true;
+                }
+            } else {
+                // e.g. "**/generated_contracts.rs" — exact filename match
+                if file_name == suffix {
+                    return true;
+                }
+            }
+        } else if pattern.ends_with("/**") {
+            // Directory prefix: e.g. "crates/aprender-test-lib/**"
+            let dir = pattern.trim_end_matches("/**");
+            if path_str.contains(dir) {
+                return true;
+            }
+        } else if pattern.contains('/') {
+            // Path pattern: check if path contains it
+            if path_str.contains(pattern.as_str()) {
+                return true;
+            }
+        } else {
+            // Simple filename match
+            if file_name == pattern || glob_match_simple(file_name, pattern) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn glob_match_simple(name: &str, pattern: &str) -> bool {
+    if let Some(star_pos) = pattern.find('*') {
+        let prefix = &pattern[..star_pos];
+        let suffix = &pattern[star_pos + 1..];
+        name.starts_with(prefix) && name.ends_with(suffix)
+    } else {
+        name == pattern
+    }
+}
+
 pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
     let files = match discover_source_files(project_path) {
         Ok(f) => f,
@@ -423,9 +502,15 @@ pub(crate) fn check_file_health(project_path: &Path) -> ComplianceCheck {
             severity: Severity::Info,
         };
     }
+    // GH-292: Read exclude patterns from .pmat.yaml
+    let excludes = load_file_health_excludes(project_path);
     let mut metrics: Vec<FileHealthMetrics> = Vec::new();
     let (mut critical_count, mut problem_count, mut over_500_count) = (0, 0, 0);
     for file_path in &files {
+        // Skip files matching exclude patterns
+        if matches_exclude_pattern(file_path, &excludes) {
+            continue;
+        }
         let content = match std::fs::read_to_string(file_path) {
             Ok(c) => c,
             Err(_) => continue,
