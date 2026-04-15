@@ -431,9 +431,8 @@ fn matches_exclude_pattern(file_path: &std::path::PathBuf, patterns: &[String]) 
     let path_str = file_path.to_string_lossy();
     let file_name = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     for pattern in patterns {
-        if pattern.starts_with("**/") {
+        if let Some(suffix) = pattern.strip_prefix("**/") {
             // ** prefix: match filename OR any path containing the suffix
-            let suffix = &pattern[3..];
             if suffix.contains('/') {
                 // e.g. "**/examples/**" — check if path contains the segment
                 let segment = suffix.trim_end_matches("/**").trim_end_matches("/*");
