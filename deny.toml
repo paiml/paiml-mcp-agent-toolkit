@@ -17,6 +17,7 @@ ignore = [
     { id = "RUSTSEC-2025-0141", reason = "bincode: transitive, widely used, no drop-in replacement" },
     { id = "RUSTSEC-2025-0134", reason = "rustls-pemfile: transitive, no safe upgrade available" },
     { id = "RUSTSEC-2026-0002", reason = "lru 0.12.5: transitive via ratatui, fixed in 0.16 but ratatui pins 0.12" },
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error: transitive via tabled_derive→apr-cli→aprender, no replacement" },
 ]
 
 [licenses]
