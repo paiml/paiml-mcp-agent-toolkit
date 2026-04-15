@@ -1,6 +1,18 @@
 // dependency_checks_analysis.rs — included by dependency_checks.rs
 // CB-081 violation detection, scoring, Cargo.toml analysis, trend tracking
 
+/// GH-292: Read max_transitive override from .pmat-gates.toml [dependency_health]
+fn load_dependency_max_transitive() -> Option<usize> {
+    let path = std::path::Path::new(".pmat-gates.toml");
+    let content = std::fs::read_to_string(path).ok()?;
+    let table: toml::Table = content.parse().ok()?;
+    table
+        .get("dependency_health")
+        .and_then(|dh| dh.get("max_transitive"))
+        .and_then(|v| v.as_integer())
+        .map(|v| v as usize)
+}
+
 /// Build a CB-081-A threshold violation if dependency counts exceed the given
 /// thresholds.  Returns `None` when both `direct` and `transitive` are within
 /// limits.  The description lists failing metrics first, with passing metrics
@@ -77,9 +89,11 @@ fn check_dependency_count_violations(
     let mut violations = Vec::new();
 
     // CB-081-A: Count thresholds -- sovereign stack adjustment
+    // GH-292: Read max_transitive override from .pmat-gates.toml [dependency_health]
+    let config_max = load_dependency_max_transitive();
     let sovereign_allowance = sovereign_count.min(3) * 50;
-    let trans_error_max = 250 + sovereign_allowance;
-    let trans_warn_max = 200 + sovereign_allowance;
+    let trans_error_max = config_max.unwrap_or(250) + sovereign_allowance;
+    let trans_warn_max = config_max.map(|m| m.saturating_sub(50)).unwrap_or(200) + sovereign_allowance;
 
     if let Some(v) = build_threshold_violation(
         cargo_toml,
@@ -348,13 +362,20 @@ pub(super) fn calculate_dependency_score(
     sovereign_count: usize,
 ) -> u8 {
     let bonus = sovereign_count.min(3) * 50;
-    if direct <= 20 && transitive <= 100 + bonus {
+    // GH-292: Scale thresholds if max_transitive override is set
+    let config_max = load_dependency_max_transitive().unwrap_or(250);
+    let scale = config_max as f64 / 250.0;
+    let t5 = (100.0 * scale) as usize + bonus;
+    let t4 = (150.0 * scale) as usize + bonus;
+    let t3 = (200.0 * scale) as usize + bonus;
+    let t2 = (250.0 * scale) as usize + bonus;
+    if direct <= 20 && transitive <= t5 {
         5
-    } else if direct <= 30 && transitive <= 150 + bonus {
+    } else if direct <= 30 && transitive <= t4 {
         4
-    } else if direct <= 40 && transitive <= 200 + bonus {
+    } else if direct <= 40 && transitive <= t3 {
         3
-    } else if direct <= 50 && transitive <= 250 + bonus {
+    } else if direct <= 50 && transitive <= t2 {
         2
     } else {
         0

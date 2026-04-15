@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.13.0"
+version = "3.14.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -27,11 +27,11 @@ path = "src/bin/pmat-agent.rs"
 required-features = ["mcp-integration"]
 
 [dependencies]
-# Sovereign stack: shared utilities (keep batuta-common until aprender-viz migrates internally)
+# Sovereign stack: shared utilities (batuta-common: old name, lib.name still batuta_common)
 batuta-common = "0.1"
 
 # Organizational Intelligence Plugin - Phase 4 integration
-organizational-intelligence-plugin = { package = "aprender-orchestrate", version = "0.29", optional = true }
+organizational-intelligence-plugin = { package = "aprender-orchestrate", version = "0.30", optional = true }
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
@@ -64,17 +64,17 @@ libc = { version = "0.2", optional = true }
 # Migration to aprender complete (Sprint 45)
 # Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
 # See: docs/specifications/aprender-ml-integration.md
-aprender = "0.29"  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
+aprender = "0.30"  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
 
 # High-Performance Compute (SIMD/GPU)
-trueno = { package = "aprender-compute", version = "0.29", optional = true }
-trueno-db = { package = "aprender-db", version = "0.29", optional = true, default-features = false }
+aprender-compute = { version = "0.30", optional = true }
+aprender-db = { version = "0.30", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
-trueno-graph = { package = "aprender-graph", version = "0.29", default-features = false }  # CSR graph, PageRank, Louvain
-trueno-rag = { package = "aprender-rag", version = "0.29", optional = true }  # RAG pipeline
-trueno-viz = { package = "aprender-viz", version = "0.29", optional = true, features = ["terminal", "graph"] }
+aprender-graph = { version = "0.30", default-features = false }  # CSR graph, PageRank, Louvain
+aprender-rag = { version = "0.30", optional = true }  # RAG pipeline
+aprender-viz = { version = "0.30", optional = true, features = ["terminal", "graph"] }
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
@@ -142,7 +142,7 @@ syntect = { version = "5.2", default-features = false, features = ["default-fanc
 # Storage
 # libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
 lz4_flex = { version = "0.11", optional = true }  # Legacy index format
-trueno-zram-core = { package = "aprender-zram-core", version = "0.29", optional = true }
+aprender-zram-core = { version = "0.30", optional = true }
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }  # SQLite with bundled library
 # sled = REMOVED (unmaintained, migrated to libsql/trueno-db)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
@@ -262,7 +262,7 @@ warp = { version = "0.3", optional = true }
 # presentar-terminal provides: TuiApp, DiffRenderer, BrailleGraph, Meter, Table
 # Benefits: Jidoka verification gates, zero-allocation rendering, 95% coverage
 # presentar-terminal = { version = "0.3.0", path = "../../presentar/crates/presentar-terminal", optional = true }  # Not yet on crates.io
-presentar-core = { version = "0.3", optional = true }
+aprender-present-core = { version = "0.30", optional = true }
 # crossterm 0.28 matches presentar-terminal's version (ratatui REMOVED)
 crossterm = { version = "0.28", optional = true }
 sys-info = { version = "0.9.1", optional = true }
@@ -282,11 +282,11 @@ sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm so
 # ahash = "0.8"  # REMOVED: cargo-machete verified unused
 prettyplease = { version = "0.2.37", optional = true }
 fs2 = { version = "0.4.3", optional = true }
-provable-contracts-macros = { package = "aprender-contracts-macros", version = "0.29" }
+aprender-contracts-macros = "0.30"
 
 
 [dev-dependencies]
-provable-contracts = { package = "aprender-contracts", version = "0.29" }
+aprender-contracts = "0.30"
 dhat = "0.3"
 tokio-test = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
@@ -324,7 +324,7 @@ standard-deps = [
     "minijinja", "tracing-subscriber", "semver", "globset",
     "roaring", "rand", "url", "lz4_flex", "bincode", "crossbeam-channel",
     "lru", "lazy_static", "dirs", "ignore", "xxhash-rust",
-    "flate2", "crc32fast", "fs2", "pulldown-cmark", "trueno-rag", "num_cpus",
+    "flate2", "crc32fast", "fs2", "pulldown-cmark", "aprender-rag", "num_cpus",
     "sha2", "uuid", "futures", "serde_yaml_ng", "blake3", "dashmap",
     "rayon", "rusqlite", "glob", "toml", "rustc-hash", "walkdir",
     "tempfile", "parking_lot", "async-trait",
@@ -448,10 +448,10 @@ git-lib = ["git2"]
 javascript-ast = ["typescript-ast", "polyglot-javascript"]
 # TUI mode support (presentar-terminal Brick architecture, ratatui-free)
 # Note: presentar-terminal disabled until published to crates.io
-tui = ["presentar-core", "crossterm"]
-# Terminal graph visualization (trueno-viz integration)
+tui = ["aprender-present-core", "crossterm"]
+# Terminal graph visualization (aprender-viz integration)
 # See: docs/specifications/integrating-graph-visualizations-spec.md
-viz = ["trueno-viz"]
+viz = ["aprender-viz"]
 # Integration tests feature
 integration-tests = []
 # End-to-end tests feature
@@ -460,20 +460,18 @@ e2e-tests = []
 perf-tests = []
 # Storage backend features (sled/rocksdb REMOVED - migrated to libsql/trueno-db)
 # rocksdb-backend and sled-backend features have been removed
-# High-performance compute features (Trueno)
-simd = ["trueno"]
-gpu = ["trueno", "trueno/gpu"]
+# High-performance compute features
+simd = ["aprender-compute"]
+gpu = ["aprender-compute", "aprender-compute/gpu"]
 
 # Sovereign Stack compression (SIMD LZ4/ZSTD)
-# Replaces lz4_flex with trueno-zram-core for 2-4x speedup
-sovereign-compression = ["trueno-zram-core"]
+sovereign-compression = ["aprender-zram-core"]
 
 # Analytics features (Issue #79: Feature-gated architecture)
 # Default: SIMD-only (7.8 MB, 18s compile, ≤30 transitive deps)
-analytics-simd = ["trueno", "trueno-db", "trueno-db/simd", "arrow"]  # trueno-graph now default (Phase 3)
+analytics-simd = ["aprender-compute", "aprender-db", "aprender-db/simd", "arrow"]
 # GPU-enabled: +wgpu (11.6 MB, 63s compile, ≤95 transitive deps)
-# Note: arrow/parquet pulled in transitively via trueno-db/gpu
-analytics-gpu = ["analytics-simd", "trueno-db/gpu", "wgpu", "pollster", "bytemuck"]
+analytics-gpu = ["analytics-simd", "aprender-db/gpu", "wgpu", "pollster", "bytemuck"]
 
 # TDG explain mode with function-level analysis (Issue #78)
 # Uses tree-sitter-rust for custom function-level complexity analysis
@@ -771,7 +769,7 @@ members = ["crates/pmat-dashboard"]
 resolver = "2"
 
 [workspace.package]
-version = "3.13.0"
+version = "3.14.0"
 edition = "2021"
 authors = ["Pragmatic AI Labs"]
 homepage = "https://paiml.com"

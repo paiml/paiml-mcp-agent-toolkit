@@ -15,6 +15,11 @@
 #![allow(clippy::if_same_then_else)]
 #![allow(clippy::arc_with_non_send_sync)]
 #![allow(clippy::manual_clamp)]
+// docs.rs: allow doc warnings that rustdoc treats as errors
+#![allow(rustdoc::invalid_rust_codeblocks)]
+#![allow(rustdoc::bare_urls)]
+#![allow(rustdoc::broken_intra_doc_links)]
+#![allow(rustdoc::invalid_html_tags)]
 //! PMAT provides multiple interfaces (CLI, MCP, HTTP API) for analyzing code quality, complexity,
 //! and generating actionable insights for software development teams.
 //!

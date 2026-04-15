@@ -14,10 +14,10 @@ categories = ["visualization", "wasm", "gui"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# Presentar - Pure WASM UI framework
-presentar-core = { path = "../../../presentar/crates/presentar-core" }
-presentar-widgets = { path = "../../../presentar/crates/presentar-widgets" }
-presentar-layout = { path = "../../../presentar/crates/presentar-layout" }
+# Presentar - Pure WASM UI framework (now aprender monorepo)
+aprender-present-core = "0.30"
+aprender-present-widgets = "0.29"
+aprender-present-layout = "0.30"
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
