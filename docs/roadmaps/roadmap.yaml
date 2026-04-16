@@ -2488,11 +2488,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-521: provable-contracts Gate 4+5 — source verification + test execution'
-  status: inprogress
+  status: completed
   priority: critical
   assigned_to: null
   created: 2026-03-21T12:38:08Z
-  updated: 2026-04-04T19:59:14.056482280+00:00
+  updated: 2026-04-16T19:42:51.631478928+00:00
   spec: null
   acceptance_criteria:
   - 'provable-contracts pv lint has no source verification. Gate 4: resolve test: names against fn test_* in source, FAIL on missing. Gate 5: run cargo test on referenced tests, FAIL on failure. Parse tests_file/tests_module from Contract struct. Five Whys: audit_contract only checks YAML-internal consistency, never reads source code. Trueno: 85/105 contract tests missing, pv lint reports 0 findings.'
