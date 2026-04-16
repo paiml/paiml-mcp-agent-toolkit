@@ -3076,11 +3076,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Reconcile qa_work_handler 0% coverage cluster (impact 14.2)
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-04-16T16:22:23Z
-  updated: 2026-04-16T17:29:40.785185715+00:00
+  updated: 2026-04-16T18:48:12.915838183+00:00
   spec: null
   acceptance_criteria:
   - Top-ROI coverage gap in repo. impl_checklist_gen.rs::generate_checklist (201 lines, 0% cov, impact 14.2) and impl_spec.rs::handle_spec (170 lines, 0% cov, impact 2.3) are fully untested. Suspected duplication with checklist.rs::handle_generate_checklist (tested). Reconcile the duplication first — either delete dead fork or merge — then add tests to surviving path.
