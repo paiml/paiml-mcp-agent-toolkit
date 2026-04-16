@@ -3096,11 +3096,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Fix pmat query --faults enrich-phase ANDON (22s)
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-04-16T16:22:28Z
-  updated: 2026-04-16T16:23:29.173182900+00:00
+  updated: 2026-04-16T18:51:41.874890285+00:00
   spec: null
   acceptance_criteria:
   - 'pmat query --faults enrich phase takes 22,456ms — flagged ANDON by pmat''s own profiler. Query is 0ms, load is 265ms; enrich dominates. This is the primary UX surface mandated by CLAUDE.md over grep — slow enrichment undermines adoption. Profile the fault annotation loop. Likely candidates: per-function regex recompilation, missing batch lookup, or unbatched source loads across 20K functions.'
