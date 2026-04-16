@@ -1,11 +1,16 @@
-// Quality and analysis command routing
-//
-// Routes ProjectDiag, TestDiscovery, DebugFiveWhys, Oracle, PerfectionScore,
-// Spec, Localize, CudaTdg, DepsAudit, and Kaizen commands to their handlers.
+//! Quality and analysis command routing.
+//!
+//! Routes ProjectDiag, TestDiscovery, DebugFiveWhys, Oracle, PerfectionScore,
+//! Spec, Localize, CudaTdg, DepsAudit, and Kaizen commands to their handlers.
+#![cfg_attr(coverage_nightly, coverage(off))]
+
+use super::CommandDispatcher;
+use crate::cli::commands::Commands;
+use crate::cli::handlers;
 
 impl CommandDispatcher {
     /// Route quality and analysis commands (extracted to reduce route_command cognitive complexity)
-    async fn route_quality_command(command: Commands) -> anyhow::Result<()> {
+    pub(super) async fn route_quality_command(command: Commands) -> anyhow::Result<()> {
         match command {
             Commands::ProjectDiag {
                 path,

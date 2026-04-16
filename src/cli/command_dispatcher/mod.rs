@@ -4,11 +4,7 @@
 //! in the CLI module by delegating command execution to specialized handlers.
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use super::commands::QddCommands;
-use super::{AnalyzeCommands, Commands, RefactorCommands};
-use crate::cli::handlers;
-use crate::cli::handlers::cache::CacheCommand;
-use crate::cli::handlers::memory::MemoryCommand;
+use super::Commands;
 use crate::stateless_server::StatelessTemplateServer;
 use std::sync::Arc;
 
@@ -62,13 +58,20 @@ impl CommandDispatcher {
 }
 
 // --- Main command routing dispatch table ---
-include!("command_routing.rs");
+#[path = "command_routing.rs"]
+mod command_routing;
 
 // --- Simple delegation methods (analyze, qdd, refactor, memory, cache) ---
-include!("command_delegation.rs");
+#[path = "command_delegation.rs"]
+mod command_delegation;
+
+// --- Commands::Query routing (50-field dispatch, extracted for CB-040) ---
+#[path = "query_routing.rs"]
+mod query_routing;
 
 // --- Quality and analysis command routing ---
-include!("quality_routing.rs");
+#[path = "quality_routing.rs"]
+mod quality_routing;
 
 // Tests extracted for file health compliance (CB-040)
 #[cfg(test)]
