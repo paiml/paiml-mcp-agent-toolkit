@@ -19,9 +19,16 @@ use std::path::Path;
 // - CB-081-E: Trend tracking
 // =============================================================================
 
-/// Sovereign stack crates (batuta ecosystem)
+/// Sovereign stack crates (batuta ecosystem).
+/// Includes deprecated names (renacer, trueno-*) and aprender monorepo names.
 const SOVEREIGN_CRATES: &[&str] = &[
     "aprender",
+    "aprender-compute",
+    "aprender-contracts",
+    "aprender-contracts-macros",
+    "aprender-profile",
+    "aprender-rag",
+    "aprender-simulate",
     "trueno",
     "trueno-graph",
     "trueno-db",
@@ -31,10 +38,13 @@ const SOVEREIGN_CRATES: &[&str] = &[
     "pmcp",
     "presentar-core",
     "renacer",
+    "simular",
     "certeza",
     "bashrs",
     "probar",
     "ruchy",
+    "rmedia",
+    "whisper-apr",
 ];
 
 /// Dependency count analysis result (enhanced)
