@@ -369,10 +369,9 @@ pub(super) fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<S
                                         && (t.chars().nth(crate_name.len()) == Some(' ')
                                             || t.chars().nth(crate_name.len()) == Some('=')
                                             || t.chars().nth(crate_name.len()) == Some('.'))
+                                        && !sovereign_found.contains(&crate_name.to_string())
                                     {
-                                        if !sovereign_found.contains(&crate_name.to_string()) {
-                                            sovereign_found.push(crate_name.to_string());
-                                        }
+                                        sovereign_found.push(crate_name.to_string());
                                     }
                                 }
                             }
