@@ -1,0 +1,21 @@
+{
+  "version": "1.1.0",
+  "renacer_version": "0.10.2",
+  "pmat_version": "3.12.0",
+  "platform": {
+    "os": "linux",
+    "arch": "x86_64"
+  },
+  "traces": [
+    {"name": "pmat_version",      "command": ["pmat", "--version"],                "description": "Shortest dispatcher path (no subcommand match)."},
+    {"name": "pmat_help",         "command": ["pmat", "--help"],                   "description": "Clap help dispatch."},
+    {"name": "pmat_list",         "command": ["pmat", "list", "--format", "json"], "description": "Commands::List -> handlers::handle_list."},
+    {"name": "pmat_hooks_status", "command": ["pmat", "hooks", "status"],          "description": "Commands::Hooks -> handlers::handle_hooks_command."}
+  ],
+  "tolerance": {
+    "timing_percent": 15.0,
+    "syscall_sequence": "fuzzy",
+    "argument_match": "fuzzy"
+  },
+  "regenerate": "scripts/capture_golden_traces.sh"
+}
