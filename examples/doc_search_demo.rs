@@ -132,10 +132,9 @@ fn print_output(output: &std::process::Output) {
             && !line.contains("Loading index")
             && !line.contains("query profile")
             && !line.contains("ANDON")
+            && !line.trim().is_empty()
         {
-            if !line.trim().is_empty() {
-                eprintln!("{}", line);
-            }
+            eprintln!("{}", line);
         }
     }
 }

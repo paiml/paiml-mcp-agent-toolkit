@@ -2286,11 +2286,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-503: Split all non-test Rust files over 500 lines into submodules'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-02-23T09:46:00Z
-  updated: 2026-02-23T09:46:22Z
+  updated: 2026-04-16T19:45:06Z
   spec: null
   acceptance_criteria:
   - 'File health CB-040: Split all non-test .rs files exceeding 500 lines into module directories with semantic submodules. 510 files identified.'
@@ -2787,11 +2787,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-032: Provable contracts §32-34 — 160 contracts, 27/27 sovereign stack'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-04-03T09:09:55Z
-  updated: 2026-04-04T19:59:14.392862560+00:00
+  updated: 2026-04-16T19:45:09Z
   spec: null
   acceptance_criteria: []
   phases: []
