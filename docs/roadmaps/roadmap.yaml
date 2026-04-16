@@ -3155,11 +3155,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Port bug-hunter pattern detection into pmat (drop batuta dep)
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-04-16T16:31:08Z
-  updated: 2026-04-16T17:44:05Z
+  updated: 2026-04-16T18:44:07.441216011+00:00
   spec: null
   acceptance_criteria:
   - Remove fault_patterns reimplementation; sovereign stack (aprender-orchestrate::bug_hunter) already provides the API via the org-intelligence feature. Delete 500-line port. Keep enrichment as pure cache reader.
