@@ -3056,11 +3056,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Fix route_command coverage collapse (7.3% cov, 318 uncov lines)
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-04-16T16:22:17Z
-  updated: 2026-04-16T16:22:17Z
+  updated: 2026-04-16T17:26:56.709658986+00:00
   spec: null
   acceptance_criteria:
   - 'src/cli/command_dispatcher/command_routing.rs:7 is the top dispatch funnel, nearly untested. Sub-routers route_quality_command (quality_routing.rs:8) and route_scoring_command (command_dispatcher_scoring.rs:15) are flagged UNREACHABLE by pmat fault analysis — suggesting recent extraction refactor broke wiring. Audit match arms, add dispatch integration tests, verify unreachable claim is not a real dead-code bug. Impact: 2.6, 5.3 respectively.'
@@ -3076,11 +3076,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Reconcile qa_work_handler 0% coverage cluster (impact 14.2)
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-04-16T16:22:23Z
-  updated: 2026-04-16T16:22:23Z
+  updated: 2026-04-16T17:29:40.785185715+00:00
   spec: null
   acceptance_criteria:
   - Top-ROI coverage gap in repo. impl_checklist_gen.rs::generate_checklist (201 lines, 0% cov, impact 14.2) and impl_spec.rs::handle_spec (170 lines, 0% cov, impact 2.3) are fully untested. Suspected duplication with checklist.rs::handle_generate_checklist (tested). Reconcile the duplication first — either delete dead fork or merge — then add tests to surviving path.
