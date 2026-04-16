@@ -3116,11 +3116,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Add renacer golden traces for CLI dispatcher
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-04-16T16:22:31Z
-  updated: 2026-04-16T16:22:31Z
+  updated: 2026-04-16T18:09:27.016306598+00:00
   spec: null
   acceptance_criteria:
   - CLAUDE.md requires golden traces for multi-process/transpiler workflows. Recent dispatcher split (see PMAT-608) generated UNREACHABLE warnings — exactly the kind of structural change that silently breaks routing. Add renacer capture --scenario cli_dispatch_all_subcommands to catch regressions the 82-subcommand smoke test (commit 9299c907) only partially covers. Wire into pre-push or CI.

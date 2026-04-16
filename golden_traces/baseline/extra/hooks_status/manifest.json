@@ -9,7 +9,8 @@
   },
   "command": [
     "/home/noah/src/paiml-mcp-agent-toolkit/target/release/pmat",
-    "--help"
+    "hooks",
+    "status"
   ],
   "statistics": {
     "total_syscalls": 0,
