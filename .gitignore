@@ -258,6 +258,7 @@ pmat-*.tar.gz
 **/.pmat/
 .pmat-qa/
 .pmat-work/
+.pmat-work.toml
 .pmat-baseline.json
 algorithm-competition-corpus/
 
