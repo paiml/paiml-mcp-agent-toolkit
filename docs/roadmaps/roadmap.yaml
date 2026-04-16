@@ -3052,3 +3052,123 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-608
+  github_issue: null
+  item_type: task
+  title: Fix route_command coverage collapse (7.3% cov, 318 uncov lines)
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-04-16T16:22:17Z
+  updated: 2026-04-16T16:22:17Z
+  spec: null
+  acceptance_criteria:
+  - 'src/cli/command_dispatcher/command_routing.rs:7 is the top dispatch funnel, nearly untested. Sub-routers route_quality_command (quality_routing.rs:8) and route_scoring_command (command_dispatcher_scoring.rs:15) are flagged UNREACHABLE by pmat fault analysis — suggesting recent extraction refactor broke wiring. Audit match arms, add dispatch integration tests, verify unreachable claim is not a real dead-code bug. Impact: 2.6, 5.3 respectively.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - coverage
+  - cli
+  - dispatcher
+  notes: null
+- id: PMAT-609
+  github_issue: null
+  item_type: task
+  title: Reconcile qa_work_handler 0% coverage cluster (impact 14.2)
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-04-16T16:22:23Z
+  updated: 2026-04-16T16:22:23Z
+  spec: null
+  acceptance_criteria:
+  - Top-ROI coverage gap in repo. impl_checklist_gen.rs::generate_checklist (201 lines, 0% cov, impact 14.2) and impl_spec.rs::handle_spec (170 lines, 0% cov, impact 2.3) are fully untested. Suspected duplication with checklist.rs::handle_generate_checklist (tested). Reconcile the duplication first — either delete dead fork or merge — then add tests to surviving path.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - coverage
+  - qa-work
+  - duplication
+  notes: null
+- id: PMAT-610
+  github_issue: null
+  item_type: task
+  title: Fix pmat query --faults enrich-phase ANDON (22s)
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-04-16T16:22:28Z
+  updated: 2026-04-16T16:23:29.173182900+00:00
+  spec: null
+  acceptance_criteria:
+  - 'pmat query --faults enrich phase takes 22,456ms — flagged ANDON by pmat''s own profiler. Query is 0ms, load is 265ms; enrich dominates. This is the primary UX surface mandated by CLAUDE.md over grep — slow enrichment undermines adoption. Profile the fault annotation loop. Likely candidates: per-function regex recompilation, missing batch lookup, or unbatched source loads across 20K functions.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - performance
+  - query
+  - dogfooding
+  notes: null
+- id: PMAT-611
+  github_issue: null
+  item_type: task
+  title: Add renacer golden traces for CLI dispatcher
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-04-16T16:22:31Z
+  updated: 2026-04-16T16:22:31Z
+  spec: null
+  acceptance_criteria:
+  - CLAUDE.md requires golden traces for multi-process/transpiler workflows. Recent dispatcher split (see PMAT-608) generated UNREACHABLE warnings — exactly the kind of structural change that silently breaks routing. Add renacer capture --scenario cli_dispatch_all_subcommands to catch regressions the 82-subcommand smoke test (commit 9299c907) only partially covers. Wire into pre-push or CI.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - testing
+  - renacer
+  - dispatcher
+  notes: null
+- id: PMAT-612
+  github_issue: null
+  item_type: task
+  title: Resolve stray .cargo/config.toml deletion in working tree
+  status: inprogress
+  priority: low
+  assigned_to: null
+  created: 2026-04-16T16:22:35Z
+  updated: 2026-04-16T16:42:49.608542338+00:00
+  spec: null
+  acceptance_criteria:
+  - 'git status shows D .cargo/config.toml persistently. Per commit 8291eaea (dead-code analyzer removes RUSTFLAGS modification) the deletion is intentional but never staged. Every git status is noisy and future commits risk accidentally including or excluding it. Decide: commit the deletion, or restore the file with the fix applied differently.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - hygiene
+  - git
+  notes: null
+- id: PMAT-613
+  github_issue: null
+  item_type: task
+  title: Port bug-hunter pattern detection into pmat (drop batuta dep)
+  status: inprogress
+  priority: high
+  assigned_to: null
+  created: 2026-04-16T16:31:08Z
+  updated: 2026-04-16T16:33:58.674038146+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Move bug-hunter fault pattern detection into pmat natively, removing the legacy batuta binary dependency. SCOPE: port batuta/src/bug_hunter/patterns.rs (~576 LOC) and defect_patterns.rs (~93 LOC) into src/services/fault_patterns/. Build on pmat''s existing syn AST infrastructure and aprender primitives. OUT OF SCOPE: cargo-mutants orchestration (modes_falsify), fuzzing (modes_fuzz), SBFL (modes_hunt) — those are specialized and not needed for --faults. DELIVERABLES: (1) native pattern scanner, (2) writer for .pmat/bug-hunter-cache/*.json format so existing cache consumers still work, (3) wired into index build path so --faults is populated at build time (index is O(n), subprocess was O(subprocess_startup + full_analysis)). This completes PMAT-610''s tactical fix (cache-first, batuta/enrichment.rs:276 removed) by giving pmat first-class fault detection without any legacy binary. Reference: batuta at /home/noah/src/batuta/src/bug_hunter/, aprender QA crates at /home/noah/src/aprender/crates/aprender-qa-*.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - architecture
+  - faults
+  - sovereign
+  - aprender
+  notes: null
