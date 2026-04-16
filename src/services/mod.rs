@@ -167,7 +167,6 @@ pub mod enhanced_reporting;
 pub mod enhanced_typescript_visitor;
 pub mod error_capture; // Issue #81: Bug report error capture
 pub mod fault_localization; // Issue #103: Tarantula SBFL fault localization
-pub mod fault_patterns; // PMAT-613: native bug-hunter pattern detection
 pub mod file_classifier;
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

@@ -3159,10 +3159,10 @@ roadmap:
   priority: high
   assigned_to: null
   created: 2026-04-16T16:31:08Z
-  updated: 2026-04-16T16:33:58.674038146+00:00
+  updated: 2026-04-16T17:44:05Z
   spec: null
   acceptance_criteria:
-  - 'Move bug-hunter fault pattern detection into pmat natively, removing the legacy batuta binary dependency. SCOPE: port batuta/src/bug_hunter/patterns.rs (~576 LOC) and defect_patterns.rs (~93 LOC) into src/services/fault_patterns/. Build on pmat''s existing syn AST infrastructure and aprender primitives. OUT OF SCOPE: cargo-mutants orchestration (modes_falsify), fuzzing (modes_fuzz), SBFL (modes_hunt) — those are specialized and not needed for --faults. DELIVERABLES: (1) native pattern scanner, (2) writer for .pmat/bug-hunter-cache/*.json format so existing cache consumers still work, (3) wired into index build path so --faults is populated at build time (index is O(n), subprocess was O(subprocess_startup + full_analysis)). This completes PMAT-610''s tactical fix (cache-first, batuta/enrichment.rs:276 removed) by giving pmat first-class fault detection without any legacy binary. Reference: batuta at /home/noah/src/batuta/src/bug_hunter/, aprender QA crates at /home/noah/src/aprender/crates/aprender-qa-*.'
+  - Remove fault_patterns reimplementation; sovereign stack (aprender-orchestrate::bug_hunter) already provides the API via the org-intelligence feature. Delete 500-line port. Keep enrichment as pure cache reader.
   phases: []
   subtasks: []
   estimated_effort: null

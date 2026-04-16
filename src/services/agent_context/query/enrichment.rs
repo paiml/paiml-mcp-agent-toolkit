@@ -274,10 +274,9 @@ pub async fn enrich_results_with_entropy(
 
 /// Load fault findings from the newest `.pmat/bug-hunter-cache/*.json`.
 ///
-/// Cache-first, process-less: avoids the multi-second `batuta` subprocess that
-/// used to run inline during `pmat query --faults`. Returns an empty map when
-/// no cache is present — migrating cache population to in-process aprender is
-/// tracked separately.
+/// Pure cache reader: the cache is populated by `aprender-orchestrate`'s
+/// `bug_hunter::hunt` (sovereign stack, formerly `batuta`). Returns an empty
+/// map when no cache is present, in which case enrichment is a no-op.
 fn load_faults_from_cache(project_root: &Path) -> Result<HashMap<String, Vec<String>>, String> {
     let cache_dir = project_root.join(".pmat/bug-hunter-cache");
     let entries = match std::fs::read_dir(&cache_dir) {
@@ -370,17 +369,9 @@ pub async fn enrich_results_with_faults(
         return Ok(());
     }
 
-    let mut fault_map = load_faults_from_cache(project_root)?;
+    let fault_map = load_faults_from_cache(project_root)?;
     if fault_map.is_empty() {
-        // PMAT-613: scan on-demand with the native scanner and retry. Writes
-        // `.pmat/bug-hunter-cache/pmat-<hash>.json` so subsequent queries hit
-        // the cache path.
-        if crate::services::fault_patterns::scan_and_cache(project_root).is_ok() {
-            fault_map = load_faults_from_cache(project_root)?;
-        }
-        if fault_map.is_empty() {
-            return Ok(());
-        }
+        return Ok(());
     }
 
     for result in results.iter_mut() {
