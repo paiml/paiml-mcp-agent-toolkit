@@ -141,11 +141,10 @@ echo "✅ Commit message format valid"
         let hook_path = hooks_dir.join("pre-push");
 
         let hook_content = r#"#!/usr/bin/env bash
-# PMAT Pre-Push Quality Gate
+# PMAT Pre-Push Quality Gate (O(1))
 # auto-managed by PMAT — DO NOT EDIT
 #
-# Fast local gate (~1-3 min) to catch issues before push.
-# Full clean-room verification runs remotely after push.
+# Fast local gate (<2s). CI owns build/clippy/test.
 # Bypass with: git push --no-verify
 
 set -euo pipefail
@@ -160,7 +159,7 @@ echo "=============================="
 
 FAILED=0
 
-# 1. Format check (fastest, ~2s)
+# 1. Format check (fast, ~1s — stylistic only, pre-commit handles per-file)
 echo -n "  Format check... "
 if cargo fmt --all -- --check > /dev/null 2>&1; then
     echo "✅"
@@ -170,32 +169,8 @@ else
     FAILED=1
 fi
 
-# 2. Compilation check (~10-30s)
-echo -n "  Cargo check... "
-if cargo check --all-targets 2> /dev/null; then
-    echo "✅"
-else
-    echo "❌"
-    FAILED=1
-fi
-
-# 3. Clippy (~10-30s, incremental)
-echo -n "  Clippy... "
-if cargo clippy --all-targets -- -D warnings 2> /dev/null; then
-    echo "✅"
-else
-    echo "❌"
-    FAILED=1
-fi
-
-# 4. Unit tests (~30-60s)
-echo -n "  Unit tests... "
-if cargo test --lib --quiet 2> /dev/null; then
-    echo "✅"
-else
-    echo "❌"
-    FAILED=1
-fi
+# Build/clippy/test are intentionally NOT run here — they belong in CI
+# so `git push` stays O(1). Pre-push is for local sanity (format only).
 
 if [ "$FAILED" -ne 0 ]; then
     echo ""
