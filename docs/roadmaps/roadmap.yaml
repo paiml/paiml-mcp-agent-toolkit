@@ -3056,11 +3056,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Fix route_command coverage collapse (7.3% cov, 318 uncov lines)
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-04-16T16:22:17Z
-  updated: 2026-04-16T17:26:56.709658986+00:00
+  updated: 2026-04-16T18:40:49.609345007+00:00
   spec: null
   acceptance_criteria:
   - 'src/cli/command_dispatcher/command_routing.rs:7 is the top dispatch funnel, nearly untested. Sub-routers route_quality_command (quality_routing.rs:8) and route_scoring_command (command_dispatcher_scoring.rs:15) are flagged UNREACHABLE by pmat fault analysis — suggesting recent extraction refactor broke wiring. Audit match arms, add dispatch integration tests, verify unreachable claim is not a real dead-code bug. Impact: 2.6, 5.3 respectively.'
