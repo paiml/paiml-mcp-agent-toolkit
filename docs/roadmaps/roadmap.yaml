@@ -3136,11 +3136,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Resolve stray .cargo/config.toml deletion in working tree
-  status: inprogress
+  status: completed
   priority: low
   assigned_to: null
   created: 2026-04-16T16:22:35Z
-  updated: 2026-04-16T16:42:49.608542338+00:00
+  updated: 2026-04-16T18:37:22.360518859+00:00
   spec: null
   acceptance_criteria:
   - 'git status shows D .cargo/config.toml persistently. Per commit 8291eaea (dead-code analyzer removes RUSTFLAGS modification) the deletion is intentional but never staged. Every git status is noisy and future commits risk accidentally including or excluding it. Decide: commit the deletion, or restore the file with the fix applied differently.'
