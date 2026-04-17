@@ -269,5 +269,6 @@ algorithm-competition-corpus/
 satd-report.json
 golden_traces/*
 !golden_traces/baseline/
-/.cargo/
+/.cargo/*
+!/.cargo/audit.toml
 .pv/

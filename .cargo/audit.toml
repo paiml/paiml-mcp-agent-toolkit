@@ -1,0 +1,14 @@
+# cargo-audit ignore list
+# Parsed by .github/workflows CI to build --ignore flags.
+# Format: one RUSTSEC-YYYY-NNNN per commented block with justification.
+
+[advisories]
+ignore = [
+  # RUSTSEC-2023-0071 — Marvin Attack on rsa 0.9.x (timing sidechannel).
+  # Transitive: pmat → octocrab → jsonwebtoken → rsa.
+  # No fixed upstream release available; rsa crate maintainers have no
+  # mitigation plan. Risk is low for pmat because we don't perform RSA
+  # decryption on attacker-chosen ciphertexts — octocrab uses RSA only
+  # for signing outgoing GitHub App JWTs.
+  "RUSTSEC-2023-0071",
+]
