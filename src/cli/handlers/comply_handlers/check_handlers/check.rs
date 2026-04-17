@@ -610,6 +610,59 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    // Work Verification Ladder enforcement (CB-1610..1619) — Component 28
+    // Sub-spec: docs/specifications/components/pmat-work-verification-ladder.md
+    checks.push(filter_check_by_config(
+        super::check_work_ladder::check_ladder_parses(project_path),
+        "cb-1610",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_work_ladder::check_ladder_bound_by_yaml(project_path),
+        "cb-1611",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_work_ladder::check_ladder_l1_test_evidence(project_path),
+        "cb-1612",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_work_ladder::check_ladder_l3_falsification(project_path),
+        "cb-1613",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_work_ladder::check_ladder_l4_kani(project_path),
+        "cb-1614",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_work_ladder::check_ladder_kani_harness_sha(project_path),
+        "cb-1615",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_work_ladder::check_ladder_l5_lean(project_path),
+        "cb-1616",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_work_ladder::check_ladder_downgrade_audit(project_path),
+        "cb-1617",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_work_ladder::check_ladder_monotonicity(project_path),
+        "cb-1618",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_work_ladder::check_ladder_completion_matches(project_path),
+        "cb-1619",
+        comply_config,
+    ));
+
     let report = build_compliance_report(checks, project_version, failures_only);
     let failures = report
         .checks

@@ -21,6 +21,7 @@ pub(crate) mod check_provable_contracts;
 pub(crate) mod check_review_audit;
 pub(crate) mod check_sovereign;
 pub(crate) mod check_tdg_grade;
+pub(crate) mod check_work_ladder;
 pub(crate) mod types;
 
 // Re-export items needed by the parent comply_handlers module scope
