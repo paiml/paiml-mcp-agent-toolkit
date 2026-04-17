@@ -97,7 +97,7 @@ mod tests {
         let content = "// fn not_a_function() {}\nfn real() {}\n";
         let map = build_function_line_map(content);
         assert_eq!(map.get("real"), Some(&2));
-        assert!(map.get("not_a_function").is_none());
+        assert!(!map.contains_key("not_a_function"));
     }
 }
 

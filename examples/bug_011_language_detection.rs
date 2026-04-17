@@ -12,7 +12,7 @@
 //! Run with: `cargo run --example bug_011_language_detection`
 
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::time::timeout;
 
@@ -84,7 +84,7 @@ async fn main() -> Result<()> {
 }
 
 /// Detect language using the fixed implementation
-async fn detect_project_language(path: &PathBuf) -> Result<LanguageDetection> {
+async fn detect_project_language(path: &Path) -> Result<LanguageDetection> {
     use pmat::services::enhanced_language_detection::detect_project_language_enhanced;
 
     // Use the fixed detection function

@@ -14,5 +14,6 @@ jobs:
     uses: paiml/.github/.github/workflows/sovereign-ci.yml@main
     with:
       repo: ${{ github.event.repository.name }}
+      test_args: -p pmat
     secrets: inherit
 

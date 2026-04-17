@@ -426,7 +426,7 @@ mod tests {
         adaptive_cache.evict_lfu(&mut cache);
         assert_eq!(cache.len(), 2);
         // Entry with lowest access count should be evicted
-        assert!(cache.get("key0").is_none());
+        assert!(!cache.contains_key("key0"));
     }
 
     #[test]
@@ -559,7 +559,7 @@ mod tests {
         cache.insert("valid".to_string(), valid_entry);
 
         adaptive_cache.evict_ttl(&mut cache);
-        assert!(cache.get("expired").is_none());
+        assert!(!cache.contains_key("expired"));
     }
 
     // === CachePredictor tests ===

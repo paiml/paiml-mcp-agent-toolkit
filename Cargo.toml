@@ -745,13 +745,13 @@ expect_used = "allow"
 # New rust-1.94.0 lints that fire heavily on test code — allow rather than
 # churn through hundreds of mechanical fixes. Track cleanup in follow-up tickets.
 assertions_on_constants = "allow"
-cmp_owned = "allow"
-items_after_test_module = "allow"
+# cmp_owned removed 2026-04-17: fixed 3 test sites to use Path::new comparisons
+# items_after_test_module removed 2026-04-17: moved trailing items in supply_chain.rs before test mod
 module_inception = "allow"
-ptr_arg = "allow"
-unnecessary_get_then_check = "allow"
-useless_format = "allow"
-doc_lazy_continuation = "allow"
+# ptr_arg removed 2026-04-17: fixed 2 sites (&PathBuf → &Path)
+# unnecessary_get_then_check removed 2026-04-17: fixed 6 test sites (get().is_none() → !contains_key())
+# useless_format removed 2026-04-17: no violations
+# doc_lazy_continuation removed 2026-04-17: fixed 1 site with blank line
 too_many_arguments = "allow"
 
 [profile.release]

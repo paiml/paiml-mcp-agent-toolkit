@@ -5,10 +5,28 @@
 [advisories]
 ignore = [
   # RUSTSEC-2023-0071 — Marvin Attack on rsa 0.9.x (timing sidechannel).
-  # Transitive: pmat → octocrab → jsonwebtoken → rsa.
+  # Transitive: pmat -> octocrab -> jsonwebtoken -> rsa.
   # No fixed upstream release available; rsa crate maintainers have no
   # mitigation plan. Risk is low for pmat because we don't perform RSA
   # decryption on attacker-chosen ciphertexts — octocrab uses RSA only
   # for signing outgoing GitHub App JWTs.
   "RUSTSEC-2023-0071",
+
+  # RUSTSEC-2026-0097 — rand unsound with custom logger using rand::rng().
+  # rand@0.7.3 is transitive via async-raft 0.6.1 (unmaintained; pinned
+  # to rand 0.7.x). rand@0.9.x and 0.8.x already updated to patched
+  # versions (0.9.4 / 0.8.6) via `cargo update`. The remaining 0.7.3
+  # path cannot be updated without replacing async-raft. Risk is
+  # extremely low: pmat does not install a custom tracing logger that
+  # calls rand::rng() during logger init, which is the specific
+  # triggering condition for this soundness bug.
+  "RUSTSEC-2026-0097",
+
+  # RUSTSEC-2026-0002 — lru IterMut stacked-borrows unsoundness.
+  # lru@0.12.5 is transitive via ratatui 0.29.0 (pulled from upstream
+  # batuta crates: trueno-viz, aprender-profile). Direct dependency is
+  # already on lru 0.16.x (patched). Fix requires ratatui 0.30+ upstream
+  # in the batuta stack. No code path in pmat uses lru::IterMut
+  # directly; ratatui's internal cache only uses read-only iteration.
+  "RUSTSEC-2026-0002",
 ]
