@@ -69,11 +69,7 @@ impl MakefileCompressor {
                 && !clean.starts_with(':')
                 && !clean.is_empty()
             {
-                // Truncate very long commands
-                if clean.len() > 100 {
-                    return format!("{}...", &clean[..97]);
-                }
-                return clean.to_string();
+                return crate::utils::string_truncate::truncate_with_ellipsis(clean, 97);
             }
         }
 

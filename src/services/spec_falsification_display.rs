@@ -33,13 +33,11 @@ impl SpecFalsificationReport {
                 c::CYAN, verdict.claim.source_line, c::RESET,
             );
 
-            // Truncate long claim text
-            let text = &verdict.claim.original_text;
-            let display_text = if text.len() > 100 {
-                format!("{}...", &text[..97])
-            } else {
-                text.clone()
-            };
+            // Truncate long claim text (GH-291 safe for multi-byte UTF-8)
+            let display_text = crate::utils::string_truncate::truncate_with_ellipsis(
+                &verdict.claim.original_text,
+                97,
+            );
             println!("       {}\"{}\"{}",c::DIM, display_text, c::RESET);
             println!("       Category: {}", c::label(&verdict.claim.category.to_string()));
 

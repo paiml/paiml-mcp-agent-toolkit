@@ -332,11 +332,7 @@ pub fn detect_cb515_catch_all_match_default(project_path: &Path) -> Vec<CbPatter
                 line: i + 1,
                 description: format!(
                     "Catch-all match arm `_ =>` returns concrete value: {}",
-                    if after.len() > 60 {
-                        &after[..60]
-                    } else {
-                        after
-                    }
+                    crate::utils::string_truncate::truncate_at_char_boundary(after, 60)
                 ),
                 severity: Severity::Warning,
             });

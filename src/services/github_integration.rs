@@ -327,13 +327,8 @@ fn generate_summary(issue: &GitHubIssue) -> String {
         .body
         .as_ref()
         .map(|b| {
-            // Take first paragraph or first 200 characters
             let first_paragraph = b.split("\n\n").next().unwrap_or(b);
-            if first_paragraph.len() > 200 {
-                format!("{}...", &first_paragraph[..200])
-            } else {
-                first_paragraph.to_string()
-            }
+            crate::utils::string_truncate::truncate_with_ellipsis(first_paragraph, 200)
         })
         .unwrap_or_default();
 
