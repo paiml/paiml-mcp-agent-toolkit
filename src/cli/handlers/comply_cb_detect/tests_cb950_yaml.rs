@@ -143,6 +143,45 @@ fn test_cb954_allows_env_reference() {
     assert!(violations.is_empty());
 }
 
+// GH-270: org-internal reusable workflows (paiml/.github/...) cannot be pinned
+// to SHA per GitHub Actions — branch pin is the only option. CB-953 should not
+// flag them.
+#[test]
+fn test_cb953_allows_org_internal_reusable_workflow() {
+    let temp = TempDir::new().unwrap();
+    let gha_dir = temp.path().join(".github").join("workflows");
+    fs::create_dir_all(&gha_dir).unwrap();
+    fs::write(
+        gha_dir.join("ci.yml"),
+        "name: CI\non: [push]\njobs:\n  gate:\n    uses: paiml/.github/.github/workflows/unified-gate.yml@main\n",
+    )
+    .unwrap();
+    let violations = detect_cb953_unpinned_action(temp.path());
+    assert!(
+        violations.is_empty(),
+        "org-internal reusable workflow @main should not be flagged, got: {violations:?}"
+    );
+}
+
+// GH-270: `secrets: inherit` is the standard GitHub Actions syntax for
+// forwarding caller secrets to a reusable workflow. Not a plaintext leak.
+#[test]
+fn test_cb954_allows_secrets_inherit() {
+    let temp = TempDir::new().unwrap();
+    let gha_dir = temp.path().join(".github").join("workflows");
+    fs::create_dir_all(&gha_dir).unwrap();
+    fs::write(
+        gha_dir.join("ci.yml"),
+        "name: CI\non: [push]\njobs:\n  gate:\n    uses: paiml/.github/.github/workflows/unified-gate.yml@main\n    secrets: inherit\n",
+    )
+    .unwrap();
+    let violations = detect_cb954_plaintext_secret(temp.path());
+    assert!(
+        violations.is_empty(),
+        "`secrets: inherit` should not be flagged, got: {violations:?}"
+    );
+}
+
 #[test]
 fn test_walkdir_yaml_files_skips_git() {
     let temp = TempDir::new().unwrap();
