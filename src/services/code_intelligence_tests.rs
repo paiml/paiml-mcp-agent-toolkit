@@ -178,14 +178,12 @@ fn test_analysis_type_debug() {
 
 #[test]
 fn test_analysis_type_all_variants() {
-    let types = vec![
-        AnalysisType::DuplicateDetection,
+    let types = [AnalysisType::DuplicateDetection,
         AnalysisType::DeadCodeAnalysis,
         AnalysisType::ComplexityMetrics,
         AnalysisType::DependencyGraph,
         AnalysisType::DefectPrediction,
-        AnalysisType::NameSimilarity,
-    ];
+        AnalysisType::NameSimilarity];
     assert_eq!(types.len(), 6);
 }
 

@@ -326,7 +326,7 @@ mod tests {
     fn test_make_cluster_item_basic() {
         let e1 = make_entry("process", "f.rs", 10, 30);
         let _entries: Vec<&FunctionEntry> = vec![&e1];
-        let _func_indices = vec![0usize];
+        let _func_indices = [0usize];
         let mut global_to_local = HashMap::new();
         global_to_local.insert(0usize, 0usize);
 

@@ -14,16 +14,14 @@
             BaseLanguageMapper::new(Language::Python).clone_box(),
         ];
 
-        let expected_languages = vec![
-            Language::Java,
+        let expected_languages = [Language::Java,
             Language::Kotlin,
             Language::Scala,
             Language::TypeScript,
             Language::JavaScript,
             Language::CSharp,
             Language::Ruby,
-            Language::Python,
-        ];
+            Language::Python];
 
         for (mapper, expected_lang) in mappers.iter().zip(expected_languages.iter()) {
             assert_eq!(mapper.language(), *expected_lang);

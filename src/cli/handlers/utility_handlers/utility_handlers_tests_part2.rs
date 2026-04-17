@@ -222,7 +222,7 @@ mod coverage_tests {
 
     #[test]
     fn test_output_format_variants() {
-        let formats = vec![OutputFormat::Table, OutputFormat::Json, OutputFormat::Yaml];
+        let formats = [OutputFormat::Table, OutputFormat::Json, OutputFormat::Yaml];
 
         assert_eq!(formats.len(), 3);
     }

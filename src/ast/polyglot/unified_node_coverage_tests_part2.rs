@@ -101,16 +101,14 @@
     fn test_add_reference_all_kinds() {
         let mut node = UnifiedNode::new(NodeKind::Class, "Test", Language::Java);
 
-        let reference_kinds = vec![
-            ReferenceKind::Inherits,
+        let reference_kinds = [ReferenceKind::Inherits,
             ReferenceKind::Implements,
             ReferenceKind::Calls,
             ReferenceKind::Uses,
             ReferenceKind::Creates,
             ReferenceKind::Imports,
             ReferenceKind::Annotates,
-            ReferenceKind::DependsOn,
-        ];
+            ReferenceKind::DependsOn];
 
         for (i, kind) in reference_kinds.iter().enumerate() {
             node.add_reference(*kind, format!("target_{}", i), Some(format!("id_{}", i)));
@@ -292,11 +290,9 @@
         assert!(ReferenceKind::Inherits < ReferenceKind::Implements);
         assert!(ReferenceKind::Implements < ReferenceKind::Calls);
 
-        let mut kinds = vec![
-            ReferenceKind::DependsOn,
+        let mut kinds = [ReferenceKind::DependsOn,
             ReferenceKind::Inherits,
-            ReferenceKind::Calls,
-        ];
+            ReferenceKind::Calls];
         kinds.sort();
         assert_eq!(kinds[0], ReferenceKind::Inherits);
     }
