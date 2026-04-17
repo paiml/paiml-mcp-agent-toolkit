@@ -1,4 +1,7 @@
-#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
+#![cfg_attr(
+    all(coverage_nightly, not(coverage_attr_stable)),
+    feature(coverage_attribute)
+)]
 #![cfg_attr(coverage_nightly, coverage(off))]
 use clap::{Parser, Subcommand};
 use pmat::agents::analyzer_actor::AnalyzerActor;

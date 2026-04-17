@@ -4,7 +4,10 @@
 //
 // EXTREME TDD - Quality Cleanup Sprint 26
 // Coverage: Exclude test modules from coverage measurement (nightly only)
-#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
+#![cfg_attr(
+    all(coverage_nightly, not(coverage_attr_stable)),
+    feature(coverage_attribute)
+)]
 #![deny(unused_imports)]
 #![deny(unused_variables)]
 //

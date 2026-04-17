@@ -730,7 +730,7 @@ unreachable_pub = "warn"
 missing_docs = "allow"
 dead_code = "allow"
 # Coverage: Allow coverage cfg flags from cargo-llvm-cov
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)', 'cfg(coverage_nightly)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)', 'cfg(coverage_nightly)', 'cfg(coverage_attr_stable)'] }
 
 [lints.clippy]
 correctness = { level = "deny", priority = -1 }

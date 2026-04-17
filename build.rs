@@ -20,7 +20,16 @@ fn main() {
     // Declare custom cfg flags
     println!("cargo:rustc-check-cfg=cfg(cargo_publish)");
     println!("cargo:rustc-check-cfg=cfg(coverage)");
+    println!("cargo:rustc-check-cfg=cfg(coverage_attr_stable)");
     println!("cargo:rustc-check-cfg=cfg(kani)");
+
+    // GH-283: `coverage_attribute` was stabilized in Rust 1.94. Using
+    // `#![feature(coverage_attribute)]` on 1.94+ stable triggers E0554.
+    // Emit `coverage_attr_stable` so lib/bin headers can skip the feature
+    // gate when the attribute is already stabilized.
+    if rustc_is_at_least_1_94() {
+        println!("cargo:rustc-cfg=coverage_attr_stable");
+    }
 
     // Fast build mode for development - skip heavy operations but generate stubs
     if env::var("PMAT_FAST_BUILD").is_ok() {
@@ -59,6 +68,35 @@ fn main() {
         let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be set");
         generate_stub_files(&out_dir);
     }
+}
+
+/// GH-283: Return true when the compiler is Rust >= 1.94.
+///
+/// Parses `rustc --version` output (e.g. `rustc 1.94.1 (e408947bf 2026-03-25)`)
+/// and compares the reported `minor` version against the 1.94 cutoff. Returns
+/// false on any parse error so older compilers keep the feature gate.
+fn rustc_is_at_least_1_94() -> bool {
+    let rustc = env::var("RUSTC").unwrap_or_else(|_| "rustc".to_string());
+    let Ok(output) = std::process::Command::new(rustc).arg("--version").output() else {
+        return false;
+    };
+    if !output.status.success() {
+        return false;
+    }
+    let Ok(stdout) = std::str::from_utf8(&output.stdout) else {
+        return false;
+    };
+    let Some(version) = stdout.split_whitespace().nth(1) else {
+        return false;
+    };
+    let mut parts = version.split('.');
+    let Some(major) = parts.next().and_then(|s| s.parse::<u32>().ok()) else {
+        return false;
+    };
+    let Some(minor) = parts.next().and_then(|s| s.parse::<u32>().ok()) else {
+        return false;
+    };
+    major > 1 || (major == 1 && minor >= 94)
 }
 
 /// Check if we're in a cargo publish context
