@@ -157,3 +157,67 @@ fn test_cb904_allows_tables() {
     let violations = detect_cb904_long_line(temp.path());
     assert_eq!(violations.len(), 0);
 }
+
+/// GH-278: `.pmatignore` with `assistant/docs/**` must skip vendored
+/// dependency documentation so CB-900 does not flag their internal links.
+#[test]
+fn test_cb900_pmatignore_excludes_vendored_docs() {
+    let temp = TempDir::new().unwrap();
+    let vendor = temp.path().join("assistant/docs/dependencies/lock_api");
+    fs::create_dir_all(&vendor).unwrap();
+    fs::write(
+        vendor.join("index.md"),
+        "# Lock\n\nSee [Mutex](./crate::Mutex) for more.\n",
+    )
+    .unwrap();
+    fs::write(temp.path().join(".pmatignore"), "assistant/docs/**\n").unwrap();
+    let violations = detect_cb900_broken_internal_link(temp.path());
+    assert!(
+        violations.is_empty(),
+        "expected no violations under .pmatignore, got {violations:?}"
+    );
+}
+
+/// GH-278: `.pmat-gates.toml [exclude] paths` provides an alternative to
+/// `.pmatignore` for users who prefer keeping all comply configuration
+/// in the gates file.
+#[test]
+fn test_cb900_gates_exclude_paths_skips_vendored_docs() {
+    let temp = TempDir::new().unwrap();
+    let vendor = temp.path().join("assistant/docs/foldhash");
+    fs::create_dir_all(&vendor).unwrap();
+    fs::write(
+        vendor.join("quality.md"),
+        "# FoldHasher\n\nSee [Hasher](./FoldHasher.md).\n",
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join(".pmat-gates.toml"),
+        "[exclude]\npaths = [\"assistant/docs/**\"]\n",
+    )
+    .unwrap();
+    let violations = detect_cb900_broken_internal_link(temp.path());
+    assert!(violations.is_empty());
+}
+
+/// GH-278: `.pmat.yaml comply.thresholds.file_health_exclude` (added in
+/// GH-292) should also apply to CB-9xx Markdown checks so one list covers
+/// both file-health and broken-link analyses.
+#[test]
+fn test_cb900_pmat_yaml_file_health_exclude_skips_vendored_docs() {
+    let temp = TempDir::new().unwrap();
+    let vendor = temp.path().join("assistant/docs/foldhash");
+    fs::create_dir_all(&vendor).unwrap();
+    fs::write(
+        vendor.join("index.md"),
+        "# FoldHasher\n\nSee [Hasher](./missing.md).\n",
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join(".pmat.yaml"),
+        "comply:\n  thresholds:\n    file_health_exclude:\n      - \"assistant/docs/**\"\n",
+    )
+    .unwrap();
+    let violations = detect_cb900_broken_internal_link(temp.path());
+    assert!(violations.is_empty());
+}
