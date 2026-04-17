@@ -151,3 +151,74 @@ include!("models_impls.rs");
 
 // --- tests ---
 include!("models_tests.rs");
+
+// ── Kani proof harnesses (GH-276) ────────────────────────────────────────────
+// See kani/README.md for run instructions.
+#[cfg(kani)]
+mod kani_proofs {
+    use super::{CategoryScore, Grade, ScoreStatus};
+
+    /// `Grade::from_score` is total on bounded finite f64 inputs.
+    #[kani::proof]
+    fn grade_from_score_total() {
+        let s: f64 = kani::any();
+        kani::assume(s.is_finite());
+        kani::assume((-1000.0..=1000.0).contains(&s));
+        let g = Grade::from_score(s);
+        let _ok = matches!(
+            g,
+            Grade::APlus
+                | Grade::A
+                | Grade::AMinus
+                | Grade::BPlus
+                | Grade::B
+                | Grade::C
+                | Grade::D
+                | Grade::F
+        );
+        assert!(_ok);
+    }
+
+    /// Scores >= 95 classify as A+. Band-boundary safety proof.
+    #[kani::proof]
+    fn score_ge_95_is_a_plus() {
+        let s: f64 = kani::any();
+        kani::assume(s.is_finite());
+        kani::assume((95.0..=1000.0).contains(&s));
+        assert!(matches!(Grade::from_score(s), Grade::APlus));
+    }
+
+    /// `CategoryScore::new` percentage invariant:
+    /// when `max_score > 0`, the computed percentage equals `score/max * 100`.
+    /// (Kani handles f64 arithmetic exactly for finite operands.)
+    #[kani::proof]
+    fn category_score_percentage_invariant() {
+        let score: f64 = kani::any();
+        let max_score: f64 = kani::any();
+        kani::assume(score.is_finite() && max_score.is_finite());
+        kani::assume((0.0..=1000.0).contains(&score));
+        kani::assume((1.0..=1000.0).contains(&max_score));
+        let cs = CategoryScore::new(score, max_score, Vec::new(), Vec::new());
+        // Percentage is exactly score/max*100 for positive max_score.
+        let expected = (score / max_score) * 100.0;
+        assert!(cs.percentage == expected);
+        // Status monotonically follows percentage thresholds.
+        let status_matches = match cs.status {
+            ScoreStatus::Pass => expected >= 90.0,
+            ScoreStatus::Warning => expected >= 70.0 && expected < 90.0,
+            ScoreStatus::Fail => expected < 70.0,
+        };
+        assert!(status_matches);
+    }
+
+    /// When `max_score == 0`, the percentage is 0 (division-by-zero guard).
+    #[kani::proof]
+    fn category_score_zero_max_is_safe() {
+        let score: f64 = kani::any();
+        kani::assume(score.is_finite());
+        kani::assume((0.0..=1000.0).contains(&score));
+        let cs = CategoryScore::new(score, 0.0, Vec::new(), Vec::new());
+        assert!(cs.percentage == 0.0);
+        assert!(matches!(cs.status, ScoreStatus::Fail));
+    }
+}

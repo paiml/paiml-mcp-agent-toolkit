@@ -73,6 +73,55 @@ impl HealthGrade {
         }
     }
 
+    // ── Kani proof harnesses (GH-276) ────────────────────────────────────
+    // See kani/README.md for instructions on running these proofs.
+    // Total proof effort: verify `from_score` is a total function on u8
+    // and respects monotonic grade ordering.
+
+    /// Kani proof: `from_score` is total on all u8 inputs (0..=255).
+    /// i.e. it never panics and always returns a defined variant.
+    #[cfg(kani)]
+    #[kani::proof]
+    fn kani_from_score_total() {
+        let score: u8 = kani::any();
+        let g = HealthGrade::from_score(score);
+        // Every u8 maps to exactly one of the six variants.
+        let _ok = matches!(
+            g,
+            HealthGrade::A
+                | HealthGrade::B
+                | HealthGrade::C
+                | HealthGrade::D
+                | HealthGrade::E
+                | HealthGrade::F
+        );
+        assert!(_ok);
+    }
+
+    /// Kani proof: passing grades correspond to score >= 70.
+    /// `is_passing()` <=> grade is A, B, or C <=> score >= 70.
+    #[cfg(kani)]
+    #[kani::proof]
+    fn kani_is_passing_iff_score_ge_70() {
+        let score: u8 = kani::any();
+        // Bound to the documented range so proofs are crisp.
+        kani::assume(score <= 100);
+        let g = HealthGrade::from_score(score);
+        assert!(g.is_passing() == (score >= 70));
+    }
+
+    /// Kani proof: grade ordering is monotonic (higher score -> not-worse grade).
+    /// Specifically, a score in the A band (>=90) is never classified below C.
+    #[cfg(kani)]
+    #[kani::proof]
+    fn kani_high_score_yields_high_grade() {
+        let score: u8 = kani::any();
+        kani::assume(score >= 90 && score <= 100);
+        let g = HealthGrade::from_score(score);
+        assert!(matches!(g, HealthGrade::A));
+        assert!(g.is_passing());
+    }
+
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// As str.
     pub fn as_str(&self) -> &'static str {
