@@ -16,6 +16,7 @@ pub(crate) mod check_best_practices;
 pub(crate) mod check_binding_scope;
 pub(crate) mod check_dead_code;
 pub(crate) mod check_extended;
+pub(crate) mod check_falsification_unification;
 pub(crate) mod check_mono_spec;
 pub(crate) mod check_provable_contracts;
 pub(crate) mod check_review_audit;

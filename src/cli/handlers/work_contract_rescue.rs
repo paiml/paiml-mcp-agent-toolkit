@@ -164,7 +164,8 @@ pub fn rescue_strategy_for(method: &FalsificationMethod) -> Option<RescueStrateg
         | FalsificationMethod::RegressionGate
         | FalsificationMethod::FormalProofVerification
         | FalsificationMethod::SpecQuality
-        | FalsificationMethod::RoadmapUpdate => None,
+        | FalsificationMethod::RoadmapUpdate
+        | FalsificationMethod::ProvableContract { .. } => None,
     }
 }
 

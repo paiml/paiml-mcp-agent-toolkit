@@ -663,6 +663,59 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    // Work Falsification Unification enforcement (CB-1620..1629) — Component 29
+    // Sub-spec: docs/specifications/components/pmat-work-falsification-unification.md
+    checks.push(filter_check_by_config(
+        super::check_falsification_unification::check_inherited_roster_coverage(project_path),
+        "cb-1620",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_falsification_unification::check_expected_snapshot_drift(project_path),
+        "cb-1621",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_falsification_unification::check_roster_execution_coverage(project_path),
+        "cb-1622",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_falsification_unification::check_no_duplicate_provable_entries(project_path),
+        "cb-1623",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_falsification_unification::check_no_manual_deletion(project_path),
+        "cb-1624",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_falsification_unification::check_inherited_failure_fatal(project_path),
+        "cb-1625",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_falsification_unification::check_test_id_exists_in_yaml(project_path),
+        "cb-1626",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_falsification_unification::check_post_bind_yaml_drift(project_path),
+        "cb-1627",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_falsification_unification::check_per_run_log_line(project_path),
+        "cb-1628",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_falsification_unification::check_l4_timeout_gate(project_path),
+        "cb-1629",
+        comply_config,
+    ));
+
     let report = build_compliance_report(checks, project_version, failures_only);
     let failures = report
         .checks

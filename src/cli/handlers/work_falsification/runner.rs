@@ -126,6 +126,10 @@ fn determine_blocking_status(
         FalsificationMethod::CrossCrateParity => thresholds.block_on_cross_crate_failure,
         FalsificationMethod::RegressionGate => thresholds.block_on_regression,
         FalsificationMethod::FormalProofVerification => thresholds.require_proof_verification,
+
+        // Component 29 §CB-1625: inherited test failure is fatal. Default to blocking;
+        // dispatch is deferred until pv_yaml_loader lands, so this path is unreachable today.
+        FalsificationMethod::ProvableContract { .. } => true,
     }
 }
 
@@ -212,6 +216,18 @@ async fn dispatch_falsification_test(
                 project_path,
                 contract.thresholds.max_sorry_count,
             )
+        }
+        FalsificationMethod::ProvableContract { .. } => {
+            // Component 29 §Execution Pipeline step 6 requires pv_yaml_loader
+            // (introduced in Component 27, still pending). Until then we cannot
+            // execute the YAML-resident test, so flag the claim as falsified
+            // with a Deferred marker — this prevents silent green completion.
+            Ok(FalsificationResult::failed(
+                "ProvableContract dispatch deferred — pv_yaml_loader (Component 29 §Execution Pipeline) not yet wired",
+                EvidenceType::CounterExample {
+                    details: "binding-inherited test could not execute; loader pending".to_string(),
+                },
+            ))
         }
     }
 }
