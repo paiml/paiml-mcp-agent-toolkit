@@ -14,8 +14,10 @@ mod property_tests {
     proptest! {
         #[test]
         fn ttl_conversion_roundtrip(secs in 0u64..10_000_000) {
-            let mut config = CacheConfig::default();
-            config.ast_ttl_secs = secs;
+            let config = CacheConfig {
+                ast_ttl_secs: secs,
+                ..Default::default()
+            };
 
             let duration = config.ast_ttl();
             prop_assert_eq!(duration.as_secs(), secs);
@@ -29,12 +31,14 @@ mod property_tests {
             churn in 0u64..1_000_000,
             git_stats in 0u64..1_000_000
         ) {
-            let mut config = CacheConfig::default();
-            config.ast_ttl_secs = ast;
-            config.template_ttl_secs = template;
-            config.dag_ttl_secs = dag;
-            config.churn_ttl_secs = churn;
-            config.git_stats_ttl_secs = git_stats;
+            let config = CacheConfig {
+                ast_ttl_secs: ast,
+                template_ttl_secs: template,
+                dag_ttl_secs: dag,
+                churn_ttl_secs: churn,
+                git_stats_ttl_secs: git_stats,
+                ..Default::default()
+            };
 
             prop_assert_eq!(config.ast_ttl(), Duration::from_secs(ast));
             prop_assert_eq!(config.template_ttl(), Duration::from_secs(template));
@@ -51,8 +55,10 @@ mod property_tests {
     proptest! {
         #[test]
         fn memory_bytes_calculation_correct(mb in 0usize..65536) {
-            let mut config = CacheConfig::default();
-            config.max_memory_mb = mb;
+            let config = CacheConfig {
+                max_memory_mb: mb,
+                ..Default::default()
+            };
 
             let expected = mb.saturating_mul(1024).saturating_mul(1024);
             prop_assert_eq!(config.max_memory_bytes(), expected);
@@ -60,8 +66,10 @@ mod property_tests {
 
         #[test]
         fn memory_bytes_never_overflows_for_reasonable_values(mb in 0usize..1048576) {
-            let mut config = CacheConfig::default();
-            config.max_memory_mb = mb;
+            let config = CacheConfig {
+                max_memory_mb: mb,
+                ..Default::default()
+            };
 
             // Should not panic
             let _ = config.max_memory_bytes();
@@ -75,8 +83,10 @@ mod property_tests {
     proptest! {
         #[test]
         fn serialization_preserves_memory(mb in 0usize..65536) {
-            let mut config = CacheConfig::default();
-            config.max_memory_mb = mb;
+            let config = CacheConfig {
+                max_memory_mb: mb,
+                ..Default::default()
+            };
 
             let json = serde_json::to_string(&config).unwrap();
             let restored: CacheConfig = serde_json::from_str(&json).unwrap();
@@ -90,10 +100,12 @@ mod property_tests {
             template in 0u64..1_000_000,
             dag in 0u64..1_000_000
         ) {
-            let mut config = CacheConfig::default();
-            config.ast_ttl_secs = ast;
-            config.template_ttl_secs = template;
-            config.dag_ttl_secs = dag;
+            let config = CacheConfig {
+                ast_ttl_secs: ast,
+                template_ttl_secs: template,
+                dag_ttl_secs: dag,
+                ..Default::default()
+            };
 
             let json = serde_json::to_string(&config).unwrap();
             let restored: CacheConfig = serde_json::from_str(&json).unwrap();
@@ -110,11 +122,13 @@ mod property_tests {
             git_cache_by_branch in proptest::bool::ANY,
             cache_compression in proptest::bool::ANY
         ) {
-            let mut config = CacheConfig::default();
-            config.enable_watch = enable_watch;
-            config.warmup_on_startup = warmup_on_startup;
-            config.git_cache_by_branch = git_cache_by_branch;
-            config.cache_compression = cache_compression;
+            let config = CacheConfig {
+                enable_watch,
+                warmup_on_startup,
+                git_cache_by_branch,
+                cache_compression,
+                ..Default::default()
+            };
 
             let json = serde_json::to_string(&config).unwrap();
             let restored: CacheConfig = serde_json::from_str(&json).unwrap();
@@ -137,10 +151,12 @@ mod property_tests {
             enable_watch in proptest::bool::ANY,
             threads in 1usize..128
         ) {
-            let mut config = CacheConfig::default();
-            config.max_memory_mb = mb;
-            config.enable_watch = enable_watch;
-            config.parallel_warmup_threads = threads;
+            let config = CacheConfig {
+                max_memory_mb: mb,
+                enable_watch,
+                parallel_warmup_threads: threads,
+                ..Default::default()
+            };
 
             let cloned = config.clone();
 
@@ -161,10 +177,12 @@ mod property_tests {
             medium in 100u64..1000,
             long in 1000u64..10000
         ) {
-            let mut config = CacheConfig::default();
-            config.ast_ttl_secs = short;
-            config.template_ttl_secs = medium;
-            config.churn_ttl_secs = long;
+            let config = CacheConfig {
+                ast_ttl_secs: short,
+                template_ttl_secs: medium,
+                churn_ttl_secs: long,
+                ..Default::default()
+            };
 
             prop_assert!(config.ast_ttl() < config.template_ttl());
             prop_assert!(config.template_ttl() < config.churn_ttl());
@@ -172,11 +190,13 @@ mod property_tests {
 
         #[test]
         fn warmup_patterns_preserved(count in 0usize..10) {
-            let mut config = CacheConfig::default();
             let patterns: Vec<String> = (0..count)
                 .map(|i| format!("pattern_{}", i))
                 .collect();
-            config.warmup_patterns = patterns.clone();
+            let config = CacheConfig {
+                warmup_patterns: patterns.clone(),
+                ..Default::default()
+            };
 
             let json = serde_json::to_string(&config).unwrap();
             let restored: CacheConfig = serde_json::from_str(&json).unwrap();

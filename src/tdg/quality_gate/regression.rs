@@ -205,8 +205,10 @@ mod tests {
 
     #[test]
     fn test_grade_drop_not_allowed() {
-        let mut config = GateConfig::default();
-        config.allow_grade_drop = false;
+        let config = GateConfig {
+            allow_grade_drop: false,
+            ..Default::default()
+        };
 
         let baseline = create_test_baseline(vec![(PathBuf::from("src/main.rs"), 91.0, Grade::A)]);
         let current =
@@ -279,8 +281,10 @@ mod tests {
             (PathBuf::from("src/test.rs"), 75.0, Grade::A), // Same grade, big score drop
         ]);
 
-        let mut config = GateConfig::default();
-        config.allow_grade_drop = true;
+        let config = GateConfig {
+            allow_grade_drop: true,
+            ..Default::default()
+        };
         let gate = RegressionGate::new(config);
         let result = gate.check(&baseline, &current).unwrap();
 
@@ -297,8 +301,10 @@ mod tests {
             (PathBuf::from("src/test.rs"), 82.0, Grade::A), // Same grade, small-medium drop
         ]);
 
-        let mut config = GateConfig::default();
-        config.allow_grade_drop = true;
+        let config = GateConfig {
+            allow_grade_drop: true,
+            ..Default::default()
+        };
         let gate = RegressionGate::new(config);
         let result = gate.check(&baseline, &current).unwrap();
 
@@ -317,9 +323,11 @@ mod tests {
 
     #[test]
     fn test_regression_gate_with_allowed_grade_drop() {
-        let mut config = GateConfig::default();
-        config.allow_grade_drop = true;
-        config.max_score_drop = 20.0;
+        let config = GateConfig {
+            allow_grade_drop: true,
+            max_score_drop: 20.0,
+            ..Default::default()
+        };
 
         let baseline = create_test_baseline(vec![(PathBuf::from("src/main.rs"), 91.0, Grade::A)]);
         let current =
@@ -346,9 +354,11 @@ mod tests {
 
     #[test]
     fn test_regression_gate_exact_threshold() {
-        let mut config = GateConfig::default();
-        config.max_score_drop = 5.0;
-        config.allow_grade_drop = true;
+        let config = GateConfig {
+            max_score_drop: 5.0,
+            allow_grade_drop: true,
+            ..Default::default()
+        };
 
         let baseline =
             create_test_baseline(vec![(PathBuf::from("src/main.rs"), 80.0, Grade::BMinus)]);
@@ -363,8 +373,10 @@ mod tests {
 
     #[test]
     fn test_regression_gate_just_over_threshold() {
-        let mut config = GateConfig::default();
-        config.max_score_drop = 5.0;
+        let config = GateConfig {
+            max_score_drop: 5.0,
+            ..Default::default()
+        };
 
         let baseline =
             create_test_baseline(vec![(PathBuf::from("src/main.rs"), 80.0, Grade::BMinus)]);

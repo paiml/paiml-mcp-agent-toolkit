@@ -46,6 +46,8 @@ fn make_result(file_path: &str, function_name: &str) -> QueryResult {
         io_classification: String::new(),
         io_patterns: Vec::new(),
         suggested_module: String::new(),
+        contract_level: None,
+        contract_equation: None,
     }
 }
 

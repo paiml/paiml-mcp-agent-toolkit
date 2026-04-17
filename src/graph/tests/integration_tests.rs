@@ -115,7 +115,7 @@ fn test_structural_integration_small_graph() {
         metrics.average_degree > 0.0,
         "Average degree should be positive"
     );
-    assert_eq!(metrics.is_cyclic, true, "Graph should be cyclic");
+    assert!(metrics.is_cyclic, "Graph should be cyclic");
     assert_eq!(
         metrics.strongly_connected_components, 1,
         "Should have 1 SCC (all nodes in cycle)"

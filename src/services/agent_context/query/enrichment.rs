@@ -272,32 +272,41 @@ pub async fn enrich_results_with_entropy(
     Ok(())
 }
 
-/// Run batuta bug-hunter and parse findings into a file->annotations map.
-fn run_batuta_and_parse(project_root: &Path) -> Result<HashMap<String, Vec<String>>, String> {
-    use std::process::Command;
+/// Load fault findings from the newest `.pmat/bug-hunter-cache/*.json`.
+///
+/// Pure cache reader: the cache is populated by `aprender-orchestrate`'s
+/// `bug_hunter::hunt` (sovereign stack, formerly `batuta`). Returns an empty
+/// map when no cache is present, in which case enrichment is a no-op.
+fn load_faults_from_cache(project_root: &Path) -> Result<HashMap<String, Vec<String>>, String> {
+    let cache_dir = project_root.join(".pmat/bug-hunter-cache");
+    let entries = match std::fs::read_dir(&cache_dir) {
+        Ok(e) => e,
+        Err(_) => return Ok(HashMap::new()),
+    };
 
-    let output = Command::new("batuta")
-        .args(["bug-hunter", "falsify", "--format", "json", "--target", "."])
-        .current_dir(project_root)
-        .output()
-        .map_err(|e| format!("Failed to run batuta: {e}"))?;
+    let newest = entries
+        .flatten()
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
+        .max_by_key(|e| {
+            e.metadata()
+                .and_then(|m| m.modified())
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+        });
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        if !stderr.contains("Usage:") {
-            return Err(format!("batuta failed: {stderr}"));
-        }
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let json_start = match stdout.find('{') {
-        Some(s) => s,
+    let entry = match newest {
+        Some(e) => e,
         None => return Ok(HashMap::new()),
     };
 
-    let parsed: serde_json::Value =
-        serde_json::from_str(stdout.get(json_start..).unwrap_or_default())
-            .map_err(|e| format!("Failed to parse batuta output: {e}"))?;
+    let data = match std::fs::read_to_string(entry.path()) {
+        Ok(d) => d,
+        Err(_) => return Ok(HashMap::new()),
+    };
+
+    let parsed: serde_json::Value = match serde_json::from_str(&data) {
+        Ok(v) => v,
+        Err(_) => return Ok(HashMap::new()),
+    };
 
     let findings = match parsed.get("findings").and_then(|f| f.as_array()) {
         Some(f) => f,
@@ -337,11 +346,11 @@ fn faults_in_range(faults: &[String], start_line: usize, end_line: usize) -> Vec
         .collect()
 }
 
-/// Enrich query results with batuta fault pattern annotations.
+/// Enrich query results with fault pattern annotations from the bug-hunter cache.
 ///
-/// Runs batuta bug-hunter falsify to detect mutation targets and boundary conditions.
-/// Results are enriched with fault_annotations containing any detected issues.
-#[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires pmat subprocess
+/// Reads findings from `.pmat/bug-hunter-cache/*.json` (newest file) without
+/// spawning any subprocess. If the cache is absent, results are left as-is.
+#[cfg_attr(coverage_nightly, coverage(off))] // Integration: requires filesystem cache
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn enrich_results_with_faults(
     results: &mut [QueryResult],
@@ -360,7 +369,10 @@ pub async fn enrich_results_with_faults(
         return Ok(());
     }
 
-    let fault_map = run_batuta_and_parse(project_root)?;
+    let fault_map = load_faults_from_cache(project_root)?;
+    if fault_map.is_empty() {
+        return Ok(());
+    }
 
     for result in results.iter_mut() {
         if let Some(faults) = fault_map.get(&result.file_path) {

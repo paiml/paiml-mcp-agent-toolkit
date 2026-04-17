@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "renacer_version": "0.10.2",
+  "created_at": "1776363162",
+  "platform": {
+    "os": "linux",
+    "arch": "x86_64",
+    "kernel": "6.8.0-90-generic"
+  },
+  "command": [
+    "/home/noah/src/paiml-mcp-agent-toolkit/target/release/pmat",
+    "--version"
+  ],
+  "statistics": {
+    "total_syscalls": 0,
+    "total_duration_ms": 0.0,
+    "unique_syscalls": 0
+  },
+  "tolerance": {
+    "timing_percent": 10.0,
+    "syscall_sequence": "exact",
+    "argument_match": "fuzzy"
+  }
+}

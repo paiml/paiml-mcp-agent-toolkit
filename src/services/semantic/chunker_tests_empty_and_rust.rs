@@ -86,7 +86,7 @@ impl MyStruct {
 }
 "#;
         let chunks = chunk_code(source, Language::Rust).unwrap();
-        assert!(chunks.len() >= 1);
+        assert!(!chunks.is_empty());
 
         let impl_chunk = chunks.iter().find(|c| c.chunk_type == ChunkType::Class);
         assert!(impl_chunk.is_some());

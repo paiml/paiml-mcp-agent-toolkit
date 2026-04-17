@@ -180,10 +180,8 @@ mod coverage_tests_advanced {
     #[test]
     fn test_hash_empty_content() {
         let parser = EnhancedParser::new();
-        let hash = parser.calculate_hash("");
-
-        // Should not panic and should return a valid hash
-        assert!(hash > 0 || hash == 0); // Just verify it returns something
+        let _hash = parser.calculate_hash("");
+        // Should not panic; u64 hash is inherently >= 0
     }
 
     #[test]

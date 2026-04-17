@@ -20,12 +20,12 @@ mod tests {
 
     #[test]
     fn test_tool_default_implementation() {
-        let _diagnostics = TdgSystemDiagnosticsTool::default();
-        let _storage = TdgStorageManagementTool::default();
-        let _analyze = TdgAnalyzeWithStorageTool::default();
-        let _performance = TdgPerformanceMetricsTool::default();
-        let _configure = TdgConfigureStorageTool::default();
-        let _health = TdgHealthCheckTool::default();
+        let _diagnostics = TdgSystemDiagnosticsTool;
+        let _storage = TdgStorageManagementTool;
+        let _analyze = TdgAnalyzeWithStorageTool;
+        let _performance = TdgPerformanceMetricsTool;
+        let _configure = TdgConfigureStorageTool;
+        let _health = TdgHealthCheckTool;
     }
 
     // === Args Deserialization Tests ===

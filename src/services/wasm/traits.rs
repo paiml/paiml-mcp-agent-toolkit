@@ -213,8 +213,8 @@ mod tests {
         assert!(json.contains("\"simd_analysis\":true"));
 
         let deserialized: WasmAnalysisCapabilities = serde_json::from_str(&json).unwrap();
-        assert_eq!(deserialized.memory_analysis, false);
-        assert_eq!(deserialized.simd_analysis, true);
+        assert!(!deserialized.memory_analysis);
+        assert!(deserialized.simd_analysis);
         assert_eq!(deserialized.max_file_size, 50 * 1024 * 1024);
     }
 

@@ -14,7 +14,7 @@ mod tests {
 
     #[test]
     fn test_unified_ast_engine_default() {
-        let engine = UnifiedAstEngine::default();
+        let engine = UnifiedAstEngine;
         // Verify construction completes without panic
         let _ = std::mem::size_of_val(&engine);
     }

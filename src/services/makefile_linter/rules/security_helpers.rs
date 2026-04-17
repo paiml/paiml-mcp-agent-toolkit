@@ -168,11 +168,7 @@ fn detect_privilege_escalation(command: &str) -> Option<String> {
 }
 
 fn truncate_command(command: &str) -> &str {
-    if command.len() > 50 {
-        &command[..50]
-    } else {
-        command
-    }
+    crate::utils::string_truncate::truncate_at_char_boundary(command, 50)
 }
 
 fn suggest_safe_alternative(pattern: &str) -> String {

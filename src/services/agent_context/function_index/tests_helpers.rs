@@ -206,7 +206,7 @@ fn test_extract_doc_comment_block() {
         doc.is_none()
             || doc
                 .as_ref()
-                .map_or(false, |d| d.contains("Block doc comment"))
+                .is_some_and(|d| d.contains("Block doc comment"))
     );
 }
 
@@ -232,7 +232,7 @@ fn test_estimate_big_o_n4() {
 
 #[test]
 fn test_calculate_simple_tdg_boundaries() {
-    // Zero everything
+    // Zero everything (complexity<=1 floor ensures A grade)
     let score = calculate_simple_tdg(0, 0, 0);
     assert!((score - 0.0).abs() < 0.01);
 
@@ -240,20 +240,54 @@ fn test_calculate_simple_tdg_boundaries() {
     let max_complexity = calculate_simple_tdg(100, 0, 0);
     assert!((max_complexity - 4.0).abs() < 0.01);
 
-    // SATD capped at 2.0
-    let max_satd = calculate_simple_tdg(0, 10, 0);
-    assert!((max_satd - 2.0).abs() < 0.01);
+    // SATD penalty only (with complexity > 1 to bypass GH-272 floor): capped at 2.0
+    let max_satd = calculate_simple_tdg(25, 10, 0);
+    // complexity penalty = 1.0, SATD cap = 2.0 → total = 3.0
+    assert!((max_satd - 3.0).abs() < 0.01);
 
     // LOC penalty kicks in above 200
-    let no_loc_penalty = calculate_simple_tdg(0, 0, 200);
-    assert!((no_loc_penalty - 0.0).abs() < 0.01);
+    let no_loc_penalty = calculate_simple_tdg(25, 0, 200);
+    // complexity 25 -> 1.0, no loc penalty
+    assert!((no_loc_penalty - 1.0).abs() < 0.01);
 
-    let large_loc = calculate_simple_tdg(0, 0, 400);
-    assert!(large_loc > 0.0);
+    let large_loc = calculate_simple_tdg(25, 0, 400);
+    assert!(large_loc > 1.0);
 
     // Max possible: complexity=4 + satd=2 + loc=2 = 8.0
     let max_all = calculate_simple_tdg(100, 10, 1000);
     assert!((max_all - 8.0).abs() < 0.01);
+}
+
+// GH-272: cyclomatic complexity 1 means no branches (simplest possible
+// control flow). Such functions should never fall below grade A regardless
+// of SATD or LOC penalties (long data-table initializers, trivial constructors).
+#[test]
+fn test_gh272_complexity_1_always_grades_a() {
+    // High LOC with complexity 1 (e.g. 1000-line data-table initializer)
+    let long_trivial = calculate_simple_tdg(1, 0, 1000);
+    assert!(
+        long_trivial < 2.0,
+        "complexity=1 with 1000 LOC should stay A-grade (got {long_trivial})"
+    );
+    assert_eq!(score_to_grade(long_trivial), "A");
+
+    // High SATD with complexity 1 — should also stay A
+    let satd_trivial = calculate_simple_tdg(1, 20, 0);
+    assert!(
+        satd_trivial < 2.0,
+        "complexity=1 with 20 SATD should stay A-grade (got {satd_trivial})"
+    );
+    assert_eq!(score_to_grade(satd_trivial), "A");
+
+    // Combined: giant + SATD + complexity 1 — still A
+    let worst = calculate_simple_tdg(1, 50, 2000);
+    assert!(worst < 2.0, "complexity=1 always caps < 2.0 (got {worst})");
+    assert_eq!(score_to_grade(worst), "A");
+
+    // Complexity 2 (one branch) does NOT get the floor
+    let complexity_2_large = calculate_simple_tdg(2, 0, 1000);
+    // 2/25 + (1000-200)/200.min(2.0) = 0.08 + 2.0 = 2.08 -> B
+    assert!(complexity_2_large >= 2.0, "complexity=2 keeps normal scoring");
 }
 
 #[test]

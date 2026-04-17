@@ -145,6 +145,6 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
         assert!(parsed.get("metrics").is_some());
         assert!(parsed.get("converged").is_some());
-        assert_eq!(parsed["converged"].as_bool().unwrap(), true);
+        assert!(parsed["converged"].as_bool().unwrap());
     }
 }

@@ -428,7 +428,7 @@ mod tests {
 
     #[test]
     fn test_dead_code_analyzer_default() {
-        let analyzer = DeadCodeDefectAnalyzer::default();
+        let analyzer = DeadCodeDefectAnalyzer;
         assert_eq!(analyzer.category(), DefectCategory::DeadCode);
     }
 
@@ -1123,7 +1123,7 @@ mod tests {
 
     #[test]
     fn test_architecture_analyzer_default() {
-        let analyzer = ArchitectureDefectAnalyzer::default();
+        let analyzer = ArchitectureDefectAnalyzer;
         assert_eq!(analyzer.category(), DefectCategory::Architecture);
     }
 

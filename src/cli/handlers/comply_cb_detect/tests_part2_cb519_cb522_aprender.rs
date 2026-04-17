@@ -263,7 +263,7 @@ trimmed.to_string()
     .unwrap();
 
     let violations = detect_cb522_untested_path_normalization(temp.path());
-    assert!(violations.len() >= 1);
+    assert!(!violations.is_empty());
     assert_eq!(violations[0].pattern_id, "CB-522");
 }
 

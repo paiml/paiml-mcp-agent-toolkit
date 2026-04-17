@@ -12,7 +12,7 @@ mod coverage_tests {
 
     #[test]
     fn test_lua_strategy_default() {
-        let strategy = LuaStrategy::default();
+        let strategy = LuaStrategy;
         assert_eq!(strategy.language(), Language::Lua);
     }
 

@@ -92,11 +92,11 @@ fn test_build_call_graph() {
     let (calls, called_by) = build_call_graph(&functions, &indices.name_index);
 
     // foo calls bar
-    assert!(calls.get(&0).map_or(false, |v| v.contains(&1)));
+    assert!(calls.get(&0).is_some_and(|v| v.contains(&1)));
     // bar is called by foo
-    assert!(called_by.get(&1).map_or(false, |v| v.contains(&0)));
+    assert!(called_by.get(&1).is_some_and(|v| v.contains(&0)));
     // bar does not call foo
-    assert!(!calls.get(&1).map_or(false, |v| v.contains(&0)));
+    assert!(!calls.get(&1).is_some_and(|v| v.contains(&0)));
 }
 
 #[test]

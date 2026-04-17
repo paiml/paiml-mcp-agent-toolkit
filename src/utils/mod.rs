@@ -27,6 +27,7 @@ pub mod helpers;
 pub mod path_validator;
 pub mod pattern_helpers;
 pub mod sovereign_compression;
+pub mod string_truncate;
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

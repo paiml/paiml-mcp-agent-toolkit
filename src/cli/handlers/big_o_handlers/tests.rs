@@ -16,7 +16,7 @@ mod tests {
     use crate::services::big_o_analyzer::{
         BigOAnalysisReport, BigOAnalyzer, ComplexityDistribution, FunctionComplexity, PatternMatch,
     };
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     // ============================================
     // Helper: strip ANSI escape sequences
@@ -497,7 +497,7 @@ mod tests {
         assert!(report
             .high_complexity_functions
             .iter()
-            .all(|f| f.file_path == PathBuf::from("high.rs")));
+            .all(|f| f.file_path == Path::new("high.rs")));
     }
 
     #[test]

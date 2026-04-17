@@ -48,9 +48,10 @@ async fn test_analyze_complexity_calls_real_service() {
     );
 
     // Call analyze_complexity with the test file
-    let result = tool_functions::analyze_complexity(&[file_path.clone()], Some(10), Some(5))
-        .await
-        .unwrap();
+    let result =
+        tool_functions::analyze_complexity(std::slice::from_ref(&file_path), Some(10), Some(5))
+            .await
+            .unwrap();
 
     // Verify NOT a placeholder response
     let message = result["message"].as_str().unwrap();
@@ -103,7 +104,7 @@ async fn test_analyze_satd_calls_real_service() {
     );
 
     // Call analyze_satd with the test file
-    let result = tool_functions::analyze_satd(&[file_path.clone()], false)
+    let result = tool_functions::analyze_satd(std::slice::from_ref(&file_path), false)
         .await
         .unwrap();
 
@@ -158,7 +159,7 @@ async fn test_analyze_dead_code_calls_real_service() {
     );
 
     // Call analyze_dead_code with the test file
-    let result = tool_functions::analyze_dead_code(&[file_path.clone()], false)
+    let result = tool_functions::analyze_dead_code(std::slice::from_ref(&file_path), false)
         .await
         .unwrap();
 
@@ -244,16 +245,18 @@ async fn test_analyze_complexity_respects_threshold() {
     );
 
     // Test with low threshold (should flag violations)
-    let result_low = tool_functions::analyze_complexity(&[file_path.clone()], None, Some(2))
-        .await
-        .unwrap();
+    let result_low =
+        tool_functions::analyze_complexity(std::slice::from_ref(&file_path), None, Some(2))
+            .await
+            .unwrap();
 
     let violations_low = result_low["results"]["violations"].as_array().unwrap();
 
     // Test with high threshold (should have fewer/no violations)
-    let result_high = tool_functions::analyze_complexity(&[file_path.clone()], None, Some(20))
-        .await
-        .unwrap();
+    let result_high =
+        tool_functions::analyze_complexity(std::slice::from_ref(&file_path), None, Some(20))
+            .await
+            .unwrap();
 
     let violations_high = result_high["results"]["violations"].as_array().unwrap();
 
@@ -284,14 +287,14 @@ async fn test_analyze_satd_respects_include_resolved() {
     );
 
     // Test without resolved comments
-    let result_without = tool_functions::analyze_satd(&[file_path.clone()], false)
+    let result_without = tool_functions::analyze_satd(std::slice::from_ref(&file_path), false)
         .await
         .unwrap();
 
     let total_without = result_without["results"]["total_satd"].as_u64().unwrap();
 
     // Test with resolved comments
-    let result_with = tool_functions::analyze_satd(&[file_path.clone()], true)
+    let result_with = tool_functions::analyze_satd(std::slice::from_ref(&file_path), true)
         .await
         .unwrap();
 
@@ -330,12 +333,12 @@ async fn test_analyze_dead_code_respects_include_tests() {
     .unwrap();
 
     // Test without including tests
-    let result_without = tool_functions::analyze_dead_code(&[test_file.clone()], false)
+    let result_without = tool_functions::analyze_dead_code(std::slice::from_ref(&test_file), false)
         .await
         .unwrap();
 
     // Test with including tests
-    let result_with = tool_functions::analyze_dead_code(&[test_file.clone()], true)
+    let result_with = tool_functions::analyze_dead_code(std::slice::from_ref(&test_file), true)
         .await
         .unwrap();
 
@@ -454,9 +457,10 @@ async fn test_generate_context_calls_real_service() {
     );
 
     // Call generate_context with the test file
-    let result = tool_functions::generate_context(&[file_path.clone()], Some(10), false)
-        .await
-        .unwrap();
+    let result =
+        tool_functions::generate_context(std::slice::from_ref(&file_path), Some(10), false)
+            .await
+            .unwrap();
 
     // Verify NOT a placeholder response
     let message = result["message"].as_str().unwrap();
@@ -505,13 +509,15 @@ async fn test_generate_context_respects_max_depth() {
     std::fs::write(&_file2, "fn bar() {}").unwrap();
 
     // Test with max_depth limiting traversal
-    let result_shallow = tool_functions::generate_context(&[file1.clone()], Some(1), false)
-        .await
-        .unwrap();
+    let result_shallow =
+        tool_functions::generate_context(std::slice::from_ref(&file1), Some(1), false)
+            .await
+            .unwrap();
 
-    let result_deep = tool_functions::generate_context(&[file1.clone()], Some(10), false)
-        .await
-        .unwrap();
+    let result_deep =
+        tool_functions::generate_context(std::slice::from_ref(&file1), Some(10), false)
+            .await
+            .unwrap();
 
     // Both should complete (depth affects directory traversal if implemented)
     assert_eq!(
@@ -548,7 +554,7 @@ async fn test_generate_deep_context_calls_real_service() {
     );
 
     // Call generate_deep_context with the test file
-    let result = tool_functions::generate_deep_context(&[file_path.clone()], None)
+    let result = tool_functions::generate_deep_context(std::slice::from_ref(&file_path), None)
         .await
         .unwrap();
 
@@ -594,12 +600,13 @@ async fn test_generate_deep_context_respects_format() {
     let file_path = create_test_rust_file(&temp_dir, "test.rs", "fn test() {}");
 
     // Test with format parameter (if supported)
-    let result_default = tool_functions::generate_deep_context(&[file_path.clone()], None)
-        .await
-        .unwrap();
+    let result_default =
+        tool_functions::generate_deep_context(std::slice::from_ref(&file_path), None)
+            .await
+            .unwrap();
 
     let result_with_format =
-        tool_functions::generate_deep_context(&[file_path.clone()], Some("json"))
+        tool_functions::generate_deep_context(std::slice::from_ref(&file_path), Some("json"))
             .await
             .unwrap();
 
@@ -624,9 +631,10 @@ async fn test_analyze_churn_calls_real_service() {
     let repo_path = std::env::current_dir().unwrap();
 
     // Call analyze_churn
-    let result = tool_functions::analyze_churn(&[repo_path.clone()], Some(30), Some(10))
-        .await
-        .unwrap();
+    let result =
+        tool_functions::analyze_churn(std::slice::from_ref(&repo_path), Some(30), Some(10))
+            .await
+            .unwrap();
 
     // Verify NOT a placeholder response
     let message = result["message"].as_str().unwrap();
@@ -669,13 +677,15 @@ async fn test_analyze_churn_respects_days() {
     let repo_path = std::env::current_dir().unwrap();
 
     // Test with different day ranges
-    let result_30_days = tool_functions::analyze_churn(&[repo_path.clone()], Some(30), None)
-        .await
-        .unwrap();
+    let result_30_days =
+        tool_functions::analyze_churn(std::slice::from_ref(&repo_path), Some(30), None)
+            .await
+            .unwrap();
 
-    let result_7_days = tool_functions::analyze_churn(&[repo_path.clone()], Some(7), None)
-        .await
-        .unwrap();
+    let result_7_days =
+        tool_functions::analyze_churn(std::slice::from_ref(&repo_path), Some(7), None)
+            .await
+            .unwrap();
 
     // Both should complete
     assert_eq!(

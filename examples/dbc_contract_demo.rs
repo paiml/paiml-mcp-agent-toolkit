@@ -353,8 +353,10 @@ threshold = { metric = "perf_score", op = "Gte", value = 0.9 }
     );
 
     // Strict mode demo
-    let mut strict_config = pmat::cli::handlers::work_contract::LintConfig::default();
-    strict_config.strict = true;
+    let strict_config = pmat::cli::handlers::work_contract::LintConfig {
+        strict: true,
+        ..Default::default()
+    };
     let strict_report =
         pmat::cli::handlers::work_contract::apply_lint_config(&report, &strict_config);
     println!(

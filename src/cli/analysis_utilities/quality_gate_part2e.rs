@@ -120,13 +120,15 @@ mod quality_gate_unit_tests {
 
     #[test]
     fn test_format_results_summary_with_violations() {
-        let mut results = QualityGateResults::default();
-        results.passed = false;
-        results.total_violations = 10;
-        results.complexity_violations = 3;
-        results.dead_code_violations = 2;
-        results.satd_violations = 4;
-        results.security_violations = 1;
+        let results = QualityGateResults {
+            passed: false,
+            total_violations: 10,
+            complexity_violations: 3,
+            dead_code_violations: 2,
+            satd_violations: 4,
+            security_violations: 1,
+            ..Default::default()
+        };
 
         let mut output = String::new();
         format_results_summary(&mut output, &results);
@@ -192,13 +194,15 @@ mod quality_gate_unit_tests {
 
     #[test]
     fn test_quality_gate_results_with_values() {
-        let mut results = QualityGateResults::default();
-        results.passed = true;
-        results.total_violations = 5;
-        results.complexity_violations = 2;
-        results.dead_code_violations = 1;
-        results.satd_violations = 1;
-        results.security_violations = 1;
+        let results = QualityGateResults {
+            passed: true,
+            total_violations: 5,
+            complexity_violations: 2,
+            dead_code_violations: 1,
+            satd_violations: 1,
+            security_violations: 1,
+            ..Default::default()
+        };
 
         assert!(results.passed);
         assert_eq!(results.total_violations, 5);

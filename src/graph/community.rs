@@ -220,7 +220,7 @@ mod tests {
         let communities = vec![0, 0];
         let modularity = detector.calculate_modularity(&graph, &communities);
         // With single community, modularity should be 0 or slightly positive
-        assert!(modularity >= -1.0 && modularity <= 1.0);
+        assert!((-1.0..=1.0).contains(&modularity));
     }
 
     #[test]

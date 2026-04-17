@@ -361,7 +361,7 @@ mod tests {
         // Medium complexity (10)
         let impact_medium = analyzer.estimate_tdg_impact(10, 10);
         assert!(
-            impact_medium >= 0.5 && impact_medium <= 3.0,
+            (0.5..=3.0).contains(&impact_medium),
             "Medium complexity should have moderate impact"
         );
 
@@ -369,7 +369,7 @@ mod tests {
         // Formula: (25/10)*0.6 + (30/15)*0.4 = 2.5*0.6 + 2.0*0.4 = 1.5 + 0.8 = 2.3
         let impact_high = analyzer.estimate_tdg_impact(25, 30);
         assert!(
-            impact_high >= 2.0 && impact_high <= 2.5,
+            (2.0..=2.5).contains(&impact_high),
             "High complexity should have impact ~2.3"
         );
     }

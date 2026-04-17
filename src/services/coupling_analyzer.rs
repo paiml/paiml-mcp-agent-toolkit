@@ -251,7 +251,7 @@ mod coverage_tests {
 
     #[test]
     fn test_coupling_analyzer_default() {
-        let analyzer = CouplingAnalyzer::default();
+        let analyzer = CouplingAnalyzer;
         let _ = analyzer;
     }
 

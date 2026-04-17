@@ -40,7 +40,7 @@ mod coverage_tests {
 
     #[test]
     fn test_complexity_tool_default() {
-        let tool = ComplexityTool::default();
+        let tool = ComplexityTool;
         let _ = tool;
     }
 
@@ -84,7 +84,7 @@ mod coverage_tests {
 
     #[test]
     fn test_satd_tool_default() {
-        let tool = SatdTool::default();
+        let tool = SatdTool;
         let _ = tool;
     }
 
@@ -125,7 +125,7 @@ mod coverage_tests {
 
     #[test]
     fn test_dead_code_tool_default() {
-        let tool = DeadCodeTool::default();
+        let tool = DeadCodeTool;
         let _ = tool;
     }
 
@@ -166,7 +166,7 @@ mod coverage_tests {
 
     #[test]
     fn test_lint_hotspot_tool_default() {
-        let tool = LintHotspotTool::default();
+        let tool = LintHotspotTool;
         let _ = tool;
     }
 
@@ -208,7 +208,7 @@ mod coverage_tests {
 
     #[test]
     fn test_churn_tool_default() {
-        let tool = ChurnTool::default();
+        let tool = ChurnTool;
         let _ = tool;
     }
 
@@ -251,7 +251,7 @@ mod coverage_tests {
 
     #[test]
     fn test_coupling_tool_default() {
-        let tool = CouplingTool::default();
+        let tool = CouplingTool;
         let _ = tool;
     }
 

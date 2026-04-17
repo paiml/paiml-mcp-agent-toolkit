@@ -122,7 +122,7 @@ proptest! {
             Just("Summary")
         ]
     ) {
-        let result = ChurnOutputFormat::from_str(&format_name);
+        let result = ChurnOutputFormat::from_str(format_name);
         prop_assert!(result.is_ok(), "Format '{}' should parse successfully", format_name);
     }
 

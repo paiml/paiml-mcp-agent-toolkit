@@ -42,28 +42,43 @@ pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
     }
 
     // If CB-1209 trait enforcement is active (tests/contract_traits.rs with impls),
-    // the build.rs pipeline is superseded — traits are the newer, stronger mechanism
-    let trait_test = project_path.join("tests").join("contract_traits.rs");
-    if trait_test.exists() {
-        if let Ok(content) = std::fs::read_to_string(&trait_test) {
-            let impl_count = content.lines().filter(|l| {
-                let t = l.trim();
-                t.starts_with("impl ") && t.contains("V1 for") && !t.starts_with("//")
-            }).count();
-            if impl_count >= 10 {
-                return ComplianceCheck {
-                    name: "CB-1204: Build.rs Pipeline".into(),
-                    status: CheckStatus::Pass,
-                    message: format!(
-                        "Superseded by trait enforcement ({impl_count} trait impls in tests/contract_traits.rs)"
-                    ),
-                    severity: Severity::Info,
-                };
+    // the build.rs pipeline is superseded — traits are the newer, stronger mechanism.
+    // Search both root tests/ and crate-level tests/ (GH-295).
+    let trait_test_paths = {
+        let mut paths = vec![project_path.join("tests").join("contract_traits.rs")];
+        if let Ok(entries) = std::fs::read_dir(project_path.join("crates")) {
+            for e in entries.flatten() {
+                let p = e.path().join("tests").join("contract_traits.rs");
+                if p.exists() {
+                    paths.push(p);
+                }
+            }
+        }
+        paths
+    };
+    for trait_test in &trait_test_paths {
+        if trait_test.exists() {
+            if let Ok(content) = std::fs::read_to_string(trait_test) {
+                let impl_count = content.lines().filter(|l| {
+                    let t = l.trim();
+                    t.starts_with("impl ") && t.contains("V1 for") && !t.starts_with("//")
+                }).count();
+                if impl_count >= 10 {
+                    return ComplianceCheck {
+                        name: "CB-1204: Build.rs Pipeline".into(),
+                        status: CheckStatus::Pass,
+                        message: format!(
+                            "Superseded by trait enforcement ({impl_count} trait impls in {})",
+                            trait_test.strip_prefix(project_path).unwrap_or(trait_test).display()
+                        ),
+                        severity: Severity::Info,
+                    };
+                }
             }
         }
     }
 
-    // Check build.rs at root or in crates/*/
+    // Check build.rs at root or in crates/*/ (GH-295: also scan crates/*/build.rs)
     let mut build_files = vec![build_rs.clone()];
     if let Ok(entries) = std::fs::read_dir(project_path.join("crates")) {
         for e in entries.flatten() {
@@ -87,7 +102,20 @@ pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
 
     let has_pre_emit = build_files.iter().any(|f| {
         std::fs::read_to_string(f)
-            .map(|c| c.contains("PRE_COUNT") || c.contains("emit_contract") || c.contains("_PRE_0"))
+            .map(|c| {
+                // Original literal patterns
+                c.contains("PRE_COUNT")
+                    || c.contains("emit_contract")
+                    || c.contains("_PRE_0")
+                    // Dynamic format string patterns (GH-295):
+                    // Detect `println!("cargo:rustc-env=PRE_...` with interpolated var names
+                    || c.contains("cargo:rustc-env=PRE_")
+                    || c.contains("cargo:rustc-env=POST_")
+                    // Detect format strings like `PRE_{stem}` or `POST_{stem}`
+                    || (c.contains("PRE_{") && c.contains("POST_{"))
+                    // Detect the emit_pre_post helper function pattern
+                    || c.contains("emit_pre_post")
+            })
             .unwrap_or(false)
     });
     if has_pre_emit {

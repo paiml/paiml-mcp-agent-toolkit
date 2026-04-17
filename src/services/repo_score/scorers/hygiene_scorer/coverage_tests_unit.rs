@@ -29,7 +29,7 @@ fn create_file(repo_path: &Path, relative_path: &str, content: &str) {
 
 #[test]
 fn test_hygiene_scorer_default() {
-    let scorer = HygieneScorer::default();
+    let scorer = HygieneScorer;
     assert_eq!(scorer.category_name(), "Repository Hygiene");
     assert_eq!(scorer.max_score(), 15.0);
 }

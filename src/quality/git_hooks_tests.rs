@@ -99,7 +99,9 @@ mod tests {
 
         let content = fs::read_to_string(&hook_path).unwrap();
         assert!(content.contains("PMAT Pre-Push Quality Gate"));
-        assert!(content.contains("cargo clippy"));
+        assert!(content.contains("cargo fmt"));
+        assert!(!content.contains("cargo clippy"));
+        assert!(!content.contains("cargo test"));
     }
 
     #[test]

@@ -121,7 +121,7 @@ fn test_detect_structural_similarity_single_file() {
     )];
     let similar = detector.detect_structural_similarity(&files, 0.8);
     // With single file, may have self-similarity or none
-    assert!(similar.is_empty() || similar.len() >= 1);
+    assert!(similar.is_empty() || !similar.is_empty());
 }
 
 #[test]

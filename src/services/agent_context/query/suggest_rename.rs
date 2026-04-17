@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_dominant_type_struct() {
-        let entries = vec![
+        let entries = [
             make_entry("AttentionCache", DefinitionType::Struct, None),
             make_entry("new", DefinitionType::Function, None),
             make_entry("get", DefinitionType::Function, None),
@@ -94,7 +94,7 @@ mod tests {
 
     #[test]
     fn test_dominant_type_enum() {
-        let entries = vec![
+        let entries = [
             make_entry("TokenKind", DefinitionType::Enum, None),
             make_entry("from_str", DefinitionType::Function, None),
         ];
@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_function_theme_forward() {
-        let entries = vec![
+        let entries = [
             make_entry("forward_pass", DefinitionType::Function, None),
             make_entry("forward_batch", DefinitionType::Function, None),
             make_entry("forward_single", DefinitionType::Function, None),
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_common_prefix() {
-        let entries = vec![
+        let entries = [
             make_entry("serialize_json", DefinitionType::Function, None),
             make_entry("serialize_yaml", DefinitionType::Function, None),
             make_entry("serialize_toml", DefinitionType::Function, None),

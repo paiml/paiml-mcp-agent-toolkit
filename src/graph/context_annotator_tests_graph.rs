@@ -252,7 +252,7 @@ mod property_tests {
             let clusters = annotator.get_community_clusters(&annotations);
 
             prop_assert_eq!(clusters.len(), community_count);
-            for (_, files) in &clusters {
+            for files in clusters.values() {
                 prop_assert_eq!(files.len(), files_per_community);
             }
         }

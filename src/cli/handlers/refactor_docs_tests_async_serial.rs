@@ -391,9 +391,11 @@
 
     #[test]
     fn test_cleanup_summary_serialization() {
-        let mut summary = CleanupSummary::default();
-        summary.total_files_scanned = 100;
-        summary.cruft_files_found = 5;
+        let mut summary = CleanupSummary {
+            total_files_scanned: 100,
+            cruft_files_found: 5,
+            ..Default::default()
+        };
         summary.files_by_category.insert("Test".to_string(), 3);
 
         let json = serde_json::to_string(&summary).unwrap();

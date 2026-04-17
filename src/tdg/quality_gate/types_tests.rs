@@ -378,14 +378,14 @@ fn test_severity_full_ordering() {
 #[test]
 fn test_violation_type_clone() {
     let vt = ViolationType::Regression;
-    let cloned = vt.clone();
+    let cloned = vt;
     assert_eq!(cloned, vt);
 }
 
 #[test]
 fn test_severity_clone() {
     let s = Severity::Warning;
-    let cloned = s.clone();
+    let cloned = s;
     assert_eq!(cloned, s);
 }
 
@@ -406,7 +406,7 @@ fn test_gate_config_min_grades_iteration() {
     let config = GateConfig::default();
     assert!(config.min_grades.len() >= 4); // rust, typescript, python, javascript
 
-    for (lang, _grade) in &config.min_grades {
+    for lang in config.min_grades.keys() {
         assert!(!lang.is_empty());
     }
 }
@@ -420,7 +420,7 @@ fn test_violation_type_all_variants() {
     ];
 
     for vt in variants {
-        let cloned = vt.clone();
+        let cloned = vt;
         assert_eq!(cloned, vt);
     }
 }
@@ -435,7 +435,7 @@ fn test_severity_all_variants() {
     ];
 
     for s in variants {
-        let cloned = s.clone();
+        let cloned = s;
         assert_eq!(cloned, s);
     }
 }

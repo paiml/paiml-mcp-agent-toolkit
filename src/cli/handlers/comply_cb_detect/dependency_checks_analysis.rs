@@ -1,8 +1,16 @@
 // dependency_checks_analysis.rs — included by dependency_checks.rs
 // CB-081 violation detection, scoring, Cargo.toml analysis, trend tracking
 
-/// GH-292: Read max_transitive override from .pmat-gates.toml [dependency_health]
+/// GH-292: Read max_transitive override from `.pmat-gates.toml [dependency_health]`
+/// or `.pmat.yaml comply.thresholds.max_transitive`. Gates file wins when both exist.
 fn load_dependency_max_transitive() -> Option<usize> {
+    if let Some(v) = load_dependency_max_transitive_from_gates() {
+        return Some(v);
+    }
+    load_dependency_max_transitive_from_yaml()
+}
+
+fn load_dependency_max_transitive_from_gates() -> Option<usize> {
     let path = std::path::Path::new(".pmat-gates.toml");
     let content = std::fs::read_to_string(path).ok()?;
     let table: toml::Table = content.parse().ok()?;
@@ -11,6 +19,12 @@ fn load_dependency_max_transitive() -> Option<usize> {
         .and_then(|dh| dh.get("max_transitive"))
         .and_then(|v| v.as_integer())
         .map(|v| v as usize)
+}
+
+fn load_dependency_max_transitive_from_yaml() -> Option<usize> {
+    let cwd = std::env::current_dir().ok()?;
+    let cfg = crate::models::comply_config::PmatYamlConfig::load(&cwd).ok()?;
+    cfg.comply.thresholds.max_transitive
 }
 
 /// Build a CB-081-A threshold violation if dependency counts exceed the given
@@ -91,7 +105,7 @@ fn check_dependency_count_violations(
     // CB-081-A: Count thresholds -- sovereign stack adjustment
     // GH-292: Read max_transitive override from .pmat-gates.toml [dependency_health]
     let config_max = load_dependency_max_transitive();
-    let sovereign_allowance = sovereign_count.min(3) * 50;
+    let sovereign_allowance = sovereign_count.min(5) * 50;
     let trans_error_max = config_max.unwrap_or(250) + sovereign_allowance;
     let trans_warn_max = config_max.map(|m| m.saturating_sub(50)).unwrap_or(200) + sovereign_allowance;
 
@@ -220,8 +234,8 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
         0.0
     };
 
-    // CB-081-D: Calculate sovereign bonus (max +3)
-    let sovereign_bonus = std::cmp::min(sovereign_crates.len() as u8, 3);
+    // CB-081-D: Calculate sovereign bonus (max +5, GH-294)
+    let sovereign_bonus = std::cmp::min(sovereign_crates.len() as u8, 5);
 
     // CB-081-E: Load trend data
     let trend = load_dependency_trend(project_path);
@@ -271,7 +285,8 @@ pub fn detect_cb081_dependency_count(project_path: &Path) -> DependencyCountRepo
 fn is_dependency_section(trimmed: &str) -> (bool, bool, bool) {
     let in_dependencies = trimmed == "[dependencies]"
         || trimmed.starts_with("[dependencies.")
-        || trimmed.starts_with("[target.");
+        || trimmed.starts_with("[target.")
+        || trimmed == "[workspace.dependencies]";
     let in_dev_dependencies =
         trimmed == "[dev-dependencies]" || trimmed.starts_with("[dev-dependencies.");
     let in_build_dependencies =
@@ -350,6 +365,37 @@ pub(super) fn analyze_cargo_toml(cargo_toml_path: &Path) -> (usize, usize, Vec<S
         }
     }
 
+    // GH-294: Also scan workspace member Cargo.toml files for sovereign deps.
+    // Workspace members declare deps like `aprender-simulate` or `aprender-contracts-macros`
+    // that aren't in the root [workspace.dependencies] section.
+    if let Some(project_dir) = cargo_toml_path.parent() {
+        let crates_dir = project_dir.join("crates");
+        if crates_dir.is_dir() {
+            if let Ok(entries) = std::fs::read_dir(&crates_dir) {
+                for entry in entries.flatten() {
+                    let member_toml = entry.path().join("Cargo.toml");
+                    if member_toml.exists() {
+                        if let Ok(member_content) = std::fs::read_to_string(&member_toml) {
+                            for line in member_content.lines() {
+                                let t = line.trim();
+                                for crate_name in SOVEREIGN_CRATES {
+                                    if t.starts_with(crate_name)
+                                        && (t.chars().nth(crate_name.len()) == Some(' ')
+                                            || t.chars().nth(crate_name.len()) == Some('=')
+                                            || t.chars().nth(crate_name.len()) == Some('.'))
+                                        && !sovereign_found.contains(&crate_name.to_string())
+                                    {
+                                        sovereign_found.push(crate_name.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     (direct_count, feature_gated_count, sovereign_found)
 }
 
@@ -361,7 +407,7 @@ pub(super) fn calculate_dependency_score(
     transitive: usize,
     sovereign_count: usize,
 ) -> u8 {
-    let bonus = sovereign_count.min(3) * 50;
+    let bonus = sovereign_count.min(5) * 50;
     // GH-292: Scale thresholds if max_transitive override is set
     let config_max = load_dependency_max_transitive().unwrap_or(250);
     let scale = config_max as f64 / 250.0;

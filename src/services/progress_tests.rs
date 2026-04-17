@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_multi_progress_default() {
-        let mp = SimpleMultiProgress::default();
+        let mp = SimpleMultiProgress;
         let _ = mp.add(SimpleProgressBar::hidden());
     }
 

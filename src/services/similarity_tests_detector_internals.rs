@@ -63,7 +63,7 @@ fn test_winnowing_similarity_different() {
     let fp2 = winnow.fingerprint("hello world goodbye moon");
     let sim = winnow.similarity(&fp1, &fp2);
     // Different texts should have low similarity
-    assert!(sim >= 0.0 && sim <= 1.0);
+    assert!((0.0..=1.0).contains(&sim));
 }
 
 #[test]

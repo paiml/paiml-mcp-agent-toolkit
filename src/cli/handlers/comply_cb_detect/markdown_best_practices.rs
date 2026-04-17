@@ -6,10 +6,16 @@
 //! and readability.
 
 use super::types::*;
+use ignore::WalkBuilder;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Directories to skip when walking for Markdown files.
+///
+/// These are additional hard-coded skips layered on top of `.gitignore`,
+/// `.pmatignore`, and `.paimlignore` (honored via `ignore::WalkBuilder`).
+/// They catch build artifacts and vendored directories that may not be
+/// listed in an ignore file.
 const SKIP_DIRS: &[&str] = &[
     ".git",
     ".claude",
@@ -29,34 +35,141 @@ const SKIP_DIRS: &[&str] = &[
 // =============================================================================
 
 /// Walk directory recursively for `.md`/`.mdx` files.
+///
+/// Honors `.gitignore`, `.pmatignore`, and `.paimlignore` plus exclude
+/// patterns from `.pmat-gates.toml [exclude] paths` and `.pmat.yaml
+/// comply.thresholds.file_health_exclude` (GH-278).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub fn walkdir_markdown_files(dir: &Path) -> Vec<PathBuf> {
-    let mut files = Vec::new();
-    walk_md_recursive(dir, &mut files);
-    files
+    let excludes = load_markdown_excludes(dir);
+    walkdir_markdown_files_with_excludes(dir, &excludes)
 }
 
-fn walk_md_recursive(dir: &Path, files: &mut Vec<PathBuf>) {
-    let entries = match fs::read_dir(dir) {
-        Ok(e) => e,
-        Err(_) => return,
-    };
-    for entry in entries.flatten() {
+/// Walk for Markdown files applying explicit glob excludes in addition to
+/// the ignore-file rules baked into [`WalkBuilder`].
+pub fn walkdir_markdown_files_with_excludes(dir: &Path, excludes: &[String]) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+
+    let walker = WalkBuilder::new(dir)
+        .hidden(false)
+        .git_ignore(true)
+        .git_exclude(true)
+        .add_custom_ignore_filename(".pmatignore")
+        .add_custom_ignore_filename(".paimlignore")
+        .filter_entry(|entry| {
+            let name = entry
+                .path()
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
+            !SKIP_DIRS.contains(&name)
+        })
+        .build();
+
+    for entry in walker.flatten() {
         let path = entry.path();
-        if path.is_dir() {
-            let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            if !SKIP_DIRS.contains(&dir_name) {
-                walk_md_recursive(&path, files);
-            }
-        } else if path
+        if !path.is_file() {
+            continue;
+        }
+        let is_md = path
             .extension()
             .and_then(|e| e.to_str())
             .map(|e| matches!(e, "md" | "mdx" | "markdown"))
-            .unwrap_or(false)
-        {
-            files.push(path);
+            .unwrap_or(false);
+        if !is_md {
+            continue;
+        }
+        if path_matches_any_exclude(path, dir, excludes) {
+            continue;
+        }
+        files.push(path.to_path_buf());
+    }
+
+    files
+}
+
+/// Load exclude patterns applied to CB-9xx Markdown checks. Merges entries
+/// from `.pmat-gates.toml [exclude] paths`, `.pmat-gates.toml [file_health]
+/// exclude`, and `.pmat.yaml comply.thresholds.file_health_exclude`.
+fn load_markdown_excludes(dir: &Path) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+
+    let gates = dir.join(".pmat-gates.toml");
+    if let Ok(content) = fs::read_to_string(&gates) {
+        if let Ok(table) = content.parse::<toml::Table>() {
+            push_str_array(&mut out, table.get("exclude").and_then(|e| e.get("paths")));
+            push_str_array(
+                &mut out,
+                table.get("file_health").and_then(|fh| fh.get("exclude")),
+            );
         }
     }
+
+    if let Ok(cfg) = crate::models::comply_config::PmatYamlConfig::load(dir) {
+        for pat in &cfg.comply.thresholds.file_health_exclude {
+            if !out.iter().any(|p| p == pat) {
+                out.push(pat.clone());
+            }
+        }
+    }
+
+    out
+}
+
+fn push_str_array(out: &mut Vec<String>, v: Option<&toml::Value>) {
+    let Some(arr) = v.and_then(|x| x.as_array()) else {
+        return;
+    };
+    for item in arr {
+        if let Some(s) = item.as_str() {
+            let s = s.to_string();
+            if !out.iter().any(|p| p == &s) {
+                out.push(s);
+            }
+        }
+    }
+}
+
+fn path_matches_any_exclude(path: &Path, root: &Path, patterns: &[String]) -> bool {
+    if patterns.is_empty() {
+        return false;
+    }
+    let rel = path.strip_prefix(root).unwrap_or(path);
+    let rel_str = rel.to_string_lossy();
+    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    for pattern in patterns {
+        if glob_like_match(&rel_str, file_name, pattern) {
+            return true;
+        }
+    }
+    false
+}
+
+fn glob_like_match(path_str: &str, file_name: &str, pattern: &str) -> bool {
+    if let Some(suffix) = pattern.strip_prefix("**/") {
+        if suffix.ends_with("/**") {
+            let segment = suffix.trim_end_matches("/**");
+            return path_str.contains(segment);
+        }
+        if suffix.contains('*') {
+            return glob::Pattern::new(suffix)
+                .map(|p| p.matches(file_name))
+                .unwrap_or(false);
+        }
+        return file_name == suffix || path_str.contains(suffix);
+    }
+    if let Some(prefix) = pattern.strip_suffix("/**") {
+        return path_str.starts_with(prefix) || path_str.contains(&format!("/{prefix}/"));
+    }
+    if pattern.contains('/') {
+        return path_str.contains(pattern);
+    }
+    if pattern.contains('*') {
+        return glob::Pattern::new(pattern)
+            .map(|p| p.matches(file_name))
+            .unwrap_or(false);
+    }
+    file_name == pattern
 }
 
 // =============================================================================

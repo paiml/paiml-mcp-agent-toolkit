@@ -38,7 +38,7 @@ fn test_validate_module_file_not_found() {
     assert!(result.is_err());
     match result.unwrap_err() {
         QualityViolation::ParseError(msg) => {
-            assert!(msg.contains("No such file") || msg.contains("not found") || msg.len() > 0);
+            assert!(msg.contains("No such file") || msg.contains("not found") || !msg.is_empty());
         }
         _ => panic!("Expected ParseError"),
     }

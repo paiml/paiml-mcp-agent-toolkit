@@ -42,7 +42,7 @@
     #[test]
     fn test_language_clone() {
         let lang = Language::TypeScript;
-        let cloned = lang.clone();
+        let cloned = lang;
         assert_eq!(lang, cloned);
     }
 
@@ -55,14 +55,12 @@
 
     #[test]
     fn test_all_language_variants() {
-        let languages = vec![
-            Language::Rust,
+        let languages = [Language::Rust,
             Language::TypeScript,
             Language::Python,
             Language::C,
             Language::Cpp,
-            Language::Go,
-        ];
+            Language::Go];
 
         for i in 0..languages.len() {
             for j in (i + 1)..languages.len() {
@@ -89,12 +87,10 @@
 
     #[test]
     fn test_all_chunk_type_variants() {
-        let chunk_types = vec![
-            ChunkType::Function,
+        let chunk_types = [ChunkType::Function,
             ChunkType::Class,
             ChunkType::Module,
-            ChunkType::File,
-        ];
+            ChunkType::File];
 
         for i in 0..chunk_types.len() {
             for j in (i + 1)..chunk_types.len() {

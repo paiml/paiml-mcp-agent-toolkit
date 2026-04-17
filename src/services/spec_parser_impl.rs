@@ -185,8 +185,9 @@ impl SpecParser {
                 None
             };
 
+            let verb_prefix = verb.chars().next().map(|c| c.to_string()).unwrap_or_default();
             spec.claims.push(ValidationClaim {
-                id: format!("{}-{}", &verb[..1], spec.claims.len() + 1),
+                id: format!("{}-{}", verb_prefix, spec.claims.len() + 1),
                 text: format!("{} {}", verb, claim_text),
                 line: line_num,
                 category,

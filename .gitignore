@@ -258,6 +258,7 @@ pmat-*.tar.gz
 **/.pmat/
 .pmat-qa/
 .pmat-work/
+.pmat-work.toml
 .pmat-baseline.json
 algorithm-competition-corpus/
 
@@ -266,7 +267,8 @@ algorithm-competition-corpus/
 
 # Generated reports
 satd-report.json
-golden_traces/
-/.cargo/
-!/.cargo/config.toml
+golden_traces/*
+!golden_traces/baseline/
+/.cargo/*
+!/.cargo/audit.toml
 .pv/

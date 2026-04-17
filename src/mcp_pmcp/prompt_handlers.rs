@@ -128,7 +128,7 @@ mod coverage_tests {
 
     #[test]
     fn test_defect_aware_prompt_tool_default() {
-        let tool = DefectAwarePromptTool::default();
+        let tool = DefectAwarePromptTool;
         let _ = tool;
     }
 

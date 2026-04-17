@@ -115,7 +115,7 @@ mod coverage_tests {
     // SatdDetectorWithItems tests
     #[test]
     fn test_satd_detector_default() {
-        let detector = SatdDetectorWithItems::default();
+        let detector = SatdDetectorWithItems;
         let _ = detector;
     }
 

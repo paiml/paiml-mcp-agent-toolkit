@@ -133,13 +133,10 @@ mod tests {
     #[test]
     fn test_get_memory_usage_mb() {
         // This function returns 0 on non-Linux or if reading fails
-        let usage = get_memory_usage_mb();
-        // Just verify it returns a valid value (u64 is always >= 0)
-        // On Linux, we expect a positive value; on other platforms, 0
-        #[cfg(target_os = "linux")]
-        assert!(usage > 0 || usage == 0, "Expected valid memory value");
+        let _usage = get_memory_usage_mb();
+        // u64 is always >= 0; on non-Linux we expect exactly 0
         #[cfg(not(target_os = "linux"))]
-        assert_eq!(usage, 0, "Expected 0 on non-Linux platforms");
+        assert_eq!(_usage, 0, "Expected 0 on non-Linux platforms");
     }
 
     #[test]
@@ -148,11 +145,7 @@ mod tests {
         let usage1 = get_memory_usage_mb();
         let usage2 = get_memory_usage_mb();
         // Values should be similar (within a reasonable range)
-        let diff = if usage1 > usage2 {
-            usage1 - usage2
-        } else {
-            usage2 - usage1
-        };
+        let diff = usage1.abs_diff(usage2);
         assert!(diff < 100); // Within 100MB variance
     }
 

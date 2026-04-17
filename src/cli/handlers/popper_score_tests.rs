@@ -13,9 +13,10 @@ mod tests {
 
     /// Create a test PopperScore with gateway passed
     fn create_test_score_passed() -> PopperScore {
-        let mut categories = PopperCategoryScores::default();
-        categories.falsifiability =
-            PopperCategoryScore::new("Falsifiability & Testability", 20.0, 25.0);
+        let mut categories = PopperCategoryScores {
+            falsifiability: PopperCategoryScore::new("Falsifiability & Testability", 20.0, 25.0),
+            ..Default::default()
+        };
         categories.falsifiability.add_sub_score(PopperSubScore::new(
             "A1",
             "Test Coverage",
@@ -88,9 +89,10 @@ mod tests {
 
     /// Create a test PopperScore with gateway failed
     fn create_test_score_failed() -> PopperScore {
-        let mut categories = PopperCategoryScores::default();
-        categories.falsifiability =
-            PopperCategoryScore::new("Falsifiability & Testability", 10.0, 25.0);
+        let mut categories = PopperCategoryScores {
+            falsifiability: PopperCategoryScore::new("Falsifiability & Testability", 10.0, 25.0),
+            ..Default::default()
+        };
         categories.reproducibility =
             PopperCategoryScore::new("Reproducibility Infrastructure", 5.0, 25.0);
         categories.transparency = PopperCategoryScore::new("Transparency & Openness", 5.0, 20.0);

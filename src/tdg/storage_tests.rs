@@ -1203,8 +1203,7 @@ mod git_context_integration_tests {
         };
 
         // Act & Assert
-        if record.git_context.is_some() {
-            let ctx = record.git_context.as_ref().unwrap();
+        if let Some(ctx) = record.git_context.as_ref() {
             assert!(!ctx.commit_sha.is_empty(), "Should have commit SHA");
             assert!(!ctx.branch.is_empty(), "Should have branch name");
         }

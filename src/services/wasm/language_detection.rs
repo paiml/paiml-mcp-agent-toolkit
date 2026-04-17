@@ -63,7 +63,7 @@ mod tests {
 
     #[test]
     fn test_detector_default() {
-        let detector = WasmLanguageDetector::default();
+        let detector = WasmLanguageDetector;
         let _ = detector;
     }
 

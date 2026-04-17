@@ -26,14 +26,12 @@ fn test_fault_annotation_line_range_filtering() {
     let func_loc: u32 = 20;
     let func_end = func_start + func_loc as usize;
 
-    let faults = vec![
-        "BH001: Before range at line 5".to_string(),
+    let faults = ["BH001: Before range at line 5".to_string(),
         "BH002: In range start at line 10".to_string(),
         "BH003: In range middle at line 20".to_string(),
         "BH004: In range end at line 30".to_string(),
         "BH005: After range at line 31".to_string(),
-        "BH006: Way after at line 100".to_string(),
-    ];
+        "BH006: Way after at line 100".to_string()];
 
     let relevant: Vec<_> = faults
         .iter()
@@ -56,11 +54,9 @@ fn test_fault_annotation_line_range_filtering() {
 
 #[test]
 fn test_fault_annotation_malformed_line() {
-    let faults = vec![
-        "BH001: No line info".to_string(),
+    let faults = ["BH001: No line info".to_string(),
         "BH002: Missing number at line ".to_string(),
-        "BH003: Valid at line 15".to_string(),
-    ];
+        "BH003: Valid at line 15".to_string()];
 
     let func_start: usize = 10;
     let func_loc: u32 = 20;
@@ -222,10 +218,8 @@ fn test_fault_enrichment_full_flow_simulation() {
     entry_b.start_line = 50;
     entry_b.quality.loc = 10;
 
-    let mut results = vec![
-        QueryResult::from_entry(&entry_a, 0.9, false),
-        QueryResult::from_entry(&entry_b, 0.8, false),
-    ];
+    let mut results = [QueryResult::from_entry(&entry_a, 0.9, false),
+        QueryResult::from_entry(&entry_b, 0.8, false)];
 
     let json_str = r#"{
         "findings": [
@@ -296,7 +290,7 @@ fn test_fault_enrichment_no_faults_for_file() {
     entry.start_line = 1;
     entry.quality.loc = 50;
 
-    let mut results = vec![QueryResult::from_entry(&entry, 0.9, false)];
+    let mut results = [QueryResult::from_entry(&entry, 0.9, false)];
     let fault_map: HashMap<String, Vec<String>> = HashMap::new();
 
     for result in results.iter_mut() {
@@ -331,7 +325,7 @@ fn test_fault_enrichment_all_faults_out_of_range() {
     entry.start_line = 100;
     entry.quality.loc = 5;
 
-    let mut results = vec![QueryResult::from_entry(&entry, 0.9, false)];
+    let mut results = [QueryResult::from_entry(&entry, 0.9, false)];
 
     let mut fault_map: HashMap<String, Vec<String>> = HashMap::new();
     fault_map.insert(

@@ -196,14 +196,12 @@ mod tests {
     fn test_trueno_rag_tfidf_embedder_basic() {
         use trueno_rag::embed::{Embedder, TfIdfEmbedder};
 
-        let documents = vec![
-            "fn main() { println!(\"hello world\"); }",
+        let documents = ["fn main() { println!(\"hello world\"); }",
             "fn add(a: i32, b: i32) -> i32 { a + b }",
-            "fn subtract(a: i32, b: i32) -> i32 { a - b }",
-        ];
+            "fn subtract(a: i32, b: i32) -> i32 { a - b }"];
 
         let mut embedder = TfIdfEmbedder::new(50);
-        embedder.fit(&documents.iter().map(|s| *s).collect::<Vec<_>>());
+        embedder.fit(documents.as_ref());
 
         // Embed first document
         let embedding = embedder.embed(documents[0]).unwrap();
@@ -231,7 +229,7 @@ mod tests {
         ];
 
         let mut embedder = TfIdfEmbedder::new(100);
-        embedder.fit(&documents.iter().map(|s| *s).collect::<Vec<_>>());
+        embedder.fit(documents.as_ref());
 
         for doc in &documents {
             let embedding = embedder.embed(doc).unwrap();
@@ -255,14 +253,14 @@ mod tests {
     fn test_trueno_rag_tfidf_similarity() {
         use trueno_rag::embed::{Embedder, TfIdfEmbedder};
 
-        let documents = vec![
+        let documents = [
             "fn main() { println!(\"hello\"); }",
             "fn main() { println!(\"world\"); }", // Similar to first
             "class Animal { def speak(self): pass }", // Different
         ];
 
         let mut embedder = TfIdfEmbedder::new(100);
-        embedder.fit(&documents.iter().map(|s| *s).collect::<Vec<_>>());
+        embedder.fit(documents.as_ref());
 
         let emb1 = embedder.embed(documents[0]).unwrap();
         let emb2 = embedder.embed(documents[1]).unwrap();
@@ -286,17 +284,15 @@ mod tests {
     fn test_trueno_rag_tfidf_batch() {
         use trueno_rag::embed::{Embedder, TfIdfEmbedder};
 
-        let documents = vec![
-            "function first() { return 1; }",
+        let documents = ["function first() { return 1; }",
             "function second() { return 2; }",
-            "function third() { return 3; }",
-        ];
+            "function third() { return 3; }"];
 
         let mut embedder = TfIdfEmbedder::new(50);
-        embedder.fit(&documents.iter().map(|s| *s).collect::<Vec<_>>());
+        embedder.fit(documents.as_ref());
 
         let batch_embeddings = embedder
-            .embed_batch(&documents.iter().map(|s| *s).collect::<Vec<_>>())
+            .embed_batch(documents.as_ref())
             .unwrap();
 
         assert_eq!(batch_embeddings.len(), 3);
@@ -337,10 +333,10 @@ mod tests {
     fn test_trueno_rag_tfidf_sparsity() {
         use trueno_rag::embed::{Embedder, TfIdfEmbedder};
 
-        let documents = vec!["fn main() {}", "def test(): pass", "function x() {}"];
+        let documents = ["fn main() {}", "def test(): pass", "function x() {}"];
 
         let mut embedder = TfIdfEmbedder::new(100);
-        embedder.fit(&documents.iter().map(|s| *s).collect::<Vec<_>>());
+        embedder.fit(documents.as_ref());
 
         // Short documents should produce sparse embeddings
         let embedding = embedder.embed("fn main()").unwrap();
@@ -364,14 +360,12 @@ mod tests {
         // Document frequency test:
         // "common" appears in all docs (high DF -> low IDF)
         // "rare" appears in one doc (low DF -> high IDF)
-        let documents = vec![
-            "common word common word",
+        let documents = ["common word common word",
             "common another common word",
-            "rare unique common word",
-        ];
+            "rare unique common word"];
 
         let mut embedder = TfIdfEmbedder::new(50);
-        embedder.fit(&documents.iter().map(|s| *s).collect::<Vec<_>>());
+        embedder.fit(documents.as_ref());
 
         let common_emb = embedder.embed("common").unwrap();
         let rare_emb = embedder.embed("rare").unwrap();

@@ -137,7 +137,7 @@ fn test_enforcement_mode_equality() {
 #[test]
 fn test_enforcement_mode_clone() {
     let mode = EnforcementMode::Warning;
-    let cloned = mode.clone();
+    let cloned = mode;
     assert_eq!(cloned, EnforcementMode::Warning);
 }
 

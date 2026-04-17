@@ -185,7 +185,7 @@ mod tests {
         let suggestions = assistant.suggest(&violation);
         // SATD has patterns defined
         assert!(
-            !suggestions.is_empty() || assistant.pattern_db.get(&ViolationType::Satd).is_none()
+            !suggestions.is_empty() || !assistant.pattern_db.contains_key(&ViolationType::Satd)
         );
     }
 

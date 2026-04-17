@@ -79,16 +79,16 @@ mod tests {
     #[test]
     fn test_parser_new() {
         let parser = UnifiedParser::new();
-        assert!(parser.config.include_comments == false);
-        assert!(parser.config.include_docs == false);
+        assert!(!parser.config.include_comments);
+        assert!(!parser.config.include_docs);
         assert!(parser.config.max_depth.is_none());
-        assert!(parser.config.calculate_complexity == false);
+        assert!(!parser.config.calculate_complexity);
     }
 
     #[test]
     fn test_parser_default() {
         let parser = UnifiedParser::default();
-        assert!(parser.config.include_comments == false);
+        assert!(!parser.config.include_comments);
     }
 
     #[test]

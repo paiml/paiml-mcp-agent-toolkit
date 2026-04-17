@@ -233,7 +233,7 @@ mod discover_files_tests {
         // Should find the .rs file
         let has_rs_file = files
             .iter()
-            .any(|(path, _, _)| path.extension().map_or(false, |e| e == "rs"));
+            .any(|(path, _, _)| path.extension().is_some_and(|e| e == "rs"));
         assert!(has_rs_file);
     }
 

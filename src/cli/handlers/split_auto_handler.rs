@@ -1257,15 +1257,13 @@ struct Gamma {
         let _ = std::fs::create_dir_all(tmp.join("target/debug"));
         let _ = std::fs::create_dir_all(tmp.join("src"));
 
-        for entry in WalkDir::new(&tmp).max_depth(1) {
-            if let Ok(e) = entry {
-                let name = e.file_name().to_string_lossy().to_string();
-                if name == "target" {
-                    assert!(should_skip_dir(&e));
-                }
-                if name == "src" {
-                    assert!(!should_skip_dir(&e));
-                }
+        for e in WalkDir::new(&tmp).max_depth(1).into_iter().flatten() {
+            let name = e.file_name().to_string_lossy().to_string();
+            if name == "target" {
+                assert!(should_skip_dir(&e));
+            }
+            if name == "src" {
+                assert!(!should_skip_dir(&e));
             }
         }
 

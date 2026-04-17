@@ -339,7 +339,7 @@
         #[test]
         fn test_state_machine_analyzing_to_violating() {
             // When violations are found, state should transition to Violating
-            let violations = vec![make_test_violation("complexity", "high")];
+            let violations = [make_test_violation("complexity", "high")];
             assert!(!violations.is_empty());
         }
 

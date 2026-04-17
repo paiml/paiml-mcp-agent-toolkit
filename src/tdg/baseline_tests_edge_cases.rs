@@ -169,11 +169,10 @@
 
         // Overwrite with different grade
         baseline.add_entry(PathBuf::from("a.rs"), create_test_entry(75.0, Grade::B));
-        assert!(baseline
+        assert!(!baseline
             .summary
             .grade_distribution
-            .get(&Grade::APLus)
-            .is_none());
+            .contains_key(&Grade::APLus));
         assert_eq!(
             *baseline.summary.grade_distribution.get(&Grade::B).unwrap(),
             1
@@ -202,11 +201,10 @@
             PathBuf::from("test.rs"),
             create_test_entry_with_lang(90.0, Grade::A, Language::Python),
         );
-        assert!(baseline
+        assert!(!baseline
             .summary
             .languages
-            .get(&format!("{:?}", Language::Rust))
-            .is_none());
+            .contains_key(&format!("{:?}", Language::Rust)));
         assert_eq!(
             *baseline
                 .summary

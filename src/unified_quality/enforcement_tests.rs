@@ -1156,8 +1156,8 @@ mod coverage_tests {
         db.record_measurement(&"team-a".to_string(), SystemTime::now(), 0.9);
         db.record_measurement(&"team-b".to_string(), SystemTime::now(), 0.8);
 
-        assert!(db.data.contains_key(&"team-a".to_string()));
-        assert!(db.data.contains_key(&"team-b".to_string()));
+        assert!(db.data.contains_key("team-a"));
+        assert!(db.data.contains_key("team-b"));
     }
 
     // ============================================

@@ -251,7 +251,7 @@ if (x > 0 && y < 10) {
 
     #[test]
     fn test_simple_deep_context_default() {
-        let analyzer = SimpleDeepContext::default();
+        let analyzer = SimpleDeepContext;
         let _ = analyzer; // just verify it creates
     }
 
@@ -1305,7 +1305,7 @@ fn complex(x: i32) -> i32 {
         let analyzer = SimpleDeepContext;
         let temp_dir = TempDir::new().unwrap();
         let test_file = temp_dir.path().join("module.wasm");
-        fs::write(&test_file, &[0x00, 0x61, 0x73, 0x6D]).unwrap();
+        fs::write(&test_file, [0x00, 0x61, 0x73, 0x6D]).unwrap();
 
         let metrics = analyzer.analyze_file_complexity(&test_file).await.unwrap();
         assert!(metrics.avg_complexity >= 0.0);

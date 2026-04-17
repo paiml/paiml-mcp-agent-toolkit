@@ -18,7 +18,7 @@ mod coverage_tests {
     fn test_severity_clone_and_copy() {
         let s = Severity::High;
         let s2 = s; // Copy
-        let s3 = s.clone(); // Clone
+        let s3 = s; // Clone
         assert_eq!(s, s2);
         assert_eq!(s, s3);
     }

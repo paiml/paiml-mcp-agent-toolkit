@@ -41,7 +41,7 @@ fn calculate_sum(a: i32, b: i32) -> i32 {
         engine.index_file("src/main.rs", content, "rust");
 
         // Should have indexed non-empty lines
-        assert!(engine.len() > 0);
+        assert!(!engine.is_empty());
     }
 
     #[test]

@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn test_service_state_clone() {
         let state = ServiceState::Running;
-        let cloned = state.clone();
+        let cloned = state;
         assert_eq!(cloned, ServiceState::Running);
     }
 

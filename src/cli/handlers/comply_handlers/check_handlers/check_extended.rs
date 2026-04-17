@@ -403,8 +403,22 @@ fn build_file_health_check(
 }
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-/// Load file health exclude patterns from .pmat-gates.toml [file_health] section
+/// GH-292: Load file health exclude patterns. Merges entries from
+/// `.pmat-gates.toml [file_health] exclude` and
+/// `.pmat.yaml comply.thresholds.file_health_exclude`. Either source alone
+/// is sufficient; both may coexist.
 fn load_file_health_excludes(project_path: &Path) -> Vec<String> {
+    let mut out = load_file_health_excludes_from_gates(project_path);
+    let yaml = crate::models::comply_config::PmatYamlConfig::load(project_path).unwrap_or_default();
+    for pat in &yaml.comply.thresholds.file_health_exclude {
+        if !out.iter().any(|p| p == pat) {
+            out.push(pat.clone());
+        }
+    }
+    out
+}
+
+fn load_file_health_excludes_from_gates(project_path: &Path) -> Vec<String> {
     let toml_path = project_path.join(".pmat-gates.toml");
     let content = match std::fs::read_to_string(&toml_path) {
         Ok(c) => c,

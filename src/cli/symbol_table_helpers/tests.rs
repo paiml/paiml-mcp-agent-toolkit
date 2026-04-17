@@ -14,7 +14,7 @@ mod tests {
         AnalysisResults, AnnotatedFileTree, ContextMetadata, DeepContext, DefectAnnotations,
         DefectSummary, EnhancedFileContext, QualityScorecard,
     };
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     // ============================================================
     // Tests for extract_symbol_from_ast_item
@@ -752,13 +752,13 @@ mod tests {
         // Verify files are correctly associated
         let main_symbols: Vec<_> = symbols
             .iter()
-            .filter(|s| s.file == PathBuf::from("src/main.rs"))
+            .filter(|s| s.file == Path::new("src/main.rs"))
             .collect();
         assert_eq!(main_symbols.len(), 1);
 
         let config_symbols: Vec<_> = symbols
             .iter()
-            .filter(|s| s.file == PathBuf::from("src/config.rs"))
+            .filter(|s| s.file == Path::new("src/config.rs"))
             .collect();
         assert_eq!(config_symbols.len(), 2);
     }

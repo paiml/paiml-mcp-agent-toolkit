@@ -129,6 +129,7 @@ mod scorer_result_tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::unnecessary_literal_unwrap)]
     fn test_scorer_result_ok() {
         let result: ScorerResult<i32> = Ok(42);
         assert!(result.is_ok());
@@ -142,6 +143,7 @@ mod scorer_result_tests {
     }
 
     #[test]
+    #[allow(clippy::unnecessary_literal_unwrap)]
     fn test_scorer_result_with_category_score() {
         let result: ScorerResult<CategoryScore> = Ok(CategoryScore::new(10.0, 25.0));
         assert!(result.is_ok());
@@ -160,7 +162,7 @@ mod scorer_result_tests {
     #[test]
     fn test_scorer_result_and_then() {
         let result: ScorerResult<i32> = Ok(10);
-        let chained = result.and_then(|x| Ok(x * 2));
+        let chained = result.map(|x| x * 2);
         assert_eq!(chained.unwrap(), 20);
     }
 }

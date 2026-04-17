@@ -19,7 +19,7 @@ use pmat::tdg::{
     ActionableRecommendation, ComplexitySeverity, ExplainedTDGScore, FunctionComplexity,
     RecommendationType,
 };
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 /// GREEN TEST 1: Extract function complexity from simple Rust file
@@ -446,7 +446,7 @@ fn test_threshold_filtering() {
 /// Extract function complexity from Rust source file
 ///
 /// GREEN: Now implemented using FunctionAnalyzer
-fn extract_function_complexity(file: &PathBuf) -> Result<Vec<FunctionComplexity>, String> {
+fn extract_function_complexity(file: &Path) -> Result<Vec<FunctionComplexity>, String> {
     use pmat::tdg::FunctionAnalyzer;
 
     let mut analyzer =

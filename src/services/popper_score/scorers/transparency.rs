@@ -433,7 +433,7 @@ mod tests {
         // Create comprehensive README
         fs::write(
             temp_dir.path().join("README.md"),
-            &"# Project\n\n".repeat(100), // Long content
+            "# Project\n\n".repeat(100), // Long content
         )
         .unwrap();
 

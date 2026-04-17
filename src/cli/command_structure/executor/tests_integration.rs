@@ -109,10 +109,10 @@ mod edge_case_tests {
     #[test]
     fn test_all_groups_implement_default() {
         // These should all compile and run without panic
-        let _ = GenerateCommandGroup::default();
-        let _ = AnalyzeCommandGroup::default();
-        let _ = UtilityCommandGroup::default();
-        let _ = DemoCommandGroup::default();
+        let _ = GenerateCommandGroup;
+        let _ = AnalyzeCommandGroup;
+        let _ = UtilityCommandGroup;
+        let _ = DemoCommandGroup;
     }
 
     /// Test CommandRegistry default is consistent
@@ -175,10 +175,10 @@ mod edge_case_tests {
     #[test]
     fn test_command_group_drop_safety() {
         {
-            let _generate = GenerateCommandGroup::default();
-            let _analyze = AnalyzeCommandGroup::default();
-            let _utility = UtilityCommandGroup::default();
-            let _demo = DemoCommandGroup::default();
+            let _generate = GenerateCommandGroup;
+            let _analyze = AnalyzeCommandGroup;
+            let _utility = UtilityCommandGroup;
+            let _demo = DemoCommandGroup;
             // All go out of scope here
         }
         // Should not panic

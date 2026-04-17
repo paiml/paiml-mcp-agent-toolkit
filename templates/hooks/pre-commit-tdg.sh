@@ -36,6 +36,29 @@ MODE="{{MODE}}"
 BLOCK_ON_REGRESSION="{{BLOCK_ON_REGRESSION}}"
 BLOCK_ON_NEW_FILES="{{BLOCK_ON_NEW_FILES}}"
 
+# cargo fmt --check on staged .rs files only (PMAT-509).
+# Fast path: rustfmt is ~1ms/file so even large diffs check quickly.
+# Skip silently if rustfmt is missing — CI will still catch format drift.
+if command -v rustfmt >/dev/null 2>&1; then
+    STAGED_RS=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null | grep '\.rs$' || true)
+    if [ -n "${STAGED_RS}" ]; then
+        UNFORMATTED=""
+        for f in ${STAGED_RS}; do
+            [ -f "${f}" ] || continue
+            if ! rustfmt --check --edition 2021 "${f}" >/dev/null 2>&1; then
+                UNFORMATTED="${UNFORMATTED}${f}\n"
+            fi
+        done
+        if [ -n "${UNFORMATTED}" ]; then
+            echo -e "${RED}❌ cargo fmt check failed on staged files:${NC}"
+            printf "   %b" "${UNFORMATTED}"
+            echo -e "${YELLOW}Fix with:${NC}  cargo fmt --all"
+            echo -e "${YELLOW}Bypass:${NC}    git commit --no-verify  (not recommended)"
+            exit 1
+        fi
+    fi
+fi
+
 echo -e "${BLUE}🔍 PMAT TDG Quality Enforcement${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 

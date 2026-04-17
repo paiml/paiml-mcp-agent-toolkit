@@ -36,7 +36,7 @@ mod coverage_tests {
     // EntropyCalculator tests
     #[test]
     fn test_entropy_calculator_default() {
-        let calculator = EntropyCalculator::default();
+        let calculator = EntropyCalculator;
         let _ = calculator;
     }
 

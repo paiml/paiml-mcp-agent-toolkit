@@ -164,16 +164,14 @@ mod coverage_tests {
     fn test_server_has_analysis_tools() {
         // Verify the tool registration pattern is correct
         // We can't run the server, but we can verify the tools exist
-        let expected_tools = vec![
-            "analyze_complexity",
+        let expected_tools = ["analyze_complexity",
             "analyze_satd",
             "analyze_dead_code",
             "analyze_dag",
             "analyze_deep_context",
             "analyze_big_o",
             "analyze_tdg",
-            "analyze_tdg_compare",
-        ];
+            "analyze_tdg_compare"];
 
         // Just verify the list is non-empty and has expected structure
         assert!(!expected_tools.is_empty());
@@ -182,12 +180,10 @@ mod coverage_tests {
 
     #[test]
     fn test_server_has_refactoring_tools() {
-        let expected_tools = vec![
-            "refactor.start",
+        let expected_tools = ["refactor.start",
             "refactor.nextIteration",
             "refactor.getState",
-            "refactor.stop",
-        ];
+            "refactor.stop"];
 
         assert_eq!(expected_tools.len(), 4);
         assert!(expected_tools.contains(&"refactor.start"));
@@ -196,28 +192,26 @@ mod coverage_tests {
 
     #[test]
     fn test_server_has_quality_tools() {
-        let expected_tools = vec!["quality_gate", "quality_proxy"];
+        let expected_tools = ["quality_gate", "quality_proxy"];
 
         assert_eq!(expected_tools.len(), 2);
     }
 
     #[test]
     fn test_server_has_tdg_tools() {
-        let expected_tools = vec![
-            "tdg_system_diagnostics",
+        let expected_tools = ["tdg_system_diagnostics",
             "tdg_storage_management",
             "tdg_analyze_with_storage",
             "tdg_performance_metrics",
             "tdg_configure_storage",
-            "tdg_health_check",
-        ];
+            "tdg_health_check"];
 
         assert_eq!(expected_tools.len(), 6);
     }
 
     #[test]
     fn test_server_has_context_tools() {
-        let expected_tools = vec!["git_operation", "generate_context", "scaffold_project"];
+        let expected_tools = ["git_operation", "generate_context", "scaffold_project"];
 
         assert_eq!(expected_tools.len(), 3);
     }
@@ -242,7 +236,7 @@ mod coverage_tests {
             + prompt_tools;
 
         // Should be approximately 24-25 tools
-        assert!(total >= 24 && total <= 26);
+        assert!((24..=26).contains(&total));
     }
 
     // ============================================================

@@ -2286,46 +2286,14 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-503: Split all non-test Rust files over 500 lines into submodules'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-02-23T09:46:00Z
-  updated: 2026-02-23T09:46:22Z
+  updated: 2026-04-16T19:45:06Z
   spec: null
   acceptance_criteria:
   - 'File health CB-040: Split all non-test .rs files exceeding 500 lines into module directories with semantic submodules. 510 files identified.'
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-- id: docs/specifications/dbc.md
-  github_issue: null
-  item_type: task
-  title: 'New task: docs/specifications/dbc.md'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2026-02-26T11:02:40.163434891+00:00
-  updated: 2026-02-26T11:02:40.163434891+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-- id: PMAT-DBC
-  github_issue: null
-  item_type: task
-  title: 'New task: PMAT-DBC'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2026-02-26T11:44:04.652467641+00:00
-  updated: 2026-02-26T11:44:04.652467641+00:00
-  spec: null
-  acceptance_criteria: []
   phases: []
   subtasks: []
   estimated_effort: null
@@ -2428,47 +2396,15 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-DBC-12
-  github_issue: null
-  item_type: task
-  title: 'New task: PMAT-DBC-12'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2026-03-07T19:29:17.095523672+00:00
-  updated: 2026-03-07T19:29:17.095523672+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-- id: PMAT-DBC-13
-  github_issue: null
-  item_type: task
-  title: 'New task: PMAT-DBC-13'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2026-03-07T22:04:29.937654709+00:00
-  updated: 2026-03-07T22:04:29.937654709+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
 - id: PMAT-509
   github_issue: null
   item_type: task
   title: pre-commit hook must gate on cargo fmt --check
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-03-07T22:06:19Z
-  updated: 2026-04-04T19:58:54.303998395+00:00
+  updated: 2026-04-16T19:11:06.431203313+00:00
   spec: null
   acceptance_criteria:
   - 'The PMAT-generated pre-commit hook runs complexity, SATD, and commit message checks but does NOT run ''cargo fmt --check''. This causes repeated CI L1 failures across the sovereign stack (trueno, provable-contracts, bashrs, pmat itself) when Claude Code instances push unformatted code. Fix: add a cargo fmt --check gate to the pre-commit hook template. It should only run on staged .rs files (fast path) and block the commit if formatting differs.'
@@ -2517,11 +2453,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-520: CB-1201 PV Lint gate in pmat comply + pmat score sub-score'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-03-21T12:00:26Z
-  updated: 2026-04-05T11:47:53.194491247+00:00
+  updated: 2026-04-16T19:30:56.667305835+00:00
   spec: null
   acceptance_criteria:
   - 'Integrate pv lint into pmat comply as CB-1201 check and into pmat score as 8th sub-score. Run pv lint --format json when contracts/ exists. Extract mean_score from gates[2].detail.mean_score. Ref: scoring-convergence.md §10'
@@ -2552,11 +2488,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-521: provable-contracts Gate 4+5 — source verification + test execution'
-  status: inprogress
+  status: completed
   priority: critical
   assigned_to: null
   created: 2026-03-21T12:38:08Z
-  updated: 2026-04-04T19:59:14.056482280+00:00
+  updated: 2026-04-16T19:42:51.631478928+00:00
   spec: null
   acceptance_criteria:
   - 'provable-contracts pv lint has no source verification. Gate 4: resolve test: names against fn test_* in source, FAIL on missing. Gate 5: run cargo test on referenced tests, FAIL on failure. Parse tests_file/tests_module from Contract struct. Five Whys: audit_contract only checks YAML-internal consistency, never reads source code. Trueno: 85/105 contract tests missing, pv lint reports 0 findings.'
@@ -2851,11 +2787,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'PMAT-032: Provable contracts §32-34 — 160 contracts, 27/27 sovereign stack'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-04-03T09:09:55Z
-  updated: 2026-04-04T19:59:14.392862560+00:00
+  updated: 2026-04-16T19:45:09Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -2892,15 +2828,152 @@ roadmap:
   - agent-enforcement
   - comply
   notes: null
-- id: PMAT-280
+- id: PMAT-608
   github_issue: null
   item_type: task
-  title: 'New task: PMAT-280'
-  status: inprogress
+  title: Fix route_command coverage collapse (7.3% cov, 318 uncov lines)
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-16T16:22:17Z
+  updated: 2026-04-16T18:40:49.609345007+00:00
+  spec: null
+  acceptance_criteria:
+  - 'src/cli/command_dispatcher/command_routing.rs:7 is the top dispatch funnel, nearly untested. Sub-routers route_quality_command (quality_routing.rs:8) and route_scoring_command (command_dispatcher_scoring.rs:15) are flagged UNREACHABLE by pmat fault analysis — suggesting recent extraction refactor broke wiring. Audit match arms, add dispatch integration tests, verify unreachable claim is not a real dead-code bug. Impact: 2.6, 5.3 respectively.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - coverage
+  - cli
+  - dispatcher
+  notes: null
+- id: PMAT-609
+  github_issue: null
+  item_type: task
+  title: Reconcile qa_work_handler 0% coverage cluster (impact 14.2)
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-16T16:22:23Z
+  updated: 2026-04-16T18:48:12.915838183+00:00
+  spec: null
+  acceptance_criteria:
+  - Top-ROI coverage gap in repo. impl_checklist_gen.rs::generate_checklist (201 lines, 0% cov, impact 14.2) and impl_spec.rs::handle_spec (170 lines, 0% cov, impact 2.3) are fully untested. Suspected duplication with checklist.rs::handle_generate_checklist (tested). Reconcile the duplication first — either delete dead fork or merge — then add tests to surviving path.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - coverage
+  - qa-work
+  - duplication
+  notes: null
+- id: PMAT-610
+  github_issue: null
+  item_type: task
+  title: Fix pmat query --faults enrich-phase ANDON (22s)
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-16T16:22:28Z
+  updated: 2026-04-16T18:51:41.874890285+00:00
+  spec: null
+  acceptance_criteria:
+  - 'pmat query --faults enrich phase takes 22,456ms — flagged ANDON by pmat''s own profiler. Query is 0ms, load is 265ms; enrich dominates. This is the primary UX surface mandated by CLAUDE.md over grep — slow enrichment undermines adoption. Profile the fault annotation loop. Likely candidates: per-function regex recompilation, missing batch lookup, or unbatched source loads across 20K functions.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - performance
+  - query
+  - dogfooding
+  notes: null
+- id: PMAT-611
+  github_issue: null
+  item_type: task
+  title: Add renacer golden traces for CLI dispatcher
+  status: completed
   priority: medium
   assigned_to: null
-  created: 2026-04-03T15:59:19.352111459+00:00
-  updated: 2026-04-03T15:59:19.352111459+00:00
+  created: 2026-04-16T16:22:31Z
+  updated: 2026-04-16T18:30:27.939394164+00:00
+  spec: null
+  acceptance_criteria:
+  - CLAUDE.md requires golden traces for multi-process/transpiler workflows. Recent dispatcher split (see PMAT-608) generated UNREACHABLE warnings — exactly the kind of structural change that silently breaks routing. Add renacer capture --scenario cli_dispatch_all_subcommands to catch regressions the 82-subcommand smoke test (commit 9299c907) only partially covers. Wire into pre-push or CI.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - testing
+  - renacer
+  - dispatcher
+  notes: null
+- id: PMAT-612
+  github_issue: null
+  item_type: task
+  title: Resolve stray .cargo/config.toml deletion in working tree
+  status: completed
+  priority: low
+  assigned_to: null
+  created: 2026-04-16T16:22:35Z
+  updated: 2026-04-16T18:37:22.360518859+00:00
+  spec: null
+  acceptance_criteria:
+  - 'git status shows D .cargo/config.toml persistently. Per commit 8291eaea (dead-code analyzer removes RUSTFLAGS modification) the deletion is intentional but never staged. Every git status is noisy and future commits risk accidentally including or excluding it. Decide: commit the deletion, or restore the file with the fix applied differently.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - hygiene
+  - git
+  notes: null
+- id: PMAT-613
+  github_issue: null
+  item_type: task
+  title: Port bug-hunter pattern detection into pmat (drop batuta dep)
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-16T16:31:08Z
+  updated: 2026-04-16T18:44:07.441216011+00:00
+  spec: null
+  acceptance_criteria:
+  - Remove fault_patterns reimplementation; sovereign stack (aprender-orchestrate::bug_hunter) already provides the API via the org-intelligence feature. Delete 500-line port. Keep enrichment as pure cache reader.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - architecture
+  - faults
+  - sovereign
+  - aprender
+  notes: null
+- id: PMAT-614
+  github_issue: null
+  item_type: task
+  title: 'PMAT-614: Fix 425 rust-1.94.0 clippy warnings blocking CI'
+  status: completed
+  priority: high
+  assigned_to: null
+  created: 2026-04-17T07:19:54Z
+  updated: 2026-04-17T09:39:24Z
+  spec: null
+  acceptance_criteria:
+  - 'CI has been failing on master since rust-1.94.0 introduced new clippy lints (useless_vec, clone_on_copy, default_unit_struct, field_reassign_with_default, etc). 425 warnings across tests/examples/benches. Auto-fix via cargo clippy --fix handles ~2 files; remaining need manual pattern-by-pattern fixes. Target: cargo clippy --all-targets -- -D warnings -A unused-variables passes clean. Unblocks PR #296 and future PRs.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-615
+  github_issue: null
+  item_type: task
+  title: 'Fix GH-278: CB-900 broken-link check ignores .pmatignore/file_health_exclude for vendored docs'
+  status: completed
+  priority: medium
+  assigned_to: null
+  created: 2026-04-17T11:17:50Z
+  updated: 2026-04-17T11:32:53Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -2908,15 +2981,15 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-541
+- id: PMAT-616
   github_issue: null
   item_type: task
-  title: 'New task: PMAT-541'
-  status: inprogress
+  title: 'Fix GH-283: coverage_nightly cfg_attr triggers E0554 on Rust 1.94 stable (conditional feature flag)'
+  status: completed
   priority: medium
   assigned_to: null
-  created: 2026-04-06T10:09:45.715161682+00:00
-  updated: 2026-04-06T10:09:45.715161682+00:00
+  created: 2026-04-17T11:38:43Z
+  updated: 2026-04-17T11:43:17Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -2924,15 +2997,15 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-600
+- id: PMAT-617
   github_issue: null
   item_type: task
-  title: 'New task: PMAT-600'
-  status: inprogress
+  title: 'Fix GH-271: CB-1203 false-positives; clearer failure message and wider window'
+  status: completed
   priority: medium
   assigned_to: null
-  created: 2026-04-08T09:27:25.827966754+00:00
-  updated: 2026-04-08T09:27:25.827966754+00:00
+  created: 2026-04-17T11:48:10Z
+  updated: 2026-04-17T12:10:49Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -2940,111 +3013,15 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-601
+- id: PMAT-618
   github_issue: null
   item_type: task
-  title: 'New task: PMAT-601'
-  status: inprogress
+  title: 'Fix GH-272: CB-200 complexity-1 false positive graded B instead of A+'
+  status: completed
   priority: medium
   assigned_to: null
-  created: 2026-04-08T10:57:38.645122239+00:00
-  updated: 2026-04-08T10:57:38.645122239+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-- id: PMAT-602
-  github_issue: null
-  item_type: task
-  title: 'New task: PMAT-602'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2026-04-08T11:49:51.800281719+00:00
-  updated: 2026-04-08T11:49:51.800281719+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-- id: PMAT-603
-  github_issue: null
-  item_type: task
-  title: 'New task: PMAT-603'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2026-04-08T12:44:19.053880341+00:00
-  updated: 2026-04-08T12:44:19.053880341+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-- id: PMAT-604
-  github_issue: null
-  item_type: task
-  title: 'New task: PMAT-604'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2026-04-08T12:54:38.516642729+00:00
-  updated: 2026-04-08T12:54:38.516642729+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-- id: PMAT-605
-  github_issue: null
-  item_type: task
-  title: 'New task: PMAT-605'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2026-04-08T12:55:19.555327511+00:00
-  updated: 2026-04-08T12:55:19.555327511+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-- id: PMAT-606
-  github_issue: null
-  item_type: task
-  title: 'New task: PMAT-606'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2026-04-08T13:35:04.715955356+00:00
-  updated: 2026-04-08T13:35:04.715955356+00:00
-  spec: null
-  acceptance_criteria: []
-  phases: []
-  subtasks: []
-  estimated_effort: null
-  labels: []
-  notes: null
-- id: PMAT-607
-  github_issue: null
-  item_type: task
-  title: 'New task: PMAT-607'
-  status: inprogress
-  priority: medium
-  assigned_to: null
-  created: 2026-04-08T13:56:47.133199432+00:00
-  updated: 2026-04-08T13:56:47.133199432+00:00
+  created: 2026-04-17T12:11:56Z
+  updated: 2026-04-17T12:16:06Z
   spec: null
   acceptance_criteria: []
   phases: []

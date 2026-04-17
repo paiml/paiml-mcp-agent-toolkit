@@ -150,8 +150,10 @@ mod tests {
 
     #[test]
     fn test_validate_zero_timeout() {
-        let mut config = GateConfig::default();
-        config.test_timeout = 0;
+        let config = GateConfig {
+            test_timeout: 0,
+            ..Default::default()
+        };
 
         let result = validate_config(&config);
         assert!(result.is_err());
@@ -161,8 +163,10 @@ mod tests {
 
     #[test]
     fn test_validate_zero_complexity() {
-        let mut config = GateConfig::default();
-        config.max_complexity = 0;
+        let config = GateConfig {
+            max_complexity: 0,
+            ..Default::default()
+        };
 
         let result = validate_config(&config);
         assert!(result.is_err());

@@ -319,10 +319,12 @@ mod tests {
 
     #[test]
     fn test_aggregated_analysis_serialization() {
-        let mut analysis = AggregatedAnalysis::default();
-        analysis.total_files = 5;
-        analysis.successful_analyses = 4;
-        analysis.failed_analyses = 1;
+        let analysis = AggregatedAnalysis {
+            total_files: 5,
+            successful_analyses: 4,
+            failed_analyses: 1,
+            ..Default::default()
+        };
         let json = serde_json::to_string(&analysis).unwrap();
         let deserialized: AggregatedAnalysis = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.total_files, 5);

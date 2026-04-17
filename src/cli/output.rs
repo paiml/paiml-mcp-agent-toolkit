@@ -236,9 +236,8 @@ mod tests {
 
     #[test]
     fn test_stdout_writer_creation() {
-        let writer = StdoutWriter::new();
+        let _writer = StdoutWriter::new();
         // StdoutWriter is a ZST, just verify it can be created
-        drop(writer);
     }
 
     #[test]
