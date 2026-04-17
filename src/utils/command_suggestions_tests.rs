@@ -92,8 +92,8 @@ mod extended_tests {
 
         // Test typo in main command - should suggest closest match
         let result = suggester.suggest_command(&["genrate".to_string()]);
-        if result.is_some() {
-            assert!(result.unwrap().contains("generate"));
+        if let Some(suggestion) = result {
+            assert!(suggestion.contains("generate"));
         }
     }
 
@@ -127,15 +127,13 @@ mod extended_tests {
         // Typo in dead-code
         let result = suggester.suggest_command(&["analyze".to_string(), "deadcode".to_string()]);
         // deadcode vs dead-code has distance 1
-        if result.is_some() {
-            let suggestion = result.unwrap();
+        if let Some(suggestion) = result {
             assert!(suggestion.contains("dead-code") || suggestion.contains("analyze"));
         }
 
         // Typo in duplicates
         let result = suggester.suggest_command(&["analyze".to_string(), "duplicate".to_string()]);
-        if result.is_some() {
-            let suggestion = result.unwrap();
+        if let Some(suggestion) = result {
             assert!(suggestion.contains("duplicates") || suggestion.contains("analyze"));
         }
     }

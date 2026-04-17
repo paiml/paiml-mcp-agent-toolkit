@@ -195,7 +195,7 @@ async fn test_analyze_project_with_single_file() {
         .await;
 
     // Should successfully analyze the project (or error gracefully)
-    if let Ok(_) = result {}
+    if result.is_ok() {}
 }
 
 // ============================================================================

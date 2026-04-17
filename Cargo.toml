@@ -744,18 +744,12 @@ expect_used = "allow"
 
 # New rust-1.94.0 lints that fire heavily on test code — allow rather than
 # churn through hundreds of mechanical fixes. Track cleanup in follow-up tickets.
-absurd_extreme_comparisons = "allow"
 assertions_on_constants = "allow"
 cmp_owned = "allow"
-drop_non_drop = "allow"
 items_after_test_module = "allow"
-iter_cloned_collect = "allow"
 module_inception = "allow"
 ptr_arg = "allow"
-redundant_pattern_matching = "allow"
 unnecessary_get_then_check = "allow"
-unnecessary_to_owned = "allow"
-unnecessary_unwrap = "allow"
 useless_format = "allow"
 doc_lazy_continuation = "allow"
 too_many_arguments = "allow"

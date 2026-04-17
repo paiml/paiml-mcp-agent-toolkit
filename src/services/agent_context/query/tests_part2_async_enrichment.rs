@@ -17,8 +17,7 @@ async fn test_enrich_results_with_faults_batuta_not_found() {
     let res =
         enrich_results_with_faults(&mut results, std::path::Path::new("/nonexistent/path")).await;
     // When batuta is not on PATH, returns Err. Must not panic.
-    if res.is_err() {
-        let err = res.unwrap_err();
+    if let Err(err) = res {
         assert!(
             err.contains("batuta") || err.contains("Failed"),
             "Error should mention batuta: {err}"
