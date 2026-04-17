@@ -716,6 +716,59 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    // Work Compile-Time Codegen enforcement (CB-1630..1639) — Component 30
+    // Sub-spec: docs/specifications/components/pmat-work-compile-time-codegen.md
+    checks.push(filter_check_by_config(
+        super::check_codegen::check_codegen_cli_succeeds(project_path),
+        "cb-1630",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_codegen::check_attribute_has_generated_module(project_path),
+        "cb-1631",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_codegen::check_attribute_clause_ids_exist(project_path),
+        "cb-1632",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_codegen::check_manifest_sha_drift(project_path),
+        "cb-1633",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_codegen::check_expr_clauses_have_binds_to(project_path),
+        "cb-1634",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_codegen::check_binds_to_function_modified(project_path),
+        "cb-1635",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_codegen::check_macros_compile_debug_and_release(project_path),
+        "cb-1636",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_codegen::check_l2_public_fn_coverage(project_path),
+        "cb-1637",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_codegen::check_generated_modules_tracked(project_path),
+        "cb-1638",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_codegen::check_kani_harness_macro_reference(project_path),
+        "cb-1639",
+        comply_config,
+    ));
+
     let report = build_compliance_report(checks, project_version, failures_only);
     let failures = report
         .checks
