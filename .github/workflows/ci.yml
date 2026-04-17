@@ -16,3 +16,18 @@ jobs:
       repo: ${{ github.event.repository.name }}
     secrets: inherit
 
+  # Top-level gate satisfies the org ruleset "Green Main" which requires a
+  # status check named exactly `gate`. Reusable-workflow jobs always render
+  # as `ci / gate`; rulesets need an unprefixed top-level job to match.
+  gate:
+    runs-on: ubuntu-latest
+    needs: [ci]
+    if: always()
+    steps:
+      - name: Check required jobs
+        run: |
+          if [ "${{ needs.ci.result }}" != "success" ]; then
+            echo "ci failed: ${{ needs.ci.result }}"
+            exit 1
+          fi
+          echo "All required jobs passed"
