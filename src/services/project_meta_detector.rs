@@ -143,8 +143,11 @@ impl ProjectMetaDetector {
                     let file_type_clone = file_type.clone();
 
                     tasks.spawn(async move {
+                        // 2s timeout guards against pathologically large/broken files
+                        // while staying generous enough that CI file reads under load
+                        // don't silently drop (100ms caused PR #296 flakiness).
                         match tokio::time::timeout(
-                            std::time::Duration::from_millis(100),
+                            std::time::Duration::from_secs(2),
                             fs::read_to_string(&path_buf),
                         )
                         .await
