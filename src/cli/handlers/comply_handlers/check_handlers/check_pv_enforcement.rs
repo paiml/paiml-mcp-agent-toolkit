@@ -124,7 +124,10 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
             continue; // Covered by #[contract] macro — assertions come from YAML
         }
 
-        // Strategy 2: Find pub fn <eq_name>( and check for macros in preceding lines
+        // Strategy 2: Find pub fn <eq_name>( and check for macros in preceding lines.
+        // GH-271: Window expanded from 10 → 25 lines to accommodate functions with
+        // long doc comments. Doc-comment blocks that push the `#[contract(...)]`
+        // beyond the window were the main source of CB-1203 false positives.
         let pattern = format!("pub fn {eq}(");
         let mut found = false;
         for entry in &src_files {
@@ -133,7 +136,7 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
                     bound_fns += 1;
                     found = true;
                     let prefix = &content[..pos];
-                    let preceding_lines: Vec<&str> = prefix.lines().rev().take(10).collect();
+                    let preceding_lines: Vec<&str> = prefix.lines().rev().take(25).collect();
                     let has_macro = preceding_lines.iter().any(|line| {
                         let t = line.trim();
                         t.starts_with("#[contract(")
@@ -181,7 +184,9 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
             name: "CB-1203: Contract Annotations".into(),
             status: CheckStatus::Fail,
             message: format!(
-                "{}/{} contract-bound fns lack macros: {}",
+                "{}/{} contract-bound fns missing #[contract(...)] annotation \
+                 (add `#[provable_contracts_macros::contract(\"<yaml>\", equation = \"<name>\")]` \
+                 within 25 lines above `pub fn`): {}",
                 missing.len(),
                 bound_fns,
                 missing

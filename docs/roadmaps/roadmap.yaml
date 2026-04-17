@@ -2985,11 +2985,27 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Fix GH-283: coverage_nightly cfg_attr triggers E0554 on Rust 1.94 stable (conditional feature flag)'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-04-17T11:38:43Z
-  updated: 2026-04-17T11:38:45.395620839+00:00
+  updated: 2026-04-17T11:43:17Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-617
+  github_issue: null
+  item_type: task
+  title: 'Fix GH-271: CB-1203 false-positives; clearer failure message and wider window'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-17T11:48:10Z
+  updated: 2026-04-17T11:48:13.485650852+00:00
   spec: null
   acceptance_criteria: []
   phases: []
