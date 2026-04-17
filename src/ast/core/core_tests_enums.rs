@@ -24,7 +24,7 @@
     #[test]
     fn test_language_clone_eq() {
         let lang = Language::Rust;
-        let cloned = lang.clone();
+        let cloned = lang;
         assert_eq!(lang, cloned);
         assert_ne!(Language::Rust, Language::Python);
     }
@@ -180,7 +180,7 @@
     fn test_node_flags_clone_copy() {
         let mut flags = NodeFlags::new();
         flags.set(NodeFlags::ASYNC);
-        let cloned = flags.clone();
+        let cloned = flags;
         let copied = flags;
         assert!(cloned.has(NodeFlags::ASYNC));
         assert!(copied.has(NodeFlags::ASYNC));

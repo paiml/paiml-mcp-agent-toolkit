@@ -216,7 +216,7 @@ mod coverage_tests {
     #[test]
     fn test_language_clone_and_copy() {
         let lang = Language::TypeScript;
-        let cloned = lang.clone();
+        let cloned = lang;
         let copied = lang;
 
         assert_eq!(lang, cloned);

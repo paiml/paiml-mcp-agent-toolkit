@@ -48,7 +48,7 @@ mod tests {
     #[test]
     fn test_agg_op_clone() {
         let op = AggOp::Sum;
-        let cloned = op.clone();
+        let cloned = op;
         assert_eq!(op, cloned);
     }
 

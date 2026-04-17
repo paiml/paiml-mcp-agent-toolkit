@@ -42,7 +42,7 @@ mod coverage_tests {
 
     #[test]
     fn test_git_clone_tool_default() {
-        let tool = GitCloneTool::default();
+        let tool = GitCloneTool;
         let _ = tool;
     }
 
@@ -93,7 +93,7 @@ mod coverage_tests {
 
     #[test]
     fn test_git_status_tool_default() {
-        let tool = GitStatusTool::default();
+        let tool = GitStatusTool;
         let _ = tool;
     }
 
@@ -152,7 +152,7 @@ mod coverage_tests {
 
     #[test]
     fn test_context_generate_tool_default() {
-        let tool = ContextGenerateTool::default();
+        let tool = ContextGenerateTool;
         let _ = tool;
     }
 
@@ -254,7 +254,7 @@ mod coverage_tests {
 
     #[test]
     fn test_context_analyze_tool_default() {
-        let tool = ContextAnalyzeTool::default();
+        let tool = ContextAnalyzeTool;
         let _ = tool;
     }
 
@@ -307,7 +307,7 @@ mod coverage_tests {
 
     #[test]
     fn test_context_summary_tool_default() {
-        let tool = ContextSummaryTool::default();
+        let tool = ContextSummaryTool;
         let _ = tool;
     }
 

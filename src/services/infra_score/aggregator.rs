@@ -354,6 +354,6 @@ jobs:
 
     #[test]
     fn test_default_trait() {
-        let _aggregator = InfraScoreAggregator::default();
+        let _aggregator = InfraScoreAggregator;
     }
 }

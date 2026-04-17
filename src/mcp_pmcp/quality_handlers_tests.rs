@@ -44,7 +44,7 @@ mod tests {
 
     #[test]
     fn test_quality_gate_tool_default() {
-        let tool = QualityGateTool::default();
+        let tool = QualityGateTool;
         let _ = tool;
     }
 
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn test_quality_gate_summary_tool_default() {
-        let tool = QualityGateSummaryTool::default();
+        let tool = QualityGateSummaryTool;
         let _ = tool;
     }
 
@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_quality_gate_baseline_tool_default() {
-        let tool = QualityGateBaselineTool::default();
+        let tool = QualityGateBaselineTool;
         let _ = tool;
     }
 
@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_quality_gate_compare_tool_default() {
-        let tool = QualityGateCompareTool::default();
+        let tool = QualityGateCompareTool;
         let _ = tool;
     }
 

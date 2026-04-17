@@ -42,7 +42,7 @@
     #[test]
     fn test_language_clone() {
         let lang = Language::TypeScript;
-        let cloned = lang.clone();
+        let cloned = lang;
         assert_eq!(lang, cloned);
     }
 

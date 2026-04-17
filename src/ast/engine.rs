@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn test_engine_default() {
-        let _engine = AstEngine::default();
+        let _engine = AstEngine;
         // Default engine created successfully
     }
 

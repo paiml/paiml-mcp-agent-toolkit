@@ -75,7 +75,7 @@ fn test_output_format_debug() {
 #[test]
 fn test_output_format_clone() {
     let format = OutputFormat::Json;
-    let cloned = format.clone();
+    let cloned = format;
     assert!(matches!(cloned, OutputFormat::Json));
 }
 

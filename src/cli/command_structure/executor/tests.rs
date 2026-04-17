@@ -71,28 +71,28 @@ mod tests {
 
     #[test]
     fn test_generate_command_group_default() {
-        let group = GenerateCommandGroup::default();
+        let group = GenerateCommandGroup;
         // Verify it can be created
         let _ = group;
     }
 
     #[test]
     fn test_analyze_command_group_default() {
-        let group = AnalyzeCommandGroup::default();
+        let group = AnalyzeCommandGroup;
         // Verify it can be created
         let _ = group;
     }
 
     #[test]
     fn test_utility_command_group_default() {
-        let group = UtilityCommandGroup::default();
+        let group = UtilityCommandGroup;
         // Verify it can be created
         let _ = group;
     }
 
     #[test]
     fn test_demo_command_group_default() {
-        let group = DemoCommandGroup::default();
+        let group = DemoCommandGroup;
         // Verify it can be created
         let _ = group;
     }

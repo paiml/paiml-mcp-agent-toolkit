@@ -83,7 +83,7 @@
     #[test]
     fn test_node_metadata_clone() {
         let metadata = NodeMetadata { complexity: 42 };
-        let cloned = metadata.clone();
+        let cloned = metadata;
         // SAFETY: accessing complexity field for test
         unsafe {
             assert_eq!(cloned.complexity, 42);

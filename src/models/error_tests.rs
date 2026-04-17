@@ -816,7 +816,7 @@ mod tests {
     #[test]
     fn test_error_severity_clone() {
         let severity = ErrorSeverity::Critical;
-        let cloned = severity.clone();
+        let cloned = severity;
         assert_eq!(severity, cloned);
     }
 

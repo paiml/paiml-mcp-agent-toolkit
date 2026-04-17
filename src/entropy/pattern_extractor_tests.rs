@@ -301,7 +301,7 @@ fn test_pattern_type_hash() {
 fn test_pattern_type_clone_and_copy() {
     let pt = PatternType::ErrorHandling;
     let pt2 = pt; // Copy
-    let pt3 = pt.clone(); // Clone
+    let pt3 = pt; // Clone
     assert_eq!(pt, pt2);
     assert_eq!(pt, pt3);
 }

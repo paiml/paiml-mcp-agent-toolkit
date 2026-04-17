@@ -37,7 +37,7 @@ mod tests_types {
 
     #[test]
     fn test_duplicate_detector_default() {
-        let detector = DuplicateDetector::default();
+        let detector = DuplicateDetector;
         assert_eq!(detector.name(), "duplicates");
     }
 

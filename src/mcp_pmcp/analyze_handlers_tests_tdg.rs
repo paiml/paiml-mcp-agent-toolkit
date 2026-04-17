@@ -19,7 +19,7 @@ mod tdg_coverage_tests {
 
     #[test]
     fn test_tdg_tool_default() {
-        let tool = TdgTool::default();
+        let tool = TdgTool;
         let _ = tool;
     }
 
@@ -64,7 +64,7 @@ mod tdg_coverage_tests {
 
     #[test]
     fn test_tdg_compare_tool_default() {
-        let tool = TdgCompareTool::default();
+        let tool = TdgCompareTool;
         let _ = tool;
     }
 

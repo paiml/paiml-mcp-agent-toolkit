@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn test_analyzer_pool_default() {
-        let _pool = AnalyzerPool::default();
+        let _pool = AnalyzerPool;
     }
 
     // ============ RustAnalyzer Tests ============
@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn test_rust_analyzer_default() {
-        let _analyzer = RustAnalyzer::default();
+        let _analyzer = RustAnalyzer;
     }
 
     #[test]

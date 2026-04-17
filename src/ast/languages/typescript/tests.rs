@@ -17,7 +17,7 @@ mod tests {
 
     #[test]
     fn test_typescript_strategy_default() {
-        let strategy = TypeScriptStrategy::default();
+        let strategy = TypeScriptStrategy;
         assert_eq!(strategy.language(), Language::TypeScript);
     }
 
@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn test_javascript_strategy_default() {
-        let strategy = JavaScriptStrategy::default();
+        let strategy = JavaScriptStrategy;
         assert_eq!(strategy.language(), Language::JavaScript);
     }
 

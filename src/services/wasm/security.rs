@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_security_validator_default() {
-        let validator = WasmSecurityValidator::default();
+        let validator = WasmSecurityValidator;
         let _ = validator;
     }
 

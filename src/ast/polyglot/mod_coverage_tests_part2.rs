@@ -150,7 +150,7 @@ mod coverage_tests_part2 {
     #[test]
     fn test_node_kind_clone_and_copy() {
         let kind = NodeKind::Function;
-        let cloned = kind.clone();
+        let cloned = kind;
         let copied = kind;
 
         assert_eq!(kind, cloned);

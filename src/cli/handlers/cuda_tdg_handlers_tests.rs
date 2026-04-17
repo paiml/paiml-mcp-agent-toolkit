@@ -171,7 +171,7 @@ mod coverage_tests {
     #[test]
     fn test_format_result_json() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
         let config = create_config_with_format(CudaTdgOutputFormat::Json);
 
         let output = format_result(&result, &config).unwrap();
@@ -183,7 +183,7 @@ mod coverage_tests {
     #[test]
     fn test_format_result_sarif() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result_with_defects(&temp_dir.path().to_path_buf());
+        let result = create_mock_result_with_defects(temp_dir.path());
         let config = create_config_with_format(CudaTdgOutputFormat::Sarif);
 
         let output = format_result(&result, &config).unwrap();
@@ -196,7 +196,7 @@ mod coverage_tests {
     #[test]
     fn test_format_result_markdown() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
         let config = create_config_with_format(CudaTdgOutputFormat::Markdown);
 
         let output = format_result(&result, &config).unwrap();
@@ -208,7 +208,7 @@ mod coverage_tests {
     #[test]
     fn test_format_result_terminal() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
 
         let output = format_result(&result, &config).unwrap();
@@ -220,7 +220,7 @@ mod coverage_tests {
     #[test]
     fn test_format_result_terminal_quiet() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
         let mut config = create_config_with_format(CudaTdgOutputFormat::Terminal);
         config.quiet = true;
 
@@ -233,7 +233,7 @@ mod coverage_tests {
     #[test]
     fn test_format_analysis_json() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
         let config = create_config_with_format(CudaTdgOutputFormat::Json);
 
         let output = format_analysis(&result, &config).unwrap();
@@ -244,7 +244,7 @@ mod coverage_tests {
     #[test]
     fn test_format_analysis_terminal() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
 
         let output = format_analysis(&result, &config).unwrap();
@@ -258,7 +258,7 @@ mod coverage_tests {
     #[test]
     fn test_format_analysis_with_defects() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result_with_defects(&temp_dir.path().to_path_buf());
+        let result = create_mock_result_with_defects(temp_dir.path());
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
 
         let output = format_analysis(&result, &config).unwrap();
@@ -331,7 +331,7 @@ mod coverage_tests {
     #[test]
     fn test_format_barrier_safety_json() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
         let config = create_config_with_format(CudaTdgOutputFormat::Json);
 
         let output = format_barrier_safety(&result, &config).unwrap();
@@ -343,7 +343,7 @@ mod coverage_tests {
     #[test]
     fn test_format_barrier_safety_terminal() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
 
         let output = format_barrier_safety(&result, &config).unwrap();
@@ -357,7 +357,7 @@ mod coverage_tests {
     #[test]
     fn test_format_barrier_safety_with_unsafe_barriers() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result_with_unsafe_barriers(&temp_dir.path().to_path_buf());
+        let result = create_mock_result_with_unsafe_barriers(temp_dir.path());
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
 
         let output = format_barrier_safety(&result, &config).unwrap();
@@ -372,7 +372,7 @@ mod coverage_tests {
     #[test]
     fn test_format_terminal_output_high_score() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
 
         let output = format_terminal_output(&result).unwrap();
         assert!(output.contains("CUDA-SIMD TDG Analysis"));
@@ -385,7 +385,7 @@ mod coverage_tests {
     #[test]
     fn test_format_terminal_output_with_defects() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result_with_defects(&temp_dir.path().to_path_buf());
+        let result = create_mock_result_with_defects(temp_dir.path());
 
         let output = format_terminal_output(&result).unwrap();
         assert!(output.contains("Defects: 2 total"));
@@ -398,7 +398,7 @@ mod coverage_tests {
         let temp_dir = TempDir::new().unwrap();
 
         // Test A+ grade
-        let mut result = create_mock_result(&temp_dir.path().to_path_buf());
+        let mut result = create_mock_result(temp_dir.path());
         result.score = create_mock_popper_score(95.0, true);
         let output = format_terminal_output(&result).unwrap();
         assert!(output.contains("95.0/100"));
@@ -424,7 +424,7 @@ mod coverage_tests {
     #[test]
     fn test_format_markdown_report_basic() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
 
         let output = format_markdown_report(&result).unwrap();
         assert!(output.contains("# CUDA-SIMD TDG Analysis Report"));
@@ -441,7 +441,7 @@ mod coverage_tests {
     #[test]
     fn test_format_markdown_report_with_defects() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result_with_defects(&temp_dir.path().to_path_buf());
+        let result = create_mock_result_with_defects(temp_dir.path());
 
         let output = format_markdown_report(&result).unwrap();
         assert!(output.contains("## Defects"));
@@ -454,7 +454,7 @@ mod coverage_tests {
     #[test]
     fn test_format_html_report_basic() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result(&temp_dir.path().to_path_buf());
+        let result = create_mock_result(temp_dir.path());
 
         let output = format_html_report(&result).unwrap();
         assert!(output.contains("<!DOCTYPE html>"));
@@ -469,7 +469,7 @@ mod coverage_tests {
         let temp_dir = TempDir::new().unwrap();
 
         // High score should use "pass" class
-        let mut result = create_mock_result(&temp_dir.path().to_path_buf());
+        let mut result = create_mock_result(temp_dir.path());
         result.score = create_mock_popper_score(90.0, true);
         let output = format_html_report(&result).unwrap();
         assert!(output.contains("class=\"pass\""));
@@ -485,7 +485,7 @@ mod coverage_tests {
     #[test]
     fn test_format_sarif_structure() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result_with_defects(&temp_dir.path().to_path_buf());
+        let result = create_mock_result_with_defects(temp_dir.path());
 
         let output = format_sarif(&result).unwrap();
         let sarif: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -502,7 +502,7 @@ mod coverage_tests {
     #[test]
     fn test_format_sarif_defect_levels() {
         let temp_dir = TempDir::new().unwrap();
-        let result = create_mock_result_with_defects(&temp_dir.path().to_path_buf());
+        let result = create_mock_result_with_defects(temp_dir.path());
 
         let output = format_sarif(&result).unwrap();
         let sarif: serde_json::Value = serde_json::from_str(&output).unwrap();
@@ -532,7 +532,7 @@ mod coverage_tests {
 
         write_output("test output content", &config).unwrap();
 
-        let content = fs::read_to_string(&output_path).unwrap();
+        let content = fs::read_to_string(output_path).unwrap();
         assert_eq!(content, "test output content");
     }
 
@@ -739,7 +739,7 @@ mod coverage_tests {
         let result = handle_report(
             &temp_dir.path().to_path_buf(),
             "markdown",
-            Some(&output_path),
+            Some(output_path),
             &config,
         )
         .await;
@@ -958,7 +958,7 @@ mod coverage_tests {
     async fn test_analyze_cuda_file() {
         let temp_dir = TempDir::new().unwrap();
         let cuda_file = &temp_dir.path().to_path_buf().join("kernel.cu");
-        let mut file = fs::File::create(&cuda_file).unwrap();
+        let mut file = fs::File::create(cuda_file).unwrap();
         writeln!(
             file,
             r#"
@@ -974,7 +974,7 @@ __global__ void test_kernel(float* a, float* b, int n) {{
         .unwrap();
 
         let config = create_config_with_format(CudaTdgOutputFormat::Json);
-        let result = handle_analyze(&cuda_file, &config).await;
+        let result = handle_analyze(cuda_file, &config).await;
         assert!(result.is_ok());
     }
 
@@ -982,7 +982,7 @@ __global__ void test_kernel(float* a, float* b, int n) {{
     async fn test_analyze_ptx_file() {
         let temp_dir = TempDir::new().unwrap();
         let ptx_file = &temp_dir.path().to_path_buf().join("kernel.ptx");
-        let mut file = fs::File::create(&ptx_file).unwrap();
+        let mut file = fs::File::create(ptx_file).unwrap();
         writeln!(
             file,
             r#"
@@ -1012,7 +1012,7 @@ __global__ void test_kernel(float* a, float* b, int n) {{
         .unwrap();
 
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
-        let result = handle_analyze(&ptx_file, &config).await;
+        let result = handle_analyze(ptx_file, &config).await;
         assert!(result.is_ok());
     }
 
@@ -1020,7 +1020,7 @@ __global__ void test_kernel(float* a, float* b, int n) {{
     async fn test_analyze_simd_rust_file() {
         let temp_dir = TempDir::new().unwrap();
         let rs_file = &temp_dir.path().to_path_buf().join("simd.rs");
-        let mut file = fs::File::create(&rs_file).unwrap();
+        let mut file = fs::File::create(rs_file).unwrap();
         writeln!(
             file,
             r#"
@@ -1042,7 +1042,7 @@ unsafe fn add_avx2(a: &[f32], b: &[f32], c: &mut [f32]) {{
         .unwrap();
 
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
-        let result = handle_analyze(&rs_file, &config).await;
+        let result = handle_analyze(rs_file, &config).await;
         assert!(result.is_ok());
     }
 
@@ -1050,7 +1050,7 @@ unsafe fn add_avx2(a: &[f32], b: &[f32], c: &mut [f32]) {{
     async fn test_analyze_wgsl_file() {
         let temp_dir = TempDir::new().unwrap();
         let wgsl_file = &temp_dir.path().to_path_buf().join("compute.wgsl");
-        let mut file = fs::File::create(&wgsl_file).unwrap();
+        let mut file = fs::File::create(wgsl_file).unwrap();
         writeln!(
             file,
             r#"
@@ -1073,7 +1073,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
         .unwrap();
 
         let config = create_config_with_format(CudaTdgOutputFormat::Terminal);
-        let result = handle_analyze(&wgsl_file, &config).await;
+        let result = handle_analyze(wgsl_file, &config).await;
         assert!(result.is_ok());
     }
 
@@ -1085,7 +1085,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {{
 
         // Create a file with ticket references
         let test_file = &temp_dir.path().to_path_buf().join("test_regression.rs");
-        let mut file = fs::File::create(&test_file).unwrap();
+        let mut file = fs::File::create(test_file).unwrap();
         writeln!(
             file,
             r#"

@@ -206,7 +206,7 @@ fn test_extract_doc_comment_block() {
         doc.is_none()
             || doc
                 .as_ref()
-                .map_or(false, |d| d.contains("Block doc comment"))
+                .is_some_and(|d| d.contains("Block doc comment"))
     );
 }
 

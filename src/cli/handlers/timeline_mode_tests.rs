@@ -23,7 +23,7 @@ mod coverage_tests {
         #[test]
         fn test_clone() {
             let original = TimelineMode::Interactive;
-            let cloned = original.clone();
+            let cloned = original;
             assert_eq!(original, cloned);
         }
 

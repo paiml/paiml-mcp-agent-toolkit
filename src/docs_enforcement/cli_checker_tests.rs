@@ -230,7 +230,7 @@ Options:
     #[test]
     fn test_extract_description_from_flag_line_no_description() {
         let description = extract_description_from_flag_line("  --verbose");
-        assert!(description.is_none() || description.as_ref().map_or(false, |d| d.is_empty()));
+        assert!(description.is_none() || description.as_ref().is_some_and(|d| d.is_empty()));
     }
 
     #[test]

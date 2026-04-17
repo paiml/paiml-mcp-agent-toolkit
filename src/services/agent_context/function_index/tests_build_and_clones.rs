@@ -100,7 +100,7 @@ fn test_build_with_binary_file() {
     std::fs::create_dir_all(project_path.join("src")).unwrap();
     std::fs::write(project_path.join("src/lib.rs"), "fn valid() {}\n").unwrap();
     // Binary file should be skipped
-    std::fs::write(project_path.join("src/data.bin"), &[0u8, 1, 2, 255, 254]).unwrap();
+    std::fs::write(project_path.join("src/data.bin"), [0u8, 1, 2, 255, 254]).unwrap();
 
     let index = AgentContextIndex::build(project_path).unwrap();
     // Should index the .rs file but skip .bin

@@ -9,7 +9,7 @@ proptest! {
     fn test_resolve_scaffold_templates_never_returns_empty_for_known_toolchains(
         toolchain in prop_oneof![Just("rust"), Just("deno"), Just("python-uv")]
     ) {
-        let result = resolve_scaffold_templates(&toolchain, vec![]);
+        let result = resolve_scaffold_templates(toolchain, vec![]);
         prop_assert!(!result.is_empty());
     }
 
@@ -65,8 +65,8 @@ proptest! {
         let builder1 = AgentContextBuilder::new("test", "mcp-server");
         let builder2 = AgentContextBuilder::new("test", "mcp-server");
 
-        let result1 = add_quality_level_to_builder(builder1, &quality);
-        let result2 = add_quality_level_to_builder(builder2, &quality);
+        let result1 = add_quality_level_to_builder(builder1, quality);
+        let result2 = add_quality_level_to_builder(builder2, quality);
 
         let ctx1 = result1.build().unwrap();
         let ctx2 = result2.build().unwrap();

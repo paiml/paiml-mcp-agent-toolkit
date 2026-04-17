@@ -33,7 +33,7 @@ fn test_cb1000_passes_with_readme() {
     fs::create_dir_all(&models_dir).unwrap();
     fs::write(
         models_dir.join("model.gguf"),
-        &[0x47, 0x47, 0x55, 0x46, 0, 0, 0, 0],
+        [0x47, 0x47, 0x55, 0x46, 0, 0, 0, 0],
     )
     .unwrap();
     fs::write(models_dir.join("README.md"), "# Model Card\n").unwrap();
@@ -114,7 +114,7 @@ fn test_cb1007_detects_large_file() {
     // We can't create a 10GB file in tests, but we can test the threshold logic
     let temp = TempDir::new().unwrap();
     // Create a small file — should NOT trigger
-    fs::write(temp.path().join("small.gguf"), &[0u8; 100]).unwrap();
+    fs::write(temp.path().join("small.gguf"), [0u8; 100]).unwrap();
     let violations = detect_cb1007_excessive_file_size(temp.path());
     assert!(violations.is_empty());
 }
@@ -122,9 +122,9 @@ fn test_cb1007_detects_large_file() {
 #[test]
 fn test_walkdir_model_files() {
     let temp = TempDir::new().unwrap();
-    fs::write(temp.path().join("model.gguf"), &[0u8; 16]).unwrap();
-    fs::write(temp.path().join("weights.safetensors"), &[0u8; 16]).unwrap();
-    fs::write(temp.path().join("model.apr"), &[0u8; 16]).unwrap();
+    fs::write(temp.path().join("model.gguf"), [0u8; 16]).unwrap();
+    fs::write(temp.path().join("weights.safetensors"), [0u8; 16]).unwrap();
+    fs::write(temp.path().join("model.apr"), [0u8; 16]).unwrap();
     fs::write(temp.path().join("code.rs"), "fn main() {}").unwrap();
 
     let files = walkdir_model_files(temp.path());

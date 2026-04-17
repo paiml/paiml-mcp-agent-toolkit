@@ -21,7 +21,7 @@
     #[test]
     fn test_file_category_clone_and_copy() {
         let category = FileCategory::TemporaryScript;
-        let cloned = category.clone();
+        let cloned = category;
         let copied = category;
         assert_eq!(category, cloned);
         assert_eq!(category, copied);

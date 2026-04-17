@@ -21,7 +21,7 @@
 
     #[test]
     fn test_demo_scorer_default() {
-        let scorer = DemoScorer::default();
+        let scorer = DemoScorer;
         assert_eq!(scorer.category_name(), "Demo Quality");
         assert_eq!(scorer.max_score(), 10.0);
     }

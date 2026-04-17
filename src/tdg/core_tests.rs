@@ -64,7 +64,7 @@ fn test_grade_ordering() {
 fn test_grade_clone_copy() {
     let g1 = Grade::APLus;
     let g2 = g1;
-    let g3 = g1.clone();
+    let g3 = g1;
     assert_eq!(g1, g2);
     assert_eq!(g1, g3);
 }
