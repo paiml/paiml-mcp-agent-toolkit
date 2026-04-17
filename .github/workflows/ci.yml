@@ -31,3 +31,27 @@ jobs:
             exit 1
           fi
           echo "All required jobs passed"
+
+  # GH-275: Post-merge mutation testing for RPS Rust Tooling score.
+  # Runs only on push to master (never on PRs — takes 30-120 min).
+  # `continue-on-error: true` keeps this informational, not blocking.
+  mutants:
+    runs-on: [self-hosted, X64, Linux]
+    continue-on-error: true
+    container:
+      image: localhost:5000/sovereign-ci:stable
+    timeout-minutes: 120
+    needs: [gate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants --locked
+      - name: Run mutation testing
+        run: cargo mutants --no-times --timeout 300 --in-place -- --lib
+        continue-on-error: true
+      - name: Upload mutation results
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-results
+          path: mutants.out/
