@@ -3049,11 +3049,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Spec 27: Work Contract Binding — implements[] field + bind/unbind CLI + CB-1600..1609'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-04-17T15:43:47Z
-  updated: 2026-04-17T15:43:47Z
+  updated: 2026-04-17T20:49:52.129861993+00:00
   spec: null
   acceptance_criteria:
   - Implements docs/specifications/components/pmat-work-contract-binding.md. Adds ContractBinding struct to WorkContract, --implements flag, YAML resolution, SHA drift detection.
@@ -3069,11 +3069,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Spec 28: Work Verification Ladder — typed VerificationLevel enum + L0-L5 gates + CB-1610..1619'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-04-17T15:43:49Z
-  updated: 2026-04-17T15:43:49Z
+  updated: 2026-04-17T20:52:15.650885405+00:00
   spec: null
   acceptance_criteria:
   - 'Implements docs/specifications/components/pmat-work-verification-ladder.md. Replaces verification_level: String with typed enum, adds pmat work verify command, per-level completion gates.'
@@ -3089,11 +3089,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Spec 29: Falsification Unification — ProvableContract variant + unified roster + CB-1620..1629'
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-04-17T15:43:51Z
-  updated: 2026-04-17T15:43:51Z
+  updated: 2026-04-17T20:52:22.751458649+00:00
   spec: null
   acceptance_criteria:
   - Implements docs/specifications/components/pmat-work-falsification-unification.md. Adds FalsificationMethod::ProvableContract variant, unified pmat work falsify runner consuming YAML tests.
@@ -3109,11 +3109,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Spec 30: Work Compile-Time Codegen — #[pmat_work_contract] proc macro + CB-1630..1639'
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-04-17T15:43:54Z
-  updated: 2026-04-17T15:43:54Z
+  updated: 2026-04-17T20:52:23.554060205+00:00
   spec: null
   acceptance_criteria:
   - Implements docs/specifications/components/pmat-work-compile-time-codegen.md. New pmat-work-macros crate, pmat work codegen command, generated contracts/work/&lt;ID&gt;.rs modules with debug_assert wrappers.
@@ -3129,11 +3129,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Spec 31: Work CoT Proof Derivation — structured ChainOfThoughtStep + CB-1640..1649'
-  status: planned
+  status: inprogress
   priority: medium
   assigned_to: null
   created: 2026-04-17T15:43:55Z
-  updated: 2026-04-17T15:43:55Z
+  updated: 2026-04-17T20:52:24.358195404+00:00
   spec: null
   acceptance_criteria:
   - Implements docs/specifications/components/pmat-work-cot-proof-derivation.md. Restructures CoT as {assumption, implication, evidence_method, discharged_by}, auto-derives proof obligations and falsifiable claims.
