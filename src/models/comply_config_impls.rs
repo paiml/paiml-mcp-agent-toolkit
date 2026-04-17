@@ -53,6 +53,8 @@ impl Default for ComplyThresholds {
             require_all_traits: false,
             min_kani_coverage: 0.0,
             min_verification_level: default_min_verification_level(),
+            max_transitive: None,
+            file_health_exclude: Vec::new(),
         }
     }
 }

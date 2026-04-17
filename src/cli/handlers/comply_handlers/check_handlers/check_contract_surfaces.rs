@@ -774,24 +774,39 @@ pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-/// GH-292: Read min verification level from .pmat-gates.toml [verification_ladder]
+/// GH-292: Read min verification level from `.pmat-gates.toml [verification_ladder]`
+/// or `.pmat.yaml comply.thresholds.min_verification_level`. Gates file wins.
 fn load_verification_min_level(project_path: &Path) -> u8 {
+    if let Some(v) = load_verification_min_level_from_gates(project_path) {
+        return v;
+    }
+    load_verification_min_level_from_yaml(project_path).unwrap_or(5)
+}
+
+fn load_verification_min_level_from_gates(project_path: &Path) -> Option<u8> {
     let path = project_path.join(".pmat-gates.toml");
-    let content = match std::fs::read_to_string(&path) {
-        Ok(c) => c,
-        Err(_) => return 5, // default L5
-    };
-    let table: toml::Table = match content.parse() {
-        Ok(t) => t,
-        Err(_) => return 5,
-    };
+    let content = std::fs::read_to_string(&path).ok()?;
+    let table: toml::Table = content.parse().ok()?;
     table
         .get("verification_ladder")
         .and_then(|vl| vl.get("min_level"))
         .and_then(|v| v.as_str())
-        .and_then(|s| s.strip_prefix('L').or(Some(s)))
-        .and_then(|s| s.parse::<u8>().ok())
-        .unwrap_or(5)
+        .and_then(parse_level_string)
+}
+
+fn load_verification_min_level_from_yaml(project_path: &Path) -> Option<u8> {
+    let yaml_path = project_path.join(".pmat.yaml");
+    let yml_path = project_path.join(".pmat.yml");
+    if !yaml_path.exists() && !yml_path.exists() {
+        return None;
+    }
+    let cfg = crate::models::comply_config::PmatYamlConfig::load(project_path).ok()?;
+    parse_level_string(&cfg.comply.thresholds.min_verification_level)
+}
+
+fn parse_level_string(s: &str) -> Option<u8> {
+    let stripped = s.strip_prefix('L').unwrap_or(s);
+    stripped.parse::<u8>().ok()
 }
 
 fn level_number(content: &str) -> u8 {
@@ -1283,5 +1298,47 @@ mod contract_surface_tests {
         let content = "metadata:\n  version: 1.0\nweight_roles:\n  attn_norm:\n    description: Pre-attention norm";
         let keys = extract_top_level_keys(content);
         assert!(matches!(classify_contract(&keys, content), ContractClass::SchemaRegistry));
+    }
+
+    #[test]
+    fn test_parse_level_string() {
+        assert_eq!(parse_level_string("L3"), Some(3));
+        assert_eq!(parse_level_string("L5"), Some(5));
+        assert_eq!(parse_level_string("3"), Some(3));
+        assert_eq!(parse_level_string("Lx"), None);
+        assert_eq!(parse_level_string(""), None);
+    }
+
+    #[test]
+    fn test_verification_level_default_without_config() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert_eq!(load_verification_min_level(tmp.path()), 5);
+    }
+
+    #[test]
+    fn test_verification_level_from_pmat_yaml() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".pmat.yaml"),
+            "comply:\n  thresholds:\n    min_verification_level: \"L3\"\n",
+        )
+        .unwrap();
+        assert_eq!(load_verification_min_level(tmp.path()), 3);
+    }
+
+    #[test]
+    fn test_verification_level_gates_wins_over_yaml() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".pmat-gates.toml"),
+            "[verification_ladder]\nmin_level = \"L2\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            tmp.path().join(".pmat.yaml"),
+            "comply:\n  thresholds:\n    min_verification_level: \"L4\"\n",
+        )
+        .unwrap();
+        assert_eq!(load_verification_min_level(tmp.path()), 2);
     }
 }

@@ -208,6 +208,16 @@ pub struct ComplyThresholds {
     /// Minimum verification level: "L0", "L1", "L2", "L3", "L4", "L5". Default: "L0"
     #[serde(default = "default_min_verification_level")]
     pub min_verification_level: String,
+
+    /// GH-292: Maximum transitive dependency count for CB-081.
+    /// `None` uses the built-in default (250, with sovereign adjustment).
+    #[serde(default)]
+    pub max_transitive: Option<usize>,
+
+    /// GH-292: File patterns excluded from File Health check (glob syntax).
+    /// Patterns match either filename or path substring.
+    #[serde(default)]
+    pub file_health_exclude: Vec<String>,
 }
 
 fn default_min_binding_existence() -> f64 {

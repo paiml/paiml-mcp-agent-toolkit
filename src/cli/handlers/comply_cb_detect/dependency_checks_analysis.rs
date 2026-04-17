@@ -1,8 +1,16 @@
 // dependency_checks_analysis.rs — included by dependency_checks.rs
 // CB-081 violation detection, scoring, Cargo.toml analysis, trend tracking
 
-/// GH-292: Read max_transitive override from .pmat-gates.toml [dependency_health]
+/// GH-292: Read max_transitive override from `.pmat-gates.toml [dependency_health]`
+/// or `.pmat.yaml comply.thresholds.max_transitive`. Gates file wins when both exist.
 fn load_dependency_max_transitive() -> Option<usize> {
+    if let Some(v) = load_dependency_max_transitive_from_gates() {
+        return Some(v);
+    }
+    load_dependency_max_transitive_from_yaml()
+}
+
+fn load_dependency_max_transitive_from_gates() -> Option<usize> {
     let path = std::path::Path::new(".pmat-gates.toml");
     let content = std::fs::read_to_string(path).ok()?;
     let table: toml::Table = content.parse().ok()?;
@@ -11,6 +19,12 @@ fn load_dependency_max_transitive() -> Option<usize> {
         .and_then(|dh| dh.get("max_transitive"))
         .and_then(|v| v.as_integer())
         .map(|v| v as usize)
+}
+
+fn load_dependency_max_transitive_from_yaml() -> Option<usize> {
+    let cwd = std::env::current_dir().ok()?;
+    let cfg = crate::models::comply_config::PmatYamlConfig::load(&cwd).ok()?;
+    cfg.comply.thresholds.max_transitive
 }
 
 /// Build a CB-081-A threshold violation if dependency counts exceed the given
