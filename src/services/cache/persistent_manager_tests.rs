@@ -269,8 +269,10 @@ mod tests {
     fn test_get_diagnostics_memory_pressure_calculation() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let cache_dir = temp_dir.path().join("cache");
-        let mut config = CacheConfig::default();
-        config.max_memory_mb = 100;
+        let config = CacheConfig {
+            max_memory_mb: 100,
+            ..Default::default()
+        };
         let manager = PersistentCacheManager::new(config, cache_dir).unwrap();
 
         let diag = manager.get_diagnostics();
@@ -285,8 +287,10 @@ mod tests {
     fn test_get_diagnostics_zero_max_memory() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let cache_dir = temp_dir.path().join("cache");
-        let mut config = CacheConfig::default();
-        config.max_memory_mb = 0;
+        let config = CacheConfig {
+            max_memory_mb: 0,
+            ..Default::default()
+        };
         let manager = PersistentCacheManager::new(config, cache_dir).unwrap();
 
         let diag = manager.get_diagnostics();

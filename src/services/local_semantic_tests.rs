@@ -201,7 +201,7 @@ mod tests {
             "fn subtract(a: i32, b: i32) -> i32 { a - b }"];
 
         let mut embedder = TfIdfEmbedder::new(50);
-        embedder.fit(&documents.iter().copied().collect::<Vec<_>>());
+        embedder.fit(&documents.to_vec());
 
         // Embed first document
         let embedding = embedder.embed(documents[0]).unwrap();
@@ -229,7 +229,7 @@ mod tests {
         ];
 
         let mut embedder = TfIdfEmbedder::new(100);
-        embedder.fit(&documents.iter().copied().collect::<Vec<_>>());
+        embedder.fit(&documents.to_vec());
 
         for doc in &documents {
             let embedding = embedder.embed(doc).unwrap();
@@ -260,7 +260,7 @@ mod tests {
         ];
 
         let mut embedder = TfIdfEmbedder::new(100);
-        embedder.fit(&documents.iter().copied().collect::<Vec<_>>());
+        embedder.fit(&documents.to_vec());
 
         let emb1 = embedder.embed(documents[0]).unwrap();
         let emb2 = embedder.embed(documents[1]).unwrap();
@@ -289,10 +289,10 @@ mod tests {
             "function third() { return 3; }"];
 
         let mut embedder = TfIdfEmbedder::new(50);
-        embedder.fit(&documents.iter().copied().collect::<Vec<_>>());
+        embedder.fit(&documents.to_vec());
 
         let batch_embeddings = embedder
-            .embed_batch(&documents.iter().copied().collect::<Vec<_>>())
+            .embed_batch(&documents.to_vec())
             .unwrap();
 
         assert_eq!(batch_embeddings.len(), 3);
@@ -336,7 +336,7 @@ mod tests {
         let documents = ["fn main() {}", "def test(): pass", "function x() {}"];
 
         let mut embedder = TfIdfEmbedder::new(100);
-        embedder.fit(&documents.iter().copied().collect::<Vec<_>>());
+        embedder.fit(&documents.to_vec());
 
         // Short documents should produce sparse embeddings
         let embedding = embedder.embed("fn main()").unwrap();
@@ -365,7 +365,7 @@ mod tests {
             "rare unique common word"];
 
         let mut embedder = TfIdfEmbedder::new(50);
-        embedder.fit(&documents.iter().copied().collect::<Vec<_>>());
+        embedder.fit(&documents.to_vec());
 
         let common_emb = embedder.embed("common").unwrap();
         let rare_emb = embedder.embed("rare").unwrap();

@@ -60,8 +60,10 @@ fn test_effective_severity_default() {
 
 #[test]
 fn test_effective_severity_strict_mode() {
-    let mut config = LintConfig::default();
-    config.strict = true;
+    let config = LintConfig {
+        strict: true,
+        ..Default::default()
+    };
     // Warnings promoted to errors in strict mode
     assert_eq!(
         config.effective_severity("DBC-VAL-001", LintSeverity::Warning),
@@ -172,8 +174,10 @@ fn test_apply_lint_config_strict_promotes_warnings() {
         info_count: 0,
     };
 
-    let mut config = LintConfig::default();
-    config.strict = true;
+    let config = LintConfig {
+        strict: true,
+        ..Default::default()
+    };
 
     let filtered = apply_lint_config(&report, &config);
     assert_eq!(filtered.findings[0].severity, LintSeverity::Error);

@@ -390,9 +390,11 @@ mod tests {
                 .await
                 .expect("internal error");
 
-        let mut state = ExampleState::default();
-        state.last_event_id = 100;
-        state.event_count = 50;
+        let state = ExampleState {
+            last_event_id: 100,
+            event_count: 50,
+            ..Default::default()
+        };
 
         let snapshot_id = manager
             .save_snapshot(&state, None)

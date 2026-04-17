@@ -53,8 +53,10 @@ mod tests {
         let config = CacheConfig::default();
         assert_eq!(config.ast_ttl(), Duration::from_secs(300));
 
-        let mut custom_config = CacheConfig::default();
-        custom_config.ast_ttl_secs = 60;
+        let custom_config = CacheConfig {
+            ast_ttl_secs: 60,
+            ..Default::default()
+        };
         assert_eq!(custom_config.ast_ttl(), Duration::from_secs(60));
     }
 
@@ -63,8 +65,10 @@ mod tests {
         let config = CacheConfig::default();
         assert_eq!(config.template_ttl(), Duration::from_secs(600));
 
-        let mut custom_config = CacheConfig::default();
-        custom_config.template_ttl_secs = 1200;
+        let custom_config = CacheConfig {
+            template_ttl_secs: 1200,
+            ..Default::default()
+        };
         assert_eq!(custom_config.template_ttl(), Duration::from_secs(1200));
     }
 
@@ -73,8 +77,10 @@ mod tests {
         let config = CacheConfig::default();
         assert_eq!(config.dag_ttl(), Duration::from_secs(180));
 
-        let mut custom_config = CacheConfig::default();
-        custom_config.dag_ttl_secs = 360;
+        let custom_config = CacheConfig {
+            dag_ttl_secs: 360,
+            ..Default::default()
+        };
         assert_eq!(custom_config.dag_ttl(), Duration::from_secs(360));
     }
 
@@ -83,8 +89,10 @@ mod tests {
         let config = CacheConfig::default();
         assert_eq!(config.churn_ttl(), Duration::from_secs(1800));
 
-        let mut custom_config = CacheConfig::default();
-        custom_config.churn_ttl_secs = 3600;
+        let custom_config = CacheConfig {
+            churn_ttl_secs: 3600,
+            ..Default::default()
+        };
         assert_eq!(custom_config.churn_ttl(), Duration::from_secs(3600));
     }
 
@@ -93,8 +101,10 @@ mod tests {
         let config = CacheConfig::default();
         assert_eq!(config.git_stats_ttl(), Duration::from_secs(900));
 
-        let mut custom_config = CacheConfig::default();
-        custom_config.git_stats_ttl_secs = 450;
+        let custom_config = CacheConfig {
+            git_stats_ttl_secs: 450,
+            ..Default::default()
+        };
         assert_eq!(custom_config.git_stats_ttl(), Duration::from_secs(450));
     }
 
@@ -108,8 +118,10 @@ mod tests {
         // 100 MB = 100 * 1024 * 1024 = 104_857_600 bytes
         assert_eq!(config.max_memory_bytes(), 104_857_600);
 
-        let mut custom_config = CacheConfig::default();
-        custom_config.max_memory_mb = 256;
+        let mut custom_config = CacheConfig {
+            max_memory_mb: 256,
+            ..Default::default()
+        };
         assert_eq!(custom_config.max_memory_bytes(), 256 * 1024 * 1024);
 
         custom_config.max_memory_mb = 1;
@@ -383,12 +395,14 @@ mod tests {
 
     #[test]
     fn test_zero_ttl_values() {
-        let mut config = CacheConfig::default();
-        config.ast_ttl_secs = 0;
-        config.template_ttl_secs = 0;
-        config.dag_ttl_secs = 0;
-        config.churn_ttl_secs = 0;
-        config.git_stats_ttl_secs = 0;
+        let config = CacheConfig {
+            ast_ttl_secs: 0,
+            template_ttl_secs: 0,
+            dag_ttl_secs: 0,
+            churn_ttl_secs: 0,
+            git_stats_ttl_secs: 0,
+            ..Default::default()
+        };
 
         assert_eq!(config.ast_ttl(), Duration::from_secs(0));
         assert_eq!(config.template_ttl(), Duration::from_secs(0));
@@ -399,24 +413,30 @@ mod tests {
 
     #[test]
     fn test_large_ttl_values() {
-        let mut config = CacheConfig::default();
-        config.ast_ttl_secs = u64::MAX;
+        let config = CacheConfig {
+            ast_ttl_secs: u64::MAX,
+            ..Default::default()
+        };
 
         assert_eq!(config.ast_ttl(), Duration::from_secs(u64::MAX));
     }
 
     #[test]
     fn test_empty_warmup_patterns() {
-        let mut config = CacheConfig::default();
-        config.warmup_patterns = vec![];
+        let config = CacheConfig {
+            warmup_patterns: vec![],
+            ..Default::default()
+        };
 
         assert!(config.warmup_patterns.is_empty());
     }
 
     #[test]
     fn test_large_memory_configuration() {
-        let mut config = CacheConfig::default();
-        config.max_memory_mb = 16384; // 16 GB
+        let config = CacheConfig {
+            max_memory_mb: 16384, // 16 GB
+            ..Default::default()
+        };
 
         assert_eq!(config.max_memory_bytes(), 16384 * 1024 * 1024);
     }

@@ -125,10 +125,12 @@ mod red_phase_tests {
     /// Grade calculation should work correctly after normalization
     #[test]
     fn red_test_grade_must_match_normalized_score() {
-        let mut score = TdgScore::default();
         // Enable contract coverage so this test validates raw grade mapping
         // (the contract cap is tested separately in test_tdg_score_contract_coverage_*)
-        score.has_contract_coverage = true;
+        let mut score = TdgScore {
+            has_contract_coverage: true,
+            ..Default::default()
+        };
 
         // Test various score levels
         let test_cases = vec![

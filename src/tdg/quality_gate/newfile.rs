@@ -177,8 +177,10 @@ mod tests {
 
     #[test]
     fn test_new_file_gate_disabled() {
-        let mut config = GateConfig::default();
-        config.enforce_new_files = false;
+        let config = GateConfig {
+            enforce_new_files: false,
+            ..Default::default()
+        };
 
         let gate = NewFileGate::new(config);
         let baseline = TdgBaseline::new(None);
@@ -212,8 +214,10 @@ mod tests {
 
     #[test]
     fn test_new_file_gate_with_threshold_score() {
-        let mut config = GateConfig::default();
-        config.new_file_min_grade = Grade::C;
+        let config = GateConfig {
+            new_file_min_grade: Grade::C,
+            ..Default::default()
+        };
 
         let baseline = create_test_baseline(vec![]);
         let current = create_test_baseline(vec![
@@ -227,8 +231,10 @@ mod tests {
 
     #[test]
     fn test_new_file_gate_just_below_threshold() {
-        let mut config = GateConfig::default();
-        config.new_file_min_grade = Grade::C;
+        let config = GateConfig {
+            new_file_min_grade: Grade::C,
+            ..Default::default()
+        };
 
         let baseline = create_test_baseline(vec![]);
         let current = create_test_baseline(vec![

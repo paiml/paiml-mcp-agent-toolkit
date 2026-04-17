@@ -451,9 +451,11 @@
 
     #[test]
     fn test_alert_statistics_clone() {
-        let mut stats = AlertStatistics::default();
-        stats.total_triggered = 10;
-        stats.total_resolved = 8;
+        let stats = AlertStatistics {
+            total_triggered: 10,
+            total_resolved: 8,
+            ..Default::default()
+        };
         let cloned = stats.clone();
         assert_eq!(cloned.total_triggered, 10);
         assert_eq!(cloned.total_resolved, 8);

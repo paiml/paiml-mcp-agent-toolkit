@@ -357,9 +357,11 @@ mod tests {
 
     #[test]
     fn test_format_explain_text_with_critical_defects() {
-        let mut score = TdgScore::default();
-        score.has_critical_defects = true;
-        score.critical_defects_count = 3;
+        let score = TdgScore {
+            has_critical_defects: true,
+            critical_defects_count: 3,
+            ..Default::default()
+        };
 
         let explained = ExplainedTDGScore::new(score);
         let output = format_explain_text(&explained).unwrap();

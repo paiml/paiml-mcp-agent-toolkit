@@ -230,7 +230,7 @@ fn test_discover_siblings_with_real_sibling() {
     // Configure A to point to B
     std::fs::write(
         project_a.join(".pmat/workspace.toml"),
-        r#"siblings = ["../project_b"]"#.to_string(),
+        r#"siblings = ["../project_b"]"#,
     )
     .unwrap();
 

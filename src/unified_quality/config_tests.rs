@@ -36,8 +36,10 @@ mod tests {
 
     #[test]
     fn test_should_progress_disabled() {
-        let mut config = UnifiedConfig::default();
-        config.auto_progress = false;
+        let config = UnifiedConfig {
+            auto_progress: false,
+            ..Default::default()
+        };
         assert!(!config.should_progress(30));
         assert!(!config.should_progress(100));
     }
@@ -56,9 +58,10 @@ mod tests {
 
     #[test]
     fn test_next_mode_all_transitions() {
-        let mut config = UnifiedConfig::default();
-
-        config.mode = QualityMode::Observe;
+        let mut config = UnifiedConfig {
+            mode: QualityMode::Observe,
+            ..Default::default()
+        };
         assert_eq!(config.next_mode(), Some(QualityMode::Advise));
 
         config.mode = QualityMode::Advise;

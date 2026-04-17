@@ -14,8 +14,10 @@ mod property_tests {
         fn test_diagnostics_memory_pressure_bounds(max_mb in 1usize..10000) {
             let temp_dir = TempDir::new().expect("Failed to create temp dir");
             let cache_dir = temp_dir.path().join("cache");
-            let mut config = CacheConfig::default();
-            config.max_memory_mb = max_mb;
+            let config = CacheConfig {
+                max_memory_mb: max_mb,
+                ..Default::default()
+            };
 
             if let Ok(manager) = PersistentCacheManager::new(config, cache_dir) {
                 let diag = manager.get_diagnostics();

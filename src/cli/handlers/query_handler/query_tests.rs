@@ -163,21 +163,31 @@ fn test_format_timestamp() {
 
 #[test]
 fn test_compute_decay_score() {
-    let mut hotspot = FileHotspot::default();
-    hotspot.commit_count = 10;
-    hotspot.fix_count = 5;
-    hotspot.annotation.tdg_grade = Some("D".to_string());
-    hotspot.annotation.dead_code_pct = 10.0;
+    let hotspot = FileHotspot {
+        commit_count: 10,
+        fix_count: 5,
+        annotation: FileAnnotation {
+            tdg_grade: Some("D".to_string()),
+            dead_code_pct: 10.0,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
 
     let decay = compute_decay_score(&hotspot, 100);
     assert!(decay > 0.0);
     assert!(decay <= 1.0);
 
     // Grade A with no fixes should have low decay
-    let mut healthy = FileHotspot::default();
-    healthy.commit_count = 5;
-    healthy.fix_count = 0;
-    healthy.annotation.tdg_grade = Some("A".to_string());
+    let healthy = FileHotspot {
+        commit_count: 5,
+        fix_count: 0,
+        annotation: FileAnnotation {
+            tdg_grade: Some("A".to_string()),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     let healthy_decay = compute_decay_score(&healthy, 100);
     assert!(
         healthy_decay < decay,
@@ -187,18 +197,28 @@ fn test_compute_decay_score() {
 
 #[test]
 fn test_compute_impact_risk() {
-    let mut hotspot = FileHotspot::default();
-    hotspot.commit_count = 50;
-    hotspot.annotation.max_pagerank = Some(0.01);
-    hotspot.annotation.fault_count = 3;
+    let hotspot = FileHotspot {
+        commit_count: 50,
+        annotation: FileAnnotation {
+            max_pagerank: Some(0.01),
+            fault_count: 3,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
 
     let risk = compute_impact_risk(&hotspot, 100);
     assert!(risk > 0.0);
 
     // Zero pagerank = zero risk
-    let mut low_risk = FileHotspot::default();
-    low_risk.commit_count = 50;
-    low_risk.annotation.max_pagerank = Some(0.0);
+    let low_risk = FileHotspot {
+        commit_count: 50,
+        annotation: FileAnnotation {
+            max_pagerank: Some(0.0),
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     assert_eq!(compute_impact_risk(&low_risk, 100), 0.0);
 }
 

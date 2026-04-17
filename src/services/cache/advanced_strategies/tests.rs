@@ -764,8 +764,10 @@ mod tests {
 
     #[test]
     fn test_calculate_expiration_ttl_policy() {
-        let mut config = AdvancedCacheConfig::default();
-        config.eviction_policy = EvictionPolicy::TTL;
+        let config = AdvancedCacheConfig {
+            eviction_policy: EvictionPolicy::TTL,
+            ..Default::default()
+        };
         let cache: AdaptiveCache<String, String> = AdaptiveCache::new(config);
 
         let expiration_l1 = cache.calculate_expiration(CacheTier::L1);
