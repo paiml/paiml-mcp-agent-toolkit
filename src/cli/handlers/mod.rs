@@ -129,6 +129,7 @@ pub mod utility_serve_handlers; // Server handlers extracted for file health (CB
 pub mod wasm_handler;
 pub mod wasm_handlers; // Phase 4: Organizational Intelligence Integration
 pub mod work_contract; // PMAT Work Contract: Popperian falsification-based quality enforcement
+pub mod work_contract_binding; // Component 27: provable-contracts binding resolver
 pub mod work_falsification; // PMAT Work Contract: Falsification executor
 pub mod work_handlers; // Issue #75: Unified GitHub/YAML workflow // GH-102: Toyota Way QA validation
 pub mod work_ledger; // Falsification ledger: append-only receipt tracking

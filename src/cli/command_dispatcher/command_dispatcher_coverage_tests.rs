@@ -861,6 +861,7 @@ mod coverage_tests {
             profile: None,
             without: None,
             iteration: 1,
+            implements: Vec::new(),
         };
 
         let result = CommandDispatcher::execute_work_command(&command).await;

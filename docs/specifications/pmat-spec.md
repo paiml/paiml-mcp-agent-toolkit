@@ -34,6 +34,11 @@
 | 24 | [Verification Backends](#24-verification-backends) | [verification-backends.md](components/verification-backends.md) | Active |
 | 25 | [Commit-Level Contract Enforcement & Asset Contracts](#25-commit-level-contract-enforcement--asset-contracts) | [commit-level-contract-enforcement.md](components/commit-level-contract-enforcement.md) | Active |
 | 26 | [Self-Enforcement & Dogfooding](#26-self-enforcement--dogfooding) | [self-enforcement.md](components/self-enforcement.md) | Active |
+| 27 | [Work Contract Binding](#27-work-contract-binding) | [pmat-work-contract-binding.md](components/pmat-work-contract-binding.md) | Draft |
+| 28 | [Work Verification Ladder](#28-work-verification-ladder) | [pmat-work-verification-ladder.md](components/pmat-work-verification-ladder.md) | Draft |
+| 29 | [Work Falsification Unification](#29-work-falsification-unification) | [pmat-work-falsification-unification.md](components/pmat-work-falsification-unification.md) | Draft |
+| 30 | [Work Compile-Time Codegen](#30-work-compile-time-codegen) | [pmat-work-compile-time-codegen.md](components/pmat-work-compile-time-codegen.md) | Draft |
+| 31 | [Work CoT Proof Derivation](#31-work-cot-proof-derivation) | [pmat-work-cot-proof-derivation.md](components/pmat-work-cot-proof-derivation.md) | Draft |
 
 ---
 
@@ -461,6 +466,60 @@ pre-release quality gate. CB-160 (self-score gate), CB-161 (penetration gate).
 
 **Key metrics**: RPS Grade A (≥90%), penetration ≥95% at 80% threshold,
 all 11 categories ≥70%, 10/11 categories ≥80%.
+
+---
+
+## 27. Work Contract Binding
+
+**Sub-spec**: [components/pmat-work-contract-binding.md](components/pmat-work-contract-binding.md)
+
+Bind `pmat work` tickets to provable-contracts YAML equations via
+`WorkContract.implements: Vec<ContractBinding>`. Inherits preconditions,
+postconditions, falsification tests from bound YAML. CB-1600..1609 enforce
+binding existence, SHA drift, and inheritance integrity.
+
+---
+
+## 28. Work Verification Ladder
+
+**Sub-spec**: [components/pmat-work-verification-ladder.md](components/pmat-work-verification-ladder.md)
+
+Replace `verification_level: String` with typed `VerificationLevel` enum
+(L0-L5) and concrete per-level completion gates: L3 = falsification tests
+pass, L4 = Kani verified, L5 = Lean proved with zero `sorry`. CB-1610..1619.
+
+---
+
+## 29. Work Falsification Unification
+
+**Sub-spec**: [components/pmat-work-falsification-unification.md](components/pmat-work-falsification-unification.md)
+
+Single falsification roster combining pmat-native `FalsificationMethod`
+variants with a new `ProvableContract { yaml_path, test_id }` variant.
+Inherited tests are immutable; completion requires all roster entries.
+CB-1620..1629.
+
+---
+
+## 30. Work Compile-Time Codegen
+
+**Sub-spec**: [components/pmat-work-compile-time-codegen.md](components/pmat-work-compile-time-codegen.md)
+
+`pmat work codegen <ID>` emits Rust from ticket contract clauses:
+`#[pmat_work_contract]` attribute macro + generated assertion modules under
+`contracts/work/<ID>.rs`. Build-script check blocks stale codegen.
+CB-1630..1639.
+
+---
+
+## 31. Work CoT Proof Derivation
+
+**Sub-spec**: [components/pmat-work-cot-proof-derivation.md](components/pmat-work-cot-proof-derivation.md)
+
+Structure `ChainOfThoughtStep` as `{assumption, implication, evidence_method,
+discharged_by, author}`. Auto-derive proof obligations, falsifiable claims,
+and clauses. Chain-integrity check ensures each step's assumption discharges
+against a prior step or bound equation. CB-1640..1649.
 
 ---
 

@@ -3029,3 +3029,119 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-619
+  github_issue: null
+  item_type: task
+  title: 'DEBT: Pre-commit complexity hook false-negative on zero-code repos'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-17T13:25:07Z
+  updated: 2026-04-17T13:26:37.167936474+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: PMAT-620
+  github_issue: null
+  item_type: task
+  title: 'Spec 27: Work Contract Binding — implements[] field + bind/unbind CLI + CB-1600..1609'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-04-17T15:43:47Z
+  updated: 2026-04-17T15:43:47Z
+  spec: null
+  acceptance_criteria:
+  - Implements docs/specifications/components/pmat-work-contract-binding.md. Adds ContractBinding struct to WorkContract, --implements flag, YAML resolution, SHA drift detection.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - contract-binding
+  - provable-contracts
+  - component-27
+  notes: null
+- id: PMAT-621
+  github_issue: null
+  item_type: task
+  title: 'Spec 28: Work Verification Ladder — typed VerificationLevel enum + L0-L5 gates + CB-1610..1619'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-04-17T15:43:49Z
+  updated: 2026-04-17T15:43:49Z
+  spec: null
+  acceptance_criteria:
+  - 'Implements docs/specifications/components/pmat-work-verification-ladder.md. Replaces verification_level: String with typed enum, adds pmat work verify command, per-level completion gates.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - verification-ladder
+  - provable-contracts
+  - component-28
+  notes: null
+- id: PMAT-622
+  github_issue: null
+  item_type: task
+  title: 'Spec 29: Falsification Unification — ProvableContract variant + unified roster + CB-1620..1629'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-04-17T15:43:51Z
+  updated: 2026-04-17T15:43:51Z
+  spec: null
+  acceptance_criteria:
+  - Implements docs/specifications/components/pmat-work-falsification-unification.md. Adds FalsificationMethod::ProvableContract variant, unified pmat work falsify runner consuming YAML tests.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - falsification-unification
+  - provable-contracts
+  - component-29
+  notes: null
+- id: PMAT-623
+  github_issue: null
+  item_type: task
+  title: 'Spec 30: Work Compile-Time Codegen — #[pmat_work_contract] proc macro + CB-1630..1639'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-04-17T15:43:54Z
+  updated: 2026-04-17T15:43:54Z
+  spec: null
+  acceptance_criteria:
+  - Implements docs/specifications/components/pmat-work-compile-time-codegen.md. New pmat-work-macros crate, pmat work codegen command, generated contracts/work/&lt;ID&gt;.rs modules with debug_assert wrappers.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - compile-time-codegen
+  - proc-macro
+  - component-30
+  notes: null
+- id: PMAT-624
+  github_issue: null
+  item_type: task
+  title: 'Spec 31: Work CoT Proof Derivation — structured ChainOfThoughtStep + CB-1640..1649'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-04-17T15:43:55Z
+  updated: 2026-04-17T15:43:55Z
+  spec: null
+  acceptance_criteria:
+  - Implements docs/specifications/components/pmat-work-cot-proof-derivation.md. Restructures CoT as {assumption, implication, evidence_method, discharged_by}, auto-derives proof obligations and falsifiable claims.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - cot-proof-derivation
+  - provable-contracts
+  - component-31
+  notes: null
