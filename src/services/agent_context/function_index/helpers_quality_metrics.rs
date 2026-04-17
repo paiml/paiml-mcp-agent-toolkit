@@ -415,6 +415,14 @@ pub(super) fn calculate_simple_tdg(complexity: u32, satd_count: u32, loc: u32) -
         score += ((loc - 200) as f32 / 200.0).min(2.0);
     }
 
+    // GH-272: cyclomatic complexity 1 means no branches — the simplest
+    // possible control flow. Cap such functions at grade A regardless of
+    // LOC/SATD penalties (large data tables, long trivial constructors).
+    // Score 1.99 is just below the B threshold (< 2.0).
+    if complexity <= 1 {
+        score = score.min(1.99);
+    }
+
     score.min(10.0)
 }
 
