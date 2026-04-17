@@ -82,7 +82,7 @@ pub fn init() {
     println!("────────────────────────────────────────────");
 
     let context_result = tool_functions::generate_context(
-        &[sample_file.clone()],
+        std::slice::from_ref(&sample_file),
         Some(10), // max_depth
         false,    // include_dependencies
     )
@@ -177,7 +177,7 @@ pub fn init() {
     let repo_path = std::env::current_dir()?;
 
     let churn_result = tool_functions::analyze_churn(
-        &[repo_path.clone()],
+        std::slice::from_ref(&repo_path),
         Some(30), // last 30 days
         Some(5),  // top 5 files
     )

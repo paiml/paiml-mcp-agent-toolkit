@@ -746,7 +746,6 @@ expect_used = "allow"
 # churn through hundreds of mechanical fixes. Track cleanup in follow-up tickets.
 absurd_extreme_comparisons = "allow"
 assertions_on_constants = "allow"
-cloned_ref_to_slice_refs = "allow"
 cmp_owned = "allow"
 drop_non_drop = "allow"
 items_after_test_module = "allow"

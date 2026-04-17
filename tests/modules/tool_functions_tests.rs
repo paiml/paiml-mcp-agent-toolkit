@@ -296,7 +296,7 @@ async fn test_check_quality_gates_strict_mode() {
     let rust_file = temp_dir.path().join("test.rs");
     fs::write(&rust_file, "fn test() {}").unwrap();
 
-    let result_strict = check_quality_gates(&[rust_file.clone()], true).await;
+    let result_strict = check_quality_gates(std::slice::from_ref(&rust_file), true).await;
     let result_lenient = check_quality_gates(&[rust_file], false).await;
 
     // Both should succeed (different behavior internally)

@@ -87,7 +87,7 @@ fn main() {
     println!("─────────────────────────────────");
 
     let complexity_result = tool_functions::analyze_complexity(
-        &[complex_file.clone()],
+        std::slice::from_ref(&complex_file),
         Some(10), // top 10 files
         Some(5),  // threshold = 5
     )
@@ -128,7 +128,7 @@ fn main() {
     println!("─────────────────────────────────────────────");
 
     let satd_result = tool_functions::analyze_satd(
-        &[satd_file.clone()],
+        std::slice::from_ref(&satd_file),
         false, // don't include resolved
     )
     .await?;
@@ -164,7 +164,7 @@ fn main() {
     println!("─────────────────────────────────");
 
     let dead_code_result = tool_functions::analyze_dead_code(
-        &[dead_code_file.clone()],
+        std::slice::from_ref(&dead_code_file),
         false, // don't include tests
     )
     .await?;

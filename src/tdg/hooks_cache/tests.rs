@@ -261,7 +261,7 @@ fn test_check_gates_partial() {
     manager
         .update_gate(
             "complexity",
-            &[file1.clone()],
+            std::slice::from_ref(&file1),
             CacheResult::Pass,
             50,
             vec![],
@@ -359,7 +359,13 @@ fn test_smart_gate_execution_with_cache() {
 
     // Pre-cache gate1
     manager
-        .update_gate("gate1", &[file1.clone()], CacheResult::Pass, 50, vec![])
+        .update_gate(
+            "gate1",
+            std::slice::from_ref(&file1),
+            CacheResult::Pass,
+            50,
+            vec![],
+        )
         .unwrap();
 
     let gates = vec![
@@ -556,7 +562,7 @@ fn test_clear_gate() {
     manager
         .update_gate(
             "complexity",
-            &[test_file.clone()],
+            std::slice::from_ref(&test_file),
             CacheResult::Pass,
             100,
             vec![],
@@ -784,7 +790,13 @@ fn test_smart_gates_all_cached() {
 
     // Pre-cache gate1
     manager
-        .update_gate("gate1", &[file1.clone()], CacheResult::Pass, 50, vec![])
+        .update_gate(
+            "gate1",
+            std::slice::from_ref(&file1),
+            CacheResult::Pass,
+            50,
+            vec![],
+        )
         .unwrap();
 
     let gates = vec![GateDefinition::new("gate1", vec![file1])];
@@ -813,7 +825,7 @@ fn test_gate_with_warnings_stored() {
     manager
         .update_gate(
             "complexity",
-            &[test_file.clone()],
+            std::slice::from_ref(&test_file),
             CacheResult::Warn,
             100,
             warnings.clone(),
