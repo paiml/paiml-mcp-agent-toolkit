@@ -2948,3 +2948,20 @@ roadmap:
   - sovereign
   - aprender
   notes: null
+- id: PMAT-614
+  github_issue: null
+  item_type: task
+  title: 'PMAT-614: Fix 425 rust-1.94.0 clippy warnings blocking CI'
+  status: planned
+  priority: high
+  assigned_to: null
+  created: 2026-04-17T07:19:54Z
+  updated: 2026-04-17T07:19:54Z
+  spec: null
+  acceptance_criteria:
+  - 'CI has been failing on master since rust-1.94.0 introduced new clippy lints (useless_vec, clone_on_copy, default_unit_struct, field_reassign_with_default, etc). 425 warnings across tests/examples/benches. Auto-fix via cargo clippy --fix handles ~2 files; remaining need manual pattern-by-pattern fixes. Target: cargo clippy --all-targets -- -D warnings -A unused-variables passes clean. Unblocks PR #296 and future PRs.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
