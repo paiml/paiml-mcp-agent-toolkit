@@ -13,6 +13,7 @@
 
 pub(crate) mod check;
 pub(crate) mod check_best_practices;
+pub(crate) mod check_binding_scope;
 pub(crate) mod check_dead_code;
 pub(crate) mod check_extended;
 pub(crate) mod check_mono_spec;

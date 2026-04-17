@@ -557,6 +557,59 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    // Work Contract Binding enforcement (CB-1600..1609) — Component 27
+    // Sub-spec: docs/specifications/components/pmat-work-contract-binding.md
+    checks.push(filter_check_by_config(
+        super::check_binding_scope::check_binding_scope_orphan(project_path),
+        "cb-1600",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_binding_scope::check_binding_sha_drift(project_path),
+        "cb-1601",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_binding_scope::check_binding_unbind_audit(project_path),
+        "cb-1602",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_binding_scope::check_binding_inherited_clauses(project_path),
+        "cb-1603",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_binding_scope::check_binding_postcondition_weakening(project_path),
+        "cb-1604",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_binding_scope::check_binding_kani_harnesses(project_path),
+        "cb-1605",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_binding_scope::check_binding_lean_theorem(project_path),
+        "cb-1606",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_binding_scope::check_binding_equation_exists(project_path),
+        "cb-1607",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_binding_scope::check_binding_cross_consistency(project_path),
+        "cb-1608",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_binding_scope::check_binding_file_tracked(project_path),
+        "cb-1609",
+        comply_config,
+    ));
+
     let report = build_compliance_report(checks, project_version, failures_only);
     let failures = report
         .checks
