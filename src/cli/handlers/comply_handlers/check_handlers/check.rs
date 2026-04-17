@@ -769,6 +769,59 @@ pub(crate) async fn handle_check(
         comply_config,
     ));
 
+    // Work Chain-of-Thought Proof Derivation enforcement (CB-1640..1649) — Component 31
+    // Sub-spec: docs/specifications/components/pmat-work-cot-proof-derivation.md
+    checks.push(filter_check_by_config(
+        super::check_cot_proof::check_assumption_references_resolve(project_path),
+        "cb-1640",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_cot_proof::check_step_has_evidence_method(project_path),
+        "cb-1641",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_cot_proof::check_existing_test_paths_resolve(project_path),
+        "cb-1642",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_cot_proof::check_l3_structured_expr_present(project_path),
+        "cb-1643",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_cot_proof::check_agent_run_replayable(project_path),
+        "cb-1644",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_cot_proof::check_derived_yaml_obligations_present(project_path),
+        "cb-1645",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_cot_proof::check_cot_derivation_sha_fresh(project_path),
+        "cb-1646",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_cot_proof::check_no_orphan_steps(project_path),
+        "cb-1647",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_cot_proof::check_l4_axiomatic_discharge_bounded(project_path),
+        "cb-1648",
+        comply_config,
+    ));
+    checks.push(filter_check_by_config(
+        super::check_cot_proof::check_l5_lean_theorem_mapping(project_path),
+        "cb-1649",
+        comply_config,
+    ));
+
     let report = build_compliance_report(checks, project_version, failures_only);
     let failures = report
         .checks
