@@ -87,7 +87,7 @@ mod tests {
         let pruned = prune_graph_pagerank(&graph, 3);
 
         // Each remaining node should have centrality metadata
-        for (_id, node) in &pruned.nodes {
+        for node in pruned.nodes.values() {
             assert!(node.metadata.contains_key("centrality"));
         }
     }
@@ -102,7 +102,7 @@ mod tests {
         assert_eq!(scored.edges.len(), graph.edges.len());
 
         // Each node should have centrality score
-        for (_id, node) in &scored.nodes {
+        for node in scored.nodes.values() {
             assert!(node.metadata.contains_key("centrality"));
         }
     }

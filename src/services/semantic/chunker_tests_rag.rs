@@ -218,7 +218,7 @@ fn another_function() {
             .filter(|c| c.chunk_name.starts_with("complex_function"))
             .collect();
         assert!(
-            complex_parts.len() >= 1,
+            !complex_parts.is_empty(),
             "Complex function should produce at least one chunk"
         );
     }

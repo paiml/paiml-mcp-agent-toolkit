@@ -236,7 +236,7 @@ mod coverage_tests {
             + prompt_tools;
 
         // Should be approximately 24-25 tools
-        assert!(total >= 24 && total <= 26);
+        assert!((24..=26).contains(&total));
     }
 
     // ============================================================

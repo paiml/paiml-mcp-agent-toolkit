@@ -191,7 +191,7 @@
         // Value may vary based on detection order (0.8 for name-based, 1.0 for certain matches)
         let confidence = dep.unwrap().confidence;
         assert!(
-            confidence >= 0.8 && confidence <= 1.0,
+            (0.8..=1.0).contains(&confidence),
             "Confidence should be in valid range, got: {confidence}"
         );
     }

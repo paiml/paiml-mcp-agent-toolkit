@@ -182,7 +182,7 @@ edition = "2021"
         let calc = PerfectionScoreCalculator::new();
         let score = calc.get_coverage_score(temp_dir.path()).await;
         // Score based on test density heuristic
-        assert!(score >= 50.0 && score <= 95.0);
+        assert!((50.0..=95.0).contains(&score));
     }
 
     #[tokio::test]

@@ -104,7 +104,7 @@ fn test_build_with_binary_file() {
 
     let index = AgentContextIndex::build(project_path).unwrap();
     // Should index the .rs file but skip .bin
-    assert!(index.functions.len() >= 1);
+    assert!(!index.functions.is_empty());
 }
 
 #[test]

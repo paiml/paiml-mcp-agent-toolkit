@@ -527,7 +527,7 @@ fn test_calculate_variation_score_multiple_similar() {
     let matches: Vec<_> = pattern.find_iter(content).collect();
 
     let score = extractor.calculate_variation_score(&matches, content);
-    assert!(score >= 0.0 && score <= 1.0);
+    assert!((0.0..=1.0).contains(&score));
 }
 
 #[test]
@@ -796,7 +796,7 @@ fn test_calculate_messaging_variation_score() {
     let queries: Vec<_> = query_pattern.find_iter(content).collect();
 
     let score = extractor.calculate_messaging_variation_score(&sends, &queries, content);
-    assert!(score >= 0.0 && score <= 1.0);
+    assert!((0.0..=1.0).contains(&score));
 }
 
 #[test]
@@ -820,7 +820,7 @@ fn test_calculate_pattern_match_variation_score() {
 
     let score =
         extractor.calculate_pattern_match_variation_score(&enums, &matches, &arrows, content);
-    assert!(score >= 0.0 && score <= 1.0);
+    assert!((0.0..=1.0).contains(&score));
 }
 
 // File pattern extraction tests

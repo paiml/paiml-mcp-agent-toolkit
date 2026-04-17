@@ -360,6 +360,6 @@ mod coverage_tests {
     fn test_supported_extensions_returns_vec() {
         let extensions = StrategySelector::supported_extensions();
         // Should return a Vec
-        assert!(extensions.len() >= 1); // At least "rs"
+        assert!(!extensions.is_empty()); // At least "rs"
     }
 }

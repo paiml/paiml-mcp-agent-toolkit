@@ -433,7 +433,7 @@ def main():
             // Should have functions: __init__, add, multiply, main
             assert!(functions.len() >= 4);
             // Should have class: Calculator
-            assert!(types.len() >= 1);
+            assert!(!types.is_empty());
         }
 
         #[tokio::test]

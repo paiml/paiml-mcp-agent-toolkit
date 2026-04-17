@@ -120,7 +120,7 @@ const complexFunc = (
             .iter()
             .filter(|c| c.chunk_type == ChunkType::Module)
             .collect();
-        assert!(modules.len() >= 1);
+        assert!(!modules.is_empty());
     }
 
     #[test]
@@ -132,7 +132,7 @@ const complexFunc = (
             .iter()
             .filter(|c| c.chunk_type == ChunkType::Class)
             .collect();
-        assert!(classes.len() >= 1);
+        assert!(!classes.is_empty());
     }
 
     // Performance Boundary Tests
@@ -362,7 +362,7 @@ function outer() {
             .iter()
             .filter(|c| c.chunk_type == ChunkType::Function)
             .collect();
-        assert!(functions.len() >= 1);
+        assert!(!functions.is_empty());
     }
 
     // Block Comment Tests for C-family

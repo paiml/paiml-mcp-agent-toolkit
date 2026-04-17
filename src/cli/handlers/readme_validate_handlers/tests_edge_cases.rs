@@ -326,7 +326,7 @@ Supported languages:
     // README with claim inside code block (should be ignored)
     let mut readme_file = NamedTempFile::new().unwrap();
     writeln!(readme_file, "# Usage").unwrap();
-    writeln!(readme_file, "").unwrap();
+    writeln!(readme_file).unwrap();
     writeln!(readme_file, "```bash").unwrap();
     writeln!(readme_file, "# PMAT can compile code inside code block").unwrap();
     writeln!(readme_file, "pmat analyze").unwrap();

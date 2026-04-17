@@ -296,10 +296,8 @@
         // Delete the temp directory to simulate file not found
         drop(temp_dir);
 
-        // size_on_disk should return 0 for non-existent file
-        let size = backend.size_on_disk().unwrap();
-        // Either file doesn't exist (0) or we get actual size
-        assert!(size == 0 || size > 0);
+        // size_on_disk should return 0 for non-existent file, or actual size
+        let _size = backend.size_on_disk().unwrap();
     }
 
     #[test]

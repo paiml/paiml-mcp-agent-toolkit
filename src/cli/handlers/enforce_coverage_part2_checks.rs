@@ -183,7 +183,7 @@
                 .unwrap();
 
             // Should have at least one coverage violation (simulated at 65%)
-            assert!(violations.len() >= 1);
+            assert!(!violations.is_empty());
             assert_eq!(violations[0].violation_type, "coverage");
         }
     }

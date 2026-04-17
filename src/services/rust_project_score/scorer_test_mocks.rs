@@ -162,7 +162,7 @@ mod scorer_result_tests {
     #[test]
     fn test_scorer_result_and_then() {
         let result: ScorerResult<i32> = Ok(10);
-        let chained = result.and_then(|x| Ok(x * 2));
+        let chained = result.map(|x| x * 2);
         assert_eq!(chained.unwrap(), 20);
     }
 }

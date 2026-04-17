@@ -145,7 +145,7 @@ fn contains_todo() {} // no marker, just identifier
         // On a real Rust project, at least some file details should be populated
         // (e.g. Defects from .unwrap() usage, Inventory from SATD markers)
         // file_details is a HashMap<String, Vec<String>>
-        for (_category, files) in &report.file_details {
+        for files in report.file_details.values() {
             // Each entry should have at most 5 files
             assert!(files.len() <= 5, "File details capped at 5 per category");
             for f in files {

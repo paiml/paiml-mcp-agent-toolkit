@@ -52,7 +52,7 @@ mod property_tests {
             for i in 0..todo_count {
                 code.push_str(&format!("// TODO: item {}\n", i));
             }
-            code.push_str("}");
+            code.push('}');
 
             let metrics = generator.calculate_metrics(&code, "").unwrap();
             prop_assert_eq!(

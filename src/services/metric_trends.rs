@@ -165,7 +165,7 @@ mod tests {
         // Get hot metrics (sorted by score)
         let hot = store.hot_metrics();
         assert!(
-            hot.len() >= 1,
+            !hot.is_empty(),
             "Should have at least 1 metric with hotness score, got {}",
             hot.len()
         );
@@ -273,7 +273,7 @@ mod tests {
 
         let days = prediction.breach_in_days.unwrap();
         assert!(
-            days >= 20 && days <= 30,
+            (20..=30).contains(&days),
             "Breach should be in 20-30 days, got {}",
             days
         );

@@ -23,7 +23,7 @@ mod tests {
         // Rust Project Score uses 106-point scale
         let score = SimpleScore::new(95.0, 106.0, "Rust Project");
         let normalized = score.normalized();
-        assert!(normalized >= 0.0 && normalized <= 100.0);
+        assert!((0.0..=100.0).contains(&normalized));
         // 95/106 * 100 ≈ 89.6
         assert!((normalized - 89.6).abs() < 0.1);
     }
@@ -33,7 +33,7 @@ mod tests {
         // Repo Score uses 110-point scale
         let score = SimpleScore::new(99.0, 110.0, "Repo");
         let normalized = score.normalized();
-        assert!(normalized >= 0.0 && normalized <= 100.0);
+        assert!((0.0..=100.0).contains(&normalized));
         // 99/110 * 100 = 90.0
         assert!((normalized - 90.0).abs() < 0.1);
     }
@@ -43,7 +43,7 @@ mod tests {
         // Perfection Score uses 200-point scale
         let score = SimpleScore::new(180.0, 200.0, "Perfection");
         let normalized = score.normalized();
-        assert!(normalized >= 0.0 && normalized <= 100.0);
+        assert!((0.0..=100.0).contains(&normalized));
         // 180/200 * 100 = 90.0
         assert_eq!(normalized, 90.0);
     }
@@ -321,7 +321,7 @@ mod tests {
                 agg.add(SimpleScore::from_percentage(s1, "a"), w1);
                 agg.add(SimpleScore::from_percentage(s2, "b"), w2);
                 let result = agg.normalized();
-                prop_assert!(result >= 0.0 && result <= 100.0);
+                prop_assert!((0.0..=100.0).contains(&result));
                 // Result should be between min and max component
                 let min = s1.min(s2);
                 let max = s1.max(s2);

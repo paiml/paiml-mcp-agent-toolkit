@@ -120,7 +120,7 @@ except ValueError:
     #[test]
     fn test_calculate_simple_churn_score_empty() {
         let score = calculate_simple_churn_score("", 0);
-        assert!(score >= 0.0 && score <= 1.0);
+        assert!((0.0..=1.0).contains(&score));
     }
 
     #[test]
@@ -147,7 +147,7 @@ fn main() {
 }
 "#;
         let score = calculate_simple_churn_score(code, 7);
-        assert!(score >= 0.0 && score <= 1.0);
+        assert!((0.0..=1.0).contains(&score));
     }
 
     #[test]

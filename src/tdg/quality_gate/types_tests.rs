@@ -406,7 +406,7 @@ fn test_gate_config_min_grades_iteration() {
     let config = GateConfig::default();
     assert!(config.min_grades.len() >= 4); // rust, typescript, python, javascript
 
-    for (lang, _grade) in &config.min_grades {
+    for lang in config.min_grades.keys() {
         assert!(!lang.is_empty());
     }
 }

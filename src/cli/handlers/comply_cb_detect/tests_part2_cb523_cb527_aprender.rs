@@ -216,7 +216,7 @@ if model_path.join("tokenizer.json").exists() {
     .unwrap();
 
     let violations = detect_cb526_single_path_resolution(temp.path());
-    assert!(violations.len() >= 1);
+    assert!(!violations.is_empty());
     assert_eq!(violations[0].pattern_id, "CB-526");
 }
 

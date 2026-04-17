@@ -355,7 +355,7 @@ mod tests {
         let classifier = DebtClassifier::new_extended();
         // Should have 10 standard + 9 extended = 19 patterns
         assert_eq!(classifier.patterns.len(), 19);
-        assert!(classifier.compiled_patterns.len() > 0);
+        assert!(!classifier.compiled_patterns.is_empty());
     }
 
     #[test]

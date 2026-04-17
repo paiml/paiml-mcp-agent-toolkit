@@ -267,7 +267,7 @@ Config {
     .unwrap();
 
     let violations = detect_cb516_hardcoded_magic_numbers(temp.path());
-    assert!(violations.len() >= 1);
+    assert!(!violations.is_empty());
     assert_eq!(violations[0].pattern_id, "CB-516");
     assert!(violations[0].description.contains("10000.0"));
 }
@@ -349,7 +349,7 @@ DEBUG_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     .unwrap();
 
     let violations = detect_cb517_stale_debug_artifacts(temp.path());
-    assert!(violations.len() >= 1);
+    assert!(!violations.is_empty());
     assert_eq!(violations[0].pattern_id, "CB-517");
     assert!(violations[0].description.contains("Atomic"));
 }
@@ -366,7 +366,7 @@ fn test_cb517_detects_allow_unused_static() {
     .unwrap();
 
     let violations = detect_cb517_stale_debug_artifacts(temp.path());
-    assert!(violations.len() >= 1);
+    assert!(!violations.is_empty());
     assert!(violations[0].description.contains("allow(unused)"));
 }
 

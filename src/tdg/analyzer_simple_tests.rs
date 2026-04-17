@@ -422,7 +422,7 @@ fn foo() {
     #[test]
     fn test_analyze_duplication_high() {
         let repeated_line = "let result = some_very_long_function_name_here(arg1, arg2, arg3);\n";
-        let source: String = std::iter::repeat(repeated_line).take(20).collect();
+        let source: String = repeated_line.repeat(20);
         let analyzer = TdgAnalyzer::new().unwrap();
         let mut tracker = PenaltyTracker::new();
         let score = analyzer.analyze_duplication(&source, &mut tracker);

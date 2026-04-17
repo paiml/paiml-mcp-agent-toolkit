@@ -133,7 +133,7 @@ pub fn undocumented_fn() {}
         let result = scorer.score_rustdoc(temp_dir.path(), None).unwrap();
 
         // 100% documented (both fns have /// doc comments)
-        assert!(result >= 5.0 && result <= 7.0);
+        assert!((5.0..=7.0).contains(&result));
     }
 
     #[test]

@@ -364,7 +364,7 @@ async fn test_hygiene_scorer_with_ide_files() {
 
     // Should have deduction for IDE files
     let c2 = result.subcategories.iter().find(|s| s.id == "C2").unwrap();
-    assert!(c2.findings.len() >= 1 || c2.score < 5.0);
+    assert!(!c2.findings.is_empty() || c2.score < 5.0);
 }
 
 #[tokio::test]
@@ -382,5 +382,5 @@ async fn test_hygiene_scorer_with_temp_files() {
 
     // Should have deductions for temp files
     let c1 = result.subcategories.iter().find(|s| s.id == "C1").unwrap();
-    assert!(c1.findings.len() >= 1 || c1.score < 5.0);
+    assert!(!c1.findings.is_empty() || c1.score < 5.0);
 }

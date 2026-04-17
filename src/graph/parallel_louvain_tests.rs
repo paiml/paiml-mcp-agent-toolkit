@@ -319,7 +319,7 @@ mod tests {
 
         // Modularity should be in range [-0.5, 1]
         assert!(
-            modularity >= -0.5 && modularity <= 1.0,
+            (-0.5..=1.0).contains(&modularity),
             "Modularity {} should be in [-0.5, 1]",
             modularity
         );

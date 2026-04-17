@@ -197,7 +197,7 @@ async fn test_get_cpu_usage() {
     let manager = AdaptiveThresholdManager::new(AdaptiveConfig::default());
     let cpu = manager.get_cpu_usage().await;
     // Should be between 0 and 1
-    assert!(cpu >= 0.0 && cpu <= 1.0);
+    assert!((0.0..=1.0).contains(&cpu));
 }
 
 #[tokio::test]
@@ -212,7 +212,7 @@ async fn test_get_cpu_usage_with_samples() {
 
     let cpu = manager.get_cpu_usage().await;
     // Should reflect recent activity
-    assert!(cpu >= 0.0 && cpu <= 1.0);
+    assert!((0.0..=1.0).contains(&cpu));
 }
 
 #[tokio::test]

@@ -9,9 +9,9 @@ proptest! {
         let delta = after - before;
 
         // Coverage values should remain bounded
-        prop_assert!(before >= 0.0 && before <= 1.0);
-        prop_assert!(after >= 0.0 && after <= 1.0);
-        prop_assert!(delta >= -1.0 && delta <= 1.0);
+        prop_assert!((0.0..=1.0).contains(&before));
+        prop_assert!((0.0..=1.0).contains(&after));
+        prop_assert!((-1.0..=1.0).contains(&delta));
     }
 
     #[test]

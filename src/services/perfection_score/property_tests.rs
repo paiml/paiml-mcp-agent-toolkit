@@ -125,7 +125,7 @@ mod property_tests {
         fn prop_recommendations_for_low_scores(raw_score in 0.0f64..50.0) {
             let categories = vec![CategoryScore::new("Critical", raw_score, 100)];
             let result = PerfectionScoreResult::new(categories);
-            prop_assert!(result.recommendations.len() > 0);
+            prop_assert!(!result.recommendations.is_empty());
             prop_assert!(result.recommendations.iter().any(|r| r.contains("critical")));
         }
 
