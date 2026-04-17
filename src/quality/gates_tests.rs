@@ -212,10 +212,17 @@ mod tests {
 
     #[test]
     fn test_cleanup_coverage_artifacts_current_dir() {
-        // Should not panic when run on current project
-        let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        cleanup_coverage_artifacts(&project_dir);
-        // Success if no panic
+        use std::fs;
+        use tempfile::tempdir;
+
+        // Use a tempdir — calling this with CARGO_MANIFEST_DIR during a coverage
+        // run would wipe llvm-cov's own target/llvm-cov-target and break
+        // object-file collection (caused PR #296 coverage job failure).
+        let temp = tempdir().unwrap();
+        let project_dir = temp.path();
+        fs::create_dir_all(project_dir.join("target").join("llvm-cov-target")).unwrap();
+        cleanup_coverage_artifacts(project_dir);
+        assert!(!project_dir.join("target").join("llvm-cov-target").exists());
     }
 
     #[test]
