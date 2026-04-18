@@ -35,10 +35,15 @@
 //                   Skip-if-absent (needs L2+ tickets + modified-files.json).
 //   CB-1638 (L3) — generated modules under `contracts/work/*.rs` are tracked
 //                  in git (not ungenerated transient state)
+//   CB-1639 (L4+) — every L4+ ticket's `kani_harnesses[]` names resolve to a
+//                   harness body in `kani/`, `tests/`, `harnesses/`, or
+//                   `src/` that references `contracts::work::<ID>` (or the
+//                   `#[pmat_work_contract(id = ...)]` attribute). Skip-if-
+//                   absent until Kani integration is authored.
 //
-// The remaining check (CB-1639 Kani harness macro reference) surfaces as
-// Skip with a "Deferred — requires X" message so config plumbing is wired
-// for the follow-up work.
+// All CB-163x checks are now active (skip-if-absent). The module retains
+// schema-pragmatic parsers so Component 30's writers can converge on any
+// reasonable receipt shape without breaking these gates.
 
 use std::path::{Path, PathBuf};
 
@@ -48,15 +53,6 @@ use walkdir::WalkDir;
 use super::types::*;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-fn deferred(name: &str, reason: &str) -> ComplianceCheck {
-    ComplianceCheck {
-        name: name.into(),
-        status: CheckStatus::Skip,
-        message: format!("Deferred — {}", reason),
-        severity: Severity::Info,
-    }
-}
 
 /// One parsed occurrence of the `#[pmat_work_contract(...)]` attribute.
 /// `file` is the path the hit was read from; line numbers are not tracked
@@ -1294,11 +1290,307 @@ fn file_has_attribute_for_ticket(text: &str, ticket_id: &str) -> bool {
     false
 }
 
-pub(crate) fn check_kani_harness_macro_reference(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1639: Kani Harnesses Reference Generated Macros",
-        "requires derived YAML with `kani_harnesses[]` pointing at macros",
-    )
+/// CB-1639 (L4+): every `kani_harnesses[]` entry in an L4+ ticket's bound
+/// YAML must be backed by a harness function body that references the
+/// generated contract macros. An "orphaned" harness — a `#[kani::proof]`
+/// function that doesn't invoke any generated `contracts::work::<ID>`
+/// macros — proves nothing about the ticket's contract and is the exact
+/// failure mode this gate catches.
+///
+/// Detection is file-level: the file declaring `fn <harness_name>` must
+/// also contain one of the expected macro references (module path or
+/// attribute). Function-level precision lands once Component 30 codegen
+/// settles on stable macro naming.
+///
+/// # Accepted references
+///
+/// * `contracts::work::<ticket_id>` (module path, ticket id verbatim)
+/// * `contracts::work::<TICKET_ID_with_underscores>` (Rust module naming)
+/// * `#[pmat_work_contract(id = "<ticket_id>")]` (attribute form)
+///
+/// # Skip semantics (tiered)
+///
+/// * `.pmat-work/` absent                             → Skip
+/// * no `.pmat-work/<ID>/contract.json` tickets       → Skip
+/// * no ticket targets L4 or higher                   → Skip
+/// * no L4+ ticket has `implements:` bindings         → Skip
+/// * no L4+ bound YAML declares `kani_harnesses:`     → Skip
+/// * no declared harness has a `fn <name>` body in
+///   `kani/`, `tests/`, `harnesses/`, or `src/`       → Skip (Kani
+///                                                     integration pending)
+///
+/// # Pass
+///
+/// Every found harness body lives in a file that references the ticket's
+/// generated contract macros.
+///
+/// # Fail
+///
+/// Any found harness body lives in a file that does NOT reference the
+/// ticket's generated contract macros (the orphan case).
+pub(crate) fn check_kani_harness_macro_reference(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1639: Kani Harnesses Reference Generated Macros";
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/` directory present".into(),
+            severity: Severity::Info,
+        };
+    }
+    let Ok(entries) = std::fs::read_dir(&work_dir) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "Unable to read `.pmat-work/`".into(),
+            severity: Severity::Info,
+        };
+    };
+
+    let mut saw_any_ticket = false;
+    let mut saw_any_l4 = false;
+    let mut saw_any_binding = false;
+    let mut saw_any_harness = false;
+    let mut evaluated_bodies = 0usize;
+    let mut violations: Vec<String> = Vec::new();
+
+    for entry in entries.flatten() {
+        if !entry.path().is_dir() {
+            continue;
+        }
+        let Some(ticket_id) = entry.file_name().to_str().map(String::from) else {
+            continue;
+        };
+        if ticket_id.starts_with('.') || ticket_id == "ledger" || ticket_id == "codegen" {
+            continue;
+        }
+        let Some(contract) = load_contract_json(project_path, &ticket_id) else {
+            continue;
+        };
+        saw_any_ticket = true;
+        if !contract_level_at_least(&contract, 4) {
+            continue;
+        }
+        saw_any_l4 = true;
+
+        let Some(implements) = contract.get("implements").and_then(|v| v.as_array()) else {
+            continue;
+        };
+        if implements.is_empty() {
+            continue;
+        }
+        saw_any_binding = true;
+
+        for binding in implements {
+            let Some(yaml_rel) = binding.get("file").and_then(|v| v.as_str()) else {
+                continue;
+            };
+            let yaml_path = if Path::new(yaml_rel).is_absolute() {
+                PathBuf::from(yaml_rel)
+            } else {
+                project_path.join(yaml_rel)
+            };
+            let Ok(yaml_text) = std::fs::read_to_string(&yaml_path) else {
+                continue;
+            };
+            let harnesses = yaml_kani_harness_names(&yaml_text);
+            if harnesses.is_empty() {
+                continue;
+            }
+            saw_any_harness = true;
+
+            for h in &harnesses {
+                let Some(body_file) = find_file_declaring_harness(project_path, h) else {
+                    continue;
+                };
+                evaluated_bodies += 1;
+                let Ok(body_text) = std::fs::read_to_string(&body_file) else {
+                    continue;
+                };
+                if !file_references_generated_macros(&body_text, &ticket_id) {
+                    let rel = body_file
+                        .strip_prefix(project_path)
+                        .unwrap_or(&body_file)
+                        .display();
+                    violations.push(format!(
+                        "  {} harness `{}` in {} — no reference to `contracts::work::{}` or `#[pmat_work_contract(id = \"{}\")]`",
+                        ticket_id, h, rel, ticket_id, ticket_id
+                    ));
+                }
+            }
+        }
+    }
+
+    if !saw_any_ticket {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/<ID>/contract.json` tickets present".into(),
+            severity: Severity::Info,
+        };
+    }
+    if !saw_any_l4 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No ticket targets L4 or higher".into(),
+            severity: Severity::Info,
+        };
+    }
+    if !saw_any_binding {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L4+ ticket has `implements:` bindings".into(),
+            severity: Severity::Info,
+        };
+    }
+    if !saw_any_harness {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L4+ bound YAML declares `kani_harnesses:`".into(),
+            severity: Severity::Info,
+        };
+    }
+    if evaluated_bodies == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message:
+                "No declared harness has a `fn <name>` body in `kani/`, `tests/`, `harnesses/`, or `src/` — Kani integration pending"
+                    .into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if !violations.is_empty() {
+        let mut msg = format!(
+            "{} Kani harness(es) do not reference generated contract macros:\n",
+            violations.len()
+        );
+        let preview: Vec<&String> = violations.iter().take(5).collect();
+        for line in preview {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        if violations.len() > 5 {
+            msg.push_str(&format!("  …and {} more\n", violations.len() - 5));
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{} Kani harness body(ies) reference generated contract macros",
+            evaluated_bodies
+        ),
+        severity: Severity::Info,
+    }
+}
+
+/// Scan a YAML's top-level `kani_harnesses:` block and return every harness
+/// name, regardless of whether the entry carries a `sha:` sibling. Handles
+/// both string-form entries (`- verify_foo`) and object-form entries
+/// (`- name: verify_foo\n    sha: abc`).
+///
+/// Line-based parser tolerating the subset of YAML used in practice; full
+/// YAML loading is Component 29's concern.
+fn yaml_kani_harness_names(content: &str) -> Vec<String> {
+    let mut names: Vec<String> = Vec::new();
+    let mut in_section = false;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        if !line.starts_with(' ') && !line.starts_with('-') && !line.starts_with('\t') {
+            in_section = trimmed == "kani_harnesses:";
+            continue;
+        }
+        if !in_section {
+            continue;
+        }
+        if let Some(item) = trimmed.strip_prefix('-') {
+            let item = item.trim();
+            if item.is_empty() {
+                continue;
+            }
+            if let Some(rest) = item.strip_prefix("name:") {
+                let val = rest.trim().trim_matches('"').trim_matches('\'');
+                if !val.is_empty() {
+                    names.push(val.to_string());
+                }
+                continue;
+            }
+            if item.contains(':') {
+                continue;
+            }
+            let val = item.trim_matches('"').trim_matches('\'');
+            if !val.is_empty() {
+                names.push(val.to_string());
+            }
+        } else if let Some(rest) = trimmed.strip_prefix("name:") {
+            let val = rest.trim().trim_matches('"').trim_matches('\'');
+            if !val.is_empty() {
+                names.push(val.to_string());
+            }
+        }
+    }
+    names
+}
+
+/// Walk `kani/`, `tests/`, `harnesses/`, `src/` (in that order) and return
+/// the first `.rs` file whose text contains `fn <harness_name>`. Returns
+/// `None` when no candidate file is found — caller treats that as "Kani
+/// integration pending".
+fn find_file_declaring_harness(project_path: &Path, harness_name: &str) -> Option<PathBuf> {
+    let pattern = format!("fn {}", harness_name);
+    for root in ["kani", "tests", "harnesses", "src"] {
+        let root_path = project_path.join(root);
+        if !root_path.exists() {
+            continue;
+        }
+        for entry in WalkDir::new(&root_path).into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) != Some("rs") {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(path) else {
+                continue;
+            };
+            if text.contains(&pattern) {
+                return Some(path.to_path_buf());
+            }
+        }
+    }
+    None
+}
+
+/// Return true iff `text` references the generated contract macros for
+/// `ticket_id`. Accepts the verbatim ticket id, the underscored form
+/// (`PMAT-200` → `PMAT_200`), or the attribute form
+/// `#[pmat_work_contract(id = "<ticket_id>")]`.
+fn file_references_generated_macros(text: &str, ticket_id: &str) -> bool {
+    let underscored = ticket_id.replace('-', "_");
+    if text.contains(&format!("contracts::work::{}", ticket_id)) {
+        return true;
+    }
+    if text.contains(&format!("contracts::work::{}", underscored)) {
+        return true;
+    }
+    if text.contains(&format!("id = \"{}\"", ticket_id)) {
+        return true;
+    }
+    false
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -1479,20 +1771,6 @@ mod tests {
         std::fs::create_dir_all(tmp.path().join("contracts/work")).unwrap();
         let check = check_generated_modules_tracked(tmp.path());
         assert_eq!(check.status, CheckStatus::Skip);
-    }
-
-    #[test]
-    fn deferred_checks_return_skip_with_reason() {
-        let path = Path::new(".");
-        for (name, check) in [("CB-1639", check_kani_harness_macro_reference(path))] {
-            assert_eq!(check.status, CheckStatus::Skip, "{}", name);
-            assert!(
-                check.message.starts_with("Deferred — "),
-                "{}: {}",
-                name,
-                check.message
-            );
-        }
     }
 
     // ── CB-1633 manifest SHA drift tests ─────────────────────────────────
@@ -2326,5 +2604,286 @@ mod tests {
         assert!(!file_has_pub_fn("fn f() {}"));
         assert!(!file_has_pub_fn("pub struct S;"));
         assert!(!file_has_pub_fn("// pub fn f() {}"));
+    }
+
+    // ── CB-1639 Kani harness macro reference tests ──────────────────────
+
+    /// Materialise a ticket at `.pmat-work/<id>/contract.json` with a
+    /// `verification_level` and optional `implements:` bindings.
+    fn cb1639_write_ticket(
+        root: &Path,
+        id: &str,
+        level: &str,
+        implements: &[(&str, &str, &str)], // (contract, equation, file)
+    ) {
+        let dir = root.join(".pmat-work").join(id);
+        std::fs::create_dir_all(&dir).unwrap();
+        let impl_json = serde_json::Value::Array(
+            implements
+                .iter()
+                .map(|(c, e, f)| {
+                    serde_json::json!({
+                        "contract": c,
+                        "equation": e,
+                        "file": f,
+                        "sha": "deadbeef",
+                        "bound_at": "2026-04-18T00:00:00Z",
+                    })
+                })
+                .collect(),
+        );
+        let body = serde_json::json!({
+            "verification_level": level,
+            "implements": impl_json,
+        });
+        std::fs::write(dir.join("contract.json"), body.to_string()).unwrap();
+    }
+
+    /// Write a YAML at `root/<rel>` with the given contents.
+    fn cb1639_write_yaml(root: &Path, rel: &str, contents: &str) {
+        let p = root.join(rel);
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(p, contents).unwrap();
+    }
+
+    /// Write a harness file at `root/<rel>` with the given body.
+    fn cb1639_write_harness(root: &Path, rel: &str, body: &str) {
+        let p = root.join(rel);
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(p, body).unwrap();
+    }
+
+    #[test]
+    fn cb1639_skips_when_no_pmat_work_dir() {
+        let tmp = tempdir().unwrap();
+        let r = check_kani_harness_macro_reference(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/`"));
+    }
+
+    #[test]
+    fn cb1639_skips_when_no_tickets() {
+        let tmp = tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-work")).unwrap();
+        let r = check_kani_harness_macro_reference(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/<ID>/contract.json`"));
+    }
+
+    #[test]
+    fn cb1639_skips_when_only_below_l4() {
+        let tmp = tempdir().unwrap();
+        cb1639_write_ticket(tmp.path(), "PMAT-1", "L3", &[]);
+        cb1639_write_ticket(tmp.path(), "PMAT-2", "L1", &[]);
+        let r = check_kani_harness_macro_reference(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("L4 or higher"));
+    }
+
+    #[test]
+    fn cb1639_skips_when_l4_has_no_bindings() {
+        let tmp = tempdir().unwrap();
+        cb1639_write_ticket(tmp.path(), "PMAT-1", "L4", &[]);
+        let r = check_kani_harness_macro_reference(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("`implements:` bindings"));
+    }
+
+    #[test]
+    fn cb1639_skips_when_yaml_has_no_kani_harnesses() {
+        let tmp = tempdir().unwrap();
+        cb1639_write_yaml(tmp.path(), "contracts/x.yaml", "equations:\n  rope: {}\n");
+        cb1639_write_ticket(
+            tmp.path(),
+            "PMAT-1",
+            "L4",
+            &[("x", "rope", "contracts/x.yaml")],
+        );
+        let r = check_kani_harness_macro_reference(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("`kani_harnesses:`"));
+    }
+
+    #[test]
+    fn cb1639_skips_when_no_harness_body_found() {
+        let tmp = tempdir().unwrap();
+        cb1639_write_yaml(
+            tmp.path(),
+            "contracts/x.yaml",
+            "kani_harnesses:\n  - verify_rope\n",
+        );
+        cb1639_write_ticket(
+            tmp.path(),
+            "PMAT-1",
+            "L4",
+            &[("x", "rope", "contracts/x.yaml")],
+        );
+        // No harness body exists in kani/, tests/, harnesses/, or src/.
+        let r = check_kani_harness_macro_reference(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("Kani integration pending"));
+    }
+
+    #[test]
+    fn cb1639_passes_when_harness_body_references_macro_module() {
+        let tmp = tempdir().unwrap();
+        cb1639_write_yaml(
+            tmp.path(),
+            "contracts/x.yaml",
+            "kani_harnesses:\n  - verify_rope\n",
+        );
+        cb1639_write_ticket(
+            tmp.path(),
+            "PMAT-200",
+            "L4",
+            &[("x", "rope", "contracts/x.yaml")],
+        );
+        cb1639_write_harness(
+            tmp.path(),
+            "kani/rope.rs",
+            "use contracts::work::PMAT_200;\n#[kani::proof]\nfn verify_rope() { }\n",
+        );
+        let r = check_kani_harness_macro_reference(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("1 Kani harness body"));
+    }
+
+    #[test]
+    fn cb1639_passes_when_harness_file_has_attribute_form() {
+        let tmp = tempdir().unwrap();
+        cb1639_write_yaml(
+            tmp.path(),
+            "contracts/x.yaml",
+            "kani_harnesses:\n  - verify_rope\n",
+        );
+        cb1639_write_ticket(
+            tmp.path(),
+            "PMAT-200",
+            "L4",
+            &[("x", "rope", "contracts/x.yaml")],
+        );
+        cb1639_write_harness(
+            tmp.path(),
+            "kani/rope.rs",
+            "#[pmat_work_contract(id = \"PMAT-200\")]\nfn verify_rope() { }\n",
+        );
+        let r = check_kani_harness_macro_reference(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1639_fails_when_harness_body_is_orphaned() {
+        let tmp = tempdir().unwrap();
+        cb1639_write_yaml(
+            tmp.path(),
+            "contracts/x.yaml",
+            "kani_harnesses:\n  - verify_rope\n",
+        );
+        cb1639_write_ticket(
+            tmp.path(),
+            "PMAT-200",
+            "L4",
+            &[("x", "rope", "contracts/x.yaml")],
+        );
+        // Harness body exists but doesn't reference any generated macro.
+        cb1639_write_harness(tmp.path(), "kani/rope.rs", "fn verify_rope() { }\n");
+        let r = check_kani_harness_macro_reference(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("verify_rope"));
+        assert!(r.message.contains("PMAT-200"));
+    }
+
+    #[test]
+    fn cb1639_fails_when_attribute_id_mismatches() {
+        let tmp = tempdir().unwrap();
+        cb1639_write_yaml(
+            tmp.path(),
+            "contracts/x.yaml",
+            "kani_harnesses:\n  - verify_rope\n",
+        );
+        cb1639_write_ticket(
+            tmp.path(),
+            "PMAT-200",
+            "L4",
+            &[("x", "rope", "contracts/x.yaml")],
+        );
+        // Attribute references a different ticket — should still fail for PMAT-200.
+        cb1639_write_harness(
+            tmp.path(),
+            "kani/rope.rs",
+            "#[pmat_work_contract(id = \"PMAT-999\")]\nfn verify_rope() { }\n",
+        );
+        let r = check_kani_harness_macro_reference(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1639_parses_yaml_string_form_harnesses() {
+        let yaml = "kani_harnesses:\n  - verify_foo\n  - verify_bar\n";
+        let names = yaml_kani_harness_names(yaml);
+        assert_eq!(names, vec!["verify_foo", "verify_bar"]);
+    }
+
+    #[test]
+    fn cb1639_parses_yaml_object_form_harnesses() {
+        let yaml = "kani_harnesses:\n  - name: verify_foo\n    sha: abc\n  - name: verify_bar\n";
+        let names = yaml_kani_harness_names(yaml);
+        assert_eq!(names, vec!["verify_foo", "verify_bar"]);
+    }
+
+    #[test]
+    fn cb1639_yaml_parser_ignores_other_sections() {
+        let yaml =
+            "equations:\n  rope:\n    - verify_not_a_harness\nkani_harnesses:\n  - real_one\n";
+        let names = yaml_kani_harness_names(yaml);
+        assert_eq!(names, vec!["real_one"]);
+    }
+
+    #[test]
+    fn cb1639_file_reference_detection_matches_both_forms() {
+        assert!(file_references_generated_macros(
+            "use contracts::work::PMAT_200;",
+            "PMAT-200"
+        ));
+        assert!(file_references_generated_macros(
+            "contracts::work::PMAT_200::require_R1!()",
+            "PMAT-200"
+        ));
+        assert!(file_references_generated_macros(
+            "#[pmat_work_contract(id = \"PMAT-200\")]",
+            "PMAT-200"
+        ));
+        assert!(!file_references_generated_macros(
+            "// just a comment about pmat",
+            "PMAT-200"
+        ));
+        assert!(!file_references_generated_macros(
+            "contracts::work::PMAT_999",
+            "PMAT-200"
+        ));
+    }
+
+    #[test]
+    fn cb1639_find_file_declaring_harness_returns_none_when_absent() {
+        let tmp = tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join("kani")).unwrap();
+        std::fs::write(tmp.path().join("kani/other.rs"), "fn something_else() {}\n").unwrap();
+        let hit = find_file_declaring_harness(tmp.path(), "verify_foo");
+        assert!(hit.is_none());
+    }
+
+    #[test]
+    fn cb1639_find_file_prefers_kani_over_src() {
+        let tmp = tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join("kani")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+        std::fs::write(tmp.path().join("src/foo.rs"), "fn verify_foo() {}\n").unwrap();
+        std::fs::write(tmp.path().join("kani/foo.rs"), "fn verify_foo() {}\n").unwrap();
+        let hit = find_file_declaring_harness(tmp.path(), "verify_foo").unwrap();
+        assert!(hit.to_string_lossy().contains("kani"));
     }
 }
