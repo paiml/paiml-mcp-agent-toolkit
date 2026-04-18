@@ -436,7 +436,7 @@ pub(crate) fn check_generated_modules_tracked(project_path: &Path) -> Compliance
     }
 }
 
-// ─── CB-1633, 1635, 1636, 1637, 1639 — deferred stubs ──────────────────────
+// ─── CB-163x check implementations (all active, skip-if-absent) ────────────
 
 /// CB-1630 (L2): the most recent `pmat work codegen` run must have
 /// succeeded. Component 30 is expected to drop a run-status receipt at
