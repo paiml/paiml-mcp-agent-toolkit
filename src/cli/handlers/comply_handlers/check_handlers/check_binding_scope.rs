@@ -27,11 +27,12 @@
 //                  ticket's contract.json. Skip-if-absent (no lean_theorem:
 //                  blocks anywhere).
 //   CB-1607 (L3) — equation identifier exists in referenced YAML
+//   CB-1608 (L1) — cross-binding consistency: multi-bind tickets cannot
+//                  mix passing and failing per-binding falsification log
+//                  entries (skip-if-absent on log)
 //   CB-1609 (L1) — YAML file is tracked in git
 //
-// The remaining check CB-1608 (cross-binding consistency) surfaces as Skip
-// with a "deferred: requires X" message so config plumbing is already
-// wired for the follow-up work.
+// All CB-16xx binding-scope checks are now functional (no deferred stubs).
 
 use std::path::Path;
 
@@ -81,18 +82,6 @@ fn sha256_hex(bytes: &[u8]) -> String {
         let _ = write!(&mut s, "{:02x}", b);
     }
     s
-}
-
-/// Shape a deferred-but-wired check. Returns Skip with an explanatory reason
-/// so the check id still appears in `pmat comply check` output and users can
-/// see the enforcement roster.
-fn deferred(name: &str, reason: &str) -> ComplianceCheck {
-    ComplianceCheck {
-        name: name.into(),
-        status: CheckStatus::Skip,
-        message: format!("Deferred — {}", reason),
-        severity: Severity::Info,
-    }
 }
 
 fn skip_no_bindings(name: &str) -> ComplianceCheck {
@@ -1280,14 +1269,156 @@ pub(crate) fn check_binding_lean_theorem(project_path: &Path) -> ComplianceCheck
     }
 }
 
-/// CB-1608 (L1): cross-binding consistency — a multi-bind ticket must satisfy
-/// all bindings at completion, not just a subset. Activated once falsification
-/// unification (Component 29) propagates per-binding pass/fail.
-pub(crate) fn check_binding_cross_consistency(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1608: Cross-Binding Consistency",
-        "requires per-binding falsification status (Component 29)",
-    )
+/// CB-1608 (L1): cross-binding consistency — a multi-bind ticket cannot
+/// report some bindings passing while other bindings have failing
+/// falsification entries. Either all bindings are green, all unknown, or
+/// the ticket is not eligible for completion.
+///
+/// # Skip semantics (tiered)
+///
+/// * no `.pmat-work/*/contract.json` tickets                          → Skip
+/// * no multi-bind ticket has a `.pmat-work/<ID>/falsification.log`   → Skip
+///
+/// # Fail
+///
+/// * any multi-bind ticket has at least one binding where **every**
+///   logged entry is `status: "pass"` AND at least one other binding
+///   where **any** entry has `status != "pass"`. Bindings with no log
+///   evidence at all are ignored here — CB-1622 owns that gap.
+///
+/// # Pass
+///
+/// * every multi-bind ticket with a log is either uniformly green
+///   across its bindings or has no evidence mixed with failures
+pub(crate) fn check_binding_cross_consistency(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1608: Cross-Binding Consistency";
+    let contracts = load_active_contracts(project_path);
+    if contracts.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/*/contract.json` tickets present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut evaluated = 0usize;
+    let mut violations: Vec<String> = Vec::new();
+
+    for c in &contracts {
+        if c.implements.len() < 2 {
+            continue;
+        }
+        let log_path = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("falsification.log");
+        let Ok(contents) = std::fs::read_to_string(&log_path) else {
+            continue;
+        };
+        evaluated += 1;
+
+        // (yaml, equation) → (has_entry, all_entries_pass)
+        let entries = parse_inherited_log_entries(&contents);
+        let mut passing: Vec<String> = Vec::new();
+        let mut failing: Vec<String> = Vec::new();
+        for b in &c.implements {
+            let mut saw_any = false;
+            let mut saw_fail = false;
+            for (yaml, eq, status) in &entries {
+                if yaml == &b.file && eq == &b.equation {
+                    saw_any = true;
+                    if status != "pass" {
+                        saw_fail = true;
+                    }
+                }
+            }
+            if !saw_any {
+                continue;
+            }
+            let label = format!("{}#{}", b.file.display(), b.equation);
+            if saw_fail {
+                failing.push(label);
+            } else {
+                passing.push(label);
+            }
+        }
+        if !passing.is_empty() && !failing.is_empty() {
+            violations.push(format!(
+                "  {} — passing: [{}] vs failing: [{}]",
+                c.work_item_id,
+                passing.join(", "),
+                failing.join(", ")
+            ));
+        }
+    }
+
+    if evaluated == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No multi-bind ticket has a `.pmat-work/<ID>/falsification.log` yet".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if !violations.is_empty() {
+        let mut msg = format!(
+            "{} multi-bind ticket(s) show inconsistent per-binding outcomes:\n",
+            violations.len()
+        );
+        for line in &violations {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{} multi-bind ticket(s) show consistent binding outcomes",
+            evaluated
+        ),
+        severity: Severity::Info,
+    }
+}
+
+/// Parse a `falsification.log` JSONL blob into `(yaml_path, equation, status)`
+/// tuples. Skips malformed lines and non-inherited entries (those missing
+/// `yaml` or `equation`) — CB-1628 owns malformed-line detection.
+fn parse_inherited_log_entries(contents: &str) -> Vec<(std::path::PathBuf, String, String)> {
+    let mut out = Vec::new();
+    for line in contents.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(line) else {
+            continue;
+        };
+        let Some(yaml) = v.get("yaml").and_then(|y| y.as_str()) else {
+            continue;
+        };
+        let Some(eq) = v.get("equation").and_then(|y| y.as_str()) else {
+            continue;
+        };
+        let Some(status) = v.get("status").and_then(|s| s.as_str()) else {
+            continue;
+        };
+        out.push((
+            std::path::PathBuf::from(yaml),
+            eq.to_string(),
+            status.to_string(),
+        ));
+    }
+    out
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -1386,14 +1517,6 @@ mod tests {
         let s = "equations:\n  # top-level comment line\n  rope: {}\n";
         let names = yaml_equation_names(s).unwrap();
         assert_eq!(names, vec!["rope".to_string()]);
-    }
-
-    #[test]
-    fn deferred_checks_return_skip() {
-        let tmp = tempdir().unwrap();
-        let r = check_binding_cross_consistency(tmp.path());
-        assert_eq!(r.status, CheckStatus::Skip);
-        assert!(r.message.starts_with("Deferred"));
     }
 
     // ── CB-1604 postcondition weakening tests ────────────────────────────
@@ -2279,5 +2402,250 @@ mod tests {
         append_contract_note(tmp.path(), "T-1", "see block-on-proof task");
         let r = check_binding_lean_theorem(tmp.path());
         assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    // ── CB-1608 cross-binding consistency tests ──────────────────────────
+
+    fn cbc_save_two_bindings(project: &Path, ticket: &str, yaml_a: &Path, yaml_b: &Path) {
+        use crate::cli::handlers::work_contract::WorkContract;
+        let mut c = WorkContract::new(ticket.into(), "deadbeef".into());
+        c.implements.push(ContractBinding {
+            contract: "k".into(),
+            equation: "rope".into(),
+            file: yaml_a.to_path_buf(),
+            sha: "deadbeef".into(),
+            bound_at: chrono::Utc::now(),
+        });
+        c.implements.push(ContractBinding {
+            contract: "k".into(),
+            equation: "softmax".into(),
+            file: yaml_b.to_path_buf(),
+            sha: "deadbeef".into(),
+            bound_at: chrono::Utc::now(),
+        });
+        c.save(project).unwrap();
+    }
+
+    fn cbc_write_log(project: &Path, ticket: &str, lines: &[&str]) {
+        let dir = project.join(".pmat-work").join(ticket);
+        std::fs::create_dir_all(&dir).unwrap();
+        let body = lines.join("\n") + "\n";
+        std::fs::write(dir.join("falsification.log"), body).unwrap();
+    }
+
+    #[test]
+    fn cbc_skips_when_no_tickets() {
+        let tmp = tempdir().unwrap();
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/*/contract.json`"));
+    }
+
+    #[test]
+    fn cbc_skips_when_no_multibind_ticket_has_log() {
+        let tmp = tempdir().unwrap();
+        // Single-bind ticket, no log
+        write_contract(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/k.yaml"),
+            "rope",
+            "deadbeef",
+        );
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("multi-bind"));
+    }
+
+    #[test]
+    fn cbc_skips_when_multibind_has_no_log() {
+        let tmp = tempdir().unwrap();
+        cbc_save_two_bindings(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/a.yaml"),
+            &PathBuf::from("contracts/b.yaml"),
+        );
+        // no falsification.log
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+    }
+
+    #[test]
+    fn cbc_passes_when_all_bindings_green() {
+        let tmp = tempdir().unwrap();
+        cbc_save_two_bindings(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/a.yaml"),
+            &PathBuf::from("contracts/b.yaml"),
+        );
+        cbc_write_log(
+            tmp.path(),
+            "T-1",
+            &[
+                r#"{"yaml":"contracts/a.yaml","equation":"rope","test_id":"t1","status":"pass"}"#,
+                r#"{"yaml":"contracts/b.yaml","equation":"softmax","test_id":"t2","status":"pass"}"#,
+            ],
+        );
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cbc_fails_on_mixed_pass_and_fail() {
+        let tmp = tempdir().unwrap();
+        cbc_save_two_bindings(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/a.yaml"),
+            &PathBuf::from("contracts/b.yaml"),
+        );
+        cbc_write_log(
+            tmp.path(),
+            "T-1",
+            &[
+                r#"{"yaml":"contracts/a.yaml","equation":"rope","test_id":"t1","status":"pass"}"#,
+                r#"{"yaml":"contracts/b.yaml","equation":"softmax","test_id":"t2","status":"fail"}"#,
+            ],
+        );
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("T-1"));
+        assert!(r.message.contains("passing"));
+        assert!(r.message.contains("failing"));
+    }
+
+    #[test]
+    fn cbc_ignores_binding_with_no_evidence() {
+        // Binding B has no log entry → "unknown". Only A is green.
+        // Not a mix of pass+fail → Pass.
+        let tmp = tempdir().unwrap();
+        cbc_save_two_bindings(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/a.yaml"),
+            &PathBuf::from("contracts/b.yaml"),
+        );
+        cbc_write_log(
+            tmp.path(),
+            "T-1",
+            &[r#"{"yaml":"contracts/a.yaml","equation":"rope","test_id":"t1","status":"pass"}"#],
+        );
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cbc_passes_when_binding_pass_and_other_untested() {
+        let tmp = tempdir().unwrap();
+        cbc_save_two_bindings(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/a.yaml"),
+            &PathBuf::from("contracts/b.yaml"),
+        );
+        // only empty log (no entries for either binding)
+        cbc_write_log(tmp.path(), "T-1", &[]);
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cbc_parses_mixed_status_within_single_binding_as_failing() {
+        // One binding has both pass+fail rows → that binding is "failing".
+        // Pair with a green binding → Fail.
+        let tmp = tempdir().unwrap();
+        cbc_save_two_bindings(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/a.yaml"),
+            &PathBuf::from("contracts/b.yaml"),
+        );
+        cbc_write_log(
+            tmp.path(),
+            "T-1",
+            &[
+                r#"{"yaml":"contracts/a.yaml","equation":"rope","test_id":"t1","status":"pass"}"#,
+                r#"{"yaml":"contracts/a.yaml","equation":"rope","test_id":"t1","status":"pass"}"#,
+                r#"{"yaml":"contracts/b.yaml","equation":"softmax","test_id":"t2","status":"pass"}"#,
+                r#"{"yaml":"contracts/b.yaml","equation":"softmax","test_id":"t2","status":"fail"}"#,
+            ],
+        );
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+    }
+
+    #[test]
+    fn cbc_aggregates_multiple_tickets_reports_only_violators() {
+        let tmp = tempdir().unwrap();
+        cbc_save_two_bindings(
+            tmp.path(),
+            "T-GOOD",
+            &PathBuf::from("contracts/a.yaml"),
+            &PathBuf::from("contracts/b.yaml"),
+        );
+        cbc_write_log(
+            tmp.path(),
+            "T-GOOD",
+            &[
+                r#"{"yaml":"contracts/a.yaml","equation":"rope","test_id":"t1","status":"pass"}"#,
+                r#"{"yaml":"contracts/b.yaml","equation":"softmax","test_id":"t2","status":"pass"}"#,
+            ],
+        );
+
+        cbc_save_two_bindings(
+            tmp.path(),
+            "T-BAD",
+            &PathBuf::from("contracts/a.yaml"),
+            &PathBuf::from("contracts/b.yaml"),
+        );
+        cbc_write_log(
+            tmp.path(),
+            "T-BAD",
+            &[
+                r#"{"yaml":"contracts/a.yaml","equation":"rope","test_id":"t1","status":"pass"}"#,
+                r#"{"yaml":"contracts/b.yaml","equation":"softmax","test_id":"t2","status":"fail"}"#,
+            ],
+        );
+
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("T-BAD"));
+        assert!(!r.message.contains("T-GOOD"), "{}", r.message);
+    }
+
+    #[test]
+    fn cbc_ignores_malformed_log_lines() {
+        let tmp = tempdir().unwrap();
+        cbc_save_two_bindings(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/a.yaml"),
+            &PathBuf::from("contracts/b.yaml"),
+        );
+        cbc_write_log(
+            tmp.path(),
+            "T-1",
+            &[
+                "not-json-at-all",
+                r#"{"yaml":"contracts/a.yaml","equation":"rope","test_id":"t1","status":"pass"}"#,
+                r#"{"yaml":"contracts/b.yaml","equation":"softmax","test_id":"t2","status":"pass"}"#,
+            ],
+        );
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cbc_parse_inherited_log_entries_skips_manual_rows() {
+        // Manual rows (no yaml field) must be skipped.
+        let log = concat!(
+            "{\"method\":\"Kani\",\"status\":\"pass\"}\n",
+            "{\"yaml\":\"a.yaml\",\"equation\":\"rope\",\"test_id\":\"t1\",\"status\":\"pass\"}\n",
+        );
+        let entries = parse_inherited_log_entries(log);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].1, "rope");
     }
 }
