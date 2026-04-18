@@ -351,7 +351,7 @@ pub(crate) fn check_binding_file_tracked(project_path: &Path) -> ComplianceCheck
     }
 }
 
-// ─── Deferred checks (scheduled follow-up work) ──────────────────────────────
+// ─── CB-160x check implementations (all active, skip-if-absent) ──────────────
 
 /// Collect paths staged for commit (via `git diff --cached --name-only`),
 /// returning them as forward-slash project-relative strings suitable for

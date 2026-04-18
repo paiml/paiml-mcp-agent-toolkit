@@ -467,7 +467,7 @@ pub(crate) fn check_assumption_references_resolve(project_path: &Path) -> Compli
     }
 }
 
-// ─── Deferred stubs ─────────────────────────────────────────────────────────
+// ─── CB-164x check implementations (all active, skip-if-absent) ──────────────
 
 /// CB-1644 (L1): Replayability hinges on three fields per recorded agent run:
 ///   - `prompt_sha` — content hash of the prompt that produced the run

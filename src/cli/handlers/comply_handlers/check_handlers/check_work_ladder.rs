@@ -379,7 +379,7 @@ pub(crate) fn check_ladder_completion_matches(project_path: &Path) -> Compliance
     }
 }
 
-// ─── Deferred checks ─────────────────────────────────────────────────────────
+// ─── CB-161x check implementations (all active, skip-if-absent) ──────────────
 
 /// CB-1612 (L3): L1 completion requires `cargo test --lib` green. Reads the
 /// evidence that `pmat work verify` writes into each ticket's
