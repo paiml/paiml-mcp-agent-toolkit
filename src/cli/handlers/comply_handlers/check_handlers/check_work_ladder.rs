@@ -24,10 +24,15 @@
 //                  cannot drop without an audited downgrade ledger entry
 //                  (skip-if-absent until checkpoint writer records level)
 //   CB-1619 (L3) — on completion, achieved level == target level
+//   CB-1615 (L4) — Kani harness SHA matches bind-time snapshot: bind-time
+//                  `.pmat-work/<ID>/kani-harness-shas.json` captures each
+//                  `kani_harnesses[]` body hash; current YAML per-harness
+//                  `sha:` field must match. Skip-if-absent until Component
+//                  27 bind step writes the snapshot file.
 //
 // Deferred (scaffolded with Skip + reason, infrastructure pending):
 //
-//   CB-1615 Kani harness SHA        → needs harness hash index
+//   (none — all CB-16xx ladder checks are functional as of this commit)
 
 use std::path::Path;
 
@@ -36,15 +41,6 @@ use crate::cli::handlers::work_contract::WorkContract;
 use crate::cli::handlers::work_verification_level::VerificationLevel;
 
 // ─── Shared helpers ──────────────────────────────────────────────────────────
-
-fn deferred(name: &str, reason: &str) -> ComplianceCheck {
-    ComplianceCheck {
-        name: name.into(),
-        status: CheckStatus::Skip,
-        message: format!("Deferred — {}", reason),
-        severity: Severity::Info,
-    }
-}
 
 fn skip_no_contracts(name: &str) -> ComplianceCheck {
     ComplianceCheck {
@@ -767,13 +763,329 @@ fn is_l4_or_higher(contract: &WorkContract) -> bool {
         .unwrap_or(false)
 }
 
-/// CB-1615 (L4): Kani harness hash in ticket == harness hash in YAML. Requires
-/// harness-hash index to detect post-bind drift.
-pub(crate) fn check_ladder_kani_harness_sha(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1615: Kani Harness SHA",
-        "requires per-harness hash recorded at bind time",
-    )
+/// CB-1615 (L4): Kani harness hash in ticket must match harness hash in YAML
+/// at bind time — catches post-bind drift where a harness body is edited
+/// without re-binding the ticket.
+///
+/// # Schema
+///
+/// Bind-time snapshot lives at `.pmat-work/<ID>/kani-harness-shas.json`.
+/// Component 27's `pmat work bind` is expected to emit it; this check
+/// tolerates two shapes until the writer converges:
+///
+/// ```json
+/// { "harnesses": [ { "name": "verify_foo", "sha": "abc…" } ] }
+/// ```
+///
+/// ```json
+/// { "harnesses": { "verify_foo": "abc…" } }
+/// ```
+///
+/// Current harness hash is read from the bound YAML's `kani_harnesses:`
+/// block, accepting object-form entries with `sha:` siblings:
+///
+/// ```yaml
+/// kani_harnesses:
+///   - name: verify_foo
+///     sha: abc…
+/// ```
+///
+/// # Skip semantics (tiered)
+///
+/// * no `.pmat-work/` tickets                       → Skip
+/// * no L4+ ticket on any active contract           → Skip
+/// * no L4+ ticket has `implements:` bindings       → Skip
+/// * no L4+ ticket has a snapshot file yet          → Skip (Component 27
+///                                                   bind writer pending)
+/// * snapshot(s) present but all empty              → Skip
+///
+/// # Fail
+///
+/// * snapshot present, harness present in snapshot but removed from the
+///   current YAML, OR sha values disagree
+pub(crate) fn check_ladder_kani_harness_sha(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1615: Kani Harness SHA";
+    let contracts = load_active_contracts(project_path);
+    if contracts.is_empty() {
+        return skip_no_contracts(name);
+    }
+
+    let l4_plus: Vec<&WorkContract> = contracts.iter().filter(|c| is_l4_or_higher(c)).collect();
+    if l4_plus.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L4+ ticket present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let with_bindings: Vec<&&WorkContract> = l4_plus
+        .iter()
+        .filter(|c| !c.implements.is_empty())
+        .collect();
+    if with_bindings.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L4+ ticket has `implements:` bindings".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut any_snapshot = false;
+    let mut checked_tickets = 0usize;
+    let mut drift: Vec<String> = Vec::new();
+
+    for c in &with_bindings {
+        let snapshot_path = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("kani-harness-shas.json");
+        if !snapshot_path.exists() {
+            continue;
+        }
+        any_snapshot = true;
+
+        let Ok(snapshot_body) = std::fs::read_to_string(&snapshot_path) else {
+            drift.push(format!(
+                "  {} (unreadable kani-harness-shas.json)",
+                c.work_item_id
+            ));
+            continue;
+        };
+        let Some(snapshot) = parse_kani_harness_sha_snapshot(&snapshot_body) else {
+            drift.push(format!(
+                "  {} (malformed kani-harness-shas.json)",
+                c.work_item_id
+            ));
+            continue;
+        };
+        if snapshot.is_empty() {
+            continue;
+        }
+        checked_tickets += 1;
+
+        // Compare against each binding's current YAML. A harness name may be
+        // scoped to a specific binding; if a binding's YAML doesn't declare
+        // it, that's handled by the "removed post-bind" check below only if
+        // no other binding's YAML claims it either.
+        let mut union_current: std::collections::HashMap<String, (String, String, String)> =
+            std::collections::HashMap::new();
+        for binding in &c.implements {
+            let yaml_path = if binding.file.is_absolute() {
+                binding.file.clone()
+            } else {
+                project_path.join(&binding.file)
+            };
+            let Ok(yaml) = std::fs::read_to_string(&yaml_path) else {
+                continue;
+            };
+            let Some(current) = yaml_kani_harness_shas(&yaml) else {
+                continue;
+            };
+            for (n, s) in current {
+                union_current.insert(n, (s, binding.contract.clone(), binding.equation.clone()));
+            }
+        }
+
+        for (hname, hsha) in &snapshot {
+            match union_current.get(hname) {
+                None => drift.push(format!(
+                    "  {} harness `{}` absent from any bound YAML (removed post-bind)",
+                    c.work_item_id, hname
+                )),
+                Some((now, contract, equation)) if now != hsha => {
+                    let snap_prefix: String = hsha.chars().take(8).collect();
+                    let now_prefix: String = now.chars().take(8).collect();
+                    drift.push(format!(
+                        "  {} [{}/{}] harness `{}` SHA drifted: {}… → {}…",
+                        c.work_item_id, contract, equation, hname, snap_prefix, now_prefix
+                    ));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    if !any_snapshot {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: format!(
+                "No L4+ ticket has `kani-harness-shas.json` yet ({} eligible)",
+                with_bindings.len()
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    if !drift.is_empty() {
+        let mut msg = format!("{} Kani harness SHA drift(s):\n", drift.len());
+        for line in &drift {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    if checked_tickets == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "Bind-time snapshot(s) found but all empty".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{} ticket(s) — Kani harness SHAs match bind-time snapshot",
+            checked_tickets
+        ),
+        severity: Severity::Info,
+    }
+}
+
+/// Parse `.pmat-work/<ID>/kani-harness-shas.json`. Accepts either an array
+/// of `{name, sha}` objects or a `{<name>: <sha>}` mapping under the
+/// top-level `harnesses` key. Returns `None` on schema mismatch; empty on
+/// present-but-empty.
+fn parse_kani_harness_sha_snapshot(
+    contents: &str,
+) -> Option<std::collections::HashMap<String, String>> {
+    let v: serde_json::Value = serde_json::from_str(contents).ok()?;
+    let harnesses = v.get("harnesses")?;
+    let mut map = std::collections::HashMap::new();
+    if let Some(arr) = harnesses.as_array() {
+        for item in arr {
+            let Some(n) = item.get("name").and_then(|n| n.as_str()) else {
+                continue;
+            };
+            let Some(s) = item.get("sha").and_then(|s| s.as_str()) else {
+                continue;
+            };
+            if !n.is_empty() && !s.is_empty() {
+                map.insert(n.to_string(), s.to_string());
+            }
+        }
+        Some(map)
+    } else if let Some(obj) = harnesses.as_object() {
+        for (k, val) in obj {
+            if let Some(s) = val.as_str() {
+                if !k.is_empty() && !s.is_empty() {
+                    map.insert(k.clone(), s.to_string());
+                }
+            }
+        }
+        Some(map)
+    } else {
+        None
+    }
+}
+
+/// Scan a YAML's top-level `kani_harnesses:` block and extract
+/// `{name → sha}` pairs where the list item is an object carrying both a
+/// `name:` and a `sha:` key. String-form entries (`- verify_foo`) and
+/// object-form entries without a `sha:` sibling are silently skipped —
+/// they don't participate in drift detection because there is no bind-
+/// time hash to compare against.
+///
+/// Returns `None` when no `kani_harnesses:` key is present at all (caller
+/// skips the binding). An empty map means the section exists but declares
+/// no shas.
+fn yaml_kani_harness_shas(content: &str) -> Option<std::collections::HashMap<String, String>> {
+    let mut in_section = false;
+    let mut saw_section = false;
+    let mut map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut current_name: Option<String> = None;
+    let mut current_sha: Option<String> = None;
+
+    fn commit(
+        map: &mut std::collections::HashMap<String, String>,
+        name: &mut Option<String>,
+        sha: &mut Option<String>,
+    ) {
+        if let (Some(n), Some(s)) = (name.take(), sha.take()) {
+            map.insert(n, s);
+        } else {
+            *name = None;
+            *sha = None;
+        }
+    }
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        // Top-level key (column 0, not a list item).
+        if !line.starts_with(' ') && !line.starts_with('-') {
+            commit(&mut map, &mut current_name, &mut current_sha);
+            if trimmed == "kani_harnesses:" {
+                in_section = true;
+                saw_section = true;
+            } else {
+                in_section = false;
+            }
+            continue;
+        }
+        if !in_section {
+            continue;
+        }
+        if trimmed.starts_with('-') {
+            // New list item — flush the previous.
+            commit(&mut map, &mut current_name, &mut current_sha);
+            let item = trimmed[1..].trim();
+            if item.is_empty() {
+                continue;
+            }
+            // `- name: value`
+            if let Some(rest) = item.strip_prefix("name:") {
+                let val = rest.trim().trim_matches('"').trim_matches('\'').to_string();
+                if !val.is_empty() {
+                    current_name = Some(val);
+                }
+                continue;
+            }
+            // `- sha: value` is unusual but tolerate it — sha without a name
+            // can't be committed, so we drop it.
+            if item.strip_prefix("sha:").is_some() {
+                continue;
+            }
+            // `- verify_foo` string form: no sha available in this item.
+            if !item.contains(':') {
+                // Leave current_name/current_sha at None.
+                continue;
+            }
+            continue;
+        }
+        // Indented continuation of the current list item.
+        if let Some(rest) = trimmed.strip_prefix("name:") {
+            let val = rest.trim().trim_matches('"').trim_matches('\'').to_string();
+            if !val.is_empty() {
+                current_name = Some(val);
+            }
+        } else if let Some(rest) = trimmed.strip_prefix("sha:") {
+            let val = rest.trim().trim_matches('"').trim_matches('\'').to_string();
+            if !val.is_empty() {
+                current_sha = Some(val);
+            }
+        }
+    }
+    commit(&mut map, &mut current_name, &mut current_sha);
+    if saw_section {
+        Some(map)
+    } else {
+        None
+    }
 }
 
 // ─── CB-1616: L5 Lean proof zero-sorry ──────────────────────────────────────
@@ -1303,13 +1615,272 @@ mod tests {
         assert_eq!(r.status, CheckStatus::Skip);
     }
 
+    // ─── CB-1615: Kani harness SHA drift ─────────────────────────────────────
+
+    fn write_harness_snapshot(project: &Path, id: &str, body: &str) {
+        let dir = project.join(".pmat-work").join(id);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("kani-harness-shas.json"), body).unwrap();
+    }
+
+    fn make_l4_bound_contract(id: &str, yaml_relpath: &str) -> WorkContract {
+        let mut c = make_contract(id, "L4");
+        c.implements.push(ContractBinding {
+            contract: "proto".into(),
+            equation: "eq".into(),
+            file: PathBuf::from(yaml_relpath),
+            sha: "deadbeef".into(),
+            bound_at: chrono::Utc::now(),
+        });
+        c
+    }
+
     #[test]
-    fn deferred_ladder_checks_return_skip() {
+    fn kani_sha_skips_with_no_contracts() {
         let tmp = tempdir().unwrap();
-        for r in [check_ladder_kani_harness_sha(tmp.path())] {
-            assert_eq!(r.status, CheckStatus::Skip);
-            assert!(r.message.starts_with("Deferred"));
-        }
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/*/contract.json`"));
+    }
+
+    #[test]
+    fn kani_sha_skips_with_no_l4_tickets() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L4+ ticket"));
+    }
+
+    #[test]
+    fn kani_sha_skips_with_no_bindings() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L4").save(tmp.path()).unwrap();
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("implements"));
+    }
+
+    #[test]
+    fn kani_sha_skips_with_no_snapshot_file() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "proto",
+            "equations:\n  eq: {}\nkani_harnesses:\n  - name: h1\n    sha: aaaa\n",
+        );
+        make_l4_bound_contract("T-1", "contracts/proto.yaml")
+            .save(tmp.path())
+            .unwrap();
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("kani-harness-shas.json"));
+    }
+
+    #[test]
+    fn kani_sha_skips_when_snapshot_empty() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "proto",
+            "equations:\n  eq: {}\nkani_harnesses:\n  - name: h1\n    sha: aaaa\n",
+        );
+        make_l4_bound_contract("T-1", "contracts/proto.yaml")
+            .save(tmp.path())
+            .unwrap();
+        write_harness_snapshot(tmp.path(), "T-1", r#"{"harnesses": []}"#);
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("all empty"));
+    }
+
+    #[test]
+    fn kani_sha_passes_when_snapshot_matches_yaml_array_shape() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "proto",
+            "equations:\n  eq: {}\nkani_harnesses:\n  - name: h1\n    sha: aaaa\n  - name: h2\n    sha: bbbb\n",
+        );
+        make_l4_bound_contract("T-1", "contracts/proto.yaml")
+            .save(tmp.path())
+            .unwrap();
+        write_harness_snapshot(
+            tmp.path(),
+            "T-1",
+            r#"{"harnesses": [{"name": "h1", "sha": "aaaa"}, {"name": "h2", "sha": "bbbb"}]}"#,
+        );
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("match bind-time"));
+    }
+
+    #[test]
+    fn kani_sha_passes_when_snapshot_uses_map_shape() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "proto",
+            "equations:\n  eq: {}\nkani_harnesses:\n  - name: h1\n    sha: aaaa\n",
+        );
+        make_l4_bound_contract("T-1", "contracts/proto.yaml")
+            .save(tmp.path())
+            .unwrap();
+        write_harness_snapshot(tmp.path(), "T-1", r#"{"harnesses": {"h1": "aaaa"}}"#);
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn kani_sha_fails_on_drift() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "proto",
+            "equations:\n  eq: {}\nkani_harnesses:\n  - name: h1\n    sha: zzzzzzzz\n",
+        );
+        make_l4_bound_contract("T-1", "contracts/proto.yaml")
+            .save(tmp.path())
+            .unwrap();
+        write_harness_snapshot(
+            tmp.path(),
+            "T-1",
+            r#"{"harnesses": [{"name": "h1", "sha": "aaaaaaaa"}]}"#,
+        );
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("h1"));
+        assert!(r.message.contains("drifted"));
+    }
+
+    #[test]
+    fn kani_sha_fails_when_harness_removed_from_yaml() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "proto",
+            // h1 present, h2 removed
+            "equations:\n  eq: {}\nkani_harnesses:\n  - name: h1\n    sha: aaaa\n",
+        );
+        make_l4_bound_contract("T-1", "contracts/proto.yaml")
+            .save(tmp.path())
+            .unwrap();
+        write_harness_snapshot(
+            tmp.path(),
+            "T-1",
+            r#"{"harnesses": [{"name": "h1", "sha": "aaaa"}, {"name": "h2", "sha": "bbbb"}]}"#,
+        );
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("h2"));
+        assert!(r.message.contains("removed post-bind"));
+    }
+
+    #[test]
+    fn kani_sha_fails_on_malformed_snapshot_json() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "proto",
+            "equations:\n  eq: {}\nkani_harnesses:\n  - name: h1\n    sha: aaaa\n",
+        );
+        make_l4_bound_contract("T-1", "contracts/proto.yaml")
+            .save(tmp.path())
+            .unwrap();
+        write_harness_snapshot(tmp.path(), "T-1", "not json at all");
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("malformed"));
+    }
+
+    #[test]
+    fn kani_sha_parses_yaml_shas_for_multiple_items() {
+        // Regression: state-machine must commit between list items.
+        let yaml = "kani_harnesses:\n  - name: a\n    sha: 111\n  - name: b\n    sha: 222\n  - name: c\n    sha: 333\n";
+        let got = yaml_kani_harness_shas(yaml).unwrap();
+        assert_eq!(got.get("a").unwrap(), "111");
+        assert_eq!(got.get("b").unwrap(), "222");
+        assert_eq!(got.get("c").unwrap(), "333");
+    }
+
+    #[test]
+    fn kani_sha_yaml_shas_none_when_section_absent() {
+        let yaml = "equations:\n  eq: {}\n";
+        assert!(yaml_kani_harness_shas(yaml).is_none());
+    }
+
+    #[test]
+    fn kani_sha_yaml_shas_skips_items_without_sha() {
+        // String-form and name-only object-form items should be silently
+        // skipped so they don't participate in drift detection.
+        let yaml =
+            "kani_harnesses:\n  - name: a\n    sha: 111\n  - name: b\n  - plain_string_form\n";
+        let got = yaml_kani_harness_shas(yaml).unwrap();
+        assert_eq!(got.len(), 1);
+        assert_eq!(got.get("a").unwrap(), "111");
+    }
+
+    #[test]
+    fn kani_sha_snapshot_parser_rejects_non_array_non_object_harnesses() {
+        // harnesses is a scalar — schema mismatch.
+        let body = r#"{"harnesses": "oops"}"#;
+        assert!(parse_kani_harness_sha_snapshot(body).is_none());
+    }
+
+    #[test]
+    fn kani_sha_only_checks_l4_plus() {
+        // An L3 ticket with a snapshot should be ignored entirely — CB-1615
+        // only gates L4+ bindings.
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "proto",
+            "equations:\n  eq: {}\nkani_harnesses:\n  - name: h1\n    sha: aaaa\n",
+        );
+        let mut c = make_contract("T-1", "L3");
+        c.implements.push(ContractBinding {
+            contract: "proto".into(),
+            equation: "eq".into(),
+            file: PathBuf::from("contracts/proto.yaml"),
+            sha: "deadbeef".into(),
+            bound_at: chrono::Utc::now(),
+        });
+        c.save(tmp.path()).unwrap();
+        // Drift wouldn't matter — ticket is L3.
+        write_harness_snapshot(
+            tmp.path(),
+            "T-1",
+            r#"{"harnesses": [{"name": "h1", "sha": "zzzzzzzz"}]}"#,
+        );
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L4+ ticket"));
+    }
+
+    #[test]
+    fn kani_sha_l5_tickets_also_gated() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "proto",
+            "equations:\n  eq: {}\nkani_harnesses:\n  - name: h1\n    sha: aaaa\n",
+        );
+        let mut c = make_contract("T-1", "L5");
+        c.implements.push(ContractBinding {
+            contract: "proto".into(),
+            equation: "eq".into(),
+            file: PathBuf::from("contracts/proto.yaml"),
+            sha: "deadbeef".into(),
+            bound_at: chrono::Utc::now(),
+        });
+        c.save(tmp.path()).unwrap();
+        write_harness_snapshot(
+            tmp.path(),
+            "T-1",
+            r#"{"harnesses": [{"name": "h1", "sha": "aaaa"}]}"#,
+        );
+        let r = check_ladder_kani_harness_sha(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
     }
 
     // ─── CB-1618: level monotonicity across checkpoints ──────────────────────
