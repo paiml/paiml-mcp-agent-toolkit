@@ -14,6 +14,8 @@
 //   CB-1613 (L3) — L3+ falsification.log entries must all be status=pass
 //   CB-1614 (L4) — L4+ ticket completion requires `kani-report.json` with
 //                  success=true (skip-if-absent until Component 24 runner)
+//   CB-1616 (L5) — L5 ticket completion requires `lean-proof.json` with
+//                  sorry_count=0 (skip-if-absent until Component 24 Lean)
 //   CB-1617 (L3) — downgrade without `--reason` forbidden (ledger audit)
 //   CB-1619 (L3) — on completion, achieved level == target level
 //
@@ -21,7 +23,6 @@
 //
 //   CB-1612 cargo-test evidence     → needs verify pipeline
 //   CB-1615 Kani harness SHA        → needs harness hash index
-//   CB-1616 Lean proof zero-sorry   → needs Component 24 Lean consumer
 //   CB-1618 monotonicity audit      → needs checkpoint history
 
 use std::path::Path;
@@ -642,13 +643,122 @@ pub(crate) fn check_ladder_kani_harness_sha(_project_path: &Path) -> ComplianceC
     )
 }
 
-/// CB-1616 (L5): Lean proof with zero `sorry`. Requires Component 24 Lean
-/// proof-status consumer.
-pub(crate) fn check_ladder_l5_lean(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1616: L5 Lean Proof Zero-Sorry",
-        "requires Component 24 Lean proof-status consumer",
-    )
+// ─── CB-1616: L5 Lean proof zero-sorry ──────────────────────────────────────
+
+/// CB-1616 (L5): every L5 ticket must have `.pmat-work/<ID>/lean-proof.json`
+/// present, and that report must carry `sorry_count: 0`. A Lean proof with
+/// any admitted `sorry` is not a proof — it's a placeholder.
+///
+/// Report schema (minimum): `{ "sorry_count": non-negative-integer }`.
+///
+/// Skip semantics (tiered):
+///   • no tickets at all                          → Skip
+///   • no L5 ticket on any active contract        → Skip
+///   • L5 tickets exist but none have a report    → Skip (Component 24
+///                                                   Lean consumer pending)
+///   • any L5 report missing `sorry_count`, has
+///     non-zero count, negative count, or is
+///     malformed                                  → Fail
+pub(crate) fn check_ladder_l5_lean(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1616: L5 Lean Proof Zero-Sorry";
+    let contracts = load_active_contracts(project_path);
+    if contracts.is_empty() {
+        return skip_no_contracts(name);
+    }
+
+    let l5: Vec<&WorkContract> = contracts.iter().filter(|c| is_l5(c)).collect();
+    if l5.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L5 ticket present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut any_report = false;
+    let mut checked = 0usize;
+    let mut failing: Vec<String> = Vec::new();
+
+    for c in &l5 {
+        let report = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("lean-proof.json");
+        if !report.exists() {
+            continue;
+        }
+        any_report = true;
+        checked += 1;
+
+        let Ok(contents) = std::fs::read_to_string(&report) else {
+            failing.push(format!("  {} (unreadable lean-proof.json)", c.work_item_id));
+            continue;
+        };
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&contents) else {
+            failing.push(format!("  {} (malformed lean-proof.json)", c.work_item_id));
+            continue;
+        };
+        match v.get("sorry_count").and_then(|s| s.as_i64()) {
+            Some(0) => {}
+            Some(n) if n > 0 => {
+                failing.push(format!("  {} sorry_count={}", c.work_item_id, n));
+            }
+            Some(n) => {
+                failing.push(format!(
+                    "  {} sorry_count={} (must be non-negative)",
+                    c.work_item_id, n
+                ));
+            }
+            None => failing.push(format!(
+                "  {} (lean-proof.json missing `sorry_count` integer)",
+                c.work_item_id
+            )),
+        }
+    }
+
+    if !failing.is_empty() {
+        let mut msg = format!("{} L5 ticket(s) failed Lean evidence:\n", failing.len());
+        for line in &failing {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    if !any_report {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: format!(
+                "No L5 ticket has a `lean-proof.json` yet ({} eligible)",
+                l5.len()
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!("{} L5 Lean proof(s) discharge with zero sorry", checked),
+        severity: Severity::Info,
+    }
+}
+
+/// L5 is a single point on the ladder — exact match, not `>= L5`.
+fn is_l5(contract: &WorkContract) -> bool {
+    let token = contract
+        .verification_level
+        .split_whitespace()
+        .next()
+        .unwrap_or("");
+    VerificationLevel::parse_lenient(token) == Some(VerificationLevel::L5)
 }
 
 /// CB-1618 (L1): level monotonicity across ticket checkpoints — a ticket
@@ -877,7 +987,6 @@ mod tests {
         for r in [
             check_ladder_l1_test_evidence(tmp.path()),
             check_ladder_kani_harness_sha(tmp.path()),
-            check_ladder_l5_lean(tmp.path()),
             check_ladder_monotonicity(tmp.path()),
         ] {
             assert_eq!(r.status, CheckStatus::Skip);
@@ -1143,6 +1252,121 @@ mod tests {
             let mut c = WorkContract::new("T".into(), "deadbeef".into());
             c.verification_level = s.to_string();
             assert_eq!(is_l4_or_higher(&c), want, "for '{}'", s);
+        }
+    }
+
+    // ─── CB-1616: L5 Lean proof zero-sorry ───────────────────────────────────
+
+    fn write_lean_proof(project: &Path, id: &str, body: &str) {
+        let dir = project.join(".pmat-work").join(id);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("lean-proof.json"), body).unwrap();
+    }
+
+    #[test]
+    fn l5_lean_skips_with_no_tickets() {
+        let tmp = tempdir().unwrap();
+        let r = check_ladder_l5_lean(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/*/contract.json`"));
+    }
+
+    #[test]
+    fn l5_lean_skips_without_l5_ticket() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L4").save(tmp.path()).unwrap();
+        let r = check_ladder_l5_lean(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L5"));
+    }
+
+    #[test]
+    fn l5_lean_skips_when_no_report_yet() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L5").save(tmp.path()).unwrap();
+        let r = check_ladder_l5_lean(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("1 eligible"));
+    }
+
+    #[test]
+    fn l5_lean_passes_on_zero_sorry() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L5").save(tmp.path()).unwrap();
+        write_lean_proof(
+            tmp.path(),
+            "T-1",
+            r#"{"sorry_count":0,"theorems":[{"name":"rope_correct","status":"proved"}]}"#,
+        );
+        let r = check_ladder_l5_lean(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn l5_lean_fails_on_nonzero_sorry() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L5").save(tmp.path()).unwrap();
+        write_lean_proof(tmp.path(), "T-1", r#"{"sorry_count":3}"#);
+        let r = check_ladder_l5_lean(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("T-1"));
+        assert!(r.message.contains("sorry_count=3"));
+    }
+
+    #[test]
+    fn l5_lean_fails_on_negative_sorry() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L5").save(tmp.path()).unwrap();
+        write_lean_proof(tmp.path(), "T-1", r#"{"sorry_count":-1}"#);
+        let r = check_ladder_l5_lean(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("non-negative"));
+    }
+
+    #[test]
+    fn l5_lean_fails_on_malformed_report() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L5").save(tmp.path()).unwrap();
+        write_lean_proof(tmp.path(), "T-1", "not-json");
+        let r = check_ladder_l5_lean(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("malformed"));
+    }
+
+    #[test]
+    fn l5_lean_fails_when_sorry_count_missing() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L5").save(tmp.path()).unwrap();
+        write_lean_proof(tmp.path(), "T-1", r#"{"theorems":[]}"#);
+        let r = check_ladder_l5_lean(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("missing `sorry_count`"));
+    }
+
+    #[test]
+    fn l5_lean_ignores_below_l5() {
+        let tmp = tempdir().unwrap();
+        // L4 with failing lean proof — must NOT fail this check
+        make_contract("T-1", "L4").save(tmp.path()).unwrap();
+        write_lean_proof(tmp.path(), "T-1", r#"{"sorry_count":5}"#);
+        let r = check_ladder_l5_lean(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L5"));
+    }
+
+    #[test]
+    fn is_l5_is_exact_match() {
+        for (s, want) in [
+            ("L3", false),
+            ("L4", false),
+            ("L4 (kani_proof)", false),
+            ("L5", true),
+            ("L5 (lean)", true),
+            ("bogus", false),
+        ] {
+            let mut c = WorkContract::new("T".into(), "deadbeef".into());
+            c.verification_level = s.to_string();
+            assert_eq!(is_l5(&c), want, "for '{}'", s);
         }
     }
 }
