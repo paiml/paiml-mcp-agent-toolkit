@@ -20,16 +20,20 @@
 //   CB-1628 (L3) — every inherited log line carries the required 4-field
 //                  shape `{yaml, test_id, status, duration_ms}` so lines
 //                  aren't silently dropped post-runner (skip-if-absent)
+//   CB-1629 (L4) — L4+ tickets must not record any `status: "timeout"`
+//                  line in their falsification.log — Kani-adjacent tests
+//                  that time out defeat the formal-verification claim
 //
 // The remaining checks (CB-1621 expected snapshot drift, CB-1624 deletion
-// audit, CB-1625 fatal inherited failures, CB-1627 post-bind YAML drift,
-// CB-1629 L4 timeout gate) surface as Skip with a "Deferred — requires X"
-// message so config plumbing is wired for the follow-up work.
+// audit, CB-1625 fatal inherited failures, CB-1627 post-bind YAML drift)
+// surface as Skip with a "Deferred — requires X" message so config
+// plumbing is wired for the follow-up work.
 
 use std::path::{Path, PathBuf};
 
 use super::types::*;
 use crate::cli::handlers::work_contract::{FalsificationMethod, WorkContract};
+use crate::cli::handlers::work_verification_level::VerificationLevel;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -569,11 +573,95 @@ pub(crate) fn check_per_run_log_line(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn check_l4_timeout_gate(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1629: L4 Timeout Gate",
-        "requires runtime timeout tracking in ProvableContract dispatch",
-    )
+/// Return true if a ticket's declared `verification_level` parses to L4+.
+/// Ticket strings are typed like `"L3"` or `"L4 (kani_proof)"` — we take
+/// the first whitespace-separated token so annotated variants parse too.
+fn is_l4_or_higher(contract: &WorkContract) -> bool {
+    let token = contract
+        .verification_level
+        .split_whitespace()
+        .next()
+        .unwrap_or("");
+    VerificationLevel::parse_lenient(token)
+        .map(|lvl| lvl >= VerificationLevel::L4)
+        .unwrap_or(false)
+}
+
+/// CB-1629 (L4): an L4+ ticket's `falsification.log` must not record any
+/// `status: "timeout"` line. L4 correctness depends on completed Kani
+/// verification; a timed-out Kani harness is indistinguishable from an
+/// unbounded counterexample and must not be claimed as passed.
+///
+/// Skip-if-absent: no L4+ ticket with a log → skip overall. Manual-source
+/// timeouts also fail (the timeout semantics are level-gated, not
+/// source-gated: an L4 ticket cannot admit timeouts of any kind).
+pub(crate) fn check_l4_timeout_gate(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1629: L4 Timeout Gate";
+    let contracts = load_active_contracts(project_path);
+
+    let mut timeouts: Vec<String> = Vec::new();
+    let mut checked = 0usize;
+
+    for c in &contracts {
+        if !is_l4_or_higher(c) {
+            continue;
+        }
+        let log_path = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("falsification.log");
+        let Ok(contents) = std::fs::read_to_string(&log_path) else {
+            continue;
+        };
+        checked += 1;
+        for (idx, line) in contents.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed) else {
+                continue;
+            };
+            let status = v.get("status").and_then(|s| s.as_str()).unwrap_or("");
+            if status.eq_ignore_ascii_case("timeout") {
+                let label = v
+                    .get("test_id")
+                    .or_else(|| v.get("method"))
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("?");
+                timeouts.push(format!("{}:{} ({})", c.work_item_id, idx + 1, label));
+            }
+        }
+    }
+
+    if checked == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L4+ ticket has a `falsification.log` to check".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if timeouts.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!("{} L4+ ticket(s): no timeouts recorded", checked),
+            severity: Severity::Info,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: format!(
+            "{} timeout(s) in L4+ ticket log(s) — Kani-adjacent flakes defeat the level: {}",
+            timeouts.len(),
+            timeouts.join(", ")
+        ),
+        severity: Severity::Error,
+    }
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -615,7 +703,6 @@ mod tests {
             ("CB-1624", check_no_manual_deletion(path)),
             ("CB-1625", check_inherited_failure_fatal(path)),
             ("CB-1627", check_post_bind_yaml_drift(path)),
-            ("CB-1629", check_l4_timeout_gate(path)),
         ] {
             assert_eq!(check.status, CheckStatus::Skip, "{}", name);
             assert!(
@@ -624,6 +711,112 @@ mod tests {
                 name,
                 check.message
             );
+        }
+    }
+
+    // ── CB-1629 L4 timeout gate tests ────────────────────────────────────
+
+    fn contract_at_level(ticket: &str, level: &str) -> WorkContract {
+        let mut c = WorkContract::new(ticket.into(), "deadbeef".into());
+        c.verification_level = level.into();
+        c
+    }
+
+    #[test]
+    fn l4_timeout_skips_when_no_l4_ticket() {
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L3");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"yaml":"a.yaml","test_id":"t1","status":"timeout","duration_ms":60000}"#,
+                "\n",
+            ),
+        );
+        let check = check_l4_timeout_gate(tmp.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn l4_timeout_skips_when_l4_ticket_has_no_log() {
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L4");
+        write_contract_json(tmp.path(), "T1", &c);
+        let check = check_l4_timeout_gate(tmp.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn l4_timeout_passes_when_no_timeout_recorded() {
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L4");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"yaml":"a.yaml","test_id":"t1","status":"pass","duration_ms":500}"#,
+                "\n",
+                r#"{"yaml":"a.yaml","test_id":"t2","status":"fail","duration_ms":200}"#,
+                "\n",
+            ),
+        );
+        let check = check_l4_timeout_gate(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn l4_timeout_fails_on_inherited_timeout() {
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L4 (kani_proof)");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"yaml":"a.yaml","test_id":"rope_big","status":"timeout","duration_ms":60000}"#,
+                "\n",
+            ),
+        );
+        let check = check_l4_timeout_gate(tmp.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("T1"));
+        assert!(check.message.contains("rope_big"));
+    }
+
+    #[test]
+    fn l4_timeout_fails_on_manual_timeout_too() {
+        // L4 is source-agnostic — manual-source timeouts also fail.
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L5");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"method":"TdgRegression","status":"timeout","duration_ms":300000}"#,
+                "\n",
+            ),
+        );
+        let check = check_l4_timeout_gate(tmp.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("TdgRegression"));
+    }
+
+    #[test]
+    fn is_l4_or_higher_accepts_ladder() {
+        let mut c = WorkContract::new("T".into(), "deadbeef".into());
+        for (s, want) in [
+            ("L0", false),
+            ("L3", false),
+            ("L4", true),
+            ("L4 (kani_proof)", true),
+            ("L5", true),
+        ] {
+            c.verification_level = s.into();
+            assert_eq!(is_l4_or_higher(&c), want, "{}", s);
         }
     }
 
