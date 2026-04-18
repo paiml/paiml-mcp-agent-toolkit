@@ -1,4 +1,3 @@
-
 /// Generate provable-contracts YAML from .pmat-work/ contract.json files (R-4).
 ///
 /// Maps: claims/falsifiable_claims → preconditions, ensure → postconditions,
@@ -41,7 +40,13 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
         // Sanitize ID for filename
         let safe_id: String = id
             .chars()
-            .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+            .map(|c| {
+                if c.is_alphanumeric() || c == '-' || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            })
             .collect();
 
         let level = v
@@ -76,14 +81,26 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
             }
         }
 
+        // Count all contractual obligations for verification_summary.total_obligations
+        // Schema requires this field; omitting it causes pv lint PV-VAL-001 failures.
+        let count_array =
+            |key: &str| -> usize { v.get(key).and_then(|a| a.as_array()).map_or(0, |a| a.len()) };
+        let total_obligations = count_array("claims")
+            + count_array("ensure")
+            + count_array("require")
+            + count_array("invariant");
+
         // Build YAML (hand-written to avoid serde_yaml dependency)
         // Quote name: always, to safely handle colons/special chars in IDs
-        let mut yaml = format!("# Auto-generated from .pmat-work/{}/contract.json\n", safe_id);
+        let mut yaml = format!(
+            "# Auto-generated from .pmat-work/{}/contract.json\n",
+            safe_id
+        );
         yaml.push_str(&format!("name: \"{}\"\n", yaml_escape_string(id)));
         yaml.push_str("surface: work-contract\n");
         yaml.push_str(&format!(
-            "verification_summary:\n  target_level: {}\n  current_level: {}\n",
-            level, level
+            "verification_summary:\n  target_level: {}\n  current_level: {}\n  total_obligations: {}\n",
+            level, level, total_obligations
         ));
 
         if !preconditions.is_empty() {
@@ -190,10 +207,22 @@ pub(crate) fn handle_asset_validate(
     let mut skip = 0;
     for check in &checks {
         let icon = match check.status {
-            CheckStatus::Pass => { pass += 1; "✓" }
-            CheckStatus::Warn => { warn += 1; "⚠" }
-            CheckStatus::Fail => { warn += 1; "✗" }
-            CheckStatus::Skip => { skip += 1; "-" }
+            CheckStatus::Pass => {
+                pass += 1;
+                "✓"
+            }
+            CheckStatus::Warn => {
+                warn += 1;
+                "⚠"
+            }
+            CheckStatus::Fail => {
+                warn += 1;
+                "✗"
+            }
+            CheckStatus::Skip => {
+                skip += 1;
+                "-"
+            }
         };
         println!("  {} {}: {}", icon, check.name, check.message);
     }
