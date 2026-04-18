@@ -160,23 +160,6 @@ fn load_contract_json(project_path: &Path, ticket_id: &str) -> Option<serde_json
     serde_json::from_str::<serde_json::Value>(&text).ok()
 }
 
-/// Return every clause id present in the ticket JSON's require/ensure/invariant
-/// arrays. Used by CB-1632 to validate that attribute IDs line up with the
-/// ticket's declared clauses.
-fn clause_ids_from_json(contract: &serde_json::Value) -> Vec<String> {
-    let mut ids = Vec::new();
-    for section in ["require", "ensure", "invariant"] {
-        if let Some(arr) = contract.get(section).and_then(|v| v.as_array()) {
-            for c in arr {
-                if let Some(id) = c.get("id").and_then(|v| v.as_str()) {
-                    ids.push(id.to_string());
-                }
-            }
-        }
-    }
-    ids
-}
-
 /// Iterate every clause in require/ensure/invariant, returning references.
 fn iter_clauses(contract: &serde_json::Value) -> impl Iterator<Item = &serde_json::Value> {
     ["require", "ensure", "invariant"]
@@ -203,104 +186,12 @@ fn contract_level_at_least(contract: &serde_json::Value, target: u8) -> bool {
 
 // ─── Shared helpers: receipt JSON interpretation ─────────────────────────────
 
+/// Outcome of parsing a codegen run or compile-status receipt. Used by
+/// CB-1630 and CB-1636 — both kept small by moving their per-check
+/// interpretation logic to their own partition files.
 enum ReceiptOutcome {
     Pass,
     Fail(String),
-}
-
-/// Interpret a codegen run receipt JSON into an outcome. Returns `None` if
-/// the schema isn't recognised so the caller can skip cleanly.
-fn codegen_receipt_outcome(v: &serde_json::Value) -> Option<ReceiptOutcome> {
-    if let Some(b) = v.get("success").and_then(|s| s.as_bool()) {
-        return Some(if b {
-            ReceiptOutcome::Pass
-        } else {
-            ReceiptOutcome::Fail("success=false".into())
-        });
-    }
-    if let Some(code) = v.get("exit_code").and_then(|s| s.as_i64()) {
-        return Some(if code == 0 {
-            ReceiptOutcome::Pass
-        } else {
-            ReceiptOutcome::Fail(format!("exit_code={}", code))
-        });
-    }
-    if let Some(s) = v.get("status").and_then(|s| s.as_str()) {
-        return Some(match s {
-            "pass" | "ok" | "success" => ReceiptOutcome::Pass,
-            other => ReceiptOutcome::Fail(format!("status=\"{}\"", other)),
-        });
-    }
-    None
-}
-
-/// Extract the outcome for a single profile from the compile-status JSON.
-/// Accepts: nested object `{"success": bool}`, numeric exit code, or flat
-/// `<profile>_success: bool` key.
-fn compile_profile_outcome(v: &serde_json::Value, profile: &str) -> Option<ReceiptOutcome> {
-    if let Some(obj) = v.get(profile) {
-        if let Some(b) = obj.get("success").and_then(|x| x.as_bool()) {
-            return Some(if b {
-                ReceiptOutcome::Pass
-            } else {
-                ReceiptOutcome::Fail("success=false".into())
-            });
-        }
-        if let Some(s) = obj.get("status").and_then(|x| x.as_str()) {
-            return Some(match s {
-                "pass" | "ok" | "success" => ReceiptOutcome::Pass,
-                other => ReceiptOutcome::Fail(format!("status=\"{}\"", other)),
-            });
-        }
-        if let Some(code) = obj.as_i64() {
-            return Some(if code == 0 {
-                ReceiptOutcome::Pass
-            } else {
-                ReceiptOutcome::Fail(format!("exit_code={}", code))
-            });
-        }
-    }
-    let flat_key = format!("{}_success", profile);
-    if let Some(b) = v.get(&flat_key).and_then(|x| x.as_bool()) {
-        return Some(if b {
-            ReceiptOutcome::Pass
-        } else {
-            ReceiptOutcome::Fail(format!("{}=false", flat_key))
-        });
-    }
-    None
-}
-
-// ─── Shared helpers: manifest SHA ────────────────────────────────────────────
-
-/// Parse a manifest JSON Value and return `(path, sha)` tuples. Accepts
-/// three plausible shapes the Component 30 codegen writer might emit:
-///
-/// ```json
-/// { "entries": [{ "path": "src/lib.rs", "sha": "..." }] }
-/// { "files":   [{ "path": "src/lib.rs", "sha": "..." }] }
-/// { "sources": [{ "path": "src/lib.rs", "sha": "..." }] }
-/// ```
-///
-/// Returns `None` if no such array is present — caller treats that as a
-/// malformed manifest, not as "no entries to check".
-fn manifest_entries(v: &serde_json::Value) -> Option<Vec<(String, String)>> {
-    let arr = v
-        .get("entries")
-        .or_else(|| v.get("files"))
-        .or_else(|| v.get("sources"))
-        .and_then(|v| v.as_array())?;
-    let mut out = Vec::new();
-    for item in arr {
-        let Some(path) = item.get("path").and_then(|v| v.as_str()) else {
-            continue;
-        };
-        let Some(sha) = item.get("sha").and_then(|v| v.as_str()) else {
-            continue;
-        };
-        out.push((path.to_string(), sha.to_string()));
-    }
-    Some(out)
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {

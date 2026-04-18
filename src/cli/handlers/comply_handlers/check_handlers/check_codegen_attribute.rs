@@ -1,6 +1,23 @@
 // CB-1631, CB-1632: Attribute-scan checks for #[pmat_work_contract(...)] usages.
 // Included from check_codegen.rs — do NOT add `use` imports or `#!` attributes here.
 
+/// Return every clause id present in the ticket JSON's require/ensure/invariant
+/// arrays. Used by CB-1632 to validate that attribute IDs line up with the
+/// ticket's declared clauses.
+fn clause_ids_from_json(contract: &serde_json::Value) -> Vec<String> {
+    let mut ids = Vec::new();
+    for section in ["require", "ensure", "invariant"] {
+        if let Some(arr) = contract.get(section).and_then(|v| v.as_array()) {
+            for c in arr {
+                if let Some(id) = c.get("id").and_then(|v| v.as_str()) {
+                    ids.push(id.to_string());
+                }
+            }
+        }
+    }
+    ids
+}
+
 // ─── CB-1631: Attribute references generated module ─────────────────────────
 
 /// CB-1631 (L2): Every `#[pmat_work_contract(id = "PMAT-530")]` in the

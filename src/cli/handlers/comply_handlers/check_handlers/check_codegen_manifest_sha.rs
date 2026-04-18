@@ -1,6 +1,36 @@
 // CB-1633: Manifest SHA drift check.
 // Included from check_codegen.rs — do NOT add `use` imports or `#!` attributes here.
 
+/// Parse a manifest JSON Value and return `(path, sha)` tuples. Accepts
+/// three plausible shapes the Component 30 codegen writer might emit:
+///
+/// ```json
+/// { "entries": [{ "path": "src/lib.rs", "sha": "..." }] }
+/// { "files":   [{ "path": "src/lib.rs", "sha": "..." }] }
+/// { "sources": [{ "path": "src/lib.rs", "sha": "..." }] }
+/// ```
+///
+/// Returns `None` if no such array is present — caller treats that as a
+/// malformed manifest, not as "no entries to check".
+fn manifest_entries(v: &serde_json::Value) -> Option<Vec<(String, String)>> {
+    let arr = v
+        .get("entries")
+        .or_else(|| v.get("files"))
+        .or_else(|| v.get("sources"))
+        .and_then(|v| v.as_array())?;
+    let mut out = Vec::new();
+    for item in arr {
+        let Some(path) = item.get("path").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let Some(sha) = item.get("sha").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        out.push((path.to_string(), sha.to_string()));
+    }
+    Some(out)
+}
+
 /// CB-1633 (L3): `contracts/work/<ID>.manifest.json` is emitted by codegen
 /// to pin which source bytes the generated macros were derived from. If
 /// the recorded SHA for an entry drifts from the current bytes on disk,

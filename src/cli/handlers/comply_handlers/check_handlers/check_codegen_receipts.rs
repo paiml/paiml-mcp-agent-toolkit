@@ -1,6 +1,32 @@
 // CB-1630: `pmat work codegen` run-status receipt check.
 // Included from check_codegen.rs — do NOT add `use` imports or `#!` attributes here.
 
+/// Interpret a codegen run receipt JSON into an outcome. Returns `None` if
+/// the schema isn't recognised so the caller can skip cleanly.
+fn codegen_receipt_outcome(v: &serde_json::Value) -> Option<ReceiptOutcome> {
+    if let Some(b) = v.get("success").and_then(|s| s.as_bool()) {
+        return Some(if b {
+            ReceiptOutcome::Pass
+        } else {
+            ReceiptOutcome::Fail("success=false".into())
+        });
+    }
+    if let Some(code) = v.get("exit_code").and_then(|s| s.as_i64()) {
+        return Some(if code == 0 {
+            ReceiptOutcome::Pass
+        } else {
+            ReceiptOutcome::Fail(format!("exit_code={}", code))
+        });
+    }
+    if let Some(s) = v.get("status").and_then(|s| s.as_str()) {
+        return Some(match s {
+            "pass" | "ok" | "success" => ReceiptOutcome::Pass,
+            other => ReceiptOutcome::Fail(format!("status=\"{}\"", other)),
+        });
+    }
+    None
+}
+
 // ─── CB-163x check implementations (all active, skip-if-absent) ────────────
 
 /// CB-1630 (L2): the most recent `pmat work codegen` run must have

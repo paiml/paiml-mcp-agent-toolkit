@@ -1,6 +1,43 @@
 // CB-1636: Generated macros compile in both debug and release profiles.
 // Included from check_codegen.rs — do NOT add `use` imports or `#!` attributes here.
 
+/// Extract the outcome for a single profile from the compile-status JSON.
+/// Accepts: nested object `{"success": bool}`, numeric exit code, or flat
+/// `<profile>_success: bool` key.
+fn compile_profile_outcome(v: &serde_json::Value, profile: &str) -> Option<ReceiptOutcome> {
+    if let Some(obj) = v.get(profile) {
+        if let Some(b) = obj.get("success").and_then(|x| x.as_bool()) {
+            return Some(if b {
+                ReceiptOutcome::Pass
+            } else {
+                ReceiptOutcome::Fail("success=false".into())
+            });
+        }
+        if let Some(s) = obj.get("status").and_then(|x| x.as_str()) {
+            return Some(match s {
+                "pass" | "ok" | "success" => ReceiptOutcome::Pass,
+                other => ReceiptOutcome::Fail(format!("status=\"{}\"", other)),
+            });
+        }
+        if let Some(code) = obj.as_i64() {
+            return Some(if code == 0 {
+                ReceiptOutcome::Pass
+            } else {
+                ReceiptOutcome::Fail(format!("exit_code={}", code))
+            });
+        }
+    }
+    let flat_key = format!("{}_success", profile);
+    if let Some(b) = v.get(&flat_key).and_then(|x| x.as_bool()) {
+        return Some(if b {
+            ReceiptOutcome::Pass
+        } else {
+            ReceiptOutcome::Fail(format!("{}=false", flat_key))
+        });
+    }
+    None
+}
+
 /// CB-1636 (L3): the generated `contracts/work/*.rs` modules must
 /// compile under both `debug` and `release` profiles. Invoking
 /// `cargo check` from inside a compliance check would be slow and
