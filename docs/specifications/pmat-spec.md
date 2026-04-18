@@ -34,6 +34,7 @@
 | 24 | [Verification Backends](#24-verification-backends) | [verification-backends.md](components/verification-backends.md) | Active |
 | 25 | [Commit-Level Contract Enforcement & Asset Contracts](#25-commit-level-contract-enforcement--asset-contracts) | [commit-level-contract-enforcement.md](components/commit-level-contract-enforcement.md) | Active |
 | 26 | [Self-Enforcement & Dogfooding](#26-self-enforcement--dogfooding) | [self-enforcement.md](components/self-enforcement.md) | Active |
+| — | **[Work Contract Extensions](#work-contract-extensions-components-27-31)** | [pmat-work-*.md](#work-contract-extensions-components-27-31) | Draft |
 | 27 | [Work Contract Binding](#27-work-contract-binding) | [pmat-work-contract-binding.md](components/pmat-work-contract-binding.md) | Draft |
 | 28 | [Work Verification Ladder](#28-work-verification-ladder) | [pmat-work-verification-ladder.md](components/pmat-work-verification-ladder.md) | Draft |
 | 29 | [Work Falsification Unification](#29-work-falsification-unification) | [pmat-work-falsification-unification.md](components/pmat-work-falsification-unification.md) | Draft |
@@ -469,7 +470,27 @@ all 11 categories ≥70%, 10/11 categories ≥80%.
 
 ---
 
-## 27. Work Contract Binding
+## Work Contract Extensions (Components 27-31)
+
+Five co-designed sub-specs that extend `pmat work` tickets with bound
+contracts, typed verification levels, unified falsification, compile-time
+codegen, and derived chain-of-thought proofs. Collectively tracked by
+tickets **PMAT-620..624** and enforced by check ids **CB-1600..1649**.
+
+| # | Component | Sub-spec | Checks |
+|---|-----------|----------|--------|
+| 27 | Work Contract Binding | [pmat-work-contract-binding.md](components/pmat-work-contract-binding.md) | CB-1600..1609 |
+| 28 | Work Verification Ladder | [pmat-work-verification-ladder.md](components/pmat-work-verification-ladder.md) | CB-1610..1619 |
+| 29 | Work Falsification Unification | [pmat-work-falsification-unification.md](components/pmat-work-falsification-unification.md) | CB-1620..1629 |
+| 30 | Work Compile-Time Codegen | [pmat-work-compile-time-codegen.md](components/pmat-work-compile-time-codegen.md) | CB-1630..1639 |
+| 31 | Work CoT Proof Derivation | [pmat-work-cot-proof-derivation.md](components/pmat-work-cot-proof-derivation.md) | CB-1640..1649 |
+
+Shorthand: refer to the whole suite as **"Components 27-31 (pmat-work-\*)"**
+or by check range **"CB-1600..1649"**.
+
+---
+
+### 27. Work Contract Binding
 
 **Sub-spec**: [components/pmat-work-contract-binding.md](components/pmat-work-contract-binding.md)
 
@@ -480,7 +501,7 @@ binding existence, SHA drift, and inheritance integrity.
 
 ---
 
-## 28. Work Verification Ladder
+### 28. Work Verification Ladder
 
 **Sub-spec**: [components/pmat-work-verification-ladder.md](components/pmat-work-verification-ladder.md)
 
@@ -490,7 +511,7 @@ pass, L4 = Kani verified, L5 = Lean proved with zero `sorry`. CB-1610..1619.
 
 ---
 
-## 29. Work Falsification Unification
+### 29. Work Falsification Unification
 
 **Sub-spec**: [components/pmat-work-falsification-unification.md](components/pmat-work-falsification-unification.md)
 
@@ -501,7 +522,7 @@ CB-1620..1629.
 
 ---
 
-## 30. Work Compile-Time Codegen
+### 30. Work Compile-Time Codegen
 
 **Sub-spec**: [components/pmat-work-compile-time-codegen.md](components/pmat-work-compile-time-codegen.md)
 
@@ -512,7 +533,7 @@ CB-1630..1639.
 
 ---
 
-## 31. Work CoT Proof Derivation
+### 31. Work CoT Proof Derivation
 
 **Sub-spec**: [components/pmat-work-cot-proof-derivation.md](components/pmat-work-cot-proof-derivation.md)
 
