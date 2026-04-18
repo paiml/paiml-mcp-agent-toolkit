@@ -31,10 +31,16 @@
 //                  canonical hash of `chain_of_thought` — detects manual
 //                  edits that bypass `pmat work cot derive`. Skip-if-absent.
 //   CB-1647 (L3) — no orphan steps: every step chains via `discharged_by`
+//   CB-1648 (L4) — every `Axiomatic` discharge in an L4+ ticket is either
+//                  a bound equation invariant (reason/lemma matches an
+//                  `implements:` equation name) or a documented lemma
+//                  (non-empty `reason` prose). Skip-if-absent.
+//   CB-1649 (L5) — every structured step in an L5 ticket carries a Lean
+//                  theorem/lemma mapping via `lean_theorem`, `lean_lemma`,
+//                  `evidence_method.LeanTheorem`/`LeanLemma`, or
+//                  `discharged_by.Lean`. Skip-if-absent.
 //
-// Deferred stubs (need infrastructure that hasn't landed):
-//   CB-1648 (L4) — requires Kani-bound axiom registry
-//   CB-1649 (L5) — requires Lean theorem lemma mapping
+// All CB-164x checks are now active (skip-if-absent).
 
 use std::path::Path;
 
@@ -44,15 +50,6 @@ use sha2::{Digest, Sha256};
 use super::types::*;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-fn deferred(name: &str, reason: &str) -> ComplianceCheck {
-    ComplianceCheck {
-        name: name.into(),
-        status: CheckStatus::Skip,
-        message: format!("Deferred — {}", reason),
-        severity: Severity::Info,
-    }
-}
 
 /// Load every `.pmat-work/<ID>/contract.json` as a raw `Value`. Schema-agnostic —
 /// we look up fields by name so contracts built on the legacy `{ step, question,
@@ -929,18 +926,291 @@ pub(crate) fn check_cot_derivation_sha_fresh(project_path: &Path) -> ComplianceC
     }
 }
 
-pub(crate) fn check_l4_axiomatic_discharge_bounded(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1648: L4 Axiomatic Discharge Bounded",
-        "requires Kani-bound axiom registry (lemma references per L4 ticket)",
-    )
+/// CB-1648 (L4): every `Axiomatic` discharge in an L4+ ticket's chain-of-
+/// thought must be backed by one of:
+///
+/// * a bound equation invariant — the `Axiomatic` reason or lemma name
+///   matches an `equation` declared in the ticket's `implements:` array
+/// * a documented lemma — the `Axiomatic` object carries a non-empty
+///   `reason` string (prose-level documentation is acceptable at L4; L5
+///   adds the Lean mapping requirement via CB-1649).
+///
+/// An Axiomatic discharge with neither is an "unchecked axiom" — the step
+/// asserts something without evidence, which is exactly what formal
+/// verification claims are supposed to prevent.
+///
+/// # Skip semantics (tiered)
+///
+/// * no tickets                                 → Skip
+/// * no L4+ ticket                              → Skip
+/// * no L4+ step uses `Axiomatic` discharge     → Skip
+///
+/// # Fail
+///
+/// Any Axiomatic discharge lacks both a `reason` and a match against a
+/// bound equation name.
+pub(crate) fn check_l4_axiomatic_discharge_bounded(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1648: L4 Axiomatic Discharge Bounded";
+    let contracts = load_contract_values(project_path);
+    if contracts.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/<ID>/contract.json` tickets present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let l4_plus: Vec<&(String, Value)> = contracts
+        .iter()
+        .filter(|(_, c)| parse_level(c) >= 4)
+        .collect();
+    if l4_plus.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L4+ ticket present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut saw_axiomatic = false;
+    let mut checked = 0usize;
+    let mut violations: Vec<String> = Vec::new();
+
+    for (ticket, contract) in &l4_plus {
+        let equation_names: Vec<String> = contract
+            .get("implements")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|b| b.get("equation").and_then(|e| e.as_str()).map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        for step in cot_steps(contract) {
+            let Some(axiomatic) = step.get("discharged_by").and_then(|d| d.get("Axiomatic")) else {
+                continue;
+            };
+            saw_axiomatic = true;
+            checked += 1;
+
+            let reason = axiomatic
+                .get("reason")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim();
+            let lemma = axiomatic
+                .get("lemma")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .trim();
+
+            let matches_equation = equation_names
+                .iter()
+                .any(|eq| reason.contains(eq) || lemma.contains(eq));
+
+            if !matches_equation && reason.is_empty() && lemma.is_empty() {
+                violations.push(format!(
+                    "  {}:{} Axiomatic discharge lacks `reason`/`lemma` and no bound equation match",
+                    ticket,
+                    step_id(step)
+                ));
+            }
+        }
+    }
+
+    if !saw_axiomatic {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: format!(
+                "No L4+ step uses `Axiomatic` discharge ({} eligible)",
+                l4_plus.len()
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    if !violations.is_empty() {
+        let mut msg = format!(
+            "{} unchecked Axiomatic discharge(s) in L4+ ticket(s):\n",
+            violations.len()
+        );
+        let preview: Vec<&String> = violations.iter().take(5).collect();
+        for line in preview {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        if violations.len() > 5 {
+            msg.push_str(&format!("  …and {} more\n", violations.len() - 5));
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{} Axiomatic discharge(s) in L4+ ticket(s) are bounded",
+            checked
+        ),
+        severity: Severity::Info,
+    }
 }
 
-pub(crate) fn check_l5_lean_theorem_mapping(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1649: L5 Lean Theorem Mapping",
-        "requires Component 24 Lean theorem lemma mapping per step",
-    )
+/// CB-1649 (L5): every structured step in an L5 ticket must declare a
+/// mapping to a Lean theorem/lemma. At L5 the ticket's truth is witnessed
+/// by a machine-checked Lean proof; each reasoning step must point at the
+/// specific theorem/lemma that discharges it.
+///
+/// # Accepted mapping shapes
+///
+/// Any of the following is sufficient evidence:
+///
+/// * top-level `lean_theorem: "..."` key on the step
+/// * top-level `lean_lemma: "..."` key on the step
+/// * `evidence_method.LeanTheorem: { name: "..." }`
+/// * `evidence_method.LeanLemma: { name: "..." }`
+/// * `discharged_by.Lean: { lemma: "..." }` (axiom-like discharge via Lean)
+///
+/// # Skip semantics (tiered)
+///
+/// * no tickets                                 → Skip
+/// * no L5 ticket                               → Skip
+/// * no structured step in any L5 ticket        → Skip (migration pending)
+///
+/// # Fail
+///
+/// Any structured L5 step lacks a Lean mapping.
+pub(crate) fn check_l5_lean_theorem_mapping(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1649: L5 Lean Theorem Mapping";
+    let contracts = load_contract_values(project_path);
+    if contracts.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/<ID>/contract.json` tickets present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let l5: Vec<&(String, Value)> = contracts
+        .iter()
+        .filter(|(_, c)| parse_level(c) >= 5)
+        .collect();
+    if l5.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L5 ticket present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut structured_seen = 0usize;
+    let mut missing: Vec<String> = Vec::new();
+
+    for (ticket, contract) in &l5 {
+        for step in cot_steps(contract) {
+            if !is_structured(step) {
+                continue;
+            }
+            structured_seen += 1;
+            if !step_has_lean_mapping(step) {
+                missing.push(format!("{}:{}", ticket, step_id(step)));
+            }
+        }
+    }
+
+    if structured_seen == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: format!(
+                "No structured CoT step in any L5 ticket ({} eligible) — migration pending",
+                l5.len()
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    if !missing.is_empty() {
+        let mut msg = format!(
+            "{} L5 step(s) lack a Lean theorem/lemma mapping:\n",
+            missing.len()
+        );
+        let preview: Vec<&String> = missing.iter().take(5).collect();
+        for line in preview {
+            msg.push_str("  ");
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        if missing.len() > 5 {
+            msg.push_str(&format!("  …and {} more\n", missing.len() - 5));
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{} L5 structured step(s) map to Lean theorems/lemmas",
+            structured_seen
+        ),
+        severity: Severity::Info,
+    }
+}
+
+/// Return true iff the step declares a Lean theorem/lemma mapping in any
+/// of the accepted shapes. Schema-pragmatic: the exact field name has not
+/// been finalised, so accept the obvious variants.
+fn step_has_lean_mapping(step: &Value) -> bool {
+    if step
+        .get("lean_theorem")
+        .and_then(|v| v.as_str())
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    if step
+        .get("lean_lemma")
+        .and_then(|v| v.as_str())
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    if let Some(method) = step.get("evidence_method") {
+        if method.get("LeanTheorem").is_some() || method.get("LeanLemma").is_some() {
+            return true;
+        }
+    }
+    if let Some(discharged) = step.get("discharged_by") {
+        if discharged
+            .get("Lean")
+            .and_then(|v| v.get("lemma"))
+            .and_then(|v| v.as_str())
+            .map(|s| !s.trim().is_empty())
+            .unwrap_or(false)
+        {
+            return true;
+        }
+    }
+    false
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -959,18 +1229,6 @@ mod tests {
             serde_json::to_string_pretty(&contract).unwrap(),
         )
         .unwrap();
-    }
-
-    #[test]
-    fn deferred_stubs_return_skip_with_reason() {
-        let project = tempdir().unwrap();
-        for check in [
-            check_l4_axiomatic_discharge_bounded(project.path()),
-            check_l5_lean_theorem_mapping(project.path()),
-        ] {
-            assert_eq!(check.status, CheckStatus::Skip);
-            assert!(check.message.starts_with("Deferred — "));
-        }
     }
 
     // ── CB-1644 agent run replayable tests ───────────────────────────────
@@ -1800,5 +2058,386 @@ mod tests {
         let loaded = load_contract_values(project.path());
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].0, "T1");
+    }
+
+    // ── CB-1648 L4 Axiomatic discharge bounded tests ─────────────────────
+
+    #[test]
+    fn cb1648_skips_when_no_tickets() {
+        let project = tempdir().unwrap();
+        let r = check_l4_axiomatic_discharge_bounded(project.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/<ID>/contract.json`"));
+    }
+
+    #[test]
+    fn cb1648_skips_when_no_l4_ticket() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({ "verification_level": "L3", "chain_of_thought": [] }),
+        );
+        let r = check_l4_axiomatic_discharge_bounded(project.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L4+ ticket"));
+    }
+
+    #[test]
+    fn cb1648_skips_when_no_axiomatic_discharge() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L4",
+                "chain_of_thought": [
+                    { "id": "CoT-1", "assumption": { "predicate": "p" } }
+                ]
+            }),
+        );
+        let r = check_l4_axiomatic_discharge_bounded(project.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("Axiomatic"));
+    }
+
+    #[test]
+    fn cb1648_passes_when_axiomatic_has_reason() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L4",
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "discharged_by": {
+                            "Axiomatic": { "reason": "IEEE-754 finite arithmetic" }
+                        }
+                    }
+                ]
+            }),
+        );
+        let r = check_l4_axiomatic_discharge_bounded(project.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("1 Axiomatic"));
+    }
+
+    #[test]
+    fn cb1648_passes_when_axiomatic_matches_bound_equation() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L4",
+                "implements": [
+                    {
+                        "contract": "pmat-core",
+                        "equation": "rope",
+                        "file": "contracts/pmat-core.yaml",
+                        "sha": "abc",
+                        "bound_at": "2026-04-18T00:00:00Z"
+                    }
+                ],
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "discharged_by": {
+                            "Axiomatic": { "lemma": "rope invariant" }
+                        }
+                    }
+                ]
+            }),
+        );
+        let r = check_l4_axiomatic_discharge_bounded(project.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1648_fails_when_axiomatic_has_no_reason_or_equation_match() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L4",
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "discharged_by": { "Axiomatic": {} }
+                    }
+                ]
+            }),
+        );
+        let r = check_l4_axiomatic_discharge_bounded(project.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("CoT-1"));
+        assert!(r.message.contains("T1"));
+    }
+
+    #[test]
+    fn cb1648_fails_when_reason_empty_and_no_equation() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L5",
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "discharged_by": {
+                            "Axiomatic": { "reason": "   " }
+                        }
+                    }
+                ]
+            }),
+        );
+        let r = check_l4_axiomatic_discharge_bounded(project.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1648_aggregates_multiple_violations() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L4",
+                "chain_of_thought": [
+                    { "id": "CoT-1", "discharged_by": { "Axiomatic": {} } },
+                    { "id": "CoT-2", "discharged_by": { "Axiomatic": {} } },
+                ]
+            }),
+        );
+        let r = check_l4_axiomatic_discharge_bounded(project.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("2 unchecked"));
+    }
+
+    #[test]
+    fn cb1648_ignores_non_l4_axiomatic_violations() {
+        let project = tempdir().unwrap();
+        // L3 ticket with unchecked axiom — not our concern at L4 gate.
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L3",
+                "chain_of_thought": [
+                    { "id": "CoT-1", "discharged_by": { "Axiomatic": {} } }
+                ]
+            }),
+        );
+        let r = check_l4_axiomatic_discharge_bounded(project.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("L4+"));
+    }
+
+    // ── CB-1649 L5 Lean theorem mapping tests ────────────────────────────
+
+    #[test]
+    fn cb1649_skips_when_no_tickets() {
+        let project = tempdir().unwrap();
+        let r = check_l5_lean_theorem_mapping(project.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn cb1649_skips_when_no_l5_ticket() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({ "verification_level": "L4", "chain_of_thought": [] }),
+        );
+        let r = check_l5_lean_theorem_mapping(project.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L5 ticket"));
+    }
+
+    #[test]
+    fn cb1649_skips_when_no_structured_steps_in_l5() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L5",
+                "chain_of_thought": [
+                    { "step": 1, "question": "q", "answer": "a" }
+                ]
+            }),
+        );
+        let r = check_l5_lean_theorem_mapping(project.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("migration pending"));
+    }
+
+    #[test]
+    fn cb1649_passes_when_step_has_lean_theorem_key() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L5",
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": { "predicate": "p" },
+                        "lean_theorem": "Rope.preserves_norm"
+                    }
+                ]
+            }),
+        );
+        let r = check_l5_lean_theorem_mapping(project.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1649_passes_when_step_has_lean_lemma_key() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L5",
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "implication": { "predicate": "q" },
+                        "lean_lemma": "Arith.add_comm"
+                    }
+                ]
+            }),
+        );
+        let r = check_l5_lean_theorem_mapping(project.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1649_passes_when_evidence_method_is_lean_theorem() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L5",
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": { "predicate": "p" },
+                        "evidence_method": { "LeanTheorem": { "name": "Rope.norm" } }
+                    }
+                ]
+            }),
+        );
+        let r = check_l5_lean_theorem_mapping(project.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1649_passes_when_discharged_by_lean() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L5",
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": { "predicate": "p" },
+                        "discharged_by": { "Lean": { "lemma": "FinSet.nonempty" } }
+                    }
+                ]
+            }),
+        );
+        let r = check_l5_lean_theorem_mapping(project.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1649_fails_when_structured_step_has_no_lean_mapping() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L5",
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": { "predicate": "p" }
+                    }
+                ]
+            }),
+        );
+        let r = check_l5_lean_theorem_mapping(project.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("CoT-1"));
+        assert!(r.message.contains("T1"));
+    }
+
+    #[test]
+    fn cb1649_fails_when_lean_theorem_is_empty_string() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L5",
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": { "predicate": "p" },
+                        "lean_theorem": "   "
+                    }
+                ]
+            }),
+        );
+        let r = check_l5_lean_theorem_mapping(project.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1649_step_has_lean_mapping_recognises_all_forms() {
+        assert!(step_has_lean_mapping(&json!({ "lean_theorem": "Foo.bar" })));
+        assert!(step_has_lean_mapping(&json!({ "lean_lemma": "Foo.baz" })));
+        assert!(step_has_lean_mapping(&json!({
+            "evidence_method": { "LeanTheorem": { "name": "Foo" } }
+        })));
+        assert!(step_has_lean_mapping(&json!({
+            "evidence_method": { "LeanLemma": { "name": "Foo" } }
+        })));
+        assert!(step_has_lean_mapping(&json!({
+            "discharged_by": { "Lean": { "lemma": "Foo" } }
+        })));
+        assert!(!step_has_lean_mapping(&json!({})));
+        assert!(!step_has_lean_mapping(&json!({ "lean_theorem": "" })));
+        assert!(!step_has_lean_mapping(&json!({
+            "evidence_method": { "ExistingTest": { "path": "t.rs" } }
+        })));
+    }
+
+    #[test]
+    fn cb1649_ignores_non_l5_tickets() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "verification_level": "L4",
+                "chain_of_thought": [
+                    { "id": "CoT-1", "assumption": { "predicate": "p" } }
+                ]
+            }),
+        );
+        let r = check_l5_lean_theorem_mapping(project.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
     }
 }
