@@ -19,6 +19,9 @@
 //   CB-1624 (L1) — manual deletion audit: any `action: "delete"` entry in
 //                  `.pmat-work/ledger/roster-mutations.json` must carry
 //                  `via_unbind: true` (skip-if-absent)
+//   CB-1627 (L3) — post-bind YAML drift: warn when current YAML
+//                  `falsification_tests[]` has IDs not seeded into the
+//                  ticket's `ProvableContract{}` roster
 //   CB-1625 (L3) — any inherited log line with `status != "pass"` is fatal,
 //                  regardless of ticket level (skip-if-absent)
 //   CB-1626 (L1) — referenced `test_id` exists in the YAML at scan time
@@ -29,9 +32,9 @@
 //                  line in their falsification.log — Kani-adjacent tests
 //                  that time out defeat the formal-verification claim
 //
-// The remaining checks (CB-1621 expected snapshot drift, CB-1627 post-bind
-// YAML drift) surface as Skip with a "Deferred — requires X" message so
-// config plumbing is wired for the follow-up work.
+// The remaining check (CB-1621 expected snapshot drift) surfaces as Skip
+// with a "Deferred — requires X" message so config plumbing is wired for
+// the follow-up work.
 
 use std::path::{Path, PathBuf};
 
@@ -703,11 +706,131 @@ pub(crate) fn check_inherited_failure_fatal(project_path: &Path) -> ComplianceCh
     }
 }
 
-pub(crate) fn check_post_bind_yaml_drift(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1627: Post-bind YAML Drift",
-        "requires bind-time snapshot of YAML `falsification_tests[]` for diff",
-    )
+/// CB-1627 (L3): warn when the bound YAML's `falsification_tests[]` has
+/// gained entries since bind time. The bind-time snapshot is implicit:
+/// every `ProvableContract{ yaml_path, equation, test_id }` entry in the
+/// ticket's claims roster was seeded *at bind time* from the YAML that
+/// existed then. Any test_id currently in the YAML that is NOT in that
+/// seeded roster is a post-bind addition — the contract owner should
+/// re-bind (or explicitly opt out) to pick up the new coverage.
+///
+/// Result is always WARN — per spec §CB-1627 this is a drift signal, not
+/// a hard failure. The ticket still completes; the warning surfaces the
+/// missed coverage for the next planning cycle.
+///
+/// Skip semantics (tiered):
+///   • no `.pmat-work/` directory                → Skip
+///   • no ticket has `implements:` bindings      → Skip
+///   • every binding's YAML is missing or has
+///     no `falsification_tests[]`                → Skip
+pub(crate) fn check_post_bind_yaml_drift(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1627: Post-bind YAML Drift";
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/` directory".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let contracts = load_active_contracts(project_path);
+    if contracts.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/*/contract.json` tickets present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let any_binding = contracts.iter().any(|c| !c.implements.is_empty());
+    if !any_binding {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No ticket has `implements:` bindings".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut checked_bindings = 0usize;
+    let mut drift: Vec<String> = Vec::new();
+
+    for c in &contracts {
+        let seeded = provable_contract_entries(c);
+        for binding in &c.implements {
+            let yaml_path = if binding.file.is_absolute() {
+                binding.file.clone()
+            } else {
+                project_path.join(&binding.file)
+            };
+            let Ok(yaml_body) = std::fs::read_to_string(&yaml_path) else {
+                continue;
+            };
+            let current_ids = yaml_falsification_test_ids(&yaml_body);
+            if current_ids.is_empty() {
+                continue;
+            }
+            checked_bindings += 1;
+
+            let bound_ids: std::collections::HashSet<&str> = seeded
+                .iter()
+                .filter(|(path, eq, _)| path == &binding.file && eq == &binding.equation)
+                .map(|(_, _, tid)| tid.as_str())
+                .collect();
+
+            for id in &current_ids {
+                if !bound_ids.contains(id.as_str()) {
+                    drift.push(format!(
+                        "{} → {}/{}#{}",
+                        c.work_item_id, binding.contract, binding.equation, id
+                    ));
+                }
+            }
+        }
+    }
+
+    if checked_bindings == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No binding's YAML declares `falsification_tests[]`".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if drift.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} binding(s) checked, no post-bind YAML additions",
+                checked_bindings
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    let preview: Vec<String> = drift.iter().take(5).cloned().collect();
+    let more = drift.len().saturating_sub(5);
+    let suffix = if more > 0 {
+        format!(", +{} more", more)
+    } else {
+        String::new()
+    };
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Warn,
+        message: format!(
+            "{} new `falsification_tests[]` entry/entries post-bind — rebind or opt-out: {}{}",
+            drift.len(),
+            preview.join(", "),
+            suffix
+        ),
+        severity: Severity::Warning,
+    }
 }
 
 /// Decide whether a log line is an inherited (ProvableContract) receipt.
@@ -947,10 +1070,7 @@ mod tests {
     #[test]
     fn deferred_checks_return_skip_with_reason() {
         let path = Path::new(".");
-        for (name, check) in [
-            ("CB-1621", check_expected_snapshot_drift(path)),
-            ("CB-1627", check_post_bind_yaml_drift(path)),
-        ] {
+        for (name, check) in [("CB-1621", check_expected_snapshot_drift(path))] {
             assert_eq!(check.status, CheckStatus::Skip, "{}", name);
             assert!(
                 check.message.starts_with("Deferred — "),
@@ -1668,5 +1788,224 @@ mod tests {
         let r = check_no_manual_deletion(tmp.path());
         assert_eq!(r.status, CheckStatus::Fail);
         assert!(r.message.contains("T-1"));
+    }
+
+    // ─── CB-1627: post-bind YAML drift ───────────────────────────────────────
+
+    fn write_bound_contract(
+        project: &Path,
+        ticket: &str,
+        yaml_rel: &str,
+        equation: &str,
+        seeded_test_ids: &[&str],
+    ) {
+        use crate::cli::handlers::work_contract::{
+            ContractBinding, EvidenceType, FalsifiableClaim,
+        };
+        let mut c = WorkContract::new(ticket.into(), "deadbeef".into());
+        c.implements.push(ContractBinding {
+            contract: "k".into(),
+            equation: equation.into(),
+            file: PathBuf::from(yaml_rel),
+            sha: "abc".into(),
+            bound_at: chrono::Utc::now(),
+        });
+        for id in seeded_test_ids {
+            c.claims.push(FalsifiableClaim {
+                hypothesis: "inherited".into(),
+                falsification_method: FalsificationMethod::ProvableContract {
+                    yaml_path: PathBuf::from(yaml_rel),
+                    equation: equation.into(),
+                    test_id: (*id).into(),
+                    expected: "\"canonical\"".into(),
+                },
+                evidence_required: EvidenceType::BooleanCheck(true),
+                result: None,
+                override_info: None,
+            });
+        }
+        write_contract_json(project, ticket, &c);
+    }
+
+    fn write_yaml_at(project: &Path, rel: &str, body: &str) {
+        let p = project.join(rel);
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(&p, body).unwrap();
+    }
+
+    fn yaml_with_tests(ids: &[&str]) -> String {
+        let mut s = String::from("falsification_tests:\n");
+        for id in ids {
+            s.push_str(&format!("  - id: {}\n", id));
+        }
+        s
+    }
+
+    #[test]
+    fn post_bind_drift_skips_without_pmat_work() {
+        let tmp = tempdir().unwrap();
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/`"));
+    }
+
+    #[test]
+    fn post_bind_drift_skips_with_no_contracts() {
+        let tmp = tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-work")).unwrap();
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("contract.json"));
+    }
+
+    #[test]
+    fn post_bind_drift_skips_without_bindings() {
+        let tmp = tempdir().unwrap();
+        let c = WorkContract::new("T-1".into(), "deadbeef".into());
+        write_contract_json(tmp.path(), "T-1", &c);
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("`implements:` bindings"));
+    }
+
+    #[test]
+    fn post_bind_drift_skips_when_yaml_missing() {
+        let tmp = tempdir().unwrap();
+        write_bound_contract(tmp.path(), "T-1", "contracts/k.yaml", "rope", &["t1"]);
+        // YAML file does not exist on disk
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("falsification_tests"));
+    }
+
+    #[test]
+    fn post_bind_drift_skips_when_yaml_has_no_falsification_tests() {
+        let tmp = tempdir().unwrap();
+        write_bound_contract(tmp.path(), "T-1", "contracts/k.yaml", "rope", &["t1"]);
+        write_yaml_at(tmp.path(), "contracts/k.yaml", "equations:\n  rope: {}\n");
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn post_bind_drift_passes_when_roster_matches_yaml() {
+        let tmp = tempdir().unwrap();
+        write_bound_contract(tmp.path(), "T-1", "contracts/k.yaml", "rope", &["t1", "t2"]);
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            &yaml_with_tests(&["t1", "t2"]),
+        );
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn post_bind_drift_passes_when_roster_superset_of_yaml() {
+        // Deletion from YAML is CB-1626's concern (stale roster references),
+        // not CB-1627's — this check only flags ADDITIONS post-bind.
+        let tmp = tempdir().unwrap();
+        write_bound_contract(
+            tmp.path(),
+            "T-1",
+            "contracts/k.yaml",
+            "rope",
+            &["t1", "t2", "t3"],
+        );
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            &yaml_with_tests(&["t1", "t2"]),
+        );
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn post_bind_drift_warns_on_new_yaml_entry() {
+        let tmp = tempdir().unwrap();
+        write_bound_contract(tmp.path(), "T-1", "contracts/k.yaml", "rope", &["t1"]);
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            &yaml_with_tests(&["t1", "t2"]),
+        );
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Warn);
+        assert!(r.message.contains("T-1"));
+        assert!(r.message.contains("t2"));
+    }
+
+    #[test]
+    fn post_bind_drift_warns_listing_multiple_additions() {
+        let tmp = tempdir().unwrap();
+        write_bound_contract(tmp.path(), "T-1", "contracts/k.yaml", "rope", &["t1"]);
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            &yaml_with_tests(&["t1", "t2", "t3"]),
+        );
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Warn);
+        assert!(r.message.contains("t2"));
+        assert!(r.message.contains("t3"));
+        assert!(r.message.contains("2 new"));
+    }
+
+    #[test]
+    fn post_bind_drift_is_per_binding_equation_scoped() {
+        // A ProvableContract for equation `rope` should not mask drift
+        // for equation `linear` in the same YAML.
+        let tmp = tempdir().unwrap();
+        use crate::cli::handlers::work_contract::{
+            ContractBinding, EvidenceType, FalsifiableClaim,
+        };
+        let mut c = WorkContract::new("T-1".into(), "deadbeef".into());
+        c.implements.push(ContractBinding {
+            contract: "k".into(),
+            equation: "linear".into(),
+            file: PathBuf::from("contracts/k.yaml"),
+            sha: "abc".into(),
+            bound_at: chrono::Utc::now(),
+        });
+        // Claim is for equation `rope`, NOT `linear`.
+        c.claims.push(FalsifiableClaim {
+            hypothesis: "inherited".into(),
+            falsification_method: FalsificationMethod::ProvableContract {
+                yaml_path: PathBuf::from("contracts/k.yaml"),
+                equation: "rope".into(),
+                test_id: "t1".into(),
+                expected: "\"\"".into(),
+            },
+            evidence_required: EvidenceType::BooleanCheck(true),
+            result: None,
+            override_info: None,
+        });
+        write_contract_json(tmp.path(), "T-1", &c);
+        write_yaml_at(tmp.path(), "contracts/k.yaml", &yaml_with_tests(&["t1"]));
+        // From the `linear` binding's perspective, seeded set is EMPTY — so
+        // YAML entry `t1` shows up as drift.
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Warn);
+        assert!(r.message.contains("linear"));
+    }
+
+    #[test]
+    fn post_bind_drift_aggregates_across_tickets() {
+        let tmp = tempdir().unwrap();
+        write_bound_contract(tmp.path(), "T-1", "contracts/a.yaml", "eq", &["t1"]);
+        write_bound_contract(tmp.path(), "T-2", "contracts/b.yaml", "eq", &["s1"]);
+        write_yaml_at(
+            tmp.path(),
+            "contracts/a.yaml",
+            &yaml_with_tests(&["t1", "t2"]),
+        );
+        write_yaml_at(tmp.path(), "contracts/b.yaml", &yaml_with_tests(&["s1"]));
+        let r = check_post_bind_yaml_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Warn);
+        assert!(r.message.contains("T-1"));
+        assert!(!r.message.contains("T-2"));
     }
 }
