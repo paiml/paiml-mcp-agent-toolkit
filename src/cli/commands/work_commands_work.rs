@@ -151,6 +151,12 @@ pub enum WorkCommands {
         /// Iteration number for subcontracting (inherits postconditions from prior iteration)
         #[arg(long, default_value = "1")]
         iteration: u32,
+
+        /// Bind this ticket to a provable-contracts equation (Component 27).
+        /// Format: `<contract>/<equation>`, e.g. `rope-kernel-v1/rope`.
+        /// Repeatable for cross-kernel work items.
+        #[arg(long, value_name = "CONTRACT/EQUATION")]
+        implements: Vec<String>,
     },
 
     /// Continue work on existing issue/ticket

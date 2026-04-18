@@ -15,15 +15,25 @@ use super::helpers::filter_unoverriden_failures;
 use super::resolution::{print_blocked_result, print_warning_failures};
 
 /// Create a work contract with baseline metrics and DbC triad (helper for handle_work_start)
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn create_work_contract(
     project_path: &Path,
     item_id: &str,
     profile_override: Option<&str>,
     without: &[String],
     iteration: u32,
-) {
+    implements: &[String],
+) -> Result<()> {
     println!();
     println!("📋 Creating Work Contract (Popperian Falsification)...");
+
+    // Component 27: resolve --implements tokens before touching the filesystem.
+    // Fail fast with a clear aggregate message rather than creating a partially-bound contract.
+    let bindings = if implements.is_empty() {
+        Vec::new()
+    } else {
+        crate::cli::handlers::work_contract_binding::resolve_all(project_path, implements)?
+    };
 
     let baseline_commit = std::process::Command::new("git")
         .args(["rev-parse", "HEAD"])
@@ -52,6 +62,23 @@ pub(super) async fn create_work_contract(
             WorkContract::new(item_id.to_string(), baseline_commit)
         }
     };
+
+    // Component 27: attach bindings before baseline + gates so downstream
+    // machinery (future: inherited clauses) sees them.
+    if !bindings.is_empty() {
+        println!(
+            "   🔗 Bound to {} provable-contract equation(s):",
+            bindings.len()
+        );
+        for b in &bindings {
+            println!(
+                "      - {} (sha: {}...)",
+                b.key(),
+                &b.sha[..b.sha.len().min(12)]
+            );
+        }
+        contract.implements = bindings;
+    }
 
     // Display profile and triad info
     if contract.is_dbc() {
@@ -83,6 +110,7 @@ pub(super) async fn create_work_contract(
     }
 
     save_contract(project_path, &contract);
+    Ok(())
 }
 
 /// Evaluate require clauses at work start (Meyer triad §Start phase).

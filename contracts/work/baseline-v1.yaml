@@ -1,0 +1,6 @@
+# Auto-generated from .pmat-work/baseline-v1/contract.json
+name: "baseline-v1"
+surface: work-contract
+verification_summary:
+  target_level: L3
+  current_level: L3

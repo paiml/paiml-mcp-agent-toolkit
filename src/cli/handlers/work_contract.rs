@@ -211,6 +211,98 @@ mod tests {
         let content = "fn main() { println!(\"hello\"); }";
         assert!(!FileEntry::contains_simd_patterns(content));
     }
+
+    // Component 27: ContractBinding tests
+
+    #[test]
+    fn test_contract_binding_parse_token_ok() {
+        let (c, e) = ContractBinding::parse_token("rope-kernel-v1/rope").unwrap();
+        assert_eq!(c, "rope-kernel-v1");
+        assert_eq!(e, "rope");
+    }
+
+    #[test]
+    fn test_contract_binding_parse_token_trims_whitespace() {
+        let (c, e) = ContractBinding::parse_token("  softmax-v2 / softmax ").unwrap();
+        assert_eq!(c, "softmax-v2");
+        assert_eq!(e, "softmax");
+    }
+
+    #[test]
+    fn test_contract_binding_parse_token_rejects_no_slash() {
+        assert!(ContractBinding::parse_token("rope-kernel-v1").is_none());
+    }
+
+    #[test]
+    fn test_contract_binding_parse_token_rejects_empty_contract() {
+        assert!(ContractBinding::parse_token("/rope").is_none());
+    }
+
+    #[test]
+    fn test_contract_binding_parse_token_rejects_empty_equation() {
+        assert!(ContractBinding::parse_token("rope-kernel-v1/").is_none());
+    }
+
+    #[test]
+    fn test_contract_binding_parse_token_takes_first_slash() {
+        // Multi-slash tokens: first separator is authoritative; rest is the equation
+        let (c, e) = ContractBinding::parse_token("grp/a/b").unwrap();
+        assert_eq!(c, "grp");
+        assert_eq!(e, "a/b");
+    }
+
+    #[test]
+    fn test_contract_binding_key() {
+        let b = ContractBinding {
+            contract: "rope-kernel-v1".to_string(),
+            equation: "rope".to_string(),
+            file: std::path::PathBuf::from("contracts/rope-kernel-v1.yaml"),
+            sha: "abc".to_string(),
+            bound_at: chrono::Utc::now(),
+        };
+        assert_eq!(b.key(), "rope-kernel-v1/rope");
+    }
+
+    #[test]
+    fn test_work_contract_new_has_empty_implements() {
+        let c = WorkContract::new("PMAT-620".to_string(), "deadbeef".to_string());
+        assert!(
+            c.implements.is_empty(),
+            "new tickets are unbound by default"
+        );
+    }
+
+    #[test]
+    fn test_work_contract_implements_roundtrips_through_json() {
+        let mut c = WorkContract::new("PMAT-620".to_string(), "deadbeef".to_string());
+        c.implements.push(ContractBinding {
+            contract: "rope-kernel-v1".to_string(),
+            equation: "rope".to_string(),
+            file: std::path::PathBuf::from("contracts/rope-kernel-v1.yaml"),
+            sha: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
+            bound_at: chrono::Utc::now(),
+        });
+        let json = serde_json::to_string(&c).unwrap();
+        let round: WorkContract = serde_json::from_str(&json).unwrap();
+        assert_eq!(round.implements.len(), 1);
+        assert_eq!(round.implements[0].contract, "rope-kernel-v1");
+        assert_eq!(round.implements[0].equation, "rope");
+    }
+
+    #[test]
+    fn test_work_contract_legacy_json_without_implements_field_loads() {
+        // Backward-compat: older contracts have no "implements" field at all.
+        // Build a real contract, serialize it, strip the implements field,
+        // then deserialize — should succeed with empty implements via serde(default).
+        let c = WorkContract::new("LEGACY-1".to_string(), "deadbeef".to_string());
+        let mut v = serde_json::to_value(&c).unwrap();
+        v.as_object_mut().unwrap().remove("implements");
+        let round: WorkContract = serde_json::from_value(v).unwrap();
+        assert!(
+            round.implements.is_empty(),
+            "legacy contracts default to empty implements via serde(default)"
+        );
+    }
 }
 
 // Coverage-instrumented tests (NOT coverage(off)) for default_claims

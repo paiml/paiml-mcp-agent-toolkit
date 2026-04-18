@@ -101,6 +101,24 @@ pub enum FalsificationMethod {
 
     /// Try to find incomplete proofs (sorry) in Lean 4 projects (New in v4.0 - provable contracts)
     FormalProofVerification,
+
+    /// Execute a specific falsification test from a provable-contracts YAML
+    /// (Component 29 §Schema Extension). Seeded automatically by Component 27
+    /// binding; manual additions/removals are blocked by CB-1624.
+    ///
+    /// `expected` is canonical JSON of the YAML test's `expected` field at
+    /// bind time. CB-1621 compares it against the current YAML value to
+    /// detect silent drift.
+    ProvableContract {
+        /// Resolved YAML file, e.g. `contracts/rope-kernel-v1.yaml`.
+        yaml_path: std::path::PathBuf,
+        /// Equation key within the YAML, e.g. `rope`.
+        equation: String,
+        /// Test id from `falsification_tests[]`, e.g. `rope_periodicity_test`.
+        test_id: String,
+        /// Canonical JSON snapshot of the test's `expected` field.
+        expected: String,
+    },
 }
 
 /// Evidence types for falsification

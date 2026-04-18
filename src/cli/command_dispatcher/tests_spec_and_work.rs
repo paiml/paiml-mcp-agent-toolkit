@@ -366,6 +366,7 @@
             profile: None,
             without: None,
             iteration: 1,
+            implements: Vec::new(),
         };
         let result = CommandDispatcher::execute_work_command(&command).await;
         assert!(result.is_ok() || result.is_err());

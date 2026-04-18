@@ -32,6 +32,7 @@ impl CommandDispatcher {
                 profile,
                 without,
                 iteration,
+                implements,
             } => {
                 work_handlers::handle_work_start(
                     id.clone(),
@@ -42,6 +43,7 @@ impl CommandDispatcher {
                     profile.clone(),
                     without.clone().unwrap_or_default(),
                     *iteration,
+                    implements.clone(),
                 )
                 .await
             }

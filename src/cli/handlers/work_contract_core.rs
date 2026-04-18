@@ -91,6 +91,54 @@ pub struct WorkContract {
     /// Chain-of-thought audit trail (mirrors pv-spec Section 23)
     #[serde(default)]
     pub chain_of_thought: Vec<ChainOfThoughtStep>,
+
+    /// Provable-contracts bindings declaring which YAML equations this ticket implements.
+    /// Component 27: pmat-work-contract-binding. Empty vec = unbound ticket.
+    #[serde(default)]
+    pub implements: Vec<ContractBinding>,
+}
+
+/// Binding to a provable-contracts YAML equation.
+///
+/// Sub-spec: docs/specifications/components/pmat-work-contract-binding.md (Component 27).
+/// A ticket's `implements: Vec<ContractBinding>` declares which formal equations
+/// this work item is modifying. Inherited preconditions/postconditions from the
+/// YAML flow into the ticket's `require`/`ensure`/`invariant` triad.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ContractBinding {
+    /// Contract name, e.g. "rope-kernel-v1"
+    pub contract: String,
+
+    /// Equation identifier within the contract, e.g. "rope"
+    pub equation: String,
+
+    /// Resolved path to the YAML file, e.g. "contracts/rope-kernel-v1.yaml"
+    pub file: PathBuf,
+
+    /// SHA-256 of the YAML bytes at bind time. Drift detector (CB-1601).
+    pub sha: String,
+
+    /// When the binding was recorded (for audit)
+    pub bound_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl ContractBinding {
+    /// Parse a `<contract>/<equation>` token into (contract, equation).
+    /// Returns None if the token is malformed.
+    pub fn parse_token(token: &str) -> Option<(String, String)> {
+        let mut parts = token.splitn(2, '/');
+        let contract = parts.next()?.trim();
+        let equation = parts.next()?.trim();
+        if contract.is_empty() || equation.is_empty() {
+            return None;
+        }
+        Some((contract.to_string(), equation.to_string()))
+    }
+
+    /// Stable textual key used for deduplication.
+    pub fn key(&self) -> String {
+        format!("{}/{}", self.contract, self.equation)
+    }
 }
 
 fn default_verification_level() -> String {
@@ -164,6 +212,7 @@ impl WorkContract {
             verification_level: default_verification_level(),
             references: WorkReferences::default(),
             chain_of_thought: Vec::new(),
+            implements: Vec::new(),
         }
     }
 
@@ -244,6 +293,7 @@ impl WorkContract {
             verification_level: default_verification_level(),
             references: WorkReferences::default(),
             chain_of_thought: Vec::new(),
+            implements: Vec::new(),
         };
 
         // §5.3-5.4: Subcontracting validation for iteration > 1

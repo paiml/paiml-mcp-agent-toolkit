@@ -54,22 +54,90 @@ pub(crate) async fn handle_check(
 
     let yaml_config = PmatYamlConfig::load(project_path).unwrap_or_default();
     let comply_config = &yaml_config.comply;
-
-    let config_path = project_path.join(".pmat.yaml");
-    if config_path.exists() {
-        eprintln!("  Using configuration from .pmat.yaml");
-        if !comply_config.suppressions.is_empty() {
-            eprintln!(
-                "  {} suppression rule(s) loaded",
-                comply_config.suppressions.len()
-            );
-        }
-    }
+    announce_suppressions(project_path, comply_config);
 
     let config = load_or_create_project_config(project_path)?;
     let project_version = &config.pmat.version;
 
-    let mut checks = vec![
+    let checks = build_all_compliance_checks(project_path, comply_config, project_version);
+    let report = build_compliance_report(checks, project_version, failures_only);
+
+    output_compliance_report(&report, format, project_path)?;
+    let _ = update_last_check_timestamp(project_path);
+
+    apply_exit_policy(&report, strict)
+}
+
+/// One-shot log summarizing the active `.pmat.yaml` configuration.
+fn announce_suppressions(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) {
+    let config_path = project_path.join(".pmat.yaml");
+    if !config_path.exists() {
+        return;
+    }
+    eprintln!("  Using configuration from .pmat.yaml");
+    if !comply_config.suppressions.is_empty() {
+        eprintln!(
+            "  {} suppression rule(s) loaded",
+            comply_config.suppressions.len()
+        );
+    }
+}
+
+/// Apply the report's exit policy: code 1 on failures, code 2 on strict warnings-only.
+fn apply_exit_policy(report: &ComplianceReport, strict: bool) -> Result<()> {
+    let failures = report
+        .checks
+        .iter()
+        .filter(|c| c.status == CheckStatus::Fail)
+        .count();
+    let warnings = report
+        .checks
+        .iter()
+        .filter(|c| c.status == CheckStatus::Warn)
+        .count();
+    if !report.is_compliant {
+        std::process::exit(1);
+    }
+    if strict && warnings > 0 && failures == 0 {
+        std::process::exit(2);
+    }
+    Ok(())
+}
+
+/// Assemble the full list of compliance checks from every topical builder.
+fn build_all_compliance_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+    project_version: &str,
+) -> Vec<ComplianceCheck> {
+    let mut checks = build_foundation_checks(project_path, comply_config, project_version);
+    checks.extend(build_language_best_practices(project_path, comply_config));
+    checks.extend(build_custom_score_checks(project_path, comply_config));
+    checks.extend(build_provable_contract_checks(project_path, comply_config));
+    checks.extend(build_contract_surface_checks(project_path, comply_config));
+    checks.extend(build_agent_contract_checks(project_path, comply_config));
+    checks.extend(build_commit_enforcement_checks(project_path, comply_config));
+    checks.extend(build_binding_scope_checks(project_path, comply_config));
+    checks.extend(build_work_ladder_checks(project_path, comply_config));
+    checks.extend(build_falsification_unification_checks(
+        project_path,
+        comply_config,
+    ));
+    checks.extend(build_codegen_checks(project_path, comply_config));
+    checks.extend(build_cot_proof_checks(project_path, comply_config));
+    checks
+}
+
+/// Foundation checks: version, config, hooks, quality, CI, sovereign stack, file health, muda/reproducibility/EDD, deps, shell/makefile, stale paths, spec traceability, agent context, mono-spec.
+fn build_foundation_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+    project_version: &str,
+) -> Vec<ComplianceCheck> {
+    vec![
         check_version_currency(project_version),
         check_config_files(project_path),
         check_hooks_installed(project_path),
@@ -160,6 +228,15 @@ pub(crate) async fn handle_check(
             "cb-200",
             comply_config,
         ),
+    ]
+}
+
+/// CB-500..CB-1050: language-specific best practices (Rust, Lua, SQL, Scala, Markdown, YAML, model files, Lean).
+fn build_language_best_practices(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    vec![
         filter_check_by_config(
             check_rust_best_practices_with_config(project_path, Some(comply_config)),
             "cb-500",
@@ -200,385 +277,628 @@ pub(crate) async fn handle_check(
             "cb-1050",
             comply_config,
         ),
-    ];
+    ]
+}
 
-    let custom_checks = check_custom_scores(project_path);
-    for chk in custom_checks {
-        checks.push(filter_check_by_config(chk, "cb-1100", comply_config));
-    }
+/// CB-1100: custom score checks produced per-project by `check_custom_scores`.
+fn build_custom_score_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    check_custom_scores(project_path)
+        .into_iter()
+        .map(|chk| filter_check_by_config(chk, "cb-1100", comply_config))
+        .collect()
+}
 
-    // Provable contracts quality gate (CB-1200)
-    // Auto-skips if no contracts/ directory found
-    checks.push(filter_check_by_config(
-        super::check_provable_contracts::check_provable_contracts(project_path),
-        "cb-1200",
-        comply_config,
-    ));
+/// CB-1200..CB-1214: provable contracts, pv lint, contract/annotation coverage, contract drift, binding index, codegen fidelity, enforcement quality.
+fn build_provable_contract_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    vec![
+        filter_check_by_config(
+            super::check_provable_contracts::check_provable_contracts(project_path),
+            "cb-1200",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_pv_lint(project_path, &comply_config.thresholds),
+            "cb-1201",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_contract_coverage(project_path),
+            "cb-1202",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_annotation_coverage(project_path),
+            "cb-1203",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_build_rs_pipeline(project_path),
+            "cb-1204",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_provability_invariant(project_path),
+            "cb-1205",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_verification_levels(project_path, &comply_config.thresholds),
+            "cb-1206",
+            comply_config,
+        ),
+        filter_check_by_config(check_contract_drift(project_path), "cb-1207", comply_config),
+        filter_check_by_config(
+            check_binding_existence(project_path, &comply_config.thresholds),
+            "cb-1208",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_contract_trait_enforcement(project_path, &comply_config.thresholds),
+            "cb-1209",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_precondition_quality(project_path),
+            "cb-1210",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_codegen_fidelity(project_path),
+            "cb-1211",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_enforcement_quality(project_path),
+            "cb-1214",
+            comply_config,
+        ),
+    ]
+}
 
-    // PV Lint quality gate (CB-1201)
-    checks.push(filter_check_by_config(
-        check_pv_lint(project_path, &comply_config.thresholds),
-        "cb-1201",
-        comply_config,
-    ));
+/// CB-1300..CB-1308: contract surface type checks (Component 23) — CLI args, MCP schemas, config drift, sovereign dep versions, anti-leak classification, TUI widgets, WASM FFI, L5 ladder.
+fn build_contract_surface_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    vec![
+        filter_check_by_config(
+            check_cli_arg_contracts(project_path),
+            "cb-1300",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_mcp_schema_contracts(project_path),
+            "cb-1302",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_config_contracts(project_path),
+            "cb-1303",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_sovereign_dep_contracts(project_path),
+            "cb-1304",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_contract_surface_classification(project_path),
+            "cb-1305",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_tui_widget_contracts(project_path),
+            "cb-1306",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_wasm_ffi_contracts(project_path),
+            "cb-1307",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_verification_ladder(project_path),
+            "cb-1308",
+            comply_config,
+        ),
+    ]
+}
 
-    // Contract coverage gate (CB-1202)
-    checks.push(filter_check_by_config(
-        check_contract_coverage(project_path),
-        "cb-1202",
-        comply_config,
-    ));
+/// CB-1400..CB-1410: agent contract-first enforcement (Component 10).
+fn build_agent_contract_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    vec![
+        filter_check_by_config(
+            check_agent_contract_existence(project_path),
+            "cb-1400",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_agent_contract_falsifiability(project_path),
+            "cb-1401",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_agent_verification_level(project_path),
+            "cb-1402",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_assume_guarantee_chain(project_path),
+            "cb-1403",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_agent_comply_usage(project_path),
+            "cb-1404",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_agent_references_present(project_path),
+            "cb-1405",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_agent_chain_of_thought(project_path),
+            "cb-1406",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_agent_five_whys_linked(project_path),
+            "cb-1407",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_agent_evidence_executable(project_path),
+            "cb-1408",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_no_l0_autonomous_code(project_path),
+            "cb-1409",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_subagent_contract_composition(project_path),
+            "cb-1410",
+            comply_config,
+        ),
+    ]
+}
 
-    // Annotation coverage gate (CB-1203)
-    checks.push(filter_check_by_config(
-        check_annotation_coverage(project_path),
-        "cb-1203",
-        comply_config,
-    ));
+/// CB-1320..CB-1354 + CB-1342: commit-level contract enforcement (Component 25) — asset layout, work contract validity, hooks, ratchet, anti-leak, differential obligations, assume-guarantee, query readiness, codegen compiles.
+fn build_commit_enforcement_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    vec![
+        filter_check_by_config(check_readme_layout(project_path), "cb-1320", comply_config),
+        filter_check_by_config(
+            check_dockerfile_contract(project_path),
+            "cb-1321",
+            comply_config,
+        ),
+        filter_check_by_config(check_svg_contract(project_path), "cb-1322", comply_config),
+        filter_check_by_config(
+            check_forjar_contract(project_path),
+            "cb-1323",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_mdbook_contract(project_path),
+            "cb-1324",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_changelog_contract(project_path),
+            "cb-1325",
+            comply_config,
+        ),
+        filter_check_by_config(check_badge_contract(project_path), "cb-1326", comply_config),
+        filter_check_by_config(
+            check_work_contract_validity(project_path),
+            "cb-1331",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_cache_staleness(project_path),
+            "cb-1332",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_hook_single_writer(project_path),
+            "cb-1333",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_hook_atomic_writes(project_path),
+            "cb-1334",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_hook_determinism(project_path),
+            "cb-1335",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_hook_no_injection(project_path),
+            "cb-1336",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_hook_performance(project_path),
+            "cb-1337",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_verification_ratchet(project_path),
+            "cb-1330",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_no_ghost_bindings(project_path),
+            "cb-1338",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_no_placeholder_preconditions(project_path),
+            "cb-1339",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_enforcement_penetration(project_path),
+            "cb-1340",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_spec_number_accuracy(project_path),
+            "cb-1341",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_assertion_placement(project_path),
+            "cb-1343",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_differential_obligations(project_path),
+            "cb-1350",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_binding_index_freshness(project_path),
+            "cb-1351",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_assume_guarantee_chains(project_path),
+            "cb-1352",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_ag_cycle_detection(project_path),
+            "cb-1353",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_contract_query_readiness(project_path),
+            "cb-1354",
+            comply_config,
+        ),
+        filter_check_by_config(
+            check_codegen_compiles(project_path),
+            "cb-1342",
+            comply_config,
+        ),
+    ]
+}
 
-    // Build.rs contract pipeline gate (CB-1204)
-    checks.push(filter_check_by_config(
-        check_build_rs_pipeline(project_path),
-        "cb-1204",
-        comply_config,
-    ));
+/// CB-1600..CB-1609: work-contract binding enforcement (Component 27).
+fn build_binding_scope_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    use super::check_binding_scope as bs;
+    vec![
+        filter_check_by_config(
+            bs::check_binding_scope_orphan(project_path),
+            "cb-1600",
+            comply_config,
+        ),
+        filter_check_by_config(
+            bs::check_binding_sha_drift(project_path),
+            "cb-1601",
+            comply_config,
+        ),
+        filter_check_by_config(
+            bs::check_binding_unbind_audit(project_path),
+            "cb-1602",
+            comply_config,
+        ),
+        filter_check_by_config(
+            bs::check_binding_inherited_clauses(project_path),
+            "cb-1603",
+            comply_config,
+        ),
+        filter_check_by_config(
+            bs::check_binding_postcondition_weakening(project_path),
+            "cb-1604",
+            comply_config,
+        ),
+        filter_check_by_config(
+            bs::check_binding_kani_harnesses(project_path),
+            "cb-1605",
+            comply_config,
+        ),
+        filter_check_by_config(
+            bs::check_binding_lean_theorem(project_path),
+            "cb-1606",
+            comply_config,
+        ),
+        filter_check_by_config(
+            bs::check_binding_equation_exists(project_path),
+            "cb-1607",
+            comply_config,
+        ),
+        filter_check_by_config(
+            bs::check_binding_cross_consistency(project_path),
+            "cb-1608",
+            comply_config,
+        ),
+        filter_check_by_config(
+            bs::check_binding_file_tracked(project_path),
+            "cb-1609",
+            comply_config,
+        ),
+    ]
+}
 
-    // Provability invariant gate (CB-1205) — pv-compatibility spec §2.2
-    checks.push(filter_check_by_config(
-        check_provability_invariant(project_path),
-        "cb-1205",
-        comply_config,
-    ));
+/// CB-1610..CB-1619: work-verification ladder enforcement (Component 28).
+fn build_work_ladder_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    use super::check_work_ladder as wl;
+    vec![
+        filter_check_by_config(
+            wl::check_ladder_parses(project_path),
+            "cb-1610",
+            comply_config,
+        ),
+        filter_check_by_config(
+            wl::check_ladder_bound_by_yaml(project_path),
+            "cb-1611",
+            comply_config,
+        ),
+        filter_check_by_config(
+            wl::check_ladder_l1_test_evidence(project_path),
+            "cb-1612",
+            comply_config,
+        ),
+        filter_check_by_config(
+            wl::check_ladder_l3_falsification(project_path),
+            "cb-1613",
+            comply_config,
+        ),
+        filter_check_by_config(
+            wl::check_ladder_l4_kani(project_path),
+            "cb-1614",
+            comply_config,
+        ),
+        filter_check_by_config(
+            wl::check_ladder_kani_harness_sha(project_path),
+            "cb-1615",
+            comply_config,
+        ),
+        filter_check_by_config(
+            wl::check_ladder_l5_lean(project_path),
+            "cb-1616",
+            comply_config,
+        ),
+        filter_check_by_config(
+            wl::check_ladder_downgrade_audit(project_path),
+            "cb-1617",
+            comply_config,
+        ),
+        filter_check_by_config(
+            wl::check_ladder_monotonicity(project_path),
+            "cb-1618",
+            comply_config,
+        ),
+        filter_check_by_config(
+            wl::check_ladder_completion_matches(project_path),
+            "cb-1619",
+            comply_config,
+        ),
+    ]
+}
 
-    // Verification level distribution (CB-1206) — pv-compatibility spec §2.3
-    checks.push(filter_check_by_config(
-        check_verification_levels(project_path, &comply_config.thresholds),
-        "cb-1206",
-        comply_config,
-    ));
+/// CB-1620..CB-1629: work-falsification-unification enforcement (Component 29).
+fn build_falsification_unification_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    use super::check_falsification_unification as fu;
+    vec![
+        filter_check_by_config(
+            fu::check_inherited_roster_coverage(project_path),
+            "cb-1620",
+            comply_config,
+        ),
+        filter_check_by_config(
+            fu::check_expected_snapshot_drift(project_path),
+            "cb-1621",
+            comply_config,
+        ),
+        filter_check_by_config(
+            fu::check_roster_execution_coverage(project_path),
+            "cb-1622",
+            comply_config,
+        ),
+        filter_check_by_config(
+            fu::check_no_duplicate_provable_entries(project_path),
+            "cb-1623",
+            comply_config,
+        ),
+        filter_check_by_config(
+            fu::check_no_manual_deletion(project_path),
+            "cb-1624",
+            comply_config,
+        ),
+        filter_check_by_config(
+            fu::check_inherited_failure_fatal(project_path),
+            "cb-1625",
+            comply_config,
+        ),
+        filter_check_by_config(
+            fu::check_test_id_exists_in_yaml(project_path),
+            "cb-1626",
+            comply_config,
+        ),
+        filter_check_by_config(
+            fu::check_post_bind_yaml_drift(project_path),
+            "cb-1627",
+            comply_config,
+        ),
+        filter_check_by_config(
+            fu::check_per_run_log_line(project_path),
+            "cb-1628",
+            comply_config,
+        ),
+        filter_check_by_config(
+            fu::check_l4_timeout_gate(project_path),
+            "cb-1629",
+            comply_config,
+        ),
+    ]
+}
 
-    // Contract drift detection (CB-1207) — pv-compatibility spec CD5
-    checks.push(filter_check_by_config(
-        check_contract_drift(project_path),
-        "cb-1207",
-        comply_config,
-    ));
+/// CB-1630..CB-1639: work compile-time codegen enforcement (Component 30).
+fn build_codegen_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    use super::check_codegen as cg;
+    vec![
+        filter_check_by_config(
+            cg::check_codegen_cli_succeeds(project_path),
+            "cb-1630",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cg::check_attribute_has_generated_module(project_path),
+            "cb-1631",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cg::check_attribute_clause_ids_exist(project_path),
+            "cb-1632",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cg::check_manifest_sha_drift(project_path),
+            "cb-1633",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cg::check_expr_clauses_have_binds_to(project_path),
+            "cb-1634",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cg::check_binds_to_function_modified(project_path),
+            "cb-1635",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cg::check_macros_compile_debug_and_release(project_path),
+            "cb-1636",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cg::check_l2_public_fn_coverage(project_path),
+            "cb-1637",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cg::check_generated_modules_tracked(project_path),
+            "cb-1638",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cg::check_kani_harness_macro_reference(project_path),
+            "cb-1639",
+            comply_config,
+        ),
+    ]
+}
 
-    // Binding existence verification (CB-1208) — verify bound fns exist in src/
-    checks.push(filter_check_by_config(
-        check_binding_existence(project_path, &comply_config.thresholds),
-        "cb-1208",
-        comply_config,
-    ));
-
-    // Contract trait enforcement (CB-1209) — compiler-enforced trait impls
-    checks.push(filter_check_by_config(
-        check_contract_trait_enforcement(project_path, &comply_config.thresholds),
-        "cb-1209",
-        comply_config,
-    ));
-
-    // Precondition/postcondition quality (CB-1210) — detect placeholder boilerplate
-    checks.push(filter_check_by_config(
-        check_precondition_quality(project_path),
-        "cb-1210",
-        comply_config,
-    ));
-
-    // Codegen fidelity (CB-1211) — generated assertions match YAML preconditions
-    checks.push(filter_check_by_config(
-        check_codegen_fidelity(project_path),
-        "cb-1211",
-        comply_config,
-    ));
-
-    // Enforcement quality (CB-1214) — contract call-site penetration × quality
-    checks.push(filter_check_by_config(
-        check_enforcement_quality(project_path),
-        "cb-1214",
-        comply_config,
-    ));
-
-    // Contract Surface Type checks (CB-1300..1305) — Component 23
-    // CB-1300: CLI argument contract coverage (OutputFormat duplication)
-    checks.push(filter_check_by_config(
-        check_cli_arg_contracts(project_path),
-        "cb-1300",
-        comply_config,
-    ));
-
-    // CB-1302: MCP tool schema coverage
-    checks.push(filter_check_by_config(
-        check_mcp_schema_contracts(project_path),
-        "cb-1302",
-        comply_config,
-    ));
-
-    // CB-1303: Config contract validation (CI drift, Cargo.toml)
-    checks.push(filter_check_by_config(
-        check_config_contracts(project_path),
-        "cb-1303",
-        comply_config,
-    ));
-
-    // CB-1304: Sovereign dep version contracts (batuta stack)
-    checks.push(filter_check_by_config(
-        check_sovereign_dep_contracts(project_path),
-        "cb-1304",
-        comply_config,
-    ));
-
-    // CB-1305: Contract surface classification — THE ANTI-LEAK GATE
-    checks.push(filter_check_by_config(
-        check_contract_surface_classification(project_path),
-        "cb-1305",
-        comply_config,
-    ));
-
-    // CB-1306: TUI widget lifecycle contracts (presentar)
-    checks.push(filter_check_by_config(
-        check_tui_widget_contracts(project_path),
-        "cb-1306",
-        comply_config,
-    ));
-
-    // CB-1307: WASM FFI boundary contracts
-    checks.push(filter_check_by_config(
-        check_wasm_ffi_contracts(project_path),
-        "cb-1307",
-        comply_config,
-    ));
-
-    // CB-1308: Verification ladder — L5 as default
-    checks.push(filter_check_by_config(
-        check_verification_ladder(project_path),
-        "cb-1308",
-        comply_config,
-    ));
-
-    // Agent contract-first enforcement (CB-1400..1410) — Component 10
-    // Enforces provable-contract-first design for all agents/sub-agents.
-    checks.push(filter_check_by_config(
-        check_agent_contract_existence(project_path),
-        "cb-1400",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_agent_contract_falsifiability(project_path),
-        "cb-1401",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_agent_verification_level(project_path),
-        "cb-1402",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_assume_guarantee_chain(project_path),
-        "cb-1403",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_agent_comply_usage(project_path),
-        "cb-1404",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_agent_references_present(project_path),
-        "cb-1405",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_agent_chain_of_thought(project_path),
-        "cb-1406",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_agent_five_whys_linked(project_path),
-        "cb-1407",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_agent_evidence_executable(project_path),
-        "cb-1408",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_no_l0_autonomous_code(project_path),
-        "cb-1409",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_subagent_contract_composition(project_path),
-        "cb-1410",
-        comply_config,
-    ));
-
-    // Commit-Level Contract Enforcement (CB-1320..1343) — Component 25
-    // Commit-Level Contract Enforcement (CB-1320..1343) — Component 25
-    // Phase 3: Asset layout contracts
-    checks.push(filter_check_by_config(
-        check_readme_layout(project_path),
-        "cb-1320",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_dockerfile_contract(project_path),
-        "cb-1321",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_svg_contract(project_path),
-        "cb-1322",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_forjar_contract(project_path),
-        "cb-1323",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_mdbook_contract(project_path),
-        "cb-1324",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_changelog_contract(project_path),
-        "cb-1325",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_badge_contract(project_path),
-        "cb-1326",
-        comply_config,
-    ));
-    // Phase 1: Work contract validity
-    checks.push(filter_check_by_config(
-        check_work_contract_validity(project_path),
-        "cb-1331",
-        comply_config,
-    ));
-    // Phase 0: Cache infrastructure
-    checks.push(filter_check_by_config(
-        check_cache_staleness(project_path),
-        "cb-1332",
-        comply_config,
-    ));
-    // Phase 7: Hook consolidation
-    checks.push(filter_check_by_config(
-        check_hook_single_writer(project_path),
-        "cb-1333",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_hook_atomic_writes(project_path),
-        "cb-1334",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_hook_determinism(project_path),
-        "cb-1335",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_hook_no_injection(project_path),
-        "cb-1336",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_hook_performance(project_path),
-        "cb-1337",
-        comply_config,
-    ));
-    // Phase 2: L-Level Ratchet
-    checks.push(filter_check_by_config(
-        check_verification_ratchet(project_path),
-        "cb-1330",
-        comply_config,
-    ));
-    // Phase 8: Falsify leak remediation
-    checks.push(filter_check_by_config(
-        check_no_ghost_bindings(project_path),
-        "cb-1338",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_no_placeholder_preconditions(project_path),
-        "cb-1339",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_enforcement_penetration(project_path),
-        "cb-1340",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_spec_number_accuracy(project_path),
-        "cb-1341",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_assertion_placement(project_path),
-        "cb-1343",
-        comply_config,
-    ));
-    // Phase 4: Differential obligation verification
-    checks.push(filter_check_by_config(
-        check_differential_obligations(project_path),
-        "cb-1350",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_binding_index_freshness(project_path),
-        "cb-1351",
-        comply_config,
-    ));
-    // Phase 5: Assume-guarantee chains
-    checks.push(filter_check_by_config(
-        check_assume_guarantee_chains(project_path),
-        "cb-1352",
-        comply_config,
-    ));
-    checks.push(filter_check_by_config(
-        check_ag_cycle_detection(project_path),
-        "cb-1353",
-        comply_config,
-    ));
-    // Phase 6: Contract query readiness
-    checks.push(filter_check_by_config(
-        check_contract_query_readiness(project_path),
-        "cb-1354",
-        comply_config,
-    ));
-    // Phase 8: Codegen compiles (CB-1342)
-    checks.push(filter_check_by_config(
-        check_codegen_compiles(project_path),
-        "cb-1342",
-        comply_config,
-    ));
-
-    let report = build_compliance_report(checks, project_version, failures_only);
-    let failures = report
-        .checks
-        .iter()
-        .filter(|c| c.status == CheckStatus::Fail)
-        .count();
-    let warnings = report
-        .checks
-        .iter()
-        .filter(|c| c.status == CheckStatus::Warn)
-        .count();
-
-    output_compliance_report(&report, format, project_path)?;
-
-    let _ = update_last_check_timestamp(project_path);
-    if !report.is_compliant {
-        std::process::exit(1);
-    }
-    if strict && warnings > 0 && failures == 0 {
-        std::process::exit(2);
-    }
-    Ok(())
+/// CB-1640..CB-1649: chain-of-thought proof derivation enforcement (Component 31).
+fn build_cot_proof_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    use super::check_cot_proof as cp;
+    vec![
+        filter_check_by_config(
+            cp::check_assumption_references_resolve(project_path),
+            "cb-1640",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cp::check_step_has_evidence_method(project_path),
+            "cb-1641",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cp::check_existing_test_paths_resolve(project_path),
+            "cb-1642",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cp::check_l3_structured_expr_present(project_path),
+            "cb-1643",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cp::check_agent_run_replayable(project_path),
+            "cb-1644",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cp::check_derived_yaml_obligations_present(project_path),
+            "cb-1645",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cp::check_cot_derivation_sha_fresh(project_path),
+            "cb-1646",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cp::check_no_orphan_steps(project_path),
+            "cb-1647",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cp::check_l4_axiomatic_discharge_bounded(project_path),
+            "cb-1648",
+            comply_config,
+        ),
+        filter_check_by_config(
+            cp::check_l5_lean_theorem_mapping(project_path),
+            "cb-1649",
+            comply_config,
+        ),
+    ]
 }
 
 fn build_compliance_report(
