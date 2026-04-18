@@ -8,14 +8,16 @@
 //
 // This first cut implements the checks that can run against today's infrastructure:
 //
+//   CB-1600 (L1) — orphan detection: staged files w/ bindings → active ticket
+//                  must declare `implements:` covering them
 //   CB-1601 (L1) — SHA drift against current YAML bytes
 //   CB-1607 (L3) — equation identifier exists in referenced YAML
 //   CB-1609 (L1) — YAML file is tracked in git
 //
-// The remaining checks (CB-1600 orphan detection, CB-1602 unbind audit,
-// CB-1603/1604 clause inheritance, CB-1605 kani, CB-1606 lean, CB-1608
-// cross-binding consistency) surface as Skip with a "deferred: requires X"
-// message so config plumbing is already wired for the follow-up work.
+// The remaining checks (CB-1602 unbind audit, CB-1603/1604 clause
+// inheritance, CB-1605 kani, CB-1606 lean, CB-1608 cross-binding
+// consistency) surface as Skip with a "deferred: requires X" message so
+// config plumbing is already wired for the follow-up work.
 
 use std::path::Path;
 
@@ -23,6 +25,7 @@ use sha2::{Digest, Sha256};
 
 use super::types::*;
 use crate::cli::handlers::work_contract::{ContractBinding, WorkContract};
+use crate::services::contract_index::ContractIndex;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -347,14 +350,111 @@ pub(crate) fn check_binding_file_tracked(project_path: &Path) -> ComplianceCheck
 
 // ─── Deferred checks (scheduled follow-up work) ──────────────────────────────
 
+/// Collect paths staged for commit (via `git diff --cached --name-only`),
+/// returning them as forward-slash project-relative strings suitable for
+/// lookup in the binding index.
+fn staged_files(project_path: &Path) -> Vec<String> {
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(project_path)
+        .args(["diff", "--cached", "--name-only"])
+        .stderr(std::process::Stdio::null())
+        .output();
+    let Ok(output) = out else {
+        return Vec::new();
+    };
+    if !output.status.success() {
+        return Vec::new();
+    }
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
 /// CB-1600 (L1): Tickets modifying contracted files MUST declare `implements`.
-/// Requires `.pmat/binding-index.json` (CB-1208) to intersect staged files
-/// with binding entries. Skipped until that index ships.
-pub(crate) fn check_binding_scope_orphan(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1600: Binding Scope Orphan",
-        "requires .pmat/binding-index.json (CB-1208) for file↔binding intersection",
-    )
+/// Reads `.pmat/binding-index.json` (CB-1208), intersects with git-staged files,
+/// and fails if any active `.pmat-work/<ID>/contract.json` touches a bound file
+/// without declaring `implements[].file` for it. Per spec §Migration Path,
+/// tickets with no bindings remain valid as long as they aren't staging
+/// contracted files.
+pub(crate) fn check_binding_scope_orphan(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1600: Binding Scope Orphan";
+    let Some(index) = ContractIndex::load(project_path) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No .pmat/binding-index.json — run `pmat comply refresh-bindings`".into(),
+            severity: Severity::Info,
+        };
+    };
+    let staged = staged_files(project_path);
+    if staged.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No staged files to check for binding orphans".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let staged_bound: Vec<&String> = staged.iter().filter(|f| index.has_bindings(f)).collect();
+    if staged_bound.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} staged file(s); none intersect {} bound file(s)",
+                staged.len(),
+                index.total_files
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    // Build set of `implements[].file` (project-relative, forward-slash) across
+    // all active work contracts — any active ticket declaring `implements:` for
+    // a bound file is sufficient coverage per the spec's pre-commit semantics.
+    let contracts = load_active_contracts(project_path);
+    let declared: std::collections::HashSet<String> = contracts
+        .iter()
+        .flat_map(|c| &c.implements)
+        .map(|b| b.file.to_string_lossy().replace('\\', "/"))
+        .collect();
+
+    let orphans: Vec<&String> = staged_bound
+        .iter()
+        .filter(|f| !declared.contains(f.as_str()))
+        .copied()
+        .collect();
+
+    if orphans.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} staged bound file(s) covered by active `implements:` entries",
+                staged_bound.len()
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut msg = format!(
+        "{} staged bound file(s) not declared in any active `implements:`\n",
+        orphans.len()
+    );
+    for f in &orphans {
+        let bindings = index.get_bindings(f);
+        msg.push_str(&format!("  {} → bindings: {}\n", f, bindings.join(", ")));
+    }
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: msg,
+        severity: Severity::Error,
+    }
 }
 
 /// CB-1602 (L1): `pmat work unbind` without a DEBT follow-up ticket reference
@@ -518,7 +618,6 @@ mod tests {
     fn deferred_checks_return_skip() {
         let tmp = tempdir().unwrap();
         for r in [
-            check_binding_scope_orphan(tmp.path()),
             check_binding_unbind_audit(tmp.path()),
             check_binding_inherited_clauses(tmp.path()),
             check_binding_postcondition_weakening(tmp.path()),
@@ -536,5 +635,104 @@ mod tests {
         let tmp = tempdir().unwrap();
         let r = check_binding_file_tracked(tmp.path());
         assert_eq!(r.status, CheckStatus::Skip);
+    }
+
+    // ── CB-1600 orphan-detection tests ───────────────────────────────────
+
+    fn write_binding_index(project: &Path, entries: &[(&str, &[&str])]) {
+        std::fs::create_dir_all(project.join(".pmat")).unwrap();
+        let mut obj = serde_json::Map::new();
+        for (file, names) in entries {
+            let arr = names
+                .iter()
+                .map(|n| serde_json::Value::String((*n).to_string()))
+                .collect::<Vec<_>>();
+            obj.insert((*file).to_string(), serde_json::Value::Array(arr));
+        }
+        let json = serde_json::Value::Object(obj).to_string();
+        std::fs::write(project.join(".pmat/binding-index.json"), json).unwrap();
+    }
+
+    /// Init a git repo in `project` and stage `files` (each created empty).
+    fn init_repo_with_staged(project: &Path, files: &[&str]) {
+        use std::process::Command;
+        let run = |args: &[&str]| {
+            let s = Command::new("git")
+                .arg("-C")
+                .arg(project)
+                .args(args)
+                .output()
+                .unwrap();
+            assert!(s.status.success(), "git {:?}: {:?}", args, s);
+        };
+        run(&["init", "--quiet", "--initial-branch=main"]);
+        run(&["config", "user.email", "t@t"]);
+        run(&["config", "user.name", "t"]);
+        for f in files {
+            let path = project.join(f);
+            if let Some(p) = path.parent() {
+                std::fs::create_dir_all(p).unwrap();
+            }
+            std::fs::write(&path, "").unwrap();
+            run(&["add", f]);
+        }
+    }
+
+    #[test]
+    fn orphan_skip_when_no_binding_index() {
+        let tmp = tempdir().unwrap();
+        let r = check_binding_scope_orphan(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("binding-index.json"));
+    }
+
+    #[test]
+    fn orphan_skip_when_no_staged_files() {
+        let tmp = tempdir().unwrap();
+        write_binding_index(tmp.path(), &[("src/rope.rs", &["rope"])]);
+        // No git repo → staged_files returns empty → Skip
+        let r = check_binding_scope_orphan(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No staged files"));
+    }
+
+    #[test]
+    fn orphan_pass_when_staged_files_not_bound() {
+        let tmp = tempdir().unwrap();
+        write_binding_index(tmp.path(), &[("src/rope.rs", &["rope"])]);
+        init_repo_with_staged(tmp.path(), &["README.md"]);
+        let r = check_binding_scope_orphan(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("none intersect"));
+    }
+
+    #[test]
+    fn orphan_fail_when_bound_file_staged_without_implements() {
+        let tmp = tempdir().unwrap();
+        write_binding_index(tmp.path(), &[("src/rope.rs", &["rope"])]);
+        init_repo_with_staged(tmp.path(), &["src/rope.rs"]);
+        // No `.pmat-work/*/contract.json` → no `implements:` coverage
+        let r = check_binding_scope_orphan(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("src/rope.rs"));
+        assert!(r.message.contains("rope"));
+    }
+
+    #[test]
+    fn orphan_pass_when_bound_file_covered_by_implements() {
+        let tmp = tempdir().unwrap();
+        write_binding_index(tmp.path(), &[("src/rope.rs", &["rope"])]);
+        init_repo_with_staged(tmp.path(), &["src/rope.rs"]);
+        // Active ticket declares implements for src/rope.rs
+        write_contract(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("src/rope.rs"),
+            "rope",
+            "deadbeef",
+        );
+        let r = check_binding_scope_orphan(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("covered"));
     }
 }
