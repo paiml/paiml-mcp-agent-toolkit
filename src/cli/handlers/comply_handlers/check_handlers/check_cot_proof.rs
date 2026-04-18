@@ -24,17 +24,20 @@
 //                  or `implication.expr`
 //   CB-1645 (L3) — derived `contracts/work/<ID>.yaml` is up-to-date with
 //                  contract.json preconditions/postconditions
+//   CB-1646 (L1) — `.pmat-work/<ID>/cot-digest.json` SHA matches the
+//                  canonical hash of `chain_of_thought` — detects manual
+//                  edits that bypass `pmat work cot derive`. Skip-if-absent.
 //   CB-1647 (L3) — no orphan steps: every step chains via `discharged_by`
 //
 // Deferred stubs (need infrastructure that hasn't landed):
 //   CB-1644 (L1) — requires Component 10 agent audit log ingest
-//   CB-1646 (L1) — requires `cot-digest.json` SHA tracking
 //   CB-1648 (L4) — requires Kani-bound axiom registry
 //   CB-1649 (L5) — requires Lean theorem lemma mapping
 
 use std::path::Path;
 
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 use super::types::*;
 
@@ -621,11 +624,169 @@ pub(crate) fn check_derived_yaml_obligations_present(project_path: &Path) -> Com
     }
 }
 
-pub(crate) fn check_cot_derivation_sha_fresh(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1646: CoT Derivation SHA",
-        "requires `.pmat-work/<ID>/cot-digest.json` emitted by `pmat work cot derive`",
-    )
+fn sha256_hex(bytes: &[u8]) -> String {
+    let mut h = Sha256::new();
+    h.update(bytes);
+    let d = h.finalize();
+    let mut s = String::with_capacity(d.len() * 2);
+    for b in d {
+        use std::fmt::Write;
+        let _ = write!(&mut s, "{:02x}", b);
+    }
+    s
+}
+
+/// Emit `v` into `out` as canonical JSON: object keys sorted lexicographically,
+/// no whitespace, arrays preserve order. Downstream deps enable
+/// `serde_json/preserve_order` (IndexMap), so raw `to_vec` would hash
+/// differently depending on which author typed which key first — this
+/// walker erases that non-determinism. Any RFC 8785-compatible producer
+/// will agree on the bytes.
+fn canonicalize(v: &Value, out: &mut String) {
+    use std::fmt::Write;
+    match v {
+        Value::Null => out.push_str("null"),
+        Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
+        Value::Number(n) => {
+            let _ = write!(out, "{}", n);
+        }
+        Value::String(s) => {
+            // serde_json handles escape rules; we just borrow the String emitter.
+            if let Ok(escaped) = serde_json::to_string(s) {
+                out.push_str(&escaped);
+            }
+        }
+        Value::Array(arr) => {
+            out.push('[');
+            for (i, item) in arr.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                canonicalize(item, out);
+            }
+            out.push(']');
+        }
+        Value::Object(obj) => {
+            let mut keys: Vec<&String> = obj.keys().collect();
+            keys.sort();
+            out.push('{');
+            for (i, k) in keys.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                if let Ok(escaped) = serde_json::to_string(k) {
+                    out.push_str(&escaped);
+                }
+                out.push(':');
+                canonicalize(&obj[*k], out);
+            }
+            out.push('}');
+        }
+    }
+}
+
+/// Canonical SHA-256 of a contract's `chain_of_thought` array.
+fn canonical_cot_sha(contract: &Value) -> String {
+    let cot = contract
+        .get("chain_of_thought")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let mut buf = String::new();
+    canonicalize(&cot, &mut buf);
+    sha256_hex(buf.as_bytes())
+}
+
+/// Read a recorded CoT digest from `cot-digest.json`. Accepts either a
+/// `{"sha": "..."}` or `{"digest": "..."}` shape — both naming conventions
+/// are plausible for the forthcoming `pmat work cot derive` output.
+fn read_recorded_digest(path: &Path) -> Option<String> {
+    let bytes = std::fs::read(path).ok()?;
+    let v: Value = serde_json::from_slice(&bytes).ok()?;
+    v.get("sha")
+        .or_else(|| v.get("digest"))
+        .and_then(|s| s.as_str())
+        .map(|s| s.to_string())
+}
+
+/// CB-1646 (L1): recomputes the canonical SHA of each ticket's
+/// `chain_of_thought` and compares it to the digest recorded in
+/// `.pmat-work/<ID>/cot-digest.json`. A mismatch means the CoT was edited
+/// by hand after `pmat work cot derive` last ran, which defeats the
+/// derivation pipeline's witness trail. Skip-if-absent: tickets without a
+/// digest file are ignored, and the check skips overall when no ticket
+/// has one (the digest emitter hasn't run yet).
+pub(crate) fn check_cot_derivation_sha_fresh(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1646: CoT Derivation SHA";
+    let contracts = load_contract_values(project_path);
+
+    let mut mismatches: Vec<String> = Vec::new();
+    let mut malformed: Vec<String> = Vec::new();
+    let mut checked = 0usize;
+
+    for (ticket, contract) in &contracts {
+        let digest_path = project_path
+            .join(".pmat-work")
+            .join(ticket)
+            .join("cot-digest.json");
+        if !digest_path.exists() {
+            continue;
+        }
+        let Some(recorded) = read_recorded_digest(&digest_path) else {
+            malformed.push(ticket.clone());
+            continue;
+        };
+        checked += 1;
+        let actual = canonical_cot_sha(contract);
+        if !recorded.eq_ignore_ascii_case(&actual) {
+            mismatches.push(format!(
+                "{}: recorded={}, actual={}",
+                ticket, recorded, actual
+            ));
+        }
+    }
+
+    if checked == 0 && malformed.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/<ID>/cot-digest.json` files — `pmat work cot derive` hasn't emitted digests yet".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if mismatches.is_empty() && malformed.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} ticket(s): cot-digest.json matches canonical SHA",
+                checked
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut msg = String::new();
+    if !mismatches.is_empty() {
+        msg.push_str(&format!(
+            "{} ticket(s) with CoT drift — `pmat work cot derive` to refresh:\n  {}\n",
+            mismatches.len(),
+            mismatches.join("\n  ")
+        ));
+    }
+    if !malformed.is_empty() {
+        msg.push_str(&format!(
+            "{} ticket(s) with unreadable cot-digest.json: {}",
+            malformed.len(),
+            malformed.join(", ")
+        ));
+    }
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: msg,
+        severity: Severity::Error,
+    }
 }
 
 pub(crate) fn check_l4_axiomatic_discharge_bounded(_project_path: &Path) -> ComplianceCheck {
@@ -665,13 +826,147 @@ mod tests {
         let project = tempdir().unwrap();
         for check in [
             check_agent_run_replayable(project.path()),
-            check_cot_derivation_sha_fresh(project.path()),
             check_l4_axiomatic_discharge_bounded(project.path()),
             check_l5_lean_theorem_mapping(project.path()),
         ] {
             assert_eq!(check.status, CheckStatus::Skip);
             assert!(check.message.starts_with("Deferred — "));
         }
+    }
+
+    // ── CB-1646 CoT derivation SHA tests ─────────────────────────────────
+
+    fn write_digest(project: &Path, ticket: &str, body: &str) {
+        let dir = project.join(".pmat-work").join(ticket);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("cot-digest.json"), body).unwrap();
+    }
+
+    #[test]
+    fn cot_digest_skips_when_no_digest_files() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({ "chain_of_thought": [{ "step": 1, "question": "q", "answer": "a" }] }),
+        );
+        let check = check_cot_derivation_sha_fresh(project.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(check.message.contains("cot-digest.json"));
+    }
+
+    #[test]
+    fn cot_digest_passes_when_sha_matches() {
+        let project = tempdir().unwrap();
+        let contract = json!({
+            "chain_of_thought": [
+                { "id": "CoT-1", "assumption": { "predicate": "p" } }
+            ]
+        });
+        write_contract(project.path(), "T1", contract.clone());
+        let expected = canonical_cot_sha(&contract);
+        write_digest(
+            project.path(),
+            "T1",
+            &format!("{{\"sha\": \"{}\"}}", expected),
+        );
+        let check = check_cot_derivation_sha_fresh(project.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn cot_digest_accepts_digest_key_alias() {
+        let project = tempdir().unwrap();
+        let contract = json!({ "chain_of_thought": [{ "id": "CoT-1" }] });
+        write_contract(project.path(), "T1", contract.clone());
+        let expected = canonical_cot_sha(&contract);
+        // Alternate naming — `digest` instead of `sha`
+        write_digest(
+            project.path(),
+            "T1",
+            &format!("{{\"digest\": \"{}\"}}", expected),
+        );
+        let check = check_cot_derivation_sha_fresh(project.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn cot_digest_fails_when_sha_mismatches() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({ "chain_of_thought": [{ "id": "CoT-1", "assumption": { "predicate": "p" } }] }),
+        );
+        // Simulate someone editing the CoT after derivation: record an old SHA
+        write_digest(project.path(), "T1", "{\"sha\": \"deadbeef\"}");
+        let check = check_cot_derivation_sha_fresh(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("T1"));
+        assert!(check.message.contains("deadbeef"));
+        assert!(check.message.contains("pmat work cot derive"));
+    }
+
+    #[test]
+    fn cot_digest_fails_on_malformed_digest_file() {
+        let project = tempdir().unwrap();
+        write_contract(project.path(), "T1", json!({ "chain_of_thought": [] }));
+        write_digest(project.path(), "T1", "{ not valid json");
+        let check = check_cot_derivation_sha_fresh(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("unreadable"));
+        assert!(check.message.contains("T1"));
+    }
+
+    #[test]
+    fn cot_digest_case_insensitive_hex_match() {
+        // Recorded digest is uppercase; canonical is lowercase — must still match.
+        let project = tempdir().unwrap();
+        let contract = json!({ "chain_of_thought": [{ "id": "CoT-1" }] });
+        write_contract(project.path(), "T1", contract.clone());
+        let expected = canonical_cot_sha(&contract).to_uppercase();
+        write_digest(
+            project.path(),
+            "T1",
+            &format!("{{\"sha\": \"{}\"}}", expected),
+        );
+        let check = check_cot_derivation_sha_fresh(project.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn cot_digest_mixed_coverage_checks_only_tickets_with_digest() {
+        let project = tempdir().unwrap();
+        // T1 has a digest; T2 does not — T2 is silently skipped.
+        let contract1 = json!({ "chain_of_thought": [{ "id": "CoT-1" }] });
+        write_contract(project.path(), "T1", contract1.clone());
+        write_digest(
+            project.path(),
+            "T1",
+            &format!("{{\"sha\": \"{}\"}}", canonical_cot_sha(&contract1)),
+        );
+        write_contract(project.path(), "T2", json!({ "chain_of_thought": [] }));
+        let check = check_cot_derivation_sha_fresh(project.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+        // Only one ticket was checked
+        assert!(check.message.contains("1 ticket"));
+    }
+
+    #[test]
+    fn canonical_cot_sha_is_deterministic() {
+        let a = json!({
+            "chain_of_thought": [
+                { "id": "CoT-1", "assumption": { "predicate": "p" } }
+            ]
+        });
+        let b = json!({
+            "chain_of_thought": [
+                { "assumption": { "predicate": "p" }, "id": "CoT-1" }
+            ]
+        });
+        // BTreeMap key ordering means differently-authored JSON with the
+        // same semantic content hashes identically.
+        assert_eq!(canonical_cot_sha(&a), canonical_cot_sha(&b));
     }
 
     // ── CB-1645 derived YAML obligations tests ───────────────────────────
