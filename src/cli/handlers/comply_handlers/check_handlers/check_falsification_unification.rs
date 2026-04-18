@@ -17,12 +17,14 @@
 //                  in `.pmat-work/<ID>/falsification.log` (skip-if-absent)
 //   CB-1623 (L3) — no duplicate `(yaml_path, test_id)` across a ticket's roster
 //   CB-1626 (L1) — referenced `test_id` exists in the YAML at scan time
+//   CB-1628 (L3) — every inherited log line carries the required 4-field
+//                  shape `{yaml, test_id, status, duration_ms}` so lines
+//                  aren't silently dropped post-runner (skip-if-absent)
 //
 // The remaining checks (CB-1621 expected snapshot drift, CB-1624 deletion
 // audit, CB-1625 fatal inherited failures, CB-1627 post-bind YAML drift,
-// CB-1628 per-run log emission, CB-1629 L4 timeout gate) surface as Skip
-// with a "Deferred — requires X" message so config plumbing is wired for
-// the follow-up work.
+// CB-1629 L4 timeout gate) surface as Skip with a "Deferred — requires X"
+// message so config plumbing is wired for the follow-up work.
 
 use std::path::{Path, PathBuf};
 
@@ -455,11 +457,116 @@ pub(crate) fn check_post_bind_yaml_drift(_project_path: &Path) -> ComplianceChec
     )
 }
 
-pub(crate) fn check_per_run_log_line(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1628: Per-run Log Line Emitted",
-        "requires unified falsification runner emitting JSONL receipts",
-    )
+/// Decide whether a log line is an inherited (ProvableContract) receipt.
+/// Per spec §falsification.log, inherited lines carry a `yaml` key;
+/// manual lines carry a `method` key instead. Only inherited lines are
+/// subject to the 4-field shape requirement in CB-1628.
+fn is_inherited_receipt(v: &serde_json::Value) -> bool {
+    v.get("yaml").and_then(|y| y.as_str()).is_some()
+        || v.get("test_id").and_then(|t| t.as_str()).is_some()
+}
+
+/// CB-1628 (L3): each line in `.pmat-work/<ID>/falsification.log` that
+/// represents an inherited run must carry the 4-field shape
+/// `{yaml, test_id, status, duration_ms}`. Missing fields mean the
+/// emitter dropped data — silent skips are indistinguishable from real
+/// passes post-hoc. Manual-source lines (no `yaml`) are ignored per spec.
+///
+/// Skip-if-absent: no falsification.log files → skip overall.
+pub(crate) fn check_per_run_log_line(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1628: Per-run Log Line Emitted";
+    let contracts = load_active_contracts(project_path);
+
+    let mut malformed: Vec<String> = Vec::new();
+    let mut missing_fields: Vec<String> = Vec::new();
+    let mut checked_logs = 0usize;
+    let mut checked_lines = 0usize;
+
+    for c in &contracts {
+        let log_path = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("falsification.log");
+        let Ok(contents) = std::fs::read_to_string(&log_path) else {
+            continue;
+        };
+        checked_logs += 1;
+        for (idx, line) in contents.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let lineno = idx + 1;
+            let v: serde_json::Value = match serde_json::from_str(trimmed) {
+                Ok(v) => v,
+                Err(_) => {
+                    malformed.push(format!("{}:{}", c.work_item_id, lineno));
+                    continue;
+                }
+            };
+            if !is_inherited_receipt(&v) {
+                continue;
+            }
+            checked_lines += 1;
+            let mut missing: Vec<&'static str> = Vec::new();
+            for field in ["yaml", "test_id", "status", "duration_ms"] {
+                if v.get(field).is_none() {
+                    missing.push(field);
+                }
+            }
+            if !missing.is_empty() {
+                missing_fields.push(format!(
+                    "{}:{} missing [{}]",
+                    c.work_item_id,
+                    lineno,
+                    missing.join(", ")
+                ));
+            }
+        }
+    }
+
+    if checked_logs == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/<ID>/falsification.log` files to validate".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if malformed.is_empty() && missing_fields.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} log(s), {} inherited line(s) carry the 4-field shape",
+                checked_logs, checked_lines
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut msg = String::new();
+    if !malformed.is_empty() {
+        msg.push_str(&format!(
+            "{} malformed JSONL line(s): {}\n",
+            malformed.len(),
+            malformed.join(", ")
+        ));
+    }
+    if !missing_fields.is_empty() {
+        msg.push_str(&format!(
+            "{} line(s) missing required fields: {}",
+            missing_fields.len(),
+            missing_fields.join("; ")
+        ));
+    }
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: msg,
+        severity: Severity::Error,
+    }
 }
 
 pub(crate) fn check_l4_timeout_gate(_project_path: &Path) -> ComplianceCheck {
@@ -508,7 +615,6 @@ mod tests {
             ("CB-1624", check_no_manual_deletion(path)),
             ("CB-1625", check_inherited_failure_fatal(path)),
             ("CB-1627", check_post_bind_yaml_drift(path)),
-            ("CB-1628", check_per_run_log_line(path)),
             ("CB-1629", check_l4_timeout_gate(path)),
         ] {
             assert_eq!(check.status, CheckStatus::Skip, "{}", name);
@@ -519,6 +625,108 @@ mod tests {
                 check.message
             );
         }
+    }
+
+    // ── CB-1628 per-run log line emitted tests ───────────────────────────
+
+    #[test]
+    fn per_run_log_skips_when_no_logs() {
+        let tmp = tempdir().unwrap();
+        let check = check_per_run_log_line(tmp.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn per_run_log_passes_when_all_inherited_lines_complete() {
+        let tmp = tempdir().unwrap();
+        let c = contract_with_provable("T1", "a.yaml", "e", "t1");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"yaml":"a.yaml","test_id":"t1","status":"pass","duration_ms":12}"#,
+                "\n",
+                r#"{"yaml":"a.yaml","test_id":"t2","status":"fail","duration_ms":99}"#,
+                "\n",
+            ),
+        );
+        let check = check_per_run_log_line(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn per_run_log_ignores_manual_lines() {
+        // Manual lines carry `method`, not `yaml` — not subject to field check.
+        let tmp = tempdir().unwrap();
+        let c = WorkContract::new("T1".into(), "deadbeef".into());
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"method":"TdgRegression","status":"pass","duration_ms":100}"#,
+                "\n",
+            ),
+        );
+        let check = check_per_run_log_line(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn per_run_log_fails_on_missing_duration_ms() {
+        let tmp = tempdir().unwrap();
+        let c = contract_with_provable("T1", "a.yaml", "e", "t1");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(r#"{"yaml":"a.yaml","test_id":"t1","status":"pass"}"#, "\n",),
+        );
+        let check = check_per_run_log_line(tmp.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("duration_ms"));
+        assert!(check.message.contains("T1"));
+    }
+
+    #[test]
+    fn per_run_log_fails_on_malformed_json() {
+        let tmp = tempdir().unwrap();
+        let c = WorkContract::new("T1".into(), "deadbeef".into());
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"yaml":"a.yaml","test_id":"t1","status":"pass","duration_ms":1}"#,
+                "\n",
+                "not json{\n",
+            ),
+        );
+        let check = check_per_run_log_line(tmp.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("malformed"));
+    }
+
+    #[test]
+    fn per_run_log_empty_lines_ignored() {
+        let tmp = tempdir().unwrap();
+        let c = WorkContract::new("T1".into(), "deadbeef".into());
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"yaml":"a.yaml","test_id":"t1","status":"pass","duration_ms":1}"#,
+                "\n",
+                "\n",
+                "   \n",
+                r#"{"yaml":"b.yaml","test_id":"t2","status":"pass","duration_ms":2}"#,
+                "\n",
+            ),
+        );
+        let check = check_per_run_log_line(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
     }
 
     // ── CB-1622 roster execution coverage tests ──────────────────────────
