@@ -16,6 +16,9 @@
 //                  success=true (skip-if-absent until Component 24 runner)
 //   CB-1616 (L5) — L5 ticket completion requires `lean-proof.json` with
 //                  sorry_count=0 (skip-if-absent until Component 24 Lean)
+//   CB-1612 (L3) — L1 test evidence: verification-report.json must carry
+//                  `l1_test_evidence` with success/exit-code/status shape;
+//                  skip-if-absent until `pmat work verify` records it
 //   CB-1617 (L3) — downgrade without `--reason` forbidden (ledger audit)
 //   CB-1618 (L1) — level monotonicity across ticket checkpoints — a ticket
 //                  cannot drop without an audited downgrade ledger entry
@@ -24,7 +27,6 @@
 //
 // Deferred (scaffolded with Skip + reason, infrastructure pending):
 //
-//   CB-1612 cargo-test evidence     → needs verify pipeline
 //   CB-1615 Kani harness SHA        → needs harness hash index
 
 use std::path::Path;
@@ -383,13 +385,142 @@ pub(crate) fn check_ladder_completion_matches(project_path: &Path) -> Compliance
 
 // ─── Deferred checks ─────────────────────────────────────────────────────────
 
-/// CB-1612 (L3): L1 completion requires `cargo test --lib` green. Requires
-/// the verify pipeline that records test exit status per-ticket.
-pub(crate) fn check_ladder_l1_test_evidence(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1612: L1 Test Evidence",
-        "requires `pmat work verify` pipeline recording cargo test exit",
-    )
+/// CB-1612 (L3): L1 completion requires `cargo test --lib` green. Reads the
+/// evidence that `pmat work verify` writes into each ticket's
+/// `.pmat-work/<ID>/verification-report.json` under the `l1_test_evidence`
+/// key. Accepted shapes (all case-insensitive on status strings):
+///   • `"l1_test_evidence": true`                          → pass
+///   • `"l1_test_evidence": {"success": true}`             → pass
+///   • `"l1_test_evidence": {"exit_code": 0}`              → pass
+///   • `"l1_test_evidence": {"status": "pass"|"passed"|"ok"|"success"}`
+///     → pass
+/// Anything else (false, non-zero exit, `status: fail` etc.) → fail.
+///
+/// Skip semantics (tiered):
+///   • no tickets at all                             → Skip
+///   • no ticket has `verification-report.json`      → Skip
+///   • reports exist but none carry
+///     `l1_test_evidence` (writer pending)           → Skip
+///   • any report's `l1_test_evidence` shape
+///     indicates failure                             → Fail
+pub(crate) fn check_ladder_l1_test_evidence(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1612: L1 Test Evidence";
+    let contracts = load_active_contracts(project_path);
+    if contracts.is_empty() {
+        return skip_no_contracts(name);
+    }
+
+    let mut any_report = false;
+    let mut any_evidence = false;
+    let mut checked = 0usize;
+    let mut failing: Vec<String> = Vec::new();
+
+    for c in &contracts {
+        let report = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("verification-report.json");
+        if !report.exists() {
+            continue;
+        }
+        any_report = true;
+        let Ok(content) = std::fs::read_to_string(&report) else {
+            continue;
+        };
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) else {
+            continue;
+        };
+        let Some(evidence) = value.get("l1_test_evidence") else {
+            continue;
+        };
+        any_evidence = true;
+        checked += 1;
+        match evaluate_l1_evidence(evidence) {
+            L1Outcome::Pass => {}
+            L1Outcome::Fail(reason) => {
+                failing.push(format!("  {} → {}", c.work_item_id, reason));
+            }
+        }
+    }
+
+    if !failing.is_empty() {
+        let mut msg = format!("{} ticket(s) failed L1 test evidence:\n", failing.len());
+        for line in &failing {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    if !any_report {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No ticket has `verification-report.json` yet".into(),
+            severity: Severity::Info,
+        };
+    }
+    if !any_evidence {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No verification-report.json carries `l1_test_evidence` yet".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!("{} ticket(s) recorded green L1 test evidence", checked),
+        severity: Severity::Info,
+    }
+}
+
+enum L1Outcome {
+    Pass,
+    Fail(String),
+}
+
+fn evaluate_l1_evidence(v: &serde_json::Value) -> L1Outcome {
+    // Boolean shorthand — `true` is pass, `false` is fail.
+    if let Some(b) = v.as_bool() {
+        return if b {
+            L1Outcome::Pass
+        } else {
+            L1Outcome::Fail("evidence=false".into())
+        };
+    }
+    if let Some(obj) = v.as_object() {
+        if let Some(s) = obj.get("success").and_then(|x| x.as_bool()) {
+            return if s {
+                L1Outcome::Pass
+            } else {
+                L1Outcome::Fail("success=false".into())
+            };
+        }
+        if let Some(code) = obj.get("exit_code").and_then(|x| x.as_i64()) {
+            return if code == 0 {
+                L1Outcome::Pass
+            } else {
+                L1Outcome::Fail(format!("exit_code={}", code))
+            };
+        }
+        if let Some(status) = obj.get("status").and_then(|x| x.as_str()) {
+            let lowered = status.to_ascii_lowercase();
+            return if matches!(lowered.as_str(), "pass" | "passed" | "ok" | "success") {
+                L1Outcome::Pass
+            } else {
+                L1Outcome::Fail(format!("status={}", status))
+            };
+        }
+    }
+    L1Outcome::Fail("unrecognized evidence shape".into())
 }
 
 // ─── CB-1613: L3 falsification evidence ──────────────────────────────────────
@@ -1175,10 +1306,7 @@ mod tests {
     #[test]
     fn deferred_ladder_checks_return_skip() {
         let tmp = tempdir().unwrap();
-        for r in [
-            check_ladder_l1_test_evidence(tmp.path()),
-            check_ladder_kani_harness_sha(tmp.path()),
-        ] {
+        for r in [check_ladder_kani_harness_sha(tmp.path())] {
             assert_eq!(r.status, CheckStatus::Skip);
             assert!(r.message.starts_with("Deferred"));
         }
@@ -1856,5 +1984,173 @@ mod tests {
             c.verification_level = s.to_string();
             assert_eq!(is_l5(&c), want, "for '{}'", s);
         }
+    }
+
+    // ─── CB-1612: L1 test evidence ───────────────────────────────────────────
+
+    fn write_verification_report(project: &Path, id: &str, body: &str) {
+        let dir = project.join(".pmat-work").join(id);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("verification-report.json"), body).unwrap();
+    }
+
+    #[test]
+    fn l1_evidence_skips_with_no_tickets() {
+        let tmp = tempdir().unwrap();
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/*/contract.json`"));
+    }
+
+    #[test]
+    fn l1_evidence_skips_when_no_report_yet() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("verification-report.json"));
+    }
+
+    #[test]
+    fn l1_evidence_skips_when_report_lacks_evidence_field() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_verification_report(tmp.path(), "T-1", r#"{"target_level":"L3"}"#);
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("l1_test_evidence"));
+    }
+
+    #[test]
+    fn l1_evidence_passes_on_boolean_true() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_verification_report(tmp.path(), "T-1", r#"{"l1_test_evidence": true}"#);
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn l1_evidence_passes_on_success_object() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_verification_report(
+            tmp.path(),
+            "T-1",
+            r#"{"l1_test_evidence": {"success": true}}"#,
+        );
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn l1_evidence_passes_on_exit_code_zero() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_verification_report(
+            tmp.path(),
+            "T-1",
+            r#"{"l1_test_evidence": {"exit_code": 0, "duration_ms": 42}}"#,
+        );
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn l1_evidence_passes_on_status_pass_variants() {
+        for variant in ["pass", "Passed", "OK", "success"] {
+            let tmp = tempdir().unwrap();
+            make_contract("T-1", "L3").save(tmp.path()).unwrap();
+            write_verification_report(
+                tmp.path(),
+                "T-1",
+                &format!(r#"{{"l1_test_evidence": {{"status": "{}"}}}}"#, variant),
+            );
+            let r = check_ladder_l1_test_evidence(tmp.path());
+            assert_eq!(r.status, CheckStatus::Pass, "{}: {}", variant, r.message);
+        }
+    }
+
+    #[test]
+    fn l1_evidence_fails_on_boolean_false() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_verification_report(tmp.path(), "T-1", r#"{"l1_test_evidence": false}"#);
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("T-1"));
+        assert!(r.message.contains("evidence=false"));
+    }
+
+    #[test]
+    fn l1_evidence_fails_on_nonzero_exit_code() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_verification_report(
+            tmp.path(),
+            "T-1",
+            r#"{"l1_test_evidence": {"exit_code": 101}}"#,
+        );
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("exit_code=101"));
+    }
+
+    #[test]
+    fn l1_evidence_fails_on_failure_status() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_verification_report(
+            tmp.path(),
+            "T-1",
+            r#"{"l1_test_evidence": {"status": "fail"}}"#,
+        );
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("status=fail"));
+    }
+
+    #[test]
+    fn l1_evidence_fails_on_unrecognized_shape() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        // neither boolean, success, exit_code, nor status fields
+        write_verification_report(
+            tmp.path(),
+            "T-1",
+            r#"{"l1_test_evidence": {"note": "skipped"}}"#,
+        );
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("unrecognized"));
+    }
+
+    #[test]
+    fn l1_evidence_aggregates_across_tickets() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        make_contract("T-2", "L3").save(tmp.path()).unwrap();
+        write_verification_report(tmp.path(), "T-1", r#"{"l1_test_evidence": true}"#);
+        write_verification_report(
+            tmp.path(),
+            "T-2",
+            r#"{"l1_test_evidence": {"exit_code": 1}}"#,
+        );
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("1 ticket"));
+        assert!(r.message.contains("T-2"));
+        assert!(!r.message.contains("T-1 →"));
+    }
+
+    #[test]
+    fn l1_evidence_skips_when_report_is_malformed_json() {
+        // Malformed report is silently skipped — CB-1619/other checks
+        // own structural validation. This check only consumes l1_test_evidence.
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_verification_report(tmp.path(), "T-1", "not-json");
+        let r = check_ladder_l1_test_evidence(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
     }
 }
