@@ -14,6 +14,10 @@
 // automatically once authors start emitting the new shape.
 //
 // Functional checks (work today against contract.json Value introspection):
+//   CB-1640 (L3) — assumption.references resolve to prior step ids /
+//                  implications, bound equation names, or axiomatic
+//                  discharge (exact-string fallback per spec §Chain
+//                  Integrity Rule when semantic-search vocabulary absent)
 //   CB-1641 (L3) — every step with structured fields has an `evidence_method`
 //   CB-1642 (L1) — `evidence_method = ExistingTest` path/name resolves on disk
 //   CB-1643 (L3) — L3+ tickets: every structured step has `assumption.expr`
@@ -21,7 +25,6 @@
 //   CB-1647 (L3) — no orphan steps: every step chains via `discharged_by`
 //
 // Deferred stubs (need infrastructure that hasn't landed):
-//   CB-1640 (L3) — requires semantic predicate matcher for reference resolution
 //   CB-1644 (L1) — requires Component 10 agent audit log ingest
 //   CB-1645 (L3) — requires `pmat work cot derive` emitting contracts/work/<ID>.yaml
 //   CB-1646 (L1) — requires `cot-digest.json` SHA tracking
@@ -340,14 +343,128 @@ pub(crate) fn check_no_orphan_steps(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-// ─── Deferred stubs ─────────────────────────────────────────────────────────
+// ─── CB-1640 — Assumption references resolve ────────────────────────────────
 
-pub(crate) fn check_assumption_references_resolve(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1640: Assumption References Resolve",
-        "requires semantic predicate matcher (services/semantic_match.rs) for reference resolution",
-    )
+/// Collect every identifier an assumption can legitimately reference in a
+/// single contract: prior step ids, prior implication predicates/exprs, and
+/// the equation names of any declared `implements:` bindings. The check
+/// consults this set per-step; references not in it become violations.
+fn resolvable_references(contract: &Value, up_to_step_index: usize) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let steps = cot_steps(contract);
+    for prior in steps.iter().take(up_to_step_index) {
+        if let Some(id) = prior.get("id").and_then(|v| v.as_str()) {
+            out.push(id.to_string());
+        }
+        if let Some(pred) = prior
+            .get("implication")
+            .and_then(|i| i.get("predicate"))
+            .and_then(|v| v.as_str())
+        {
+            out.push(pred.to_string());
+        }
+        if let Some(expr) = prior
+            .get("implication")
+            .and_then(|i| i.get("expr"))
+            .and_then(|v| v.as_str())
+        {
+            out.push(expr.to_string());
+        }
+    }
+    if let Some(implements) = contract.get("implements").and_then(|v| v.as_array()) {
+        for binding in implements {
+            if let Some(eq) = binding.get("equation").and_then(|v| v.as_str()) {
+                out.push(eq.to_string());
+            }
+        }
+    }
+    out
 }
+
+/// A reference resolves if (a) a step with `discharged_by.Axiomatic` is
+/// self-discharging regardless of its references (spec §Chain Integrity
+/// Rule — "axiomatic discharge with explicit reason"), or (b) the string
+/// appears in the resolvable set via exact match — the spec's mandated
+/// fallback when the TF-IDF semantic-search vocabulary is unavailable.
+fn is_axiomatic(step: &Value) -> bool {
+    step.get("discharged_by")
+        .and_then(|d| d.get("Axiomatic"))
+        .is_some()
+}
+
+pub(crate) fn check_assumption_references_resolve(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1640: Assumption References Resolve";
+    let contracts = load_contract_values(project_path);
+    let mut unmatched: Vec<String> = Vec::new();
+    let mut checked = 0usize;
+    for (ticket, contract) in &contracts {
+        for (idx, step) in cot_steps(contract).iter().enumerate() {
+            if !is_structured(step) {
+                continue;
+            }
+            if is_axiomatic(step) {
+                continue;
+            }
+            let Some(refs) = step
+                .get("assumption")
+                .and_then(|a| a.get("references"))
+                .and_then(|r| r.as_array())
+            else {
+                continue;
+            };
+            if refs.is_empty() {
+                continue;
+            }
+            let resolvable = resolvable_references(contract, idx);
+            for reference in refs {
+                let Some(reference_str) = reference.as_str() else {
+                    continue;
+                };
+                checked += 1;
+                if !resolvable.iter().any(|r| r == reference_str) {
+                    unmatched.push(format!(
+                        "{}:{} -> \"{}\"",
+                        ticket,
+                        step_id(step),
+                        reference_str
+                    ));
+                }
+            }
+        }
+    }
+    if checked == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No structured CoT assumption references to resolve".into(),
+            severity: Severity::Info,
+        };
+    }
+    if unmatched.is_empty() {
+        ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} assumption reference(s) resolve via exact-match fallback",
+                checked
+            ),
+            severity: Severity::Info,
+        }
+    } else {
+        ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "{} unmatched assumption reference(s): {}",
+                unmatched.len(),
+                unmatched.join(", ")
+            ),
+            severity: Severity::Error,
+        }
+    }
+}
+
+// ─── Deferred stubs ─────────────────────────────────────────────────────────
 
 pub(crate) fn check_agent_run_replayable(_project_path: &Path) -> ComplianceCheck {
     deferred(
@@ -406,7 +523,6 @@ mod tests {
     fn deferred_stubs_return_skip_with_reason() {
         let project = tempdir().unwrap();
         for check in [
-            check_assumption_references_resolve(project.path()),
             check_agent_run_replayable(project.path()),
             check_derived_yaml_obligations_present(project.path()),
             check_cot_derivation_sha_fresh(project.path()),
@@ -416,6 +532,178 @@ mod tests {
             assert_eq!(check.status, CheckStatus::Skip);
             assert!(check.message.starts_with("Deferred — "));
         }
+    }
+
+    #[test]
+    fn assumption_refs_skip_when_no_references_exist() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": { "predicate": "p" }
+                    }
+                ]
+            }),
+        );
+        let check = check_assumption_references_resolve(project.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn assumption_refs_pass_matching_prior_step_id() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": { "predicate": "a" },
+                        "implication": { "predicate": "b" }
+                    },
+                    {
+                        "id": "CoT-2",
+                        "assumption": { "predicate": "c", "references": ["CoT-1"] },
+                        "implication": { "predicate": "d" }
+                    }
+                ]
+            }),
+        );
+        let check = check_assumption_references_resolve(project.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn assumption_refs_pass_matching_prior_implication_predicate() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "implication": { "predicate": "array is sorted" }
+                    },
+                    {
+                        "id": "CoT-2",
+                        "assumption": {
+                            "predicate": "search terminates",
+                            "references": ["array is sorted"]
+                        }
+                    }
+                ]
+            }),
+        );
+        let check = check_assumption_references_resolve(project.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn assumption_refs_pass_matching_bound_equation() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "implements": [
+                    { "equation": "rope_periodicity", "yaml_path": "rope.yaml" }
+                ],
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": {
+                            "predicate": "rope norm preserved",
+                            "references": ["rope_periodicity"]
+                        }
+                    }
+                ]
+            }),
+        );
+        let check = check_assumption_references_resolve(project.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn assumption_refs_fail_on_unmatched_reference() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": {
+                            "predicate": "p",
+                            "references": ["nonexistent"]
+                        }
+                    }
+                ]
+            }),
+        );
+        let check = check_assumption_references_resolve(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("T1:CoT-1"));
+        assert!(check.message.contains("nonexistent"));
+    }
+
+    #[test]
+    fn assumption_refs_axiomatic_skipped_even_with_refs() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": {
+                            "predicate": "p",
+                            "references": ["nonexistent"]
+                        },
+                        "discharged_by": { "Axiomatic": { "reason": "base case" } }
+                    }
+                ]
+            }),
+        );
+        let check = check_assumption_references_resolve(project.path());
+        // Axiomatic discharge bypasses reference resolution (spec §Chain
+        // Integrity Rule), so this should Skip not Fail.
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn assumption_refs_forward_reference_fails() {
+        // CoT-1 references CoT-2 (not yet defined) → violation (only prior
+        // steps count as resolvable).
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "chain_of_thought": [
+                    {
+                        "id": "CoT-1",
+                        "assumption": {
+                            "predicate": "p",
+                            "references": ["CoT-2"]
+                        }
+                    },
+                    {
+                        "id": "CoT-2",
+                        "implication": { "predicate": "q" }
+                    }
+                ]
+            }),
+        );
+        let check = check_assumption_references_resolve(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
     }
 
     #[test]
