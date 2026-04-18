@@ -15,6 +15,10 @@
 //                  entry must carry a DEBT ticket reference (skip-if-absent)
 //   CB-1603 (L3) — inherited clause integrity: contract.require contains each
 //                  bound equation's YAML-declared preconditions
+//   CB-1604 (L2) — postcondition weakening: any ticket with
+//                  `inherited_postconditions` must preserve them in
+//                  `ensure:` (strengthened or equal, never weakened or
+//                  dropped). Delegates to `validate_subcontracting()`.
 //   CB-1605 (L4) — per-binding kani_harnesses[] declared in YAML each appear
 //                  with success: true in `.pmat-work/<ID>/kani-report.json`.
 //                  Skip-if-absent (no YAML harness decls OR no reports yet).
@@ -25,10 +29,9 @@
 //   CB-1607 (L3) — equation identifier exists in referenced YAML
 //   CB-1609 (L1) — YAML file is tracked in git
 //
-// The remaining checks (CB-1604 postcondition weakening,
-// CB-1608 cross-binding consistency) surface as Skip with a
-// "deferred: requires X" message so config plumbing is already wired for
-// the follow-up work.
+// The remaining check CB-1608 (cross-binding consistency) surfaces as Skip
+// with a "deferred: requires X" message so config plumbing is already
+// wired for the follow-up work.
 
 use std::path::Path;
 
@@ -755,13 +758,80 @@ pub(crate) fn check_binding_inherited_clauses(project_path: &Path) -> Compliance
 }
 
 /// CB-1604 (L3): a ticket cannot override an inherited postcondition with a
-/// weaker threshold. Requires clause-threshold comparison semantics which
-/// arrive with the full DbC triad inheritance.
-pub(crate) fn check_binding_postcondition_weakening(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1604: Postcondition Weakening",
-        "requires inherited-postcondition threshold comparator",
-    )
+/// weaker threshold. Reuses the DbC subcontracting validator
+/// (`validate_subcontracting`) against each ticket's
+/// `inherited_postconditions` → `ensure` relationship.
+///
+/// # Skip semantics (tiered)
+///
+/// * no `.pmat-work/*/contract.json` tickets        → Skip
+/// * no ticket declares `inherited_postconditions`  → Skip (iteration 1
+///                                                   tickets, no parent)
+///
+/// # Fail
+///
+/// * any clause weakened, dropped, or incompatible between the inherited
+///   parent and the child's `ensure:` vector
+pub(crate) fn check_binding_postcondition_weakening(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1604: Postcondition Weakening";
+    let contracts = load_active_contracts(project_path);
+    if contracts.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/*/contract.json` tickets present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut checked = 0usize;
+    let mut violations: Vec<String> = Vec::new();
+
+    for c in &contracts {
+        if c.inherited_postconditions.is_empty() {
+            continue;
+        }
+        checked += 1;
+        if let Err(v) = crate::cli::handlers::work_contract::validate_subcontracting(
+            &c.inherited_postconditions,
+            &c.ensure,
+        ) {
+            violations.push(format!("  {} — {}", c.work_item_id, v));
+        }
+    }
+
+    if checked == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No ticket carries inherited postconditions (all iteration 1)".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if !violations.is_empty() {
+        let mut msg = format!(
+            "{} ticket(s) weaken inherited postconditions:\n",
+            violations.len()
+        );
+        for line in &violations {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!("{} ticket(s) preserve inherited postconditions", checked),
+        severity: Severity::Info,
+    }
 }
 
 /// Scan a YAML's top-level `kani_harnesses:` block for list-item harness
@@ -1321,13 +1391,194 @@ mod tests {
     #[test]
     fn deferred_checks_return_skip() {
         let tmp = tempdir().unwrap();
-        for r in [
-            check_binding_postcondition_weakening(tmp.path()),
-            check_binding_cross_consistency(tmp.path()),
-        ] {
-            assert_eq!(r.status, CheckStatus::Skip);
-            assert!(r.message.starts_with("Deferred"));
+        let r = check_binding_cross_consistency(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.starts_with("Deferred"));
+    }
+
+    // ── CB-1604 postcondition weakening tests ────────────────────────────
+    //
+    // Shape: each test writes ticket contract(s) with parent-side
+    // `inherited_postconditions` + child-side `ensure`, then expects
+    // Pass / Skip / Fail.
+
+    fn pw_clause(
+        id: &str,
+        threshold: Option<crate::cli::handlers::work_contract::ClauseThreshold>,
+    ) -> crate::cli::handlers::work_contract::ContractClause {
+        use crate::cli::handlers::work_contract::{
+            ClauseKind, ClauseSource, ContractClause, FalsificationMethod,
+        };
+        ContractClause {
+            id: id.into(),
+            kind: ClauseKind::Ensure,
+            description: id.into(),
+            falsification_method: FalsificationMethod::ManifestIntegrity,
+            threshold,
+            blocking: false,
+            source: ClauseSource::Manual,
         }
+    }
+
+    fn pw_threshold_gte(
+        metric: &str,
+        value: f64,
+    ) -> crate::cli::handlers::work_contract::ClauseThreshold {
+        use crate::cli::handlers::work_contract::{ClauseThreshold, ThresholdOp};
+        ClauseThreshold::Numeric {
+            metric: metric.into(),
+            op: ThresholdOp::Gte,
+            value,
+        }
+    }
+
+    fn pw_save(
+        project: &Path,
+        ticket: &str,
+        inherited: Vec<crate::cli::handlers::work_contract::ContractClause>,
+        ensure: Vec<crate::cli::handlers::work_contract::ContractClause>,
+    ) {
+        use crate::cli::handlers::work_contract::WorkContract;
+        let mut c = WorkContract::new(ticket.into(), "deadbeef".into());
+        c.inherited_postconditions = inherited;
+        c.ensure = ensure;
+        c.save(project).unwrap();
+    }
+
+    #[test]
+    fn pw_skips_when_no_tickets() {
+        let tmp = tempdir().unwrap();
+        let r = check_binding_postcondition_weakening(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/*/contract.json`"));
+    }
+
+    #[test]
+    fn pw_skips_when_no_ticket_carries_inherited() {
+        let tmp = tempdir().unwrap();
+        // Iteration 1 ticket — no parent, empty inherited_postconditions
+        pw_save(tmp.path(), "T-1", vec![], vec![pw_clause("e.c", None)]);
+        let r = check_binding_postcondition_weakening(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("iteration 1"));
+    }
+
+    #[test]
+    fn pw_passes_when_child_equal_to_parent() {
+        let tmp = tempdir().unwrap();
+        let inherited = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 95.0)))];
+        let ensure = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 95.0)))];
+        pw_save(tmp.path(), "T-1", inherited, ensure);
+        let r = check_binding_postcondition_weakening(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("1 ticket"));
+    }
+
+    #[test]
+    fn pw_passes_when_child_strengthens() {
+        let tmp = tempdir().unwrap();
+        let inherited = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 90.0)))];
+        let ensure = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 95.0)))];
+        pw_save(tmp.path(), "T-1", inherited, ensure);
+        let r = check_binding_postcondition_weakening(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn pw_fails_when_child_weakens() {
+        let tmp = tempdir().unwrap();
+        let inherited = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 95.0)))];
+        let ensure = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 80.0)))];
+        pw_save(tmp.path(), "T-1", inherited, ensure);
+        let r = check_binding_postcondition_weakening(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("T-1"));
+    }
+
+    #[test]
+    fn pw_fails_when_child_drops_clause() {
+        let tmp = tempdir().unwrap();
+        let inherited = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 95.0)))];
+        let ensure: Vec<_> = Vec::new(); // dropped
+        pw_save(tmp.path(), "T-1", inherited, ensure);
+        let r = check_binding_postcondition_weakening(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("T-1"));
+    }
+
+    #[test]
+    fn pw_fails_when_child_incompatible_threshold_op() {
+        use crate::cli::handlers::work_contract::{ClauseThreshold, ThresholdOp};
+        let tmp = tempdir().unwrap();
+        let inherited = vec![pw_clause(
+            "e.cov",
+            Some(ClauseThreshold::Numeric {
+                metric: "coverage".into(),
+                op: ThresholdOp::Gte,
+                value: 95.0,
+            }),
+        )];
+        let ensure = vec![pw_clause(
+            "e.cov",
+            Some(ClauseThreshold::Numeric {
+                metric: "coverage".into(),
+                op: ThresholdOp::Lte,
+                value: 95.0,
+            }),
+        )];
+        pw_save(tmp.path(), "T-1", inherited, ensure);
+        let r = check_binding_postcondition_weakening(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+    }
+
+    #[test]
+    fn pw_aggregates_violations_across_tickets() {
+        let tmp = tempdir().unwrap();
+        // T-1 violates; T-2 preserves
+        let inherited_bad = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 95.0)))];
+        let ensure_bad = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 50.0)))];
+        pw_save(tmp.path(), "T-1", inherited_bad, ensure_bad);
+
+        let inherited_ok = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 95.0)))];
+        let ensure_ok = vec![pw_clause("e.cov", Some(pw_threshold_gte("coverage", 99.0)))];
+        pw_save(tmp.path(), "T-2", inherited_ok, ensure_ok);
+
+        let r = check_binding_postcondition_weakening(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("T-1"));
+        assert!(
+            !r.message.contains("T-2"),
+            "non-violating ticket should not be listed: {}",
+            r.message
+        );
+    }
+
+    #[test]
+    fn pw_passes_when_no_threshold_on_either_side() {
+        let tmp = tempdir().unwrap();
+        // No threshold → None vs None → Equal
+        pw_save(
+            tmp.path(),
+            "T-1",
+            vec![pw_clause("e.flag", None)],
+            vec![pw_clause("e.flag", None)],
+        );
+        let r = check_binding_postcondition_weakening(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn pw_passes_counting_only_tickets_with_inherited() {
+        let tmp = tempdir().unwrap();
+        // T-1: iteration 1, no inherited (skip-silent)
+        pw_save(tmp.path(), "T-1", vec![], vec![pw_clause("e.c", None)]);
+        // T-2: iteration 2, preserves
+        let inh = vec![pw_clause("e.cov", Some(pw_threshold_gte("cov", 90.0)))];
+        let ens = vec![pw_clause("e.cov", Some(pw_threshold_gte("cov", 95.0)))];
+        pw_save(tmp.path(), "T-2", inh, ens);
+        let r = check_binding_postcondition_weakening(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("1 ticket"), "{}", r.message);
     }
 
     // ── CB-1602 unbind audit tests ────────────────────────────────────────
