@@ -11,11 +11,13 @@
 //   CB-1600 (L1) — orphan detection: staged files w/ bindings → active ticket
 //                  must declare `implements:` covering them
 //   CB-1601 (L1) — SHA drift against current YAML bytes
+//   CB-1603 (L3) — inherited clause integrity: contract.require contains each
+//                  bound equation's YAML-declared preconditions
 //   CB-1607 (L3) — equation identifier exists in referenced YAML
 //   CB-1609 (L1) — YAML file is tracked in git
 //
-// The remaining checks (CB-1602 unbind audit, CB-1603/1604 clause
-// inheritance, CB-1605 kani, CB-1606 lean, CB-1608 cross-binding
+// The remaining checks (CB-1602 unbind audit, CB-1604 postcondition
+// weakening, CB-1605 kani, CB-1606 lean, CB-1608 cross-binding
 // consistency) surface as Skip with a "deferred: requires X" message so
 // config plumbing is already wired for the follow-up work.
 
@@ -467,14 +469,183 @@ pub(crate) fn check_binding_unbind_audit(_project_path: &Path) -> ComplianceChec
     )
 }
 
-/// CB-1603 (L3): verifies `inherited-clauses.json` matches YAML preconditions.
-/// Activated when the inheritance pipeline in Component 27 (the full version)
-/// writes that derived file.
-pub(crate) fn check_binding_inherited_clauses(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1603: Inherited Clause Integrity",
-        "requires precondition inheritance pipeline emitting inherited-clauses.json",
-    )
+/// Extract `preconditions:` entries for a specific equation from a source
+/// YAML's `equations:` block. Returns `None` if the equation or its
+/// `preconditions:` key is absent (nothing to inherit); `Some(vec![])` if the
+/// list exists but is empty.
+///
+/// Recognized shape:
+/// ```yaml
+/// equations:
+///   rope:
+///     preconditions:
+///     - "foo"
+///     - "bar"
+/// ```
+fn yaml_equation_preconditions(content: &str, equation: &str) -> Option<Vec<String>> {
+    let mut in_equations = false;
+    let mut in_target = false;
+    let mut in_preconditions = false;
+    let mut preconditions: Option<Vec<String>> = None;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        // Indent level 0: top-level key
+        if !line.starts_with(' ') {
+            in_equations = trimmed == "equations:";
+            in_target = false;
+            in_preconditions = false;
+            continue;
+        }
+        if !in_equations {
+            continue;
+        }
+        let indent = line.len() - line.trim_start_matches(' ').len();
+        // Indent 2 = equation key under `equations:`
+        if indent == 2 && !trimmed.starts_with('-') {
+            if let Some(idx) = trimmed.find(':') {
+                let name = trimmed[..idx].trim();
+                in_target = name == equation;
+                in_preconditions = false;
+            }
+            continue;
+        }
+        if !in_target {
+            continue;
+        }
+        // Indent 4 = field under the target equation
+        if indent == 4 && !trimmed.starts_with('-') {
+            if let Some(idx) = trimmed.find(':') {
+                let key = trimmed[..idx].trim();
+                in_preconditions = key == "preconditions";
+                if in_preconditions && preconditions.is_none() {
+                    preconditions = Some(Vec::new());
+                }
+                continue;
+            }
+        }
+        // Indent ≥4, starts with `-` and we're in preconditions: a list item
+        if in_preconditions && indent >= 4 && trimmed.starts_with('-') {
+            let item = trimmed[1..].trim();
+            let unquoted = item
+                .trim_start_matches('"')
+                .trim_end_matches('"')
+                .trim_start_matches('\'')
+                .trim_end_matches('\'')
+                .to_string();
+            if !unquoted.is_empty() {
+                if let Some(v) = preconditions.as_mut() {
+                    v.push(unquoted);
+                }
+            }
+            continue;
+        }
+        // Any other line under the target equation that isn't a sub-field
+        // continuation ends the preconditions list.
+        if in_preconditions && indent < 4 {
+            in_preconditions = false;
+        }
+    }
+    preconditions
+}
+
+/// CB-1603 (L3): verify each bound equation's YAML-declared `preconditions:`
+/// are reflected in the ticket's `contract.require[]`. Catches inheritance
+/// pipeline regressions where a tightening of the bound equation's precond
+/// set isn't propagated to in-flight tickets.
+///
+/// Spec §Inheritance: a ticket inherits preconditions from each bound
+/// equation. This check enforces that inheritance at the contract level —
+/// equivalent to verifying `inherited-clauses.json` against source YAML,
+/// without requiring the intermediate artifact.
+pub(crate) fn check_binding_inherited_clauses(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1603: Inherited Clause Integrity";
+    let contracts = load_active_contracts(project_path);
+    if iter_bindings(&contracts).next().is_none() {
+        return skip_no_bindings(name);
+    }
+
+    let mut missing: Vec<String> = Vec::new();
+    let mut checked_bindings = 0usize;
+    let mut bindings_with_preconds = 0usize;
+
+    for contract in &contracts {
+        // Collect require-clause descriptions + ids for this ticket. A YAML
+        // precondition string matches if it appears either as a clause id
+        // (e.g. "require.compiles") or as the human-readable description.
+        let ticket_require: std::collections::HashSet<&str> = contract
+            .require
+            .iter()
+            .flat_map(|c| [c.id.as_str(), c.description.as_str()])
+            .collect();
+
+        for binding in &contract.implements {
+            checked_bindings += 1;
+            let yaml_path = if binding.file.is_absolute() {
+                binding.file.clone()
+            } else {
+                project_path.join(&binding.file)
+            };
+            let Ok(yaml) = std::fs::read_to_string(&yaml_path) else {
+                continue;
+            };
+            let Some(preconds) = yaml_equation_preconditions(&yaml, &binding.equation) else {
+                continue; // No preconditions declared for this equation
+            };
+            if preconds.is_empty() {
+                continue;
+            }
+            bindings_with_preconds += 1;
+            for p in &preconds {
+                if !ticket_require.contains(p.as_str()) {
+                    missing.push(format!(
+                        "  {} [{}] missing inherited: {}",
+                        contract.work_item_id,
+                        binding.key(),
+                        p
+                    ));
+                }
+            }
+        }
+    }
+
+    if bindings_with_preconds == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: format!(
+                "{} binding(s) checked; none declare YAML preconditions to inherit",
+                checked_bindings
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    if missing.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} binding(s) with preconditions — all inherited into `require:`",
+                bindings_with_preconds
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut msg = format!("{} inherited precondition(s) missing:\n", missing.len());
+    for line in &missing {
+        msg.push_str(line);
+        msg.push('\n');
+    }
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: msg,
+        severity: Severity::Error,
+    }
 }
 
 /// CB-1604 (L3): a ticket cannot override an inherited postcondition with a
@@ -619,7 +790,6 @@ mod tests {
         let tmp = tempdir().unwrap();
         for r in [
             check_binding_unbind_audit(tmp.path()),
-            check_binding_inherited_clauses(tmp.path()),
             check_binding_postcondition_weakening(tmp.path()),
             check_binding_kani_harnesses(tmp.path()),
             check_binding_lean_theorem(tmp.path()),
@@ -628,6 +798,107 @@ mod tests {
             assert_eq!(r.status, CheckStatus::Skip);
             assert!(r.message.starts_with("Deferred"));
         }
+    }
+
+    // ── CB-1603 inherited clause integrity tests ─────────────────────────
+
+    #[test]
+    fn yaml_precond_parses_list() {
+        let s = "equations:\n  rope:\n    preconditions:\n    - \"foo\"\n    - \"bar\"\n  softmax: {}\n";
+        let p = yaml_equation_preconditions(s, "rope").unwrap();
+        assert_eq!(p, vec!["foo".to_string(), "bar".to_string()]);
+    }
+
+    #[test]
+    fn yaml_precond_returns_none_for_missing_equation() {
+        let s = "equations:\n  rope:\n    preconditions:\n    - \"foo\"\n";
+        assert!(yaml_equation_preconditions(s, "softmax").is_none());
+    }
+
+    #[test]
+    fn yaml_precond_returns_none_when_field_absent() {
+        let s = "equations:\n  rope:\n    invariants:\n    - \"x\"\n";
+        assert!(yaml_equation_preconditions(s, "rope").is_none());
+    }
+
+    #[test]
+    fn inherited_clauses_skip_without_bindings() {
+        let tmp = tempdir().unwrap();
+        let r = check_binding_inherited_clauses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn inherited_clauses_skip_when_no_yaml_preconds() {
+        let tmp = tempdir().unwrap();
+        write_yaml(tmp.path(), "k", "equations:\n  rope: {}\n");
+        write_contract(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/k.yaml"),
+            "rope",
+            "deadbeef",
+        );
+        let r = check_binding_inherited_clauses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("YAML preconditions"));
+    }
+
+    #[test]
+    fn inherited_clauses_fails_when_require_missing_entry() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "k",
+            "equations:\n  rope:\n    preconditions:\n    - \"input normalized\"\n",
+        );
+        write_contract(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/k.yaml"),
+            "rope",
+            "deadbeef",
+        );
+        // Ticket's contract.require is empty → inheritance broken
+        let r = check_binding_inherited_clauses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("input normalized"));
+    }
+
+    #[test]
+    fn inherited_clauses_passes_when_require_has_description() {
+        use crate::cli::handlers::work_contract::{
+            ClauseKind, ClauseSource, ContractClause, FalsificationMethod,
+        };
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "k",
+            "equations:\n  rope:\n    preconditions:\n    - \"input normalized\"\n",
+        );
+        let yaml = tmp.path().join("contracts/k.yaml");
+        let sha = sha256_hex(&std::fs::read(&yaml).unwrap());
+        let mut c =
+            crate::cli::handlers::work_contract::WorkContract::new("T-1".into(), "deadbeef".into());
+        c.implements.push(ContractBinding {
+            contract: "k".into(),
+            equation: "rope".into(),
+            file: PathBuf::from("contracts/k.yaml"),
+            sha,
+            bound_at: chrono::Utc::now(),
+        });
+        c.require.push(ContractClause {
+            id: "require.normalized".into(),
+            kind: ClauseKind::Require,
+            description: "input normalized".into(),
+            falsification_method: FalsificationMethod::ManifestIntegrity,
+            threshold: None,
+            blocking: false,
+            source: ClauseSource::Manual,
+        });
+        c.save(tmp.path()).unwrap();
+        let r = check_binding_inherited_clauses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
     }
 
     #[test]
