@@ -4,7 +4,6 @@ surface: work-contract
 verification_summary:
   target_level: L1
   current_level: L1
-  total_obligations: 0
 preconditions:
   - "pmat query --regex supports Rust regex syntax"
   - "pmat query --literal performs exact string match"
