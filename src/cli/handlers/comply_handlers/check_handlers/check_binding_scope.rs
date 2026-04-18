@@ -15,11 +15,14 @@
 //                  entry must carry a DEBT ticket reference (skip-if-absent)
 //   CB-1603 (L3) — inherited clause integrity: contract.require contains each
 //                  bound equation's YAML-declared preconditions
+//   CB-1605 (L4) — per-binding kani_harnesses[] declared in YAML each appear
+//                  with success: true in `.pmat-work/<ID>/kani-report.json`.
+//                  Skip-if-absent (no YAML harness decls OR no reports yet).
 //   CB-1607 (L3) — equation identifier exists in referenced YAML
 //   CB-1609 (L1) — YAML file is tracked in git
 //
-// The remaining checks (CB-1604 postcondition weakening, CB-1605 kani,
-// CB-1606 lean, CB-1608 cross-binding consistency) surface as Skip with a
+// The remaining checks (CB-1604 postcondition weakening, CB-1606 lean,
+// CB-1608 cross-binding consistency) surface as Skip with a
 // "deferred: requires X" message so config plumbing is already wired for
 // the follow-up work.
 
@@ -757,13 +760,290 @@ pub(crate) fn check_binding_postcondition_weakening(_project_path: &Path) -> Com
     )
 }
 
-/// CB-1605 (L4): if the bound YAML has `kani_harnesses[]`, completion must
-/// have executed them. Requires the Kani runner integration (Component 29 L4).
-pub(crate) fn check_binding_kani_harnesses(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1605: Kani Harness Execution",
-        "requires Kani runner integration (Component 29 L4)",
-    )
+/// Scan a YAML's top-level `kani_harnesses:` block for list-item harness
+/// names. Recognizes two shapes:
+///
+/// ```yaml
+/// kani_harnesses:
+/// - verify_foo
+/// - verify_bar
+/// ```
+///
+/// and the indented variant:
+///
+/// ```yaml
+/// kani_harnesses:
+///   - verify_foo
+/// ```
+///
+/// Object form (`- name: verify_foo`) is also accepted; any other keys on the
+/// same item are ignored. Returns `None` if the section is absent (or flow-
+/// style empty `[]`) — that signals "no harness obligations declared" and
+/// callers should skip the binding, not fail.
+fn yaml_kani_harness_names(content: &str) -> Option<Vec<String>> {
+    let mut in_section = false;
+    let mut saw_section = false;
+    let mut names: Vec<String> = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        // Top-level key resets the section state
+        if !line.starts_with(' ') && !line.starts_with('-') {
+            if trimmed == "kani_harnesses:" {
+                in_section = true;
+                saw_section = true;
+                continue;
+            }
+            // `kani_harnesses: []` — flow-style empty. Caller treats as "no decls".
+            if let Some(rest) = trimmed.strip_prefix("kani_harnesses:") {
+                let rest = rest.trim();
+                if rest.starts_with('[') && rest.ends_with(']') {
+                    let inner = &rest[1..rest.len() - 1];
+                    if inner.trim().is_empty() {
+                        return None;
+                    }
+                    // Flow-style populated list: split on commas
+                    return Some(
+                        inner
+                            .split(',')
+                            .map(|s| s.trim().trim_matches('"').trim_matches('\'').to_string())
+                            .filter(|s| !s.is_empty())
+                            .collect(),
+                    );
+                }
+                // Non-flow scalar form — unusual; bail out conservatively
+                return None;
+            }
+            in_section = false;
+            continue;
+        }
+        if !in_section {
+            continue;
+        }
+        // List items under `kani_harnesses:` — either `- name` (string) or
+        // `- name: name_val` (object). Accept both.
+        if trimmed.starts_with('-') {
+            let item = trimmed[1..].trim();
+            if item.is_empty() {
+                continue;
+            }
+            // Object form: `- name: verify_foo`
+            if let Some(rest) = item.strip_prefix("name:") {
+                let value = rest.trim().trim_matches('"').trim_matches('\'').to_string();
+                if !value.is_empty() {
+                    names.push(value);
+                }
+                continue;
+            }
+            // Key-prefixed object with `name:` later: don't try to parse; skip
+            if item.contains(':') {
+                continue;
+            }
+            // String scalar
+            let cleaned = item.trim_matches('"').trim_matches('\'').to_string();
+            if !cleaned.is_empty() {
+                names.push(cleaned);
+            }
+        }
+    }
+    if saw_section {
+        Some(names)
+    } else {
+        None
+    }
+}
+
+/// Parse a kani-report.json into a map of harness-name → success bool.
+///
+/// Accepts two shapes the Component 29 runner is likely to emit:
+///
+/// 1. `harnesses: [{name, success}]` — canonical
+/// 2. `results:   [{name, success}]` — alternate naming
+///
+/// For each item, `success` may be a bool OR a status string (`"proved"`,
+/// `"failed"`, etc.) so this reader coerces to bool conservatively.
+fn parse_kani_harness_results(contents: &str) -> Option<Vec<(String, bool)>> {
+    let v: serde_json::Value = serde_json::from_str(contents).ok()?;
+    let array = v
+        .get("harnesses")
+        .or_else(|| v.get("results"))
+        .and_then(|v| v.as_array())?;
+    let mut out = Vec::new();
+    for item in array {
+        let Some(name) = item.get("name").and_then(|n| n.as_str()) else {
+            continue;
+        };
+        // Prefer `success: bool`; fall back to `status: "proved"` ≈ true.
+        let success = if let Some(b) = item.get("success").and_then(|v| v.as_bool()) {
+            b
+        } else if let Some(s) = item.get("status").and_then(|v| v.as_str()) {
+            matches!(s, "proved" | "success" | "pass" | "passed")
+        } else {
+            false
+        };
+        out.push((name.to_string(), success));
+    }
+    Some(out)
+}
+
+/// CB-1605 (L4): when a bound YAML declares `kani_harnesses[]`, every named
+/// harness must appear in the ticket's `.pmat-work/<ID>/kani-report.json`
+/// with a success result. This complements CB-1614's top-level report gate
+/// with per-harness granularity.
+///
+/// Tiered skip semantics:
+///   - no contracts with `implements:`                  → Skip
+///   - no binding's YAML declares kani_harnesses[]      → Skip
+///   - no eligible ticket has a kani-report.json yet    → Skip
+///   - else                                             → Pass/Fail
+pub(crate) fn check_binding_kani_harnesses(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1605: Kani Harness Execution";
+    let contracts = load_active_contracts(project_path);
+    if iter_bindings(&contracts).next().is_none() {
+        return skip_no_bindings(name);
+    }
+
+    let mut bindings_with_harnesses = 0usize;
+    let mut reports_seen = 0usize;
+    let mut missing_harnesses: Vec<String> = Vec::new();
+    let mut failed_harnesses: Vec<String> = Vec::new();
+    let mut malformed_reports: Vec<String> = Vec::new();
+
+    for contract in &contracts {
+        for binding in &contract.implements {
+            let file = if binding.file.is_absolute() {
+                binding.file.clone()
+            } else {
+                project_path.join(&binding.file)
+            };
+            let Ok(yaml) = std::fs::read_to_string(&file) else {
+                continue;
+            };
+            let Some(declared) = yaml_kani_harness_names(&yaml) else {
+                continue;
+            };
+            if declared.is_empty() {
+                continue;
+            }
+            bindings_with_harnesses += 1;
+
+            let report = project_path
+                .join(".pmat-work")
+                .join(&contract.work_item_id)
+                .join("kani-report.json");
+            if !report.exists() {
+                continue; // in-progress L4 ticket — overall presence owned by CB-1614
+            }
+            let Ok(contents) = std::fs::read_to_string(&report) else {
+                malformed_reports.push(format!(
+                    "  {} [{}] unreadable kani-report.json",
+                    contract.work_item_id,
+                    binding.key()
+                ));
+                continue;
+            };
+            let Some(results) = parse_kani_harness_results(&contents) else {
+                malformed_reports.push(format!(
+                    "  {} [{}] kani-report.json missing `harnesses`/`results` array",
+                    contract.work_item_id,
+                    binding.key()
+                ));
+                continue;
+            };
+            reports_seen += 1;
+
+            for harness in &declared {
+                match results.iter().find(|(n, _)| n == harness) {
+                    None => missing_harnesses.push(format!(
+                        "  {} [{}] '{}' not in kani-report.json",
+                        contract.work_item_id,
+                        binding.key(),
+                        harness
+                    )),
+                    Some((_, false)) => failed_harnesses.push(format!(
+                        "  {} [{}] '{}' success=false",
+                        contract.work_item_id,
+                        binding.key(),
+                        harness
+                    )),
+                    Some((_, true)) => {}
+                }
+            }
+        }
+    }
+
+    if bindings_with_harnesses == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No bound YAML declares `kani_harnesses:`".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if reports_seen == 0 && malformed_reports.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: format!(
+                "{} binding(s) declare kani_harnesses — no `.pmat-work/<ID>/kani-report.json` yet",
+                bindings_with_harnesses
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    if missing_harnesses.is_empty() && failed_harnesses.is_empty() && malformed_reports.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} binding(s) — all declared kani_harnesses succeeded in kani-report.json",
+                bindings_with_harnesses
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut msg = String::new();
+    if !missing_harnesses.is_empty() {
+        msg.push_str(&format!(
+            "{} declared harness(es) absent from kani-report.json:\n",
+            missing_harnesses.len()
+        ));
+        for line in &missing_harnesses {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+    }
+    if !failed_harnesses.is_empty() {
+        msg.push_str(&format!(
+            "{} harness(es) failed in kani-report.json:\n",
+            failed_harnesses.len()
+        ));
+        for line in &failed_harnesses {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+    }
+    if !malformed_reports.is_empty() {
+        msg.push_str(&format!(
+            "{} malformed kani-report.json file(s):\n",
+            malformed_reports.len()
+        ));
+        for line in &malformed_reports {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+    }
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: msg,
+        severity: Severity::Error,
+    }
 }
 
 /// CB-1606 (L5): if the bound YAML's `lean_theorem.status != \"proved\"`,
@@ -889,7 +1169,6 @@ mod tests {
         let tmp = tempdir().unwrap();
         for r in [
             check_binding_postcondition_weakening(tmp.path()),
-            check_binding_kani_harnesses(tmp.path()),
             check_binding_lean_theorem(tmp.path()),
             check_binding_cross_consistency(tmp.path()),
         ] {
@@ -1205,5 +1484,225 @@ mod tests {
         let r = check_binding_scope_orphan(tmp.path());
         assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
         assert!(r.message.contains("covered"));
+    }
+
+    // ── CB-1605 Kani harness execution tests ─────────────────────────────
+
+    fn write_kani_report(project: &Path, ticket: &str, body: &str) {
+        let dir = project.join(".pmat-work").join(ticket);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("kani-report.json"), body).unwrap();
+    }
+
+    #[test]
+    fn yaml_kani_harnesses_parses_block_style() {
+        let s = "equations:\n  rope: {}\nkani_harnesses:\n- verify_a\n- verify_b\n";
+        let names = yaml_kani_harness_names(s).unwrap();
+        assert_eq!(names, vec!["verify_a".to_string(), "verify_b".to_string()]);
+    }
+
+    #[test]
+    fn yaml_kani_harnesses_parses_indented_style() {
+        let s = "kani_harnesses:\n  - verify_a\n  - verify_b\n";
+        let names = yaml_kani_harness_names(s).unwrap();
+        assert_eq!(names, vec!["verify_a".to_string(), "verify_b".to_string()]);
+    }
+
+    #[test]
+    fn yaml_kani_harnesses_parses_object_form() {
+        let s = "kani_harnesses:\n- name: verify_a\n- name: verify_b\n";
+        let names = yaml_kani_harness_names(s).unwrap();
+        assert_eq!(names, vec!["verify_a".to_string(), "verify_b".to_string()]);
+    }
+
+    #[test]
+    fn yaml_kani_harnesses_flow_empty_returns_none() {
+        let s = "kani_harnesses: []\n";
+        assert!(yaml_kani_harness_names(s).is_none());
+    }
+
+    #[test]
+    fn yaml_kani_harnesses_missing_returns_none() {
+        let s = "equations:\n  rope: {}\n";
+        assert!(yaml_kani_harness_names(s).is_none());
+    }
+
+    #[test]
+    fn yaml_kani_harnesses_ignores_comments_and_blanks() {
+        let s = "kani_harnesses:\n# comment\n- verify_a\n\n- verify_b\n";
+        let names = yaml_kani_harness_names(s).unwrap();
+        assert_eq!(names, vec!["verify_a".to_string(), "verify_b".to_string()]);
+    }
+
+    #[test]
+    fn parse_kani_report_canonical_shape() {
+        let r = r#"{"harnesses":[{"name":"h1","success":true},{"name":"h2","success":false}]}"#;
+        let out = parse_kani_harness_results(r).unwrap();
+        assert_eq!(
+            out,
+            vec![("h1".to_string(), true), ("h2".to_string(), false)]
+        );
+    }
+
+    #[test]
+    fn parse_kani_report_results_alias() {
+        let r = r#"{"results":[{"name":"h1","success":true}]}"#;
+        let out = parse_kani_harness_results(r).unwrap();
+        assert_eq!(out, vec![("h1".to_string(), true)]);
+    }
+
+    #[test]
+    fn parse_kani_report_status_string_coerces() {
+        let r =
+            r#"{"harnesses":[{"name":"h1","status":"proved"},{"name":"h2","status":"failed"}]}"#;
+        let out = parse_kani_harness_results(r).unwrap();
+        assert_eq!(
+            out,
+            vec![("h1".to_string(), true), ("h2".to_string(), false)]
+        );
+    }
+
+    #[test]
+    fn kani_harnesses_skip_without_bindings() {
+        let tmp = tempdir().unwrap();
+        let r = check_binding_kani_harnesses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("implements:"));
+    }
+
+    #[test]
+    fn kani_harnesses_skip_when_no_yaml_declares() {
+        let tmp = tempdir().unwrap();
+        write_yaml(tmp.path(), "k", "equations:\n  rope: {}\n");
+        write_contract(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/k.yaml"),
+            "rope",
+            "deadbeef",
+        );
+        let r = check_binding_kani_harnesses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("kani_harnesses"));
+    }
+
+    #[test]
+    fn kani_harnesses_skip_when_declared_but_no_report() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "k",
+            "equations:\n  rope: {}\nkani_harnesses:\n- verify_a\n",
+        );
+        write_contract(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/k.yaml"),
+            "rope",
+            "deadbeef",
+        );
+        let r = check_binding_kani_harnesses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("kani-report.json"));
+    }
+
+    #[test]
+    fn kani_harnesses_pass_when_all_harnesses_succeed() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "k",
+            "equations:\n  rope: {}\nkani_harnesses:\n- verify_a\n- verify_b\n",
+        );
+        write_contract(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/k.yaml"),
+            "rope",
+            "deadbeef",
+        );
+        write_kani_report(
+            tmp.path(),
+            "T-1",
+            r#"{"success":true,"harnesses":[{"name":"verify_a","success":true},{"name":"verify_b","success":true}]}"#,
+        );
+        let r = check_binding_kani_harnesses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("succeeded"));
+    }
+
+    #[test]
+    fn kani_harnesses_fails_when_declared_harness_missing() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "k",
+            "equations:\n  rope: {}\nkani_harnesses:\n- verify_a\n- verify_b\n",
+        );
+        write_contract(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/k.yaml"),
+            "rope",
+            "deadbeef",
+        );
+        // Report only covers verify_a — verify_b is missing
+        write_kani_report(
+            tmp.path(),
+            "T-1",
+            r#"{"harnesses":[{"name":"verify_a","success":true}]}"#,
+        );
+        let r = check_binding_kani_harnesses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("verify_b"));
+        assert!(r.message.contains("T-1"));
+    }
+
+    #[test]
+    fn kani_harnesses_fails_when_harness_failed() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "k",
+            "equations:\n  rope: {}\nkani_harnesses:\n- verify_a\n",
+        );
+        write_contract(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/k.yaml"),
+            "rope",
+            "deadbeef",
+        );
+        write_kani_report(
+            tmp.path(),
+            "T-1",
+            r#"{"harnesses":[{"name":"verify_a","success":false}]}"#,
+        );
+        let r = check_binding_kani_harnesses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("verify_a"));
+        assert!(r.message.contains("success=false"));
+    }
+
+    #[test]
+    fn kani_harnesses_fails_on_malformed_report() {
+        let tmp = tempdir().unwrap();
+        write_yaml(
+            tmp.path(),
+            "k",
+            "equations:\n  rope: {}\nkani_harnesses:\n- verify_a\n",
+        );
+        write_contract(
+            tmp.path(),
+            "T-1",
+            &PathBuf::from("contracts/k.yaml"),
+            "rope",
+            "deadbeef",
+        );
+        // Report is valid JSON but lacks harnesses/results array
+        write_kani_report(tmp.path(), "T-1", r#"{"success":true}"#);
+        let r = check_binding_kani_harnesses(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("missing `harnesses`"));
     }
 }
