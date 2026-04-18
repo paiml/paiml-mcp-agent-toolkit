@@ -12,6 +12,9 @@
 // yet. Today's cut implements the checks that can run against today's
 // infrastructure (static source scanning, JSON introspection, git ls-files):
 //
+//   CB-1630 (L2) — most recent `pmat work codegen` run succeeded, read
+//                  from `.pmat-work/codegen/last-run.json`. Accepts
+//                  success/exit_code/status shapes. Skip-if-absent.
 //   CB-1631 (L2) — every `#[pmat_work_contract(id = X)]` in `src/` has a
 //                  corresponding `contracts/work/X.rs` file
 //   CB-1632 (L2) — attribute's `require = "Y"` / `ensure = "Y"` IDs each
@@ -23,11 +26,11 @@
 //   CB-1638 (L3) — generated modules under `contracts/work/*.rs` are tracked
 //                  in git (not ungenerated transient state)
 //
-// The remaining checks (CB-1630 codegen CLI success, CB-1635 `binds_to`
-// function modification, CB-1636 macro compile in release/debug,
-// CB-1637 L2+ public-function coverage, CB-1639 Kani harness macro
-// reference) surface as Skip with a "Deferred — requires X" message so
-// config plumbing is wired for the follow-up work.
+// The remaining checks (CB-1635 `binds_to` function modification,
+// CB-1636 macro compile in release/debug, CB-1637 L2+ public-function
+// coverage, CB-1639 Kani harness macro reference) surface as Skip with
+// a "Deferred — requires X" message so config plumbing is wired for the
+// follow-up work.
 
 use std::path::{Path, PathBuf};
 
@@ -429,13 +432,120 @@ pub(crate) fn check_generated_modules_tracked(project_path: &Path) -> Compliance
     }
 }
 
-// ─── CB-1630, 1633, 1635, 1636, 1637, 1639 — deferred stubs ─────────────────
+// ─── CB-1633, 1635, 1636, 1637, 1639 — deferred stubs ──────────────────────
 
-pub(crate) fn check_codegen_cli_succeeds(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1630: pmat work codegen Succeeds",
-        "requires `pmat work codegen --check` CLI (Component 30 §CLI Surface)",
-    )
+/// CB-1630 (L2): the most recent `pmat work codegen` run must have
+/// succeeded. Component 30 is expected to drop a run-status receipt at
+/// `.pmat-work/codegen/last-run.json` containing any of the following
+/// shapes (the writer hasn't shipped yet — we accept whichever settles):
+///
+/// ```json
+/// { "success": true }
+/// { "exit_code": 0 }
+/// { "status": "pass" }
+/// ```
+///
+/// # Skip semantics (tiered)
+///
+/// * no `.pmat-work/codegen/` directory              → Skip
+/// * no `last-run.json` receipt inside it            → Skip
+/// * receipt exists but carries none of the three
+///   recognised keys                                 → Skip (schema
+///                                                   isn't settled;
+///                                                   don't fail on
+///                                                   unknown shapes)
+/// * receipt indicates success                       → Pass
+/// * receipt indicates failure                       → Fail
+pub(crate) fn check_codegen_cli_succeeds(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1630: pmat work codegen Succeeds";
+    let dir = project_path.join(".pmat-work").join("codegen");
+    if !dir.exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/codegen/` directory — codegen has not been run".into(),
+            severity: Severity::Info,
+        };
+    }
+    let receipt = dir.join("last-run.json");
+    let Ok(contents) = std::fs::read_to_string(&receipt) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message:
+                "No `.pmat-work/codegen/last-run.json` — codegen has not emitted a run receipt yet"
+                    .into(),
+            severity: Severity::Info,
+        };
+    };
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(&contents) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "Malformed JSON in `{}`",
+                receipt
+                    .strip_prefix(project_path)
+                    .unwrap_or(&receipt)
+                    .display()
+            ),
+            severity: Severity::Error,
+        };
+    };
+
+    match codegen_receipt_outcome(&v) {
+        Some(ReceiptOutcome::Pass) => ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: "Codegen receipt reports success".into(),
+            severity: Severity::Info,
+        },
+        Some(ReceiptOutcome::Fail(detail)) => ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: format!("Codegen receipt reports failure: {}", detail),
+            severity: Severity::Error,
+        },
+        None => ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message:
+                "Codegen receipt carries none of `success` / `exit_code` / `status` — schema not settled"
+                    .into(),
+            severity: Severity::Info,
+        },
+    }
+}
+
+enum ReceiptOutcome {
+    Pass,
+    Fail(String),
+}
+
+/// Interpret a codegen run receipt JSON into an outcome. Returns `None` if
+/// the schema isn't recognised so the caller can skip cleanly.
+fn codegen_receipt_outcome(v: &serde_json::Value) -> Option<ReceiptOutcome> {
+    if let Some(b) = v.get("success").and_then(|s| s.as_bool()) {
+        return Some(if b {
+            ReceiptOutcome::Pass
+        } else {
+            ReceiptOutcome::Fail("success=false".into())
+        });
+    }
+    if let Some(code) = v.get("exit_code").and_then(|s| s.as_i64()) {
+        return Some(if code == 0 {
+            ReceiptOutcome::Pass
+        } else {
+            ReceiptOutcome::Fail(format!("exit_code={}", code))
+        });
+    }
+    if let Some(s) = v.get("status").and_then(|s| s.as_str()) {
+        return Some(match s {
+            "pass" | "ok" | "success" => ReceiptOutcome::Pass,
+            other => ReceiptOutcome::Fail(format!("status=\"{}\"", other)),
+        });
+    }
+    None
 }
 
 /// Parse a manifest JSON Value and return `(path, sha)` tuples. Accepts
@@ -845,7 +955,6 @@ mod tests {
     fn deferred_checks_return_skip_with_reason() {
         let path = Path::new(".");
         for (name, check) in [
-            ("CB-1630", check_codegen_cli_succeeds(path)),
             ("CB-1635", check_binds_to_function_modified(path)),
             ("CB-1636", check_macros_compile_debug_and_release(path)),
             ("CB-1637", check_l2_public_fn_coverage(path)),
@@ -1022,5 +1131,121 @@ mod tests {
         assert_eq!(r.status, CheckStatus::Fail);
         assert!(r.message.contains("src/b.rs"));
         assert!(!r.message.contains("src/a.rs (drift)"));
+    }
+
+    // ── CB-1630 codegen-CLI-succeeds tests ───────────────────────────────
+
+    fn write_codegen_receipt(project: &Path, body: &str) {
+        let dir = project.join(".pmat-work").join("codegen");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("last-run.json"), body).unwrap();
+    }
+
+    #[test]
+    fn cb1630_skips_when_codegen_dir_missing() {
+        let tmp = tempdir().unwrap();
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/codegen/` directory"));
+    }
+
+    #[test]
+    fn cb1630_skips_when_receipt_missing() {
+        let tmp = tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-work").join("codegen")).unwrap();
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("last-run.json"));
+    }
+
+    #[test]
+    fn cb1630_passes_on_success_true() {
+        let tmp = tempdir().unwrap();
+        write_codegen_receipt(tmp.path(), r#"{"success": true}"#);
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1630_fails_on_success_false() {
+        let tmp = tempdir().unwrap();
+        write_codegen_receipt(tmp.path(), r#"{"success": false}"#);
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("success=false"));
+    }
+
+    #[test]
+    fn cb1630_passes_on_exit_code_zero() {
+        let tmp = tempdir().unwrap();
+        write_codegen_receipt(tmp.path(), r#"{"exit_code": 0}"#);
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1630_fails_on_exit_code_nonzero() {
+        let tmp = tempdir().unwrap();
+        write_codegen_receipt(tmp.path(), r#"{"exit_code": 1}"#);
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("exit_code=1"));
+    }
+
+    #[test]
+    fn cb1630_passes_on_status_pass() {
+        let tmp = tempdir().unwrap();
+        write_codegen_receipt(tmp.path(), r#"{"status": "pass"}"#);
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1630_passes_on_status_ok_or_success() {
+        let tmp = tempdir().unwrap();
+        write_codegen_receipt(tmp.path(), r#"{"status": "ok"}"#);
+        let r1 = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r1.status, CheckStatus::Pass, "{}", r1.message);
+
+        let tmp2 = tempdir().unwrap();
+        write_codegen_receipt(tmp2.path(), r#"{"status": "success"}"#);
+        let r2 = check_codegen_cli_succeeds(tmp2.path());
+        assert_eq!(r2.status, CheckStatus::Pass, "{}", r2.message);
+    }
+
+    #[test]
+    fn cb1630_fails_on_status_fail() {
+        let tmp = tempdir().unwrap();
+        write_codegen_receipt(tmp.path(), r#"{"status": "fail"}"#);
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("status=\"fail\""));
+    }
+
+    #[test]
+    fn cb1630_skips_on_unknown_schema() {
+        let tmp = tempdir().unwrap();
+        write_codegen_receipt(tmp.path(), r#"{"unexpected_field": 42}"#);
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("schema not settled"));
+    }
+
+    #[test]
+    fn cb1630_fails_on_malformed_json() {
+        let tmp = tempdir().unwrap();
+        write_codegen_receipt(tmp.path(), "not-json");
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("Malformed JSON"));
+    }
+
+    #[test]
+    fn cb1630_success_takes_precedence_over_exit_code() {
+        // If both keys exist, `success` wins because it's the most explicit.
+        let tmp = tempdir().unwrap();
+        write_codegen_receipt(tmp.path(), r#"{"success": true, "exit_code": 99}"#);
+        let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
     }
 }
