@@ -16,15 +16,18 @@
 //                  corresponding `contracts/work/X.rs` file
 //   CB-1632 (L2) — attribute's `require = "Y"` / `ensure = "Y"` IDs each
 //                  match a clause id in the referenced ticket's contract.json
+//   CB-1633 (L3) — `contracts/work/<ID>.manifest.json` entries carry SHA-256
+//                  hashes that match current bytes on disk. Skip-if-absent
+//                  until codegen emits manifests.
 //   CB-1634 (L3) — every clause with an `expr` field also has `binds_to`
 //   CB-1638 (L3) — generated modules under `contracts/work/*.rs` are tracked
 //                  in git (not ungenerated transient state)
 //
-// The remaining checks (CB-1630 codegen CLI success, CB-1633 manifest SHA
-// drift, CB-1635 `binds_to` function modification, CB-1636 macro compile
-// in release/debug, CB-1637 L2+ public-function coverage, CB-1639 Kani
-// harness macro reference) surface as Skip with a "Deferred — requires X"
-// message so config plumbing is wired for the follow-up work.
+// The remaining checks (CB-1630 codegen CLI success, CB-1635 `binds_to`
+// function modification, CB-1636 macro compile in release/debug,
+// CB-1637 L2+ public-function coverage, CB-1639 Kani harness macro
+// reference) surface as Skip with a "Deferred — requires X" message so
+// config plumbing is wired for the follow-up work.
 
 use std::path::{Path, PathBuf};
 
@@ -435,11 +438,199 @@ pub(crate) fn check_codegen_cli_succeeds(_project_path: &Path) -> ComplianceChec
     )
 }
 
-pub(crate) fn check_manifest_sha_drift(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1633: Manifest SHA Drift",
-        "requires `contracts/work/<ID>.manifest.json` emitted by codegen",
-    )
+/// Parse a manifest JSON Value and return `(path, sha)` tuples. Accepts
+/// three plausible shapes the Component 30 codegen writer might emit:
+///
+/// ```json
+/// { "entries": [{ "path": "src/lib.rs", "sha": "..." }] }
+/// { "files":   [{ "path": "src/lib.rs", "sha": "..." }] }
+/// { "sources": [{ "path": "src/lib.rs", "sha": "..." }] }
+/// ```
+///
+/// Returns `None` if no such array is present — caller treats that as a
+/// malformed manifest, not as "no entries to check".
+fn manifest_entries(v: &serde_json::Value) -> Option<Vec<(String, String)>> {
+    let arr = v
+        .get("entries")
+        .or_else(|| v.get("files"))
+        .or_else(|| v.get("sources"))
+        .and_then(|v| v.as_array())?;
+    let mut out = Vec::new();
+    for item in arr {
+        let Some(path) = item.get("path").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let Some(sha) = item.get("sha").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        out.push((path.to_string(), sha.to_string()));
+    }
+    Some(out)
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(bytes);
+    let d = h.finalize();
+    let mut s = String::with_capacity(d.len() * 2);
+    for b in d {
+        use std::fmt::Write;
+        let _ = write!(&mut s, "{:02x}", b);
+    }
+    s
+}
+
+/// CB-1633 (L3): `contracts/work/<ID>.manifest.json` is emitted by codegen
+/// to pin which source bytes the generated macros were derived from. If
+/// the recorded SHA for an entry drifts from the current bytes on disk,
+/// someone edited the source without re-running codegen and the generated
+/// modules are stale.
+///
+/// Tiered skip semantics:
+///   - no `contracts/work/` directory            → Skip
+///   - no `*.manifest.json` files present        → Skip
+///   - present but all entries match             → Pass
+///   - else                                      → Fail
+pub(crate) fn check_manifest_sha_drift(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1633: Manifest SHA Drift";
+    let dir = project_path.join("contracts/work");
+    if !dir.exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `contracts/work/` directory — codegen hasn't emitted yet".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "`contracts/work/` unreadable".into(),
+            severity: Severity::Info,
+        };
+    };
+
+    let mut manifest_files: Vec<PathBuf> = Vec::new();
+    for e in entries.flatten() {
+        let path = e.path();
+        if path.is_file()
+            && path
+                .file_name()
+                .and_then(|f| f.to_str())
+                .map(|s| s.ends_with(".manifest.json"))
+                .unwrap_or(false)
+        {
+            manifest_files.push(path);
+        }
+    }
+
+    if manifest_files.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message:
+                "No `contracts/work/*.manifest.json` files — codegen hasn't emitted manifests yet"
+                    .into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut drifted: Vec<String> = Vec::new();
+    let mut missing_files: Vec<String> = Vec::new();
+    let mut malformed: Vec<String> = Vec::new();
+    let mut entries_checked = 0usize;
+
+    for manifest_path in &manifest_files {
+        let manifest_name = manifest_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("<unknown>")
+            .to_string();
+        let Ok(contents) = std::fs::read_to_string(manifest_path) else {
+            malformed.push(format!("  {} (unreadable)", manifest_name));
+            continue;
+        };
+        let Ok(json) = serde_json::from_str::<serde_json::Value>(&contents) else {
+            malformed.push(format!("  {} (not valid JSON)", manifest_name));
+            continue;
+        };
+        let Some(list) = manifest_entries(&json) else {
+            malformed.push(format!(
+                "  {} (missing `entries`/`files`/`sources` array)",
+                manifest_name
+            ));
+            continue;
+        };
+        for (rel_path, recorded_sha) in list {
+            entries_checked += 1;
+            let abs = project_path.join(&rel_path);
+            let Ok(bytes) = std::fs::read(&abs) else {
+                missing_files.push(format!("  {} -> {} (not found)", manifest_name, rel_path));
+                continue;
+            };
+            let current = sha256_hex(&bytes);
+            if !current.eq_ignore_ascii_case(&recorded_sha) {
+                drifted.push(format!(
+                    "  {} -> {} recorded={}… current={}…",
+                    manifest_name,
+                    rel_path,
+                    &recorded_sha[..recorded_sha.len().min(8)],
+                    &current[..current.len().min(8)]
+                ));
+            }
+        }
+    }
+
+    if drifted.is_empty() && missing_files.is_empty() && malformed.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} manifest(s), {} entry/entries — all SHA(s) match",
+                manifest_files.len(),
+                entries_checked
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut msg = String::new();
+    if !drifted.is_empty() {
+        msg.push_str(&format!(
+            "{} manifest entry/entries drifted:\n",
+            drifted.len()
+        ));
+        for line in &drifted {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+    }
+    if !missing_files.is_empty() {
+        msg.push_str(&format!(
+            "{} referenced file(s) missing:\n",
+            missing_files.len()
+        ));
+        for line in &missing_files {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+    }
+    if !malformed.is_empty() {
+        msg.push_str(&format!("{} malformed manifest(s):\n", malformed.len()));
+        for line in &malformed {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+    }
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: msg,
+        severity: Severity::Error,
+    }
 }
 
 pub(crate) fn check_binds_to_function_modified(_project_path: &Path) -> ComplianceCheck {
@@ -655,7 +846,6 @@ mod tests {
         let path = Path::new(".");
         for (name, check) in [
             ("CB-1630", check_codegen_cli_succeeds(path)),
-            ("CB-1633", check_manifest_sha_drift(path)),
             ("CB-1635", check_binds_to_function_modified(path)),
             ("CB-1636", check_macros_compile_debug_and_release(path)),
             ("CB-1637", check_l2_public_fn_coverage(path)),
@@ -669,5 +859,168 @@ mod tests {
                 check.message
             );
         }
+    }
+
+    // ── CB-1633 manifest SHA drift tests ─────────────────────────────────
+
+    fn write_file(project: &Path, rel: &str, body: &[u8]) -> String {
+        let p = project.join(rel);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(&p, body).unwrap();
+        sha256_hex(body)
+    }
+
+    fn write_manifest(project: &Path, name: &str, body: &str) {
+        let dir = project.join("contracts/work");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(format!("{}.manifest.json", name)), body).unwrap();
+    }
+
+    #[test]
+    fn manifest_sha_skip_when_no_dir() {
+        let tmp = tempdir().unwrap();
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("contracts/work/"));
+    }
+
+    #[test]
+    fn manifest_sha_skip_when_no_manifests() {
+        let tmp = tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join("contracts/work")).unwrap();
+        // A plain .rs module, not a manifest
+        std::fs::write(tmp.path().join("contracts/work/PMAT-1.rs"), "// generated").unwrap();
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("manifest.json"));
+    }
+
+    #[test]
+    fn manifest_sha_pass_when_all_match() {
+        let tmp = tempdir().unwrap();
+        let sha_a = write_file(tmp.path(), "src/a.rs", b"fn a(){}");
+        let sha_b = write_file(tmp.path(), "src/b.rs", b"fn b(){}");
+        write_manifest(
+            tmp.path(),
+            "PMAT-1",
+            &format!(
+                r#"{{"ticket":"PMAT-1","entries":[{{"path":"src/a.rs","sha":"{sha_a}"}},{{"path":"src/b.rs","sha":"{sha_b}"}}]}}"#
+            ),
+        );
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("1 manifest"));
+        assert!(r.message.contains("2 entry"));
+    }
+
+    #[test]
+    fn manifest_sha_accepts_files_alias() {
+        let tmp = tempdir().unwrap();
+        let sha_a = write_file(tmp.path(), "src/a.rs", b"fn a(){}");
+        // Alternate naming — `files` instead of `entries`
+        write_manifest(
+            tmp.path(),
+            "PMAT-1",
+            &format!(r#"{{"files":[{{"path":"src/a.rs","sha":"{sha_a}"}}]}}"#),
+        );
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn manifest_sha_accepts_sources_alias() {
+        let tmp = tempdir().unwrap();
+        let sha_a = write_file(tmp.path(), "src/a.rs", b"fn a(){}");
+        write_manifest(
+            tmp.path(),
+            "PMAT-1",
+            &format!(r#"{{"sources":[{{"path":"src/a.rs","sha":"{sha_a}"}}]}}"#),
+        );
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn manifest_sha_fails_on_drift() {
+        let tmp = tempdir().unwrap();
+        write_file(tmp.path(), "src/a.rs", b"fn a(){}");
+        // Recorded sha is stale (file content differs from recorded hash)
+        write_manifest(
+            tmp.path(),
+            "PMAT-1",
+            r#"{"entries":[{"path":"src/a.rs","sha":"deadbeef"}]}"#,
+        );
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("drifted"));
+        assert!(r.message.contains("src/a.rs"));
+        assert!(r.message.contains("deadbeef"));
+    }
+
+    #[test]
+    fn manifest_sha_fails_on_missing_file() {
+        let tmp = tempdir().unwrap();
+        write_manifest(
+            tmp.path(),
+            "PMAT-1",
+            r#"{"entries":[{"path":"src/ghost.rs","sha":"deadbeef"}]}"#,
+        );
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("missing"));
+        assert!(r.message.contains("src/ghost.rs"));
+    }
+
+    #[test]
+    fn manifest_sha_fails_on_malformed_json() {
+        let tmp = tempdir().unwrap();
+        write_manifest(tmp.path(), "PMAT-1", "not-json{");
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("not valid JSON"));
+    }
+
+    #[test]
+    fn manifest_sha_fails_on_missing_entries_key() {
+        let tmp = tempdir().unwrap();
+        write_manifest(tmp.path(), "PMAT-1", r#"{"ticket":"PMAT-1"}"#);
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("missing `entries`"));
+    }
+
+    #[test]
+    fn manifest_sha_case_insensitive_hex_match() {
+        let tmp = tempdir().unwrap();
+        let sha_upper = write_file(tmp.path(), "src/a.rs", b"fn a(){}").to_uppercase();
+        write_manifest(
+            tmp.path(),
+            "PMAT-1",
+            &format!(r#"{{"entries":[{{"path":"src/a.rs","sha":"{sha_upper}"}}]}}"#),
+        );
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn manifest_sha_aggregates_across_multiple_manifests() {
+        let tmp = tempdir().unwrap();
+        let sha_a = write_file(tmp.path(), "src/a.rs", b"fn a(){}");
+        write_file(tmp.path(), "src/b.rs", b"fn b(){}");
+        write_manifest(
+            tmp.path(),
+            "PMAT-1",
+            &format!(r#"{{"entries":[{{"path":"src/a.rs","sha":"{sha_a}"}}]}}"#),
+        );
+        // Second manifest has stale hash → one drift
+        write_manifest(
+            tmp.path(),
+            "PMAT-2",
+            r#"{"entries":[{"path":"src/b.rs","sha":"cafebabe"}]}"#,
+        );
+        let r = check_manifest_sha_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("src/b.rs"));
+        assert!(!r.message.contains("src/a.rs (drift)"));
     }
 }
