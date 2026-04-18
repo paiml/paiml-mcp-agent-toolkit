@@ -22,6 +22,9 @@
 //   CB-1642 (L1) — `evidence_method = ExistingTest` path/name resolves on disk
 //   CB-1643 (L3) — L3+ tickets: every structured step has `assumption.expr`
 //                  or `implication.expr`
+//   CB-1644 (L1) — `.pmat-work/<ID>/agent-runs/<run_id>.json` entries carry
+//                  the replay schema (`prompt_sha`, `tool_calls`, `commit_sha`).
+//                  Skip-if-absent until Component 10 writer lands.
 //   CB-1645 (L3) — derived `contracts/work/<ID>.yaml` is up-to-date with
 //                  contract.json preconditions/postconditions
 //   CB-1646 (L1) — `.pmat-work/<ID>/cot-digest.json` SHA matches the
@@ -30,7 +33,6 @@
 //   CB-1647 (L3) — no orphan steps: every step chains via `discharged_by`
 //
 // Deferred stubs (need infrastructure that hasn't landed):
-//   CB-1644 (L1) — requires Component 10 agent audit log ingest
 //   CB-1648 (L4) — requires Kani-bound axiom registry
 //   CB-1649 (L5) — requires Lean theorem lemma mapping
 
@@ -470,11 +472,149 @@ pub(crate) fn check_assumption_references_resolve(project_path: &Path) -> Compli
 
 // ─── Deferred stubs ─────────────────────────────────────────────────────────
 
-pub(crate) fn check_agent_run_replayable(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1644: Agent Run Replayable",
-        "requires Component 10 agent audit log ingest (`.pmat-work/<ID>/agent-runs/<run_id>.json`)",
-    )
+/// CB-1644 (L1): Replayability hinges on three fields per recorded agent run:
+///   - `prompt_sha` — content hash of the prompt that produced the run
+///   - `tool_calls` — ordered trace of tool invocations (array)
+///   - `commit_sha` — git commit the run was anchored against
+///
+/// We scan `.pmat-work/<ID>/agent-runs/*.json`. Entries missing any required
+/// field are reported. The check skips cleanly when no `agent-runs/` folder
+/// exists for any ticket — Component 10's writer hasn't emitted traces yet.
+pub(crate) fn check_agent_run_replayable(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1644: Agent Run Replayable";
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/` directory — agent run writer hasn't executed yet".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    const REQUIRED_FIELDS: &[&str] = &["prompt_sha", "tool_calls", "commit_sha"];
+
+    let mut checked_runs = 0usize;
+    let mut malformed: Vec<String> = Vec::new();
+    let mut incomplete: Vec<String> = Vec::new();
+
+    let Ok(ticket_entries) = std::fs::read_dir(&work_dir) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "`.pmat-work/` unreadable — agent run writer hasn't executed yet".into(),
+            severity: Severity::Info,
+        };
+    };
+
+    for entry in ticket_entries.flatten() {
+        if !entry.path().is_dir() {
+            continue;
+        }
+        let Some(ticket_id) = entry.file_name().to_str().map(|s| s.to_string()) else {
+            continue;
+        };
+        if ticket_id.starts_with('.') || ticket_id == "ledger" {
+            continue;
+        }
+        let runs_dir = entry.path().join("agent-runs");
+        if !runs_dir.exists() {
+            continue;
+        }
+        let Ok(run_files) = std::fs::read_dir(&runs_dir) else {
+            continue;
+        };
+        for run in run_files.flatten() {
+            let path = run.path();
+            if !path.is_file() || path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            let run_id = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("<unknown>")
+                .to_string();
+            checked_runs += 1;
+            let Ok(bytes) = std::fs::read(&path) else {
+                malformed.push(format!("{}:{}", ticket_id, run_id));
+                continue;
+            };
+            let Ok(value) = serde_json::from_slice::<Value>(&bytes) else {
+                malformed.push(format!("{}:{}", ticket_id, run_id));
+                continue;
+            };
+            let Value::Object(map) = value else {
+                malformed.push(format!("{}:{} (not an object)", ticket_id, run_id));
+                continue;
+            };
+            let missing: Vec<&str> = REQUIRED_FIELDS
+                .iter()
+                .filter(|f| {
+                    // Field is absent or null
+                    map.get(**f).map(|v| v.is_null()).unwrap_or(true)
+                })
+                .copied()
+                .collect();
+            // `tool_calls` must specifically be an array, not any non-null shape
+            let tool_calls_ok = map.get("tool_calls").map(|v| v.is_array()).unwrap_or(false);
+            if !missing.is_empty() {
+                incomplete.push(format!(
+                    "{}:{} missing {}",
+                    ticket_id,
+                    run_id,
+                    missing.join(", ")
+                ));
+            } else if !tool_calls_ok {
+                incomplete.push(format!(
+                    "{}:{} tool_calls is not an array",
+                    ticket_id, run_id
+                ));
+            }
+        }
+    }
+
+    if checked_runs == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/<ID>/agent-runs/*.json` files — Component 10 writer hasn't emitted runs yet".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if malformed.is_empty() && incomplete.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} agent run(s) carry prompt_sha/tool_calls/commit_sha",
+                checked_runs
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut msg = String::new();
+    if !malformed.is_empty() {
+        msg.push_str(&format!(
+            "{} unreadable run(s): {}\n",
+            malformed.len(),
+            malformed.join(", ")
+        ));
+    }
+    if !incomplete.is_empty() {
+        msg.push_str(&format!(
+            "{} run(s) incomplete:\n  {}",
+            incomplete.len(),
+            incomplete.join("\n  ")
+        ));
+    }
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: msg,
+        severity: Severity::Error,
+    }
 }
 
 /// Sanitize a work-item id for use as a filename — mirrors
@@ -825,13 +965,175 @@ mod tests {
     fn deferred_stubs_return_skip_with_reason() {
         let project = tempdir().unwrap();
         for check in [
-            check_agent_run_replayable(project.path()),
             check_l4_axiomatic_discharge_bounded(project.path()),
             check_l5_lean_theorem_mapping(project.path()),
         ] {
             assert_eq!(check.status, CheckStatus::Skip);
             assert!(check.message.starts_with("Deferred — "));
         }
+    }
+
+    // ── CB-1644 agent run replayable tests ───────────────────────────────
+
+    fn write_agent_run(project: &Path, ticket: &str, run_id: &str, body: &str) {
+        let dir = project.join(".pmat-work").join(ticket).join("agent-runs");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(format!("{}.json", run_id)), body).unwrap();
+    }
+
+    #[test]
+    fn agent_run_skip_when_no_work_dir() {
+        let project = tempdir().unwrap();
+        let check = check_agent_run_replayable(project.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(check.message.contains("`.pmat-work/`"));
+    }
+
+    #[test]
+    fn agent_run_skip_when_no_agent_runs_dirs() {
+        let project = tempdir().unwrap();
+        write_contract(project.path(), "T1", json!({ "work_item_id": "T1" }));
+        let check = check_agent_run_replayable(project.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(check.message.contains("agent-runs"));
+    }
+
+    #[test]
+    fn agent_run_pass_with_full_schema() {
+        let project = tempdir().unwrap();
+        write_agent_run(
+            project.path(),
+            "T1",
+            "run-001",
+            r#"{
+                "prompt_sha": "abc123",
+                "tool_calls": [{"name": "Read"}, {"name": "Edit"}],
+                "commit_sha": "deadbeef"
+            }"#,
+        );
+        let check = check_agent_run_replayable(project.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+        assert!(check.message.contains("1 agent run"));
+    }
+
+    #[test]
+    fn agent_run_fail_when_field_missing() {
+        let project = tempdir().unwrap();
+        write_agent_run(
+            project.path(),
+            "T1",
+            "run-001",
+            r#"{
+                "prompt_sha": "abc123",
+                "tool_calls": []
+            }"#,
+        );
+        let check = check_agent_run_replayable(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("commit_sha"));
+        assert!(check.message.contains("T1:run-001"));
+    }
+
+    #[test]
+    fn agent_run_fail_when_null_field() {
+        let project = tempdir().unwrap();
+        write_agent_run(
+            project.path(),
+            "T1",
+            "run-001",
+            r#"{
+                "prompt_sha": null,
+                "tool_calls": [],
+                "commit_sha": "dead"
+            }"#,
+        );
+        let check = check_agent_run_replayable(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("prompt_sha"));
+    }
+
+    #[test]
+    fn agent_run_fail_when_tool_calls_not_array() {
+        let project = tempdir().unwrap();
+        write_agent_run(
+            project.path(),
+            "T1",
+            "run-001",
+            r#"{
+                "prompt_sha": "a",
+                "tool_calls": "should-be-array",
+                "commit_sha": "b"
+            }"#,
+        );
+        let check = check_agent_run_replayable(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("tool_calls is not an array"));
+    }
+
+    #[test]
+    fn agent_run_fail_when_malformed_json() {
+        let project = tempdir().unwrap();
+        write_agent_run(project.path(), "T1", "run-001", "{ not json");
+        let check = check_agent_run_replayable(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("unreadable"));
+        assert!(check.message.contains("T1:run-001"));
+    }
+
+    #[test]
+    fn agent_run_fail_when_top_level_not_object() {
+        let project = tempdir().unwrap();
+        write_agent_run(project.path(), "T1", "run-001", "[1, 2, 3]");
+        let check = check_agent_run_replayable(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("not an object"));
+    }
+
+    #[test]
+    fn agent_run_ignores_non_json_files() {
+        let project = tempdir().unwrap();
+        // A stray README in agent-runs/ doesn't count toward checked_runs
+        let runs_dir = project.path().join(".pmat-work/T1/agent-runs");
+        std::fs::create_dir_all(&runs_dir).unwrap();
+        std::fs::write(runs_dir.join("README.md"), "notes").unwrap();
+        let check = check_agent_run_replayable(project.path());
+        // No *.json files present → treat as Skip (no runs emitted)
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn agent_run_ignores_ledger_and_hidden_dirs() {
+        let project = tempdir().unwrap();
+        std::fs::create_dir_all(project.path().join(".pmat-work/ledger/agent-runs")).unwrap();
+        std::fs::create_dir_all(project.path().join(".pmat-work/.hidden/agent-runs")).unwrap();
+        // Write valid runs under both — they should be skipped by the check
+        std::fs::write(
+            project.path().join(".pmat-work/ledger/agent-runs/x.json"),
+            r#"{"prompt_sha":"a","tool_calls":[],"commit_sha":"b"}"#,
+        )
+        .unwrap();
+        let check = check_agent_run_replayable(project.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn agent_run_pass_across_multiple_tickets() {
+        let project = tempdir().unwrap();
+        write_agent_run(
+            project.path(),
+            "T1",
+            "run-001",
+            r#"{"prompt_sha":"a","tool_calls":[],"commit_sha":"b"}"#,
+        );
+        write_agent_run(
+            project.path(),
+            "T2",
+            "run-001",
+            r#"{"prompt_sha":"c","tool_calls":[],"commit_sha":"d"}"#,
+        );
+        let check = check_agent_run_replayable(project.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+        assert!(check.message.contains("2 agent run"));
     }
 
     // ── CB-1646 CoT derivation SHA tests ─────────────────────────────────
