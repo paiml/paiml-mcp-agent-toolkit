@@ -11,14 +11,41 @@
 //   CB-1626 — check_test_id_exists_in_yaml (L1): referenced test_ids still
 //             exist in the current YAML source.
 
-// ─── CB-1620: Inherited roster coverage (WARN during migration) ──────────────
+// ─── CB-1620: Inherited roster coverage (WARN→FAIL on cutoff date) ───────────
+
+/// End of the 30-day migration window defined by the spec
+/// (§Migration: "CB-1620 enters warn mode for 30 days, then fail"). CB-1620
+/// landed 2026-04-17, so the window closes 2026-05-17 — on or after that
+/// date, missing inherited entries promote from Warn to Fail.
+fn cb1620_fail_mode_cutoff() -> NaiveDate {
+    NaiveDate::from_ymd_opt(2026, 5, 17).expect("valid date")
+}
+
+/// Returns `(status, severity)` for a CB-1620 gap finding on `today`. Broken
+/// out so tests can exercise both sides of the cutoff without tampering
+/// with the system clock.
+fn cb1620_gap_severity(today: NaiveDate) -> (CheckStatus, Severity) {
+    if today >= cb1620_fail_mode_cutoff() {
+        (CheckStatus::Fail, Severity::Error)
+    } else {
+        (CheckStatus::Warn, Severity::Warning)
+    }
+}
 
 /// CB-1620 (L1): For every `ContractBinding`, the ticket's claim roster must
 /// contain a matching `ProvableContract{}` entry for each test in the bound
 /// YAML's `falsification_tests[]`. Missing entries surface as **warnings**
 /// during the 30-day migration window (§Migration) so users have time to run
-/// `pmat work migrate --seed-inherited-falsification` before fail-mode.
+/// `pmat work migrate --seed-inherited-falsification`; on or after the
+/// cutoff date the same missing entries become failures.
 pub(crate) fn check_inherited_roster_coverage(project_path: &Path) -> ComplianceCheck {
+    check_inherited_roster_coverage_at(project_path, Utc::now().date_naive())
+}
+
+fn check_inherited_roster_coverage_at(
+    project_path: &Path,
+    today: NaiveDate,
+) -> ComplianceCheck {
     let name = "CB-1620: Inherited Roster Coverage";
     let contracts = load_active_contracts(project_path);
     let any_binding = contracts.iter().any(|c| !c.implements.is_empty());
@@ -60,26 +87,38 @@ pub(crate) fn check_inherited_roster_coverage(project_path: &Path) -> Compliance
         }
     }
     if gaps.is_empty() {
-        ComplianceCheck {
+        return ComplianceCheck {
             name: name.into(),
             status: CheckStatus::Pass,
             message: "All bound tickets have inherited ProvableContract entries".into(),
             severity: Severity::Info,
-        }
+        };
+    }
+    let (status, severity) = cb1620_gap_severity(today);
+    let preview: Vec<String> = gaps.iter().take(5).cloned().collect();
+    let more = gaps.len().saturating_sub(5);
+    let window = if matches!(status, CheckStatus::Fail) {
+        format!(
+            " Migration window closed on {}.",
+            cb1620_fail_mode_cutoff()
+        )
     } else {
-        let preview: Vec<String> = gaps.iter().take(5).cloned().collect();
-        let more = gaps.len().saturating_sub(5);
-        ComplianceCheck {
-            name: name.into(),
-            status: CheckStatus::Warn,
-            message: format!(
-                "{} inherited test(s) missing from roster (e.g. {}{}). Run `pmat work migrate --seed-inherited-falsification`.",
-                gaps.len(),
-                preview.join(", "),
-                if more > 0 { format!(", +{} more", more) } else { String::new() }
-            ),
-            severity: Severity::Warning,
-        }
+        format!(
+            " Migration window closes {}; this is a warning until then.",
+            cb1620_fail_mode_cutoff()
+        )
+    };
+    ComplianceCheck {
+        name: name.into(),
+        status,
+        message: format!(
+            "{} inherited test(s) missing from roster (e.g. {}{}). Run `pmat work migrate --seed-inherited-falsification`.{}",
+            gaps.len(),
+            preview.join(", "),
+            if more > 0 { format!(", +{} more", more) } else { String::new() },
+            window
+        ),
+        severity,
     }
 }
 

@@ -152,17 +152,46 @@ mod tests_attribute {
     }
 
     #[test]
-    fn expr_binds_to_passes_when_present() {
+    fn expr_binds_to_passes_when_present_and_attribute_wraps_target() {
         let tmp = tempdir().unwrap();
         let work = tmp.path().join(".pmat-work/PMAT-100");
+        let src = tmp.path().join("src");
         std::fs::create_dir_all(&work).unwrap();
+        std::fs::create_dir_all(&src).unwrap();
         std::fs::write(
             work.join("contract.json"),
             r#"{"require":[{"id":"R1","expr":"x > 0","binds_to":"crate::f"}]}"#,
         )
         .unwrap();
+        std::fs::write(
+            src.join("a.rs"),
+            r#"#[pmat_work_contract(id = "PMAT-100", require = "R1")] fn f(){}"#,
+        )
+        .unwrap();
         let check = check_expr_clauses_have_binds_to(tmp.path());
         assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn expr_binds_to_fails_when_no_attribute_wraps_target() {
+        let tmp = tempdir().unwrap();
+        let work = tmp.path().join(".pmat-work/PMAT-100");
+        let src = tmp.path().join("src");
+        std::fs::create_dir_all(&work).unwrap();
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(
+            work.join("contract.json"),
+            r#"{"require":[{"id":"R1","expr":"x > 0","binds_to":"crate::f"}]}"#,
+        )
+        .unwrap();
+        // `src/` exists and has code, but no function wears
+        // `#[pmat_work_contract(id = "PMAT-100")]` — the contract's binding
+        // intent is orphaned. CB-1634 should flag this.
+        std::fs::write(src.join("a.rs"), "fn f(){}").unwrap();
+        let check = check_expr_clauses_have_binds_to(tmp.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("PMAT-100"));
+        assert!(check.message.contains("pmat_work_contract"));
     }
 
     #[test]
@@ -178,5 +207,44 @@ mod tests_attribute {
         std::fs::create_dir_all(tmp.path().join("contracts/work")).unwrap();
         let check = check_generated_modules_tracked(tmp.path());
         assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    fn git(args: &[&str], dir: &std::path::Path) {
+        let ok = std::process::Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .env("GIT_AUTHOR_NAME", "t")
+            .env("GIT_AUTHOR_EMAIL", "t@t")
+            .env("GIT_COMMITTER_NAME", "t")
+            .env("GIT_COMMITTER_EMAIL", "t@t")
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "git {:?} failed", args);
+    }
+
+    #[test]
+    fn generated_modules_tracked_passes_when_rs_is_git_added() {
+        let tmp = tempdir().unwrap();
+        git(&["init", "-q"], tmp.path());
+        let gen_dir = tmp.path().join("contracts/work");
+        std::fs::create_dir_all(&gen_dir).unwrap();
+        std::fs::write(gen_dir.join("PMAT-100.rs"), "// generated").unwrap();
+        git(&["add", "contracts/work/PMAT-100.rs"], tmp.path());
+        let check = check_generated_modules_tracked(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn generated_modules_tracked_fails_on_untracked_rs() {
+        let tmp = tempdir().unwrap();
+        git(&["init", "-q"], tmp.path());
+        let gen_dir = tmp.path().join("contracts/work");
+        std::fs::create_dir_all(&gen_dir).unwrap();
+        // Written but never `git add`ed.
+        std::fs::write(gen_dir.join("PMAT-200.rs"), "// generated").unwrap();
+        let check = check_generated_modules_tracked(tmp.path());
+        assert_eq!(check.status, CheckStatus::Fail, "{}", check.message);
+        assert!(check.message.contains("PMAT-200.rs"));
     }
 }

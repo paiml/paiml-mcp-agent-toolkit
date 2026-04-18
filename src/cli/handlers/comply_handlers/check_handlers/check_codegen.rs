@@ -22,7 +22,10 @@
 //   CB-1633 (L3) — `contracts/work/<ID>.manifest.json` entries carry SHA-256
 //                  hashes that match current bytes on disk. Skip-if-absent
 //                  until codegen emits manifests.
-//   CB-1634 (L3) — every clause with an `expr` field also has `binds_to`
+//   CB-1634 (L3) — every clause with an `expr` field also has `binds_to`,
+//                  and every ticket that carries `expr`+`binds_to` clauses
+//                  has ≥1 `#[pmat_work_contract(id = "<ID>")]` usage in
+//                  `src/` (the binding target actually wears the attribute)
 //   CB-1635 (L3) — every `binds_to: "crate::a::b::c"` target must map to
 //                  a file present in the ticket's
 //                  `.pmat-work/<ID>/modified-files.json`. Skip-if-absent

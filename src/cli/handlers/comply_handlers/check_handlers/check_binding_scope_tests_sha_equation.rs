@@ -104,4 +104,44 @@ mod tests_sha_equation {
         let r = check_binding_file_tracked(tmp.path());
         assert_eq!(r.status, CheckStatus::Skip);
     }
+
+    fn git(args: &[&str], dir: &Path) {
+        let ok = std::process::Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            // Minimal identity so `git commit` would succeed if called.
+            .env("GIT_AUTHOR_NAME", "t")
+            .env("GIT_AUTHOR_EMAIL", "t@t")
+            .env("GIT_COMMITTER_NAME", "t")
+            .env("GIT_COMMITTER_EMAIL", "t@t")
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "git {:?} failed", args);
+    }
+
+    #[test]
+    fn file_tracked_passes_on_git_added_yaml() {
+        let tmp = tempdir().unwrap();
+        git(&["init", "-q"], tmp.path());
+        let _ = write_yaml(tmp.path(), "k", "equations:\n  rope: {}\n");
+        git(&["add", "contracts/k.yaml"], tmp.path());
+        let rel = PathBuf::from("contracts/k.yaml");
+        write_contract(tmp.path(), "T-1", &rel, "rope", "deadbeef");
+        let r = check_binding_file_tracked(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn file_tracked_fails_on_untracked_yaml() {
+        let tmp = tempdir().unwrap();
+        git(&["init", "-q"], tmp.path());
+        // YAML written to disk but never `git add`ed — CB-1609 must flag it.
+        let _ = write_yaml(tmp.path(), "k", "equations:\n  rope: {}\n");
+        let rel = PathBuf::from("contracts/k.yaml");
+        write_contract(tmp.path(), "T-1", &rel, "rope", "deadbeef");
+        let r = check_binding_file_tracked(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("contracts/k.yaml"));
+    }
 }

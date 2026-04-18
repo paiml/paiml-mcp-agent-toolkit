@@ -1,12 +1,18 @@
 // CB-1634, CB-1638: Expr/binds_to linkage and generated-modules-tracked gates.
 // Included from check_codegen.rs — do NOT add `use` imports or `#!` attributes here.
 
-// ─── CB-1634: Clauses with `expr` have `binds_to` ───────────────────────────
+// ─── CB-1634: Clauses with `expr` have `binds_to` + attribute coverage ──────
 
 /// CB-1634 (L3): A clause with an `expr` field (codegen-ready Rust
 /// expression) must also have a `binds_to` field (fully-qualified function
-/// path). Without `binds_to`, the generator has no target to wrap — the
-/// clause exists but doesn't apply to any code.
+/// path), AND the ticket's `binds_to` targets must be wrapped by at least
+/// one `#[pmat_work_contract(id = "<TICKET>")]` attribute in `src/`.
+///
+/// Without `binds_to`, the generator has no target to wrap — the clause
+/// exists but doesn't apply to any code. Without a matching attribute
+/// somewhere in the tree, `binds_to` points at a function that isn't
+/// wearing the wrapper, so the generated preconditions/postconditions are
+/// never invoked at runtime.
 pub(crate) fn check_expr_clauses_have_binds_to(project_path: &Path) -> ComplianceCheck {
     let name = "CB-1634: expr Clauses Have binds_to";
     let work_dir = project_path.join(".pmat-work");
@@ -19,6 +25,7 @@ pub(crate) fn check_expr_clauses_have_binds_to(project_path: &Path) -> Complianc
         };
     }
     let mut orphaned: Vec<String> = Vec::new();
+    let mut bound_tickets: Vec<String> = Vec::new();
     let mut saw_expr = false;
     let Ok(entries) = std::fs::read_dir(&work_dir) else {
         return ComplianceCheck {
@@ -41,6 +48,7 @@ pub(crate) fn check_expr_clauses_have_binds_to(project_path: &Path) -> Complianc
         let Some(contract) = load_contract_json(project_path, &ticket_id) else {
             continue;
         };
+        let mut ticket_has_expr_with_binds = false;
         for clause in iter_clauses(&contract) {
             let has_expr = clause.get("expr").is_some_and(|v| !v.is_null());
             if !has_expr {
@@ -54,7 +62,12 @@ pub(crate) fn check_expr_clauses_have_binds_to(project_path: &Path) -> Complianc
                     .and_then(|v| v.as_str())
                     .unwrap_or("<unknown>");
                 orphaned.push(format!("{}#{}", ticket_id, id));
+            } else {
+                ticket_has_expr_with_binds = true;
             }
+        }
+        if ticket_has_expr_with_binds {
+            bound_tickets.push(ticket_id);
         }
     }
     if !saw_expr {
@@ -65,15 +78,8 @@ pub(crate) fn check_expr_clauses_have_binds_to(project_path: &Path) -> Complianc
             severity: Severity::Info,
         };
     }
-    if orphaned.is_empty() {
-        ComplianceCheck {
-            name: name.into(),
-            status: CheckStatus::Pass,
-            message: "All clauses with `expr` also declare `binds_to`".into(),
-            severity: Severity::Info,
-        }
-    } else {
-        ComplianceCheck {
+    if !orphaned.is_empty() {
+        return ComplianceCheck {
             name: name.into(),
             status: CheckStatus::Fail,
             message: format!(
@@ -82,7 +88,42 @@ pub(crate) fn check_expr_clauses_have_binds_to(project_path: &Path) -> Complianc
                 orphaned.join(", ")
             ),
             severity: Severity::Error,
-        }
+        };
+    }
+
+    // Tightening: every ticket with `expr`+`binds_to` clauses must have ≥1
+    // `#[pmat_work_contract(id = "<TICKET>")]` usage in `src/`. Otherwise
+    // the binding intent is orphaned — the contract says "wrap this
+    // function" but no function is wearing the attribute.
+    let usages = collect_attribute_usages(project_path);
+    let usage_ids: std::collections::HashSet<&str> =
+        usages.iter().map(|u| u.id.as_str()).collect();
+    let unbound: Vec<&String> = bound_tickets
+        .iter()
+        .filter(|t| !usage_ids.contains(t.as_str()))
+        .collect();
+    if !unbound.is_empty() {
+        let names: Vec<String> = unbound.iter().map(|s| s.to_string()).collect();
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "{} ticket(s) with `expr`+`binds_to` clauses but no `#[pmat_work_contract(id = ...)]` usage in `src/`: {}",
+                names.len(),
+                names.join(", ")
+            ),
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "All clauses with `expr` declare `binds_to`; {} ticket(s) wrap ≥1 function with `#[pmat_work_contract]`",
+            bound_tickets.len()
+        ),
+        severity: Severity::Info,
     }
 }
 
