@@ -27,13 +27,16 @@
 //                  a file present in the ticket's
 //                  `.pmat-work/<ID>/modified-files.json`. Skip-if-absent
 //                  until the work CLI starts emitting diff receipts.
+//   CB-1636 (L3) — `.pmat-work/codegen/compile-status.json` must report
+//                  the generated macros compiling in both debug and
+//                  release profiles. Skip-if-absent.
 //   CB-1638 (L3) — generated modules under `contracts/work/*.rs` are tracked
 //                  in git (not ungenerated transient state)
 //
-// The remaining checks (CB-1636 macro compile in release/debug,
-// CB-1637 L2+ public-function coverage, CB-1639 Kani harness macro
-// reference) surface as Skip with a "Deferred — requires X" message so
-// config plumbing is wired for the follow-up work.
+// The remaining checks (CB-1637 L2+ public-function coverage,
+// CB-1639 Kani harness macro reference) surface as Skip with a
+// "Deferred — requires X" message so config plumbing is wired for the
+// follow-up work.
 
 use std::path::{Path, PathBuf};
 
@@ -939,11 +942,146 @@ pub(crate) fn check_binds_to_function_modified(project_path: &Path) -> Complianc
     }
 }
 
-pub(crate) fn check_macros_compile_debug_and_release(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1636: Generated Macros Compile (debug + release)",
-        "requires generated modules under `contracts/work/` to exercise",
-    )
+/// CB-1636 (L3): the generated `contracts/work/*.rs` modules must
+/// compile under both `debug` and `release` profiles. Invoking
+/// `cargo check` from inside a compliance check would be slow and
+/// prone to cache thrash, so this check reads a receipt the work CLI
+/// is expected to drop at `.pmat-work/codegen/compile-status.json`.
+///
+/// Accepted shapes (whichever Component 30's writer settles on):
+///
+/// ```json
+/// { "debug":   {"success": true}, "release": {"success": true} }
+/// { "debug":   0,                  "release": 0                 }  // exit codes
+/// { "debug_success": true, "release_success": true }
+/// ```
+///
+/// # Skip semantics (tiered)
+///
+/// * no `.pmat-work/codegen/` directory               → Skip
+/// * no `compile-status.json` receipt                 → Skip
+/// * receipt has neither profile recognisable         → Skip (schema
+///                                                     not settled)
+///
+/// # Fail
+///
+/// * either profile explicitly reports failure
+/// * receipt is malformed JSON
+///
+/// # Pass
+///
+/// * both profiles report success
+pub(crate) fn check_macros_compile_debug_and_release(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1636: Generated Macros Compile (debug + release)";
+    let dir = project_path.join(".pmat-work").join("codegen");
+    if !dir.exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/codegen/` directory — codegen has not been run".into(),
+            severity: Severity::Info,
+        };
+    }
+    let receipt = dir.join("compile-status.json");
+    let Ok(contents) = std::fs::read_to_string(&receipt) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message:
+                "No `.pmat-work/codegen/compile-status.json` — codegen has not emitted a compile receipt yet"
+                    .into(),
+            severity: Severity::Info,
+        };
+    };
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(&contents) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: format!(
+                "Malformed JSON in `{}`",
+                receipt
+                    .strip_prefix(project_path)
+                    .unwrap_or(&receipt)
+                    .display()
+            ),
+            severity: Severity::Error,
+        };
+    };
+
+    let debug = compile_profile_outcome(&v, "debug");
+    let release = compile_profile_outcome(&v, "release");
+    match (debug, release) {
+        (None, None) => ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "Compile receipt has neither profile recognisable — schema not settled".into(),
+            severity: Severity::Info,
+        },
+        (Some(ReceiptOutcome::Pass), Some(ReceiptOutcome::Pass)) => ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: "Generated macros compile in both debug and release".into(),
+            severity: Severity::Info,
+        },
+        (d, r) => {
+            let mut failures: Vec<String> = Vec::new();
+            for (label, o) in [("debug", d), ("release", r)] {
+                match o {
+                    Some(ReceiptOutcome::Fail(detail)) => {
+                        failures.push(format!("{}: {}", label, detail));
+                    }
+                    None => failures.push(format!("{}: no evidence", label)),
+                    Some(ReceiptOutcome::Pass) => {}
+                }
+            }
+            ComplianceCheck {
+                name: name.into(),
+                status: CheckStatus::Fail,
+                message: format!(
+                    "Generated macros failed to compile: {}",
+                    failures.join("; ")
+                ),
+                severity: Severity::Error,
+            }
+        }
+    }
+}
+
+/// Extract the outcome for a single profile from the compile-status JSON.
+/// Accepts: nested object `{"success": bool}`, numeric exit code, or flat
+/// `<profile>_success: bool` key.
+fn compile_profile_outcome(v: &serde_json::Value, profile: &str) -> Option<ReceiptOutcome> {
+    if let Some(obj) = v.get(profile) {
+        if let Some(b) = obj.get("success").and_then(|x| x.as_bool()) {
+            return Some(if b {
+                ReceiptOutcome::Pass
+            } else {
+                ReceiptOutcome::Fail("success=false".into())
+            });
+        }
+        if let Some(s) = obj.get("status").and_then(|x| x.as_str()) {
+            return Some(match s {
+                "pass" | "ok" | "success" => ReceiptOutcome::Pass,
+                other => ReceiptOutcome::Fail(format!("status=\"{}\"", other)),
+            });
+        }
+        if let Some(code) = obj.as_i64() {
+            return Some(if code == 0 {
+                ReceiptOutcome::Pass
+            } else {
+                ReceiptOutcome::Fail(format!("exit_code={}", code))
+            });
+        }
+    }
+    let flat_key = format!("{}_success", profile);
+    if let Some(b) = v.get(&flat_key).and_then(|x| x.as_bool()) {
+        return Some(if b {
+            ReceiptOutcome::Pass
+        } else {
+            ReceiptOutcome::Fail(format!("{}=false", flat_key))
+        });
+    }
+    None
 }
 
 pub(crate) fn check_l2_public_fn_coverage(_project_path: &Path) -> ComplianceCheck {
@@ -1144,7 +1282,6 @@ mod tests {
     fn deferred_checks_return_skip_with_reason() {
         let path = Path::new(".");
         for (name, check) in [
-            ("CB-1636", check_macros_compile_debug_and_release(path)),
             ("CB-1637", check_l2_public_fn_coverage(path)),
             ("CB-1639", check_kani_harness_macro_reference(path)),
         ] {
@@ -1615,5 +1752,147 @@ mod tests {
         write_modified_files(tmp.path(), "T-1", r#"{"files":["src/a.rs","src/b.rs"]}"#);
         let r = check_binds_to_function_modified(tmp.path());
         assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    // ── CB-1636 macros-compile tests ─────────────────────────────────────
+
+    fn write_compile_status(project: &Path, body: &str) {
+        let dir = project.join(".pmat-work").join("codegen");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("compile-status.json"), body).unwrap();
+    }
+
+    #[test]
+    fn cb1636_skips_when_codegen_dir_missing() {
+        let tmp = tempdir().unwrap();
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/codegen/`"));
+    }
+
+    #[test]
+    fn cb1636_skips_when_receipt_missing() {
+        let tmp = tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-work").join("codegen")).unwrap();
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("compile-status.json"));
+    }
+
+    #[test]
+    fn cb1636_passes_on_nested_object_both_success() {
+        let tmp = tempdir().unwrap();
+        write_compile_status(
+            tmp.path(),
+            r#"{"debug":{"success":true},"release":{"success":true}}"#,
+        );
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1636_fails_when_debug_fails() {
+        let tmp = tempdir().unwrap();
+        write_compile_status(
+            tmp.path(),
+            r#"{"debug":{"success":false},"release":{"success":true}}"#,
+        );
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("debug"));
+    }
+
+    #[test]
+    fn cb1636_fails_when_release_fails() {
+        let tmp = tempdir().unwrap();
+        write_compile_status(
+            tmp.path(),
+            r#"{"debug":{"success":true},"release":{"success":false}}"#,
+        );
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("release"));
+    }
+
+    #[test]
+    fn cb1636_passes_on_exit_code_shape() {
+        let tmp = tempdir().unwrap();
+        write_compile_status(tmp.path(), r#"{"debug":0,"release":0}"#);
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1636_fails_on_nonzero_exit_code() {
+        let tmp = tempdir().unwrap();
+        write_compile_status(tmp.path(), r#"{"debug":0,"release":1}"#);
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("release"));
+        assert!(r.message.contains("exit_code=1"));
+    }
+
+    #[test]
+    fn cb1636_passes_on_flat_success_shape() {
+        let tmp = tempdir().unwrap();
+        write_compile_status(
+            tmp.path(),
+            r#"{"debug_success":true,"release_success":true}"#,
+        );
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1636_fails_on_flat_failure() {
+        let tmp = tempdir().unwrap();
+        write_compile_status(
+            tmp.path(),
+            r#"{"debug_success":true,"release_success":false}"#,
+        );
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("release"));
+    }
+
+    #[test]
+    fn cb1636_passes_on_status_strings() {
+        let tmp = tempdir().unwrap();
+        write_compile_status(
+            tmp.path(),
+            r#"{"debug":{"status":"pass"},"release":{"status":"ok"}}"#,
+        );
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1636_fails_when_missing_one_profile() {
+        // release key is absent → "no evidence" for release → Fail because
+        // we cannot attest to both profiles.
+        let tmp = tempdir().unwrap();
+        write_compile_status(tmp.path(), r#"{"debug":{"success":true}}"#);
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("release"));
+        assert!(r.message.contains("no evidence"));
+    }
+
+    #[test]
+    fn cb1636_skips_when_schema_unknown() {
+        let tmp = tempdir().unwrap();
+        write_compile_status(tmp.path(), r#"{"foo":1,"bar":2}"#);
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("schema not settled"));
+    }
+
+    #[test]
+    fn cb1636_fails_on_malformed_json() {
+        let tmp = tempdir().unwrap();
+        write_compile_status(tmp.path(), "definitely-not-json");
+        let r = check_macros_compile_debug_and_release(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("Malformed JSON"));
     }
 }
