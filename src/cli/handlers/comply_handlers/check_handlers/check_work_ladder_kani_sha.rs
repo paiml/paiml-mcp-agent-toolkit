@@ -34,8 +34,7 @@
 /// * no `.pmat-work/` tickets                       → Skip
 /// * no L4+ ticket on any active contract           → Skip
 /// * no L4+ ticket has `implements:` bindings       → Skip
-/// * no L4+ ticket has a snapshot file yet          → Skip (Component 27
-///                                                   bind writer pending)
+/// * no L4+ ticket has a snapshot file yet          → Skip (Component 27 bind writer pending)
 /// * snapshot(s) present but all empty              → Skip
 ///
 /// # Fail
@@ -279,10 +278,9 @@ fn yaml_kani_harness_shas(content: &str) -> Option<std::collections::HashMap<Str
         if !in_section {
             continue;
         }
-        if trimmed.starts_with('-') {
-            // New list item — flush the previous.
+        if let Some(after_dash) = trimmed.strip_prefix('-') {
             commit(&mut map, &mut current_name, &mut current_sha);
-            let item = trimmed[1..].trim();
+            let item = after_dash.trim();
             if item.is_empty() {
                 continue;
             }

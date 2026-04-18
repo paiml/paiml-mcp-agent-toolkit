@@ -28,8 +28,7 @@
 /// * no L4+ ticket has `implements:` bindings         → Skip
 /// * no L4+ bound YAML declares `kani_harnesses:`     → Skip
 /// * no declared harness has a `fn <name>` body in
-///   `kani/`, `tests/`, `harnesses/`, or `src/`       → Skip (Kani
-///                                                     integration pending)
+///   `kani/`, `tests/`, `harnesses/`, or `src/`       → Skip (Kani integration pending)
 ///
 /// # Pass
 ///

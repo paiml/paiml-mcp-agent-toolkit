@@ -45,10 +45,7 @@ fn codegen_receipt_outcome(v: &serde_json::Value) -> Option<ReceiptOutcome> {
 /// * no `.pmat-work/codegen/` directory              → Skip
 /// * no `last-run.json` receipt inside it            → Skip
 /// * receipt exists but carries none of the three
-///   recognised keys                                 → Skip (schema
-///                                                   isn't settled;
-///                                                   don't fail on
-///                                                   unknown shapes)
+///   recognised keys                                 → Skip (schema not settled; don't fail on unknown shapes)
 /// * receipt indicates success                       → Pass
 /// * receipt indicates failure                       → Fail
 pub(crate) fn check_codegen_cli_succeeds(project_path: &Path) -> ComplianceCheck {

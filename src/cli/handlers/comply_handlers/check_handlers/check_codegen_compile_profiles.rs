@@ -56,8 +56,7 @@ fn compile_profile_outcome(v: &serde_json::Value, profile: &str) -> Option<Recei
 ///
 /// * no `.pmat-work/codegen/` directory               → Skip
 /// * no `compile-status.json` receipt                 → Skip
-/// * receipt has neither profile recognisable         → Skip (schema
-///                                                     not settled)
+/// * receipt has neither profile recognisable         → Skip (schema not settled)
 ///
 /// # Fail
 ///

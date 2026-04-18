@@ -114,10 +114,10 @@ pub(crate) fn check_no_manual_deletion(project_path: &Path) -> ComplianceCheck {
             .unwrap_or("<unknown>");
         let target_label = entry
             .get("target")
-            .and_then(|t| {
+            .map(|t| {
                 let y = t.get("yaml").and_then(|v| v.as_str()).unwrap_or("?");
                 let tid = t.get("test_id").and_then(|v| v.as_str()).unwrap_or("?");
-                Some(format!("{}#{}", y, tid))
+                format!("{}#{}", y, tid)
             })
             .unwrap_or_else(|| "?".to_string());
         manual_deletions.push(format!(

@@ -50,7 +50,7 @@ pub(crate) fn check_binding_sha_drift(project_path: &Path) -> ComplianceCheck {
         if !missing.is_empty() {
             msg.push_str(&format!(" + {} missing YAML", missing.len()));
         }
-        msg.push_str("\n");
+        msg.push('\n');
         for line in drifted.iter().chain(missing.iter()) {
             msg.push_str(line);
             msg.push('\n');

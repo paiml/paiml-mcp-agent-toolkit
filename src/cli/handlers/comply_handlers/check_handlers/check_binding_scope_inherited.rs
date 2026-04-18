@@ -189,8 +189,7 @@ pub(crate) fn check_binding_inherited_clauses(project_path: &Path) -> Compliance
 /// # Skip semantics (tiered)
 ///
 /// * no `.pmat-work/*/contract.json` tickets        → Skip
-/// * no ticket declares `inherited_postconditions`  → Skip (iteration 1
-///                                                   tickets, no parent)
+/// * no ticket declares `inherited_postconditions`  → Skip (iteration 1 tickets, no parent)
 ///
 /// # Fail
 ///

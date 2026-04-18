@@ -65,8 +65,8 @@ fn yaml_kani_harness_names(content: &str) -> Option<Vec<String>> {
         }
         // List items under `kani_harnesses:` — either `- name` (string) or
         // `- name: name_val` (object). Accept both.
-        if trimmed.starts_with('-') {
-            let item = trimmed[1..].trim();
+        if let Some(after_dash) = trimmed.strip_prefix('-') {
+            let item = after_dash.trim();
             if item.is_empty() {
                 continue;
             }

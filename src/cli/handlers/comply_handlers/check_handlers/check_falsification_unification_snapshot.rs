@@ -203,9 +203,9 @@ fn yaml_expected_by_test_id(yaml: &str) -> std::collections::HashMap<String, Str
         if !in_section {
             continue;
         }
-        if trimmed.starts_with('-') {
+        if let Some(after_dash) = trimmed.strip_prefix('-') {
             flush(&mut out, &mut current_id, &mut current_exp);
-            let item = trimmed[1..].trim();
+            let item = after_dash.trim();
             if let Some(rest) = item.strip_prefix("id:") {
                 let id = rest
                     .trim()
