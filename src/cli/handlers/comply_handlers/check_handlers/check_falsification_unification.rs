@@ -16,6 +16,8 @@
 //   CB-1622 (L3) — every ProvableContract roster entry has ≥1 execution line
 //                  in `.pmat-work/<ID>/falsification.log` (skip-if-absent)
 //   CB-1623 (L3) — no duplicate `(yaml_path, test_id)` across a ticket's roster
+//   CB-1625 (L3) — any inherited log line with `status != "pass"` is fatal,
+//                  regardless of ticket level (skip-if-absent)
 //   CB-1626 (L1) — referenced `test_id` exists in the YAML at scan time
 //   CB-1628 (L3) — every inherited log line carries the required 4-field
 //                  shape `{yaml, test_id, status, duration_ms}` so lines
@@ -25,9 +27,9 @@
 //                  that time out defeat the formal-verification claim
 //
 // The remaining checks (CB-1621 expected snapshot drift, CB-1624 deletion
-// audit, CB-1625 fatal inherited failures, CB-1627 post-bind YAML drift)
-// surface as Skip with a "Deferred — requires X" message so config
-// plumbing is wired for the follow-up work.
+// audit, CB-1627 post-bind YAML drift) surface as Skip with a
+// "Deferred — requires X" message so config plumbing is wired for the
+// follow-up work.
 
 use std::path::{Path, PathBuf};
 
@@ -447,11 +449,108 @@ pub(crate) fn check_no_manual_deletion(_project_path: &Path) -> ComplianceCheck 
     )
 }
 
-pub(crate) fn check_inherited_failure_fatal(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1625: Inherited Failure Fatal",
-        "requires runtime falsification execution via `pmat work falsify`",
-    )
+/// CB-1625 (L3): any *inherited* falsification log line with `status` other
+/// than `"pass"` is fatal, regardless of the ticket's verification level.
+/// An inherited entry that failed once stays failed until a subsequent pass
+/// supersedes it — the runner appends, never mutates, so a trailing `fail`
+/// means the bound equation is still unproven.
+///
+/// Scope:
+///   • Only *inherited* lines (those carrying `yaml`+`test_id`) count —
+///     manual `method`-keyed lines are governed by CB-1629's L4 timeout gate
+///     and caller-specific logic, not this blanket rule
+///   • Scans every ticket regardless of `verification_level` — if you ran
+///     a roster test, its result is binding
+///
+/// Skip-if-absent: no `.pmat-work/*/falsification.log` files → overall skip.
+pub(crate) fn check_inherited_failure_fatal(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1625: Inherited Failure Fatal";
+    let contracts = load_active_contracts(project_path);
+
+    let mut checked_logs = 0usize;
+    let mut checked_lines = 0usize;
+    let mut failing: Vec<String> = Vec::new();
+
+    for c in &contracts {
+        let log_path = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("falsification.log");
+        let Ok(contents) = std::fs::read_to_string(&log_path) else {
+            continue;
+        };
+        checked_logs += 1;
+        for (idx, line) in contents.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed) else {
+                continue; // CB-1628 owns malformed JSON detection
+            };
+            if !is_inherited_receipt(&v) {
+                continue;
+            }
+            let Some(status) = v.get("status").and_then(|s| s.as_str()) else {
+                continue; // CB-1628 owns missing-field detection
+            };
+            checked_lines += 1;
+            if status != "pass" {
+                let label = v
+                    .get("test_id")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("<no-test-id>");
+                let yaml = v
+                    .get("yaml")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("<no-yaml>");
+                failing.push(format!(
+                    "  {}:{} {}::{} status={}",
+                    c.work_item_id,
+                    idx + 1,
+                    yaml,
+                    label,
+                    status
+                ));
+            }
+        }
+    }
+
+    if checked_logs == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/<ID>/falsification.log` files to inspect".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if !failing.is_empty() {
+        let mut msg = format!(
+            "{} inherited falsification line(s) did not pass — contract is falsified:\n",
+            failing.len()
+        );
+        for line in &failing {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "All {} inherited line(s) across {} log(s) passed",
+            checked_lines, checked_logs
+        ),
+        severity: Severity::Info,
+    }
 }
 
 pub(crate) fn check_post_bind_yaml_drift(_project_path: &Path) -> ComplianceCheck {
@@ -701,7 +800,6 @@ mod tests {
         for (name, check) in [
             ("CB-1621", check_expected_snapshot_drift(path)),
             ("CB-1624", check_no_manual_deletion(path)),
-            ("CB-1625", check_inherited_failure_fatal(path)),
             ("CB-1627", check_post_bind_yaml_drift(path)),
         ] {
             assert_eq!(check.status, CheckStatus::Skip, "{}", name);
@@ -1121,5 +1219,145 @@ mod tests {
             }
             other => panic!("round-trip landed on wrong variant: {:?}", other),
         }
+    }
+
+    // ── CB-1625 inherited failure fatal tests ────────────────────────────
+
+    #[test]
+    fn inherited_failure_skips_when_no_logs() {
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L3");
+        write_contract_json(tmp.path(), "T1", &c);
+        let check = check_inherited_failure_fatal(tmp.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(check.message.contains("falsification.log"));
+    }
+
+    #[test]
+    fn inherited_failure_skips_when_no_contracts_at_all() {
+        let tmp = tempdir().unwrap();
+        let check = check_inherited_failure_fatal(tmp.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn inherited_failure_passes_when_all_inherited_pass() {
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L1"); // even L1 counts
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"yaml":"a.yaml","test_id":"t1","status":"pass","duration_ms":2}"#,
+                "\n",
+                r#"{"yaml":"a.yaml","test_id":"t2","status":"pass","duration_ms":4}"#,
+                "\n",
+            ),
+        );
+        let check = check_inherited_failure_fatal(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+        assert!(check.message.contains("2 inherited"));
+    }
+
+    #[test]
+    fn inherited_failure_fails_on_inherited_fail() {
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L1");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"yaml":"rope.yaml","test_id":"t1","status":"pass","duration_ms":2}"#,
+                "\n",
+                r#"{"yaml":"rope.yaml","test_id":"t2","status":"fail","duration_ms":9}"#,
+                "\n",
+            ),
+        );
+        let check = check_inherited_failure_fatal(tmp.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("T1:2"));
+        assert!(check.message.contains("rope.yaml::t2"));
+        assert!(check.message.contains("status=fail"));
+    }
+
+    #[test]
+    fn inherited_failure_fails_on_timeout_too() {
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L3");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            r#"{"yaml":"k.yaml","test_id":"t","status":"timeout","duration_ms":60000}"#,
+        );
+        let check = check_inherited_failure_fatal(tmp.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("status=timeout"));
+    }
+
+    #[test]
+    fn inherited_failure_ignores_manual_lines() {
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L1");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                // Manual line (method, not yaml/test_id) — ignored even though it "fails"
+                r#"{"method":"UnitTest","status":"fail","duration_ms":2}"#,
+                "\n",
+                // Inherited line — all pass
+                r#"{"yaml":"a.yaml","test_id":"t","status":"pass","duration_ms":1}"#,
+                "\n",
+            ),
+        );
+        let check = check_inherited_failure_fatal(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn inherited_failure_ignores_malformed_lines() {
+        let tmp = tempdir().unwrap();
+        let c = contract_at_level("T1", "L1");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                "not-json\n",
+                r#"{"yaml":"a.yaml","test_id":"t","status":"pass","duration_ms":1}"#,
+                "\n",
+            ),
+        );
+        // Malformed lines belong to CB-1628 — 1625 stays Pass here
+        let check = check_inherited_failure_fatal(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn inherited_failure_counts_failures_across_tickets() {
+        let tmp = tempdir().unwrap();
+        let c1 = contract_at_level("T1", "L1");
+        let c2 = contract_at_level("T2", "L1");
+        write_contract_json(tmp.path(), "T1", &c1);
+        write_contract_json(tmp.path(), "T2", &c2);
+        write_log(
+            tmp.path(),
+            "T1",
+            r#"{"yaml":"a.yaml","test_id":"t1","status":"fail","duration_ms":1}"#,
+        );
+        write_log(
+            tmp.path(),
+            "T2",
+            r#"{"yaml":"b.yaml","test_id":"t2","status":"fail","duration_ms":1}"#,
+        );
+        let check = check_inherited_failure_fatal(tmp.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("2 inherited"));
+        assert!(check.message.contains("T1"));
+        assert!(check.message.contains("T2"));
     }
 }
