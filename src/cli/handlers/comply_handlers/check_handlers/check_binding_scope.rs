@@ -11,15 +11,17 @@
 //   CB-1600 (L1) — orphan detection: staged files w/ bindings → active ticket
 //                  must declare `implements:` covering them
 //   CB-1601 (L1) — SHA drift against current YAML bytes
+//   CB-1602 (L1) — unbind ledger: every `.pmat-work/ledger/unbinds.json`
+//                  entry must carry a DEBT ticket reference (skip-if-absent)
 //   CB-1603 (L3) — inherited clause integrity: contract.require contains each
 //                  bound equation's YAML-declared preconditions
 //   CB-1607 (L3) — equation identifier exists in referenced YAML
 //   CB-1609 (L1) — YAML file is tracked in git
 //
-// The remaining checks (CB-1602 unbind audit, CB-1604 postcondition
-// weakening, CB-1605 kani, CB-1606 lean, CB-1608 cross-binding
-// consistency) surface as Skip with a "deferred: requires X" message so
-// config plumbing is already wired for the follow-up work.
+// The remaining checks (CB-1604 postcondition weakening, CB-1605 kani,
+// CB-1606 lean, CB-1608 cross-binding consistency) surface as Skip with a
+// "deferred: requires X" message so config plumbing is already wired for
+// the follow-up work.
 
 use std::path::Path;
 
@@ -460,13 +462,110 @@ pub(crate) fn check_binding_scope_orphan(project_path: &Path) -> ComplianceCheck
 }
 
 /// CB-1602 (L1): `pmat work unbind` without a DEBT follow-up ticket reference
-/// indicates silent contract abandonment. Activated when the unbind command
-/// and its ledger land.
-pub(crate) fn check_binding_unbind_audit(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1602: Unbind Audit",
-        "requires `pmat work unbind` + .pmat-work/ledger/ implementation",
-    )
+/// indicates silent contract abandonment. Every entry in the unbind ledger
+/// must cite the debt ticket that'll restore the binding.
+///
+/// Ledger schema (minimum): JSON array at `.pmat-work/ledger/unbinds.json`
+/// where each entry has:
+///   • `ticket`       — the work-item-id that unbound
+///   • `contract`     — YAML path (or contract name) that was unbound from
+///   • `debt_ticket`  — follow-up ticket id (e.g., "DEBT-123"), non-empty
+///
+/// Skip-if-absent: the ledger file is optional — until `pmat work unbind`
+/// lands, it doesn't exist, and this check is Skip.
+pub(crate) fn check_binding_unbind_audit(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1602: Unbind Audit";
+    let ledger = project_path
+        .join(".pmat-work")
+        .join("ledger")
+        .join("unbinds.json");
+    if !ledger.exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No unbind ledger at .pmat-work/ledger/unbinds.json".into(),
+            severity: Severity::Info,
+        };
+    }
+    let Ok(content) = std::fs::read_to_string(&ledger) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Warn,
+            message: format!("Unreadable unbind ledger: {}", ledger.display()),
+            severity: Severity::Warning,
+        };
+    };
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: "Unbind ledger is not valid JSON".into(),
+            severity: Severity::Error,
+        };
+    };
+
+    let entries: &[serde_json::Value] = match &value {
+        serde_json::Value::Array(a) => a.as_slice(),
+        _ => {
+            return ComplianceCheck {
+                name: name.into(),
+                status: CheckStatus::Fail,
+                message: "Unbind ledger must be a JSON array of entries".into(),
+                severity: Severity::Error,
+            };
+        }
+    };
+
+    if entries.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: "Unbind ledger present but empty — no audits pending".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut bad: Vec<String> = Vec::new();
+    for (idx, entry) in entries.iter().enumerate() {
+        let ticket = entry
+            .get("ticket")
+            .and_then(|t| t.as_str())
+            .unwrap_or("<no-ticket>");
+        let debt = entry
+            .get("debt_ticket")
+            .and_then(|t| t.as_str())
+            .unwrap_or("");
+        if debt.trim().is_empty() {
+            bad.push(format!(
+                "  entry {}: ticket={} missing/empty debt_ticket",
+                idx, ticket
+            ));
+        }
+    }
+
+    if !bad.is_empty() {
+        let mut msg = format!("{} unbind(s) lack DEBT ticket reference:\n", bad.len());
+        for line in &bad {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{} unbind(s) all carry DEBT ticket reference",
+            entries.len()
+        ),
+        severity: Severity::Info,
+    }
 }
 
 /// Extract `preconditions:` entries for a specific equation from a source
@@ -789,7 +888,6 @@ mod tests {
     fn deferred_checks_return_skip() {
         let tmp = tempdir().unwrap();
         for r in [
-            check_binding_unbind_audit(tmp.path()),
             check_binding_postcondition_weakening(tmp.path()),
             check_binding_kani_harnesses(tmp.path()),
             check_binding_lean_theorem(tmp.path()),
@@ -798,6 +896,108 @@ mod tests {
             assert_eq!(r.status, CheckStatus::Skip);
             assert!(r.message.starts_with("Deferred"));
         }
+    }
+
+    // ── CB-1602 unbind audit tests ────────────────────────────────────────
+
+    fn write_unbind_ledger(project: &Path, body: &str) {
+        let dir = project.join(".pmat-work").join("ledger");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("unbinds.json"), body).unwrap();
+    }
+
+    #[test]
+    fn unbind_audit_skips_when_ledger_missing() {
+        let tmp = tempdir().unwrap();
+        let r = check_binding_unbind_audit(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No unbind ledger"));
+    }
+
+    #[test]
+    fn unbind_audit_passes_when_ledger_empty_array() {
+        let tmp = tempdir().unwrap();
+        write_unbind_ledger(tmp.path(), "[]");
+        let r = check_binding_unbind_audit(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("empty"));
+    }
+
+    #[test]
+    fn unbind_audit_passes_when_all_have_debt_ticket() {
+        let tmp = tempdir().unwrap();
+        write_unbind_ledger(
+            tmp.path(),
+            r#"[
+                {"ticket":"T-1","contract":"contracts/rope.yaml","debt_ticket":"DEBT-42"},
+                {"ticket":"T-2","contract":"contracts/norm.yaml","debt_ticket":"DEBT-43"}
+            ]"#,
+        );
+        let r = check_binding_unbind_audit(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("2 unbind"));
+    }
+
+    #[test]
+    fn unbind_audit_fails_on_missing_debt_ticket() {
+        let tmp = tempdir().unwrap();
+        write_unbind_ledger(
+            tmp.path(),
+            r#"[{"ticket":"T-1","contract":"contracts/rope.yaml"}]"#,
+        );
+        let r = check_binding_unbind_audit(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("T-1"));
+        assert!(r.message.contains("debt_ticket"));
+    }
+
+    #[test]
+    fn unbind_audit_fails_on_empty_debt_ticket() {
+        let tmp = tempdir().unwrap();
+        write_unbind_ledger(
+            tmp.path(),
+            r#"[{"ticket":"T-1","contract":"c","debt_ticket":"  "}]"#,
+        );
+        let r = check_binding_unbind_audit(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("T-1"));
+    }
+
+    #[test]
+    fn unbind_audit_fails_on_malformed_json() {
+        let tmp = tempdir().unwrap();
+        write_unbind_ledger(tmp.path(), "not-json");
+        let r = check_binding_unbind_audit(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("not valid JSON"));
+    }
+
+    #[test]
+    fn unbind_audit_fails_when_top_level_object() {
+        let tmp = tempdir().unwrap();
+        write_unbind_ledger(tmp.path(), r#"{"ticket":"T-1","debt_ticket":"DEBT-1"}"#);
+        let r = check_binding_unbind_audit(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("JSON array"));
+    }
+
+    #[test]
+    fn unbind_audit_aggregates_multiple_failures() {
+        let tmp = tempdir().unwrap();
+        write_unbind_ledger(
+            tmp.path(),
+            r#"[
+                {"ticket":"T-1","contract":"c"},
+                {"ticket":"T-2","contract":"c","debt_ticket":"DEBT-2"},
+                {"ticket":"T-3","contract":"c","debt_ticket":""}
+            ]"#,
+        );
+        let r = check_binding_unbind_audit(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("2 unbind"));
+        assert!(r.message.contains("T-1"));
+        assert!(r.message.contains("T-3"));
+        assert!(!r.message.contains("T-2 missing"));
     }
 
     // ── CB-1603 inherited clause integrity tests ─────────────────────────
