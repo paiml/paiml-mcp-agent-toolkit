@@ -22,11 +22,12 @@
 //   CB-1642 (L1) — `evidence_method = ExistingTest` path/name resolves on disk
 //   CB-1643 (L3) — L3+ tickets: every structured step has `assumption.expr`
 //                  or `implication.expr`
+//   CB-1645 (L3) — derived `contracts/work/<ID>.yaml` is up-to-date with
+//                  contract.json preconditions/postconditions
 //   CB-1647 (L3) — no orphan steps: every step chains via `discharged_by`
 //
 // Deferred stubs (need infrastructure that hasn't landed):
 //   CB-1644 (L1) — requires Component 10 agent audit log ingest
-//   CB-1645 (L3) — requires `pmat work cot derive` emitting contracts/work/<ID>.yaml
 //   CB-1646 (L1) — requires `cot-digest.json` SHA tracking
 //   CB-1648 (L4) — requires Kani-bound axiom registry
 //   CB-1649 (L5) — requires Lean theorem lemma mapping
@@ -473,11 +474,151 @@ pub(crate) fn check_agent_run_replayable(_project_path: &Path) -> ComplianceChec
     )
 }
 
-pub(crate) fn check_derived_yaml_obligations_present(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1645: Derived YAML Obligations",
-        "requires `pmat work cot derive` emitting contracts/work/<ID>.yaml with proof_obligations",
-    )
+/// Sanitize a work-item id for use as a filename — mirrors
+/// `check_commit_enforcement_p8::generate_work_contract_yamls`.
+fn sanitize_work_id(id: &str) -> String {
+    id.chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
+/// Expected preconditions from a contract.json Value — mirrors the generator.
+fn expected_preconditions(contract: &Value) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Some(claims) = contract
+        .get("falsifiable_claims")
+        .and_then(|c| c.as_array())
+    {
+        for c in claims {
+            if let Some(s) = c.get("claim").and_then(|t| t.as_str()) {
+                out.push(s.to_string());
+            }
+        }
+    }
+    if let Some(req) = contract.get("require").and_then(|r| r.as_array()) {
+        for r in req {
+            if let Some(s) = r.as_str() {
+                out.push(s.to_string());
+            }
+        }
+    }
+    out
+}
+
+/// Expected postconditions from a contract.json Value — mirrors the generator.
+fn expected_postconditions(contract: &Value) -> Vec<String> {
+    contract
+        .get("ensure")
+        .and_then(|e| e.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// CB-1645 (L3): for each `.pmat-work/<ID>/contract.json`, the derived
+/// `contracts/work/<sanitized_id>.yaml` must exist and reflect the contract's
+/// current preconditions/postconditions. Catches stale derivation when a
+/// ticket's clauses are edited without rerunning `pmat comply refresh-bindings`.
+/// Skips cleanly when no `.pmat-work/` tickets exist.
+pub(crate) fn check_derived_yaml_obligations_present(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1645: Derived YAML Obligations";
+    let contracts = load_contract_values(project_path);
+    if contracts.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/` tickets to cross-check".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let out_dir = project_path.join("contracts/work");
+    let mut missing_yaml: Vec<String> = Vec::new();
+    let mut stale: Vec<String> = Vec::new();
+    let mut checked = 0usize;
+
+    for (ticket, contract) in &contracts {
+        let pre = expected_preconditions(contract);
+        let post = expected_postconditions(contract);
+        if pre.is_empty() && post.is_empty() {
+            // Nothing derivable — skip this ticket
+            continue;
+        }
+        checked += 1;
+
+        let safe = sanitize_work_id(ticket);
+        let yaml_path = out_dir.join(format!("{}.yaml", safe));
+        let Ok(yaml) = std::fs::read_to_string(&yaml_path) else {
+            missing_yaml.push(ticket.clone());
+            continue;
+        };
+
+        for p in &pre {
+            if !yaml.contains(p) {
+                stale.push(format!("  {} missing precondition: {}", ticket, p));
+            }
+        }
+        for p in &post {
+            if !yaml.contains(p) {
+                stale.push(format!("  {} missing postcondition: {}", ticket, p));
+            }
+        }
+    }
+
+    if checked == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No tickets declare derivable preconditions/postconditions".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if missing_yaml.is_empty() && stale.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} ticket(s) with derived YAML match current contract.json",
+                checked
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut msg = String::new();
+    if !missing_yaml.is_empty() {
+        msg.push_str(&format!(
+            "{} ticket(s) missing derived contracts/work/<ID>.yaml: {}\n",
+            missing_yaml.len(),
+            missing_yaml.join(", ")
+        ));
+    }
+    if !stale.is_empty() {
+        msg.push_str(&format!(
+            "{} stale entry/entries — run `pmat comply refresh-bindings`:\n",
+            stale.len()
+        ));
+        for s in &stale {
+            msg.push_str(s);
+            msg.push('\n');
+        }
+    }
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: msg,
+        severity: Severity::Error,
+    }
 }
 
 pub(crate) fn check_cot_derivation_sha_fresh(_project_path: &Path) -> ComplianceCheck {
@@ -524,7 +665,6 @@ mod tests {
         let project = tempdir().unwrap();
         for check in [
             check_agent_run_replayable(project.path()),
-            check_derived_yaml_obligations_present(project.path()),
             check_cot_derivation_sha_fresh(project.path()),
             check_l4_axiomatic_discharge_bounded(project.path()),
             check_l5_lean_theorem_mapping(project.path()),
@@ -532,6 +672,115 @@ mod tests {
             assert_eq!(check.status, CheckStatus::Skip);
             assert!(check.message.starts_with("Deferred — "));
         }
+    }
+
+    // ── CB-1645 derived YAML obligations tests ───────────────────────────
+
+    fn write_derived_yaml(project: &Path, safe_id: &str, body: &str) {
+        let dir = project.join("contracts/work");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(format!("{}.yaml", safe_id)), body).unwrap();
+    }
+
+    #[test]
+    fn derived_yaml_skips_when_no_tickets() {
+        let project = tempdir().unwrap();
+        let check = check_derived_yaml_obligations_present(project.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(check.message.contains("No `.pmat-work/` tickets"));
+    }
+
+    #[test]
+    fn derived_yaml_skips_when_no_derivable_clauses() {
+        let project = tempdir().unwrap();
+        write_contract(project.path(), "T1", json!({ "work_item_id": "T1" }));
+        let check = check_derived_yaml_obligations_present(project.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(check.message.contains("derivable"));
+    }
+
+    #[test]
+    fn derived_yaml_fails_when_file_missing() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "work_item_id": "T1",
+                "ensure": ["returns sorted array"]
+            }),
+        );
+        let check = check_derived_yaml_obligations_present(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("missing derived"));
+        assert!(check.message.contains("T1"));
+    }
+
+    #[test]
+    fn derived_yaml_fails_when_stale() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "work_item_id": "T1",
+                "ensure": ["returns sorted array"]
+            }),
+        );
+        // Derived YAML doesn't mention the postcondition → stale
+        write_derived_yaml(
+            project.path(),
+            "T1",
+            "name: \"T1\"\npostconditions:\n  - \"some other thing\"\n",
+        );
+        let check = check_derived_yaml_obligations_present(project.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("stale"));
+        assert!(check.message.contains("returns sorted array"));
+    }
+
+    #[test]
+    fn derived_yaml_passes_when_up_to_date() {
+        let project = tempdir().unwrap();
+        write_contract(
+            project.path(),
+            "T1",
+            json!({
+                "work_item_id": "T1",
+                "ensure": ["returns sorted array"],
+                "require": ["input is a slice of integers"]
+            }),
+        );
+        write_derived_yaml(
+            project.path(),
+            "T1",
+            "name: \"T1\"\n\
+             preconditions:\n  - \"input is a slice of integers\"\n\
+             postconditions:\n  - \"returns sorted array\"\n",
+        );
+        let check = check_derived_yaml_obligations_present(project.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn derived_yaml_sanitizes_special_chars_in_id() {
+        let project = tempdir().unwrap();
+        // A ticket id with a colon — generator replaces ':' with '_'
+        write_contract(
+            project.path(),
+            "GH-168: fix leak",
+            json!({
+                "work_item_id": "GH-168: fix leak",
+                "ensure": ["no memory leak"]
+            }),
+        );
+        write_derived_yaml(
+            project.path(),
+            "GH-168__fix_leak",
+            "postconditions:\n  - \"no memory leak\"\n",
+        );
+        let check = check_derived_yaml_obligations_present(project.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
     }
 
     #[test]
