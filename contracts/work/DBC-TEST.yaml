@@ -1,6 +1,12 @@
 # Auto-generated from .pmat-work/DBC-TEST/contract.json
 name: "DBC-TEST"
+metadata:
+  version: "1.0.0"
+  description: "Auto-generated work-contract for DBC-TEST"
+  references:
+    - ".pmat-work/DBC-TEST/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L1
   current_level: L1
+  total_obligations: 36

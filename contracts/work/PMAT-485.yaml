@@ -1,6 +1,12 @@
 # Auto-generated from .pmat-work/PMAT-485/contract.json
 name: "PMAT-485"
+metadata:
+  version: "1.0.0"
+  description: "Auto-generated work-contract for PMAT-485"
+  references:
+    - ".pmat-work/PMAT-485/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L1
   current_level: L1
+  total_obligations: 17

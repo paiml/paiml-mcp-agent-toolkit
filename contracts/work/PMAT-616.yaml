@@ -1,6 +1,12 @@
 # Auto-generated from .pmat-work/PMAT-616/contract.json
 name: "PMAT-616"
+metadata:
+  version: "1.0.0"
+  description: "Auto-generated work-contract for PMAT-616"
+  references:
+    - ".pmat-work/PMAT-616/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L3
   current_level: L3
+  total_obligations: 47

@@ -409,4 +409,63 @@ mod tests_commit_enforcement_p2 {
         assert_eq!(check.status, CheckStatus::Warn);
         assert!(check.message.contains("placeholder"));
     }
+
+    // KAIZEN-0175: work-contract YAML generator must emit a `metadata:` block
+    // with version/description/references so `pv lint` accepts them.
+    #[test]
+    fn test_kaizen0175_generator_emits_metadata_block() {
+        let dir = tempdir().unwrap();
+        let work = dir.path().join(".pmat-work/TEST-123");
+        fs::create_dir_all(&work).unwrap();
+        fs::write(
+            work.join("contract.json"),
+            r#"{
+                "work_item_id": "TEST-123",
+                "verification_level": "L2",
+                "falsifiable_claims": [{"claim": "foo > 0"}],
+                "ensure": ["bar is valid"],
+                "require": ["baz exists"]
+            }"#,
+        )
+        .unwrap();
+
+        let count = generate_work_contract_yamls(dir.path()).unwrap();
+        assert_eq!(count, 1);
+
+        let yaml = fs::read_to_string(dir.path().join("contracts/work/TEST-123.yaml")).unwrap();
+
+        // Metadata block must be present with the three fields pv 0.31 requires.
+        assert!(
+            yaml.contains("metadata:\n"),
+            "missing `metadata:` block: {yaml}"
+        );
+        assert!(
+            yaml.contains("  version: \"1.0.0\"\n"),
+            "missing metadata.version: {yaml}"
+        );
+        assert!(
+            yaml.contains("  description: \"Auto-generated work-contract for TEST-123\"\n"),
+            "missing metadata.description: {yaml}"
+        );
+        assert!(
+            yaml.contains("  references:\n"),
+            "missing metadata.references: {yaml}"
+        );
+        assert!(
+            yaml.contains("    - \".pmat-work/TEST-123/contract.json\"\n"),
+            "missing references entry: {yaml}"
+        );
+
+        // Metadata must precede surface/verification_summary so it is the first
+        // map-entry (line 2 per pv's "missing field metadata at line 2 column 1").
+        let meta_pos = yaml.find("metadata:").expect("metadata: present");
+        let surface_pos = yaml.find("surface:").expect("surface: present");
+        let vs_pos = yaml
+            .find("verification_summary:")
+            .expect("verification_summary: present");
+        assert!(
+            meta_pos < surface_pos && meta_pos < vs_pos,
+            "metadata must come before surface and verification_summary: {yaml}"
+        );
+    }
 }

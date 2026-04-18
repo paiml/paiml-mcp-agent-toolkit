@@ -97,6 +97,20 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
             safe_id
         );
         yaml.push_str(&format!("name: \"{}\"\n", yaml_escape_string(id)));
+        // Emit metadata block (KAIZEN-0175): pv 0.31 schema requires metadata
+        // with version/description/references. Deterministic values only —
+        // no timestamps, to avoid daily churn in contracts/work/*.yaml.
+        yaml.push_str("metadata:\n");
+        yaml.push_str("  version: \"1.0.0\"\n");
+        yaml.push_str(&format!(
+            "  description: \"Auto-generated work-contract for {}\"\n",
+            yaml_escape_string(id)
+        ));
+        yaml.push_str("  references:\n");
+        yaml.push_str(&format!(
+            "    - \".pmat-work/{}/contract.json\"\n",
+            safe_id
+        ));
         yaml.push_str("surface: work-contract\n");
         yaml.push_str(&format!(
             "verification_summary:\n  target_level: {}\n  current_level: {}\n  total_obligations: {}\n",
