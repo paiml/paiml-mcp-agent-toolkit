@@ -13,14 +13,16 @@
 //
 //   CB-1620 (L1) — every binding has matching `ProvableContract{}` entries
 //                  per YAML `falsification_tests[]` id (WARN during migration)
+//   CB-1622 (L3) — every ProvableContract roster entry has ≥1 execution line
+//                  in `.pmat-work/<ID>/falsification.log` (skip-if-absent)
 //   CB-1623 (L3) — no duplicate `(yaml_path, test_id)` across a ticket's roster
 //   CB-1626 (L1) — referenced `test_id` exists in the YAML at scan time
 //
-// The remaining checks (CB-1621 expected snapshot drift, CB-1622 roster
-// execution coverage, CB-1624 deletion audit, CB-1625 fatal inherited
-// failures, CB-1627 post-bind YAML drift, CB-1628 per-run log emission,
-// CB-1629 L4 timeout gate) surface as Skip with a "Deferred — requires X"
-// message so config plumbing is wired for the follow-up work.
+// The remaining checks (CB-1621 expected snapshot drift, CB-1624 deletion
+// audit, CB-1625 fatal inherited failures, CB-1627 post-bind YAML drift,
+// CB-1628 per-run log emission, CB-1629 L4 timeout gate) surface as Skip
+// with a "Deferred — requires X" message so config plumbing is wired for
+// the follow-up work.
 
 use std::path::{Path, PathBuf};
 
@@ -319,11 +321,117 @@ pub(crate) fn check_expected_snapshot_drift(_project_path: &Path) -> ComplianceC
     )
 }
 
-pub(crate) fn check_roster_execution_coverage(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1622: Roster Execution Coverage",
-        "requires `.pmat-work/<ID>/falsification.log` emitted by unified runner",
-    )
+/// Parse a `falsification.log` JSONL file into the set of
+/// `(yaml_path, test_id)` pairs it covers. The format (per Component 29
+/// §falsification.log) is one JSON object per line:
+/// `{"yaml":"...","equation":"...","test_id":"...","status":"pass",...}`.
+/// Malformed or non-inherited lines (manual-source entries have no `yaml`)
+/// are silently ignored — we only care which roster entries executed.
+fn parse_falsification_log(contents: &str) -> Vec<(PathBuf, String)> {
+    let mut out = Vec::new();
+    for line in contents.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(line) else {
+            continue;
+        };
+        let Some(yaml) = v.get("yaml").and_then(|y| y.as_str()) else {
+            continue;
+        };
+        let Some(test_id) = v.get("test_id").and_then(|t| t.as_str()) else {
+            continue;
+        };
+        out.push((PathBuf::from(yaml), test_id.to_string()));
+    }
+    out
+}
+
+/// CB-1622 (L3): every `ProvableContract` roster entry must have at least
+/// one execution line in `.pmat-work/<ID>/falsification.log`. A roster
+/// entry without a receipt is an "untested claim" — it declares coverage
+/// the runner never verified.
+///
+/// Skip-if-absent: the unified falsification runner (Component 29) that
+/// emits `falsification.log` hasn't landed, so today's check skips
+/// cleanly when no ticket has the log. Once any ticket gains a log, this
+/// check lights up for that ticket while others still skip.
+pub(crate) fn check_roster_execution_coverage(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1622: Roster Execution Coverage";
+    let contracts = load_active_contracts(project_path);
+
+    let mut uncovered: Vec<String> = Vec::new();
+    let mut checked = 0usize;
+
+    for c in &contracts {
+        let entries = provable_contract_entries(c);
+        if entries.is_empty() {
+            continue;
+        }
+        let log_path = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("falsification.log");
+        let Ok(contents) = std::fs::read_to_string(&log_path) else {
+            // No log for this ticket → skip per-ticket, don't fail
+            continue;
+        };
+        let covered = parse_falsification_log(&contents);
+        checked += 1;
+        for (yaml_path, _eq, test_id) in entries {
+            let present = covered
+                .iter()
+                .any(|(y, t)| y == &yaml_path && t == &test_id);
+            if !present {
+                uncovered.push(format!(
+                    "{} → {}#{}",
+                    c.work_item_id,
+                    yaml_path.display(),
+                    test_id
+                ));
+            }
+        }
+    }
+
+    if checked == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/<ID>/falsification.log` files — unified runner hasn't executed rosters yet".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if uncovered.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "{} ticket(s): every roster entry has an execution receipt",
+                checked
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    let preview: Vec<String> = uncovered.iter().take(5).cloned().collect();
+    let more = uncovered.len().saturating_sub(5);
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Fail,
+        message: format!(
+            "{} roster entry/entries never executed — run `pmat work falsify`: {}{}",
+            uncovered.len(),
+            preview.join(", "),
+            if more > 0 {
+                format!(", +{} more", more)
+            } else {
+                String::new()
+            }
+        ),
+        severity: Severity::Error,
+    }
 }
 
 pub(crate) fn check_no_manual_deletion(_project_path: &Path) -> ComplianceCheck {
@@ -397,7 +505,6 @@ mod tests {
         let path = Path::new(".");
         for (name, check) in [
             ("CB-1621", check_expected_snapshot_drift(path)),
-            ("CB-1622", check_roster_execution_coverage(path)),
             ("CB-1624", check_no_manual_deletion(path)),
             ("CB-1625", check_inherited_failure_fatal(path)),
             ("CB-1627", check_post_bind_yaml_drift(path)),
@@ -412,6 +519,160 @@ mod tests {
                 check.message
             );
         }
+    }
+
+    // ── CB-1622 roster execution coverage tests ──────────────────────────
+
+    fn write_contract_json(project: &Path, ticket: &str, contract: &WorkContract) {
+        let dir = project.join(".pmat-work").join(ticket);
+        std::fs::create_dir_all(&dir).unwrap();
+        let json = serde_json::to_string_pretty(contract).unwrap();
+        std::fs::write(dir.join("contract.json"), json).unwrap();
+    }
+
+    fn write_log(project: &Path, ticket: &str, jsonl: &str) {
+        let dir = project.join(".pmat-work").join(ticket);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("falsification.log"), jsonl).unwrap();
+    }
+
+    fn contract_with_provable(
+        ticket: &str,
+        yaml_path: &str,
+        equation: &str,
+        test_id: &str,
+    ) -> WorkContract {
+        use crate::cli::handlers::work_contract::{EvidenceType, FalsifiableClaim};
+        let mut c = WorkContract::new(ticket.into(), "deadbeef".into());
+        c.claims.push(FalsifiableClaim {
+            hypothesis: "inherited claim".into(),
+            falsification_method: FalsificationMethod::ProvableContract {
+                yaml_path: PathBuf::from(yaml_path),
+                equation: equation.into(),
+                test_id: test_id.into(),
+                expected: "\"canonical\"".into(),
+            },
+            evidence_required: EvidenceType::BooleanCheck(true),
+            result: None,
+            override_info: None,
+        });
+        c
+    }
+
+    #[test]
+    fn roster_coverage_skips_when_no_log_files() {
+        let tmp = tempdir().unwrap();
+        let c = contract_with_provable("T1", "contracts/k.yaml", "rope", "rope_test");
+        write_contract_json(tmp.path(), "T1", &c);
+        let check = check_roster_execution_coverage(tmp.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+        assert!(check.message.contains("falsification.log"));
+    }
+
+    #[test]
+    fn roster_coverage_skips_when_no_provable_entries() {
+        // Contract with no ProvableContract entries — irrelevant, skip overall.
+        let tmp = tempdir().unwrap();
+        let c = WorkContract::new("T1".into(), "deadbeef".into());
+        write_contract_json(tmp.path(), "T1", &c);
+        let check = check_roster_execution_coverage(tmp.path());
+        assert_eq!(check.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn roster_coverage_passes_when_every_entry_has_receipt() {
+        let tmp = tempdir().unwrap();
+        let c = contract_with_provable("T1", "contracts/k.yaml", "rope", "rope_test");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"ts":"2026-04-18T00:00:00Z","source":"inherited","yaml":"contracts/k.yaml","equation":"rope","test_id":"rope_test","status":"pass","duration_ms":10}"#,
+                "\n"
+            ),
+        );
+        let check = check_roster_execution_coverage(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn roster_coverage_fails_when_entry_unexecuted() {
+        let tmp = tempdir().unwrap();
+        let c = contract_with_provable("T1", "contracts/k.yaml", "rope", "rope_test");
+        write_contract_json(tmp.path(), "T1", &c);
+        // Log covers a DIFFERENT test_id
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"ts":"2026-04-18T00:00:00Z","yaml":"contracts/k.yaml","equation":"rope","test_id":"other_test","status":"pass"}"#,
+                "\n"
+            ),
+        );
+        let check = check_roster_execution_coverage(tmp.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("T1"));
+        assert!(check.message.contains("rope_test"));
+        assert!(check.message.contains("pmat work falsify"));
+    }
+
+    #[test]
+    fn roster_coverage_ignores_malformed_log_lines() {
+        let tmp = tempdir().unwrap();
+        let c = contract_with_provable("T1", "contracts/k.yaml", "rope", "rope_test");
+        write_contract_json(tmp.path(), "T1", &c);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                "not json at all\n",
+                r#"{"missing_fields": true}"#,
+                "\n",
+                r#"{"yaml":"contracts/k.yaml","test_id":"rope_test","status":"pass"}"#,
+                "\n",
+            ),
+        );
+        let check = check_roster_execution_coverage(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
+    fn roster_coverage_per_ticket_skip_when_only_some_have_log() {
+        // T1 has a log; T2 doesn't. T2 is silently skipped.
+        let tmp = tempdir().unwrap();
+        let c1 = contract_with_provable("T1", "contracts/k.yaml", "rope", "rope_test");
+        let c2 = contract_with_provable("T2", "contracts/k.yaml", "rope", "another_test");
+        write_contract_json(tmp.path(), "T1", &c1);
+        write_contract_json(tmp.path(), "T2", &c2);
+        write_log(
+            tmp.path(),
+            "T1",
+            concat!(
+                r#"{"yaml":"contracts/k.yaml","test_id":"rope_test","status":"pass"}"#,
+                "\n"
+            ),
+        );
+        let check = check_roster_execution_coverage(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+        assert!(check.message.contains("1 ticket"));
+    }
+
+    #[test]
+    fn parse_falsification_log_extracts_valid_lines() {
+        let input = concat!(
+            r#"{"yaml":"a.yaml","test_id":"t1","status":"pass"}"#,
+            "\n",
+            "\n",
+            r#"{"source":"manual","method":"TdgRegression","status":"pass"}"#,
+            "\n",
+            r#"{"yaml":"b.yaml","test_id":"t2","status":"fail"}"#,
+            "\n",
+        );
+        let parsed = parse_falsification_log(input);
+        assert_eq!(parsed.len(), 2);
+        assert_eq!(parsed[0], (PathBuf::from("a.yaml"), "t1".into()));
+        assert_eq!(parsed[1], (PathBuf::from("b.yaml"), "t2".into()));
     }
 
     #[test]
