@@ -23,14 +23,17 @@
 //                  hashes that match current bytes on disk. Skip-if-absent
 //                  until codegen emits manifests.
 //   CB-1634 (L3) — every clause with an `expr` field also has `binds_to`
+//   CB-1635 (L3) — every `binds_to: "crate::a::b::c"` target must map to
+//                  a file present in the ticket's
+//                  `.pmat-work/<ID>/modified-files.json`. Skip-if-absent
+//                  until the work CLI starts emitting diff receipts.
 //   CB-1638 (L3) — generated modules under `contracts/work/*.rs` are tracked
 //                  in git (not ungenerated transient state)
 //
-// The remaining checks (CB-1635 `binds_to` function modification,
-// CB-1636 macro compile in release/debug, CB-1637 L2+ public-function
-// coverage, CB-1639 Kani harness macro reference) surface as Skip with
-// a "Deferred — requires X" message so config plumbing is wired for the
-// follow-up work.
+// The remaining checks (CB-1636 macro compile in release/debug,
+// CB-1637 L2+ public-function coverage, CB-1639 Kani harness macro
+// reference) surface as Skip with a "Deferred — requires X" message so
+// config plumbing is wired for the follow-up work.
 
 use std::path::{Path, PathBuf};
 
@@ -743,11 +746,197 @@ pub(crate) fn check_manifest_sha_drift(project_path: &Path) -> ComplianceCheck {
     }
 }
 
-pub(crate) fn check_binds_to_function_modified(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1635: binds_to Function Actually Modified",
-        "requires `binds_to` schema field and git diff integration",
-    )
+/// CB-1635 (L3): every clause that carries `binds_to: "crate::a::b::c"`
+/// must point at a file that was actually modified by the ticket.
+/// Otherwise the contract declares an obligation over untouched code — a
+/// silent no-op that erodes provenance.
+///
+/// The ticket-level modified-file list is expected at
+/// `.pmat-work/<ID>/modified-files.json` as `{"files": ["src/a/b.rs",
+/// ...]}` (also accepts a top-level array or a `modified` key). Component
+/// 30's work CLI is expected to populate it from `git diff --name-only`
+/// against the ticket's base ref.
+///
+/// # Skip semantics (tiered)
+///
+/// * no `.pmat-work/*/contract.json` tickets                 → Skip
+/// * no ticket has any clause with `binds_to`                → Skip
+/// * no ticket has `modified-files.json` yet                 → Skip
+///
+/// # Fail
+///
+/// * any `binds_to` path resolves to a candidate file (or
+///   module directory) that isn't in the ticket's modified
+///   list                                                    → Fail
+fn resolve_binds_to_candidates(path: &str) -> Vec<String> {
+    // `crate::a::b::c` → [`src/a/b/c.rs`, `src/a/b/c/mod.rs`, `src/a/b.rs`,
+    //                    `src/a/b/mod.rs`, `src/a.rs`, `src/a/mod.rs`, `src/lib.rs`]
+    // Strip the trailing `::function` segment — we want the *defining* module.
+    let without_crate = path.strip_prefix("crate::").unwrap_or(path);
+    let mut parts: Vec<&str> = without_crate.split("::").collect();
+    // Drop the terminal identifier — it's the function name, not part of the path
+    if parts.len() > 1 {
+        parts.pop();
+    }
+    let mut out = Vec::new();
+    // Start most specific and walk up
+    while !parts.is_empty() {
+        let joined = parts.join("/");
+        out.push(format!("src/{}.rs", joined));
+        out.push(format!("src/{}/mod.rs", joined));
+        parts.pop();
+    }
+    // Fallback — crate root
+    out.push("src/lib.rs".into());
+    out.push("src/main.rs".into());
+    out
+}
+
+fn load_modified_files(project_path: &Path, ticket_id: &str) -> Option<Vec<String>> {
+    let p = project_path
+        .join(".pmat-work")
+        .join(ticket_id)
+        .join("modified-files.json");
+    let text = std::fs::read_to_string(&p).ok()?;
+    let v: serde_json::Value = serde_json::from_str(&text).ok()?;
+    if let Some(arr) = v.as_array() {
+        return Some(
+            arr.iter()
+                .filter_map(|x| x.as_str().map(str::to_string))
+                .collect(),
+        );
+    }
+    for key in ["files", "modified"] {
+        if let Some(arr) = v.get(key).and_then(|x| x.as_array()) {
+            return Some(
+                arr.iter()
+                    .filter_map(|x| x.as_str().map(str::to_string))
+                    .collect(),
+            );
+        }
+    }
+    None
+}
+
+pub(crate) fn check_binds_to_function_modified(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1635: binds_to Function Actually Modified";
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/` directory present".into(),
+            severity: Severity::Info,
+        };
+    }
+    let Ok(entries) = std::fs::read_dir(&work_dir) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "Unable to read `.pmat-work/`".into(),
+            severity: Severity::Info,
+        };
+    };
+
+    let mut saw_any_binds = false;
+    let mut evaluated_tickets = 0usize;
+    let mut violations: Vec<String> = Vec::new();
+
+    for entry in entries.flatten() {
+        if !entry.path().is_dir() {
+            continue;
+        }
+        let Some(ticket_id) = entry.file_name().to_str().map(String::from) else {
+            continue;
+        };
+        if ticket_id.starts_with('.') || ticket_id == "ledger" {
+            continue;
+        }
+        let Some(contract) = load_contract_json(project_path, &ticket_id) else {
+            continue;
+        };
+
+        let binds_to_paths: Vec<(String, String)> = iter_clauses(&contract)
+            .filter_map(|c| {
+                let bt = c.get("binds_to").and_then(|v| v.as_str())?;
+                let id = c.get("id").and_then(|v| v.as_str()).unwrap_or("<unknown>");
+                Some((id.to_string(), bt.to_string()))
+            })
+            .collect();
+        if binds_to_paths.is_empty() {
+            continue;
+        }
+        saw_any_binds = true;
+
+        let Some(modified) = load_modified_files(project_path, &ticket_id) else {
+            continue;
+        };
+        evaluated_tickets += 1;
+
+        for (clause_id, bt) in &binds_to_paths {
+            let candidates = resolve_binds_to_candidates(bt);
+            let hit = candidates.iter().any(|c| modified.iter().any(|m| m == c));
+            if !hit {
+                violations.push(format!(
+                    "  {}#{} → {} (tried: {})",
+                    ticket_id,
+                    clause_id,
+                    bt,
+                    candidates.join(", ")
+                ));
+            }
+        }
+    }
+
+    if !saw_any_binds {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No ticket has a clause with `binds_to`".into(),
+            severity: Severity::Info,
+        };
+    }
+    if evaluated_tickets == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message:
+                "No `.pmat-work/<ID>/modified-files.json` — work CLI has not emitted diff receipts yet"
+                    .into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if !violations.is_empty() {
+        let mut msg = format!(
+            "{} `binds_to` clause(s) target files the ticket did not modify:\n",
+            violations.len()
+        );
+        let preview: Vec<&String> = violations.iter().take(5).collect();
+        for line in preview {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        if violations.len() > 5 {
+            msg.push_str(&format!("  …and {} more\n", violations.len() - 5));
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{} ticket(s): every `binds_to` target appears in modified files",
+            evaluated_tickets
+        ),
+        severity: Severity::Info,
+    }
 }
 
 pub(crate) fn check_macros_compile_debug_and_release(_project_path: &Path) -> ComplianceCheck {
@@ -955,7 +1144,6 @@ mod tests {
     fn deferred_checks_return_skip_with_reason() {
         let path = Path::new(".");
         for (name, check) in [
-            ("CB-1635", check_binds_to_function_modified(path)),
             ("CB-1636", check_macros_compile_debug_and_release(path)),
             ("CB-1637", check_l2_public_fn_coverage(path)),
             ("CB-1639", check_kani_harness_macro_reference(path)),
@@ -1246,6 +1434,186 @@ mod tests {
         let tmp = tempdir().unwrap();
         write_codegen_receipt(tmp.path(), r#"{"success": true, "exit_code": 99}"#);
         let r = check_codegen_cli_succeeds(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    // ── CB-1635 binds_to-function-modified tests ─────────────────────────
+
+    fn write_ticket_contract(project: &Path, ticket: &str, body: &str) {
+        let dir = project.join(".pmat-work").join(ticket);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("contract.json"), body).unwrap();
+    }
+
+    fn write_modified_files(project: &Path, ticket: &str, body: &str) {
+        let dir = project.join(".pmat-work").join(ticket);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("modified-files.json"), body).unwrap();
+    }
+
+    #[test]
+    fn cb1635_resolves_binds_to_candidates() {
+        let c = resolve_binds_to_candidates("crate::a::b::c::func");
+        // Most specific first
+        assert!(c[0] == "src/a/b/c.rs");
+        assert!(c.iter().any(|s| s == "src/a/b/c/mod.rs"));
+        assert!(c.iter().any(|s| s == "src/a/b.rs"));
+        assert!(c.iter().any(|s| s == "src/a.rs"));
+        assert!(c.iter().any(|s| s == "src/lib.rs"));
+    }
+
+    #[test]
+    fn cb1635_resolves_bare_ident() {
+        // `crate::func` has no module prefix — pop leaves parts empty,
+        // so only crate-root fallbacks remain.
+        let c = resolve_binds_to_candidates("crate::top_level_fn");
+        assert!(c.iter().any(|s| s == "src/lib.rs"));
+        assert!(c.iter().any(|s| s == "src/main.rs"));
+    }
+
+    #[test]
+    fn cb1635_skips_when_no_work_dir() {
+        let tmp = tempdir().unwrap();
+        let r = check_binds_to_function_modified(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/`"));
+    }
+
+    #[test]
+    fn cb1635_skips_when_no_ticket_has_binds_to() {
+        let tmp = tempdir().unwrap();
+        write_ticket_contract(
+            tmp.path(),
+            "T-1",
+            r#"{"require":[{"id":"R1","expr":"x > 0"}]}"#,
+        );
+        let r = check_binds_to_function_modified(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("No ticket has a clause with `binds_to`"));
+    }
+
+    #[test]
+    fn cb1635_skips_when_no_modified_files_artifact() {
+        let tmp = tempdir().unwrap();
+        write_ticket_contract(
+            tmp.path(),
+            "T-1",
+            r#"{"require":[{"id":"R1","binds_to":"crate::a::f"}]}"#,
+        );
+        // no modified-files.json
+        let r = check_binds_to_function_modified(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("modified-files.json"));
+    }
+
+    #[test]
+    fn cb1635_passes_when_binds_to_matches_modified_file() {
+        let tmp = tempdir().unwrap();
+        write_ticket_contract(
+            tmp.path(),
+            "T-1",
+            r#"{"require":[{"id":"R1","binds_to":"crate::a::b::f"}]}"#,
+        );
+        write_modified_files(
+            tmp.path(),
+            "T-1",
+            r#"{"files":["src/a/b.rs","src/other.rs"]}"#,
+        );
+        let r = check_binds_to_function_modified(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1635_fails_when_binds_to_target_untouched() {
+        let tmp = tempdir().unwrap();
+        write_ticket_contract(
+            tmp.path(),
+            "T-1",
+            r#"{"require":[{"id":"R1","binds_to":"crate::a::b::f"}]}"#,
+        );
+        write_modified_files(tmp.path(), "T-1", r#"{"files":["src/elsewhere.rs"]}"#);
+        let r = check_binds_to_function_modified(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("T-1"));
+        assert!(r.message.contains("R1"));
+    }
+
+    #[test]
+    fn cb1635_accepts_mod_rs_candidate() {
+        let tmp = tempdir().unwrap();
+        write_ticket_contract(
+            tmp.path(),
+            "T-1",
+            r#"{"require":[{"id":"R1","binds_to":"crate::a::b::f"}]}"#,
+        );
+        // File is at src/a/b/mod.rs not src/a/b.rs — resolver should find it
+        write_modified_files(tmp.path(), "T-1", r#"{"files":["src/a/b/mod.rs"]}"#);
+        let r = check_binds_to_function_modified(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1635_accepts_top_level_array_shape() {
+        let tmp = tempdir().unwrap();
+        write_ticket_contract(
+            tmp.path(),
+            "T-1",
+            r#"{"require":[{"id":"R1","binds_to":"crate::a::f"}]}"#,
+        );
+        // Plain array shape
+        write_modified_files(tmp.path(), "T-1", r#"["src/a.rs"]"#);
+        let r = check_binds_to_function_modified(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1635_accepts_modified_key_shape() {
+        let tmp = tempdir().unwrap();
+        write_ticket_contract(
+            tmp.path(),
+            "T-1",
+            r#"{"require":[{"id":"R1","binds_to":"crate::a::f"}]}"#,
+        );
+        write_modified_files(tmp.path(), "T-1", r#"{"modified":["src/a.rs"]}"#);
+        let r = check_binds_to_function_modified(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1635_aggregates_across_clauses_and_tickets() {
+        let tmp = tempdir().unwrap();
+        // T-GOOD: binds_to target matches modified file
+        write_ticket_contract(
+            tmp.path(),
+            "T-GOOD",
+            r#"{"require":[{"id":"R1","binds_to":"crate::a::f"}]}"#,
+        );
+        write_modified_files(tmp.path(), "T-GOOD", r#"{"files":["src/a.rs"]}"#);
+
+        // T-BAD: binds_to target untouched
+        write_ticket_contract(
+            tmp.path(),
+            "T-BAD",
+            r#"{"ensure":[{"id":"E1","binds_to":"crate::x::f"}]}"#,
+        );
+        write_modified_files(tmp.path(), "T-BAD", r#"{"files":["src/a.rs"]}"#);
+
+        let r = check_binds_to_function_modified(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("T-BAD"));
+        assert!(!r.message.contains("T-GOOD"), "{}", r.message);
+    }
+
+    #[test]
+    fn cb1635_binds_to_in_ensure_and_invariant_sections() {
+        let tmp = tempdir().unwrap();
+        write_ticket_contract(
+            tmp.path(),
+            "T-1",
+            r#"{"ensure":[{"id":"E1","binds_to":"crate::a::f"}],"invariant":[{"id":"I1","binds_to":"crate::b::g"}]}"#,
+        );
+        write_modified_files(tmp.path(), "T-1", r#"{"files":["src/a.rs","src/b.rs"]}"#);
+        let r = check_binds_to_function_modified(tmp.path());
         assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
     }
 }
