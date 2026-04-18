@@ -793,19 +793,19 @@ fn generate_tool_registry(out_dir: &str) {
             vec!["dead", "unused", "code"],
         ),
         (
-            "analyze_dag",
-            "Generate dependency graphs and visualizations",
-            vec!["dependency", "graph", "dag", "architecture"],
+            "analyze_lint_hotspots",
+            "Surface files with the most lint violations",
+            vec!["lint", "hotspot", "lint-hotspot", "violations"],
         ),
         (
-            "analyze_deep_context",
-            "Generate comprehensive codebase context",
-            vec!["context", "summary", "analysis"],
+            "analyze_churn",
+            "Git change frequency / volatility per file",
+            vec!["churn", "git", "volatility", "change", "frequency"],
         ),
         (
-            "analyze_big_o",
-            "Analyze algorithmic complexity",
-            vec!["big-o", "algorithm", "performance"],
+            "analyze_coupling",
+            "Analyze module coupling via shared identifiers",
+            vec!["coupling", "module", "dependency"],
         ),
         (
             "refactor.start",
@@ -955,17 +955,36 @@ fn generate_alias_table(out_dir: &str) {
             ],
         ),
         (
-            "analyze_dag",
+            "analyze_lint_hotspots",
             vec![
+                "lint",
+                "hotspot",
+                "hotspots",
+                "lint hotspot",
+                "lint hotspots",
+                "lint violations",
+                "violations",
+            ],
+        ),
+        (
+            "analyze_churn",
+            vec![
+                "churn",
+                "git churn",
+                "volatility",
+                "change frequency",
+                "hot files",
+                "volatile code",
+            ],
+        ),
+        (
+            "analyze_coupling",
+            vec![
+                "coupling",
+                "module coupling",
+                "coupled modules",
+                "module dependency",
                 "dependency",
-                "dependencies",
-                "graph",
-                "visualize",
-                "diagram",
-                "show dependencies",
-                "dependency graph",
-                "architecture",
-                "dag",
             ],
         ),
         (
@@ -1283,10 +1302,10 @@ pub static TOOL_REGISTRY: LazyLock<HashMap<&'static str, ToolMeta>> =
             description: "Find self-admitted technical debt in comments",
             keywords: &["satd", "debt", "todo", "fixme"],
         });
-        m.insert("analyze_dag", ToolMeta {
-            name: "analyze_dag",
-            description: "Generate dependency graphs and visualizations",
-            keywords: &["dependency", "graph", "dag", "architecture"],
+        m.insert("analyze_lint_hotspots", ToolMeta {
+            name: "analyze_lint_hotspots",
+            description: "Surface files with the most lint violations",
+            keywords: &["lint", "hotspot", "lint-hotspot", "violations"],
         });
         m.insert("generate_context", ToolMeta {
             name: "generate_context",
@@ -1308,15 +1327,15 @@ pub static TOOL_REGISTRY: LazyLock<HashMap<&'static str, ToolMeta>> =
             description: "Detect unused functions and variables",
             keywords: &["dead", "unused", "code"],
         });
-        m.insert("analyze_big_o", ToolMeta {
-            name: "analyze_big_o",
-            description: "Analyze algorithmic complexity",
-            keywords: &["big-o", "algorithm", "performance"],
+        m.insert("analyze_coupling", ToolMeta {
+            name: "analyze_coupling",
+            description: "Analyze module coupling via shared identifiers",
+            keywords: &["coupling", "module", "dependency"],
         });
-        m.insert("analyze_deep_context", ToolMeta {
-            name: "analyze_deep_context",
-            description: "Generate comprehensive codebase context",
-            keywords: &["context", "summary", "analysis"],
+        m.insert("analyze_churn", ToolMeta {
+            name: "analyze_churn",
+            description: "Git change frequency / volatility per file",
+            keywords: &["churn", "git", "volatility", "change", "frequency"],
         });
         m.insert("refactor.nextIteration", ToolMeta {
             name: "refactor.nextIteration",
@@ -1353,7 +1372,9 @@ pub static ALIAS_TABLE: std::sync::LazyLock<std::collections::HashMap<&'static s
         let mut m = std::collections::HashMap::new();
         m.insert("analyze_complexity", vec!["complexity", "analyze", "metrics", "complxity", "complx"]);
         m.insert("analyze_satd", vec!["debt", "technical debt", "todo", "fixme"]);
-        m.insert("analyze_dag", vec!["dependency", "dependencies", "graph", "show dependencies", "dependency graph"]);
+        m.insert("analyze_lint_hotspots", vec!["lint", "hotspot", "hotspots", "lint hotspot", "violations"]);
+        m.insert("analyze_churn", vec!["churn", "git churn", "volatility", "change frequency", "hot files"]);
+        m.insert("analyze_coupling", vec!["coupling", "module coupling", "coupled modules", "module dependency"]);
         m.insert("scaffold_project", vec!["scaffold", "create", "generate", "create project", "scafold"]);
         m.insert("generate_context", vec!["context", "generate context", "ai context"]);
         m.insert("quality_gate", vec!["quality", "check quality", "quality check", "qualit"]);

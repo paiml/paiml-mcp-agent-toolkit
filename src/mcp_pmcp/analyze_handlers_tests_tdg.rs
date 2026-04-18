@@ -101,13 +101,14 @@ mod tdg_coverage_tests {
 
     #[test]
     fn test_re_exports_exist() {
-        // Test that re-exports are accessible
+        // Test that re-exports are accessible AND correctly match the
+        // underlying handlers they dispatch to (D39/D47/D48 guard).
         let _: AnalyzeComplexityTool = ComplexityTool::new();
         let _: AnalyzeSatdTool = SatdTool::new();
         let _: AnalyzeDeadCodeTool = DeadCodeTool::new();
-        let _: AnalyzeDagTool = LintHotspotTool::new();
-        let _: AnalyzeDeepContextTool = ChurnTool::new();
-        let _: AnalyzeBigOTool = CouplingTool::new();
+        let _: AnalyzeLintHotspotsTool = LintHotspotTool::new();
+        let _: AnalyzeChurnTool = ChurnTool::new();
+        let _: AnalyzeCouplingTool = CouplingTool::new();
         let _: AnalyzeTdgTool = TdgTool::new();
         let _: AnalyzeTdgCompareTool = TdgCompareTool::new();
     }

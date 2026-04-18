@@ -48,9 +48,9 @@
 //! - `analyze_complexity` - Analyze code complexity metrics
 //! - `analyze_satd` - Detect self-admitted technical debt
 //! - `analyze_dead_code` - Find unused code
-//! - `analyze_dag` - Generate dependency graphs
-//! - `analyze_deep_context` - Comprehensive code analysis
-//! - `analyze_big_o` - Big-O complexity analysis
+//! - `analyze_lint_hotspots` - Surface files with the most lint violations
+//! - `analyze_churn` - Git change frequency / volatility per file
+//! - `analyze_coupling` - Module coupling analysis
 //!
 //! ## Refactoring Tools
 //! - `refactor.start` - Start a refactoring session

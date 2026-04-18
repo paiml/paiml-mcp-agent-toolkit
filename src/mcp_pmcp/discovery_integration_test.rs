@@ -18,8 +18,10 @@ mod discovery_integration_tests {
         ("complexity", "analyze_complexity"),
         ("debt", "analyze_satd"),
         ("technical debt", "analyze_satd"),
-        ("dependencies", "analyze_dag"),
-        ("dependency graph", "analyze_dag"),
+        // D39/D47/D48 fix: rewired aliases from mis-named tools to their
+        // real behavior (coupling, churn, lint hotspots).
+        ("coupling", "analyze_coupling"),
+        ("module coupling", "analyze_coupling"),
         ("context", "generate_context"),
         ("quality check", "quality_gate"),
         ("refactor", "refactor.start"),
@@ -33,7 +35,7 @@ mod discovery_integration_tests {
         // Natural language queries
         ("analyze code complexity", "analyze_complexity"),
         ("find technical debt", "analyze_satd"),
-        ("show dependencies", "analyze_dag"),
+        ("hot files", "analyze_churn"),
         ("create project", "scaffold_project"),
         ("check code quality", "quality_gate"),
         ("start refactoring", "refactor.start"),
@@ -168,9 +170,9 @@ mod discovery_integration_tests {
             "analyze_complexity",
             "analyze_satd",
             "analyze_dead_code",
-            "analyze_dag",
-            "analyze_deep_context",
-            "analyze_big_o",
+            "analyze_lint_hotspots",
+            "analyze_churn",
+            "analyze_coupling",
             "refactor.start",
             "refactor.nextIteration",
             "refactor.getState",
@@ -220,7 +222,7 @@ mod discovery_integration_tests {
             recent_tools: vec![],
         };
 
-        let candidates = vec!["analyze_dag", "analyze_complexity"];
+        let candidates = vec!["analyze_lint_hotspots", "analyze_complexity"];
         let result = service.disambiguate(candidates, Some(&context));
         assert_eq!(
             result, "analyze_complexity",

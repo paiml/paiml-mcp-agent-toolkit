@@ -1,6 +1,6 @@
 use crate::mcp_pmcp::analyze_handlers::{
-    AnalyzeBigOTool, AnalyzeComplexityTool, AnalyzeDagTool, AnalyzeDeadCodeTool,
-    AnalyzeDeepContextTool, AnalyzeSatdTool,
+    AnalyzeChurnTool, AnalyzeComplexityTool, AnalyzeCouplingTool, AnalyzeDeadCodeTool,
+    AnalyzeLintHotspotsTool, AnalyzeSatdTool,
 };
 use crate::mcp_pmcp::context_handlers::{GenerateContextTool, GitTool, ScaffoldProjectTool};
 use crate::mcp_pmcp::handlers::{
@@ -48,9 +48,9 @@ impl SimpleUnifiedServer {
             .tool("analyze_complexity", AnalyzeComplexityTool)
             .tool("analyze_satd", AnalyzeSatdTool)
             .tool("analyze_dead_code", AnalyzeDeadCodeTool)
-            .tool("analyze_dag", AnalyzeDagTool)
-            .tool("analyze_deep_context", AnalyzeDeepContextTool)
-            .tool("analyze_big_o", AnalyzeBigOTool)
+            .tool("analyze_lint_hotspots", AnalyzeLintHotspotsTool)
+            .tool("analyze_churn", AnalyzeChurnTool)
+            .tool("analyze_coupling", AnalyzeCouplingTool)
             // === Refactoring Tools (4) ===
             .tool(
                 "refactor.start",
@@ -240,9 +240,9 @@ mod coverage_tests {
         let _ = AnalyzeComplexityTool::new();
         let _ = AnalyzeSatdTool::new();
         let _ = AnalyzeDeadCodeTool::new();
-        let _ = AnalyzeDagTool::new();
-        let _ = AnalyzeDeepContextTool::new();
-        let _ = AnalyzeBigOTool::new();
+        let _ = AnalyzeLintHotspotsTool::new();
+        let _ = AnalyzeChurnTool::new();
+        let _ = AnalyzeCouplingTool::new();
     }
 
     #[test]
@@ -333,13 +333,14 @@ mod coverage_tests {
 
     #[test]
     fn test_all_tool_types_accessible() {
-        // Analysis tools
+        // Analysis tools — aliases MUST match the behavior they dispatch to
+        // (D39/D47/D48 regression guard: these asserted misnaming before).
         assert!(std::any::type_name::<AnalyzeComplexityTool>().contains("ComplexityTool"));
         assert!(std::any::type_name::<AnalyzeSatdTool>().contains("SatdTool"));
         assert!(std::any::type_name::<AnalyzeDeadCodeTool>().contains("DeadCodeTool"));
-        assert!(std::any::type_name::<AnalyzeDagTool>().contains("LintHotspotTool"));
-        assert!(std::any::type_name::<AnalyzeDeepContextTool>().contains("ChurnTool"));
-        assert!(std::any::type_name::<AnalyzeBigOTool>().contains("CouplingTool"));
+        assert!(std::any::type_name::<AnalyzeLintHotspotsTool>().contains("LintHotspotTool"));
+        assert!(std::any::type_name::<AnalyzeChurnTool>().contains("ChurnTool"));
+        assert!(std::any::type_name::<AnalyzeCouplingTool>().contains("CouplingTool"));
 
         // Quality tools
         assert!(std::any::type_name::<QualityGateTool>().contains("QualityGateTool"));

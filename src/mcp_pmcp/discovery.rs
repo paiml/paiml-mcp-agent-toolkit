@@ -114,7 +114,9 @@ impl DiscoveryService {
         let ext = context.and_then(|ctx| ctx.file_extension.as_deref())?;
         match ext {
             "rs" if candidates.contains(&"analyze_complexity") => Some("analyze_complexity"),
-            "ts" | "js" if candidates.contains(&"analyze_dag") => Some("analyze_dag"),
+            "ts" | "js" if candidates.contains(&"analyze_lint_hotspots") => {
+                Some("analyze_lint_hotspots")
+            }
             _ => None,
         }
     }
@@ -249,7 +251,7 @@ mod tests {
         );
 
         // Test file extension affinity
-        let candidates = vec!["analyze_dag", "analyze_complexity"];
+        let candidates = vec!["analyze_lint_hotspots", "analyze_complexity"];
         let context = Context {
             file_extension: Some("rs".to_string()),
             current_directory: None,

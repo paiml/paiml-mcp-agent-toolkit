@@ -21,11 +21,17 @@ use serde_json::Value;
 use std::path::PathBuf;
 use tracing::debug;
 
-// Re-export for convenience
+// Re-export for convenience.
+//
+// NOTE (D39/D47/D48 fix): These aliases were previously mis-labeled — the
+// `AnalyzeBigOTool`, `AnalyzeDeepContextTool`, and `AnalyzeDagTool` names
+// aliased `CouplingTool`, `ChurnTool`, and `LintHotspotTool` respectively,
+// which dispatched MCP calls to the wrong handlers. The aliases now match
+// the underlying behavior: coupling, churn, and lint-hotspot analysis.
 pub use self::{
-    ChurnTool as AnalyzeDeepContextTool, ComplexityTool as AnalyzeComplexityTool,
-    CouplingTool as AnalyzeBigOTool, DeadCodeTool as AnalyzeDeadCodeTool,
-    LintHotspotTool as AnalyzeDagTool, SatdTool as AnalyzeSatdTool,
+    ChurnTool as AnalyzeChurnTool, ComplexityTool as AnalyzeComplexityTool,
+    CouplingTool as AnalyzeCouplingTool, DeadCodeTool as AnalyzeDeadCodeTool,
+    LintHotspotTool as AnalyzeLintHotspotsTool, SatdTool as AnalyzeSatdTool,
     TdgCompareTool as AnalyzeTdgCompareTool, TdgTool as AnalyzeTdgTool,
 };
 

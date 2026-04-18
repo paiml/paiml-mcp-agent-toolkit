@@ -1,6 +1,6 @@
 use crate::mcp_pmcp::analyze_handlers::{
-    AnalyzeBigOTool, AnalyzeComplexityTool, AnalyzeDagTool, AnalyzeDeadCodeTool,
-    AnalyzeDeepContextTool, AnalyzeSatdTool, AnalyzeTdgCompareTool, AnalyzeTdgTool,
+    AnalyzeChurnTool, AnalyzeComplexityTool, AnalyzeCouplingTool, AnalyzeDeadCodeTool,
+    AnalyzeLintHotspotsTool, AnalyzeSatdTool, AnalyzeTdgCompareTool, AnalyzeTdgTool,
 };
 use crate::mcp_pmcp::context_handlers::{GenerateContextTool, GitTool, ScaffoldProjectTool};
 use crate::mcp_pmcp::handlers::{
@@ -112,9 +112,9 @@ impl PmcpServer {
             .tool("analyze_complexity", AnalyzeComplexityTool)
             .tool("analyze_satd", AnalyzeSatdTool)
             .tool("analyze_dead_code", AnalyzeDeadCodeTool)
-            .tool("analyze_dag", AnalyzeDagTool)
-            .tool("analyze_deep_context", AnalyzeDeepContextTool)
-            .tool("analyze_big_o", AnalyzeBigOTool)
+            .tool("analyze_lint_hotspots", AnalyzeLintHotspotsTool)
+            .tool("analyze_churn", AnalyzeChurnTool)
+            .tool("analyze_coupling", AnalyzeCouplingTool)
             .tool("analyze_tdg", AnalyzeTdgTool)
             .tool("analyze_tdg_compare", AnalyzeTdgCompareTool)
             // Refactoring tools
