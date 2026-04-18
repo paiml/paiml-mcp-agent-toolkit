@@ -65,6 +65,11 @@ echo "================================"
     }
 
     /// Generate environment variables section
+    ///
+    /// GH-301: `PMAT_PRECOMMIT_EXCLUDE_DIRS` is an escape hatch for directory patterns
+    /// that must never be scanned by the hook. Space-separated path prefixes. The
+    /// hook defaults cover Claude/Cursor ephemeral worktrees and common build/cache
+    /// directories so agent sessions don't balloon pre-commit time.
     fn generate_env_vars(&self, config: &PmatConfig) -> String {
         format!(
             r#"# Load current configuration dynamically
@@ -73,6 +78,9 @@ export PMAT_MAX_COGNITIVE_COMPLEXITY={}
 export PMAT_MIN_TEST_COVERAGE={}
 export PMAT_MAX_SATD_COMMENTS=5
 export PMAT_TASK_ID_PATTERN="PMAT-[0-9]{{4}}"
+# GH-301: directories excluded from any hook filesystem scan.
+# Override with: PMAT_PRECOMMIT_EXCLUDE_DIRS=".claude/worktrees target ..." git commit
+export PMAT_PRECOMMIT_EXCLUDE_DIRS="${{PMAT_PRECOMMIT_EXCLUDE_DIRS:-.claude/worktrees .cursor/worktrees target node_modules .venv}}"
 "#,
             config.quality.max_complexity,
             config.quality.max_cognitive_complexity,
@@ -117,9 +125,37 @@ fi
 
 echo "📊 Running quality gate checks..."
 
+# GH-301: helper that strips PMAT_PRECOMMIT_EXCLUDE_DIRS prefixes from a stream
+# of git-tracked paths. Never call `find` here — `find` traverses .gitignore'd
+# paths (like .claude/worktrees/*) which blows up pre-commit time on monorepos
+# with many agent worktrees and can even invoke nested Makefiles.
+_pmat_filter_excluded() {
+    if [ -z "$PMAT_PRECOMMIT_EXCLUDE_DIRS" ]; then cat; return; fi
+    awk -v excl="$PMAT_PRECOMMIT_EXCLUDE_DIRS" '
+        BEGIN { n = split(excl, a, " ") }
+        {
+            skip = 0
+            for (i = 1; i <= n; i++) {
+                if (a[i] != "" && index($0, a[i] "/") == 1) { skip = 1; break }
+            }
+            if (!skip) print
+        }
+    '
+}
+
 # Detect if this repo has any source files at all (not just staged ones).
 # Non-code repos (docs, configs, YAML, contracts) get a fast pass.
-HAS_SOURCE_FILES=$(find . -maxdepth 4 -type f \( -name '*.rs' -o -name '*.py' -o -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.go' -o -name '*.c' -o -name '*.cpp' -o -name '*.lua' -o -name '*.php' -o -name '*.swift' \) -not -path './.git/*' -not -path '*/target/*' -not -path '*/node_modules/*' -print -quit 2>/dev/null)
+# Uses `git ls-files` (GH-301) so .gitignore'd directories — including
+# .claude/worktrees/, target/, node_modules/ — are never scanned. Outside a
+# git worktree we fall back to a bounded find with explicit prunes.
+if git rev-parse --git-dir > /dev/null 2>&1; then
+    HAS_SOURCE_FILES=$(git ls-files -- \
+        '*.rs' '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' \
+        '*.go' '*.c' '*.cpp' '*.lua' '*.php' '*.swift' 2>/dev/null \
+        | _pmat_filter_excluded | head -n 1)
+else
+    HAS_SOURCE_FILES=$(find . -maxdepth 4 -type f \( -name '*.rs' -o -name '*.py' -o -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.go' -o -name '*.c' -o -name '*.cpp' -o -name '*.lua' -o -name '*.php' -o -name '*.swift' \) -not -path './.git/*' -not -path '*/target/*' -not -path '*/node_modules/*' -not -path '*/.claude/worktrees/*' -not -path '*/.cursor/worktrees/*' -print -quit 2>/dev/null)
+fi
 
 if [ -z "$HAS_SOURCE_FILES" ]; then
     echo "  Project type: non-code (docs/configs/YAML)"
