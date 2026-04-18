@@ -30,13 +30,15 @@
 //   CB-1636 (L3) — `.pmat-work/codegen/compile-status.json` must report
 //                  the generated macros compiling in both debug and
 //                  release profiles. Skip-if-absent.
+//   CB-1637 (L2+) — every modified `.rs` file declaring `pub fn` carries a
+//                   matching `#[pmat_work_contract(id = X)]` attribute.
+//                   Skip-if-absent (needs L2+ tickets + modified-files.json).
 //   CB-1638 (L3) — generated modules under `contracts/work/*.rs` are tracked
 //                  in git (not ungenerated transient state)
 //
-// The remaining checks (CB-1637 L2+ public-function coverage,
-// CB-1639 Kani harness macro reference) surface as Skip with a
-// "Deferred — requires X" message so config plumbing is wired for the
-// follow-up work.
+// The remaining check (CB-1639 Kani harness macro reference) surfaces as
+// Skip with a "Deferred — requires X" message so config plumbing is wired
+// for the follow-up work.
 
 use std::path::{Path, PathBuf};
 
@@ -1084,11 +1086,212 @@ fn compile_profile_outcome(v: &serde_json::Value, profile: &str) -> Option<Recei
     None
 }
 
-pub(crate) fn check_l2_public_fn_coverage(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1637: L2+ Public Function Coverage",
-        "requires codegen + git diff + target_level ≥ L2 cross-reference",
+/// CB-1637 (L2+): every modified `.rs` file under `src/` that declares a
+/// `pub fn` must carry at least one `#[pmat_work_contract(id = "<ticket-id>")]`
+/// attribute in that same file. This is the coverage gate for Component 30's
+/// `pmat work codegen` output: once codegen wraps target functions, every
+/// public surface touched by an L2+ ticket should be contracted.
+///
+/// The check is file-level rather than function-level: as long as the file
+/// contains *one* matching attribute, every `pub fn` in it is presumed
+/// covered. A later check (when codegen lands proper AST awareness) can
+/// tighten this to per-function matching.
+///
+/// # Skip semantics (tiered)
+///
+/// * `.pmat-work/` absent                                   → Skip
+/// * no `.pmat-work/<ID>/contract.json` tickets present     → Skip
+/// * no ticket targets L2 or higher                         → Skip
+/// * no L2+ ticket has `modified-files.json`                → Skip
+/// * no modified file under `src/**/*.rs` declares `pub fn` → Skip
+///
+/// # Pass
+///
+/// Every in-scope `pub fn`-bearing modified file has a matching attribute.
+///
+/// # Fail
+///
+/// Any in-scope file declares `pub fn` but lacks a matching
+/// `#[pmat_work_contract(id = "<ticket-id>")]` attribute.
+pub(crate) fn check_l2_public_fn_coverage(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1637: L2+ Public Function Coverage";
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/` directory present".into(),
+            severity: Severity::Info,
+        };
+    }
+    let Ok(entries) = std::fs::read_dir(&work_dir) else {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "Unable to read `.pmat-work/`".into(),
+            severity: Severity::Info,
+        };
+    };
+
+    let mut saw_any_ticket = false;
+    let mut saw_any_l2_plus = false;
+    let mut saw_any_modified = false;
+    let mut evaluated_files = 0usize;
+    let mut violations: Vec<String> = Vec::new();
+
+    for entry in entries.flatten() {
+        if !entry.path().is_dir() {
+            continue;
+        }
+        let Some(ticket_id) = entry.file_name().to_str().map(String::from) else {
+            continue;
+        };
+        if ticket_id.starts_with('.') || ticket_id == "ledger" || ticket_id == "codegen" {
+            continue;
+        }
+        let Some(contract) = load_contract_json(project_path, &ticket_id) else {
+            continue;
+        };
+        saw_any_ticket = true;
+        if !contract_level_at_least(&contract, 2) {
+            continue;
+        }
+        saw_any_l2_plus = true;
+        let Some(modified) = load_modified_files(project_path, &ticket_id) else {
+            continue;
+        };
+        saw_any_modified = true;
+
+        for rel in &modified {
+            if !rel.starts_with("src/") || !rel.ends_with(".rs") {
+                continue;
+            }
+            let abs = project_path.join(rel);
+            let Ok(text) = std::fs::read_to_string(&abs) else {
+                continue;
+            };
+            if !file_has_pub_fn(&text) {
+                continue;
+            }
+            evaluated_files += 1;
+            if !file_has_attribute_for_ticket(&text, &ticket_id) {
+                violations.push(format!("  {} → {}", ticket_id, rel));
+            }
+        }
+    }
+
+    if !saw_any_ticket {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/<ID>/contract.json` tickets present".into(),
+            severity: Severity::Info,
+        };
+    }
+    if !saw_any_l2_plus {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No ticket targets L2 or higher".into(),
+            severity: Severity::Info,
+        };
+    }
+    if !saw_any_modified {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message:
+                "No L2+ ticket has `modified-files.json` — work CLI has not emitted diff receipts yet"
+                    .into(),
+            severity: Severity::Info,
+        };
+    }
+    if evaluated_files == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L2+ ticket modified a `src/**/*.rs` file declaring `pub fn`".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if !violations.is_empty() {
+        let mut msg = format!(
+            "{} file(s) declare `pub fn` without matching `#[pmat_work_contract(id = ...)]`:\n",
+            violations.len()
+        );
+        let preview: Vec<&String> = violations.iter().take(5).collect();
+        for line in preview {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        if violations.len() > 5 {
+            msg.push_str(&format!("  …and {} more\n", violations.len() - 5));
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{} file(s): every `pub fn`-bearing modified file has a matching contract attribute",
+            evaluated_files
+        ),
+        severity: Severity::Info,
+    }
+}
+
+/// Parse the `verification_level` string from a ticket JSON and compare to a
+/// target. Accepts `"L3"`, `"L3 (kani_proof)"`, `"l2"`, etc. Unknown shapes
+/// return `false` so the check gates conservatively (skip not fail).
+fn contract_level_at_least(contract: &serde_json::Value, target: u8) -> bool {
+    let Some(s) = contract.get("verification_level").and_then(|v| v.as_str()) else {
+        return false;
+    };
+    let token = s.split_whitespace().next().unwrap_or("");
+    let trimmed = token.trim();
+    let after_l = trimmed
+        .strip_prefix(|c: char| c == 'L' || c == 'l')
+        .unwrap_or(trimmed);
+    let digits: String = after_l.chars().take_while(|c| c.is_ascii_digit()).collect();
+    digits.parse::<u8>().map(|n| n >= target).unwrap_or(false)
+}
+
+/// Line-anchored scan for a public function signature. Matches `pub fn`,
+/// `pub(crate) fn`, `pub(super) fn`, and modifier combinations such as
+/// `pub async fn`, `pub unsafe fn`, `pub const fn`, `pub extern "C" fn`.
+/// The character class `[ \t]` (not `\s`) keeps the match on a single line
+/// so signatures split across lines do not false-positive off of arbitrary
+/// tokens on adjacent lines.
+fn file_has_pub_fn(text: &str) -> bool {
+    let re = Regex::new(
+        r#"(?m)^[ \t]*pub(\([^)]*\))?(?:[ \t]+(?:async|unsafe|const|safe|extern(?:[ \t]+"[^"]*")?))*[ \t]+fn[ \t]+\w+"#,
     )
+    .unwrap();
+    re.is_match(text)
+}
+
+/// Return true iff `text` contains at least one
+/// `#[pmat_work_contract(id = "<ticket_id>", …)]` attribute. Uses the same
+/// line-anchored regex as `collect_attribute_usages` so raw-string fixtures
+/// are ignored.
+fn file_has_attribute_for_ticket(text: &str, ticket_id: &str) -> bool {
+    let (attr_rx, id_rx, _, _) = attribute_parser();
+    for cap in attr_rx.captures_iter(text) {
+        let Some(body) = cap.get(1) else { continue };
+        if let Some(idcap) = id_rx.captures(body.as_str()) {
+            if idcap.get(1).map(|m| m.as_str()) == Some(ticket_id) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 pub(crate) fn check_kani_harness_macro_reference(_project_path: &Path) -> ComplianceCheck {
@@ -1281,10 +1484,7 @@ mod tests {
     #[test]
     fn deferred_checks_return_skip_with_reason() {
         let path = Path::new(".");
-        for (name, check) in [
-            ("CB-1637", check_l2_public_fn_coverage(path)),
-            ("CB-1639", check_kani_harness_macro_reference(path)),
-        ] {
+        for (name, check) in [("CB-1639", check_kani_harness_macro_reference(path))] {
             assert_eq!(check.status, CheckStatus::Skip, "{}", name);
             assert!(
                 check.message.starts_with("Deferred — "),
@@ -1894,5 +2094,237 @@ mod tests {
         let r = check_macros_compile_debug_and_release(tmp.path());
         assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
         assert!(r.message.contains("Malformed JSON"));
+    }
+
+    // ── CB-1637 L2+ public function coverage tests ──────────────────────
+
+    /// Materialise a ticket at `.pmat-work/<id>/contract.json` with the
+    /// given `verification_level`.
+    fn cb1637_write_ticket(root: &Path, id: &str, level: &str) {
+        let dir = root.join(".pmat-work").join(id);
+        std::fs::create_dir_all(&dir).unwrap();
+        let body = format!(r#"{{"verification_level":"{}"}}"#, level);
+        std::fs::write(dir.join("contract.json"), body).unwrap();
+    }
+
+    /// Materialise `.pmat-work/<id>/modified-files.json` (top-level array shape).
+    fn cb1637_write_modified(root: &Path, id: &str, files: &[&str]) {
+        let dir = root.join(".pmat-work").join(id);
+        std::fs::create_dir_all(&dir).unwrap();
+        let body = serde_json::to_string(files).unwrap();
+        std::fs::write(dir.join("modified-files.json"), body).unwrap();
+    }
+
+    /// Write `src/<rel>` with `contents`, creating parent dirs.
+    fn cb1637_write_src(root: &Path, rel: &str, contents: &str) {
+        let p = root.join("src").join(rel);
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(p, contents).unwrap();
+    }
+
+    #[test]
+    fn cb1637_skips_when_no_pmat_work_dir() {
+        let tmp = tempdir().unwrap();
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/` directory"));
+    }
+
+    #[test]
+    fn cb1637_skips_when_no_tickets() {
+        let tmp = tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-work")).unwrap();
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/<ID>/contract.json`"));
+    }
+
+    #[test]
+    fn cb1637_skips_when_only_l1_tickets() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-100", "L1");
+        cb1637_write_ticket(tmp.path(), "PMAT-101", "L0");
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No ticket targets L2 or higher"));
+    }
+
+    #[test]
+    fn cb1637_skips_when_l2_ticket_has_no_modified_files() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-200", "L2");
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("modified-files.json"));
+    }
+
+    #[test]
+    fn cb1637_skips_when_modified_files_are_out_of_scope() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-200", "L2");
+        cb1637_write_modified(
+            tmp.path(),
+            "PMAT-200",
+            &["docs/x.md", "tests/integration.rs", "src/missing.rs"],
+        );
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("declaring `pub fn`"));
+    }
+
+    #[test]
+    fn cb1637_skips_when_modified_file_has_no_pub_fn() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-200", "L2");
+        cb1637_write_modified(tmp.path(), "PMAT-200", &["src/a.rs"]);
+        cb1637_write_src(tmp.path(), "a.rs", "fn private_helper() {}\n");
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn cb1637_passes_when_pub_fn_and_matching_attribute() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-200", "L2");
+        cb1637_write_modified(tmp.path(), "PMAT-200", &["src/a.rs"]);
+        cb1637_write_src(
+            tmp.path(),
+            "a.rs",
+            "#[pmat_work_contract(id = \"PMAT-200\", ensure = \"E1\")]\npub fn f() {}\n",
+        );
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("1 file(s)"));
+    }
+
+    #[test]
+    fn cb1637_fails_when_pub_fn_without_matching_attribute() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-200", "L2");
+        cb1637_write_modified(tmp.path(), "PMAT-200", &["src/a.rs"]);
+        cb1637_write_src(tmp.path(), "a.rs", "pub fn f() {}\n");
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("PMAT-200"));
+        assert!(r.message.contains("src/a.rs"));
+    }
+
+    #[test]
+    fn cb1637_fails_when_attribute_is_for_wrong_ticket() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-200", "L2");
+        cb1637_write_modified(tmp.path(), "PMAT-200", &["src/a.rs"]);
+        cb1637_write_src(
+            tmp.path(),
+            "a.rs",
+            "#[pmat_work_contract(id = \"PMAT-999\")]\npub fn f() {}\n",
+        );
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("PMAT-200"));
+    }
+
+    #[test]
+    fn cb1637_l1_ticket_does_not_trigger_failure() {
+        // L1 ticket with pub fn but no attribute should not cause a fail,
+        // because this check only gates L2+.
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-100", "L1");
+        cb1637_write_modified(tmp.path(), "PMAT-100", &["src/a.rs"]);
+        cb1637_write_src(tmp.path(), "a.rs", "pub fn f() {}\n");
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+        assert!(r.message.contains("L2 or higher"));
+    }
+
+    #[test]
+    fn cb1637_accepts_annotated_level_strings() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-200", "L3 (kani_proof)");
+        cb1637_write_modified(tmp.path(), "PMAT-200", &["src/a.rs"]);
+        cb1637_write_src(
+            tmp.path(),
+            "a.rs",
+            "#[pmat_work_contract(id = \"PMAT-200\")]\npub fn f() {}\n",
+        );
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1637_pub_crate_modifier_counts_as_pub_fn() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-200", "L2");
+        cb1637_write_modified(tmp.path(), "PMAT-200", &["src/a.rs"]);
+        cb1637_write_src(tmp.path(), "a.rs", "pub(crate) fn f() {}\n");
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("src/a.rs"));
+    }
+
+    #[test]
+    fn cb1637_pub_async_fn_counts_as_pub_fn() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-200", "L2");
+        cb1637_write_modified(tmp.path(), "PMAT-200", &["src/a.rs"]);
+        cb1637_write_src(tmp.path(), "a.rs", "pub async fn f() {}\n");
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1637_aggregates_violations_across_tickets() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-A", "L2");
+        cb1637_write_ticket(tmp.path(), "PMAT-B", "L3");
+        cb1637_write_modified(tmp.path(), "PMAT-A", &["src/a.rs"]);
+        cb1637_write_modified(tmp.path(), "PMAT-B", &["src/b.rs"]);
+        cb1637_write_src(tmp.path(), "a.rs", "pub fn a() {}\n");
+        cb1637_write_src(tmp.path(), "b.rs", "pub fn b() {}\n");
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail, "{}", r.message);
+        assert!(r.message.contains("2 file(s)"));
+        assert!(r.message.contains("PMAT-A"));
+        assert!(r.message.contains("PMAT-B"));
+    }
+
+    #[test]
+    fn cb1637_pub_struct_does_not_count_as_pub_fn() {
+        let tmp = tempdir().unwrap();
+        cb1637_write_ticket(tmp.path(), "PMAT-200", "L2");
+        cb1637_write_modified(tmp.path(), "PMAT-200", &["src/a.rs"]);
+        cb1637_write_src(tmp.path(), "a.rs", "pub struct S;\npub const X: u32 = 1;\n");
+        let r = check_l2_public_fn_coverage(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip, "{}", r.message);
+    }
+
+    #[test]
+    fn cb1637_helpers_parse_verification_level() {
+        let l2 = serde_json::json!({"verification_level":"L2"});
+        let l3_annotated = serde_json::json!({"verification_level":"L3 (kani_proof)"});
+        let lower_case = serde_json::json!({"verification_level":"l4"});
+        let bogus = serde_json::json!({"verification_level":"strong"});
+        let missing = serde_json::json!({});
+        assert!(contract_level_at_least(&l2, 2));
+        assert!(!contract_level_at_least(&l2, 3));
+        assert!(contract_level_at_least(&l3_annotated, 2));
+        assert!(contract_level_at_least(&l3_annotated, 3));
+        assert!(!contract_level_at_least(&l3_annotated, 4));
+        assert!(contract_level_at_least(&lower_case, 4));
+        assert!(!contract_level_at_least(&bogus, 2));
+        assert!(!contract_level_at_least(&missing, 2));
+    }
+
+    #[test]
+    fn cb1637_helpers_detect_pub_fn_variants() {
+        assert!(file_has_pub_fn("pub fn f() {}"));
+        assert!(file_has_pub_fn("pub(crate) fn f() {}"));
+        assert!(file_has_pub_fn("    pub async fn f() {}"));
+        assert!(file_has_pub_fn("pub extern \"C\" fn f() {}"));
+        assert!(!file_has_pub_fn("fn f() {}"));
+        assert!(!file_has_pub_fn("pub struct S;"));
+        assert!(!file_has_pub_fn("// pub fn f() {}"));
     }
 }
