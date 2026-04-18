@@ -11,13 +11,13 @@
 //
 //   CB-1610 (L1) — `verification_level` parses to a known variant
 //   CB-1611 (L1) — target level ≤ max attainable level across bindings
+//   CB-1613 (L3) — L3+ falsification.log entries must all be status=pass
 //   CB-1617 (L3) — downgrade without `--reason` forbidden (ledger audit)
 //   CB-1619 (L3) — on completion, achieved level == target level
 //
 // Deferred (scaffolded with Skip + reason, infrastructure pending):
 //
 //   CB-1612 cargo-test evidence     → needs verify pipeline
-//   CB-1613 falsification log       → needs .pmat-work/<ID>/falsification.log
 //   CB-1614 Kani artifact           → needs Component 24 Kani invoker
 //   CB-1615 Kani harness SHA        → needs harness hash index
 //   CB-1616 Lean proof zero-sorry   → needs Component 24 Lean consumer
@@ -388,13 +388,132 @@ pub(crate) fn check_ladder_l1_test_evidence(_project_path: &Path) -> ComplianceC
     )
 }
 
-/// CB-1613 (L3): L3 completion requires falsification.log present + all pass.
-/// Requires Component 29 (FalsificationMethod::ProvableContract) to emit the log.
-pub(crate) fn check_ladder_l3_falsification(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1613: L3 Falsification Evidence",
-        "requires .pmat-work/<ID>/falsification.log from Component 29",
-    )
+// ─── CB-1613: L3 falsification evidence ──────────────────────────────────────
+
+/// CB-1613 (L3): L3+ completion requires `.pmat-work/<ID>/falsification.log`
+/// present, and every entry in that log must carry `status: "pass"`. Any
+/// `fail`, `timeout`, or malformed status gate the ticket from claiming L3.
+///
+/// Skip semantics (tiered):
+///   • no tickets at all                         → Skip
+///   • no L3+ ticket on any active contract      → Skip
+///   • L3+ tickets exist but none have a log yet → Skip (in-progress tickets
+///                                                  haven't run falsification)
+///   • any L3+ log has a non-pass entry OR is
+///     malformed                                 → Fail
+pub(crate) fn check_ladder_l3_falsification(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1613: L3 Falsification Evidence";
+    let contracts = load_active_contracts(project_path);
+    if contracts.is_empty() {
+        return skip_no_contracts(name);
+    }
+
+    let l3_plus: Vec<&WorkContract> = contracts.iter().filter(|c| is_l3_or_higher(c)).collect();
+    if l3_plus.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L3+ ticket present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut any_log_present = false;
+    let mut checked = 0usize;
+    let mut failing: Vec<String> = Vec::new();
+
+    for c in &l3_plus {
+        let log = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("falsification.log");
+        if !log.exists() {
+            continue; // in-progress ticket — per-ticket skip
+        }
+        any_log_present = true;
+        checked += 1;
+
+        let Ok(contents) = std::fs::read_to_string(&log) else {
+            failing.push(format!("  {} (unreadable log)", c.work_item_id));
+            continue;
+        };
+
+        for (idx, raw) in contents.lines().enumerate() {
+            let line = raw.trim();
+            if line.is_empty() {
+                continue;
+            }
+            let Ok(v) = serde_json::from_str::<serde_json::Value>(line) else {
+                failing.push(format!(
+                    "  {} line {} (malformed JSON)",
+                    c.work_item_id,
+                    idx + 1
+                ));
+                continue;
+            };
+            let status = v
+                .get("status")
+                .and_then(|s| s.as_str())
+                .unwrap_or("<missing>");
+            if status != "pass" {
+                let label = v
+                    .get("test_id")
+                    .and_then(|s| s.as_str())
+                    .or_else(|| v.get("method").and_then(|s| s.as_str()))
+                    .unwrap_or("?");
+                failing.push(format!(
+                    "  {} entry '{}' status={}",
+                    c.work_item_id, label, status
+                ));
+            }
+        }
+    }
+
+    if !failing.is_empty() {
+        let mut msg = format!("{} L3+ log entry/entries not passing:\n", failing.len());
+        for line in &failing {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    if !any_log_present {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: format!(
+                "No L3+ ticket has a `falsification.log` yet ({} eligible)",
+                l3_plus.len()
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!("{} L3+ log(s) checked, all entries pass", checked),
+        severity: Severity::Info,
+    }
+}
+
+/// Ticket strings are typed like `"L3"` or `"L4 (kani_proof)"` — take the
+/// first whitespace-separated token so annotated variants parse too.
+fn is_l3_or_higher(contract: &WorkContract) -> bool {
+    let token = contract
+        .verification_level
+        .split_whitespace()
+        .next()
+        .unwrap_or("");
+    VerificationLevel::parse_lenient(token)
+        .map(|lvl| lvl >= VerificationLevel::L3)
+        .unwrap_or(false)
 }
 
 /// CB-1614 (L4): L4 completion requires Kani artifact + exit 0. Requires
@@ -649,7 +768,6 @@ mod tests {
         let tmp = tempdir().unwrap();
         for r in [
             check_ladder_l1_test_evidence(tmp.path()),
-            check_ladder_l3_falsification(tmp.path()),
             check_ladder_l4_kani(tmp.path()),
             check_ladder_kani_harness_sha(tmp.path()),
             check_ladder_l5_lean(tmp.path()),
@@ -657,6 +775,151 @@ mod tests {
         ] {
             assert_eq!(r.status, CheckStatus::Skip);
             assert!(r.message.starts_with("Deferred"));
+        }
+    }
+
+    // ─── CB-1613: L3 falsification evidence ──────────────────────────────────
+
+    fn write_falsification_log(project: &Path, id: &str, body: &str) {
+        let dir = project.join(".pmat-work").join(id);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("falsification.log"), body).unwrap();
+    }
+
+    #[test]
+    fn l3_falsification_skips_with_no_tickets() {
+        let tmp = tempdir().unwrap();
+        let r = check_ladder_l3_falsification(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/*/contract.json`"));
+    }
+
+    #[test]
+    fn l3_falsification_skips_with_only_l1_tickets() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L1").save(tmp.path()).unwrap();
+        make_contract("T-2", "L2").save(tmp.path()).unwrap();
+        let r = check_ladder_l3_falsification(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L3+"));
+    }
+
+    #[test]
+    fn l3_falsification_skips_when_no_log_yet() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        make_contract("T-2", "L4 (kani_proof)")
+            .save(tmp.path())
+            .unwrap();
+        let r = check_ladder_l3_falsification(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L3+ ticket has a"));
+        assert!(r.message.contains("2 eligible"));
+    }
+
+    #[test]
+    fn l3_falsification_passes_when_all_entries_pass() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_falsification_log(
+            tmp.path(),
+            "T-1",
+            concat!(
+                r#"{"yaml":"k.yaml","test_id":"t1","status":"pass","duration_ms":5}"#,
+                "\n",
+                r#"{"method":"rope","status":"pass","duration_ms":2}"#,
+                "\n",
+            ),
+        );
+        let r = check_ladder_l3_falsification(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn l3_falsification_fails_on_failing_entry() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_falsification_log(
+            tmp.path(),
+            "T-1",
+            r#"{"yaml":"k.yaml","test_id":"t1","status":"fail","duration_ms":5}"#,
+        );
+        let r = check_ladder_l3_falsification(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("T-1"));
+        assert!(r.message.contains("status=fail"));
+    }
+
+    #[test]
+    fn l3_falsification_fails_on_timeout() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L4").save(tmp.path()).unwrap();
+        write_falsification_log(
+            tmp.path(),
+            "T-1",
+            r#"{"yaml":"k.yaml","test_id":"t1","status":"timeout","duration_ms":30000}"#,
+        );
+        let r = check_ladder_l3_falsification(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("status=timeout"));
+    }
+
+    #[test]
+    fn l3_falsification_fails_on_malformed_json() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_falsification_log(tmp.path(), "T-1", "not-json\n");
+        let r = check_ladder_l3_falsification(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("malformed JSON"));
+    }
+
+    #[test]
+    fn l3_falsification_ignores_below_l3() {
+        let tmp = tempdir().unwrap();
+        // L2 ticket with a failing log — must NOT fail the check
+        make_contract("T-1", "L2").save(tmp.path()).unwrap();
+        write_falsification_log(
+            tmp.path(),
+            "T-1",
+            r#"{"yaml":"k.yaml","test_id":"t1","status":"fail"}"#,
+        );
+        let r = check_ladder_l3_falsification(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L3+"));
+    }
+
+    #[test]
+    fn l3_falsification_per_ticket_skip_when_some_have_no_log() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        make_contract("T-2", "L3").save(tmp.path()).unwrap();
+        // Only T-1 has a log; T-2 is in-progress
+        write_falsification_log(
+            tmp.path(),
+            "T-1",
+            r#"{"yaml":"k.yaml","test_id":"t1","status":"pass","duration_ms":1}"#,
+        );
+        let r = check_ladder_l3_falsification(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+        assert!(r.message.contains("1 L3+ log"));
+    }
+
+    #[test]
+    fn is_l3_or_higher_accepts_ladder() {
+        for (s, want) in [
+            ("L0", false),
+            ("L1", false),
+            ("L2", false),
+            ("L3", true),
+            ("L4", true),
+            ("L4 (kani_proof)", true),
+            ("L5", true),
+            ("strong", false),
+        ] {
+            let mut c = WorkContract::new("T".into(), "deadbeef".into());
+            c.verification_level = s.to_string();
+            assert_eq!(is_l3_or_higher(&c), want, "for '{}'", s);
         }
     }
 }
