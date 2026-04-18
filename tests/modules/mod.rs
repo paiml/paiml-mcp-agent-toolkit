@@ -107,6 +107,7 @@ mod issue_67_integration_test;
 mod json_parsing_tests;
 mod kotlin_ast_test;
 mod kotlin_support_test;
+mod mcp_agent_context_tools_test;
 mod mcp_docs_enforcement;
 mod mcp_documentation_sync;
 #[cfg(feature = "mcp-integration")]
