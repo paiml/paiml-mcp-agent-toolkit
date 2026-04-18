@@ -31,10 +31,10 @@
 //   CB-1629 (L4) — L4+ tickets must not record any `status: "timeout"`
 //                  line in their falsification.log — Kani-adjacent tests
 //                  that time out defeat the formal-verification claim
-//
-// The remaining check (CB-1621 expected snapshot drift) surfaces as Skip
-// with a "Deferred — requires X" message so config plumbing is wired for
-// the follow-up work.
+//   CB-1621 (L1) — `ProvableContract{expected}` snapshot must match the
+//                  current YAML's scalar `expected:` value for that test_id
+//                  — silent drift detector with per-entry skip when the
+//                  YAML's `expected:` is a complex (mapping/list) shape
 
 use std::path::{Path, PathBuf};
 
@@ -68,15 +68,6 @@ fn load_active_contracts(project_path: &Path) -> Vec<WorkContract> {
         }
     }
     out
-}
-
-fn deferred(name: &str, reason: &str) -> ComplianceCheck {
-    ComplianceCheck {
-        name: name.into(),
-        status: CheckStatus::Skip,
-        message: format!("Deferred — {}", reason),
-        severity: Severity::Info,
-    }
 }
 
 /// Collect every `FalsificationMethod::ProvableContract` entry in a contract's
@@ -325,13 +316,273 @@ pub(crate) fn check_test_id_exists_in_yaml(project_path: &Path) -> ComplianceChe
     }
 }
 
-// ─── CB-1621..1629 deferred stubs ────────────────────────────────────────────
+// ─── CB-1621: Expected-snapshot drift ───────────────────────────────────────
 
-pub(crate) fn check_expected_snapshot_drift(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1621: Expected Snapshot Drift",
-        "requires per-test YAML parser emitting canonical JSON for comparison",
-    )
+/// CB-1621 (L1): `ProvableContract{expected}` snapshots taken at bind time
+/// must match the current YAML's `expected:` field for that test. A
+/// divergence is *silent* test-expectation drift — the test_id is stable,
+/// the method executes the same code, but the asserted value changed.
+///
+/// # Schema
+///
+/// Snapshot: `ProvableContract.expected` — canonical JSON emitted by the
+/// bind step. Today's writer may leave this empty; empty snapshots skip
+/// per-entry (nothing to diff against).
+///
+/// Current value: line-scanned from the bound YAML's `falsification_tests:`
+/// block. Only scalar shapes (bool, number, quoted/bare string, null) are
+/// compared — inline mappings (`expected: {a: 1}`) and block scalars
+/// (`expected: |\n  ...`) need a structural YAML parser and are silently
+/// skipped until the pv-yaml-loader (Component 29) is in place.
+///
+/// # Skip semantics (tiered)
+///
+/// * no `.pmat-work/*/contract.json` tickets        → Skip
+/// * no ticket has a ProvableContract entry with a
+///   non-empty `expected` snapshot                  → Skip
+/// * YAMLs exist but none declare scalar `expected:`
+///   for any bound test_id                          → Skip
+///
+/// # Fail
+///
+/// * snapshot and current scalar decode to different JSON values
+pub(crate) fn check_expected_snapshot_drift(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1621: Expected Snapshot Drift";
+    let contracts = load_active_contracts(project_path);
+    if contracts.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No `.pmat-work/*/contract.json` tickets present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut any_snapshot = false;
+    let mut compared = 0usize;
+    let mut drift: Vec<String> = Vec::new();
+
+    for c in &contracts {
+        for (yaml_rel, equation, test_id, snapshot) in provable_contract_entries_with_expected(c) {
+            if snapshot.trim().is_empty() {
+                continue;
+            }
+            any_snapshot = true;
+            let yaml_abs = if yaml_rel.is_absolute() {
+                yaml_rel.clone()
+            } else {
+                project_path.join(&yaml_rel)
+            };
+            let Ok(yaml_body) = std::fs::read_to_string(&yaml_abs) else {
+                continue;
+            };
+            let map = yaml_expected_by_test_id(&yaml_body);
+            let Some(current_json) = map.get(&test_id) else {
+                continue;
+            };
+            compared += 1;
+
+            // Structural compare: both sides canonicalize to JSON; an
+            // unparseable snapshot or current value falls back to string
+            // equality so we still catch trivial differences.
+            let match_ok = match (
+                serde_json::from_str::<serde_json::Value>(&snapshot),
+                serde_json::from_str::<serde_json::Value>(current_json),
+            ) {
+                (Ok(a), Ok(b)) => a == b,
+                _ => current_json == &snapshot,
+            };
+            if !match_ok {
+                drift.push(format!(
+                    "  {} [{}/{}#{}] expected drifted: {} → {}",
+                    c.work_item_id,
+                    yaml_rel.display(),
+                    equation,
+                    test_id,
+                    snapshot,
+                    current_json
+                ));
+            }
+        }
+    }
+
+    if !any_snapshot {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No ProvableContract entry has a non-empty `expected` snapshot".into(),
+            severity: Severity::Info,
+        };
+    }
+    if compared == 0 {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No bound YAML declares scalar `expected:` for any seeded test_id".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    if !drift.is_empty() {
+        let mut msg = format!("{} expected snapshot drift(s):\n", drift.len());
+        for line in &drift {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!(
+            "{} ProvableContract snapshot(s) match current YAML `expected:`",
+            compared
+        ),
+        severity: Severity::Info,
+    }
+}
+
+/// Collect ProvableContract roster entries with their bind-time `expected`
+/// snapshot. Sibling of `provable_contract_entries` — that helper drops
+/// the snapshot for checks that only care about `(yaml, eq, test_id)`.
+fn provable_contract_entries_with_expected(
+    c: &WorkContract,
+) -> Vec<(PathBuf, String, String, String)> {
+    c.claims
+        .iter()
+        .filter_map(|claim| match &claim.falsification_method {
+            FalsificationMethod::ProvableContract {
+                yaml_path,
+                equation,
+                test_id,
+                expected,
+            } => Some((
+                yaml_path.clone(),
+                equation.clone(),
+                test_id.clone(),
+                expected.clone(),
+            )),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Parse a YAML's top-level `falsification_tests:` block and return a
+/// `{test_id → canonical-JSON expected}` map. Only scalar `expected:`
+/// values are converted; inline mappings/sequences and block scalars are
+/// silently skipped — they'd need a structural parser (Component 29
+/// pv-yaml-loader) to round-trip safely.
+fn yaml_expected_by_test_id(yaml: &str) -> std::collections::HashMap<String, String> {
+    let mut out: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    let mut in_section = false;
+    let mut current_id: Option<String> = None;
+    let mut current_exp: Option<String> = None;
+
+    fn flush(
+        out: &mut std::collections::HashMap<String, String>,
+        id: &mut Option<String>,
+        exp: &mut Option<String>,
+    ) {
+        if let (Some(i), Some(e)) = (id.take(), exp.take()) {
+            out.insert(i, e);
+        } else {
+            *id = None;
+            *exp = None;
+        }
+    }
+
+    for line in yaml.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        if !line.starts_with(' ') && !line.starts_with('-') {
+            flush(&mut out, &mut current_id, &mut current_exp);
+            in_section = trimmed.starts_with("falsification_tests:");
+            continue;
+        }
+        if !in_section {
+            continue;
+        }
+        if trimmed.starts_with('-') {
+            flush(&mut out, &mut current_id, &mut current_exp);
+            let item = trimmed[1..].trim();
+            if let Some(rest) = item.strip_prefix("id:") {
+                let id = rest
+                    .trim()
+                    .trim_matches(|c: char| c == '"' || c == '\'')
+                    .to_string();
+                if !id.is_empty() {
+                    current_id = Some(id);
+                }
+            } else if let Some(rest) = item.strip_prefix("expected:") {
+                if let Some(j) = yaml_scalar_to_canonical_json(rest) {
+                    current_exp = Some(j);
+                }
+            }
+            continue;
+        }
+        if let Some(rest) = trimmed.strip_prefix("id:") {
+            let id = rest
+                .trim()
+                .trim_matches(|c: char| c == '"' || c == '\'')
+                .to_string();
+            if !id.is_empty() {
+                current_id = Some(id);
+            }
+        } else if let Some(rest) = trimmed.strip_prefix("expected:") {
+            if let Some(j) = yaml_scalar_to_canonical_json(rest) {
+                current_exp = Some(j);
+            }
+        }
+    }
+    flush(&mut out, &mut current_id, &mut current_exp);
+    out
+}
+
+/// Convert a YAML scalar to canonical JSON. Handles booleans, nulls,
+/// integers/floats, quoted strings, and bare strings. Returns `None` for
+/// complex shapes (inline mappings, sequences, block scalars) so callers
+/// skip the entry instead of comparing wrong shapes.
+fn yaml_scalar_to_canonical_json(raw: &str) -> Option<String> {
+    let s = raw.trim();
+    if s.is_empty() {
+        return None;
+    }
+    // Inline mapping / sequence / block scalar — bail.
+    if s.starts_with('{') || s.starts_with('[') || s.starts_with('|') || s.starts_with('>') {
+        return None;
+    }
+    match s {
+        "true" | "false" => return Some(s.to_string()),
+        "null" | "~" => return Some("null".to_string()),
+        _ => {}
+    }
+    if let Ok(n) = s.parse::<i64>() {
+        return Some(n.to_string());
+    }
+    if let Ok(n) = s.parse::<f64>() {
+        if let Ok(j) = serde_json::to_string(&n) {
+            return Some(j);
+        }
+    }
+    if s.len() >= 2 {
+        if s.starts_with('"') && s.ends_with('"') {
+            let inner = &s[1..s.len() - 1];
+            return serde_json::to_string(inner).ok();
+        }
+        if s.starts_with('\'') && s.ends_with('\'') {
+            let inner = &s[1..s.len() - 1];
+            return serde_json::to_string(inner).ok();
+        }
+    }
+    serde_json::to_string(s).ok()
 }
 
 /// Parse a `falsification.log` JSONL file into the set of
@@ -1067,18 +1318,284 @@ mod tests {
         assert!(yaml_falsification_test_ids(y).is_empty());
     }
 
+    // ── CB-1621: Expected Snapshot Drift tests ──────────────────────────
+
+    fn write_contract_with_expected_snapshot(
+        project: &Path,
+        ticket: &str,
+        yaml_path: &str,
+        equation: &str,
+        test_id: &str,
+        expected_canonical: &str,
+    ) {
+        use crate::cli::handlers::work_contract::{EvidenceType, FalsifiableClaim};
+        let mut c = WorkContract::new(ticket.into(), "deadbeef".into());
+        c.claims.push(FalsifiableClaim {
+            hypothesis: "inherited claim".into(),
+            falsification_method: FalsificationMethod::ProvableContract {
+                yaml_path: PathBuf::from(yaml_path),
+                equation: equation.into(),
+                test_id: test_id.into(),
+                expected: expected_canonical.into(),
+            },
+            evidence_required: EvidenceType::BooleanCheck(true),
+            result: None,
+            override_info: None,
+        });
+        let dir = project.join(".pmat-work").join(ticket);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("contract.json"),
+            serde_json::to_string_pretty(&c).unwrap(),
+        )
+        .unwrap();
+    }
+
     #[test]
-    fn deferred_checks_return_skip_with_reason() {
-        let path = Path::new(".");
-        for (name, check) in [("CB-1621", check_expected_snapshot_drift(path))] {
-            assert_eq!(check.status, CheckStatus::Skip, "{}", name);
-            assert!(
-                check.message.starts_with("Deferred — "),
-                "{}: {}",
-                name,
-                check.message
-            );
-        }
+    fn expected_drift_skips_with_no_contracts() {
+        let tmp = tempdir().unwrap();
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/*/contract.json`"));
+    }
+
+    #[test]
+    fn expected_drift_skips_when_no_snapshot_set() {
+        // ProvableContract entry with empty `expected` → no snapshot to compare.
+        let tmp = tempdir().unwrap();
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T1",
+            "contracts/k.yaml",
+            "rope",
+            "t1",
+            "",
+        );
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No ProvableContract entry"));
+    }
+
+    #[test]
+    fn expected_drift_skips_when_no_yaml_declares_expected() {
+        let tmp = tempdir().unwrap();
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            "falsification_tests:\n  - id: t1\n",
+        );
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T1",
+            "contracts/k.yaml",
+            "rope",
+            "t1",
+            "true",
+        );
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No bound YAML declares scalar"));
+    }
+
+    #[test]
+    fn expected_drift_passes_on_matching_bool() {
+        let tmp = tempdir().unwrap();
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            "falsification_tests:\n  - id: t1\n    expected: true\n",
+        );
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T1",
+            "contracts/k.yaml",
+            "rope",
+            "t1",
+            "true",
+        );
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn expected_drift_passes_on_matching_number() {
+        let tmp = tempdir().unwrap();
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            "falsification_tests:\n  - id: t1\n    expected: 42\n",
+        );
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T1",
+            "contracts/k.yaml",
+            "rope",
+            "t1",
+            "42",
+        );
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn expected_drift_passes_on_matching_quoted_string() {
+        // YAML `expected: "abc"` and snapshot `"\"abc\""` should both
+        // canonicalize to JSON `"abc"`.
+        let tmp = tempdir().unwrap();
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            "falsification_tests:\n  - id: t1\n    expected: \"abc\"\n",
+        );
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T1",
+            "contracts/k.yaml",
+            "rope",
+            "t1",
+            "\"abc\"",
+        );
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn expected_drift_fails_on_bool_flip() {
+        let tmp = tempdir().unwrap();
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            "falsification_tests:\n  - id: t1\n    expected: false\n",
+        );
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T1",
+            "contracts/k.yaml",
+            "rope",
+            "t1",
+            "true",
+        );
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("t1"));
+        assert!(r.message.contains("drifted"));
+    }
+
+    #[test]
+    fn expected_drift_fails_on_number_change() {
+        let tmp = tempdir().unwrap();
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            "falsification_tests:\n  - id: t1\n    expected: 100\n",
+        );
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T1",
+            "contracts/k.yaml",
+            "rope",
+            "t1",
+            "42",
+        );
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+    }
+
+    #[test]
+    fn expected_drift_skips_complex_inline_mapping() {
+        // Inline mapping (`expected: {a: 1}`) bails out of scalar extraction
+        // → per-entry skip → overall Skip because nothing was compared.
+        let tmp = tempdir().unwrap();
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            "falsification_tests:\n  - id: t1\n    expected: {a: 1}\n",
+        );
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T1",
+            "contracts/k.yaml",
+            "rope",
+            "t1",
+            "{\"a\": 1}",
+        );
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("scalar"));
+    }
+
+    #[test]
+    fn expected_drift_tolerates_missing_yaml() {
+        // Bound YAML file doesn't exist — per-entry skip, overall Skip.
+        let tmp = tempdir().unwrap();
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T1",
+            "contracts/missing.yaml",
+            "rope",
+            "t1",
+            "true",
+        );
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+    }
+
+    #[test]
+    fn expected_drift_reports_multiple_entries() {
+        // Two tickets each with a drifted test_id — both show in the message.
+        let tmp = tempdir().unwrap();
+        write_yaml_at(
+            tmp.path(),
+            "contracts/k.yaml",
+            "falsification_tests:\n  - id: t1\n    expected: false\n  - id: t2\n    expected: 7\n",
+        );
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T1",
+            "contracts/k.yaml",
+            "rope",
+            "t1",
+            "true",
+        );
+        write_contract_with_expected_snapshot(
+            tmp.path(),
+            "T2",
+            "contracts/k.yaml",
+            "rope",
+            "t2",
+            "42",
+        );
+        let r = check_expected_snapshot_drift(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("T1"));
+        assert!(r.message.contains("T2"));
+    }
+
+    #[test]
+    fn yaml_expected_map_handles_multiple_tests() {
+        let yaml = "falsification_tests:\n  - id: a\n    expected: true\n  - id: b\n    expected: 2\n  - id: c\n    expected: \"x\"\n";
+        let m = yaml_expected_by_test_id(yaml);
+        assert_eq!(m.get("a").unwrap(), "true");
+        assert_eq!(m.get("b").unwrap(), "2");
+        assert_eq!(m.get("c").unwrap(), "\"x\"");
+    }
+
+    #[test]
+    fn yaml_scalar_null_tilde_becomes_json_null() {
+        assert_eq!(yaml_scalar_to_canonical_json("~").unwrap(), "null");
+        assert_eq!(yaml_scalar_to_canonical_json("null").unwrap(), "null");
+    }
+
+    #[test]
+    fn yaml_scalar_bare_string_gets_quoted() {
+        assert_eq!(yaml_scalar_to_canonical_json("hello").unwrap(), "\"hello\"");
+    }
+
+    #[test]
+    fn yaml_scalar_rejects_complex_shapes() {
+        assert!(yaml_scalar_to_canonical_json("{a: 1}").is_none());
+        assert!(yaml_scalar_to_canonical_json("[1, 2]").is_none());
+        assert!(yaml_scalar_to_canonical_json("|").is_none());
     }
 
     // ── CB-1629 L4 timeout gate tests ────────────────────────────────────
