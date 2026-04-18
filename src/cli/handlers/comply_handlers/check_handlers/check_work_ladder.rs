@@ -12,13 +12,14 @@
 //   CB-1610 (L1) — `verification_level` parses to a known variant
 //   CB-1611 (L1) — target level ≤ max attainable level across bindings
 //   CB-1613 (L3) — L3+ falsification.log entries must all be status=pass
+//   CB-1614 (L4) — L4+ ticket completion requires `kani-report.json` with
+//                  success=true (skip-if-absent until Component 24 runner)
 //   CB-1617 (L3) — downgrade without `--reason` forbidden (ledger audit)
 //   CB-1619 (L3) — on completion, achieved level == target level
 //
 // Deferred (scaffolded with Skip + reason, infrastructure pending):
 //
 //   CB-1612 cargo-test evidence     → needs verify pipeline
-//   CB-1614 Kani artifact           → needs Component 24 Kani invoker
 //   CB-1615 Kani harness SHA        → needs harness hash index
 //   CB-1616 Lean proof zero-sorry   → needs Component 24 Lean consumer
 //   CB-1618 monotonicity audit      → needs checkpoint history
@@ -516,13 +517,120 @@ fn is_l3_or_higher(contract: &WorkContract) -> bool {
         .unwrap_or(false)
 }
 
-/// CB-1614 (L4): L4 completion requires Kani artifact + exit 0. Requires
-/// Component 24 (verification-backends) Kani invocation contract.
-pub(crate) fn check_ladder_l4_kani(_project_path: &Path) -> ComplianceCheck {
-    deferred(
-        "CB-1614: L4 Kani Evidence",
-        "requires Component 24 Kani runner emitting kani-report.json",
-    )
+// ─── CB-1614: L4 Kani evidence ──────────────────────────────────────────────
+
+/// CB-1614 (L4): every L4+ ticket must have `.pmat-work/<ID>/kani-report.json`
+/// present, and that report must carry `success: true`. When Component 24
+/// Kani runner lands, this check enforces that L4 claims have Kani backing.
+///
+/// Report schema (minimum): `{ "success": bool }` — extra fields ignored.
+///
+/// Skip semantics (tiered):
+///   • no tickets at all                          → Skip
+///   • no L4+ ticket on any active contract       → Skip
+///   • L4+ tickets exist but none have a report   → Skip (runner not yet
+///                                                   wired; in-progress
+///                                                   tickets don't falsify)
+///   • any L4+ report missing `success` key,
+///     reports `success: false`, or is malformed  → Fail
+pub(crate) fn check_ladder_l4_kani(project_path: &Path) -> ComplianceCheck {
+    let name = "CB-1614: L4 Kani Evidence";
+    let contracts = load_active_contracts(project_path);
+    if contracts.is_empty() {
+        return skip_no_contracts(name);
+    }
+
+    let l4_plus: Vec<&WorkContract> = contracts.iter().filter(|c| is_l4_or_higher(c)).collect();
+    if l4_plus.is_empty() {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: "No L4+ ticket present".into(),
+            severity: Severity::Info,
+        };
+    }
+
+    let mut any_report = false;
+    let mut checked = 0usize;
+    let mut failing: Vec<String> = Vec::new();
+
+    for c in &l4_plus {
+        let report = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("kani-report.json");
+        if !report.exists() {
+            continue; // in-progress L4 ticket
+        }
+        any_report = true;
+        checked += 1;
+
+        let Ok(contents) = std::fs::read_to_string(&report) else {
+            failing.push(format!(
+                "  {} (unreadable kani-report.json)",
+                c.work_item_id
+            ));
+            continue;
+        };
+        let Ok(v) = serde_json::from_str::<serde_json::Value>(&contents) else {
+            failing.push(format!("  {} (malformed kani-report.json)", c.work_item_id));
+            continue;
+        };
+        match v.get("success").and_then(|s| s.as_bool()) {
+            Some(true) => {}
+            Some(false) => failing.push(format!("  {} success=false", c.work_item_id)),
+            None => failing.push(format!(
+                "  {} (kani-report.json missing `success` field)",
+                c.work_item_id
+            )),
+        }
+    }
+
+    if !failing.is_empty() {
+        let mut msg = format!("{} L4+ ticket(s) failed Kani evidence:\n", failing.len());
+        for line in &failing {
+            msg.push_str(line);
+            msg.push('\n');
+        }
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Fail,
+            message: msg,
+            severity: Severity::Error,
+        };
+    }
+
+    if !any_report {
+        return ComplianceCheck {
+            name: name.into(),
+            status: CheckStatus::Skip,
+            message: format!(
+                "No L4+ ticket has a `kani-report.json` yet ({} eligible)",
+                l4_plus.len()
+            ),
+            severity: Severity::Info,
+        };
+    }
+
+    ComplianceCheck {
+        name: name.into(),
+        status: CheckStatus::Pass,
+        message: format!("{} L4+ Kani report(s) pass", checked),
+        severity: Severity::Info,
+    }
+}
+
+/// Same whitespace-token shape as `is_l3_or_higher` — handles annotated
+/// levels like `"L4 (kani_proof)"`.
+fn is_l4_or_higher(contract: &WorkContract) -> bool {
+    let token = contract
+        .verification_level
+        .split_whitespace()
+        .next()
+        .unwrap_or("");
+    VerificationLevel::parse_lenient(token)
+        .map(|lvl| lvl >= VerificationLevel::L4)
+        .unwrap_or(false)
 }
 
 /// CB-1615 (L4): Kani harness hash in ticket == harness hash in YAML. Requires
@@ -768,7 +876,6 @@ mod tests {
         let tmp = tempdir().unwrap();
         for r in [
             check_ladder_l1_test_evidence(tmp.path()),
-            check_ladder_l4_kani(tmp.path()),
             check_ladder_kani_harness_sha(tmp.path()),
             check_ladder_l5_lean(tmp.path()),
             check_ladder_monotonicity(tmp.path()),
@@ -920,6 +1027,122 @@ mod tests {
             let mut c = WorkContract::new("T".into(), "deadbeef".into());
             c.verification_level = s.to_string();
             assert_eq!(is_l3_or_higher(&c), want, "for '{}'", s);
+        }
+    }
+
+    // ─── CB-1614: L4 Kani evidence ───────────────────────────────────────────
+
+    fn write_kani_report(project: &Path, id: &str, body: &str) {
+        let dir = project.join(".pmat-work").join(id);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("kani-report.json"), body).unwrap();
+    }
+
+    #[test]
+    fn l4_kani_skips_with_no_tickets() {
+        let tmp = tempdir().unwrap();
+        let r = check_ladder_l4_kani(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No `.pmat-work/*/contract.json`"));
+    }
+
+    #[test]
+    fn l4_kani_skips_without_l4_ticket() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        let r = check_ladder_l4_kani(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L4+"));
+    }
+
+    #[test]
+    fn l4_kani_skips_when_no_report_yet() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L4").save(tmp.path()).unwrap();
+        make_contract("T-2", "L5").save(tmp.path()).unwrap();
+        let r = check_ladder_l4_kani(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("2 eligible"));
+    }
+
+    #[test]
+    fn l4_kani_passes_on_success_report() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L4").save(tmp.path()).unwrap();
+        write_kani_report(
+            tmp.path(),
+            "T-1",
+            r#"{"success":true,"harnesses":[{"name":"h","status":"pass"}]}"#,
+        );
+        let r = check_ladder_l4_kani(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn l4_kani_fails_on_failure_report() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L4").save(tmp.path()).unwrap();
+        write_kani_report(tmp.path(), "T-1", r#"{"success":false}"#);
+        let r = check_ladder_l4_kani(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("T-1"));
+        assert!(r.message.contains("success=false"));
+    }
+
+    #[test]
+    fn l4_kani_fails_on_malformed_report() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L4").save(tmp.path()).unwrap();
+        write_kani_report(tmp.path(), "T-1", "not-json");
+        let r = check_ladder_l4_kani(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("malformed"));
+    }
+
+    #[test]
+    fn l4_kani_fails_when_success_missing() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L4").save(tmp.path()).unwrap();
+        write_kani_report(tmp.path(), "T-1", r#"{"harnesses":[]}"#);
+        let r = check_ladder_l4_kani(tmp.path());
+        assert_eq!(r.status, CheckStatus::Fail);
+        assert!(r.message.contains("missing `success`"));
+    }
+
+    #[test]
+    fn l4_kani_ignores_below_l4() {
+        let tmp = tempdir().unwrap();
+        // L3 ticket with a failing report — must NOT fail this check
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        write_kani_report(tmp.path(), "T-1", r#"{"success":false}"#);
+        let r = check_ladder_l4_kani(tmp.path());
+        assert_eq!(r.status, CheckStatus::Skip);
+        assert!(r.message.contains("No L4+"));
+    }
+
+    #[test]
+    fn l4_kani_accepts_annotated_level() {
+        let tmp = tempdir().unwrap();
+        make_contract("T-1", "L4 (kani_proof)")
+            .save(tmp.path())
+            .unwrap();
+        write_kani_report(tmp.path(), "T-1", r#"{"success":true}"#);
+        let r = check_ladder_l4_kani(tmp.path());
+        assert_eq!(r.status, CheckStatus::Pass, "{}", r.message);
+    }
+
+    #[test]
+    fn is_l4_or_higher_accepts_ladder() {
+        for (s, want) in [
+            ("L3", false),
+            ("L4", true),
+            ("L4 (kani_proof)", true),
+            ("L5", true),
+            ("bogus", false),
+        ] {
+            let mut c = WorkContract::new("T".into(), "deadbeef".into());
+            c.verification_level = s.to_string();
+            assert_eq!(is_l4_or_higher(&c), want, "for '{}'", s);
         }
     }
 }
