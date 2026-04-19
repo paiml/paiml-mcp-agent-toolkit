@@ -383,6 +383,12 @@ pub(crate) async fn handle_analyze_dead_code(
 /// no idea what project the client meant and analyzed wherever the server
 /// process happened to be running. Now we reject those three cases up front
 /// with a clear error — callers must pass a real path.
+///
+/// # R22-2 / D102 glob parity fix
+///
+/// `project_path` now supports shell-style globs via the shared
+/// `services::path_glob` helper (`src/**`, `crates/*/src/**`, ...). Empty
+/// glob expansions fail loud with the same `-32602` contract.
 fn parse_dead_code_args(
     arguments: serde_json::Value,
 ) -> Result<(AnalyzeDeadCodeArgs, PathBuf), Box<dyn std::error::Error>> {
@@ -400,7 +406,12 @@ directory (R21-1 / D100)",
             "'project_path' must be a non-empty string (R21-1 / D100)",
         ));
     }
-    let project_path = PathBuf::from(raw_path);
+    let project_path = match resolve_project_path_with_globs(raw_path) {
+        ResolvedProjectPath::Concrete(p) => p,
+        e @ ResolvedProjectPath::EmptyGlob(_) => {
+            return Err(Box::<dyn std::error::Error>::from(e.into_error_message()));
+        }
+    };
 
     Ok((args, project_path))
 }
@@ -589,5 +600,49 @@ mod dead_code_fail_loud_tests {
         let (_args, path) =
             parse_dead_code_args(json!({ "project_path": "/tmp/my-project" })).unwrap();
         assert_eq!(path, PathBuf::from("/tmp/my-project"));
+    }
+
+    // -----------------------------------------------------------------
+    // R22-2 / D102: glob parity tests — `project_path` now accepts
+    // shell-style globs via `services::path_glob`.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn accepts_literal_path_unchanged() {
+        let (_args, path) =
+            parse_dead_code_args(json!({ "project_path": "/tmp/literal-root" })).unwrap();
+        assert_eq!(path, PathBuf::from("/tmp/literal-root"));
+    }
+
+    #[test]
+    fn accepts_glob_that_expands() {
+        let temp = tempfile::tempdir().unwrap();
+        let src = temp.path().join("src");
+        let nested = src.join("nested");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(src.join("a.rs"), "fn a() {}").unwrap();
+        std::fs::write(nested.join("b.rs"), "fn b() {}").unwrap();
+
+        // `src/**/*.rs` — tri-level glob that exercises `**` spanning dirs.
+        let pattern = format!("{}/src/**/*.rs", temp.path().display());
+        let (_args, path) = parse_dead_code_args(json!({ "project_path": pattern })).unwrap();
+        assert!(
+            path.starts_with(temp.path()),
+            "expected path under temp ({}), got {path:?}",
+            temp.path().display()
+        );
+    }
+
+    #[test]
+    fn rejects_empty_glob_expansion() {
+        // A pattern that definitely won't match anything on disk must fail
+        // loud with the R22-2 / D102 message.
+        let bogus = "/tmp/pmat-r22-2-d102-dead-code-definitely-absent-*.rs";
+        let msg = err_msg(json!({ "project_path": bogus }));
+        assert!(
+            msg.contains("matched") && msg.contains("zero"),
+            "error must explain empty glob expansion, got: {msg}"
+        );
+        assert!(msg.contains("R22-2") || msg.contains("D102"), "got: {msg}");
     }
 }

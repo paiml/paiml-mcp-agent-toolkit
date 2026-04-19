@@ -24,10 +24,12 @@ async fn handle_analyze_dag(
         }
     };
 
-    // R22-1 / D101: require explicit project_path; reject null/missing/empty.
-    let project_path = match require_project_path(args.project_path.clone()) {
+    // R22-1 / D101 + R22-2 / D102: require explicit project_path (reject
+    // null/missing/empty) and glob-expand via shared `services::path_glob`
+    // so downstream `analyze_project` sees a concrete directory.
+    let project_path = match resolve_project_path(&args.project_path) {
         Ok(p) => p,
-        Err(e) => return McpResponse::error(request_id, -32602, e),
+        Err(msg) => return McpResponse::error(request_id, -32602, msg),
     };
 
     match execute_dag_analysis(&args, project_path).await {
@@ -38,8 +40,8 @@ async fn handle_analyze_dag(
 
 /// Toyota Way: Extract Method pattern for DAG analysis
 ///
-/// R22-1 / D101: project_path is now validated in the handler; this
-/// receives the already-validated PathBuf.
+/// R22-1 / D101 + R22-2 / D102: project_path is validated and glob-expanded
+/// in `resolve_project_path`; this receives the already-validated PathBuf.
 async fn execute_dag_analysis(
     args: &AnalyzeDagArgs,
     project_path: PathBuf,
@@ -52,6 +54,24 @@ async fn execute_dag_analysis(
     let output = generate_dag_output(&filtered_graph, args, dag_type);
     Ok(output)
 }
+
+/// R22-1 / D101 + R22-2 / D102: Validate and glob-expand `project_path`.
+///
+/// D101: reject null/missing/empty values so an MCP client can't cause the
+/// DAG analysis to silently run against the server's cwd.
+/// D102: expand shell-style globs via the shared `services::path_glob`
+/// helper, failing loud on empty expansion.
+fn resolve_project_path(project_path: &Option<String>) -> Result<PathBuf, String> {
+    let _validated = require_project_path(project_path.clone())?;
+    let raw = project_path
+        .as_deref()
+        .expect("require_project_path returned Ok for None");
+    match resolve_project_path_with_globs(raw) {
+        ResolvedProjectPath::Concrete(p) => Ok(p),
+        e @ ResolvedProjectPath::EmptyGlob(_) => Err(e.into_error_message()),
+    }
+}
+
 
 fn build_dag_graph(
     project_context: &crate::services::context::ProjectContext,
