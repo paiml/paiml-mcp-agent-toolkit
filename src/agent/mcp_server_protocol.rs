@@ -2,6 +2,45 @@
 // Contains: constructor, stdio transport, MCP protocol, request dispatch,
 // tool handlers, and formatting utilities.
 
+/// Sentinel prefix for errors that should map to JSON-RPC -32602 (Invalid params).
+///
+/// R21-5 / D99: Prevents cwd-exfiltration by failing loudly on missing/empty
+/// path arguments instead of silently defaulting to the server's cwd.
+const INVALID_PARAMS_PREFIX: &str = "INVALID_PARAMS: ";
+
+/// Extract a required string path argument from a JSON value, rejecting
+/// missing, null, non-string, or empty/whitespace-only values.
+///
+/// Returns an anyhow error tagged with `INVALID_PARAMS_PREFIX` so the
+/// protocol layer can map it to JSON-RPC code `-32602`.
+///
+/// R21-5 / D99: Empty arguments (`{}` or `{"field": null}`) previously
+/// silently scanned the server's cwd, enabling data exfiltration. This
+/// helper enforces explicit, non-empty path inputs for all `analyze_*`
+/// MCP handlers.
+fn require_path_arg(arguments: &Value, field: &str) -> Result<String> {
+    match arguments.get(field) {
+        None => Err(anyhow::anyhow!(
+            "{INVALID_PARAMS_PREFIX}missing required parameter '{field}'; \
+             refusing to default to server cwd"
+        )),
+        Some(Value::Null) => Err(anyhow::anyhow!(
+            "{INVALID_PARAMS_PREFIX}parameter '{field}' is null; \
+             refusing to default to server cwd"
+        )),
+        Some(v) => match v.as_str() {
+            None => Err(anyhow::anyhow!(
+                "{INVALID_PARAMS_PREFIX}parameter '{field}' must be a string"
+            )),
+            Some(s) if s.trim().is_empty() => Err(anyhow::anyhow!(
+                "{INVALID_PARAMS_PREFIX}parameter '{field}' is empty; \
+                 refusing to default to server cwd"
+            )),
+            Some(s) => Ok(s.to_string()),
+        },
+    }
+}
+
 impl ClaudeCodeAgentMcpServer {
     /// Create new MCP server instance
     #[must_use]
@@ -76,12 +115,21 @@ impl ClaudeCodeAgentMcpServer {
                             // No response needed (notification)
                         }
                         Err(e) => {
-                            // Send error response (don't log to avoid stdio interference)
+                            // Send error response (don't log to avoid stdio interference).
+                            // R21-5 / D99: Errors tagged INVALID_PARAMS_PREFIX map to
+                            // JSON-RPC -32602 (Invalid params); everything else is -32603.
+                            let err_msg = e.to_string();
+                            let (code, message) =
+                                if let Some(detail) = err_msg.strip_prefix(INVALID_PARAMS_PREFIX) {
+                                    (-32602, format!("Invalid params: {detail}"))
+                                } else {
+                                    (-32603, format!("Internal error: {err_msg}"))
+                                };
                             let error_response = json!({
                                 "jsonrpc": "2.0",
                                 "error": {
-                                    "code": -32603,
-                                    "message": format!("Internal error: {}", e)
+                                    "code": code,
+                                    "message": message
                                 }
                             });
                             let error_json = serde_json::to_string(&error_response)?;
@@ -245,10 +293,10 @@ impl ClaudeCodeAgentMcpServer {
     }
 
     async fn handle_run_quality_gates(&self, arguments: &Value) -> Result<Value> {
-        let target_path = arguments
-            .get("target_path")
-            .and_then(|p| p.as_str())
-            .unwrap_or(".");
+        // R21-5 / D99: Require explicit target_path. Silent cwd fallback
+        // previously leaked info about the server's launch directory.
+        let target_path = require_path_arg(arguments, "target_path")?;
+        let target_path = target_path.as_str();
 
         let path = PathBuf::from(target_path);
         let input = QualityGateInput {
@@ -333,12 +381,12 @@ impl ClaudeCodeAgentMcpServer {
     }
 
     async fn handle_analyze_complexity(&self, arguments: &Value) -> Result<Value> {
-        let file_path = arguments
-            .get("file_path")
-            .and_then(|p| p.as_str())
-            .unwrap_or(".");
+        // R21-5 / D99: Require explicit file_path. Silent cwd fallback
+        // previously allowed a malicious or buggy client to trigger
+        // complexity scans of the server's launch directory.
+        let file_path = require_path_arg(arguments, "file_path")?;
 
-        let result_text = self.format_complexity_analysis_results(file_path);
+        let result_text = self.format_complexity_analysis_results(&file_path);
 
         Ok(json!({
             "content": [{

@@ -1073,30 +1073,130 @@ mod coverage_tests {
     }
 
     #[tokio::test]
-    async fn test_handle_run_quality_gates_with_default_path() {
+    async fn test_handle_run_quality_gates_rejects_missing_path() {
+        // R21-5 / D99: Missing target_path must be rejected loudly, not
+        // silently scanned as server cwd (data-exfiltration risk).
         let config = AgentConfig::default();
         let server = ClaudeCodeAgentMcpServer::new(config);
 
-        // When target_path is not provided, it defaults to "."
         let params = json!({});
 
-        // This should not error, but use default "." path
         let result = server.handle_run_quality_gates(&params).await;
-        assert!(result.is_ok());
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.starts_with("INVALID_PARAMS: "),
+            "error must be tagged INVALID_PARAMS for -32602 mapping, got: {err}"
+        );
+        assert!(err.contains("target_path"));
     }
 
     #[tokio::test]
-    async fn test_handle_analyze_complexity_with_default_path() {
+    async fn test_handle_run_quality_gates_rejects_null_path() {
+        // R21-5 / D99: target_path: null must also be rejected.
         let config = AgentConfig::default();
         let server = ClaudeCodeAgentMcpServer::new(config);
 
-        // When file_path is not provided, it defaults to "."
+        let result = server
+            .handle_run_quality_gates(&json!({ "target_path": null }))
+            .await;
+        assert!(result.is_err(), "null target_path must be rejected");
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .starts_with("INVALID_PARAMS: "));
+    }
+
+    #[tokio::test]
+    async fn test_handle_run_quality_gates_rejects_empty_string_path() {
+        // R21-5 / D99: Empty/whitespace target_path must be rejected.
+        let config = AgentConfig::default();
+        let server = ClaudeCodeAgentMcpServer::new(config);
+
+        for empty in ["", "   ", "\t\n"] {
+            let result = server
+                .handle_run_quality_gates(&json!({ "target_path": empty }))
+                .await;
+            assert!(
+                result.is_err(),
+                "empty/whitespace target_path ({empty:?}) must be rejected"
+            );
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .starts_with("INVALID_PARAMS: "));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_complexity_rejects_missing_path() {
+        // R21-5 / D99: Missing file_path must be rejected loudly.
+        let config = AgentConfig::default();
+        let server = ClaudeCodeAgentMcpServer::new(config);
+
         let params = json!({});
 
-        let result = server.handle_analyze_complexity(&params).await.unwrap();
-        let content = result["content"].as_array().unwrap();
-        let text = content[0]["text"].as_str().unwrap();
-        assert!(text.contains("Complexity Analysis for ."));
+        let result = server.handle_analyze_complexity(&params).await;
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.starts_with("INVALID_PARAMS: "),
+            "error must be tagged INVALID_PARAMS for -32602 mapping, got: {err}"
+        );
+        assert!(err.contains("file_path"));
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_complexity_rejects_null_path() {
+        // R21-5 / D99: file_path: null must also be rejected.
+        let config = AgentConfig::default();
+        let server = ClaudeCodeAgentMcpServer::new(config);
+
+        let result = server
+            .handle_analyze_complexity(&json!({ "file_path": null }))
+            .await;
+        assert!(result.is_err(), "null file_path must be rejected");
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .starts_with("INVALID_PARAMS: "));
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_complexity_rejects_empty_string_path() {
+        // R21-5 / D99: Empty/whitespace file_path must be rejected.
+        let config = AgentConfig::default();
+        let server = ClaudeCodeAgentMcpServer::new(config);
+
+        for empty in ["", "   ", "\t\n"] {
+            let result = server
+                .handle_analyze_complexity(&json!({ "file_path": empty }))
+                .await;
+            assert!(
+                result.is_err(),
+                "empty/whitespace file_path ({empty:?}) must be rejected"
+            );
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .starts_with("INVALID_PARAMS: "));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_handle_analyze_complexity_rejects_non_string_path() {
+        // R21-5 / D99: Non-string file_path must also be rejected.
+        let config = AgentConfig::default();
+        let server = ClaudeCodeAgentMcpServer::new(config);
+
+        for wrong_type in [json!({ "file_path": 42 }), json!({ "file_path": ["a"] })] {
+            let result = server.handle_analyze_complexity(&wrong_type).await;
+            assert!(result.is_err(), "non-string file_path must be rejected");
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .starts_with("INVALID_PARAMS: "));
+        }
     }
 
     #[test]
