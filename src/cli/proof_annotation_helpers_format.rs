@@ -203,7 +203,7 @@ fn format_summary_top_files(
     }
 
     let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
-    sorted_files.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted_files.sort_by_key(|b| std::cmp::Reverse(b.1));
 
     for (i, (file_path, count)) in sorted_files.iter().take(10).enumerate() {
         let filename = file_path

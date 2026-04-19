@@ -133,7 +133,7 @@ async fn perform_cruft_scan(
     // Sort cruft files by size (largest first)
     result
         .cruft_files
-        .sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
+        .sort_by_key(|b| std::cmp::Reverse(b.size_bytes));
 
     Ok(result)
 }

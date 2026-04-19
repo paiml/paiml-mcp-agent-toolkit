@@ -272,7 +272,7 @@ fn find_most_referenced(symbols: &[Symbol]) -> Vec<(String, usize)> {
         .map(|s| (s.name.clone(), s.references.len()))
         .collect();
 
-    refs.sort_by(|a, b| b.1.cmp(&a.1));
+    refs.sort_by_key(|b| std::cmp::Reverse(b.1));
     refs.truncate(10);
     refs
 }

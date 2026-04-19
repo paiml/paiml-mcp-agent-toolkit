@@ -87,7 +87,7 @@ pub(crate) fn count_top_lints(violations: &[ViolationDetail]) -> Vec<(String, us
     }
 
     let mut counts: Vec<_> = lint_counts.into_iter().collect();
-    counts.sort_by(|a, b| b.1.cmp(&a.1));
+    counts.sort_by_key(|b| std::cmp::Reverse(b.1));
     counts.truncate(10); // Top 10 lints
     counts
 }
