@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.14.0"
+version = "3.15.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -794,7 +794,7 @@ members = ["crates/pmat-dashboard"]
 resolver = "2"
 
 [workspace.package]
-version = "3.14.0"
+version = "3.15.0"
 edition = "2021"
 authors = ["Pragmatic AI Labs"]
 homepage = "https://paiml.com"

@@ -6281,7 +6281,7 @@ dependencies = [
 
 [[package]]
 name = "pmat"
-version = "3.14.0"
+version = "3.15.0"
 dependencies = [
  "actix",
  "actix-rt",
@@ -6413,7 +6413,7 @@ dependencies = [
 
 [[package]]
 name = "pmat-dashboard"
-version = "3.14.0"
+version = "3.15.0"
 dependencies = [
  "aprender-present-core 0.30.0",
  "aprender-present-layout",
