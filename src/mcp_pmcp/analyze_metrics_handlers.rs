@@ -174,3 +174,149 @@ impl ToolHandler for CouplingTool {
         ))
     }
 }
+
+// ============================================================================
+// R17-1: Correct handlers for analyze_dag / analyze_big_o / analyze_deep_context
+//
+// These handlers replace the old type aliases that mis-routed these three MCP
+// tools to lint-hotspot / coupling / churn. Each now dispatches to the right
+// `tool_functions::*` implementation.
+// ============================================================================
+
+// --- DAG analysis tool ---
+
+/// MCP args for analyze_dag: project paths and optional DAG type filter.
+#[derive(Debug, Deserialize)]
+struct AnalyzeDagArgs {
+    paths: Vec<String>,
+    #[serde(default)]
+    dag_type: Option<String>,
+}
+
+/// DAG analysis tool. Generates dependency graphs (call / import / inheritance).
+pub struct AnalyzeDagTool;
+
+impl AnalyzeDagTool {
+    #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for AnalyzeDagTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl ToolHandler for AnalyzeDagTool {
+    async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+        debug!("Handling analyze_dag with args: {}", args);
+
+        let params: AnalyzeDagArgs = serde_json::from_value(args)
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
+
+        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+
+        let results = tool_functions::analyze_dag(&paths, params.dag_type)
+            .await
+            .map_err(|e| Error::internal(format!("DAG analysis failed: {e}")))?;
+
+        Ok(results)
+    }
+}
+
+// --- Big-O analysis tool ---
+
+/// MCP args for analyze_big_o: project paths and optional top_files limit.
+#[derive(Debug, Deserialize)]
+struct AnalyzeBigOArgs {
+    paths: Vec<String>,
+    #[serde(default)]
+    top_files: Option<usize>,
+}
+
+/// Big-O analysis tool. Classifies function time complexity.
+pub struct AnalyzeBigOTool;
+
+impl AnalyzeBigOTool {
+    #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for AnalyzeBigOTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl ToolHandler for AnalyzeBigOTool {
+    async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+        debug!("Handling analyze_big_o with args: {}", args);
+
+        let params: AnalyzeBigOArgs = serde_json::from_value(args)
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
+
+        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+
+        let results = tool_functions::analyze_big_o(&paths, params.top_files)
+            .await
+            .map_err(|e| Error::internal(format!("Big-O analysis failed: {e}")))?;
+
+        Ok(results)
+    }
+}
+
+// --- Deep context analysis tool ---
+
+/// MCP args for analyze_deep_context: project paths and optional include patterns.
+#[derive(Debug, Deserialize)]
+struct AnalyzeDeepContextArgs {
+    paths: Vec<String>,
+    #[serde(default)]
+    include_patterns: Option<Vec<String>>,
+}
+
+/// Deep context analysis tool. Runs the full deep-context pipeline.
+pub struct AnalyzeDeepContextTool;
+
+impl AnalyzeDeepContextTool {
+    #[must_use]
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    /// Create a new instance.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for AnalyzeDeepContextTool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl ToolHandler for AnalyzeDeepContextTool {
+    async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
+        debug!("Handling analyze_deep_context with args: {}", args);
+
+        let params: AnalyzeDeepContextArgs = serde_json::from_value(args)
+            .map_err(|e| Error::validation(format!("Invalid arguments: {e}")))?;
+
+        let paths: Vec<PathBuf> = params.paths.into_iter().map(PathBuf::from).collect();
+
+        let results = tool_functions::analyze_deep_context(&paths, params.include_patterns)
+            .await
+            .map_err(|e| Error::internal(format!("Deep context analysis failed: {e}")))?;
+
+        Ok(results)
+    }
+}
