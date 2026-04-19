@@ -140,11 +140,9 @@ fn build_annotation_violations(
     };
 
     if let Some(desc) = system {
-        let coverage_pct = if total_functions > 0 {
-            annotated_functions * 100 / total_functions
-        } else {
-            0
-        };
+        let coverage_pct = (annotated_functions * 100)
+            .checked_div(total_functions)
+            .unwrap_or(0);
         violations.push(CbPatternViolation {
             pattern_id: "CB-616".to_string(),
             file: "project".to_string(),

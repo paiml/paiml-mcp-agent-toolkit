@@ -248,11 +248,7 @@ impl LuaAnalyzer {
     fn extract_function_name(&self, line: &str) -> Option<String> {
         let after = if let Some(rest) = line.strip_prefix("local function ") {
             rest
-        } else if let Some(rest) = line.strip_prefix("function ") {
-            rest
-        } else {
-            return None;
-        };
+        } else { line.strip_prefix("function ")? };
         let paren_pos = after.find('(')?;
         let name = after.get(..paren_pos).unwrap_or_default().trim();
         if name.is_empty() {

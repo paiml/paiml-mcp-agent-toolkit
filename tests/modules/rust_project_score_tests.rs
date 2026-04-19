@@ -272,7 +272,7 @@ fn test_recommendation_sorting() {
             2.0,
         ),
     ];
-    recs.sort_by(|a, b| b.priority.cmp(&a.priority));
+    recs.sort_by_key(|b| std::cmp::Reverse(b.priority));
     assert_eq!(recs[0].priority, RecommendationPriority::Critical);
     assert_eq!(recs[1].priority, RecommendationPriority::High);
     assert_eq!(recs[2].priority, RecommendationPriority::Medium);

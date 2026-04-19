@@ -475,7 +475,7 @@ fn apply_churn_file_filtering(
         // Sort files by commit count descending
         analysis
             .files
-            .sort_unstable_by(|a, b| b.commit_count.cmp(&a.commit_count));
+            .sort_unstable_by_key(|b| std::cmp::Reverse(b.commit_count));
         analysis.files.truncate(top_files);
     }
 }
