@@ -337,9 +337,11 @@ mod coverage_tests {
         assert!(std::any::type_name::<AnalyzeComplexityTool>().contains("ComplexityTool"));
         assert!(std::any::type_name::<AnalyzeSatdTool>().contains("SatdTool"));
         assert!(std::any::type_name::<AnalyzeDeadCodeTool>().contains("DeadCodeTool"));
-        assert!(std::any::type_name::<AnalyzeDagTool>().contains("LintHotspotTool"));
-        assert!(std::any::type_name::<AnalyzeDeepContextTool>().contains("ChurnTool"));
-        assert!(std::any::type_name::<AnalyzeBigOTool>().contains("CouplingTool"));
+        // R17-1: Dag/BigO/DeepContext tools are now distinct structs that
+        // dispatch to the correct analysis functions (not lint/coupling/churn).
+        assert!(std::any::type_name::<AnalyzeDagTool>().contains("AnalyzeDagTool"));
+        assert!(std::any::type_name::<AnalyzeDeepContextTool>().contains("AnalyzeDeepContextTool"));
+        assert!(std::any::type_name::<AnalyzeBigOTool>().contains("AnalyzeBigOTool"));
 
         // Quality tools
         assert!(std::any::type_name::<QualityGateTool>().contains("QualityGateTool"));

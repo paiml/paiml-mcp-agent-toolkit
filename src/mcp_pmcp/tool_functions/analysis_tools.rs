@@ -319,6 +319,160 @@ pub async fn analyze_churn(
     }
 }
 
+// --- DAG analysis (R17-1) ---
+//
+// Dispatches to `services::deep_context::analysis_functions::analyze_dag`,
+// which builds a ProjectContext + DagBuilder graph. This is the analysis
+// powering `pmat analyze dag`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn analyze_dag(paths: &[PathBuf], dag_type: Option<String>) -> Result<Value> {
+    use crate::services::deep_context::analysis_functions::analyze_dag as svc_analyze_dag;
+    use crate::services::deep_context::DagType;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let dag_type_parsed = match dag_type.as_deref().unwrap_or("full-dependency") {
+        "call-graph" | "call_graph" => DagType::CallGraph,
+        "import-graph" | "import_graph" => DagType::ImportGraph,
+        "inheritance" => DagType::Inheritance,
+        _ => DagType::FullDependency,
+    };
+    let dag_type_label = format!("{:?}", dag_type_parsed);
+
+    let project_path = &paths[0];
+    let graph = svc_analyze_dag(project_path, dag_type_parsed)
+        .await
+        .map_err(|e| anyhow::anyhow!("DAG analysis failed: {e}"))?;
+
+    let node_count = graph.nodes.len();
+    let edge_count = graph.edges.len();
+
+    // Emit a compact summary plus the raw graph. Callers that want full
+    // mermaid output can use the CLI's `pmat analyze dag` path.
+    let top_nodes: Vec<Value> = graph
+        .nodes
+        .values()
+        .take(25)
+        .map(|n| {
+            json!({
+                "id": n.id,
+                "label": n.label,
+                "node_type": n.node_type,
+                "file_path": n.file_path,
+                "line_number": n.line_number,
+                "complexity": n.complexity,
+            })
+        })
+        .collect();
+
+    Ok(json!({
+        "status": "completed",
+        "message": format!("DAG analysis completed ({node_count} nodes, {edge_count} edges)"),
+        "results": {
+            "dag_type": dag_type_label,
+            "node_count": node_count,
+            "edge_count": edge_count,
+            "top_nodes": top_nodes,
+        }
+    }))
+}
+
+// --- Big-O analysis (R17-1) ---
+//
+// Dispatches to `services::deep_context::analysis_functions::analyze_big_o`,
+// which classifies function time complexity via BigOAnalyzer. This is the
+// analysis powering `pmat analyze big-o`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn analyze_big_o(paths: &[PathBuf], top_files: Option<usize>) -> Result<Value> {
+    use crate::services::deep_context::analysis_functions::analyze_big_o as svc_analyze_big_o;
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let project_path = &paths[0];
+    let report = svc_analyze_big_o(project_path)
+        .await
+        .map_err(|e| anyhow::anyhow!("Big-O analysis failed: {e}"))?;
+
+    let top_limit = top_files.unwrap_or(25);
+    let high_complexity: Vec<Value> = report
+        .high_complexity_functions
+        .iter()
+        .take(top_limit)
+        .map(|f| {
+            json!({
+                "file_path": f.file_path,
+                "function_name": f.function_name,
+                "line_number": f.line_number,
+                "time_complexity": f.time_complexity,
+                "space_complexity": f.space_complexity,
+                "confidence": f.confidence,
+            })
+        })
+        .collect();
+
+    Ok(json!({
+        "status": "completed",
+        "message": format!("Big-O analysis completed ({} functions analyzed)", report.analyzed_functions),
+        "results": {
+            "analyzed_functions": report.analyzed_functions,
+            "complexity_distribution": report.complexity_distribution,
+            "high_complexity_functions": high_complexity,
+            "recommendations": report.recommendations,
+        }
+    }))
+}
+
+// --- Deep context analysis (R17-1) ---
+//
+// Dispatches to `services::deep_context::DeepContextAnalyzer`, which runs the
+// full multi-phase deep context pipeline. This is the analysis powering
+// `pmat context` / `pmat analyze deep-context`.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn analyze_deep_context(
+    paths: &[PathBuf],
+    _include_patterns: Option<Vec<String>>,
+) -> Result<Value> {
+    use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
+
+    if paths.is_empty() {
+        return Err(anyhow::anyhow!("At least one path must be provided"));
+    }
+
+    let project_path = &paths[0];
+    let config = DeepContextConfig::default();
+    let analyzer = DeepContextAnalyzer::new(config);
+    let context = analyzer
+        .analyze_project(&project_path.to_path_buf())
+        .await
+        .map_err(|e| anyhow::anyhow!("Deep context analysis failed: {e}"))?;
+
+    Ok(json!({
+        "status": "completed",
+        "message": format!("Deep context analysis completed ({} files)", context.file_tree.total_files),
+        "results": {
+            "metadata": {
+                "project_root": context.metadata.project_root,
+                "tool_version": context.metadata.tool_version,
+                "generated_at": context.metadata.generated_at.to_rfc3339(),
+                "analysis_duration_ms": context.metadata.analysis_duration.as_millis(),
+            },
+            "quality_scorecard": {
+                "overall_health": context.quality_scorecard.overall_health,
+                "complexity_score": context.quality_scorecard.complexity_score,
+                "maintainability_index": context.quality_scorecard.maintainability_index,
+                "modularity_score": context.quality_scorecard.modularity_score,
+                "technical_debt_hours": context.quality_scorecard.technical_debt_hours,
+            },
+            "file_count": context.file_tree.total_files,
+            "ast_contexts": context.analyses.ast_contexts.len(),
+        }
+    }))
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_coupling(paths: &[PathBuf], threshold: Option<f64>) -> Result<Value> {
     use crate::services::deep_context::{DeepContextAnalyzer, DeepContextConfig};
