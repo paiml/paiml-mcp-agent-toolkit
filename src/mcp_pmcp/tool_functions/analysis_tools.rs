@@ -1,3 +1,55 @@
+/// Expand a list of paths into a flat list of source files.
+///
+/// When a path is a file, it is included verbatim. When a path is a directory,
+/// walkdir is used to enumerate all source files beneath it (`rs`, `py`, `js`,
+/// `ts`, `tsx`, `jsx`, `java`, `cpp`, `cc`, `cxx`, `c`, `h`, `hpp`, `go`, `rb`,
+/// `php`, `swift`, `kt`, `lua`, `sh`). Hidden dirs, `target/`, and `node_modules/`
+/// are skipped.
+///
+/// R17-2: MCP handlers previously only accepted files, returning zeros for
+/// directory inputs (D82 "authoritative zeros" regression).
+fn expand_paths_to_source_files(paths: &[PathBuf]) -> Vec<PathBuf> {
+    use walkdir::WalkDir;
+    const EXTENSIONS: &[&str] = &[
+        "rs", "py", "js", "ts", "tsx", "jsx", "java", "cpp", "cc", "cxx", "c", "h", "hpp", "go",
+        "rb", "php", "swift", "kt", "lua", "sh",
+    ];
+
+    let mut out = Vec::new();
+    for path in paths {
+        if !path.exists() {
+            continue;
+        }
+        if path.is_file() {
+            out.push(path.clone());
+            continue;
+        }
+        if path.is_dir() {
+            for entry in WalkDir::new(path)
+                .follow_links(false)
+                .into_iter()
+                .filter_entry(|e| {
+                    // Always accept the root, filter only descendant dirs/files.
+                    if e.depth() == 0 {
+                        return true;
+                    }
+                    let n = e.file_name().to_string_lossy();
+                    !(n.starts_with('.') || n == "target" || n == "node_modules")
+                })
+                .filter_map(std::result::Result::ok)
+                .filter(|e| e.file_type().is_file())
+            {
+                if let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) {
+                    if EXTENSIONS.contains(&ext) {
+                        out.push(entry.path().to_path_buf());
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_complexity(
     paths: &[PathBuf],
@@ -12,52 +64,45 @@ pub async fn analyze_complexity(
     }
 
     let threshold_value = threshold.unwrap_or(10);
+    let files = expand_paths_to_source_files(paths);
 
-    // Analyze all provided paths
+    // Analyze all expanded files
     let mut all_functions = Vec::new();
     let mut total_files = 0;
     let mut total_complexity = 0u64;
     let mut violations = Vec::new();
 
-    for path in paths {
-        // Skip non-existent paths
-        if !path.exists() {
-            continue;
-        }
+    for path in &files {
+        match analyze_file_complexity_uncached(path, None).await {
+            Ok(metrics) => {
+                total_files += 1;
 
-        // Analyze single file
-        if path.is_file() {
-            match analyze_file_complexity_uncached(path, None).await {
-                Ok(metrics) => {
-                    total_files += 1;
+                for func in &metrics.functions {
+                    let cc = func.metrics.cyclomatic as u64;
+                    total_complexity += cc;
 
-                    for func in &metrics.functions {
-                        let cc = func.metrics.cyclomatic as u64;
-                        total_complexity += cc;
-
-                        if cc >= threshold_value {
-                            violations.push(json!({
-                                "file": metrics.path.clone(),
-                                "function": func.name.clone(),
-                                "complexity": cc,
-                                "threshold": threshold_value,
-                                "line_start": func.line_start,
-                                "line_end": func.line_end,
-                            }));
-                        }
-
-                        all_functions.push(json!({
+                    if cc >= threshold_value {
+                        violations.push(json!({
                             "file": metrics.path.clone(),
                             "function": func.name.clone(),
-                            "cyclomatic_complexity": func.metrics.cyclomatic,
-                            "cognitive_complexity": func.metrics.cognitive,
+                            "complexity": cc,
+                            "threshold": threshold_value,
                             "line_start": func.line_start,
                             "line_end": func.line_end,
                         }));
                     }
+
+                    all_functions.push(json!({
+                        "file": metrics.path.clone(),
+                        "function": func.name.clone(),
+                        "cyclomatic_complexity": func.metrics.cyclomatic,
+                        "cognitive_complexity": func.metrics.cognitive,
+                        "line_start": func.line_start,
+                        "line_end": func.line_end,
+                    }));
                 }
-                Err(_) => continue, // Skip files that fail to analyze
             }
+            Err(_) => continue, // Skip files that fail to analyze
         }
     }
 
@@ -101,15 +146,12 @@ pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<
     }
 
     let detector = SATDDetector::new();
+    let files = expand_paths_to_source_files(paths);
 
     let mut total_satd = 0;
     let mut file_results = Vec::new();
 
-    for path in paths {
-        if !path.exists() || !path.is_file() {
-            continue;
-        }
-
+    for path in &files {
         match tokio::fs::read_to_string(path).await {
             Ok(content) => match detector.extract_from_content(&content, path) {
                 Ok(debts) => {
@@ -159,6 +201,7 @@ pub async fn analyze_satd(paths: &[PathBuf], _include_resolved: bool) -> Result<
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_dead_code(paths: &[PathBuf], _include_tests: bool) -> Result<Value> {
     use crate::services::dead_code_multi_language::analyze_dead_code_multi_language;
+    use std::collections::HashMap;
 
     // Validate input
     if paths.is_empty() {
@@ -166,38 +209,56 @@ pub async fn analyze_dead_code(paths: &[PathBuf], _include_tests: bool) -> Resul
     }
 
     let mut total_dead_code = 0;
-    let mut file_results = Vec::new();
+    let mut total_functions = 0;
+    // R17-2: analyze_dead_code_multi_language() accepts dirs OR files; call it
+    // once per provided path (dir aggregation handled by per-language strategies).
+    // Group results by file rather than by path to keep JSON structure stable.
+    let mut dead_by_file: HashMap<String, Vec<(String, usize)>> = HashMap::new();
+    let mut languages: Vec<String> = Vec::new();
 
     for path in paths {
-        if !path.exists() || !path.is_file() {
+        if !path.exists() {
             continue;
         }
-
         match analyze_dead_code_multi_language(path) {
             Ok(result) => {
-                let dead_count = result.dead_functions.len();
-                total_dead_code += dead_count;
-
-                if dead_count > 0 {
-                    file_results.push(json!({
-                        "file": path.display().to_string(),
-                        "dead_code_count": dead_count,
-                        "dead_functions": result.dead_functions.iter().map(|func| json!({
-                            "name": func.name,
-                            "line": func.line,
-                        })).collect::<Vec<_>>(),
-                    }));
+                total_dead_code += result.dead_functions.len();
+                total_functions += result.total_functions;
+                if !languages.contains(&result.language) {
+                    languages.push(result.language.clone());
+                }
+                for func in &result.dead_functions {
+                    dead_by_file
+                        .entry(func.file.clone())
+                        .or_default()
+                        .push((func.name.clone(), func.line));
                 }
             }
             Err(_) => continue,
         }
     }
 
+    let file_results: Vec<Value> = dead_by_file
+        .into_iter()
+        .map(|(file, funcs)| {
+            json!({
+                "file": file,
+                "dead_code_count": funcs.len(),
+                "dead_functions": funcs.iter().map(|(name, line)| json!({
+                    "name": name,
+                    "line": line,
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+
     Ok(json!({
         "status": "completed",
         "message": "Dead code analysis completed",
         "results": {
             "total_dead_code": total_dead_code,
+            "total_functions": total_functions,
+            "languages": languages,
             "files": file_results,
         }
     }))
