@@ -116,7 +116,7 @@ impl DogfoodingEngine {
 
         // Sort by complexity descending
         let mut sorted_contexts = file_contexts;
-        sorted_contexts.sort_by(|a, b| b.max_complexity.cmp(&a.max_complexity));
+        sorted_contexts.sort_by_key(|b| std::cmp::Reverse(b.max_complexity));
 
         analysis.push_str("## High Complexity Files\n\n");
         analysis.push_str("| File | Max Complexity | Functions | Structs | Traits |\n");

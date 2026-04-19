@@ -14,19 +14,25 @@
 //! - `analyze_handlers_tests_tdg.rs` — Unit tests (TDG, deserialization, integration)
 
 use crate::mcp_pmcp::tool_functions;
+use crate::mcp_pmcp::tool_schemas::{build_tool_info, paths_object_schema};
 use async_trait::async_trait;
+use pmcp::types::ToolInfo;
 use pmcp::{Error, RequestHandlerExtra, Result, ToolHandler};
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::path::PathBuf;
 use tracing::debug;
 
-// Re-export for convenience
+// Re-export for convenience.
+//
+// NOTE (R17-1): AnalyzeDagTool / AnalyzeDeepContextTool / AnalyzeBigOTool are
+// *not* aliases for LintHotspotTool / ChurnTool / CouplingTool. They are
+// distinct structs defined below that dispatch to the correct
+// `tool_functions::*` implementation. The earlier aliases mis-routed three
+// MCP tools (see R15 #3 bench matrix).
 pub use self::{
-    ChurnTool as AnalyzeDeepContextTool, ComplexityTool as AnalyzeComplexityTool,
-    CouplingTool as AnalyzeBigOTool, DeadCodeTool as AnalyzeDeadCodeTool,
-    LintHotspotTool as AnalyzeDagTool, SatdTool as AnalyzeSatdTool,
-    TdgCompareTool as AnalyzeTdgCompareTool, TdgTool as AnalyzeTdgTool,
+    ComplexityTool as AnalyzeComplexityTool, DeadCodeTool as AnalyzeDeadCodeTool,
+    SatdTool as AnalyzeSatdTool, TdgCompareTool as AnalyzeTdgCompareTool, TdgTool as AnalyzeTdgTool,
 };
 
 // Complexity analysis tool handler

@@ -17,10 +17,12 @@ use crate::mcp_pmcp::tool_functions::{
     tdg_analyze_with_storage, tdg_configure_storage, tdg_health_check, tdg_performance_metrics,
     tdg_storage_management, tdg_system_diagnostics,
 };
+use crate::mcp_pmcp::tool_schemas::{build_tool_info, paths_object_schema};
 use async_trait::async_trait;
+use pmcp::types::ToolInfo;
 use pmcp::{Error, RequestHandlerExtra, Result, ToolHandler};
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::path::PathBuf;
 use tracing::debug;
 

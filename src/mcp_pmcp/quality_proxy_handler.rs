@@ -1,9 +1,11 @@
+use crate::mcp_pmcp::tool_schemas::build_tool_info;
 use crate::models::proxy::{ProxyMode, ProxyOperation, ProxyRequest, QualityConfig};
 use crate::services::quality_proxy::QualityProxyService;
 use async_trait::async_trait;
+use pmcp::types::ToolInfo;
 use pmcp::{Error, RequestHandlerExtra, Result, ToolHandler};
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use tracing::{debug, info};
 
 /// Input parameters for the quality proxy tool.

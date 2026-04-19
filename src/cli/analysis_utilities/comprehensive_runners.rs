@@ -61,7 +61,7 @@ async fn run_complexity_analysis(
     }
 
     // Sort hotspots by complexity
-    functions.sort_unstable_by(|a, b| b.complexity.cmp(&a.complexity));
+    functions.sort_unstable_by_key(|b| std::cmp::Reverse(b.complexity));
     functions.truncate(10);
 
     // Calculate p99

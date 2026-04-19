@@ -210,7 +210,7 @@ fn find_duplicate_blocks(
     }
 
     // Sort by lines descending
-    duplicates.sort_by(|a, b| b.lines.cmp(&a.lines));
+    duplicates.sort_by_key(|b| std::cmp::Reverse(b.lines));
 
     duplicates
 }

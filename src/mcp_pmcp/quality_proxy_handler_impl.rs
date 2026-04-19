@@ -1,5 +1,34 @@
 #[async_trait]
 impl ToolHandler for QualityProxyTool {
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "operation":  { "type": "string", "enum": ["write", "edit", "append"], "description": "File operation to proxy" },
+                "file_path":  { "type": "string", "description": "Target file path" },
+                "content":     { "type": "string", "description": "New content for `write`/`append`" },
+                "old_content": { "type": "string", "description": "Old string for `edit` operations" },
+                "new_content": { "type": "string", "description": "New string for `edit` operations" },
+                "mode":        { "type": "string", "enum": ["strict", "advisory", "auto_fix", "auto-fix"], "description": "Proxy enforcement mode" },
+                "quality_config": {
+                    "type": "object",
+                    "properties": {
+                        "max_complexity": { "type": "integer" },
+                        "allow_satd":     { "type": "boolean" },
+                        "require_docs":   { "type": "boolean" },
+                        "auto_format":    { "type": "boolean" }
+                    }
+                }
+            },
+            "required": ["operation", "file_path"]
+        });
+        Some(build_tool_info(
+            "quality_proxy",
+            "Proxy a file operation (write/edit/append) through the quality gate, optionally auto-fixing violations.",
+            schema,
+        ))
+    }
+
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
         debug!("Handling quality_proxy with args: {}", args);
 

@@ -50,7 +50,7 @@ pub(crate) fn try_dominant_type(entries: &[&FunctionEntry]) -> Option<(String, f
                 (td.function_name.as_str(), count)
             })
             .collect();
-        type_method_counts.sort_by(|a, b| b.1.cmp(&a.1));
+        type_method_counts.sort_by_key(|b| std::cmp::Reverse(b.1));
 
         if let Some((dominant_name, dominant_count)) = type_method_counts.first() {
             let total_fns = entries

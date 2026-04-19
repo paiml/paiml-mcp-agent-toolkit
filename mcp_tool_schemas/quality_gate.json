@@ -1,0 +1,26 @@
+{
+  "name": "quality_gate",
+  "description": "Run comprehensive quality analysis over the given paths. Checks complexity, SATD, dead code, and coverage against configured thresholds.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "paths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "List of paths to analyze."
+      },
+      "strict": {
+        "type": "boolean",
+        "default": false,
+        "description": "Fail on warnings as well as errors."
+      },
+      "file": {
+        "type": "string",
+        "description": "Single file to check (overrides paths)."
+      }
+    },
+    "required": ["paths"]
+  }
+}

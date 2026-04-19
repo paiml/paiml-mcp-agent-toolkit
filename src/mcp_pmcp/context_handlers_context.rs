@@ -59,6 +59,20 @@ impl ToolHandler for ContextGenerateTool {
             Some(format) => Err(Error::validation(format!("Unsupported format: {format}"))),
         }
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "format":               { "type": "string", "enum": ["json", "markdown", "xml"], "description": "Output format" },
+            "max_depth":            { "type": "integer", "description": "Max directory-tree depth to include" },
+            "include_dependencies": { "type": "boolean", "description": "Include dependency graph" }
+        });
+        // Registered as `generate_context` in server.rs.
+        Some(build_tool_info(
+            "generate_context",
+            "Generate project context (file tree + optional dependency graph) for LLM/agent consumption.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
+    }
 }
 
 // Context Analyze Tool
@@ -144,5 +158,17 @@ impl ToolHandler for ContextSummaryTool {
             .map_err(|e| Error::internal(format!("Context summary failed: {e}")))?;
 
         Ok(summary)
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "level": { "type": "string", "enum": ["brief", "normal", "detailed"], "description": "Summary detail level" }
+        });
+        // Registered as `scaffold_project` in server.rs (historical alias).
+        Some(build_tool_info(
+            "scaffold_project",
+            "Produce a high-level project summary scaffold for the given paths.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
     }
 }

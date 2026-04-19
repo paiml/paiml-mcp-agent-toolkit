@@ -262,7 +262,7 @@ fn get_sorted_file_counts(symbols: &[Symbol]) -> Vec<(&str, usize)> {
     }
 
     let mut sorted_files: Vec<_> = file_counts.into_iter().collect();
-    sorted_files.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted_files.sort_by_key(|b| std::cmp::Reverse(b.1));
     sorted_files
 }
 

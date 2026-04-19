@@ -239,11 +239,7 @@ impl DeepContextAnalyzer {
                 duplicate_code_results: params.analyses.duplicate_code_results,
                 satd_results: params.analyses.satd_results,
                 provability_results: params.analyses.provability_results,
-                cross_language_refs: params
-                    .cross_refs
-                    .into_iter()
-                    .flat_map(|(_, refs)| refs)
-                    .collect(),
+                cross_language_refs: params.cross_refs.into_values().flatten().collect(),
                 big_o_analysis: params.analyses.big_o_analysis,
             },
             quality_scorecard: params.quality_scorecard,

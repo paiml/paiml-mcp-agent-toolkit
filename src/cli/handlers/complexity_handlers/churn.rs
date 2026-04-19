@@ -74,7 +74,7 @@ fn apply_churn_filters(
     if top_files > 0 && analysis.files.len() > top_files {
         analysis
             .files
-            .sort_by(|a, b| b.commit_count.cmp(&a.commit_count));
+            .sort_by_key(|b| std::cmp::Reverse(b.commit_count));
         analysis.files.truncate(top_files);
     }
 }
