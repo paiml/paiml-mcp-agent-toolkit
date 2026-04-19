@@ -92,6 +92,20 @@ impl ToolHandler for TdgTool {
 
         Ok(results)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "threshold":          { "type": "number",  "description": "Minimum TDG score threshold" },
+            "top_files":          { "type": "integer", "description": "Return only the top N files" },
+            "include_components": { "type": "boolean", "description": "Include per-metric component breakdown" },
+            "with_git_context":   { "type": "boolean", "description": "Correlate scores with git commit history (Sprint 65)" }
+        });
+        Some(build_tool_info(
+            "analyze_tdg",
+            "Compute Technical Debt Grading (TDG) scores across orthogonal quality metrics.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
+    }
 }
 
 // TDG Comparison Tool
@@ -152,5 +166,22 @@ impl ToolHandler for TdgCompareTool {
             .map_err(|e| Error::internal(format!("TDG comparison failed: {e}")))?;
 
         Ok(results)
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "path1":            { "type": "string",  "description": "Baseline path to compare" },
+                "path2":            { "type": "string",  "description": "Candidate path to compare" },
+                "with_git_context": { "type": "boolean", "description": "Include git commit correlation (Sprint 65)" }
+            },
+            "required": ["path1", "path2"]
+        });
+        Some(build_tool_info(
+            "analyze_tdg_compare",
+            "Diff TDG scores between two paths (files or directories).",
+            schema,
+        ))
     }
 }

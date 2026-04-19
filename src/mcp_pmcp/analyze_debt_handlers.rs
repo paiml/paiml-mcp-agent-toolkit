@@ -70,6 +70,17 @@ impl ToolHandler for SatdTool {
 
         Ok(results)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "include_resolved": { "type": "boolean", "description": "Include items already marked resolved" }
+        });
+        Some(build_tool_info(
+            "analyze_satd",
+            "Detect self-admitted technical debt (TODO, FIXME, HACK markers) in source code.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
+    }
 }
 
 // Dead Code Analysis Tool
@@ -115,5 +126,16 @@ impl ToolHandler for DeadCodeTool {
             .map_err(|e| Error::internal(format!("Dead code analysis failed: {e}")))?;
 
         Ok(results)
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "include_tests": { "type": "boolean", "description": "Include test files when searching for dead code" }
+        });
+        Some(build_tool_info(
+            "analyze_dead_code",
+            "Find unreachable or unused code (functions, types, or modules).",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
     }
 }

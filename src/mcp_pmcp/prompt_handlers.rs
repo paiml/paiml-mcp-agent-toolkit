@@ -4,10 +4,12 @@
 //! organizational intelligence and defect patterns from OIP analysis.
 
 use crate::mcp_pmcp::tool_functions;
+use crate::mcp_pmcp::tool_schemas::build_tool_info;
 use async_trait::async_trait;
+use pmcp::types::ToolInfo;
 use pmcp::{Error, RequestHandlerExtra, Result, ToolHandler};
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::path::PathBuf;
 use tracing::debug;
 
@@ -102,6 +104,23 @@ impl ToolHandler for DefectAwarePromptTool {
                 .map_err(|e| Error::internal(format!("Prompt generation failed: {e}")))?;
 
         Ok(results)
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "task":         { "type": "string", "description": "Task description the prompt should address" },
+                "context":      { "type": "string", "description": "Free-form context for the prompt" },
+                "summary_path": { "type": "string", "description": "Path to the organizational intelligence summary YAML" }
+            },
+            "required": ["task", "context", "summary_path"]
+        });
+        Some(build_tool_info(
+            "generate_defect_aware_prompt",
+            "Generate a defect-aware AI prompt enriched with organizational intelligence and historical defect patterns.",
+            schema,
+        ))
     }
 }
 
