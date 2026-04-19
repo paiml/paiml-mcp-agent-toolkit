@@ -57,6 +57,9 @@ are rejected to avoid silently analyzing the server's current directory \
     Ok(PathBuf::from(raw))
 }
 
+// --- Shared project_path glob resolution (R22-2 / D102) ---
+include!("core_tools_path_resolve.rs");
+
 // --- Tool call dispatch (routing, classification) ---
 include!("core_tools_dispatch.rs");
 

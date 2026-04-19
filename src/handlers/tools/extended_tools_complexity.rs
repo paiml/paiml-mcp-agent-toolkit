@@ -22,21 +22,23 @@ struct ComplexityAnalysisContext {
     _thresholds: crate::services::complexity::ComplexityThresholds,
 }
 
-/// R22-1 / D101: project_path is now required and validated up-front in
-/// `handle_analyze_complexity`. This helper receives the already-validated
-/// `PathBuf` and fills in the remaining context.
+/// R22-1 / D101: project_path is required. `resolve_project_path_complexity`
+/// rejects null/missing/empty values.
+/// R22-2 / D102: resolve glob patterns in project_path before toolchain
+/// detection so that `src/**` or `crates/*/src/**` produce a concrete
+/// directory instead of the "authoritative zeros" pre-R21-4 behavior.
 fn prepare_complexity_analysis(
     args: &AnalyzeComplexityArgs,
-    project_path: PathBuf,
-) -> ComplexityAnalysisContext {
+) -> Result<ComplexityAnalysisContext, String> {
+    let project_path = resolve_project_path_complexity(args.project_path.clone())?;
     let toolchain = detect_toolchain(&args.toolchain, &project_path);
     let thresholds = build_complexity_thresholds(args);
 
-    ComplexityAnalysisContext {
+    Ok(ComplexityAnalysisContext {
         project_path,
         toolchain,
         _thresholds: thresholds,
-    }
+    })
 }
 
 async fn perform_complexity_analysis(
@@ -112,13 +114,12 @@ async fn handle_analyze_complexity(
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
-    // R22-1 / D101: require explicit project_path; reject null/missing/empty.
-    let project_path = match require_project_path(args.project_path.clone()) {
-        Ok(p) => p,
-        Err(e) => return McpResponse::error(request_id, -32602, e),
+    // R22-1 / D101 + R22-2 / D102: validate project_path (reject null/
+    // missing/empty) then glob-expand; fail loud with `-32602` if empty glob.
+    let context = match prepare_complexity_analysis(&args) {
+        Ok(ctx) => ctx,
+        Err(msg) => return McpResponse::error(request_id, -32602, msg),
     };
-
-    let context = prepare_complexity_analysis(&args, project_path);
 
     info!(
         "Analyzing complexity for {:?} using {} toolchain",
@@ -140,6 +141,24 @@ async fn handle_analyze_complexity(
         &args,
     )
 }
+
+/// R22-1 / D101 + R22-2 / D102: Validate and glob-expand `project_path`.
+///
+/// D101: reject null/missing/empty values to avoid silently analyzing the
+/// server's cwd.
+/// D102: expand shell-style globs via the shared `services::path_glob`
+/// helper, failing loud on empty expansion.
+fn resolve_project_path_complexity(project_path_arg: Option<String>) -> Result<PathBuf, String> {
+    let _validated = require_project_path(project_path_arg.clone())?;
+    let raw = project_path_arg
+        .as_deref()
+        .expect("require_project_path returned Ok for None");
+    match resolve_project_path_with_globs(raw) {
+        ResolvedProjectPath::Concrete(p) => Ok(p),
+        e @ ResolvedProjectPath::EmptyGlob(_) => Err(e.into_error_message()),
+    }
+}
+
 
 fn detect_toolchain(toolchain_arg: &Option<String>, project_path: &Path) -> String {
     if let Some(t) = toolchain_arg {

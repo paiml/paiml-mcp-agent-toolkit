@@ -196,6 +196,7 @@ pub mod ml_seed; // ML Reproducibility: Seed management for deterministic operat
 pub mod normalized_score; // PMAT-454: Universal 0-100 score normalization
 pub mod parallel_git;
 pub mod parsed_file_cache;
+pub mod path_glob; // R22-2 / D102: Shared glob expansion for MCP dispatchers
 pub mod pdmt_quality_integration;
 pub mod pdmt_service;
 pub mod popper_score; // Popper Falsifiability Score v1.1 (Popperian science standards)

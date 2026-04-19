@@ -1,118 +1,13 @@
-/// Returns `true` when `p` contains glob metacharacters (`*`, `?`, `[`).
-///
-/// Used to decide whether a raw input path should be routed through
-/// [`glob::glob_with`] before the filesystem walk in
-/// [`expand_paths_to_source_files`].
-fn path_has_glob_meta(p: &Path) -> bool {
-    p.to_str()
-        .is_some_and(|s| s.contains('*') || s.contains('?') || s.contains('['))
-}
+// R21-4 (D98) / R22-2 (D102): Glob expansion + source-tree walking live in
+// the shared `crate::services::path_glob` module so the parallel
+// `src/handlers/tools/` dispatcher can use the same implementation.
+use crate::services::path_glob::expand_paths_to_source_files;
 
-/// Expand shell-style glob patterns into concrete filesystem entries.
-///
-/// Non-glob paths pass through unchanged. Glob entries are matched with
-/// `require_literal_separator = false`, letting `**` (and a bare `*`) cross
-/// directory boundaries so that `**/*.rs`, `src/**`, and `src/**/*.rs` all
-/// produce the results users expect. Patterns that match nothing yield an
-/// empty set (no literal fallback, mirroring POSIX shell behavior).
-///
-/// R21-4 (D98): MCP analysis tools receive `paths` as raw strings converted
-/// to `PathBuf`. A pattern like `"**/*.rs"` becomes a non-existent literal
-/// path; `path.exists()` is false and the downstream walk yields authoritative
-/// zeros. Expanding globs here makes the pipeline match the documented CLI
-/// semantics (`rust-docs/cli-reference.md` lines 403-404).
-fn resolve_paths_with_globs(paths: &[PathBuf]) -> Vec<PathBuf> {
-    use glob::{glob_with, MatchOptions};
-
-    // `require_literal_separator = false` is the critical flag: it lets `**`
-    // (and a bare `*`) match across `/` boundaries, which is what every user
-    // expects from `**/*.rs`.
-    let opts = MatchOptions {
-        case_sensitive: true,
-        require_literal_separator: false,
-        require_literal_leading_dot: false,
-    };
-
-    let mut out = Vec::with_capacity(paths.len());
-    for path in paths {
-        if !path_has_glob_meta(path) {
-            out.push(path.clone());
-            continue;
-        }
-        let Some(pattern) = path.to_str() else {
-            // Non-UTF8 globs are unsupported; preserve the literal PathBuf so
-            // existence checks yield a clean zero rather than an error.
-            out.push(path.clone());
-            continue;
-        };
-        match glob_with(pattern, opts) {
-            Ok(iter) => out.extend(iter.flatten()),
-            Err(_) => {
-                // Malformed pattern: fall back to literal (will miss later).
-                out.push(path.clone());
-            }
-        }
-    }
-    out
-}
-
-/// Expand a list of paths into a flat list of source files.
-///
-/// When a path contains glob metacharacters (`*`, `?`, `[`) it is first
-/// expanded via [`resolve_paths_with_globs`], then each resolved entry is
-/// processed: files are included verbatim; directories are walked (via
-/// `walkdir`) to enumerate all source files beneath them (`rs`, `py`, `js`,
-/// `ts`, `tsx`, `jsx`, `java`, `cpp`, `cc`, `cxx`, `c`, `h`, `hpp`, `go`,
-/// `rb`, `php`, `swift`, `kt`, `lua`, `sh`). Hidden dirs, `target/`, and
-/// `node_modules/` are skipped.
-///
-/// R17-2 (D82): MCP handlers previously only accepted files, returning zeros
-/// for directory inputs ("authoritative zeros" regression).
-/// R21-4 (D98): The same handlers also silently ignored glob-style inputs like
-/// `**/*.rs` because the raw `PathBuf` was a non-existent literal. Globs are
-/// now resolved before the walk.
-fn expand_paths_to_source_files(paths: &[PathBuf]) -> Vec<PathBuf> {
-    use walkdir::WalkDir;
-    const EXTENSIONS: &[&str] = &[
-        "rs", "py", "js", "ts", "tsx", "jsx", "java", "cpp", "cc", "cxx", "c", "h", "hpp", "go",
-        "rb", "php", "swift", "kt", "lua", "sh",
-    ];
-
-    let resolved = resolve_paths_with_globs(paths);
-    let mut out = Vec::new();
-    for path in &resolved {
-        if !path.exists() {
-            continue;
-        }
-        if path.is_file() {
-            out.push(path.clone());
-            continue;
-        }
-        if path.is_dir() {
-            for entry in WalkDir::new(path)
-                .follow_links(false)
-                .into_iter()
-                .filter_entry(|e| {
-                    // Always accept the root, filter only descendant dirs/files.
-                    if e.depth() == 0 {
-                        return true;
-                    }
-                    let n = e.file_name().to_string_lossy();
-                    !(n.starts_with('.') || n == "target" || n == "node_modules")
-                })
-                .filter_map(std::result::Result::ok)
-                .filter(|e| e.file_type().is_file())
-            {
-                if let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) {
-                    if EXTENSIONS.contains(&ext) {
-                        out.push(entry.path().to_path_buf());
-                    }
-                }
-            }
-        }
-    }
-    out
-}
+// Re-export for the existing `coverage_tests` suite, which references
+// `resolve_paths_with_globs` at module scope (R21-4 test fixture carried
+// over from before the service extraction).
+#[cfg(test)]
+use crate::services::path_glob::resolve_paths_with_globs;
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn analyze_complexity(

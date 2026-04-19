@@ -180,7 +180,7 @@ pub(crate) async fn handle_analyze_satd(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    let args = match parse_satd_args(arguments) {
+    let mut args = match parse_satd_args(arguments) {
         Ok(args) => args,
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
@@ -192,6 +192,15 @@ pub(crate) async fn handle_analyze_satd(
     if let Err(e) = require_non_empty_path(&args.project_path, "project_path") {
         return McpResponse::error(request_id, -32602, e);
     }
+
+    // R22-2 / D102: glob-aware `project_path` with fail-loud -32602 on empty
+    // expansion. Shared helper: `services::path_glob`.
+    args.project_path = match resolve_project_path_with_globs(&args.project_path) {
+        ResolvedProjectPath::Concrete(p) => p.to_string_lossy().into_owned(),
+        e @ ResolvedProjectPath::EmptyGlob(_) => {
+            return McpResponse::error(request_id, -32602, e.into_error_message());
+        }
+    };
 
     info!("Analyzing SATD for project: {:?}", args.project_path);
 
@@ -364,17 +373,25 @@ pub(crate) async fn handle_analyze_lint_hotspot(
     request_id: serde_json::Value,
     arguments: serde_json::Value,
 ) -> McpResponse {
-    let args = match parse_lint_hotspot_args(arguments) {
+    let mut args = match parse_lint_hotspot_args(arguments) {
         Ok(args) => args,
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
     // R22-1 / D101: reject missing/empty/whitespace project_path to avoid
     // silently running clippy on the server's cwd.
-    let project_path = match require_non_empty_path(&args.project_path, "project_path") {
-        Ok(p) => p,
-        Err(e) => return McpResponse::error(request_id, -32602, e),
+    if let Err(e) = require_non_empty_path(&args.project_path, "project_path") {
+        return McpResponse::error(request_id, -32602, e);
+    }
+
+    // R22-2 / D102: glob-aware `project_path`, `-32602` on empty expansion.
+    args.project_path = match resolve_project_path_with_globs(&args.project_path) {
+        ResolvedProjectPath::Concrete(p) => p.to_string_lossy().into_owned(),
+        e @ ResolvedProjectPath::EmptyGlob(_) => {
+            return McpResponse::error(request_id, -32602, e.into_error_message());
+        }
     };
+    let project_path = PathBuf::from(&args.project_path);
 
     info!(
         "Analyzing lint hotspots for project: {:?}",

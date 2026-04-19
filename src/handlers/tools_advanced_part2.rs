@@ -266,10 +266,11 @@ pub(crate) async fn handle_analyze_tdg(
         }
     };
 
-    // R22-1 / D101: require explicit project_path; reject null/missing/empty.
-    let project_path = match require_project_path_advanced(args.project_path.clone()) {
+    // R22-1 / D101 + R22-2 / D102: require explicit project_path (reject
+    // null/missing/empty), then glob-expand via shared `services::path_glob`.
+    let project_path = match extract_tdg_project_path(&args) {
         Ok(p) => p,
-        Err(e) => return McpResponse::error(request_id, -32602, e),
+        Err(msg) => return McpResponse::error(request_id, -32602, msg),
     };
     info!("Analyzing Technical Debt Gradient for {:?}", project_path);
 
@@ -281,6 +282,25 @@ pub(crate) async fn handle_analyze_tdg(
 fn parse_tdg_args(arguments: serde_json::Value) -> Result<AnalyzeTdgArgs, serde_json::Error> {
     serde_json::from_value(arguments)
 }
+
+/// Toyota Way Helper: Extract TDG project path
+///
+/// R22-1 / D101: reject null/missing/empty `project_path` (caller wraps as
+/// JSON-RPC `-32602`).
+/// R22-2 / D102: glob-aware resolution via shared `services::path_glob`.
+fn extract_tdg_project_path(args: &AnalyzeTdgArgs) -> Result<PathBuf, String> {
+    let _validated = require_project_path_advanced(args.project_path.clone())?;
+    // Safe: `require_project_path_advanced` rejected None/empty above.
+    let raw = args
+        .project_path
+        .as_deref()
+        .expect("require_project_path_advanced returned Ok for None");
+    match resolve_project_path_with_globs(raw) {
+        ResolvedProjectPath::Concrete(p) => Ok(p),
+        e @ ResolvedProjectPath::EmptyGlob(_) => Err(e.into_error_message()),
+    }
+}
+
 
 /// Toyota Way Helper: Run TDG analysis and format response
 async fn run_and_format_tdg_analysis(

@@ -22,14 +22,17 @@ async fn handle_analyze_code_churn(
         }
     };
 
-    // R22-1 / D101: require explicit project_path; reject null/missing/empty.
-    let project_path = match require_project_path(args.project_path.clone()) {
-        Ok(p) => p,
-        Err(e) => return McpResponse::error(request_id, -32602, e),
-    };
+    // R22-1 / D101: require explicit project_path (reject null/missing/empty)
+    // BEFORE handing off to glob expansion (R22-2 / D102).
+    if let Err(e) = require_project_path(args.project_path.clone()) {
+        return McpResponse::error(request_id, -32602, e);
+    }
 
-    // Extract remaining analysis parameters
-    let (period_days, format) = extract_churn_parameters(&args);
+    // Extract analysis parameters (R22-2 / D102: glob-aware).
+    let (project_path, period_days, format) = match extract_churn_parameters(&args) {
+        Ok(v) => v,
+        Err(msg) => return McpResponse::error(request_id, -32602, msg),
+    };
 
     info!(
         "Analyzing code churn for {:?} over {} days",
@@ -47,11 +50,26 @@ fn parse_code_churn_args(
     serde_json::from_value(arguments)
 }
 
-/// Toyota Way Helper: Extract churn analysis parameters (period_days + format).
+/// Toyota Way Helper: Extract churn analysis parameters.
 ///
-/// R22-1 / D101: project_path is now validated separately via
-/// `require_project_path()` in the handler.
-fn extract_churn_parameters(args: &AnalyzeCodeChurnArgs) -> (u32, ChurnOutputFormat) {
+/// R22-1 / D101: project_path is validated upstream in the handler via
+/// `require_project_path()` (reject null/missing/empty).
+///
+/// R22-2 / D102: `project_path` now supports shell-style globs (`**`,
+/// `src/**`, `crates/*/src/**`, etc.) via the shared
+/// `services::path_glob` helper. Empty expansion yields a JSON-RPC
+/// `-32602` error so clients fail loud instead of seeing zeros.
+fn extract_churn_parameters(
+    args: &AnalyzeCodeChurnArgs,
+) -> Result<(PathBuf, u32, ChurnOutputFormat), String> {
+    let project_path = match args.project_path.as_deref() {
+        Some(raw) => match resolve_project_path_with_globs(raw) {
+            ResolvedProjectPath::Concrete(p) => p,
+            e @ ResolvedProjectPath::EmptyGlob(_) => return Err(e.into_error_message()),
+        },
+        None => std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+    };
+
     let period_days = args.period_days.unwrap_or(30);
 
     let format = args
@@ -60,7 +78,7 @@ fn extract_churn_parameters(args: &AnalyzeCodeChurnArgs) -> (u32, ChurnOutputFor
         .and_then(|f| f.parse::<ChurnOutputFormat>().ok())
         .unwrap_or(ChurnOutputFormat::Summary);
 
-    (period_days, format)
+    Ok((project_path, period_days, format))
 }
 
 /// Toyota Way Helper: Run analysis and format response

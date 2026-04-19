@@ -8,10 +8,11 @@ pub(crate) async fn handle_analyze_deep_context(
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
-    // R22-1 / D101: require explicit project_path; reject null/missing/empty.
-    let project_path = match require_project_path_advanced(args.project_path.clone()) {
+    // R22-1 / D101 + R22-2 / D102: require explicit project_path (reject
+    // null/missing/empty), then glob-expand via shared `services::path_glob`.
+    let project_path = match resolve_deep_context_project_path(args.project_path.clone()) {
         Ok(p) => p,
-        Err(e) => return McpResponse::error(request_id, -32602, e),
+        Err(msg) => return McpResponse::error(request_id, -32602, msg),
     };
     info!("Running deep context analysis for {:?}", project_path);
 
@@ -33,6 +34,21 @@ pub(crate) async fn handle_analyze_deep_context(
 fn parse_deep_context_args(arguments: serde_json::Value) -> Result<AnalyzeDeepContextArgs, String> {
     serde_json::from_value(arguments)
         .map_err(|e| format!("Invalid analyze_deep_context arguments: {e}"))
+}
+
+/// R22-1 / D101 + R22-2 / D102: Resolve `project_path` for deep context.
+/// Rejects null/missing/empty values (D101) and glob-expands any pattern via
+/// the shared `services::path_glob` helper (D102). Empty glob expansion is
+/// surfaced to the caller as `-32602`.
+fn resolve_deep_context_project_path(project_path: Option<String>) -> Result<PathBuf, String> {
+    let _validated = require_project_path_advanced(project_path.clone())?;
+    let raw = project_path
+        .as_deref()
+        .expect("require_project_path_advanced returned Ok for None");
+    match resolve_project_path_with_globs(raw) {
+        ResolvedProjectPath::Concrete(p) => Ok(p),
+        e @ ResolvedProjectPath::EmptyGlob(_) => Err(e.into_error_message()),
+    }
 }
 
 /// R22-1 / D101: `default_project_path` is retained as a serde default
@@ -419,7 +435,7 @@ pub(crate) async fn handle_analyze_provability(
         analysis_depth: Option<usize>,
     }
 
-    let args: ProvabilityArgs = match arguments {
+    let mut args: ProvabilityArgs = match arguments {
         Some(args) => match serde_json::from_value(args) {
             Ok(args) => args,
             Err(e) => {
@@ -446,6 +462,16 @@ pub(crate) async fn handle_analyze_provability(
     }
 
     info!("Analyzing provability for project: {:?}", args.project_path);
+
+    // R22-2 / D102: glob-aware resolution for `project_path`. Empty glob
+    // expansion is rejected up-front with `-32602` (matching the R21-4
+    // fail-loud contract).
+    args.project_path = match resolve_project_path_with_globs(&args.project_path) {
+        ResolvedProjectPath::Concrete(p) => p.to_string_lossy().into_owned(),
+        e @ ResolvedProjectPath::EmptyGlob(_) => {
+            return McpResponse::error(request_id, -32602, e.into_error_message());
+        }
+    };
 
     // Use the existing provability analyzer service
     use crate::services::lightweight_provability_analyzer::{
