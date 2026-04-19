@@ -1,6 +1,8 @@
+use crate::mcp_pmcp::tool_schemas::build_tool_info;
 use crate::mcp_server::state_manager::StateManager;
 use crate::models::refactor::RefactorConfig;
 use async_trait::async_trait;
+use pmcp::types::ToolInfo;
 use pmcp::{Error as PmcpError, RequestHandlerExtra, Result as PmcpResult, ToolHandler};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

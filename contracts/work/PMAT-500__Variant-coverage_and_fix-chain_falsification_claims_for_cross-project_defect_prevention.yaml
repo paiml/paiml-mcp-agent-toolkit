@@ -1,6 +1,13 @@
 # Auto-generated from .pmat-work/PMAT-500__Variant-coverage_and_fix-chain_falsification_claims_for_cross-project_defect_prevention/contract.json
 name: "PMAT-500: Variant-coverage and fix-chain falsification claims for cross-project defect prevention"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "Auto-generated work-contract for PMAT-500: Variant-coverage and fix-chain falsification claims for cross-project defect prevention"
+  references:
+    - ".pmat-work/PMAT-500__Variant-coverage_and_fix-chain_falsification_claims_for_cross-project_defect_prevention/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L1
   current_level: L1
+  total_obligations: 21

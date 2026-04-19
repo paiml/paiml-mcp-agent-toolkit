@@ -3,7 +3,7 @@ fn vectorized_tool_definitions() -> Vec<serde_json::Value> {
     vec![
         json!({
             "name": "analyze_duplicates_vectorized",
-            "description": "High-performance duplicate code detection using SIMD operations",
+            "description": "(unimplemented stub — KAIZEN-0200) High-performance duplicate code detection using SIMD operations. Invocation returns JSON-RPC error -32001.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -34,7 +34,7 @@ fn vectorized_tool_definitions() -> Vec<serde_json::Value> {
         }),
         json!({
             "name": "analyze_graph_metrics_vectorized",
-            "description": "Compute graph centrality metrics using vectorized algorithms",
+            "description": "(unimplemented stub — KAIZEN-0200) Compute graph centrality metrics using vectorized algorithms. Invocation returns JSON-RPC error -32001.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -60,7 +60,7 @@ fn vectorized_tool_definitions() -> Vec<serde_json::Value> {
         }),
         json!({
             "name": "analyze_name_similarity_vectorized",
-            "description": "Fast identifier similarity search using SIMD string operations",
+            "description": "(unimplemented stub — KAIZEN-0200) Fast identifier similarity search using SIMD string operations. Invocation returns JSON-RPC error -32001.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -86,7 +86,7 @@ fn vectorized_tool_definitions() -> Vec<serde_json::Value> {
         }),
         json!({
             "name": "analyze_symbol_table_vectorized",
-            "description": "Build and analyze symbol tables with parallel parsing",
+            "description": "(unimplemented stub — KAIZEN-0200) Build and analyze symbol tables with parallel parsing. Invocation returns JSON-RPC error -32001.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -104,7 +104,7 @@ fn vectorized_tool_definitions() -> Vec<serde_json::Value> {
         }),
         json!({
             "name": "analyze_incremental_coverage_vectorized",
-            "description": "Compute coverage changes with vectorized diff operations",
+            "description": "(unimplemented stub — KAIZEN-0200) Compute coverage changes with vectorized diff operations. Invocation returns JSON-RPC error -32001.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -126,7 +126,7 @@ fn vectorized_tool_definitions() -> Vec<serde_json::Value> {
         }),
         json!({
             "name": "analyze_big_o_vectorized",
-            "description": "Analyze algorithmic complexity using parallel pattern matching",
+            "description": "(unimplemented stub — KAIZEN-0200) Analyze algorithmic complexity using parallel pattern matching. Invocation returns JSON-RPC error -32001.",
             "inputSchema": {
                 "type": "object",
                 "properties": {

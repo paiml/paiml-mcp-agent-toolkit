@@ -1,6 +1,13 @@
 # Auto-generated from .pmat-work/PMAT-DBC-13/contract.json
 name: "PMAT-DBC-13"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "Auto-generated work-contract for PMAT-DBC-13"
+  references:
+    - ".pmat-work/PMAT-DBC-13/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L1
   current_level: L1
+  total_obligations: 36
