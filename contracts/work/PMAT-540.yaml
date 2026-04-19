@@ -1,9 +1,15 @@
 # Auto-generated from .pmat-work/PMAT-540/contract.json
 name: "PMAT-540"
+metadata:
+  version: "1.0.0"
+  description: "Auto-generated work-contract for PMAT-540"
+  references:
+    - ".pmat-work/PMAT-540/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L2
   current_level: L2
+  total_obligations: 0
 preconditions:
   - "All 8 phases of commit-level enforcement implemented with 29 CB checks"
   - "9/10 remediation items done (R-1..R-10, R-3 deferred)"

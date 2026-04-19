@@ -1,9 +1,15 @@
 # Auto-generated from .pmat-work/PMAT-541/contract.json
 name: "PMAT-541"
+metadata:
+  version: "1.0.0"
+  description: "Auto-generated work-contract for PMAT-541"
+  references:
+    - ".pmat-work/PMAT-541/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L2
   current_level: L2
+  total_obligations: 0
 preconditions:
   - "#[contract] proc_macro generates debug_assert! from YAML preconditions"
   - "CB-1340 penetration increases from 1.6% to 10%+ after bulk annotation"

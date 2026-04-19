@@ -1,6 +1,12 @@
 # Auto-generated from .pmat-work/GH-226/contract.json
 name: "GH-226"
+metadata:
+  version: "1.0.0"
+  description: "Auto-generated work-contract for GH-226"
+  references:
+    - ".pmat-work/GH-226/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L1
   current_level: L1
+  total_obligations: 22

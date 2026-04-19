@@ -1,6 +1,12 @@
 # Auto-generated from .pmat-work/baseline-v1/contract.json
 name: "baseline-v1"
+metadata:
+  version: "1.0.0"
+  description: "Auto-generated work-contract for baseline-v1"
+  references:
+    - ".pmat-work/baseline-v1/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L3
   current_level: L3
+  total_obligations: 22

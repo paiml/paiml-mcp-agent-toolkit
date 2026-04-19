@@ -1,6 +1,12 @@
 # Auto-generated from .pmat-work/DOGFOOD-001/contract.json
 name: "DOGFOOD-001"
+metadata:
+  version: "1.0.0"
+  description: "Auto-generated work-contract for DOGFOOD-001"
+  references:
+    - ".pmat-work/DOGFOOD-001/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L3
   current_level: L3
+  total_obligations: 21
