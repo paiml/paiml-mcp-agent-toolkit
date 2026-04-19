@@ -842,10 +842,16 @@ mod coverage_tests {
     async fn test_analyze_dead_code_walks_directory() -> Result<()> {
         // Create a minimal Rust project so language detection finds "rust"
         let temp_dir = TempDir::new()?;
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname=\"t\"\nversion=\"0.1.0\"\n")?;
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname=\"t\"\nversion=\"0.1.0\"\n",
+        )?;
         let src = temp_dir.path().join("src");
         fs::create_dir(&src)?;
-        fs::write(src.join("lib.rs"), "pub fn used() {}\nfn unused_helper() { let _=1; }\n")?;
+        fs::write(
+            src.join("lib.rs"),
+            "pub fn used() {}\nfn unused_helper() { let _=1; }\n",
+        )?;
 
         let paths = vec![temp_dir.path().to_path_buf()];
         let json = analyze_dead_code(&paths, false).await.unwrap();
@@ -873,6 +879,197 @@ mod coverage_tests {
         assert!(
             total >= 2,
             "expected >=2 files in context, got {total}; json={json}"
+        );
+        Ok(())
+    }
+
+    // ==================== R21-4 D98 GLOB EXPANSION TESTS ====================
+    // MCP analyze_* handlers receive PathBufs built from raw client strings.
+    // When the client passes `**/*.rs`, the PathBuf is a literal non-existent
+    // path and `path.exists()` returns false. `resolve_paths_with_globs` must
+    // expand such glob patterns BEFORE the existence check so downstream
+    // file-count metrics are non-zero.
+
+    /// Helper: build a small on-disk Rust project with root + nested files.
+    fn make_rust_project(temp: &TempDir) -> Result<(PathBuf, PathBuf, PathBuf)> {
+        let root = temp.path().join("root.rs");
+        fs::write(&root, "fn root_fn() { let _ = 1 + 1; }")?;
+
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src)?;
+        let lib = src.join("lib.rs");
+        fs::write(&lib, "pub fn lib_fn() { if true { 1 } else { 2 }; }")?;
+
+        let nested = src.join("nested");
+        fs::create_dir_all(&nested)?;
+        let deep = nested.join("deep.rs");
+        fs::write(&deep, "pub fn deep_fn() { for i in 0..3 { let _ = i; } }")?;
+
+        Ok((root, lib, deep))
+    }
+
+    #[test]
+    fn test_resolve_paths_with_globs_recursive_star_star() -> Result<()> {
+        let temp = TempDir::new()?;
+        make_rust_project(&temp)?;
+
+        let pattern = temp.path().join("**/*.rs");
+        let resolved = resolve_paths_with_globs(&[pattern]);
+
+        // Must find all 3 .rs files (root + nested + deep).
+        let rs_count = resolved
+            .iter()
+            .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("rs"))
+            .count();
+        assert_eq!(
+            rs_count, 3,
+            "expected 3 .rs files from **/*.rs, got {rs_count}: {resolved:?}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_resolve_paths_with_globs_shallow_star() -> Result<()> {
+        let temp = TempDir::new()?;
+        make_rust_project(&temp)?;
+
+        let pattern = temp.path().join("*.rs");
+        let resolved = resolve_paths_with_globs(&[pattern]);
+
+        let rs_files: Vec<_> = resolved
+            .iter()
+            .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("rs"))
+            .collect();
+        assert!(
+            !rs_files.is_empty(),
+            "expected at least 1 .rs file from *.rs, got 0: {resolved:?}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_resolve_paths_with_globs_dir_star_star() -> Result<()> {
+        let temp = TempDir::new()?;
+        make_rust_project(&temp)?;
+
+        // `src/**` is the "everything under src" pattern. The glob crate
+        // returns whatever entries match the literal glob; when composed with
+        // R17-2's `expand_paths_to_source_files` those dirs are walked.
+        // Standalone we assert the glob produced at least one entry — the
+        // pre-fix behavior returned zero because the literal pattern path did
+        // not exist on disk.
+        let pattern = temp.path().join("src").join("**");
+        let resolved = resolve_paths_with_globs(&[pattern]);
+
+        assert!(
+            !resolved.is_empty(),
+            "expected src/** to resolve to at least one entry, got {resolved:?}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_resolve_paths_with_globs_dir_star_star_ext() -> Result<()> {
+        let temp = TempDir::new()?;
+        make_rust_project(&temp)?;
+
+        let pattern = temp.path().join("src").join("**").join("*.rs");
+        let resolved = resolve_paths_with_globs(&[pattern]);
+
+        let rs_files: Vec<_> = resolved
+            .iter()
+            .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("rs"))
+            .collect();
+        assert_eq!(
+            rs_files.len(),
+            2,
+            "expected 2 .rs files from src/**/*.rs (lib + deep), got {}: {resolved:?}",
+            rs_files.len()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_resolve_paths_with_globs_plain_path_passthrough() -> Result<()> {
+        let temp = TempDir::new()?;
+        let (root, _, _) = make_rust_project(&temp)?;
+
+        // A plain path (no glob metacharacters) must pass through unchanged,
+        // preserving composability with R17-2 expand_paths_to_source_files.
+        let resolved = resolve_paths_with_globs(std::slice::from_ref(&root));
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0], root);
+        Ok(())
+    }
+
+    #[test]
+    fn test_resolve_paths_with_globs_no_match_drops_pattern() {
+        // A glob with no matches yields an empty Vec, not the literal pattern.
+        // Callers downstream will simply see 0 files, matching pre-fix UX.
+        let pattern = PathBuf::from("/tmp/pmat-r21-4-definitely-does-not-exist-*.rs");
+        let resolved = resolve_paths_with_globs(&[pattern]);
+        assert!(resolved.is_empty(), "expected empty, got {resolved:?}");
+    }
+
+    /// Integration: MCP `analyze_complexity` with `**/*.rs` must return
+    /// non-zero file_count across a nested Rust tree. Mirrors the R17-2 D82
+    /// directory-walking pattern.
+    #[tokio::test]
+    async fn test_analyze_complexity_with_double_star_glob() -> Result<()> {
+        let temp = TempDir::new()?;
+        make_rust_project(&temp)?;
+
+        let pattern = temp.path().join("**/*.rs");
+        let json = analyze_complexity(&[pattern], None, None).await?;
+
+        let total_files = json["results"]["total_files"].as_u64().unwrap_or(0);
+        assert!(
+            total_files >= 3,
+            "expected >=3 files from **/*.rs, got {total_files}; json={json}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_analyze_satd_with_double_star_glob() -> Result<()> {
+        let temp = TempDir::new()?;
+        fs::write(
+            temp.path().join("root.rs"),
+            "// TODO: top-level debt\nfn root_fn() {}",
+        )?;
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src)?;
+        fs::write(
+            src.join("nested.rs"),
+            "// FIXME: nested debt\nfn nested_fn() {}",
+        )?;
+
+        let pattern = temp.path().join("**/*.rs");
+        let json = analyze_satd(&[pattern], false).await?;
+
+        let total = json["results"]["total_satd"].as_u64().unwrap_or(0);
+        assert!(
+            total >= 2,
+            "expected >=2 SATD entries from **/*.rs walk, got {total}; json={json}"
+        );
+        Ok(())
+    }
+
+    /// When the input path is `src/**/*.rs` the composed pipeline —
+    /// `resolve_paths_with_globs` → `expand_paths_to_source_files` — must
+    /// find every `.rs` file below `src/`. This is a D98 acceptance case.
+    #[tokio::test]
+    async fn test_analyze_complexity_with_dir_star_star_glob() -> Result<()> {
+        let temp = TempDir::new()?;
+        make_rust_project(&temp)?;
+
+        let pattern = temp.path().join("src").join("**").join("*.rs");
+        let json = analyze_complexity(&[pattern], None, None).await?;
+
+        let total_files = json["results"]["total_files"].as_u64().unwrap_or(0);
+        assert!(
+            total_files >= 2,
+            "expected >=2 files from src/**/*.rs, got {total_files}; json={json}"
         );
         Ok(())
     }
