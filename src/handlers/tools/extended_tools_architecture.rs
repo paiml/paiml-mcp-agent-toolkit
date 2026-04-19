@@ -158,15 +158,17 @@ async fn handle_analyze_system_architecture(
 }
 
 /// Toyota Way: Extract Method - Parse architecture analysis arguments (complexity <=5)
+///
+/// R22-1 / D101: project_path is required. Missing, null, and
+/// empty/whitespace values are rejected with an error that the caller maps
+/// to JSON-RPC `-32602` — we never silently default to the server's cwd.
 fn parse_architecture_analysis_args(
     arguments: serde_json::Value,
 ) -> Result<(AnalyzeSystemArchitectureArgs, PathBuf), Box<dyn std::error::Error>> {
     let args: AnalyzeSystemArchitectureArgs = serde_json::from_value(arguments)?;
 
-    let project_path = args.project_path.as_ref().map_or_else(
-        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        PathBuf::from,
-    );
+    let project_path = require_project_path(args.project_path.clone())
+        .map_err(Box::<dyn std::error::Error>::from)?;
 
     Ok((args, project_path))
 }

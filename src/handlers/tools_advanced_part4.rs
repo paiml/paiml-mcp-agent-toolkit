@@ -185,6 +185,14 @@ pub(crate) async fn handle_analyze_satd(
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
+    // R22-1 / D101: reject missing/empty/whitespace project_path to avoid
+    // silently analyzing the server's cwd. `SatdArgs.project_path` uses
+    // `#[serde(default = "default_project_path")]` which now yields ""; the
+    // empty-string check catches both "missing" and "empty".
+    if let Err(e) = require_non_empty_path(&args.project_path, "project_path") {
+        return McpResponse::error(request_id, -32602, e);
+    }
+
     info!("Analyzing SATD for project: {:?}", args.project_path);
 
     let result = match execute_satd_analysis(&args).await {
@@ -361,12 +369,17 @@ pub(crate) async fn handle_analyze_lint_hotspot(
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
+    // R22-1 / D101: reject missing/empty/whitespace project_path to avoid
+    // silently running clippy on the server's cwd.
+    let project_path = match require_non_empty_path(&args.project_path, "project_path") {
+        Ok(p) => p,
+        Err(e) => return McpResponse::error(request_id, -32602, e),
+    };
+
     info!(
         "Analyzing lint hotspots for project: {:?}",
         args.project_path
     );
-
-    let project_path = std::path::PathBuf::from(args.project_path.clone());
 
     let result = match execute_lint_hotspot_analysis(&project_path).await {
         Ok(r) => r,
@@ -559,5 +572,188 @@ mod d91_r21_3_tests {
             !serialized.contains("Failed to create temporary file"),
             "D91 regression: handler still creates a tempfile: {serialized}"
         );
+    }
+}
+
+// ============================================================================
+// R22-1 / D101 regression tests — cwd-exfiltration parity fix
+// ============================================================================
+//
+// These tests mirror the R21-5 / D99 test layout in
+// `src/agent/mcp_server_tests.rs` and prove that every advanced-analysis
+// MCP handler in the live `src/handlers/tools_advanced*` tree now rejects
+// missing/null/empty `project_path` with JSON-RPC `-32602` instead of
+// silently defaulting to `std::env::current_dir()`.
+
+#[cfg(test)]
+mod r22_1_d101_cwd_guard_tests {
+    use super::*;
+    use serde_json::json;
+
+    // --- helpers ------------------------------------------------------------
+
+    fn assert_invalid_params(response: &McpResponse, context: &str) {
+        assert!(
+            response.error.is_some(),
+            "{context}: expected an error response, got success: {response:?}"
+        );
+        let err = response.error.as_ref().unwrap();
+        assert_eq!(
+            err.code, -32602,
+            "{context}: expected JSON-RPC -32602 (Invalid params), got {}: message={}",
+            err.code, err.message
+        );
+        assert!(
+            err.message.contains("project_path") || err.message.contains("path"),
+            "{context}: error message should name the offending field: {}",
+            err.message
+        );
+    }
+
+    // --- handle_analyze_tdg ------------------------------------------------
+
+    #[tokio::test]
+    async fn analyze_tdg_rejects_missing_project_path() {
+        let response = handle_analyze_tdg(json!(1), json!({})).await;
+        assert_invalid_params(&response, "analyze_tdg / missing project_path");
+    }
+
+    #[tokio::test]
+    async fn analyze_tdg_rejects_null_project_path() {
+        let response = handle_analyze_tdg(json!(1), json!({ "project_path": null })).await;
+        assert_invalid_params(&response, "analyze_tdg / null project_path");
+    }
+
+    #[tokio::test]
+    async fn analyze_tdg_rejects_empty_project_path() {
+        let response = handle_analyze_tdg(json!(1), json!({ "project_path": "" })).await;
+        assert_invalid_params(&response, "analyze_tdg / empty project_path");
+    }
+
+    #[tokio::test]
+    async fn analyze_tdg_rejects_whitespace_project_path() {
+        let response = handle_analyze_tdg(json!(1), json!({ "project_path": "   " })).await;
+        assert_invalid_params(&response, "analyze_tdg / whitespace project_path");
+    }
+
+    // --- handle_analyze_defect_probability --------------------------------
+
+    #[tokio::test]
+    async fn analyze_defect_probability_rejects_missing_project_path() {
+        let response = handle_analyze_defect_probability(json!(1), json!({})).await;
+        assert_invalid_params(&response, "analyze_defect_probability / missing");
+    }
+
+    #[tokio::test]
+    async fn analyze_defect_probability_rejects_empty_project_path() {
+        let response =
+            handle_analyze_defect_probability(json!(1), json!({ "project_path": "" })).await;
+        assert_invalid_params(&response, "analyze_defect_probability / empty");
+    }
+
+    // --- handle_analyze_deep_context --------------------------------------
+
+    #[tokio::test]
+    async fn analyze_deep_context_rejects_missing_project_path() {
+        let response = handle_analyze_deep_context(json!(1), json!({})).await;
+        assert_invalid_params(&response, "analyze_deep_context / missing");
+    }
+
+    #[tokio::test]
+    async fn analyze_deep_context_rejects_empty_project_path() {
+        let response = handle_analyze_deep_context(json!(1), json!({ "project_path": "" })).await;
+        assert_invalid_params(&response, "analyze_deep_context / empty");
+    }
+
+    // --- handle_analyze_provability ---------------------------------------
+
+    #[tokio::test]
+    async fn analyze_provability_rejects_empty_project_path() {
+        let response =
+            handle_analyze_provability(json!(1), Some(json!({ "project_path": "" }))).await;
+        assert_invalid_params(&response, "analyze_provability / empty");
+    }
+
+    #[tokio::test]
+    async fn analyze_provability_rejects_whitespace_project_path() {
+        let response =
+            handle_analyze_provability(json!(1), Some(json!({ "project_path": " " }))).await;
+        assert_invalid_params(&response, "analyze_provability / whitespace");
+    }
+
+    // --- handle_analyze_makefile_lint -------------------------------------
+
+    #[tokio::test]
+    async fn analyze_makefile_lint_rejects_empty_path() {
+        let response = handle_analyze_makefile_lint(json!(1), Some(json!({ "path": "" }))).await;
+        assert_invalid_params(&response, "analyze_makefile_lint / empty path");
+    }
+
+    // --- handle_analyze_satd ----------------------------------------------
+
+    #[tokio::test]
+    async fn analyze_satd_rejects_missing_project_path() {
+        let response = handle_analyze_satd(json!(1), json!({})).await;
+        assert_invalid_params(&response, "analyze_satd / missing (via serde default=\"\")");
+    }
+
+    #[tokio::test]
+    async fn analyze_satd_rejects_empty_project_path() {
+        let response = handle_analyze_satd(json!(1), json!({ "project_path": "" })).await;
+        assert_invalid_params(&response, "analyze_satd / empty");
+    }
+
+    // --- handle_analyze_lint_hotspot --------------------------------------
+
+    #[tokio::test]
+    async fn analyze_lint_hotspot_rejects_missing_project_path() {
+        let response = handle_analyze_lint_hotspot(json!(1), json!({})).await;
+        assert_invalid_params(&response, "analyze_lint_hotspot / missing");
+    }
+
+    #[tokio::test]
+    async fn analyze_lint_hotspot_rejects_empty_project_path() {
+        let response = handle_analyze_lint_hotspot(json!(1), json!({ "project_path": "" })).await;
+        assert_invalid_params(&response, "analyze_lint_hotspot / empty");
+    }
+
+    // --- require_project_path_advanced helper ------------------------------
+
+    #[test]
+    fn require_project_path_advanced_accepts_nonempty() {
+        let out = require_project_path_advanced(Some("/tmp/x".to_string())).unwrap();
+        assert_eq!(out, PathBuf::from("/tmp/x"));
+    }
+
+    #[test]
+    fn require_project_path_advanced_rejects_none() {
+        let err = require_project_path_advanced(None).unwrap_err();
+        assert!(err.contains("project_path"), "{err}");
+        assert!(err.contains("D101"), "{err}");
+    }
+
+    #[test]
+    fn require_project_path_advanced_rejects_empty() {
+        let err = require_project_path_advanced(Some(String::new())).unwrap_err();
+        assert!(err.contains("non-empty"), "{err}");
+    }
+
+    #[test]
+    fn require_project_path_advanced_rejects_whitespace() {
+        let err = require_project_path_advanced(Some("  \t ".to_string())).unwrap_err();
+        assert!(err.contains("non-empty"), "{err}");
+    }
+
+    #[test]
+    fn require_non_empty_path_rejects_empty() {
+        let err = require_non_empty_path("", "project_path").unwrap_err();
+        assert!(err.contains("project_path"), "{err}");
+        assert!(err.contains("D101"), "{err}");
+    }
+
+    #[test]
+    fn require_non_empty_path_accepts_value() {
+        let out = require_non_empty_path("/some/path", "project_path").unwrap();
+        assert_eq!(out, PathBuf::from("/some/path"));
     }
 }

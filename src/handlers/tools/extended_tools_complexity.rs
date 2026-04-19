@@ -22,8 +22,13 @@ struct ComplexityAnalysisContext {
     _thresholds: crate::services::complexity::ComplexityThresholds,
 }
 
-fn prepare_complexity_analysis(args: &AnalyzeComplexityArgs) -> ComplexityAnalysisContext {
-    let project_path = resolve_project_path_complexity(args.project_path.clone());
+/// R22-1 / D101: project_path is now required and validated up-front in
+/// `handle_analyze_complexity`. This helper receives the already-validated
+/// `PathBuf` and fills in the remaining context.
+fn prepare_complexity_analysis(
+    args: &AnalyzeComplexityArgs,
+    project_path: PathBuf,
+) -> ComplexityAnalysisContext {
     let toolchain = detect_toolchain(&args.toolchain, &project_path);
     let thresholds = build_complexity_thresholds(args);
 
@@ -33,7 +38,6 @@ fn prepare_complexity_analysis(args: &AnalyzeComplexityArgs) -> ComplexityAnalys
         _thresholds: thresholds,
     }
 }
-
 
 async fn perform_complexity_analysis(
     context: &ComplexityAnalysisContext,
@@ -108,7 +112,13 @@ async fn handle_analyze_complexity(
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
-    let context = prepare_complexity_analysis(&args);
+    // R22-1 / D101: require explicit project_path; reject null/missing/empty.
+    let project_path = match require_project_path(args.project_path.clone()) {
+        Ok(p) => p,
+        Err(e) => return McpResponse::error(request_id, -32602, e),
+    };
+
+    let context = prepare_complexity_analysis(&args, project_path);
 
     info!(
         "Analyzing complexity for {:?} using {} toolchain",
@@ -128,13 +138,6 @@ async fn handle_analyze_complexity(
         &context.toolchain,
         file_count,
         &args,
-    )
-}
-
-fn resolve_project_path_complexity(project_path_arg: Option<String>) -> PathBuf {
-    project_path_arg.map_or_else(
-        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        PathBuf::from,
     )
 }
 

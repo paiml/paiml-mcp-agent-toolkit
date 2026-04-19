@@ -22,8 +22,14 @@ async fn handle_analyze_code_churn(
         }
     };
 
-    // Extract analysis parameters
-    let (project_path, period_days, format) = extract_churn_parameters(&args);
+    // R22-1 / D101: require explicit project_path; reject null/missing/empty.
+    let project_path = match require_project_path(args.project_path.clone()) {
+        Ok(p) => p,
+        Err(e) => return McpResponse::error(request_id, -32602, e),
+    };
+
+    // Extract remaining analysis parameters
+    let (period_days, format) = extract_churn_parameters(&args);
 
     info!(
         "Analyzing code churn for {:?} over {} days",
@@ -41,13 +47,11 @@ fn parse_code_churn_args(
     serde_json::from_value(arguments)
 }
 
-/// Toyota Way Helper: Extract churn analysis parameters
-fn extract_churn_parameters(args: &AnalyzeCodeChurnArgs) -> (PathBuf, u32, ChurnOutputFormat) {
-    let project_path = args.project_path.as_ref().map_or_else(
-        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        PathBuf::from,
-    );
-
+/// Toyota Way Helper: Extract churn analysis parameters (period_days + format).
+///
+/// R22-1 / D101: project_path is now validated separately via
+/// `require_project_path()` in the handler.
+fn extract_churn_parameters(args: &AnalyzeCodeChurnArgs) -> (u32, ChurnOutputFormat) {
     let period_days = args.period_days.unwrap_or(30);
 
     let format = args
@@ -56,7 +60,7 @@ fn extract_churn_parameters(args: &AnalyzeCodeChurnArgs) -> (PathBuf, u32, Churn
         .and_then(|f| f.parse::<ChurnOutputFormat>().ok())
         .unwrap_or(ChurnOutputFormat::Summary);
 
-    (project_path, period_days, format)
+    (period_days, format)
 }
 
 /// Toyota Way Helper: Run analysis and format response

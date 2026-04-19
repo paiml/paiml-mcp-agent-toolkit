@@ -1,4 +1,3 @@
-
 /// Toyota Way: Extract Method - Format top files with dead code (complexity ≤8)
 fn format_top_dead_code_files(
     output: &mut String,
@@ -267,8 +266,11 @@ pub(crate) async fn handle_analyze_tdg(
         }
     };
 
-    // Extract project path
-    let project_path = extract_tdg_project_path(&args);
+    // R22-1 / D101: require explicit project_path; reject null/missing/empty.
+    let project_path = match require_project_path_advanced(args.project_path.clone()) {
+        Ok(p) => p,
+        Err(e) => return McpResponse::error(request_id, -32602, e),
+    };
     info!("Analyzing Technical Debt Gradient for {:?}", project_path);
 
     // Run analysis and format response
@@ -278,14 +280,6 @@ pub(crate) async fn handle_analyze_tdg(
 /// Toyota Way Helper: Parse TDG arguments
 fn parse_tdg_args(arguments: serde_json::Value) -> Result<AnalyzeTdgArgs, serde_json::Error> {
     serde_json::from_value(arguments)
-}
-
-/// Toyota Way Helper: Extract TDG project path
-fn extract_tdg_project_path(args: &AnalyzeTdgArgs) -> PathBuf {
-    args.project_path.as_ref().map_or_else(
-        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        PathBuf::from,
-    )
 }
 
 /// Toyota Way Helper: Run TDG analysis and format response
