@@ -48,7 +48,7 @@ pub(crate) fn find_hotspot_with_details(
 
             // Get top 10 lint violations
             let mut top_lints: Vec<_> = metrics.violations.into_iter().collect();
-            top_lints.sort_by(|a, b| b.1.cmp(&a.1));
+            top_lints.sort_by_key(|b| std::cmp::Reverse(b.1));
             top_lints.truncate(10);
 
             hotspot_file = Some(LintHotspot {

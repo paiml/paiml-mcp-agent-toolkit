@@ -13,7 +13,7 @@ impl DefectAnalyzer for ComplexityDefectAnalyzer {
         let scores = tdg_calculator.calculate_batch(files.clone()).await?;
 
         let mut index = 0;
-        for (file_path, score) in files.into_iter().zip(scores.into_iter()) {
+        for (file_path, score) in files.into_iter().zip(scores) {
             if score.value > config.max_tdg_score {
                 index += 1;
                 defects.push(self.tdg_score_to_defect(file_path, score, index, &config));

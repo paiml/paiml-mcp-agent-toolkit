@@ -34,14 +34,14 @@ impl FileHealthReport {
             .filter(|f| f.health_score < 50)
             .cloned()
             .collect();
-        critical_files.sort_by(|a, b| a.health_score.cmp(&b.health_score));
+        critical_files.sort_by_key(|a| a.health_score);
 
         let mut problem_files: Vec<FileHealthMetrics> = files
             .iter()
             .filter(|f| f.health_score >= 50 && f.health_score < 70)
             .cloned()
             .collect();
-        problem_files.sort_by(|a, b| a.health_score.cmp(&b.health_score));
+        problem_files.sort_by_key(|a| a.health_score);
 
         let warning_files: Vec<FileHealthMetrics> = files
             .iter()

@@ -234,15 +234,11 @@ fn apply_single_fix(fix_info: &ConfigFixInfo, config: &mut PmatConfig) {
         "quality.min_coverage" => {
             config.quality.min_coverage = config.quality.min_coverage.clamp(0.0, 100.0);
         }
-        "system.project_name" => {
-            if config.system.project_name.is_empty() {
-                config.system.project_name = "pmat-project".to_string();
-            }
+        "system.project_name" if config.system.project_name.is_empty() => {
+            config.system.project_name = "pmat-project".to_string();
         }
-        "system.max_concurrent_operations" => {
-            if config.system.max_concurrent_operations == 0 {
-                config.system.max_concurrent_operations = 4;
-            }
+        "system.max_concurrent_operations" if config.system.max_concurrent_operations == 0 => {
+            config.system.max_concurrent_operations = 4;
         }
         _ => {} // Unknown fix - skip
     }

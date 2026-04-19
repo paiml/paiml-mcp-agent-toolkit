@@ -90,7 +90,7 @@ impl InfraScoreAggregator {
         self.recommend_from_category(&categories.supply_chain, &mut recs);
 
         // Sort by priority descending (Critical first)
-        recs.sort_by(|a, b| b.priority.cmp(&a.priority));
+        recs.sort_by_key(|b| std::cmp::Reverse(b.priority));
         recs
     }
 

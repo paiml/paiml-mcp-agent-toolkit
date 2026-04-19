@@ -334,7 +334,7 @@ impl PolyglotAnalyzer {
             });
         }
 
-        stats.sort_by(|a, b| b.line_count.cmp(&a.line_count));
+        stats.sort_by_key(|b| std::cmp::Reverse(b.line_count));
         Ok(stats)
     }
 

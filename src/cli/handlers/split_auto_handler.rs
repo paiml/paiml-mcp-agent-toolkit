@@ -241,7 +241,7 @@ fn find_oversized_files(project_path: &Path, max_lines: usize) -> Result<Vec<Ove
     }
 
     // Sort by line count descending (largest files first)
-    results.sort_by(|a, b| b.line_count.cmp(&a.line_count));
+    results.sort_by_key(|b| std::cmp::Reverse(b.line_count));
     Ok(results)
 }
 

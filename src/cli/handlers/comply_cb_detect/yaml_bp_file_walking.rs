@@ -58,12 +58,11 @@ fn strip_yaml_inline_comment(line: &str) -> String {
         match bytes[i] {
             b'\'' if !in_double => in_single = !in_single,
             b'"' if !in_single => in_double = !in_double,
-            b'#' if !in_single && !in_double => {
+            b'#' if !in_single && !in_double
                 // Must be preceded by whitespace
-                if i > 0 && bytes[i - 1] == b' ' {
+                && i > 0 && bytes[i - 1] == b' ' => {
                     return line[..i].trim_end().to_string();
                 }
-            }
             _ => {}
         }
     }
