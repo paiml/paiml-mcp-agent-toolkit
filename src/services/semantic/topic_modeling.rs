@@ -146,7 +146,7 @@ impl TopicEngine {
 
         // Sort by frequency
         let mut word_vec: Vec<(String, usize)> = word_counts.into_iter().collect();
-        word_vec.sort_by(|a, b| b.1.cmp(&a.1)); // Sort descending
+        word_vec.sort_by_key(|b| std::cmp::Reverse(b.1)); // Sort descending
 
         // Take top k
         word_vec

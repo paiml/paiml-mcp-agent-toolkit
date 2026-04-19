@@ -128,11 +128,10 @@ impl AdaptiveSnapshotScheduler {
 
         SnapshotSchedulerMetrics {
             total_snapshots: metrics.total_snapshots,
-            avg_events_between: if metrics.total_snapshots > 0 {
-                (metrics.total_events_between_snapshots / metrics.total_snapshots) as usize
-            } else {
-                0
-            },
+            avg_events_between: metrics
+                .total_events_between_snapshots
+                .checked_div(metrics.total_snapshots)
+                .unwrap_or(0) as usize,
             avg_time_between: if metrics.total_snapshots > 0 {
                 metrics.total_time_between_snapshots / metrics.total_snapshots as u32
             } else {

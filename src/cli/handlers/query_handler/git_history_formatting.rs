@@ -28,7 +28,7 @@ pub(super) fn format_git_history_colorized(
 
     if !hotspots.is_empty() {
         let mut sorted_hotspots: Vec<(&String, &FileHotspot)> = hotspots.iter().collect();
-        sorted_hotspots.sort_by(|a, b| b.1.commit_count.cmp(&a.1.commit_count));
+        sorted_hotspots.sort_by_key(|b| std::cmp::Reverse(b.1.commit_count));
 
         format_hotspot_section(&mut out, &hotspots, total_commits);
         format_defect_introductions(&mut out, all_commits);
@@ -174,7 +174,7 @@ fn grade_to_color(grade: &str) -> &'static str {
 /// Format the hotspot section showing top changed files
 fn format_hotspot_section(out: &mut String, hotspots: &HashMap<String, FileHotspot>, total_commits: usize) {
     let mut sorted: Vec<(&String, &FileHotspot)> = hotspots.iter().collect();
-    sorted.sort_by(|a, b| b.1.commit_count.cmp(&a.1.commit_count));
+    sorted.sort_by_key(|b| std::cmp::Reverse(b.1.commit_count));
 
     out.push_str(&format!(
         "\n  {BOLD}{UNDERLINE}Hotspots{RESET} {DIM}(top changed files across {} commits){RESET}\n",
@@ -257,7 +257,7 @@ fn format_defect_introductions(out: &mut String, all_commits: &[CommitInfo]) {
     }
 
     if !defect_introductions.is_empty() {
-        defect_introductions.sort_by(|a, b| b.2.cmp(&a.2));
+        defect_introductions.sort_by_key(|b| std::cmp::Reverse(b.2));
         out.push_str(&format!(
             "\n  {BOLD}{UNDERLINE}Defect Introduction{RESET} {DIM}(feat commits patched within 30 days){RESET}\n"
         ));

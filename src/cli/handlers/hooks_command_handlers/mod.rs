@@ -33,3 +33,10 @@ pub use types::{
 #[cfg(test)]
 #[path = "../hooks_command_handlers_tests.rs"]
 mod tests;
+
+// GH-301 regression tests live in a dedicated small file so future growth of
+// hooks_command_handlers_tests.rs (already near the CB-040 ratchet) does not
+// block the fix from landing.
+#[cfg(test)]
+#[path = "../hooks_tests_gh301_makefile_scan.rs"]
+mod gh301_makefile_scan_tests;
