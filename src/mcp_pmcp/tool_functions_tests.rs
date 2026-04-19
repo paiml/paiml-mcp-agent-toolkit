@@ -791,4 +791,89 @@ mod coverage_tests {
 
         Ok(())
     }
+
+    // ==================== R17-2 D82 REGRESSION TESTS ====================
+    // Directory inputs must produce non-zero counts. Previously handlers
+    // required path.is_file() and returned authoritative zeros for dirs.
+
+    #[tokio::test]
+    async fn test_analyze_complexity_walks_directory() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        fs::write(
+            temp_dir.path().join("sample.rs"),
+            "fn a() { if true { 1 } else { 2 }; } fn b() {}",
+        )?;
+        fs::write(
+            temp_dir.path().join("nested.rs"),
+            "fn c() { for i in 0..10 { let _ = i; } }",
+        )?;
+
+        let paths = vec![temp_dir.path().to_path_buf()];
+        let json = analyze_complexity(&paths, None, None).await.unwrap();
+
+        let total_files = json["results"]["total_files"].as_u64().unwrap_or(0);
+        assert!(
+            total_files >= 2,
+            "expected >=2 files analyzed, got {total_files}; json={json}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_analyze_satd_walks_directory() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        fs::write(
+            temp_dir.path().join("debt.rs"),
+            "// TODO: refactor this later\nfn x() {}\n// FIXME: edge case\n",
+        )?;
+
+        let paths = vec![temp_dir.path().to_path_buf()];
+        let json = analyze_satd(&paths, false).await.unwrap();
+
+        let total = json["results"]["total_satd"].as_u64().unwrap_or(0);
+        assert!(
+            total >= 1,
+            "expected >=1 SATD item found, got {total}; json={json}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_analyze_dead_code_walks_directory() -> Result<()> {
+        // Create a minimal Rust project so language detection finds "rust"
+        let temp_dir = TempDir::new()?;
+        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname=\"t\"\nversion=\"0.1.0\"\n")?;
+        let src = temp_dir.path().join("src");
+        fs::create_dir(&src)?;
+        fs::write(src.join("lib.rs"), "pub fn used() {}\nfn unused_helper() { let _=1; }\n")?;
+
+        let paths = vec![temp_dir.path().to_path_buf()];
+        let json = analyze_dead_code(&paths, false).await.unwrap();
+
+        // Must run the analysis (status completed, languages non-empty).
+        assert_eq!(json["status"], "completed");
+        let total_functions = json["results"]["total_functions"].as_u64().unwrap_or(0);
+        assert!(
+            total_functions >= 1,
+            "expected analyzer to see >=1 function, got {total_functions}; json={json}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_generate_context_walks_directory() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        fs::write(temp_dir.path().join("a.rs"), "pub fn alpha() {}\n")?;
+        fs::write(temp_dir.path().join("b.rs"), "pub struct Beta;\n")?;
+
+        let paths = vec![temp_dir.path().to_path_buf()];
+        let json = generate_context(&paths, None, false).await.unwrap();
+
+        let total = json["context"]["total_files"].as_u64().unwrap_or(0);
+        assert!(
+            total >= 2,
+            "expected >=2 files in context, got {total}; json={json}"
+        );
+        Ok(())
+    }
 }

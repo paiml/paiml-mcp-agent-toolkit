@@ -10,14 +10,13 @@ pub async fn generate_context(
         return Err(anyhow::anyhow!("At least one path must be provided"));
     }
 
+    // R17-2: Walk directories. Previously only `path.is_file()` was analyzed,
+    // yielding instant empty responses for directory inputs (D82).
+    let files = expand_paths_to_source_files(paths);
     let mut all_files = Vec::new();
     let all_dependencies: Vec<String> = Vec::new();
 
-    for path in paths {
-        if !path.exists() {
-            continue;
-        }
-
+    for path in &files {
         // Analyze each file
         match analyze_single_file(path).await {
             Ok(file_context) => {
