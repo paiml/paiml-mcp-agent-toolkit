@@ -311,6 +311,26 @@ mod tests {
     }
 
     #[test]
+    fn test_scan_directory_excludes_match_relative_to_root() {
+        // Regression: exclusion patterns were matched via substring against
+        // the absolute path, so a mount prefix containing `build/` or
+        // `_generated` (observed in CI clean-room containers) excluded the
+        // entire scan tree. Patterns must match relative to the scan root.
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let root = tmp.path().join("build").join("project");
+        std::fs::create_dir_all(&root).expect("mkdir");
+        let file = root.join("foo.rs");
+        std::fs::write(&file, "// test").expect("write");
+
+        let files = scan_directory(&root, &["rs"], DEFAULT_EXCLUDE_PATTERNS);
+        assert!(
+            files.iter().any(|p| p.ends_with("foo.rs")),
+            "scan_directory must find foo.rs even when absolute path contains an exclude substring (got {:?})",
+            files
+        );
+    }
+
+    #[test]
     fn test_health_zero_lines_tlr() {
         // Edge case: zero lines should give TLR of 1.0
         let metrics = FileHealthMetrics::calculate(PathBuf::from("empty.rs"), 0, 0, 0.0, 0);
