@@ -2,6 +2,7 @@
 name: "CB-125,126,127: Coverage gaming and slow test detection"
 metadata:
   version: "1.0.0"
+  kind: schema
   description: "Auto-generated work-contract for CB-125,126,127: Coverage gaming and slow test detection"
   references:
     - ".pmat-work/CB-125_126_127__Coverage_gaming_and_slow_test_detection/contract.json"

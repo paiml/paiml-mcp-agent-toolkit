@@ -2,6 +2,7 @@
 name: "baseline-v1"
 metadata:
   version: "1.0.0"
+  kind: schema
   description: "Auto-generated work-contract for baseline-v1"
   references:
     - ".pmat-work/baseline-v1/contract.json"

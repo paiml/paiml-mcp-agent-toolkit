@@ -2,6 +2,7 @@
 name: "DBC-TEST"
 metadata:
   version: "1.0.0"
+  kind: schema
   description: "Auto-generated work-contract for DBC-TEST"
   references:
     - ".pmat-work/DBC-TEST/contract.json"

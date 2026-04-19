@@ -2,6 +2,7 @@
 name: "DOGFOOD-001"
 metadata:
   version: "1.0.0"
+  kind: schema
   description: "Auto-generated work-contract for DOGFOOD-001"
   references:
     - ".pmat-work/DOGFOOD-001/contract.json"

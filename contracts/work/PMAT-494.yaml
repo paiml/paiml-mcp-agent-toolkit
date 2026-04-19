@@ -2,6 +2,7 @@
 name: "PMAT-494"
 metadata:
   version: "1.0.0"
+  kind: schema
   description: "Auto-generated work-contract for PMAT-494"
   references:
     - ".pmat-work/PMAT-494/contract.json"

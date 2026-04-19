@@ -2,6 +2,7 @@
 name: "make coverage at 95% - fast, no workarounds"
 metadata:
   version: "1.0.0"
+  kind: schema
   description: "Auto-generated work-contract for make coverage at 95% - fast, no workarounds"
   references:
     - ".pmat-work/make_coverage_at_95__-_fast__no_workarounds/contract.json"

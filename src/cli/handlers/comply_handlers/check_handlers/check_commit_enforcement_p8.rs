@@ -100,8 +100,16 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
         // Emit metadata block (KAIZEN-0175): pv 0.31 schema requires metadata
         // with version/description/references. Deterministic values only —
         // no timestamps, to avoid daily churn in contracts/work/*.yaml.
+        //
+        // KAIZEN-0190 (SCHEMA-003): declare `kind: schema` so pv treats these
+        // as reference documents, not mathematical kernel contracts. Work
+        // contracts are derived from .pmat-work/*/contract.json and document
+        // work-item obligations, not provable math. Without this, pv's kernel
+        // validator demands `equations`, `proof_obligations`, `falsification_tests`,
+        // and `kani_harnesses` — none of which apply to work-tracking artifacts.
         yaml.push_str("metadata:\n");
         yaml.push_str("  version: \"1.0.0\"\n");
+        yaml.push_str("  kind: schema\n");
         yaml.push_str(&format!(
             "  description: \"Auto-generated work-contract for {}\"\n",
             yaml_escape_string(id)

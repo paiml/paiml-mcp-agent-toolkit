@@ -2,6 +2,7 @@
 name: "PMAT-COV-001"
 metadata:
   version: "1.0.0"
+  kind: schema
   description: "Auto-generated work-contract for PMAT-COV-001"
   references:
     - ".pmat-work/PMAT-COV-001/contract.json"

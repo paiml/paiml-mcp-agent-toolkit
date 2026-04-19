@@ -2,6 +2,7 @@
 name: "PMAT-DBC"
 metadata:
   version: "1.0.0"
+  kind: schema
   description: "Auto-generated work-contract for PMAT-DBC"
   references:
     - ".pmat-work/PMAT-DBC/contract.json"

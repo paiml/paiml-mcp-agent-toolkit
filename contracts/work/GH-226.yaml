@@ -2,6 +2,7 @@
 name: "GH-226"
 metadata:
   version: "1.0.0"
+  kind: schema
   description: "Auto-generated work-contract for GH-226"
   references:
     - ".pmat-work/GH-226/contract.json"

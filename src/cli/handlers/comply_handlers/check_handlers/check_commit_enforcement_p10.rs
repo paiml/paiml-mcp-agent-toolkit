@@ -468,4 +468,48 @@ mod tests_commit_enforcement_p2 {
             "metadata must come before surface and verification_summary: {yaml}"
         );
     }
+
+    // KAIZEN-0190 (SCHEMA-003): work-contract YAMLs must declare
+    // `metadata.kind: schema` so pv treats them as reference documents, not
+    // mathematical kernel contracts. Without this, pv fires SCHEMA-003
+    // ("equations must contain at least one equation") + PROVABILITY-001
+    // (missing proof_obligations/falsification_tests/kani_harnesses) on every
+    // work-contract YAML — 4 errors × 108 files = 432 errors.
+    #[test]
+    fn test_kaizen0190_generator_declares_schema_kind() {
+        let dir = tempdir().unwrap();
+        let work = dir.path().join(".pmat-work/TEST-190");
+        fs::create_dir_all(&work).unwrap();
+        fs::write(
+            work.join("contract.json"),
+            r#"{
+                "work_item_id": "TEST-190",
+                "verification_level": "L1"
+            }"#,
+        )
+        .unwrap();
+
+        let count = generate_work_contract_yamls(dir.path()).unwrap();
+        assert_eq!(count, 1);
+
+        let yaml = fs::read_to_string(dir.path().join("contracts/work/TEST-190.yaml")).unwrap();
+
+        // The `kind: schema` line must live inside the metadata block, after
+        // the `metadata:` header and before any subsequent top-level key.
+        let meta_idx = yaml.find("metadata:").expect("metadata: present");
+        let kind_idx = yaml
+            .find("  kind: schema\n")
+            .expect("missing `  kind: schema` inside metadata block");
+        assert!(
+            kind_idx > meta_idx,
+            "kind: schema must appear inside metadata block: {yaml}"
+        );
+
+        // Sanity: the next top-level field (surface:) must come after kind:
+        let surface_idx = yaml.find("surface:").expect("surface: present");
+        assert!(
+            kind_idx < surface_idx,
+            "kind: schema must appear before surface: {yaml}"
+        );
+    }
 }

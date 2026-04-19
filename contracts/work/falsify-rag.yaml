@@ -2,6 +2,7 @@
 name: "falsify-rag"
 metadata:
   version: "1.0.0"
+  kind: schema
   description: "Auto-generated work-contract for falsify-rag"
   references:
     - ".pmat-work/falsify-rag/contract.json"
