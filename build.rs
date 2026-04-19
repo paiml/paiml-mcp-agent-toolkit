@@ -42,6 +42,12 @@ fn main() {
     // Emit CONTRACT_* env vars from binding.yaml for #[contract] proc macro
     emit_contract_env_vars();
 
+    // KAIZEN-0178: Generate MCP tool schema metadata from JSON files.
+    // Walks `mcp_tool_schemas/` and emits one authoritative Rust module so
+    // handlers cannot silently advertise empty `inputSchema`. Missing JSON →
+    // `include_str!` fails at compile time (the design constraint).
+    generate_mcp_tool_schemas();
+
     // Verify critical dependencies at build time
     verify_dependency_versions();
 
@@ -1548,6 +1554,163 @@ fn emit_contract_env_vars() {
         let key = make_contract_env_key(&current_contract, &current_equation);
         println!("cargo:rustc-env={key}=bound");
     }
+}
+
+/// KAIZEN-0178: Build-time MCP tool schema code generation.
+///
+/// Reads every `mcp_tool_schemas/*.json` file, validates that it parses as
+/// JSON with `{name, description, inputSchema}`, and emits
+/// `$OUT_DIR/mcp_tool_schemas_gen.rs`. The emitted code exposes:
+///
+/// * `pub static MCP_TOOL_SCHEMAS: &[(&str, &str)]` — slice of
+///   `(tool_name, raw_json_string)` for every schema file found.
+/// * Per-tool `include_str!` constants so the macro layer and any
+///   registration audit can reference them by tool name.
+///
+/// If a schema file referenced by handler code is deleted, the `include_str!`
+/// it expanded to will fail with `E0432`/`E0433` style errors at compile time
+/// — satisfying the "missing schema = compile error" acceptance constraint.
+fn generate_mcp_tool_schemas() {
+    let schema_dir = Path::new("mcp_tool_schemas");
+    println!("cargo:rerun-if-changed=mcp_tool_schemas");
+
+    if !schema_dir.exists() {
+        println!("cargo:warning=mcp_tool_schemas/ not found — skipping codegen");
+        return;
+    }
+
+    let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be set");
+    let dest = Path::new(&out_dir).join("mcp_tool_schemas_gen.rs");
+
+    let mut entries: Vec<(String, std::path::PathBuf)> = Vec::new();
+
+    let Ok(read_dir) = fs::read_dir(schema_dir) else {
+        println!("cargo:warning=Failed to read mcp_tool_schemas/");
+        return;
+    };
+
+    for entry in read_dir.flatten() {
+        let path = entry.path();
+        if path.extension().is_some_and(|e| e == "json") {
+            let stem = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_string();
+            if stem.is_empty() {
+                continue;
+            }
+            println!("cargo:rerun-if-changed={}", path.display());
+            validate_tool_schema(&path, &stem);
+            entries.push((stem, path));
+        }
+    }
+
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let code = render_tool_schema_module(&entries);
+    if let Err(e) = write_if_changed(&dest, &code) {
+        panic!("KAIZEN-0178: failed to write generated tool schema module: {e}");
+    }
+    println!(
+        "cargo:warning=KAIZEN-0178: generated {} MCP tool schema(s)",
+        entries.len()
+    );
+}
+
+/// Validate a single schema JSON file at build time.
+///
+/// Enforces the invariant that every schema declares `name`,
+/// `description`, and `inputSchema.type == "object"`. Mismatches panic the
+/// build — the whole point is to catch bad schemas before they reach
+/// runtime `tools/list`.
+fn validate_tool_schema(path: &Path, stem: &str) {
+    let content =
+        fs::read_to_string(path).unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
+    let parsed: serde_json::Value = serde_json::from_str(&content)
+        .unwrap_or_else(|e| panic!("{} is not valid JSON: {e}", path.display()));
+
+    let name = parsed
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or_else(|| panic!("{}: missing `name`", path.display()));
+    assert_eq!(
+        name,
+        stem,
+        "{}: `name` field ({name}) must match file stem ({stem})",
+        path.display()
+    );
+    assert!(
+        parsed
+            .get("description")
+            .and_then(|v| v.as_str())
+            .is_some_and(|s| !s.is_empty()),
+        "{}: `description` must be a non-empty string",
+        path.display()
+    );
+    let input_schema = parsed
+        .get("inputSchema")
+        .unwrap_or_else(|| panic!("{}: missing `inputSchema`", path.display()));
+    let ty = input_schema.get("type").and_then(|v| v.as_str());
+    assert_eq!(
+        ty,
+        Some("object"),
+        "{}: `inputSchema.type` must be \"object\"",
+        path.display()
+    );
+}
+
+/// Render the generated module source for a sorted list of schemas.
+///
+/// Emits two things:
+///
+/// 1. `MCP_TOOL_SCHEMAS: &[(&str, &str)]` — iterable registry.
+/// 2. A `schema_const!` `macro_rules!` that maps a literal tool name to
+///    its per-tool `include_str!("…/<name>.json")` constant. Referencing an
+///    unknown tool name from a handler via `schema_const!("missing")`
+///    expands to a non-existent arm → **compile error**, which satisfies
+///    the KAIZEN-0178 acceptance constraint (removing a JSON file must
+///    break the build, not degrade silently).
+fn render_tool_schema_module(entries: &[(String, std::path::PathBuf)]) -> String {
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR set by cargo");
+    let abs_path = |path: &std::path::PathBuf| {
+        path.canonicalize()
+            .unwrap_or_else(|_| Path::new(&manifest_dir).join(path))
+    };
+    let mut out = String::new();
+    out.push_str(
+        "// AUTO-GENERATED by build.rs (KAIZEN-0178). Do not edit.\n\
+         //\n\
+         // Source of truth: `mcp_tool_schemas/<tool_name>.json`.\n\
+         // Deleting a referenced schema JSON triggers a compile error via `include_str!`.\n\n",
+    );
+    out.push_str("/// Raw JSON contents of every MCP tool schema, keyed by tool name.\n");
+    out.push_str("///\n");
+    out.push_str("/// Slice entries are sorted by tool name for deterministic iteration.\n");
+    out.push_str("pub static MCP_TOOL_SCHEMAS: &[(&str, &str)] = &[\n");
+    for (name, path) in entries {
+        out.push_str(&format!(
+            "    (\"{name}\", include_str!(r\"{}\")),\n",
+            abs_path(path).display()
+        ));
+    }
+    out.push_str("];\n\n");
+
+    // Per-tool literal lookup macro. Referencing an unknown name fails to
+    // match any arm → compile error ("no rules expected the token …").
+    out.push_str("/// Compile-time tool schema lookup by literal tool name.\n");
+    out.push_str("///\n");
+    out.push_str("/// See [`tool_metadata!`] for the public macro that wraps this.\n");
+    out.push_str("#[macro_export]\n");
+    out.push_str("macro_rules! __kaizen0178_schema_const {\n");
+    for (name, path) in entries {
+        out.push_str(&format!(
+            "    (\"{name}\") => {{ include_str!(r\"{}\") }};\n",
+            abs_path(path).display()
+        ));
+    }
+    out.push_str("}\n");
+    out
 }
 
 fn make_contract_env_key(contract: &str, equation: &str) -> String {
