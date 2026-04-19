@@ -1,3 +1,7 @@
+use crate::mcp::tools::agent_context_tools::IndexManager;
+use crate::mcp_pmcp::agent_context_handlers::{
+    PmatFindSimilarHandler, PmatGetFunctionHandler, PmatIndexStatsHandler, PmatQueryCodeHandler,
+};
 use crate::mcp_pmcp::analyze_handlers::{
     AnalyzeBigOTool, AnalyzeComplexityTool, AnalyzeDagTool, AnalyzeDeadCodeTool,
     AnalyzeDeepContextTool, AnalyzeSatdTool,
@@ -11,6 +15,7 @@ use crate::mcp_pmcp::quality_handlers::QualityGateTool;
 use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
 use crate::mcp_server::state_manager::StateManager;
 use pmcp::{Server, ServerCapabilities, ToolCapabilities};
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::info;
@@ -35,6 +40,12 @@ impl SimpleUnifiedServer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
         info!("Starting PMAT Simple Unified MCP server (pmcp SDK)");
+
+        // KAIZEN-0165: shared IndexManager for the 4 pmat_* AgentContextTools.
+        // Construction is cheap (no disk I/O); first tool call triggers index build.
+        let index_manager = Arc::new(IndexManager::new(
+            std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
+        ));
 
         // Build server with core PMAT tools that are already working
         let server = Server::builder()
@@ -76,9 +87,26 @@ impl SimpleUnifiedServer {
             .tool("git_operation", GitTool)
             .tool("generate_context", GenerateContextTool)
             .tool("scaffold_project", ScaffoldProjectTool)
+            // === Agent Context Tools (4) — KAIZEN-0165 ===
+            .tool(
+                "pmat_query_code",
+                PmatQueryCodeHandler::new(index_manager.clone()),
+            )
+            .tool(
+                "pmat_get_function",
+                PmatGetFunctionHandler::new(index_manager.clone()),
+            )
+            .tool(
+                "pmat_find_similar",
+                PmatFindSimilarHandler::new(index_manager.clone()),
+            )
+            .tool(
+                "pmat_index_stats",
+                PmatIndexStatsHandler::new(index_manager.clone()),
+            )
             .build()?;
 
-        info!("PMAT Simple Unified MCP server ready with 18 core tools, listening on stdio");
+        info!("PMAT Simple Unified MCP server ready with 20 tools (16 core + 4 agent_context), listening on stdio");
 
         // Run server with stdio transport
         server.run_stdio().await?;
@@ -337,9 +365,11 @@ mod coverage_tests {
         assert!(std::any::type_name::<AnalyzeComplexityTool>().contains("ComplexityTool"));
         assert!(std::any::type_name::<AnalyzeSatdTool>().contains("SatdTool"));
         assert!(std::any::type_name::<AnalyzeDeadCodeTool>().contains("DeadCodeTool"));
-        assert!(std::any::type_name::<AnalyzeDagTool>().contains("LintHotspotTool"));
-        assert!(std::any::type_name::<AnalyzeDeepContextTool>().contains("ChurnTool"));
-        assert!(std::any::type_name::<AnalyzeBigOTool>().contains("CouplingTool"));
+        // R17-1: Dag/BigO/DeepContext tools are now distinct structs that
+        // dispatch to the correct analysis functions (not lint/coupling/churn).
+        assert!(std::any::type_name::<AnalyzeDagTool>().contains("AnalyzeDagTool"));
+        assert!(std::any::type_name::<AnalyzeDeepContextTool>().contains("AnalyzeDeepContextTool"));
+        assert!(std::any::type_name::<AnalyzeBigOTool>().contains("AnalyzeBigOTool"));
 
         // Quality tools
         assert!(std::any::type_name::<QualityGateTool>().contains("QualityGateTool"));

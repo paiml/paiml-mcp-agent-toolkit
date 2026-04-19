@@ -1,6 +1,13 @@
 # Auto-generated from .pmat-work/PMAT-608/contract.json
 name: "PMAT-608"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "Auto-generated work-contract for PMAT-608"
+  references:
+    - ".pmat-work/PMAT-608/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L3
   current_level: L3
+  total_obligations: 47

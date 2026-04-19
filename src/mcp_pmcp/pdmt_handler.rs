@@ -1,10 +1,12 @@
+use crate::mcp_pmcp::tool_schemas::build_tool_info;
 use crate::models::pdmt::{EnforcementMode, PdmtQualityConfig};
 use crate::services::pdmt_quality_integration::PdmtQualityEnforcer;
 use crate::services::pdmt_service::PdmtService;
 use async_trait::async_trait;
+use pmcp::types::ToolInfo;
 use pmcp::{Error, RequestHandlerExtra, Result, ToolHandler};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use tracing::{debug, error, info};
 
 /// Input parameters for the PDMT deterministic todos tool

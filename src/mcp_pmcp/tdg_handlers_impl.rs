@@ -32,6 +32,24 @@ impl ToolHandler for TdgSystemDiagnosticsTool {
 
         Ok(result)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "detailed":   { "type": "boolean", "description": "Include detailed per-component diagnostics" },
+                "components": {
+                    "type": "array", "items": { "type": "string" },
+                    "description": "Subset of components to inspect (empty = all)"
+                }
+            }
+        });
+        Some(build_tool_info(
+            "tdg_system_diagnostics",
+            "Run comprehensive diagnostics on the TDG (Technical Debt Grading) system.",
+            schema,
+        ))
+    }
 }
 
 // === TdgStorageManagementTool ===
@@ -64,6 +82,22 @@ impl ToolHandler for TdgStorageManagementTool {
             .map_err(|e| Error::internal(format!("TDG storage management failed: {e}")))?;
 
         Ok(result)
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "action":  { "type": "string",  "description": "Storage action (compact, purge, stats, vacuum, etc.)" },
+                "options": { "type": "object",  "description": "Freeform options object for the given action" }
+            },
+            "required": ["action"]
+        });
+        Some(build_tool_info(
+            "tdg_storage_management",
+            "Perform a storage management action (compact, purge, vacuum, etc.) on the TDG backend.",
+            schema,
+        ))
     }
 }
 
@@ -106,6 +140,18 @@ impl ToolHandler for TdgAnalyzeWithStorageTool {
 
         Ok(result)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "storage_backend": { "type": "string", "description": "Storage backend name (e.g. sqlite, in-memory)" },
+            "priority":        { "type": "string", "description": "Analysis priority (low, normal, high)" }
+        });
+        Some(build_tool_info(
+            "tdg_analyze_with_storage",
+            "Analyze the given paths through the transactional TDG storage backend.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
+    }
 }
 
 // === TdgPerformanceMetricsTool ===
@@ -138,6 +184,24 @@ impl ToolHandler for TdgPerformanceMetricsTool {
             .map_err(|e| Error::internal(format!("TDG performance metrics failed: {e}")))?;
 
         Ok(result)
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "include_history": { "type": "boolean", "description": "Include historical trend data" },
+                "metrics": {
+                    "type": "array", "items": { "type": "string" },
+                    "description": "Subset of metric names to return (empty = all)"
+                }
+            }
+        });
+        Some(build_tool_info(
+            "tdg_performance_metrics",
+            "Return real-time TDG system performance metrics.",
+            schema,
+        ))
     }
 }
 
@@ -177,6 +241,24 @@ impl ToolHandler for TdgConfigureStorageTool {
 
         Ok(result)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "backend_type":  { "type": "string",  "description": "Backend type identifier (sqlite, rocks, memory, etc.)" },
+                "path":          { "type": "string",  "description": "Storage path" },
+                "cache_size_mb": { "type": "integer", "description": "In-memory cache size in MB" },
+                "compression":   { "type": "boolean", "description": "Enable on-disk compression" }
+            },
+            "required": ["backend_type"]
+        });
+        Some(build_tool_info(
+            "tdg_configure_storage",
+            "Configure and validate the TDG storage backend.",
+            schema,
+        ))
+    }
 }
 
 // === TdgHealthCheckTool ===
@@ -209,5 +291,21 @@ impl ToolHandler for TdgHealthCheckTool {
             .map_err(|e| Error::internal(format!("TDG health check failed: {e}")))?;
 
         Ok(result)
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "include_recommendations": { "type": "boolean", "description": "Include remediation recommendations" },
+                "check_storage":           { "type": "boolean", "description": "Run storage-backend health probe" },
+                "check_performance":       { "type": "boolean", "description": "Run performance-budget health probe" }
+            }
+        });
+        Some(build_tool_info(
+            "tdg_health_check",
+            "Run a comprehensive TDG-system health check (storage, performance, recommendations).",
+            schema,
+        ))
     }
 }

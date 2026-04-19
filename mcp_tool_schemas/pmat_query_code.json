@@ -1,0 +1,49 @@
+{
+  "name": "pmat_query_code",
+  "description": "Search code functions by natural language query with TDG quality filtering. Returns semantically ranked results with complexity, fault patterns, and call graph context.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Natural language search query describing the code intent."
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100,
+        "default": 10,
+        "description": "Maximum number of results to return."
+      },
+      "min_grade": {
+        "type": "string",
+        "enum": ["A", "B", "C", "D", "F"],
+        "description": "Minimum TDG grade filter."
+      },
+      "max_complexity": {
+        "type": "integer",
+        "description": "Maximum cyclomatic complexity filter."
+      },
+      "language": {
+        "type": "string",
+        "enum": ["rust", "typescript", "python", "go", "java", "c", "cpp"],
+        "description": "Language filter."
+      },
+      "path_pattern": {
+        "type": "string",
+        "description": "Path glob pattern filter."
+      },
+      "include_source": {
+        "type": "boolean",
+        "default": false,
+        "description": "Include source code in results."
+      },
+      "rebuild_index": {
+        "type": "boolean",
+        "default": false,
+        "description": "Force index rebuild before query."
+      }
+    },
+    "required": ["query"]
+  }
+}

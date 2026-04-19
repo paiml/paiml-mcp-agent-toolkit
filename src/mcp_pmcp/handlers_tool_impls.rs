@@ -31,6 +31,29 @@ impl ToolHandler for RefactorStartTool {
             state: state_value,
         })?)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "targets": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Paths to the files or directories to refactor"
+                },
+                "config": {
+                    "type": "object",
+                    "description": "Optional RefactorConfig (profile, thresholds, strategies)"
+                }
+            },
+            "required": ["targets"]
+        });
+        Some(build_tool_info(
+            "refactor.start",
+            "Start a new refactoring session against the given target paths.",
+            schema,
+        ))
+    }
 }
 
 #[async_trait]
@@ -50,6 +73,14 @@ impl ToolHandler for RefactorNextIterationTool {
         serialize_state(state)
             .map_err(|e| PmcpError::internal(format!("Failed to serialize state: {e}")))
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        Some(build_tool_info(
+            "refactor.nextIteration",
+            "Advance the active refactoring session by one iteration.",
+            json!({ "type": "object", "properties": {}, "additionalProperties": false }),
+        ))
+    }
 }
 
 #[async_trait]
@@ -64,6 +95,14 @@ impl ToolHandler for RefactorGetStateTool {
 
         serialize_state(state)
             .map_err(|e| PmcpError::internal(format!("Failed to serialize state: {e}")))
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        Some(build_tool_info(
+            "refactor.getState",
+            "Return the current state of the active refactoring session.",
+            json!({ "type": "object", "properties": {}, "additionalProperties": false }),
+        ))
     }
 }
 
@@ -81,5 +120,13 @@ impl ToolHandler for RefactorStopTool {
             "status": "stopped",
             "message": "Refactoring session stopped successfully"
         }))
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        Some(build_tool_info(
+            "refactor.stop",
+            "Stop the active refactoring session and release resources.",
+            json!({ "type": "object", "properties": {}, "additionalProperties": false }),
+        ))
     }
 }
