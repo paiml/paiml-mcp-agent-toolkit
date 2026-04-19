@@ -5,8 +5,17 @@
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
+
+    // Tests below that call `capture_command_error*`, `clear_error`, or
+    // `handle_bug_report` all touch the same on-disk file at
+    // ~/.pmat/last_error.json. Under cargo's threaded runner they race —
+    // a capture test writing the file between `clear_error()` and
+    // `handle_bug_report()` flips the latter's expected Err into Ok.
+    // `#[serial(bug_report_error_file)]` pins them to one thread.
 
     #[tokio::test]
+    #[serial(bug_report_error_file)]
     async fn test_handle_bug_report_no_error() {
         // Clear any existing error first
         let _ = clear_error();
@@ -20,6 +29,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial(bug_report_error_file)]
     #[ignore = "Requires HOME directory to be set in test environment"]
     async fn test_handle_bug_report_clear() {
         // Clear should always succeed (no-op if file doesn't exist)
@@ -28,18 +38,21 @@ mod tests {
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error() {
         // This should not panic
         capture_command_error("pmat", &["test".to_string()], "test error");
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_empty_args() {
         // Should handle empty args without panic
         capture_command_error("pmat", &[], "error with no args");
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_multiple_args() {
         // Should handle multiple args
         capture_command_error(
@@ -54,6 +67,7 @@ mod tests {
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_long_error_message() {
         // Should handle long error messages
         let long_error = "A".repeat(10000);
@@ -61,36 +75,42 @@ mod tests {
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_unicode() {
         // Should handle unicode in error messages
         capture_command_error("pmat", &["test".to_string()], "Error: 日本語 эррор 🚫");
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_code() {
         // Test capturing error with exit code
         capture_command_error_with_code("pmat", &["work".to_string()], "exit error", 1);
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_code_zero() {
         // Edge case: zero exit code
         capture_command_error_with_code("pmat", &["work".to_string()], "success but captured", 0);
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_code_negative() {
         // Edge case: negative exit code (signal-based termination)
         capture_command_error_with_code("pmat", &["work".to_string()], "signal error", -9);
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_code_large() {
         // Edge case: large exit code
         capture_command_error_with_code("pmat", &["work".to_string()], "error", 255);
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_special_characters() {
         // Error message with special characters that might break markdown
         capture_command_error(
@@ -101,6 +121,7 @@ mod tests {
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_newlines() {
         // Error message with newlines (multi-line errors)
         capture_command_error(
@@ -111,6 +132,7 @@ mod tests {
     }
 
     #[test]
+    #[serial(bug_report_error_file)]
     fn test_capture_command_error_with_tabs_and_whitespace() {
         // Error message with various whitespace
         capture_command_error(
