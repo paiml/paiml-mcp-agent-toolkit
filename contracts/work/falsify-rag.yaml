@@ -1,6 +1,13 @@
 # Auto-generated from .pmat-work/falsify-rag/contract.json
 name: "falsify-rag"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "Auto-generated work-contract for falsify-rag"
+  references:
+    - ".pmat-work/falsify-rag/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L1
   current_level: L1
+  total_obligations: 21

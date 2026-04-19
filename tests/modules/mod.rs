@@ -107,6 +107,7 @@ mod issue_67_integration_test;
 mod json_parsing_tests;
 mod kotlin_ast_test;
 mod kotlin_support_test;
+mod mcp_agent_context_tools_test;
 mod mcp_docs_enforcement;
 mod mcp_documentation_sync;
 #[cfg(feature = "mcp-integration")]
@@ -170,6 +171,7 @@ mod rust_tooling_scorer_tests;
 mod satd_detector_tests;
 #[cfg(feature = "mcp-integration")]
 mod scala_tools_tests;
+mod serve_fail_loud;
 mod services_integration;
 mod slow_integration;
 mod smart_test_filtering;

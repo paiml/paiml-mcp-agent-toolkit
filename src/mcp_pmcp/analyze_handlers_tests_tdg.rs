@@ -105,11 +105,13 @@ mod tdg_coverage_tests {
         let _: AnalyzeComplexityTool = ComplexityTool::new();
         let _: AnalyzeSatdTool = SatdTool::new();
         let _: AnalyzeDeadCodeTool = DeadCodeTool::new();
-        let _: AnalyzeDagTool = LintHotspotTool::new();
-        let _: AnalyzeDeepContextTool = ChurnTool::new();
-        let _: AnalyzeBigOTool = CouplingTool::new();
         let _: AnalyzeTdgTool = TdgTool::new();
         let _: AnalyzeTdgCompareTool = TdgCompareTool::new();
+        // R17-1: AnalyzeDagTool / AnalyzeBigOTool / AnalyzeDeepContextTool are
+        // now distinct structs, not aliases — they have their own new() ctors.
+        let _ = AnalyzeDagTool::new();
+        let _ = AnalyzeDeepContextTool::new();
+        let _ = AnalyzeBigOTool::new();
     }
 
     // === Args Deserialization Tests ===
@@ -238,5 +240,115 @@ mod tdg_coverage_tests {
         assert!(result.is_ok());
         let value = result.unwrap();
         assert_eq!(value["status"], "completed");
+    }
+
+    // === R17-1 Regression Tests: dispatch correctness ===
+    //
+    // Each test asserts that the tool's response message contains a marker
+    // that is specific to the CORRECT underlying analysis — so that a
+    // future mis-wiring (as in R15 #3) would fail fast. Previously,
+    // analyze_dag aliased to LintHotspotTool → message mentioned "Lint
+    // hotspot"; analyze_big_o → "Coupling analysis"; analyze_deep_context
+    // → "Churn analysis". These tests falsify that regression.
+
+    #[tokio::test]
+    async fn test_analyze_dag_tool_dispatches_to_dag() {
+        let tool = AnalyzeDagTool::new();
+        let args = json!({ "paths": [env!("CARGO_MANIFEST_DIR")] });
+        let result = tool.handle(args, test_extra()).await;
+        // Either succeeds with DAG output, or errors — but must NOT
+        // return lint-hotspot / coupling / churn content.
+        if let Ok(value) = result {
+            let msg = value["message"].as_str().unwrap_or("");
+            assert!(
+                msg.contains("DAG") || msg.contains("dag"),
+                "analyze_dag should produce DAG output, got: {msg}"
+            );
+            assert!(
+                !msg.contains("Lint hotspot"),
+                "analyze_dag must NOT dispatch to lint-hotspot (R17-1 regression): {msg}"
+            );
+            assert!(
+                !msg.contains("Coupling"),
+                "analyze_dag must NOT dispatch to coupling (R17-1 regression): {msg}"
+            );
+            assert!(
+                !msg.contains("Churn"),
+                "analyze_dag must NOT dispatch to churn (R17-1 regression): {msg}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_analyze_big_o_tool_dispatches_to_big_o() {
+        let tool = AnalyzeBigOTool::new();
+        let args = json!({ "paths": [env!("CARGO_MANIFEST_DIR")] });
+        let result = tool.handle(args, test_extra()).await;
+        if let Ok(value) = result {
+            let msg = value["message"].as_str().unwrap_or("");
+            assert!(
+                msg.contains("Big-O") || msg.contains("big_o") || msg.contains("big-o"),
+                "analyze_big_o should produce Big-O output, got: {msg}"
+            );
+            assert!(
+                !msg.contains("Coupling"),
+                "analyze_big_o must NOT dispatch to coupling (R17-1 regression): {msg}"
+            );
+            assert!(
+                !msg.contains("Lint hotspot"),
+                "analyze_big_o must NOT dispatch to lint-hotspot (R17-1 regression): {msg}"
+            );
+            assert!(
+                !msg.contains("Churn"),
+                "analyze_big_o must NOT dispatch to churn (R17-1 regression): {msg}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_analyze_deep_context_tool_dispatches_to_deep_context() {
+        let tool = AnalyzeDeepContextTool::new();
+        let args = json!({ "paths": [env!("CARGO_MANIFEST_DIR")] });
+        let result = tool.handle(args, test_extra()).await;
+        if let Ok(value) = result {
+            let msg = value["message"].as_str().unwrap_or("");
+            assert!(
+                msg.contains("Deep context") || msg.contains("deep_context") || msg.contains("deep context"),
+                "analyze_deep_context should produce deep-context output, got: {msg}"
+            );
+            assert!(
+                !msg.contains("Churn"),
+                "analyze_deep_context must NOT dispatch to churn (R17-1 regression): {msg}"
+            );
+            assert!(
+                !msg.contains("Coupling"),
+                "analyze_deep_context must NOT dispatch to coupling (R17-1 regression): {msg}"
+            );
+            assert!(
+                !msg.contains("Lint hotspot"),
+                "analyze_deep_context must NOT dispatch to lint-hotspot (R17-1 regression): {msg}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_r17_1_dag_tool_is_distinct_from_lint_hotspot() {
+        // Static guarantee: the three renamed tools are NOT the same type as
+        // the tools they were previously aliased to.
+        assert_ne!(
+            std::any::TypeId::of::<AnalyzeDagTool>(),
+            std::any::TypeId::of::<LintHotspotTool>(),
+            "AnalyzeDagTool must not be aliased to LintHotspotTool (R17-1)"
+        );
+        assert_ne!(
+            std::any::TypeId::of::<AnalyzeBigOTool>(),
+            std::any::TypeId::of::<CouplingTool>(),
+            "AnalyzeBigOTool must not be aliased to CouplingTool (R17-1)"
+        );
+        assert_ne!(
+            std::any::TypeId::of::<AnalyzeDeepContextTool>(),
+            std::any::TypeId::of::<ChurnTool>(),
+            "AnalyzeDeepContextTool must not be aliased to ChurnTool (R17-1)"
+        );
     }
 }

@@ -692,6 +692,10 @@ name = "agent_context_query_demo"
 path = "examples/agent_context_query_demo.rs"
 
 [[example]]
+name = "mcp_agent_context_demo"
+path = "examples/mcp_agent_context_demo.rs"
+
+[[example]]
 name = "suggest_rename_demo"
 path = "examples/suggest_rename_demo.rs"
 

@@ -1,6 +1,13 @@
 # Auto-generated from .pmat-work/GH-230/contract.json
 name: "GH-230"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "Auto-generated work-contract for GH-230"
+  references:
+    - ".pmat-work/GH-230/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L3
   current_level: L3
+  total_obligations: 22

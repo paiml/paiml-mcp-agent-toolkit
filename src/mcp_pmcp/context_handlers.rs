@@ -1,7 +1,9 @@
 //! Context and git tool handlers for the pmcp-based MCP server.
 
 use crate::mcp_pmcp::tool_functions;
+use crate::mcp_pmcp::tool_schemas::{build_tool_info, paths_object_schema};
 use async_trait::async_trait;
+use pmcp::types::ToolInfo;
 use pmcp::{Error, RequestHandlerExtra, Result, ToolHandler};
 use serde::Deserialize;
 use serde_json::{json, Value};

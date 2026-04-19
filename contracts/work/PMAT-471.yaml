@@ -1,6 +1,13 @@
 # Auto-generated from .pmat-work/PMAT-471/contract.json
 name: "PMAT-471"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "Auto-generated work-contract for PMAT-471"
+  references:
+    - ".pmat-work/PMAT-471/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L1
   current_level: L1
+  total_obligations: 17

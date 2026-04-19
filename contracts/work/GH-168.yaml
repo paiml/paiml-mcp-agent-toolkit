@@ -1,6 +1,13 @@
 # Auto-generated from .pmat-work/GH-168/contract.json
 name: "GH-168"
+metadata:
+  version: "1.0.0"
+  kind: schema
+  description: "Auto-generated work-contract for GH-168"
+  references:
+    - ".pmat-work/GH-168/contract.json"
 surface: work-contract
 verification_summary:
   target_level: L1
   current_level: L1
+  total_obligations: 17
