@@ -170,6 +170,7 @@ mod rust_tooling_scorer_tests;
 mod satd_detector_tests;
 #[cfg(feature = "mcp-integration")]
 mod scala_tools_tests;
+mod serve_fail_loud;
 mod services_integration;
 mod slow_integration;
 mod smart_test_filtering;
