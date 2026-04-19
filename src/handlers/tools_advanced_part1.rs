@@ -122,7 +122,6 @@ async fn calculate_file_metrics(
     }
 }
 
-
 /// Toyota Way: Extract Method - Handle defect probability analysis (complexity ≤8)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn handle_analyze_defect_probability(
@@ -325,15 +324,33 @@ pub(crate) async fn handle_analyze_dead_code(
 }
 
 /// Toyota Way: Extract Method - Parse dead code arguments (complexity ≤5)
+///
+/// # R21-1 / D100 fail-loud fix
+///
+/// Previously this silently fell back to `std::env::current_dir()` when
+/// `project_path` was null, missing, or an empty string. That produced what
+/// looked like "hardcoded fake data" to MCP clients because the server had
+/// no idea what project the client meant and analyzed wherever the server
+/// process happened to be running. Now we reject those three cases up front
+/// with a clear error — callers must pass a real path.
 fn parse_dead_code_args(
     arguments: serde_json::Value,
 ) -> Result<(AnalyzeDeadCodeArgs, PathBuf), Box<dyn std::error::Error>> {
     let args: AnalyzeDeadCodeArgs = serde_json::from_value(arguments)?;
 
-    let project_path = args.project_path.as_ref().map_or_else(
-        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        PathBuf::from,
-    );
+    let raw_path = args.project_path.as_ref().ok_or_else(|| {
+        Box::<dyn std::error::Error>::from(
+            "'project_path' is required and must be a non-empty string — \
+null/missing is rejected to avoid silently analyzing the server's current \
+directory (R21-1 / D100)",
+        )
+    })?;
+    if raw_path.trim().is_empty() {
+        return Err(Box::<dyn std::error::Error>::from(
+            "'project_path' must be a non-empty string (R21-1 / D100)",
+        ));
+    }
+    let project_path = PathBuf::from(raw_path);
 
     Ok((args, project_path))
 }
@@ -467,4 +484,60 @@ fn format_dead_code_summary_stats(
         "**Unreachable blocks:** {}\n\n",
         summary.unreachable_blocks
     ));
+}
+
+// ---------------------------------------------------------------------------
+// R21-1 / D100: fail-loud tests for analyze_dead_code argument validation.
+// ---------------------------------------------------------------------------
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod dead_code_fail_loud_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn err_msg(args: serde_json::Value) -> String {
+        match parse_dead_code_args(args) {
+            Err(e) => e.to_string(),
+            Ok(_) => panic!("expected error, got Ok"),
+        }
+    }
+
+    #[test]
+    fn rejects_null_project_path() {
+        let msg = err_msg(json!({ "project_path": null }));
+        assert!(
+            msg.contains("project_path"),
+            "error must name the field, got: {msg}"
+        );
+        assert!(
+            msg.contains("required") || msg.contains("non-empty"),
+            "error must explain why, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn rejects_missing_project_path() {
+        let msg = err_msg(json!({}));
+        assert!(msg.contains("project_path"), "got: {msg}");
+    }
+
+    #[test]
+    fn rejects_empty_string_project_path() {
+        let msg = err_msg(json!({ "project_path": "" }));
+        assert!(msg.contains("non-empty"), "got: {msg}");
+    }
+
+    #[test]
+    fn rejects_whitespace_only_project_path() {
+        let msg = err_msg(json!({ "project_path": "   " }));
+        assert!(msg.contains("non-empty"), "got: {msg}");
+    }
+
+    #[test]
+    fn accepts_valid_project_path() {
+        let (_args, path) =
+            parse_dead_code_args(json!({ "project_path": "/tmp/my-project" })).unwrap();
+        assert_eq!(path, PathBuf::from("/tmp/my-project"));
+    }
 }
