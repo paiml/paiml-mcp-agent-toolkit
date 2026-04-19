@@ -14,6 +14,14 @@ jobs:
     uses: paiml/.github/.github/workflows/sovereign-ci.yml@main
     with:
       repo: ${{ github.event.repository.name }}
+      # Upstream sovereign-ci.yml flipped enable_sccache default to true on
+      # 2026-04-18 (fleet rollout after Phase 3 pilot), but the
+      # sovereign-ci:stable runner image lacks a rustc-sccache binary —
+      # every CI job since ~12:00 UTC 2026-04-19 fails with
+      # `could not execute process rustc-sccache`. Disable per-repo until
+      # upstream installs the wrapper in the runner image (or reverts the
+      # default). Re-enable by deleting this line.
+      enable_sccache: false
     secrets: inherit
 
   # Top-level gate satisfies the org ruleset "Green Main" which requires a
