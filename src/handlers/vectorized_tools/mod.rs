@@ -3,13 +3,19 @@
 //!
 //! MCP protocol extensions for high-performance vectorized analysis tools
 //! that leverage SIMD operations and parallel processing.
+//!
+//! # Honest-failure policy (R21-1 / KAIZEN-0200)
+//!
+//! These seven tools were previously stubs that returned hardcoded fake
+//! payloads. Per the R17-4 "fail loud" policy they now return JSON-RPC error
+//! `-32001 Tool not implemented`. See `vectorized_tools_handlers.rs` for the
+//! single funnel helper and `vectorized_tools_info.rs` for the tools/list
+//! descriptions that flag each tool as `(unimplemented stub — KAIZEN-0200)`.
 
 #![cfg_attr(coverage_nightly, coverage(off))]
 
 use crate::models::mcp::{McpResponse, ToolCallParams};
-use serde::Deserialize;
 use serde_json::{json, Value};
-use std::path::PathBuf;
 use tracing::info;
 
 /// Vectorized tool names
@@ -78,86 +84,12 @@ pub async fn handle_vectorized_tools(
     }
 }
 
-// --- Parameter structs ---
-
-/// Vectorized duplicate detection parameters
-#[derive(Debug, Deserialize)]
-struct DuplicatesVectorizedArgs {
-    project_path: PathBuf,
-    detection_type: Option<String>,
-    threshold: Option<f64>,
-    min_lines: Option<usize>,
-    max_tokens: Option<usize>,
-    parallel_threads: Option<usize>,
-    use_simd: Option<bool>,
-}
-
-/// Graph metrics vectorized parameters
-#[derive(Debug, Deserialize)]
-struct GraphMetricsVectorizedArgs {
-    project_path: PathBuf,
-    metrics: Option<Vec<String>>,
-    pagerank_damping: Option<f64>,
-    max_iterations: Option<usize>,
-    convergence_threshold: Option<f64>,
-    use_gpu: Option<bool>,
-}
-
-/// Name similarity vectorized parameters
-#[derive(Debug, Deserialize)]
-struct NameSimilarityVectorizedArgs {
-    project_path: PathBuf,
-    query: String,
-    top_k: Option<usize>,
-    threshold: Option<f64>,
-    phonetic: Option<bool>,
-    fuzzy: Option<bool>,
-    use_simd: Option<bool>,
-}
-
-/// Symbol table vectorized parameters
-#[derive(Debug, Deserialize)]
-struct SymbolTableVectorizedArgs {
-    project_path: PathBuf,
-    filter: Option<String>,
-    query: Option<String>,
-    show_unreferenced: Option<bool>,
-    show_references: Option<bool>,
-    parallel_parsing: Option<bool>,
-}
-
-/// Incremental coverage vectorized parameters
-#[derive(Debug, Deserialize)]
-struct IncrementalCoverageVectorizedArgs {
-    project_path: PathBuf,
-    base_branch: Option<String>,
-    target_branch: Option<String>,
-    changed_files_only: Option<bool>,
-    parallel_diff: Option<bool>,
-}
-
-/// Big-O vectorized parameters
-#[derive(Debug, Deserialize)]
-struct BigOVectorizedArgs {
-    project_path: PathBuf,
-    confidence_threshold: Option<u8>,
-    analyze_space: Option<bool>,
-    high_complexity_only: Option<bool>,
-    parallel_analysis: Option<bool>,
-}
-
-/// Enhanced report generation parameters
-#[derive(Debug, Deserialize)]
-struct EnhancedReportArgs {
-    project_path: PathBuf,
-    output_format: Option<String>,
-    analyses: Option<Vec<String>>,
-    include_visualizations: Option<bool>,
-    include_recommendations: Option<bool>,
-    confidence_threshold: Option<u8>,
-}
-
 // --- Include handler implementations and tool info ---
+//
+// R21-1: parameter structs deleted — every handler now returns `-32001` without
+// inspecting arguments, so there is nothing to parse. This keeps the fail-loud
+// funnel uniform and eliminates the old ceremony of "parse args, then ignore
+// them and return fake data".
 include!("vectorized_tools_handlers.rs");
 include!("vectorized_tools_info.rs");
 
