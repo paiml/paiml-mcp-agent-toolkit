@@ -1,4 +1,3 @@
-
 #[derive(Deserialize)]
 struct SatdArgs {
     #[serde(default = "default_project_path")]
@@ -228,47 +227,23 @@ fn parse_lint_hotspot_args(arguments: serde_json::Value) -> Result<LintHotspotAr
         .map_err(|e| format!("Invalid analyze_lint_hotspot arguments: {e}"))
 }
 
+/// Run clippy analysis in-memory — avoids tempfile lifetime bugs (D91).
+///
+/// Previously this wrote JSON to a `NamedTempFile` and re-read it from disk;
+/// the tempfile dropped at scope exit and deleted the file before the read,
+/// failing every MCP invocation with
+/// `Failed to read temporary file: No such file or directory (os error 2)`.
 async fn execute_lint_hotspot_analysis(
-    args: &LintHotspotArgs,
     project_path: &Path,
-) -> Result<std::path::PathBuf, String> {
-    use crate::cli::handlers::lint_hotspot_handlers::handle_analyze_lint_hotspot;
-    use crate::cli::LintHotspotOutputFormat;
+) -> Result<Option<crate::cli::handlers::lint_hotspot_handlers::LintHotspotResult>, String> {
+    use crate::cli::handlers::lint_hotspot_handlers::clippy::run_clippy_analysis;
 
-    let temp_file = tempfile::NamedTempFile::new()
-        .map_err(|e| format!("Failed to create temporary file: {e}"))?;
-    let output_path = temp_file.path().to_path_buf();
-
-    handle_analyze_lint_hotspot(
-        project_path.to_path_buf(),
-        None,
-        LintHotspotOutputFormat::Json,
-        100.0,
-        0.0,
-        false,
-        false,
-        false,
-        Some(output_path.clone()),
-        false,
-        String::new(),
-        args.top_files,
-        Vec::new(),
-        Vec::new(),
-    )
-    .await
-    .map_err(|e| format!("Failed to analyze lint hotspots: {e}"))?;
-
-    Ok(output_path)
-}
-
-async fn read_and_parse_lint_output(
-    output_path: &std::path::Path,
-) -> Result<serde_json::Value, String> {
-    let json_output = tokio::fs::read_to_string(output_path)
-        .await
-        .map_err(|e| format!("Failed to read temporary file: {e}"))?;
-
-    serde_json::from_str(&json_output).map_err(|e| format!("Failed to parse JSON output: {e}"))
+    match run_clippy_analysis(project_path, "").await {
+        Ok(result) => Ok(Some(result)),
+        // Clean project — not an error condition over MCP; callers get an empty result.
+        Err(e) if e.to_string().contains("No lint violations found") => Ok(None),
+        Err(e) => Err(format!("Failed to analyze lint hotspots: {e}")),
+    }
 }
 
 struct LintHotspotData {
@@ -278,14 +253,55 @@ struct LintHotspotData {
     average_violations_per_file: f64,
 }
 
-fn extract_lint_data(lint_data: &serde_json::Value) -> LintHotspotData {
+fn extract_lint_data(
+    result: Option<&crate::cli::handlers::lint_hotspot_handlers::LintHotspotResult>,
+    top_files: usize,
+) -> LintHotspotData {
+    let Some(result) = result else {
+        return LintHotspotData {
+            hotspots: Vec::new(),
+            total_files: 0,
+            total_violations: 0,
+            average_violations_per_file: 0.0,
+        };
+    };
+
+    let total_files = result.summary_by_file.len();
+    let total_violations = result.total_project_violations;
+    let average_violations_per_file = if total_files > 0 {
+        total_violations as f64 / total_files as f64
+    } else {
+        0.0
+    };
+
+    // Sort files by defect density (highest first) and take top N.
+    let mut sorted: Vec<_> = result.summary_by_file.iter().collect();
+    sorted.sort_by(|a, b| {
+        b.1.defect_density
+            .partial_cmp(&a.1.defect_density)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    let hotspots = sorted
+        .into_iter()
+        .take(top_files.max(1))
+        .map(|(path, summary)| {
+            json!({
+                "file": path.display().to_string(),
+                "total_violations": summary.total_violations,
+                "errors": summary.errors,
+                "warnings": summary.warnings,
+                "sloc": summary.sloc,
+                "defect_density": summary.defect_density,
+            })
+        })
+        .collect();
+
     LintHotspotData {
-        hotspots: lint_data["hotspots"].as_array().unwrap_or(&vec![]).clone(),
-        total_files: lint_data["total_files_analyzed"].as_u64().unwrap_or(0) as usize,
-        total_violations: lint_data["total_violations"].as_u64().unwrap_or(0) as usize,
-        average_violations_per_file: lint_data["average_violations_per_file"]
-            .as_f64()
-            .unwrap_or(0.0),
+        hotspots,
+        total_files,
+        total_violations,
+        average_violations_per_file,
     }
 }
 
@@ -352,17 +368,12 @@ pub(crate) async fn handle_analyze_lint_hotspot(
 
     let project_path = std::path::PathBuf::from(args.project_path.clone());
 
-    let output_path = match execute_lint_hotspot_analysis(&args, &project_path).await {
-        Ok(path) => path,
+    let result = match execute_lint_hotspot_analysis(&project_path).await {
+        Ok(r) => r,
         Err(e) => return McpResponse::error(request_id, -32603, e),
     };
 
-    let lint_data = match read_and_parse_lint_output(&output_path).await {
-        Ok(data) => data,
-        Err(e) => return McpResponse::error(request_id, -32603, e),
-    };
-
-    let extracted_data = extract_lint_data(&lint_data);
+    let extracted_data = extract_lint_data(result.as_ref(), args.top_files);
     let output = format_lint_hotspot_output(&args, &extracted_data);
 
     McpResponse::success(request_id, output)
@@ -431,5 +442,122 @@ pub(crate) async fn handle_quality_driven_development(
                 format!("Quality-driven development failed: {e}"),
             )
         }
+    }
+}
+
+// ============================================================================
+// D91 / R21-3 regression tests
+// ============================================================================
+#[cfg(test)]
+mod d91_r21_3_tests {
+    use super::*;
+
+    /// `extract_lint_data(None, _)` must not panic and must yield zero totals.
+    /// Before the fix, the analogous code path relied on a tempfile that was
+    /// deleted before reading, so this in-memory path didn't exist at all.
+    #[test]
+    fn extract_lint_data_none_yields_zero() {
+        let data = extract_lint_data(None, 10);
+        assert_eq!(data.total_files, 0);
+        assert_eq!(data.total_violations, 0);
+        assert!(data.hotspots.is_empty());
+        assert_eq!(data.average_violations_per_file, 0.0);
+    }
+
+    /// `extract_lint_data(Some(result), top)` must expose hotspots sorted by
+    /// defect density, respect `top_files`, and surface totals from the
+    /// in-memory `LintHotspotResult` (no tempfile).
+    #[test]
+    fn extract_lint_data_sorts_and_truncates_hotspots() {
+        use crate::cli::handlers::lint_hotspot_handlers::{
+            FileSummary, LintHotspot, LintHotspotResult, QualityGateStatus, SeverityDistribution,
+        };
+        use std::collections::HashMap;
+
+        let mut summary_by_file: HashMap<PathBuf, FileSummary> = HashMap::new();
+        summary_by_file.insert(
+            PathBuf::from("src/cool.rs"),
+            FileSummary {
+                total_violations: 1,
+                errors: 0,
+                warnings: 1,
+                sloc: 100,
+                defect_density: 0.01,
+            },
+        );
+        summary_by_file.insert(
+            PathBuf::from("src/hot.rs"),
+            FileSummary {
+                total_violations: 10,
+                errors: 2,
+                warnings: 8,
+                sloc: 100,
+                defect_density: 0.10,
+            },
+        );
+
+        let result = LintHotspotResult {
+            hotspot: LintHotspot {
+                file: PathBuf::from("src/hot.rs"),
+                defect_density: 0.10,
+                total_violations: 10,
+                sloc: 100,
+                severity_distribution: SeverityDistribution::default(),
+                top_lints: vec![],
+                detailed_violations: vec![],
+            },
+            all_violations: vec![],
+            summary_by_file,
+            total_project_violations: 11,
+            enforcement: None,
+            refactor_chain: None,
+            quality_gate: QualityGateStatus {
+                passed: true,
+                violations: vec![],
+                blocking: false,
+            },
+        };
+
+        // top_files=1 forces truncation to the hottest file only.
+        let data = extract_lint_data(Some(&result), 1);
+        assert_eq!(data.total_files, 2);
+        assert_eq!(data.total_violations, 11);
+        assert_eq!(data.hotspots.len(), 1);
+        assert_eq!(
+            data.hotspots[0]["file"].as_str(),
+            Some("src/hot.rs"),
+            "hottest file must be first"
+        );
+
+        // top_files=10 returns both, hot first.
+        let data = extract_lint_data(Some(&result), 10);
+        assert_eq!(data.hotspots.len(), 2);
+        assert_eq!(data.hotspots[0]["file"].as_str(), Some("src/hot.rs"));
+        assert_eq!(data.hotspots[1]["file"].as_str(), Some("src/cool.rs"));
+    }
+
+    /// The MCP handler must NEVER return the D91 error string
+    /// `"Failed to read temporary file"`. The new implementation has no
+    /// tempfile at all; this test asserts that even for an invalid project
+    /// path, the error surface doesn't mention tempfiles.
+    #[tokio::test]
+    async fn analyze_lint_hotspot_never_emits_tempfile_error() {
+        // Non-existent path — handler will error, but NOT with a tempfile error.
+        let arguments = json!({
+            "project_path": "/nonexistent/r21_3/path",
+            "top_files": 5,
+        });
+
+        let response = handle_analyze_lint_hotspot(json!(1), arguments).await;
+        let serialized = serde_json::to_string(&response).expect("serialize response");
+
+        assert!(
+            !serialized.contains("Failed to read temporary file"),
+            "D91 regression: handler still emits tempfile error: {serialized}"
+        );
+        assert!(
+            !serialized.contains("Failed to create temporary file"),
+            "D91 regression: handler still creates a tempfile: {serialized}"
+        );
     }
 }
