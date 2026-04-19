@@ -201,7 +201,7 @@ impl SemanticSearchEngine {
         // Combine and sort
         let mut all_results: Vec<SearchResult> = semantic_results
             .into_iter()
-            .chain(keyword_results.into_iter())
+            .chain(keyword_results)
             .collect();
 
         // Deduplicate

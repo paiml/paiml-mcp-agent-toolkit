@@ -180,11 +180,10 @@ fn print_pool_efficiency_stats(pool_stats: &crate::services::memory_manager::Poo
 
 /// Calculate average buffer size for pool
 fn calculate_average_buffer_size(pool_stats: &crate::services::memory_manager::PoolStats) -> usize {
-    if pool_stats.buffer_count > 0 {
-        pool_stats.total_size / pool_stats.buffer_count
-    } else {
-        0
-    }
+    pool_stats
+        .total_size
+        .checked_div(pool_stats.buffer_count)
+        .unwrap_or(0)
 }
 
 async fn handle_memory_pressure(threshold: f64, watch: &Option<u64>) -> Result<()> {

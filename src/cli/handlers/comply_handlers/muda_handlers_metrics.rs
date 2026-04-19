@@ -149,7 +149,7 @@ fn collect_over_processing_files(project_path: &Path) -> Vec<String> {
         })
         .collect();
 
-    file_complexities.sort_by(|a, b| b.1.cmp(&a.1));
+    file_complexities.sort_by_key(|b| std::cmp::Reverse(b.1));
     file_complexities
         .into_iter()
         .take(5)
@@ -273,7 +273,7 @@ fn collect_defect_files(project_path: &Path) -> Vec<String> {
         })
         .collect();
 
-    file_defects.sort_by(|a, b| b.1.cmp(&a.1));
+    file_defects.sort_by_key(|b| std::cmp::Reverse(b.1));
     file_defects
         .into_iter()
         .take(5)
