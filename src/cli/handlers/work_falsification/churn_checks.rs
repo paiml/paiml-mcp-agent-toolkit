@@ -305,7 +305,7 @@ pub(crate) fn detect_fix_chains(log: &str, max_chain: usize) -> Vec<(String, usi
     }
     collect_violations(&mut streaks, max_chain, &mut violations);
 
-    violations.sort_by(|a, b| b.1.cmp(&a.1));
+    violations.sort_by_key(|b| std::cmp::Reverse(b.1));
     violations.dedup_by(|a, b| a.0 == b.0);
     violations
 }

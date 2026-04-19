@@ -172,12 +172,11 @@ impl ScalaMapper {
         for node in nodes.iter_mut() {
             // Add Scala-specific metadata
             match node.kind {
-                NodeKind::Class => {
+                NodeKind::Class
                     // Handle case classes
-                    if node.has_modifier("case") {
+                    if node.has_modifier("case") => {
                         node.kind = NodeKind::CaseClass;
                     }
-                }
                 NodeKind::Module => {
                     // Check if this is a Scala object
                     node.add_metadata("scala:isObject", "true");

@@ -330,12 +330,11 @@ fn collect_ts_visibility(
     let currently_exported = exported || is_export;
 
     match node.kind() {
-        "function_declaration" | "class_declaration" | "interface_declaration" => {
-            if currently_exported {
+        "function_declaration" | "class_declaration" | "interface_declaration"
+            if currently_exported => {
                 let line = node.start_position().row + 1;
                 map.insert(line, "export".to_string());
             }
-        }
         "lexical_declaration" | "variable_declaration" => {
             // Arrow function chunks use variable_declarator's start_line
             let mut inner = node.walk();

@@ -306,7 +306,7 @@ pub fn raw_search(
     if options.files_with_matches {
         Ok(RawSearchOutput::Files(acc.file_matches))
     } else if options.count_mode {
-        acc.file_counts.sort_by(|a, b| b.count.cmp(&a.count));
+        acc.file_counts.sort_by_key(|b| std::cmp::Reverse(b.count));
         Ok(RawSearchOutput::Counts(acc.file_counts))
     } else {
         Ok(RawSearchOutput::Lines(acc.results))
