@@ -175,7 +175,7 @@ pub(super) fn calculate_summary_statistics(data: &mut AnalysisData) -> SummarySt
 
     // Sort and limit hotspots
     data.hotspots
-        .sort_unstable_by(|a, b| b.complexity.cmp(&a.complexity));
+        .sort_unstable_by_key(|b| std::cmp::Reverse(b.complexity));
     data.hotspots.truncate(10);
 
     SummaryStats {

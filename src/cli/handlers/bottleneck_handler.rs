@@ -118,7 +118,7 @@ fn analyze_bottlenecks(path: &Path, period: u32, threshold: usize) -> Result<Bot
         .collect();
 
     // Sort by touches descending
-    bottlenecks.sort_by(|a, b| b.touches.cmp(&a.touches));
+    bottlenecks.sort_by_key(|b| std::cmp::Reverse(b.touches));
     bottlenecks.truncate(20);
 
     // Detect co-change coupling
@@ -323,7 +323,7 @@ fn detect_coupling(commit_files: &[Vec<String>], min_co_changes: usize) -> Vec<C
         })
         .collect();
 
-    pairs.sort_by(|a, b| b.co_changes.cmp(&a.co_changes));
+    pairs.sort_by_key(|b| std::cmp::Reverse(b.co_changes));
     pairs.truncate(15);
     pairs
 }

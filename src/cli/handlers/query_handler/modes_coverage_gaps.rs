@@ -218,7 +218,7 @@ fn output_coverage_gaps_by_file(results: &[QueryResult], files_only: bool) -> an
         entry.1 += 1;
     }
     let mut sorted: Vec<_> = by_file.into_iter().collect();
-    sorted.sort_by(|a, b| b.1 .0.cmp(&a.1 .0));
+    sorted.sort_by_key(|b| std::cmp::Reverse(b.1 .0));
     for (file, (uncov, funcs)) in &sorted {
         if files_only {
             println!("{file}");

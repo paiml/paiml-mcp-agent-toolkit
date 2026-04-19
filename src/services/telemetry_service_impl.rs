@@ -196,11 +196,7 @@ fn build_system_data(totals: ServiceTotals) -> ServiceTelemetryData {
         successful_operations: total_successful,
         failed_operations: total_operations - total_successful,
         total_duration_ms: total_duration,
-        avg_duration_ms: if total_operations > 0 {
-            total_duration / total_operations
-        } else {
-            0
-        },
+        avg_duration_ms: total_duration.checked_div(total_operations).unwrap_or(0),
         peak_memory_bytes: 0,
         total_items_processed: total_items,
         success_rate: if total_operations > 0 {
