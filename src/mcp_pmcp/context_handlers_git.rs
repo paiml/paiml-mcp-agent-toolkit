@@ -96,4 +96,20 @@ impl ToolHandler for GitStatusTool {
 
         Ok(status)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "path": { "type": "string", "description": "Path to the git repository to query" }
+            },
+            "required": ["path"]
+        });
+        // Registered as `git_operation` in server.rs.
+        Some(build_tool_info(
+            "git_operation",
+            "Query git working-tree status for the given repository path.",
+            schema,
+        ))
+    }
 }

@@ -29,6 +29,18 @@ impl ToolHandler for QualityGateTool {
 
         Ok(results)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "strict": { "type": "boolean", "description": "Fail the gate on any violation (no tolerance)" },
+            "file":   { "type": "string",  "description": "Check only this single file instead of the paths list" }
+        });
+        Some(build_tool_info(
+            "quality_gate",
+            "Run comprehensive quality-gate checks (complexity, SATD, dead code, lint, docs, etc.) against the given paths.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
+    }
 }
 
 #[async_trait]

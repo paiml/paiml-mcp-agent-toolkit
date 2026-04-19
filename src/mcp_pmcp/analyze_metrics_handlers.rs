@@ -42,6 +42,18 @@ impl ToolHandler for LintHotspotTool {
 
         Ok(results)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "top_files": { "type": "integer", "description": "Return only the top N files with the most lint violations" }
+        });
+        // Registered as `analyze_dag` in server.rs; keep the registered name for consistency.
+        Some(build_tool_info(
+            "analyze_dag",
+            "Generate a dependency graph (DAG) / lint hotspot report highlighting files with the most violations.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
+    }
 }
 
 // Churn Analysis Tool
@@ -90,6 +102,19 @@ impl ToolHandler for ChurnTool {
 
         Ok(results)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "days":      { "type": "integer", "description": "Git history window in days (default: 90)" },
+            "top_files": { "type": "integer", "description": "Return only the top N files by churn" }
+        });
+        // Registered as `analyze_deep_context` in server.rs.
+        Some(build_tool_info(
+            "analyze_deep_context",
+            "Comprehensive code analysis combining git churn history with code metrics.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
+    }
 }
 
 // Coupling Analysis Tool
@@ -135,5 +160,17 @@ impl ToolHandler for CouplingTool {
             .map_err(|e| Error::internal(format!("Coupling analysis failed: {e}")))?;
 
         Ok(results)
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "threshold": { "type": "number", "description": "Minimum similarity threshold for reporting coupled modules (0.0-1.0)" }
+        });
+        // Registered as `analyze_big_o` in server.rs.
+        Some(build_tool_info(
+            "analyze_big_o",
+            "Big-O complexity / module coupling analysis.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
     }
 }

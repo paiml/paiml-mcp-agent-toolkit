@@ -80,4 +80,16 @@ impl ToolHandler for ComplexityTool {
 
         Ok(results)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "top_files": { "type": "integer", "description": "Return only the top N most-complex files" },
+            "threshold": { "type": "integer", "description": "Minimum cyclomatic complexity to report" }
+        });
+        Some(build_tool_info(
+            "analyze_complexity",
+            "Analyze cyclomatic and cognitive complexity for source files.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
+    }
 }

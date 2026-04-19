@@ -3,6 +3,40 @@
 
 #[async_trait]
 impl ToolHandler for PdmtTool {
+    fn metadata(&self) -> Option<ToolInfo> {
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "requirements": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Requirements to convert into deterministic actionable todos"
+                },
+                "project_name": { "type": "string", "description": "Project or component name" },
+                "granularity":  { "type": "string", "enum": ["low", "medium", "high"], "description": "Task detail level (default: high)" },
+                "quality_config": {
+                    "type": "object",
+                    "description": "Quality enforcement config",
+                    "properties": {
+                        "enforcement_mode":       { "type": "string", "enum": ["strict", "advisory", "auto_fix"] },
+                        "coverage_threshold":     { "type": "number"  },
+                        "max_complexity":         { "type": "integer" },
+                        "require_doctests":       { "type": "boolean" },
+                        "require_property_tests": { "type": "boolean" },
+                        "require_examples":       { "type": "boolean" },
+                        "zero_satd_tolerance":    { "type": "boolean" }
+                    }
+                }
+            },
+            "required": ["requirements"]
+        });
+        Some(build_tool_info(
+            "pdmt_deterministic_todos",
+            "Generate deterministic, quality-enforced todo lists from a list of requirements.",
+            schema,
+        ))
+    }
+
     async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> Result<Value> {
         debug!("Handling pdmt_deterministic_todos with args: {}", args);
 
