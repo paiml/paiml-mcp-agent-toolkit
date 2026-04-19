@@ -174,7 +174,7 @@ fn compute_cochange_pairs(
             CoChangePair { file_a: a, file_b: b, count, jaccard }
         })
         .collect();
-    pairs.sort_by(|a, b| b.count.cmp(&a.count));
+    pairs.sort_by_key(|b| std::cmp::Reverse(b.count));
     pairs.truncate(5);
     pairs
 }

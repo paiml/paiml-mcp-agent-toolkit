@@ -25,11 +25,10 @@ impl TypeScriptMapper {
                 NodeKind::Interface => {
                     node.add_metadata("typescript:isInterface", "true");
                 }
-                NodeKind::Class => {
-                    if node.has_modifier("abstract") {
+                NodeKind::Class
+                    if node.has_modifier("abstract") => {
                         node.add_metadata("typescript:isAbstract", "true");
                     }
-                }
                 _ => {}
             }
         }
@@ -97,12 +96,11 @@ impl JavaScriptMapper {
                 NodeKind::Class => {
                     node.add_metadata("javascript:isClass", "true");
                 }
-                NodeKind::Function => {
+                NodeKind::Function
                     // Check for arrow functions
-                    if node.has_modifier("arrow") {
+                    if node.has_modifier("arrow") => {
                         node.kind = NodeKind::Lambda;
                     }
-                }
                 _ => {}
             }
         }

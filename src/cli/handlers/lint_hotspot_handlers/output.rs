@@ -229,7 +229,7 @@ pub(crate) fn format_detailed(
     // Add top files by violation count
     output.push_str("\n## Top Files by Violations\n");
     let mut sorted_files: Vec<_> = result.summary_by_file.iter().collect();
-    sorted_files.sort_by(|a, b| b.1.total_violations.cmp(&a.1.total_violations));
+    sorted_files.sort_by_key(|b| std::cmp::Reverse(b.1.total_violations));
 
     let files_to_show = if top_files == 0 {
         sorted_files.len()
