@@ -10,6 +10,54 @@ use serde_json::json;
 use std::path::{Path, PathBuf};
 use tracing::{error, info};
 
+/// R22-1 / D101 — Reject missing, null, or empty/whitespace-only
+/// `project_path` arguments across MCP advanced-analysis handlers.
+///
+/// This is the parity fix for R21-5 / D99 (PR #371), which added the same
+/// guard to the `src/agent/mcp_server_protocol.rs` handlers. The live
+/// dispatcher in `src/handlers/tools_advanced*` was still silently
+/// defaulting to `std::env::current_dir()`, which lets a remote MCP client
+/// exfiltrate information about the server's launch directory by sending
+/// `{}` / `{"project_path": null}` / `{"project_path": ""}`.
+///
+/// Mirrors the R21-1 / D100 fail-loud pattern already used by
+/// `handle_analyze_dead_code`. Returns an error string tagged for the
+/// caller to wrap in JSON-RPC `-32602` (Invalid params).
+fn require_project_path_advanced(project_path_arg: Option<String>) -> Result<PathBuf, String> {
+    let Some(raw) = project_path_arg else {
+        return Err(
+            "'project_path' is required and must be a non-empty string — \
+null/missing is rejected to avoid silently analyzing the server's current \
+directory (R22-1 / D101)"
+                .to_string(),
+        );
+    };
+    if raw.trim().is_empty() {
+        return Err(
+            "'project_path' must be a non-empty string — empty/whitespace values \
+are rejected to avoid silently analyzing the server's current directory \
+(R22-1 / D101)"
+                .to_string(),
+        );
+    }
+    Ok(PathBuf::from(raw))
+}
+
+/// R22-1 / D101 — String-taking variant of `require_project_path_advanced`
+/// for handlers whose arg struct uses `project_path: String` (typically via
+/// `#[serde(default = "default_project_path")]`). Rejects empty/whitespace
+/// values; missing/null case is handled by serde before we get here.
+fn require_non_empty_path(raw: &str, field_name: &str) -> Result<PathBuf, String> {
+    if raw.trim().is_empty() {
+        return Err(format!(
+            "'{field_name}' must be a non-empty string — empty/whitespace values \
+are rejected to avoid silently analyzing the server's current directory \
+(R22-1 / D101)"
+        ));
+    }
+    Ok(PathBuf::from(raw))
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct AnalyzeDefectProbabilityArgs {
     project_path: Option<String>,
@@ -157,15 +205,17 @@ pub(crate) async fn handle_analyze_defect_probability(
 }
 
 /// Toyota Way: Extract Method - Parse defect probability arguments (complexity ≤5)
+///
+/// R22-1 / D101: project_path is required. Missing, null, and
+/// empty/whitespace values are rejected with an error that the caller maps
+/// to JSON-RPC `-32602` — we never silently default to the server's cwd.
 fn parse_defect_probability_args(
     arguments: serde_json::Value,
 ) -> Result<(AnalyzeDefectProbabilityArgs, PathBuf), Box<dyn std::error::Error>> {
     let args: AnalyzeDefectProbabilityArgs = serde_json::from_value(arguments)?;
 
-    let project_path = args.project_path.as_ref().map_or_else(
-        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        PathBuf::from,
-    );
+    let project_path = require_project_path_advanced(args.project_path.clone())
+        .map_err(Box::<dyn std::error::Error>::from)?;
 
     Ok((args, project_path))
 }

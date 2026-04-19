@@ -24,29 +24,33 @@ async fn handle_analyze_dag(
         }
     };
 
-    match execute_dag_analysis(&args).await {
+    // R22-1 / D101: require explicit project_path; reject null/missing/empty.
+    let project_path = match require_project_path(args.project_path.clone()) {
+        Ok(p) => p,
+        Err(e) => return McpResponse::error(request_id, -32602, e),
+    };
+
+    match execute_dag_analysis(&args, project_path).await {
         Ok(result) => McpResponse::success(request_id, result),
         Err(e) => McpResponse::error(request_id, -32000, format!("DAG analysis failed: {e}")),
     }
 }
 
 /// Toyota Way: Extract Method pattern for DAG analysis
-async fn execute_dag_analysis(args: &AnalyzeDagArgs) -> anyhow::Result<serde_json::Value> {
+///
+/// R22-1 / D101: project_path is now validated in the handler; this
+/// receives the already-validated PathBuf.
+async fn execute_dag_analysis(
+    args: &AnalyzeDagArgs,
+    project_path: PathBuf,
+) -> anyhow::Result<serde_json::Value> {
     use crate::services::context::analyze_project;
-    let project_path = resolve_project_path(&args.project_path);
     let project_context = analyze_project(&project_path, "rust").await?;
     let graph = build_dag_graph(&project_context);
     let dag_type = parse_dag_type(args.dag_type.as_deref());
     let filtered_graph = apply_dag_filters(graph, dag_type.clone());
     let output = generate_dag_output(&filtered_graph, args, dag_type);
     Ok(output)
-}
-
-fn resolve_project_path(project_path: &Option<String>) -> PathBuf {
-    project_path.as_ref().map_or_else(
-        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        PathBuf::from,
-    )
 }
 
 fn build_dag_graph(

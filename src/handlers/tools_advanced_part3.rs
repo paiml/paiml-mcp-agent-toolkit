@@ -1,4 +1,3 @@
-
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn handle_analyze_deep_context(
     request_id: serde_json::Value,
@@ -9,7 +8,11 @@ pub(crate) async fn handle_analyze_deep_context(
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
-    let project_path = resolve_deep_context_project_path(args.project_path.clone());
+    // R22-1 / D101: require explicit project_path; reject null/missing/empty.
+    let project_path = match require_project_path_advanced(args.project_path.clone()) {
+        Ok(p) => p,
+        Err(e) => return McpResponse::error(request_id, -32602, e),
+    };
     info!("Running deep context analysis for {:?}", project_path);
 
     let config = build_deep_context_config(&args);
@@ -32,15 +35,13 @@ fn parse_deep_context_args(arguments: serde_json::Value) -> Result<AnalyzeDeepCo
         .map_err(|e| format!("Invalid analyze_deep_context arguments: {e}"))
 }
 
-fn resolve_deep_context_project_path(project_path: Option<String>) -> PathBuf {
-    project_path.map_or_else(
-        || std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-        PathBuf::from,
-    )
-}
-
+/// R22-1 / D101: `default_project_path` is retained as a serde default
+/// sentinel ONLY. The actual handlers (`handle_analyze_satd`,
+/// `handle_analyze_lint_hotspot`) call `require_non_empty_path` after
+/// parsing to reject any value that falls through to this default, so it is
+/// never used as a live cwd fallback.
 fn default_project_path() -> String {
-    ".".to_string()
+    String::new()
 }
 
 fn default_top_files() -> usize {
@@ -386,7 +387,13 @@ pub(crate) async fn handle_analyze_makefile_lint(
         Err(e) => return McpResponse::error(request_id, -32602, e),
     };
 
-    let makefile_path = std::path::Path::new(&args.path);
+    // R22-1 / D101: reject empty/whitespace path to avoid silently linting
+    // a Makefile from the server's cwd.
+    let makefile_path_buf = match require_non_empty_path(&args.path, "path") {
+        Ok(p) => p,
+        Err(e) => return McpResponse::error(request_id, -32602, e),
+    };
+    let makefile_path = makefile_path_buf.as_path();
     info!("Analyzing Makefile at {:?}", makefile_path);
 
     let lint_result = match execute_makefile_linting(makefile_path).await {
@@ -431,6 +438,12 @@ pub(crate) async fn handle_analyze_provability(
             );
         }
     };
+
+    // R22-1 / D101: reject empty/whitespace project_path to avoid silently
+    // analyzing the server's cwd.
+    if let Err(e) = require_non_empty_path(&args.project_path, "project_path") {
+        return McpResponse::error(request_id, -32602, e);
+    }
 
     info!("Analyzing provability for project: {:?}", args.project_path);
 
