@@ -307,31 +307,39 @@ fn compress_templates() {
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR must be set");
     let hash_path = Path::new(&out_dir).join("templates.hash");
 
-    if let Some(current_hash) = calculate_templates_hash(templates_dir) {
-        if hash_path.exists() {
-            if let Some(stored_hash) = read_stored_hash(&hash_path) {
-                if current_hash == stored_hash {
-                    println!("cargo:warning=Skipping unchanged templates (O(1) hash check)");
-                    return;
-                }
+    let current_hash = calculate_templates_hash(templates_dir);
+
+    // O(1) skip when available (standard-deps enabled and hash matches)
+    if let Some(h) = &current_hash {
+        if let Some(stored_hash) = read_stored_hash(&hash_path) {
+            if *h == stored_hash {
+                println!("cargo:warning=Skipping unchanged templates (O(1) hash check)");
+                return;
             }
         }
+    }
 
-        let (templates, total_original) = load_all_templates(templates_dir);
+    let (templates, total_original) = load_all_templates(templates_dir);
 
-        if templates.is_empty() {
-            println!("cargo:warning=No templates found for compression");
-            return;
-        }
+    if templates.is_empty() {
+        println!("cargo:warning=No templates found for compression");
+        return;
+    }
 
-        compress_and_save_templates(&templates, total_original);
+    compress_and_save_templates(&templates, total_original);
 
-        // Save hash for O(1) skip detection on next build
-        let _ = write_hash_file(&hash_path, &current_hash);
+    // Save hash for O(1) skip detection on next build (best-effort)
+    if let Some(h) = current_hash {
+        let _ = write_hash_file(&hash_path, &h);
     }
 }
 
-/// Calculate combined hash of all template files
+/// Calculate combined hash of all template files.
+///
+/// Returns `None` under `--no-default-features` (no `sha2` in build-deps);
+/// callers fall back to unconditional recompression, losing only the O(1)
+/// skip optimization.
+#[cfg(feature = "standard-deps")]
 fn calculate_templates_hash(templates_dir: &Path) -> Option<String> {
     use sha2::{Digest, Sha256};
 
@@ -358,6 +366,11 @@ fn calculate_templates_hash(templates_dir: &Path) -> Option<String> {
     }
 
     Some(format!("{:x}", hasher.finalize()))
+}
+
+#[cfg(not(feature = "standard-deps"))]
+fn calculate_templates_hash(_templates_dir: &Path) -> Option<String> {
+    None
 }
 
 /// Validate templates directory exists (cognitive complexity ≤2)
@@ -704,7 +717,11 @@ fn calculate_asset_hash() -> String {
     format!("{:x}", hasher.finish())
 }
 
-/// Calculate SHA256 hash of a file for change detection
+/// Calculate SHA256 hash of a file for change detection.
+///
+/// Returns `None` under `--no-default-features` (no `sha2` in build-deps);
+/// callers treat this as "changed" and reprocess unconditionally.
+#[cfg(feature = "standard-deps")]
 fn calculate_file_hash(path: &Path) -> Option<String> {
     use sha2::{Digest, Sha256};
 
@@ -712,6 +729,11 @@ fn calculate_file_hash(path: &Path) -> Option<String> {
     let mut hasher = Sha256::new();
     hasher.update(&content);
     Some(format!("{:x}", hasher.finalize()))
+}
+
+#[cfg(not(feature = "standard-deps"))]
+fn calculate_file_hash(_path: &Path) -> Option<String> {
+    None
 }
 
 /// Read stored hash from .hash file
@@ -1447,6 +1469,11 @@ pub static COMPRESSED_TEMPLATES: LazyLock<HashMap<&'static str, Vec<u8>>> = Lazy
 
         println!("cargo:rerun-if-changed={}", binding_path.display());
 
+        // provable-contracts validation requires serde_yaml_ng, which is
+        // gated behind `standard-deps`. Under --no-default-features this
+        // enforcement is skipped (contract YAML is irrelevant for minimal
+        // builds that don't ship those subsystems).
+        #[cfg(feature = "standard-deps")]
         if binding_path.exists() {
             #[derive(serde::Deserialize)]
             struct BF {
