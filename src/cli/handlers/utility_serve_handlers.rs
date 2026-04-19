@@ -2,228 +2,118 @@
 //!
 //! Extracted from utility_handlers.rs for file health compliance (CB-040).
 //! Contains handle_serve and related server transport implementations.
+//!
+//! # Honest-failure policy (R17-4 / KAIZEN-0191)
+//!
+//! The `pmat serve` command previously printed a misleading "Server ready!"
+//! banner and then hung on `ctrl_c().await` without binding any socket. This
+//! produced HTTP 000 on every request while reporting exit code 0, which is a
+//! classic D75 "exit 0 on error" regression.
+//!
+//! Per the remediation policy, the command now fails LOUD: it prints a clear
+//! error to stderr and exits with code 2 (misuse) until real HTTP/WebSocket/SSE
+//! transports are wired up. Honest failure is strictly better than a lying
+//! success.
+//!
+//! If you need an MCP server today, use stdio transport via
+//! `PMAT_PMCP_MCP=1 pmat` — see the `SimpleUnifiedServer` in `mcp_pmcp`.
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use crate::cli::colors as c;
 use anyhow::Result;
 
-/// Handle serve command
+/// Exit code returned when `pmat serve` is invoked while HTTP transports are
+/// not yet implemented. `2` is the conventional "misuse" code and matches the
+/// D75 remediation guidance.
+pub const SERVE_UNIMPLEMENTED_EXIT_CODE: i32 = 2;
+
+/// Emit the honest-failure diagnostic to the given writer.
+///
+/// Extracted so tests can capture the exact bytes that would be printed to
+/// stderr without having to shell out to the real binary.
+pub fn write_serve_unimplemented_message<W: std::io::Write>(
+    mut out: W,
+    host: &str,
+    port: u16,
+    transport: &str,
+) -> std::io::Result<()> {
+    writeln!(out, "error: pmat serve HTTP transport not yet implemented")?;
+    writeln!(
+        out,
+        "  requested: transport={transport} host={host} port={port}"
+    )?;
+    writeln!(out, "hint: use stdio MCP today — `PMAT_PMCP_MCP=1 pmat`")?;
+    writeln!(
+        out,
+        "hint: follow KAIZEN-0191 for the HTTP/WebSocket/SSE wiring"
+    )?;
+    Ok(())
+}
+
+/// Handle serve command.
+///
+/// Prints a clear "not yet implemented" diagnostic to stderr and exits the
+/// process with [`SERVE_UNIMPLEMENTED_EXIT_CODE`]. Never returns.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn handle_serve(
     host: String,
     port: u16,
-    cors: bool,
+    _cors: bool,
     transport: crate::cli::commands::ServeTransport,
 ) -> Result<()> {
-    use crate::cli::commands::ServeTransport;
-    let addr = format!("{host}:{port}");
+    let transport_label = match transport {
+        crate::cli::commands::ServeTransport::Http => "http",
+        crate::cli::commands::ServeTransport::WebSocket => "websocket",
+        crate::cli::commands::ServeTransport::HttpSse => "http-sse",
+        crate::cli::commands::ServeTransport::Both => "http+websocket",
+        crate::cli::commands::ServeTransport::All => "http+websocket+sse",
+    };
 
-    match transport {
-        ServeTransport::Http => handle_http_server(&host, port, cors).await,
-        ServeTransport::WebSocket => handle_websocket_server(&addr).await,
-        ServeTransport::HttpSse => handle_http_sse_server(&addr, &host, port, cors).await,
-        ServeTransport::Both => handle_hybrid_server(&addr, &host, port, cors).await,
-        ServeTransport::All => handle_full_server(&addr, &host, port, cors).await,
-    }
+    let _ = write_serve_unimplemented_message(std::io::stderr(), &host, port, transport_label);
+    std::process::exit(SERVE_UNIMPLEMENTED_EXIT_CODE);
 }
 
-async fn handle_http_server(host: &str, port: u16, cors: bool) -> Result<()> {
-    eprintln!(
-        "{} Starting PMAT HTTP server on {}",
-        c::label(""),
-        c::path(&format!("http://{host}:{port}"))
-    );
-    eprintln!("{}", c::pass("Server ready!"));
-    eprintln!(
-        "  {} {}",
-        c::dim("Health check:"),
-        c::path(&format!("http://{host}:{port}/health"))
-    );
-    eprintln!(
-        "  {} {}",
-        c::dim("API base:"),
-        c::path(&format!("http://{host}:{port}/api/v1"))
-    );
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    if cors {
-        eprintln!("  {}", c::dim("CORS enabled for all origins"));
+    #[test]
+    fn message_contains_not_yet_implemented() {
+        let mut buf = Vec::new();
+        write_serve_unimplemented_message(&mut buf, "127.0.0.1", 8080, "http").unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(
+            s.contains("not yet implemented"),
+            "stderr message must clearly state the feature is unimplemented, got: {s}"
+        );
     }
 
-    eprintln!(
-        "\n{}",
-        c::dim("HTTP server functionality ready for implementation.")
-    );
-    wait_for_shutdown().await
-}
-
-async fn handle_websocket_server(addr: &str) -> Result<()> {
-    eprintln!(
-        "{} Starting PMAT WebSocket server on {}",
-        c::label(""),
-        c::path(&format!("ws://{addr}"))
-    );
-    eprintln!("{}", c::pass("WebSocket server ready!"));
-    eprintln!(
-        "  {} {}",
-        c::dim("WebSocket endpoint:"),
-        c::path(&format!("ws://{addr}"))
-    );
-    eprintln!("  {}", c::dim("MCP protocol over WebSocket"));
-
-    start_websocket_server(addr.to_string()).await
-}
-
-async fn handle_http_sse_server(addr: &str, host: &str, port: u16, cors: bool) -> Result<()> {
-    eprintln!(
-        "{} Starting PMAT HTTP-SSE server on {}",
-        c::label(""),
-        c::path(&format!("http://{host}:{port}"))
-    );
-    eprintln!("{}", c::pass("HTTP-SSE server ready!"));
-    eprintln!(
-        "  {} {}",
-        c::dim("SSE endpoint:"),
-        c::path(&format!("http://{host}:{port}/sse"))
-    );
-    eprintln!(
-        "  {} {}",
-        c::dim("Message endpoint:"),
-        c::path(&format!("http://{host}:{port}/message"))
-    );
-    eprintln!("  {}", c::dim("MCP protocol over Server-Sent Events"));
-
-    if cors {
-        eprintln!("  {}", c::dim("CORS enabled for all origins"));
+    #[test]
+    fn message_includes_requested_parameters() {
+        let mut buf = Vec::new();
+        write_serve_unimplemented_message(&mut buf, "0.0.0.0", 9000, "http-sse").unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(s.contains("0.0.0.0"), "must echo requested host, got: {s}");
+        assert!(s.contains("9000"), "must echo requested port, got: {s}");
+        assert!(
+            s.contains("http-sse"),
+            "must echo requested transport, got: {s}"
+        );
     }
 
-    start_http_sse_server(addr.to_string(), cors).await
-}
-
-async fn handle_hybrid_server(addr: &str, host: &str, port: u16, cors: bool) -> Result<()> {
-    eprintln!(
-        "{} Starting PMAT hybrid server (HTTP + WebSocket) on {}",
-        c::label(""),
-        c::path(&format!("{host}:{port}"))
-    );
-    eprintln!("{}", c::pass("Hybrid server ready!"));
-    eprintln!(
-        "  {} {}",
-        c::dim("HTTP endpoint:"),
-        c::path(&format!("http://{host}:{port}"))
-    );
-    eprintln!(
-        "  {} {}",
-        c::dim("WebSocket endpoint:"),
-        c::path(&format!("ws://{host}:{port}"))
-    );
-    eprintln!("  {}", c::dim("MCP protocol over both transports"));
-
-    if cors {
-        eprintln!("  {}", c::dim("CORS enabled for all origins"));
+    #[test]
+    fn message_points_to_stdio_workaround() {
+        let mut buf = Vec::new();
+        write_serve_unimplemented_message(&mut buf, "127.0.0.1", 8080, "http").unwrap();
+        let s = String::from_utf8(buf).unwrap();
+        assert!(
+            s.contains("PMAT_PMCP_MCP=1"),
+            "must point users at the working stdio transport, got: {s}"
+        );
     }
 
-    start_hybrid_server(addr.to_string(), cors).await
-}
-
-async fn handle_full_server(addr: &str, host: &str, port: u16, cors: bool) -> Result<()> {
-    eprintln!(
-        "{} Starting PMAT full server (HTTP + WebSocket + SSE) on {}",
-        c::label(""),
-        c::path(&format!("{host}:{port}"))
-    );
-    eprintln!("{}", c::pass("All transports ready!"));
-    eprintln!(
-        "  {} {}",
-        c::dim("HTTP endpoint:"),
-        c::path(&format!("http://{host}:{port}"))
-    );
-    eprintln!(
-        "  {} {}",
-        c::dim("WebSocket endpoint:"),
-        c::path(&format!("ws://{host}:{port}"))
-    );
-    eprintln!(
-        "  {} {}",
-        c::dim("SSE endpoint:"),
-        c::path(&format!("http://{host}:{port}/sse"))
-    );
-    eprintln!("  {}", c::dim("MCP protocol over all transports"));
-
-    if cors {
-        eprintln!("  {}", c::dim("CORS enabled for all origins"));
+    #[test]
+    fn exit_code_is_misuse_convention() {
+        assert_eq!(SERVE_UNIMPLEMENTED_EXIT_CODE, 2);
     }
-
-    start_full_server(addr.to_string(), cors).await
-}
-
-async fn wait_for_shutdown() -> Result<()> {
-    eprintln!("{}", c::dim("Press Ctrl+C to exit.\n"));
-    tokio::signal::ctrl_c().await?;
-    eprintln!("{}", c::label("Shutting down server..."));
-    Ok(())
-}
-
-/// Start a WebSocket-only server
-async fn start_websocket_server(addr: String) -> Result<()> {
-    eprintln!(
-        "{} WebSocket server implementation ready for {}",
-        c::dim(""),
-        c::path(&addr)
-    );
-    eprintln!(
-        "{}",
-        c::dim("Connect using any WebSocket client to test MCP protocol")
-    );
-
-    // Placeholder for actual WebSocket server implementation
-    tokio::signal::ctrl_c().await?;
-    Ok(())
-}
-
-/// Start HTTP-SSE server
-async fn start_http_sse_server(addr: String, _cors: bool) -> Result<()> {
-    eprintln!(
-        "{} HTTP-SSE server implementation ready for {}",
-        c::dim(""),
-        c::path(&addr)
-    );
-    eprintln!(
-        "{}",
-        c::dim("Server-Sent Events endpoint ready for MCP protocol")
-    );
-
-    // Placeholder for actual HTTP-SSE server implementation
-    tokio::signal::ctrl_c().await?;
-    Ok(())
-}
-
-/// Start hybrid server (HTTP + WebSocket)
-async fn start_hybrid_server(addr: String, _cors: bool) -> Result<()> {
-    eprintln!(
-        "{} Hybrid server implementation ready for {}",
-        c::dim(""),
-        c::path(&addr)
-    );
-    eprintln!("{}", c::dim("Both HTTP and WebSocket endpoints ready"));
-
-    // Placeholder for actual hybrid server implementation
-    tokio::signal::ctrl_c().await?;
-    Ok(())
-}
-
-/// Start full multi-transport server
-async fn start_full_server(addr: String, _cors: bool) -> Result<()> {
-    eprintln!(
-        "{} Full server implementation ready for {}",
-        c::dim(""),
-        c::path(&addr)
-    );
-    eprintln!(
-        "{}",
-        c::dim("All transport methods (HTTP, WebSocket, SSE) ready")
-    );
-
-    // Placeholder for actual full server implementation
-    tokio::signal::ctrl_c().await?;
-    Ok(())
 }
