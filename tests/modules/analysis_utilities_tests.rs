@@ -1982,11 +1982,7 @@ mod path_display_utilities {
     #[test]
     fn test_calculate_files_to_show_zero_limit() {
         let files: Vec<u8> = vec![];
-        let result = if 0 == 0 {
-            files.len()
-        } else {
-            0.min(files.len())
-        };
+        let result = if 0 == 0 { files.len() } else { 0 };
         assert_eq!(result, 0);
     }
 

@@ -88,11 +88,7 @@ impl SqlAnalyzer {
         // Pattern: CREATE [OR REPLACE] (FUNCTION|PROCEDURE|VIEW|TRIGGER) name
         let rest = if let Some(r) = trimmed_upper.strip_prefix("CREATE OR REPLACE ") {
             r
-        } else if let Some(r) = trimmed_upper.strip_prefix("CREATE ") {
-            r
-        } else {
-            return None;
-        };
+        } else { trimmed_upper.strip_prefix("CREATE ")? };
 
         let (kind_prefix, after_kind) = if let Some(a) = rest.strip_prefix("FUNCTION ") {
             ("fn:", a)

@@ -213,7 +213,7 @@ fn collect_overproduction_files(project_path: &Path) -> Vec<String> {
                         }
                     })
                     .collect();
-                file_scores.sort_by(|a, b| b.1.cmp(&a.1));
+                file_scores.sort_by_key(|b| std::cmp::Reverse(b.1));
                 return file_scores
                     .into_iter()
                     .take(5)
@@ -267,7 +267,7 @@ fn collect_inventory_files(project_path: &Path) -> Vec<String> {
         })
         .collect();
 
-    file_counts.sort_by(|a, b| b.1.cmp(&a.1));
+    file_counts.sort_by_key(|b| std::cmp::Reverse(b.1));
     file_counts
         .into_iter()
         .take(5)

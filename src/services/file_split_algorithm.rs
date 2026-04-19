@@ -105,7 +105,7 @@ pub fn suggest_split(
     }
 
     // Sort clusters by line count descending
-    clusters.sort_by(|a, b| b.estimated_lines.cmp(&a.estimated_lines));
+    clusters.sort_by_key(|b| std::cmp::Reverse(b.estimated_lines));
 
     // Step 7: Calculate impact
     let impact = compute_impact(index, file_path);

@@ -56,7 +56,7 @@ pub(crate) fn build_extraction_groups(
     }
 
     // Sort by total LOC descending (biggest extraction targets first)
-    groups.sort_by(|a, b| b.total_loc.cmp(&a.total_loc));
+    groups.sort_by_key(|b| std::cmp::Reverse(b.total_loc));
     groups
 }
 
@@ -85,7 +85,7 @@ fn build_group(
     let total_loc: u32 = candidates.iter().map(|c| c.loc).sum();
     if total_loc as usize > max_module_lines {
         // Trim to fit within max_module_lines, keeping highest-LOC functions
-        candidates.sort_by(|a, b| b.loc.cmp(&a.loc));
+        candidates.sort_by_key(|b| std::cmp::Reverse(b.loc));
         let mut running = 0u32;
         candidates.retain(|c| {
             running += c.loc;

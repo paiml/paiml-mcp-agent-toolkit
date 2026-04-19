@@ -262,7 +262,7 @@ impl PopperOrchestrator {
         }
 
         // Sort by priority (Critical > High > Medium > Low)
-        recommendations.sort_by(|a, b| b.priority.cmp(&a.priority));
+        recommendations.sort_by_key(|b| std::cmp::Reverse(b.priority));
 
         recommendations
     }

@@ -99,11 +99,10 @@ impl UnifiedNode {
 
         // Get special attributes from item type
         match item {
-            AstItem::Function { is_async, .. } => {
-                if *is_async {
+            AstItem::Function { is_async, .. }
+                if *is_async => {
                     attributes.insert("modifier:async".to_string(), "true".to_string());
                 }
-            }
             AstItem::Struct { derives, .. } => {
                 for derive in derives {
                     attributes.insert(format!("derive:{}", derive), "true".to_string());
