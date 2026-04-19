@@ -118,77 +118,113 @@
 //! ```
 
 // Feature-gated: Experimental module (0% coverage, CLI-only usage via agent_handlers)
-#[cfg(feature = "agent-daemon")]
+#[cfg(all(feature = "standard-deps", feature = "agent-daemon"))]
 pub mod agent; // Claude Code Agent Mode implementation
                // Feature-gated: Actor system only used by mcp_integration (0% coverage, ~6,905 lines)
-#[cfg(feature = "mcp-integration")]
+#[cfg(all(feature = "standard-deps", feature = "mcp-integration"))]
 pub mod agents; // Agent system with Actix actors
                 // Feature-gated: Experimental module (0% coverage, not production-ready)
-#[cfg(feature = "agents-md")]
+#[cfg(all(feature = "standard-deps", feature = "agents-md"))]
 pub mod agents_md; // AGENTS.md integration for AI agent guidance
+#[cfg(feature = "standard-deps")]
 pub mod ast; // Unified AST module for all language parsing
              // Feature-gated: Not ready for production use (0% coverage, no external usage)
-#[cfg(feature = "claude-integration")]
+#[cfg(all(feature = "standard-deps", feature = "claude-integration"))]
 pub mod claude_integration; // Claude Agent SDK integration with EXTREME TDD
+#[cfg(feature = "standard-deps")]
 pub mod cli;
+#[cfg(feature = "standard-deps")]
 pub mod contracts; // Uniform contracts across ALL interfaces (CLI, MCP, HTTP)
                    // Feature-gated: Demo/showcase functionality (opt-in, ~13,400 lines)
-#[cfg(feature = "demo")]
+#[cfg(all(feature = "standard-deps", feature = "demo"))]
 pub mod demo;
+#[cfg(feature = "standard-deps")]
 pub mod docs_enforcement; // Documentation quality enforcement (TICKET-PMAT-7001)
+#[cfg(feature = "standard-deps")]
 pub mod entropy; // Actionable entropy analysis
 #[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(feature = "standard-deps")]
 pub mod explain; // Check/metric explanation registry (--explain)
+#[cfg(feature = "standard-deps")]
 pub mod graph; // Graph-theoretic analysis for dependency networks
+#[cfg(feature = "standard-deps")]
 pub mod handlers;
+#[cfg(feature = "standard-deps")]
 pub mod maintenance; // Roadmap and ticket maintenance system (Sprint 17)
+#[cfg(feature = "standard-deps")]
 pub mod mcp; // MCP tools and handlers (Sprint 30: Semantic search tools)
              // Feature-gated: Experimental module (0% coverage, not production-ready)
-#[cfg(feature = "mcp-integration")]
+#[cfg(all(feature = "standard-deps", feature = "mcp-integration"))]
 pub mod mcp_integration; // MCP protocol integration
+#[cfg(feature = "standard-deps")]
 pub mod mcp_pmcp; // Now always available with pmcp 1.0
+#[cfg(feature = "standard-deps")]
 pub mod mcp_server;
+#[cfg(feature = "standard-deps")]
 pub mod models;
 // Feature-gated: Only used by agents and mcp_integration modules (~921 lines)
-#[cfg(feature = "mcp-integration")]
+#[cfg(all(feature = "standard-deps", feature = "mcp-integration"))]
 pub mod modules; // Modular monolith architecture
+#[cfg(feature = "standard-deps")]
 pub mod prompts; // AI prompt generation from organizational intelligence (Phase 4)
+#[cfg(feature = "standard-deps")]
 pub mod protocol; // Unified protocol design per SPECIFICATION.md Section 3
+#[cfg(feature = "standard-deps")]
 pub mod qdd; // Quality-Driven Development tool
+#[cfg(feature = "standard-deps")]
 pub mod quality; // Quality gates and enforcement (Sprint 18: Gate executor)
+#[cfg(feature = "standard-deps")]
 pub mod red_team; // Automated hallucination detection (EXTREME TDD - Sprint 47)
                   // Feature-gated: Only used by mcp_integration module (~2,572 lines, 0% coverage)
-#[cfg(feature = "mcp-integration")]
+#[cfg(all(feature = "standard-deps", feature = "mcp-integration"))]
 pub mod resources; // Resource control and limits
+#[cfg(feature = "standard-deps")]
 pub mod roadmap; // Roadmap-driven development with quality gates
+#[cfg(feature = "standard-deps")]
 pub mod scaffold;
+#[cfg(feature = "standard-deps")]
 pub mod services;
+#[cfg(feature = "standard-deps")]
 pub mod state; // State management with event sourcing
+#[cfg(feature = "standard-deps")]
 pub mod stateless_server;
+#[cfg(feature = "standard-deps")]
 pub mod tdg; // Technical Debt Grading system
+#[cfg(feature = "standard-deps")]
 pub mod test_performance;
 // Feature-gated: Workflow orchestration only used by mcp_integration (0% coverage, ~5,608 lines)
-#[cfg(feature = "mcp-integration")]
+#[cfg(all(feature = "standard-deps", feature = "mcp-integration"))]
 pub mod workflow; // Workflow orchestration engine
                   // #[cfg(test)]
                   // pub mod testing;
                   // Feature-gated: Experimental module (0% coverage, not production-ready)
-#[cfg(feature = "unified-protocol")]
+#[cfg(all(feature = "standard-deps", feature = "unified-protocol"))]
 pub mod unified_protocol;
+#[cfg(feature = "standard-deps")]
 pub mod unified_quality; // Unified Quality Enforcement System
+#[cfg(feature = "standard-deps")]
 pub mod utils;
+#[cfg(feature = "standard-deps")]
 pub mod viz; // Terminal graph visualization (trueno-viz integration)
-#[cfg(feature = "wasm-ast")]
+#[cfg(all(feature = "standard-deps", feature = "wasm-ast"))]
 pub mod wasm; // WebAssembly quality assurance module
 
+#[cfg(feature = "standard-deps")]
 use anyhow::Result;
+#[cfg(feature = "standard-deps")]
 use lru::LruCache;
+#[cfg(feature = "standard-deps")]
 use std::num::NonZeroUsize;
+#[cfg(feature = "standard-deps")]
 use std::sync::Arc;
+#[cfg(feature = "standard-deps")]
 use tokio::sync::RwLock;
+#[cfg(feature = "standard-deps")]
 use tracing::info;
 
+#[cfg(feature = "standard-deps")]
 use crate::models::template::TemplateResource;
+#[cfg(feature = "standard-deps")]
 use crate::services::renderer::TemplateRenderer;
 
 /// Shared cache for template metadata with LRU eviction policy.
@@ -213,6 +249,7 @@ use crate::services::renderer::TemplateRenderer;
 /// // Cache starts empty
 /// assert!(cache.read().await.len() == 0);
 /// ```
+#[cfg(feature = "standard-deps")]
 pub type MetadataCache = Arc<RwLock<LruCache<String, Arc<TemplateResource>>>>;
 
 /// Shared cache for template content with LRU eviction policy.
@@ -244,10 +281,13 @@ pub type MetadataCache = Arc<RwLock<LruCache<String, Arc<TemplateResource>>>>;
 /// let content = cache.read().await.peek("template_key").cloned();
 /// assert_eq!(content.as_deref(), Some("template content"));
 /// ```
+#[cfg(feature = "standard-deps")]
 pub type ContentCache = Arc<RwLock<LruCache<String, Arc<str>>>>;
 
 // Re-exports for test compatibility
+#[cfg(feature = "standard-deps")]
 pub use crate::models::template::TemplateResource as PublicTemplateResource;
+#[cfg(feature = "standard-deps")]
 pub use crate::services::renderer::TemplateRenderer as PublicTemplateRenderer;
 
 /// Placeholder S3 client for template storage operations.
@@ -263,6 +303,7 @@ pub use crate::services::renderer::TemplateRenderer as PublicTemplateRenderer;
 /// let client = S3Client;
 /// // Client can be used in template server implementations
 /// ```
+#[cfg(feature = "standard-deps")]
 pub struct S3Client;
 
 /// Template server trait defining the interface for template management operations.
@@ -320,6 +361,7 @@ pub struct S3Client;
 ///     }
 /// }
 /// ```
+#[cfg(feature = "standard-deps")]
 #[async_trait::async_trait]
 pub trait TemplateServerTrait: Send + Sync {
     /// Retrieves template metadata for the given URI.
@@ -366,6 +408,7 @@ pub trait TemplateServerTrait: Send + Sync {
 }
 
 /// Template server.
+#[cfg(feature = "standard-deps")]
 pub struct TemplateServer {
     pub s3_client: S3Client,
     pub bucket_name: String,
@@ -374,6 +417,7 @@ pub struct TemplateServer {
     pub renderer: TemplateRenderer,
 }
 
+#[cfg(feature = "standard-deps")]
 #[cfg_attr(coverage_nightly, coverage(off))]
 impl TemplateServer {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
@@ -441,6 +485,7 @@ impl TemplateServer {
     }
 }
 
+#[cfg(feature = "standard-deps")]
 #[async_trait::async_trait]
 #[cfg_attr(coverage_nightly, coverage(off))]
 impl TemplateServerTrait for TemplateServer {
@@ -481,13 +526,17 @@ impl TemplateServerTrait for TemplateServer {
 }
 
 // Public exports for CLI consumption
+#[cfg(feature = "standard-deps")]
 pub use models::error::TemplateError;
+#[cfg(feature = "standard-deps")]
 pub use models::template::{ParameterSpec, ParameterType};
+#[cfg(feature = "standard-deps")]
 pub use services::template_service::{
     generate_template, list_templates, scaffold_project, search_templates, validate_template,
 };
 
 // MCP server runner function (cognitive complexity ≤8)
+#[cfg(feature = "standard-deps")]
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) -> Result<()> {
@@ -513,12 +562,14 @@ pub async fn run_mcp_server<T: TemplateServerTrait + 'static>(server: Arc<T>) ->
 }
 
 /// Check if line should be skipped (cognitive complexity ≤2)
+#[cfg(feature = "standard-deps")]
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn should_skip_line(line: &str) -> bool {
     line.trim().is_empty()
 }
 
 /// Process a single MCP line request (cognitive complexity ≤8)
+#[cfg(feature = "standard-deps")]
 async fn process_mcp_line<T: TemplateServerTrait + 'static, W: std::io::Write>(
     line: &str,
     server: Arc<T>,
@@ -531,12 +582,14 @@ async fn process_mcp_line<T: TemplateServerTrait + 'static, W: std::io::Write>(
 }
 
 /// Parse MCP request from line (cognitive complexity ≤2)
+#[cfg(feature = "standard-deps")]
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn parse_mcp_request(line: &str) -> Result<crate::models::mcp::McpRequest> {
     serde_json::from_str(line).map_err(anyhow::Error::from)
 }
 
 /// Handle valid MCP request (cognitive complexity ≤6)
+#[cfg(feature = "standard-deps")]
 async fn handle_valid_request<T: TemplateServerTrait + 'static, W: std::io::Write>(
     request: crate::models::mcp::McpRequest,
     server: Arc<T>,
@@ -554,6 +607,7 @@ async fn handle_valid_request<T: TemplateServerTrait + 'static, W: std::io::Writ
 }
 
 /// Handle JSON parse error (cognitive complexity ≤4)
+#[cfg(feature = "standard-deps")]
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn handle_parse_error<W: std::io::Write>(error: &anyhow::Error, stdout: &mut W) -> Result<()> {
     use crate::models::mcp::McpResponse;
@@ -571,6 +625,7 @@ fn handle_parse_error<W: std::io::Write>(error: &anyhow::Error, stdout: &mut W) 
 }
 
 /// Write response to stdout with error handling (cognitive complexity ≤3)
+#[cfg(feature = "standard-deps")]
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn write_response_to_stdout<W: std::io::Write>(
     response: &crate::models::mcp::McpResponse,
@@ -607,7 +662,7 @@ mod property_tests {
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
+#[cfg(all(test, feature = "standard-deps"))]
 mod lib_unit_tests {
     use super::*;
 
