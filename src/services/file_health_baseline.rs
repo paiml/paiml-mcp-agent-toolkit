@@ -124,6 +124,7 @@ pub fn scan_directory(root: &Path, extensions: &[&str], exclude_patterns: &[&str
 
     fn visit_dir(
         dir: &Path,
+        root: &Path,
         extensions: &[&str],
         exclude_patterns: &[&str],
         files: &mut Vec<PathBuf>,
@@ -131,16 +132,20 @@ pub fn scan_directory(root: &Path, extensions: &[&str], exclude_patterns: &[&str
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                let path_str = path.to_string_lossy();
+                // Match exclusions against the path relative to the scan root.
+                // Using the absolute path here would false-positive when the
+                // mount prefix itself contains a substring like `build/` or
+                // `_generated` (observed in CI clean-room containers).
+                let relative = path.strip_prefix(root).unwrap_or(&path);
+                let rel_str = relative.to_string_lossy();
 
-                // Check exclusions
-                let excluded = exclude_patterns.iter().any(|p| path_str.contains(p));
+                let excluded = exclude_patterns.iter().any(|p| rel_str.contains(p));
                 if excluded {
                     continue;
                 }
 
                 if path.is_dir() {
-                    visit_dir(&path, extensions, exclude_patterns, files);
+                    visit_dir(&path, root, extensions, exclude_patterns, files);
                 } else if path.is_file() {
                     if let Some(ext) = path.extension() {
                         if extensions.iter().any(|e| ext == *e) {
@@ -152,7 +157,7 @@ pub fn scan_directory(root: &Path, extensions: &[&str], exclude_patterns: &[&str
         }
     }
 
-    visit_dir(root, extensions, exclude_patterns, &mut files);
+    visit_dir(root, root, extensions, exclude_patterns, &mut files);
     files
 }
 
