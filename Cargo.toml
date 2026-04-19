@@ -331,7 +331,16 @@ standard-deps = [
 ]
 
 # Convenience bundles
-core-languages = ["rust-ast", "typescript-ast", "javascript-ast", "python-ast", "lua-ast", "lean-ast", "c-ast", "cpp-ast"]  # Most common: Rust + JS/TS + Python + Lua + Lean + C/C++
+#
+# `core-languages` implies `standard-deps` because the analysis pipeline is
+# pervasively coupled to the crates in `standard-deps` (walkdir, toml,
+# async-trait, uuid, dashmap, rusqlite, parking_lot, globset, futures,
+# num_cpus, dirs, ignore, tempfile, serde_yaml_ng, glob, rustc-hash, sha2,
+# bincode, roaring, etc.). Carving them out of `--features core-languages,viz`
+# breaks ~900 compile errors across ~400 files (D103). Users who want a truly
+# minimal build with no language AST parsers should use `--features rust-only`
+# or wait for a dedicated `minimal` feature with proper cfg gating.
+core-languages = ["standard-deps", "rust-ast", "typescript-ast", "javascript-ast", "python-ast", "lua-ast", "lean-ast", "c-ast", "cpp-ast"]  # Most common: Rust + JS/TS + Python + Lua + Lean + C/C++
 extended-languages = ["go-ast", "c-ast", "cpp-ast", "shell-ast", "php-ast", "swift-ast", "lean-ast"]  # Additional languages
 advanced-analysis = ["analytics-simd", "mutation-testing", "tdg-explain", "demo"]  # Heavy features
 full = ["all-languages", "polyglot-ast", "advanced-analysis", "doc-indexing"]  # Equivalent to old defaults
