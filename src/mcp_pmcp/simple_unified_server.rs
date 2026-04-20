@@ -14,7 +14,7 @@ use crate::mcp_pmcp::pdmt_handler::PdmtTool;
 use crate::mcp_pmcp::quality_handlers::QualityGateTool;
 use crate::mcp_pmcp::quality_proxy_handler::QualityProxyTool;
 use crate::mcp_server::state_manager::StateManager;
-use pmcp::{Server, ServerCapabilities, ToolCapabilities};
+use pmcp::{Server, ServerCapabilities};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -51,10 +51,7 @@ impl SimpleUnifiedServer {
         let server = Server::builder()
             .name("paiml-mcp-agent-toolkit")
             .version(env!("CARGO_PKG_VERSION"))
-            .capabilities(ServerCapabilities {
-                tools: Some(ToolCapabilities { list_changed: None }),
-                ..Default::default()
-            })
+            .capabilities(ServerCapabilities::tools_only())
             // === Core Analysis Tools (6) ===
             .tool("analyze_complexity", AnalyzeComplexityTool)
             .tool("analyze_satd", AnalyzeSatdTool)
@@ -307,10 +304,7 @@ mod coverage_tests {
         let builder = Server::builder()
             .name("test-server")
             .version("0.1.0")
-            .capabilities(ServerCapabilities {
-                tools: Some(ToolCapabilities { list_changed: None }),
-                ..Default::default()
-            });
+            .capabilities(ServerCapabilities::tools_only());
 
         // Builder should be valid
         let _ = builder;
@@ -385,15 +379,9 @@ mod coverage_tests {
 
     #[test]
     fn test_server_capabilities_structure() {
-        let capabilities = ServerCapabilities {
-            tools: Some(ToolCapabilities { list_changed: None }),
-            ..Default::default()
-        };
+        let capabilities = ServerCapabilities::tools_only();
 
-        // Verify tools capability is set
         assert!(capabilities.tools.is_some());
-
-        // Verify list_changed is None (we don't use it)
         assert!(capabilities.tools.as_ref().unwrap().list_changed.is_none());
     }
 

@@ -14,7 +14,7 @@ use crate::mcp_pmcp::tdg_handlers::{
     TdgPerformanceMetricsTool, TdgStorageManagementTool, TdgSystemDiagnosticsTool,
 };
 use crate::mcp_server::state_manager::StateManager;
-use pmcp::{Server, ServerCapabilities, ToolCapabilities};
+use pmcp::{Server, ServerCapabilities};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::info;
@@ -104,10 +104,7 @@ impl PmcpServer {
         let server = Server::builder()
             .name("paiml-mcp-agent-toolkit")
             .version(env!("CARGO_PKG_VERSION"))
-            .capabilities(ServerCapabilities {
-                tools: Some(ToolCapabilities { list_changed: None }),
-                ..Default::default()
-            })
+            .capabilities(ServerCapabilities::tools_only())
             // Analysis tools
             .tool("analyze_complexity", AnalyzeComplexityTool)
             .tool("analyze_satd", AnalyzeSatdTool)
