@@ -178,6 +178,46 @@ impl InfraGrade {
     }
 }
 
+// ── Kani proof harnesses (GH-276) ────────────────────────────────────────────
+// Prove the auto-fail cutoff semantics that the specification documents:
+// scores < 90 MUST auto-fail; scores >= 90 MUST NOT auto-fail.
+#[cfg(kani)]
+mod kani_proofs {
+    use super::InfraGrade;
+
+    /// Any finite score < 90 must classify as an auto-fail grade.
+    /// This is the central safety property of the infra-score spec.
+    #[kani::proof]
+    fn auto_fail_iff_below_90() {
+        let s: f64 = kani::any();
+        kani::assume(s.is_finite());
+        kani::assume((-1000.0..=1000.0).contains(&s));
+        let g = InfraGrade::from_score(s);
+        // s < 90  =>  is_auto_fail
+        // s >= 90 => !is_auto_fail
+        assert!(g.is_auto_fail() == (s < 90.0));
+    }
+
+    /// `from_score` is total on bounded finite inputs.
+    #[kani::proof]
+    fn from_score_total() {
+        let s: f64 = kani::any();
+        kani::assume(s.is_finite());
+        kani::assume((-1000.0..=1000.0).contains(&s));
+        let g = InfraGrade::from_score(s);
+        let _ok = matches!(
+            g,
+            InfraGrade::APlus
+                | InfraGrade::A
+                | InfraGrade::B
+                | InfraGrade::C
+                | InfraGrade::D
+                | InfraGrade::F
+        );
+        assert!(_ok);
+    }
+}
+
 impl InfraCategoryScores {
     /// Total base score (100 points max, excluding bonus)
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
