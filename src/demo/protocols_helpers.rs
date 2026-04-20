@@ -72,7 +72,10 @@ pub(crate) fn format_and_print_output(
         crate::cli::OutputFormat::Yaml => {
             println!("{}", serde_yaml_ng::to_string(response)?);
         }
-        crate::cli::OutputFormat::Table => {
+        // Table/Markdown/Csv/Summary/Text/Plain/Junit all fall back to
+        // pretty-debug — the demo harness only speaks Json/Yaml structurally;
+        // other formats aren't meaningful for a JSON-RPC response blob.
+        _ => {
             println!("{response:#?}");
         }
     }
