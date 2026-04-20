@@ -122,10 +122,11 @@ jobs:
       - name: Verify package tarball
         run: |
           CRATE="${{ needs.create-release.outputs.crate_name }}"
+          # Verification is default; modern cargo removed --verify (only --no-verify exists).
           if [ -n "$CRATE" ]; then
-            cargo package --verify -p "$CRATE"
+            cargo package -p "$CRATE"
           else
-            cargo package --verify
+            cargo package
           fi
 
   # ── Publish: OIDC trusted publishing to crates.io ──────
