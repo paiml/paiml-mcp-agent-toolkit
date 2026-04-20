@@ -27,6 +27,10 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 enum ExecutionMode {
     Mcp,
     Cli,
+    /// No subcommand given and stdin is piped (not a TTY) without an explicit
+    /// MCP opt-in. Print help and exit non-zero instead of blocking on stdin
+    /// (see GH-285).
+    HelpAndExit,
 }
 
 /// POSIX-compliant exit codes for CLI interface
@@ -60,16 +64,34 @@ impl From<ExitCode> for i32 {
 }
 
 fn detect_execution_mode() -> ExecutionMode {
-    let is_mcp = !std::io::stdin().is_terminal() && std::env::args().len() == 1
-        || std::env::var("MCP_VERSION").is_ok();
+    classify_execution_mode(
+        std::env::var("MCP_VERSION").is_ok(),
+        std::env::args().len() == 1,
+        !std::io::stdin().is_terminal(),
+    )
+}
 
-    if is_mcp {
-        debug!("Detected MCP server mode");
-        ExecutionMode::Mcp
-    } else {
-        debug!("Detected CLI mode");
-        ExecutionMode::Cli
+/// Pure decision function for execution mode so it can be unit-tested
+/// without touching real stdin / env vars (see GH-285 regression test).
+fn classify_execution_mode(
+    mcp_version_env: bool,
+    no_args: bool,
+    stdin_is_pipe: bool,
+) -> ExecutionMode {
+    // Explicit MCP opt-in via env var always wins (e.g. Claude Desktop sets this).
+    if mcp_version_env {
+        return ExecutionMode::Mcp;
     }
+
+    // GH-285: If the user ran bare `pmat` with stdin piped (e.g. `echo "" | pmat`)
+    // without opting into MCP via `MCP_VERSION`, previous behavior entered the MCP
+    // server and blocked forever on stdin. Treat that case the same as bare `pmat`
+    // on a terminal: print help and exit non-zero.
+    if no_args && stdin_is_pipe {
+        return ExecutionMode::HelpAndExit;
+    }
+
+    ExecutionMode::Cli
 }
 
 /// Initialize the enhanced tracing system based on CLI flags
@@ -217,6 +239,76 @@ async fn run_main() -> Result<()> {
             }
             cli::run(server).await
         }
+        ExecutionMode::HelpAndExit => {
+            // GH-285: No subcommand + piped stdin + no MCP_VERSION. Print help on
+            // stderr and exit with code 2 (misuse), matching the convention for
+            // "no command supplied" on a terminal.
+            let mut cmd = <pmat::cli::Cli as clap::CommandFactory>::command();
+            let _ = cmd.print_help();
+            eprintln!(
+                "\nerror: no subcommand given and stdin is not a terminal. \
+                 Set MCP_VERSION=1 (or run `pmat agent mcp-server`) to start the MCP server."
+            );
+            process::exit(ExitCode::MisuseError as i32);
+        }
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod gh285_tests {
+    //! Regression tests for GH-285: `pmat` hangs when invoked with no args
+    //! and stdin is a pipe. See `classify_execution_mode`.
+    //!
+    //! Manual end-to-end repro (should NOT hang or exit 124):
+    //! ```text
+    //! echo "" | timeout 3 target/debug/pmat 2>&1; echo exit=$?
+    //! timeout 3 target/debug/pmat < /dev/null; echo exit=$?
+    //! ```
+    //! Both should print help and exit with code 2.
+    use super::{classify_execution_mode, ExecutionMode};
+
+    #[test]
+    fn bare_invocation_on_tty_is_cli() {
+        // `pmat` typed into a terminal with no pipe -> normal CLI (clap
+        // will then print help on missing subcommand).
+        assert!(matches!(
+            classify_execution_mode(false, true, false),
+            ExecutionMode::Cli
+        ));
+    }
+
+    #[test]
+    fn piped_stdin_with_no_args_prints_help_instead_of_hanging() {
+        // GH-285: This used to enter MCP mode and block on stdin forever.
+        assert!(matches!(
+            classify_execution_mode(false, true, true),
+            ExecutionMode::HelpAndExit
+        ));
+    }
+
+    #[test]
+    fn explicit_mcp_version_env_still_enters_mcp_mode() {
+        // Claude Desktop and similar hosts set MCP_VERSION; they must still
+        // get the MCP server regardless of TTY state.
+        assert!(matches!(
+            classify_execution_mode(true, true, true),
+            ExecutionMode::Mcp
+        ));
+        assert!(matches!(
+            classify_execution_mode(true, false, false),
+            ExecutionMode::Mcp
+        ));
+    }
+
+    #[test]
+    fn subcommand_with_piped_stdin_is_still_cli() {
+        // `echo foo | pmat analyze ...` must dispatch to the CLI subcommand,
+        // not to help-and-exit.
+        assert!(matches!(
+            classify_execution_mode(false, false, true),
+            ExecutionMode::Cli
+        ));
     }
 }
 } // end of mod full
