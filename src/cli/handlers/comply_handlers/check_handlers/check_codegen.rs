@@ -85,10 +85,11 @@ struct AttributeUsage {
 /// that writes `r#"#[pmat_work_contract(...)]"#` to a temp file) are ignored.
 /// Real proc-macro usage always appears at the start of a source line.
 fn attribute_parser() -> (Regex, Regex, Regex, Regex) {
-    let attr = Regex::new(r"(?m)^[ \t]*#\[pmat_work_contract\(([^)]*)\)\]").unwrap();
-    let id = Regex::new(r#"id\s*=\s*"([^"]+)""#).unwrap();
-    let requires = Regex::new(r#"require\s*=\s*"([^"]+)""#).unwrap();
-    let ensures = Regex::new(r#"ensure\s*=\s*"([^"]+)""#).unwrap();
+    let attr = Regex::new(r"(?m)^[ \t]*#\[pmat_work_contract\(([^)]*)\)\]")
+        .expect("static regex must compile");
+    let id = Regex::new(r#"id\s*=\s*"([^"]+)""#).expect("static regex must compile");
+    let requires = Regex::new(r#"require\s*=\s*"([^"]+)""#).expect("static regex must compile");
+    let ensures = Regex::new(r#"ensure\s*=\s*"([^"]+)""#).expect("static regex must compile");
     (attr, id, requires, ensures)
 }
 
