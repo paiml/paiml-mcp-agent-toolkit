@@ -21,7 +21,7 @@ Thumbs.db
 # Package managers
 node_modules/
 npm-package/
-homebrew/
+Formula/
 aur/
 chocolatey/
 

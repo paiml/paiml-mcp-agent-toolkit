@@ -16,11 +16,11 @@ brew --version
 
 echo ""
 echo "🧪 Testing formula syntax..."
-brew audit --strict homebrew/pmat.rb
+brew audit --strict Formula/pmat.rb
 
 echo ""
 echo "🔍 Installing from local formula..."
-brew install --build-from-source homebrew/pmat.rb
+brew install --build-from-source Formula/pmat.rb
 
 echo ""
 echo "✅ Testing installed binary..."
