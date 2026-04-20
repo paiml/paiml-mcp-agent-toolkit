@@ -2,12 +2,11 @@
 //!
 //! A comprehensive toolkit for project analysis, quality assurance, and technical debt management.
 //
-// EXTREME TDD - Quality Cleanup Sprint 26
-// Coverage: Exclude test modules from coverage measurement (nightly only)
-#![cfg_attr(
-    all(coverage_nightly, not(coverage_attr_stable)),
-    feature(coverage_attribute)
-)]
+// Coverage: Enable #[coverage(off)] attribute when cargo-llvm-cov instruments.
+// Do not gate on `coverage_attr_stable` — cargo-llvm-cov 0.8.x sets both
+// `coverage_nightly` and `coverage_attr_stable` even though the attribute is
+// still gated on rustc nightly (E0658). See rust-lang/rust#84605.
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 #![deny(unused_imports)]
 #![deny(unused_variables)]
 //
