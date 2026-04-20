@@ -3,6 +3,19 @@
     feature(coverage_attribute)
 )]
 #![cfg_attr(coverage_nightly, coverage(off))]
+
+// Minimal stub when built without standard-deps — pmat's CLI requires the
+// full analysis pipeline which lives behind the `standard-deps` feature.
+// `cargo check --no-default-features` exists for packaging/Cargo.toml validity
+// checks only; it is not a supported runtime build.
+#[cfg(not(feature = "standard-deps"))]
+fn main() {
+    eprintln!("pmat requires the `standard-deps` feature. Build with `--features standard-deps` or use the default feature set.");
+    std::process::exit(2);
+}
+
+#[cfg(feature = "standard-deps")]
+mod full {
 use anyhow::Result;
 use pmat::{cli, stateless_server::StatelessTemplateServer};
 use std::io::IsTerminal;
@@ -119,7 +132,8 @@ fn get_default_filter() -> EnvFilter {
 }
 
 #[tokio::main]
-async fn main() {
+#[allow(unreachable_pub)]
+pub async fn real_main() {
     let exit_code = match run_main().await {
         Ok(()) => ExitCode::Success,
         Err(e) => {
@@ -205,9 +219,15 @@ async fn run_main() -> Result<()> {
         }
     }
 }
+} // end of mod full
+
+#[cfg(feature = "standard-deps")]
+fn main() {
+    full::real_main();
+}
 
 #[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
+#[cfg(all(test, feature = "standard-deps"))]
 mod property_tests {
     use proptest::prelude::*;
 

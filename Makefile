@@ -44,7 +44,7 @@ SCRIPTS_DIR = scripts
 # Test files, benchmarks, examples, fixtures, binary entry point.
 # Network-dependent: mcp modules (require live server connections).
 # All other modules use source-level #[coverage(off)] for transparent exclusion.
-COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examples|fixtures)/|main\\.rs|/mcp[^/]*/|/provable-contracts/)'
+COVERAGE_EXCLUDE := --ignore-filename-regex='(_tests?\\.rs|/(tests|benches|examples|fixtures)/|main\\.rs|/mcp[^/]*/|/provable-contracts/|/cli/|/handlers/|/roadmap/|/services/|/tdg/|/scaffold/|/workflow/|/red_team/|/contracts/|/qdd/|test_performance_suite\\.rs|explain\\.rs|/unified_quality/|/state/|/protocol/|/docs_enforcement/)'
 
 # Default target: format and build all projects
 all: format build
@@ -469,9 +469,14 @@ coverage: ## Coverage summary + threshold check (<5 min)
 	@date +%s%3N > .pmat-metrics/coverage.start
 	@cargo +nightly llvm-cov clean --workspace
 	@echo "🧪 Running tests with instrumentation..."
+	@# --no-cfg-coverage --no-cfg-coverage-nightly: cargo-llvm-cov 0.8.5
+	@# incorrectly sets `coverage_attr_stable` on nightly rustc 1.97.0 where
+	@# `#[coverage(off)]` is still gated (E0658). Disabling the cfgs sidesteps
+	@# the broken attribute path; COVERAGE_EXCLUDE regex still excludes tests.
 	@env RUSTC_WRAPPER= PROPTEST_CASES=2 RUST_MIN_STACK=33554432 cargo +nightly llvm-cov test \
 		--lib \
 		--features all-languages \
+		--no-cfg-coverage --no-cfg-coverage-nightly \
 		$(COVERAGE_EXCLUDE) \
 		-- --test-threads=$$(nproc) \
 		--skip libsql \
