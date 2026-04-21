@@ -979,3 +979,76 @@ fn test_limited_pattern_extraction() {
         assert!(pattern.locations.len() <= 10);
     }
 }
+
+/// scan_directory_fallback reads only Rust/Ruchy files and skips others.
+/// Exercises the fallback path when `pmat` subprocess fails or isn't on PATH.
+#[tokio::test]
+async fn test_scan_directory_fallback_reads_rust_and_ruchy_files() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = dir.path();
+
+    std::fs::write(root.join("good.rs"), "fn a() {}").unwrap();
+    std::fs::write(root.join("good.ruchy"), "actor A {}").unwrap();
+    std::fs::write(root.join("good.rh"), "actor B {}").unwrap();
+    std::fs::write(root.join("skip.py"), "def x(): pass").unwrap();
+    std::fs::write(root.join("skip.txt"), "note").unwrap();
+
+    let extractor = PatternExtractor::new(EntropyConfig::default());
+    let context = extractor
+        .scan_directory_fallback(root)
+        .await
+        .expect("fallback should succeed");
+
+    // Only .rs, .ruchy, .rh extensions are included.
+    let names: std::collections::HashSet<_> = context
+        .files
+        .keys()
+        .filter_map(|p| p.file_name().and_then(|n| n.to_str()).map(String::from))
+        .collect();
+    assert!(names.contains("good.rs"));
+    assert!(names.contains("good.ruchy"));
+    assert!(names.contains("good.rh"));
+    assert!(!names.contains("skip.py"));
+    assert!(!names.contains("skip.txt"));
+}
+
+/// get_project_context tolerates a failed/missing pmat binary and returns an
+/// empty context via the fallback on an empty directory. Covers the
+/// `_ => return self.scan_directory_fallback(...)` branch.
+#[tokio::test]
+async fn test_get_project_context_empty_dir_yields_empty_context() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let extractor = PatternExtractor::new(EntropyConfig::default());
+    let context = extractor
+        .get_project_context(dir.path())
+        .await
+        .expect("get_project_context must not error on empty dir");
+    // Empty directory produces no files regardless of whether pmat ran or fallback fired.
+    assert!(context.files.is_empty());
+}
+
+/// extract_patterns is the public async entry. Drives get_project_context +
+/// should_process_file + extract_file_patterns end-to-end on a Rust source
+/// file containing enough compound validation matches to register patterns.
+#[tokio::test]
+async fn test_extract_patterns_end_to_end_rust_file() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let src = dir.path().join("m.rs");
+    // Enough compound validations to trigger pattern extraction.
+    let content = r#"
+        fn a(x: &str) { if x.is_empty() && x.len() > 0 { return; } }
+        fn b(x: &str) { if x.is_empty() && x.len() > 0 { return; } }
+        fn c(x: &str) { if x.is_empty() && x.len() > 0 { return; } }
+        fn d(x: &str) { if x.is_empty() && x.len() > 0 { return; } }
+        fn e(x: &str) { if x.is_empty() && x.len() > 0 { return; } }
+        fn f(x: &str) { if x.is_empty() && x.len() > 0 { return; } }
+    "#;
+    std::fs::write(&src, content).unwrap();
+
+    let extractor = PatternExtractor::new(EntropyConfig::default());
+    let collection = extractor
+        .extract_patterns(dir.path())
+        .await
+        .expect("extract_patterns must succeed");
+    assert!(collection.total_files >= 1, "should process the .rs file");
+}
