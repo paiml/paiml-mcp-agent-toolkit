@@ -154,6 +154,84 @@ mod tests {
         );
     }
 
+    /// Parse Python: `def` (public), `def _` (private), `class`, and skipped lines.
+    #[test]
+    fn test_parse_python_symbols_covers_all_branches() {
+        let builder = DependencyGraphBuilder::new();
+        let content = "\
+def public_func():
+    pass
+def _private_func():
+    pass
+class MyClass(Base):
+    pass
+# a comment
+import os
+";
+        let symbols = builder.parse_python_symbols(content).unwrap();
+        assert_eq!(symbols.len(), 3);
+
+        assert_eq!(symbols[0].name, "public_func");
+        assert_eq!(symbols[0].kind, SymbolKind::Function);
+        assert_eq!(symbols[0].visibility, Visibility::Public);
+        assert_eq!(symbols[0].line, 0);
+
+        assert_eq!(symbols[1].name, "_private_func");
+        assert_eq!(symbols[1].visibility, Visibility::Private);
+        assert_eq!(symbols[1].line, 2);
+
+        assert_eq!(symbols[2].name, "MyClass");
+        assert_eq!(symbols[2].kind, SymbolKind::Struct);
+        assert_eq!(symbols[2].visibility, Visibility::Public);
+        assert_eq!(symbols[2].line, 4);
+    }
+
+    #[test]
+    fn test_parse_python_symbols_empty_content() {
+        let builder = DependencyGraphBuilder::new();
+        assert!(builder.parse_python_symbols("").unwrap().is_empty());
+    }
+
+    /// Parse TS/JS: `export function`, `export const`, `function`, `const`, `export class`.
+    #[test]
+    fn test_parse_typescript_symbols_covers_all_branches() {
+        let builder = DependencyGraphBuilder::new();
+        let content = "\
+export function pubFn() {}
+export const pubConst = 1;
+function privFn() {}
+const privConst = 2;
+export class PubClass {}
+// skip
+let other = 5;
+";
+        let symbols = builder.parse_typescript_symbols(content).unwrap();
+        assert_eq!(symbols.len(), 5);
+
+        assert_eq!(symbols[0].name, "pubFn");
+        assert_eq!(symbols[0].kind, SymbolKind::Function);
+        assert_eq!(symbols[0].visibility, Visibility::Public);
+
+        assert_eq!(symbols[1].name, "pubConst");
+        assert_eq!(symbols[1].visibility, Visibility::Public);
+
+        assert_eq!(symbols[2].name, "privFn");
+        assert_eq!(symbols[2].visibility, Visibility::Private);
+
+        assert_eq!(symbols[3].name, "privConst");
+        assert_eq!(symbols[3].visibility, Visibility::Private);
+
+        assert_eq!(symbols[4].name, "PubClass");
+        assert_eq!(symbols[4].kind, SymbolKind::Struct);
+        assert_eq!(symbols[4].visibility, Visibility::Public);
+    }
+
+    #[test]
+    fn test_parse_typescript_symbols_empty_content() {
+        let builder = DependencyGraphBuilder::new();
+        assert!(builder.parse_typescript_symbols("").unwrap().is_empty());
+    }
+
     /// Test first-time file analysis creates both node and hash entry
     /// Validates initialization path (lines 189-195)
     #[test]
