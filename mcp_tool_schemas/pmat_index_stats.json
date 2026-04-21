@@ -1,0 +1,14 @@
+{
+  "name": "pmat_index_stats",
+  "description": "Get statistics about the code index including function counts, quality distribution, and index health.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "rebuild": {
+        "type": "boolean",
+        "description": "Rebuild the index before returning stats (default: false)",
+        "default": false
+      }
+    }
+  }
+}
