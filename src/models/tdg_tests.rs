@@ -404,4 +404,28 @@ mod new_tests {
         assert_eq!(original.components, deserialized.components);
         assert_eq!(original.severity, deserialized.severity);
     }
+
+    /// Deserializing TDGConfig without `dead_code_weight` must invoke
+    /// `default_dead_code_weight()` (tdg_impls.rs:26) and yield 0.20.
+    #[test]
+    fn test_tdg_config_deserialize_omits_dead_code_weight_uses_default() {
+        let json = r#"{
+            "complexity_weight": 0.25,
+            "churn_weight": 0.20,
+            "coupling_weight": 0.15,
+            "domain_risk_weight": 0.10,
+            "duplication_weight": 0.10,
+            "critical_threshold": 2.5,
+            "warning_threshold": 1.5
+        }"#;
+
+        let config: TDGConfig = serde_json::from_str(json)
+            .expect("partial TDGConfig must deserialize via serde default");
+
+        assert!(
+            (config.dead_code_weight - 0.20).abs() < f64::EPSILON,
+            "missing dead_code_weight must fall back to default_dead_code_weight() = 0.20, got {}",
+            config.dead_code_weight
+        );
+    }
 }
