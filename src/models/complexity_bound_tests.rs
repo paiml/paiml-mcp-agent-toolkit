@@ -132,6 +132,15 @@ mod tests {
         assert!(solution.is_some());
         assert_eq!(solution.unwrap().class, BigOClass::Linearithmic);
     }
+
+    /// ComplexityBound::default() delegates to Self::unknown().
+    #[test]
+    fn test_complexity_bound_default_is_unknown() {
+        let bound: ComplexityBound = Default::default();
+        let unknown = ComplexityBound::unknown();
+        assert_eq!(bound.class, unknown.class);
+        assert_eq!(bound.confidence, unknown.confidence);
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

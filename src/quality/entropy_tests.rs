@@ -26,6 +26,14 @@ mod tests {
         let token_entropy = calculator.calculate_token_entropy(code);
         assert!(token_entropy > 0.0);
     }
+
+    #[test]
+    fn test_default_delegates_to_new() {
+        // Exercise the Default impl (delegates to Self::new()).
+        let calc: EntropyCalculator = Default::default();
+        let entropy = calc.calculate("abcdef");
+        assert!(entropy > 0.0);
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

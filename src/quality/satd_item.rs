@@ -115,8 +115,10 @@ mod coverage_tests {
     // SatdDetectorWithItems tests
     #[test]
     fn test_satd_detector_default() {
-        let detector = SatdDetectorWithItems;
-        let _ = detector;
+        // Exercise the Default impl (delegates to Self::new()).
+        let detector: SatdDetectorWithItems = Default::default();
+        // Should behave identically to a detector built via new().
+        assert!(detector.detect("// TODO: x").len() == 1);
     }
 
     #[test]

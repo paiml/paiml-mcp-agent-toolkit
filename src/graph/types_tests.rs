@@ -147,6 +147,14 @@ mod tests {
     }
 
     #[test]
+    fn test_dependency_graph_default_delegates_to_new() {
+        // Exercise the Default impl (delegates to Self::new()).
+        let graph: DependencyGraph = Default::default();
+        assert_eq!(graph.node_count(), 0);
+        assert_eq!(graph.edge_count(), 0);
+    }
+
+    #[test]
     fn test_dependency_graph_add_node() {
         let mut graph = DependencyGraph::new();
         let id = graph.add_node(create_test_node(0));
