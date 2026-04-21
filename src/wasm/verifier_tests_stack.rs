@@ -175,4 +175,66 @@ mod stack_analyzer_tests {
         assert!(result.is_ok());
         assert!(stack.is_empty());
     }
+
+    /// OutOfBounds branch: offset + access_size > memory_size.
+    #[test]
+    fn test_check_i32_load_store_out_of_bounds() {
+        let mut stack = vec![ValType::I32];
+        let memarg = wasmparser::MemArg {
+            align: 2,
+            max_align: 2,
+            offset: 100,
+            memory: 0,
+        };
+        // memory_size=10, access_size=4 → offset (100) > 10 - 4
+        let result = check_i32_load_store(&mut stack, &memarg, 10, 4);
+        assert!(matches!(
+            result,
+            Some(VerificationResult::OutOfBounds { .. })
+        ));
+    }
+
+    /// TypeError branch: top of stack is not i32.
+    #[test]
+    fn test_check_i32_load_store_type_error() {
+        let mut stack = vec![ValType::I64];
+        let memarg = wasmparser::MemArg {
+            align: 2,
+            max_align: 2,
+            offset: 0,
+            memory: 0,
+        };
+        let result = check_i32_load_store(&mut stack, &memarg, 1024, 4);
+        assert!(matches!(result, Some(VerificationResult::TypeError { .. })));
+    }
+
+    /// Success branch: i32 address on stack, offset within bounds → None.
+    #[test]
+    fn test_check_i32_load_store_success() {
+        let mut stack = vec![ValType::I32];
+        let memarg = wasmparser::MemArg {
+            align: 2,
+            max_align: 2,
+            offset: 0,
+            memory: 0,
+        };
+        let result = check_i32_load_store(&mut stack, &memarg, 1024, 4);
+        assert!(result.is_none());
+        // Address was popped off the stack.
+        assert!(stack.is_empty());
+    }
+
+    /// TypeError branch: empty stack → pop returns None, not i32.
+    #[test]
+    fn test_check_i32_load_store_empty_stack() {
+        let mut stack: Vec<ValType> = Vec::new();
+        let memarg = wasmparser::MemArg {
+            align: 2,
+            max_align: 2,
+            offset: 0,
+            memory: 0,
+        };
+        let result = check_i32_load_store(&mut stack, &memarg, 1024, 4);
+        assert!(matches!(result, Some(VerificationResult::TypeError { .. })));
+    }
 }
