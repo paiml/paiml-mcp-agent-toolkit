@@ -178,6 +178,104 @@ mod tests {
     }
 
     #[test]
+    fn test_validate_ticket_bad_id_prefix() {
+        let ticket = TicketFile {
+            id: "BAD-PREFIX-0001".into(),
+            title: "Test".into(),
+            status: TicketStatus::Red,
+            priority: Priority::P0,
+            complexity: 5,
+            estimated_time: "1 hour".into(),
+            dependencies: vec![],
+            sprint: "Sprint 1".into(),
+            objective: "Objective".into(),
+            success_criteria: vec!["Criterion".into()],
+            file_path: PathBuf::new(),
+        };
+        // Bad prefix hits the ParseError arm.
+        assert!(ticket.validate().is_err());
+    }
+
+    #[test]
+    fn test_validate_ticket_empty_objective() {
+        let ticket = TicketFile {
+            id: "TICKET-PMAT-0001".into(),
+            title: "Test".into(),
+            status: TicketStatus::Red,
+            priority: Priority::P0,
+            complexity: 5,
+            estimated_time: "1 hour".into(),
+            dependencies: vec![],
+            sprint: "Sprint 1".into(),
+            objective: "   ".into(), // whitespace-only → trim().is_empty()
+            success_criteria: vec!["Criterion".into()],
+            file_path: PathBuf::new(),
+        };
+        // Empty objective hits the MissingField arm.
+        assert!(ticket.validate().is_err());
+    }
+
+    #[test]
+    fn test_validate_ticket_empty_success_criteria() {
+        let ticket = TicketFile {
+            id: "TICKET-PMAT-0001".into(),
+            title: "Test".into(),
+            status: TicketStatus::Red,
+            priority: Priority::P0,
+            complexity: 5,
+            estimated_time: "1 hour".into(),
+            dependencies: vec![],
+            sprint: "Sprint 1".into(),
+            objective: "Objective".into(),
+            success_criteria: vec![],
+            file_path: PathBuf::new(),
+        };
+        // Empty success_criteria hits the final MissingField arm.
+        assert!(ticket.validate().is_err());
+    }
+
+    #[test]
+    fn test_list_tickets_empty_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let tickets = list_tickets(dir.path()).unwrap();
+        assert!(tickets.is_empty());
+    }
+
+    #[test]
+    fn test_list_tickets_skips_non_ticket_files() {
+        let dir = tempfile::tempdir().unwrap();
+        // Non-.md file
+        std::fs::write(dir.path().join("readme.txt"), "not markdown").unwrap();
+        // .md file without TICKET-PMAT- prefix
+        std::fs::write(dir.path().join("notes.md"), "# Just notes").unwrap();
+        // Valid ticket
+        let content = "# TICKET-PMAT-9100: Sample\n\n\
+             **Status**: RED\n\
+             **Priority**: P0\n\
+             **Complexity**: 3\n\
+             **Estimated Time**: 1 hour\n\
+             **Dependencies**: None\n\
+             **Sprint**: Sprint 1\n\n\
+             ## Objective\n\n\
+             Sample.\n\n\
+             ## Success Criteria\n\n\
+             - [ ] Crit\n";
+        std::fs::write(dir.path().join("TICKET-PMAT-9100.md"), content).unwrap();
+
+        let tickets = list_tickets(dir.path()).unwrap();
+        assert_eq!(tickets.len(), 1);
+        assert_eq!(tickets[0].id, "TICKET-PMAT-9100");
+    }
+
+    #[test]
+    fn test_ticket_exists_with_tempdir() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("TICKET-PMAT-7777.md"), "# content").unwrap();
+        assert!(ticket_exists(dir.path(), "TICKET-PMAT-7777"));
+        assert!(!ticket_exists(dir.path(), "TICKET-PMAT-8888"));
+    }
+
+    #[test]
     fn integration_parse_ticket_5010() {
         let ticket_path =
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("docs/tickets/TICKET-PMAT-5010.md");
