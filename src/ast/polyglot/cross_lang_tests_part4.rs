@@ -485,6 +485,190 @@
         ));
     }
 
+    // Resolver fall-through: same-length packages, same last part, DIFFERENT
+    // package prefix. Exercises the `src_parts[0..-1] != tgt_parts[0..-1]`
+    // branch in JavaKotlinResolver.
+    #[test]
+    fn test_java_kotlin_resolver_same_len_different_prefix() {
+        let resolver = JavaKotlinResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        let kotlin_node = create_test_node(
+            "Kotlin:class:Service",
+            NodeKind::Class,
+            "Service",
+            "com.other.Service",
+            Language::Kotlin,
+        );
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "com.example.Service".to_string(),
+            target_language: Some(Language::Kotlin),
+        };
+
+        assert!(!resolver.can_resolve(
+            Language::Java,
+            Language::Kotlin,
+            &java_node,
+            &reference,
+            &kotlin_node,
+        ));
+    }
+
+    // Resolver fall-through: same-length packages, same prefix, DIFFERENT last
+    // part. Exercises the inner `src_parts.last() != tgt_parts.last()` branch
+    // in JavaKotlinResolver (JavaScala analog is already covered).
+    #[test]
+    fn test_java_kotlin_resolver_same_prefix_different_last() {
+        let resolver = JavaKotlinResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        let kotlin_node = create_test_node(
+            "Kotlin:class:Other",
+            NodeKind::Class,
+            "Other",
+            "com.example.Other",
+            Language::Kotlin,
+        );
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "com.example.Service".to_string(),
+            target_language: Some(Language::Kotlin),
+        };
+
+        assert!(!resolver.can_resolve(
+            Language::Java,
+            Language::Kotlin,
+            &java_node,
+            &reference,
+            &kotlin_node,
+        ));
+    }
+
+    // Resolver fall-through: same-length packages, different prefix for
+    // JavaScalaResolver. The same-len + different-last branch is already
+    // covered; this hits the different-prefix branch.
+    #[test]
+    fn test_java_scala_resolver_same_len_different_prefix() {
+        let resolver = JavaScalaResolver;
+
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        let scala_node = create_test_node(
+            "Scala:class:Service",
+            NodeKind::Class,
+            "Service",
+            "com.other.Service",
+            Language::Scala,
+        );
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "com.example.Service".to_string(),
+            target_language: Some(Language::Scala),
+        };
+
+        assert!(!resolver.can_resolve(
+            Language::Java,
+            Language::Scala,
+            &java_node,
+            &reference,
+            &scala_node,
+        ));
+    }
+
+    // TypeScript I-prefix branch fall-through: name starts with 'I', len > 1,
+    // but stripped name matches neither target.name nor target.fqn.ends_with.
+    #[test]
+    fn test_typescript_java_resolver_i_prefix_no_match() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:interface:IFoo",
+            NodeKind::Interface,
+            "IFoo",
+            "IFoo",
+            Language::TypeScript,
+        );
+        let java_node = create_test_node(
+            "Java:class:Bar",
+            NodeKind::Class,
+            "Bar",
+            "com.example.Bar",
+            Language::Java,
+        );
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "IFoo".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        // IFoo stripped → "Foo", which matches neither "Bar" nor "com.example.Bar"
+        assert!(!resolver.can_resolve(
+            Language::TypeScript,
+            Language::Java,
+            &ts_node,
+            &reference,
+            &java_node,
+        ));
+    }
+
+    // TypeScript bare "I" — starts_with('I') passes but `len() > 1` fails,
+    // so the interface-stripping branch is skipped entirely.
+    #[test]
+    fn test_typescript_java_resolver_bare_i_prefix_skipped() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:interface:I",
+            NodeKind::Interface,
+            "I",
+            "I",
+            Language::TypeScript,
+        );
+        let java_node = create_test_node(
+            "Java:class:User",
+            NodeKind::Class,
+            "User",
+            "com.example.User",
+            Language::Java,
+        );
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "I".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        assert!(!resolver.can_resolve(
+            Language::TypeScript,
+            Language::Java,
+            &ts_node,
+            &reference,
+            &java_node,
+        ));
+    }
+
     // Test serialization/deserialization of CrossLanguageDependency
     #[test]
     fn test_cross_language_dependency_serde() {
