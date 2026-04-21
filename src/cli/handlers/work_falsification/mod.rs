@@ -14,6 +14,7 @@ pub mod cache;
 pub mod churn_checks;
 pub mod core_checks;
 pub mod formal_checks;
+pub mod pmat_owned_state;
 pub mod runner;
 pub mod supply_chain_checks;
 mod tests;

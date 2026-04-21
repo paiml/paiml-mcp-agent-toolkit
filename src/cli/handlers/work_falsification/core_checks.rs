@@ -2,6 +2,7 @@
 //! Core falsification checks: manifest, coverage, TDG, complexity, spec, roadmap, git.
 
 use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult, FileManifest};
+use crate::cli::handlers::work_falsification::pmat_owned_state::is_pmat_owned_state;
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -466,11 +467,14 @@ pub(crate) fn test_github_sync(project_path: &Path) -> Result<FalsificationResul
         0
     };
 
-    // Count dirty files (exclude untracked ?? files -- they are not uncommitted changes)
+    // Count dirty files. Exclusions:
+    //   1. untracked `??` lines — not uncommitted changes (GH #224).
+    //   2. pmat-owned state files — PMAT-154 self-dirty loop.
     let dirty_count = status
         .lines()
         .skip(1)
         .filter(|l| !l.is_empty() && !l.starts_with("??"))
+        .filter(|l| !is_pmat_owned_state(l))
         .count();
 
     if ahead_count == 0 && dirty_count == 0 {
