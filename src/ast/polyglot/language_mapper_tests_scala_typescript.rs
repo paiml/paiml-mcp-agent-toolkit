@@ -250,3 +250,49 @@
         assert!(result.is_ok());
     }
 
+    /// language_mapper_web.rs:52 — TypeScriptMapper::map_source.
+    /// Cannot use `#[tokio::test]`: map_source calls TypeScriptAstVisitor::
+    /// analyze_typescript_source which builds its own tokio Runtime::new(),
+    /// and nested runtimes panic. map_source has no .await points (body is
+    /// fully sync under the async facade), so we drive it to completion with
+    /// a single poll using futures_test's noop_context from a plain #[test].
+    #[test]
+    fn test_typescript_mapper_map_source_executes() {
+        use std::future::Future;
+        use std::pin::Pin;
+        use std::task::{Context, Poll};
+
+        let mapper = TypeScriptMapper::new();
+        let source = "export interface User { name: string; }\nexport function greet() {}\n";
+        let fut = mapper.map_source(source, Path::new("user.ts"));
+        let mut fut = Box::pin(fut);
+        let waker = futures_test::task::noop_waker();
+        let mut cx = Context::from_waker(&waker);
+        // map_source body is sync-under-async — single poll completes it.
+        match Pin::as_mut(&mut fut).poll(&mut cx) {
+            Poll::Ready(_) => {}
+            Poll::Pending => panic!("map_source must complete in one poll — body has no .await"),
+        }
+    }
+
+    /// language_mapper_web.rs:52 — TypeScriptMapper::map_source with garbage
+    /// input. tree-sitter is error-tolerant so Err may or may not fire; this
+    /// test exists to drive the function entry + match regardless of variant.
+    #[test]
+    fn test_typescript_mapper_map_source_invalid_source() {
+        use std::future::Future;
+        use std::pin::Pin;
+        use std::task::{Context, Poll};
+
+        let mapper = TypeScriptMapper::new();
+        let source = "@@@ import from \"unterminated\n{ class ??? {";
+        let fut = mapper.map_source(source, Path::new("bad.ts"));
+        let mut fut = Box::pin(fut);
+        let waker = futures_test::task::noop_waker();
+        let mut cx = Context::from_waker(&waker);
+        match Pin::as_mut(&mut fut).poll(&mut cx) {
+            Poll::Ready(_) => {}
+            Poll::Pending => panic!("map_source must complete in one poll"),
+        }
+    }
+

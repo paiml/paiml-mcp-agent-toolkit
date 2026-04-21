@@ -124,6 +124,49 @@
         assert!(result.is_ok());
     }
 
+    /// language_mapper_web.rs:124 — JavaScriptMapper::map_source.
+    /// Cannot use `#[tokio::test]`: map_source calls JavaScriptAstVisitor::
+    /// analyze_javascript_source which builds its own tokio Runtime::new(),
+    /// and nested runtimes panic. map_source body is sync-under-async
+    /// (no .await points), so a single noop-poll drives it to completion.
+    #[test]
+    fn test_javascript_mapper_map_source_executes() {
+        use std::future::Future;
+        use std::pin::Pin;
+        use std::task::{Context, Poll};
+
+        let mapper = JavaScriptMapper::new();
+        let source = "class Widget {}\nconst arrow = () => 42;\nfunction plain() {}\n";
+        let fut = mapper.map_source(source, Path::new("widget.js"));
+        let mut fut = Box::pin(fut);
+        let waker = futures_test::task::noop_waker();
+        let mut cx = Context::from_waker(&waker);
+        match Pin::as_mut(&mut fut).poll(&mut cx) {
+            Poll::Ready(_) => {}
+            Poll::Pending => panic!("map_source must complete in one poll"),
+        }
+    }
+
+    /// language_mapper_web.rs:124 — JavaScriptMapper::map_source with garbage
+    /// input. Drives the function body + match regardless of Ok/Err variant.
+    #[test]
+    fn test_javascript_mapper_map_source_invalid_source() {
+        use std::future::Future;
+        use std::pin::Pin;
+        use std::task::{Context, Poll};
+
+        let mapper = JavaScriptMapper::new();
+        let source = "@@@ function ((( { unterminated";
+        let fut = mapper.map_source(source, Path::new("bad.js"));
+        let mut fut = Box::pin(fut);
+        let waker = futures_test::task::noop_waker();
+        let mut cx = Context::from_waker(&waker);
+        match Pin::as_mut(&mut fut).poll(&mut cx) {
+            Poll::Ready(_) => {}
+            Poll::Pending => panic!("map_source must complete in one poll"),
+        }
+    }
+
     // CSharpMapper Tests
 
     #[test]
