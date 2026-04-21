@@ -59,6 +59,57 @@ One paragraph per repo; measurements as of 2026-04-19.
 
 ---
 
+## 2.2 Five Whys: Root Cause of the 73% vs 96% Delta
+
+Applied 2026-04-21. The narrow/broad gap is not an accident — it is a direct, predictable consequence of the gate's definition.
+
+1. **Why is broad coverage 73% while the gate reports 96%?**
+   Because the gate measures `covered / measured`, not `covered / total-Rust-LOC`. `COVERAGE_EXCLUDE` (17 regex patterns) drops 83 files from the denominator; `--skip cli_integration_tests` drops the runner; `#[coverage(off)]` drops 8,097 functions across 938 files. The gate arithmetic then inflates the remaining ratio.
+
+2. **Why was the measured set narrowed?**
+   Commit `e698faa55` moved the project from 64% to 95% in one stroke by adding `/cli/`, `/handlers/`, `/services/`, `/tdg/`, `/roadmap/`, `/scaffold/`, `/workflow/` to `COVERAGE_EXCLUDE`. Commit `7d1eda3c0` ("Extend exclusions to maintain 95%+") widened them further. The gate rewarded exclusion over testing.
+
+3. **Why did the team default to exclusion?**
+   Because writing `#[cfg_attr(coverage_nightly, coverage(off))]` on a module takes 30 seconds; writing tests for 91k lines of dispatch boilerplate takes weeks. With only one coverage number on the CI dashboard, exclusion is the locally rational choice. The cargo-cult spread: 2,832 attrs across 1,967 files, most on code that has nothing to do with LLVM instrumentation limits.
+
+4. **Why is there only one coverage number?**
+   Because `make coverage-broad` didn't exist until Phase 0 (PR #390, 2026-04-21). Before then, the narrow number was the only number, so selection bias was invisible. You cannot optimize what you do not measure.
+
+5. **Why does this matter for v3.15.0 and beyond?**
+   Because the 95% badge advertises a property the project does not have. Downstream consumers (certeza, aprender, trueno-graph) honestly measure at 91–97% *broad*; PMAT measures at 73% broad / 96% narrow. The stack's sovereignty claim depends on coverage being honest. Fix the denominator and the problem becomes addressable; leave it and the badge keeps lying.
+
+### 2.3 Three-Bucket Classification of Current Exclusions
+
+Every existing exclusion falls into one of three buckets. Only bucket A survives Phase 3.
+
+**Bucket A — Legitimate (stays, documented in `COVERAGE_POLICY.md`):**
+- WASM runtime shim — LLVM cannot instrument wasm32 targets when built for native test binaries.
+- Generated code (`explain.rs` template output, protobuf stubs if added).
+- Vendored third-party source (none currently in `src/`).
+- `test_performance_suite.rs` — benchmark harness, not production.
+
+**Bucket B — Masking (selection-bias, must be re-included one directory at a time):**
+- `/cli/` (91k LOC, 65% cov) — dispatch boilerplate, exercised by `cli_integration_tests` which are `--skip`ped. *Un-skipping alone recovers several points.*
+- `/handlers/` (3.2k LOC, 36% cov) — the MCP surface that hallucinated in R21 D90/D92/D100. Already has parity-test machinery (D101/D102/D103); extend, don't exclude.
+- `/services/` (75k LOC, 80% cov) — already close to threshold; exclusion is purely to keep the ratio clean.
+- `/tdg/` (13k LOC, 78% cov) — same pattern.
+- `/roadmap/`, `/workflow/`, `/red_team/`, `/contracts/`, `/qdd/`, `/unified_quality/`, `/state/`, `/protocol/`, `/docs_enforcement/` — all production code, all in the excluded set.
+- `/scaffold/` (~0% cov) — template generators; the fix is `insta` snapshot tests, not exclusion.
+- `/mcp[^/]*/` — MCP server/client code is integration-tested but the numbers don't count. Gets its own co-equal gate in Phase 3.
+
+**Bucket C — Cargo-culted `#[cfg_attr(coverage_nightly, coverage(off))]` (2,832 attrs, 1,967 files):**
+The attribute was pasted as part of a template on every module file, regardless of whether the code is reachable under normal test runs. Verified by sampling: the attr appears on modules that have live tests exercising them. The attribute only takes effect on nightly + `coverage_nightly` cfg; on the default `make coverage` run (stable-ish nightly without that cfg), llvm-cov ignores it — which is why broad coverage is still *measurable* at 73%. This bucket is mechanical deletion (`sed` over all 1,967 files in one PR), zero behavioral risk.
+
+### 2.4 Ordered Remediation (replaces prior Phase-1 bullets)
+
+1. **P0 (this spec):** Make `coverage-broad` the CI gate; demote `make coverage` to informational. Forces the denominator to be honest. Gate threshold moves to 75% for v3.15.1, ratcheting +5pp per minor until 95%.
+2. **P1:** Add `make coverage-cli-integration` target. `cli_integration_tests.rs` is all `#[ignore]`-ed (spawns the `pmat` binary as a subprocess), so the naive "delete `--skip`" is a no-op — the real fix is `cargo build --bin pmat` + `--ignored` + running the coverage instrumentation across binary+lib. Separate target because the wall-clock budget differs.
+3. **P2:** Delete cargo-culted `#[cfg_attr(coverage_nightly, coverage(off))]` attrs in one mechanical PR. File-level only; keep the legitimate item-level uses in Bucket A. Since `make coverage-broad` already passes `--no-cfg-coverage-nightly`, deletion is behaviorally a no-op *now* — the work is preparing for PR #380's toolchain flip, which will otherwise re-mask 8,097 functions.
+4. **P3:** Treat `/scaffold/` at ~0% as a test-debt bug (not an exclusion target). `insta` snapshots per generator.
+5. **P4:** Give `/mcp[^/]*/` its own co-equal coverage number (`make coverage-mcp`) in CI output, so the number is visible even when it isn't the gate.
+
+---
+
 ## 3. The Tech Debt Creating the Coverage Gap
 
 `pmat query --coverage-gaps --rank-by impact --limit 15 --exclude-tests` (2026-04-19) ranks top offenders. The pattern that dominates: **dispatch boilerplate and scaffold templates with zero tests.**
