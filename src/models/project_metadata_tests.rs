@@ -60,6 +60,22 @@ mod tests {
     }
 
     #[test]
+    fn test_load_malformed_toml_fails() {
+        let temp_dir = TempDir::new().unwrap();
+        let pmat_dir = temp_dir.path().join(".pmat");
+        std::fs::create_dir_all(&pmat_dir).unwrap();
+        std::fs::write(pmat_dir.join("project.toml"), "not = [valid toml\n").unwrap();
+
+        let result = ProjectMetadata::load(temp_dir.path());
+        assert!(result.is_err(), "malformed toml must return parse error");
+        let err_msg = format!("{:#}", result.unwrap_err());
+        assert!(
+            err_msg.contains("Failed to parse") || err_msg.contains("project.toml"),
+            "error must name the file: {err_msg}"
+        );
+    }
+
+    #[test]
     fn test_exists_false_for_new_dir() {
         let temp_dir = TempDir::new().unwrap();
         assert!(!ProjectMetadata::exists(temp_dir.path()));
