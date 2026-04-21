@@ -152,6 +152,40 @@
         }
     }
 
+    // Covers the `_` fall-through arm in Violation::to_op for ViolationType
+    // variants not explicitly matched (LongFunction, DeadCode, PoorNaming).
+    #[test]
+    fn test_violation_to_op_fallthrough_variants() {
+        for vtype in [
+            ViolationType::LongFunction,
+            ViolationType::DeadCode,
+            ViolationType::PoorNaming,
+        ] {
+            let violation = Violation {
+                violation_type: vtype.clone(),
+                location: Location {
+                    file: PathBuf::from("test.rs"),
+                    line: 1,
+                    column: 1,
+                },
+                severity: Severity::Low,
+                description: "Test".to_string(),
+                suggested_fix: None,
+            };
+
+            match violation.to_op() {
+                RefactorOp::SimplifyExpression { expr, simplified } => {
+                    assert_eq!(expr, "complex");
+                    assert_eq!(simplified, "simple");
+                }
+                other => panic!(
+                    "Expected SimplifyExpression fall-through for {:?}, got {:?}",
+                    vtype, other
+                ),
+            }
+        }
+    }
+
     // ========================================================================
     // SatdFix Tests
     // ========================================================================
