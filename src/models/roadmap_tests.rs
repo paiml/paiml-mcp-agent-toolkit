@@ -227,6 +227,35 @@ roadmap:
         assert!(roadmap.github_enabled);
     }
 
+    /// deserialize_bool_lenient rejects invalid string values. Exercises the
+    /// `_ => Err(...)` arm inside visit_str — uncovered until now.
+    #[test]
+    fn test_github_enabled_invalid_string_rejected() {
+        let yaml = "roadmap_version: '1.0'\ngithub_enabled: \"yes\"\nroadmap: []\n";
+        let err = serde_yaml_ng::from_str::<Roadmap>(yaml)
+            .expect_err("invalid bool string must fail");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("expected true/false") && msg.contains("yes"),
+            "error should name the invalid value, got: {msg}"
+        );
+    }
+
+    /// deserialize_bool_lenient rejects non-bool, non-string values (e.g. integer).
+    /// Exercises the visitor's `expecting` message surfaced by serde when no
+    /// visit_* method matches.
+    #[test]
+    fn test_github_enabled_integer_rejected() {
+        let yaml = "roadmap_version: '1.0'\ngithub_enabled: 1\nroadmap: []\n";
+        let err = serde_yaml_ng::from_str::<Roadmap>(yaml)
+            .expect_err("integer must not satisfy lenient bool deserializer");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("boolean") || msg.contains("true/false"),
+            "error should reference expected type, got: {msg}"
+        );
+    }
+
     // Part A: YAML Parsing Resilience - Status Alias Tests
     mod status_alias_tests {
         use super::*;
