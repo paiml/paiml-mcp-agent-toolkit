@@ -224,6 +224,68 @@ mod tests_part2 {
         }
     }
 
+    /// efficiency_enhanced_visitors.rs:71 — RecursionDetector::visit_expr_call
+    /// outer `if let Expr::Path(path)` arm. A closure invocation like `(|| 0)()`
+    /// produces an ExprCall whose `node.func` is an Expr::Paren (wrapping a
+    /// closure), NOT an Expr::Path. That drops the outer let-else path so the
+    /// inner ident-compare never runs — exercises the else branch at :71.
+    #[test]
+    fn test_recursion_detector_non_path_call_ignored() {
+        let code = r#"
+            fn outer() -> i32 {
+                (|| 0)()
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                // Closure call: node.func is Expr::Paren, not Expr::Path.
+                // RecursionDetector visits the ExprCall, outer let-else
+                // drops through, is_recursive stays false, and with no
+                // loops the analyzer returns O1.
+                let complexity = executor.analyze_function(func);
+                assert_eq!(
+                    complexity,
+                    Complexity::O1,
+                    "non-path call (closure invocation) must not inflate complexity"
+                );
+            }
+        }
+    }
+
+    /// efficiency_enhanced_visitors.rs:72 — RecursionDetector::visit_expr_call
+    /// inner `if let Some(ident) = path.path.get_ident()` arm. A multi-segment
+    /// call like `std::cmp::max(a, b)` has an Expr::Path func, but the Path
+    /// has multiple segments so `get_ident()` returns None — exercises the
+    /// inner let-else branch at :72 without ever reaching the equality check.
+    #[test]
+    fn test_recursion_detector_multi_segment_path_ignored() {
+        let code = r#"
+            fn outer(a: i32, b: i32) -> i32 {
+                std::cmp::max(a, b)
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                // Multi-segment path: Expr::Path matches, but get_ident()
+                // returns None because path has >1 segment. The inner
+                // let-else drops through, so is_recursive stays false
+                // and analyze_function returns O1.
+                let complexity = executor.analyze_function(func);
+                assert_eq!(
+                    complexity,
+                    Complexity::O1,
+                    "multi-segment path call must not inflate complexity"
+                );
+            }
+        }
+    }
+
     /// efficiency_enhanced_visitors.rs:73 — RecursionDetector::visit_expr_call
     /// non-matching-ident branch. Existing `test_non_recursive_function` uses
     /// `add(a, b)` which has zero calls in its body; this test places a call
