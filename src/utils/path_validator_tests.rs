@@ -48,6 +48,21 @@ mod tests {
         Ok(())
     }
 
+    /// path_validator_checks.rs:151-154 — else arm (neither regular file nor directory)
+    /// returns Invalid. /dev/null is a character device: exists, but is_file() and
+    /// is_dir() both return false. Not tested by test_get_valid_parent (file) or
+    /// test_get_valid_parent_directory (dir) or test_get_valid_parent_nonexistent (NotFound).
+    #[cfg(unix)]
+    #[test]
+    fn test_get_valid_parent_on_non_regular_returns_invalid() {
+        let dev_null = Path::new("/dev/null");
+        let result = PathValidator::get_valid_parent(dev_null);
+        assert!(
+            matches!(result, Err(PathValidationError::Invalid { .. })),
+            "non-regular non-directory path must yield Invalid, got {result:?}"
+        );
+    }
+
     #[test]
     fn test_boolean_path_validators() -> Result<()> {
         let temp_dir = TempDir::new()?;
