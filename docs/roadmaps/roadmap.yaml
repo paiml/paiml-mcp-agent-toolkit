@@ -3148,20 +3148,19 @@ roadmap:
 - id: PMAT-625
   github_issue: null
   item_type: task
-  title: 'Phase 1: cover deserialize_phases + 3 error branches (PR #394)'
-  status: inprogress
+  title: 'Phase 1: cover extract_ruchy_pipeline_patterns branches'
+  status: planned
   priority: medium
   assigned_to: null
-  created: 2026-04-21T11:57:46Z
-  updated: 2026-04-21T11:57:48.540881516+00:00
+  created: 2026-04-21T12:33:32Z
+  updated: 2026-04-21T12:33:32Z
   spec: null
   acceptance_criteria:
-  - 'Close 23 uncovered lines in src/models/roadmap_types.rs:204 via 7 tests exercising all 3 match arms in PhasesVisitor::visit_seq (String/Mapping/other) + edge cases. Split into roadmap_phases_tests.rs to stay under 500-line pre-commit gate. PR #394. Part of #101 (overall 95% broad coverage).'
+  - 'Target src/entropy/pattern_extractor_ruchy.rs:69 — 29 uncovered, 31% cov, impact 3.4. Existing test runs but skips asserting matches>3 branch. Add tests for: (a) >3 match path with AstPattern field assertions, (b) >15 matches triggering break, (c) pattern_type==DataTransformation + estimated_loc invariants.'
   phases: []
   subtasks: []
   estimated_effort: null
   labels:
   - coverage-95-push
   - phase1
-  - pr-394
   notes: null
