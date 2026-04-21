@@ -191,6 +191,70 @@ mod tests_part2 {
         }
     }
 
+    /// efficiency_enhanced_visitors.rs:48-53 — named match arms in
+    /// SymbolicExecutor::visit_expr_call (`sort`, `binary_search`,
+    /// `contains`, `find`, `reverse`). Bare function-call form (not method
+    /// call) is what syn::ExprCall matches. Analyze driver only needs one
+    /// call per arm; the highest complexity wins, so we assert >= ONLogN
+    /// (from `sort`).
+    #[test]
+    fn test_symbolic_executor_visit_expr_call_named_complexity_arms() {
+        let code = r#"
+            fn runner() {
+                sort();
+                sort_by();
+                binary_search();
+                contains();
+                find();
+                reverse();
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                let complexity = executor.analyze_function(func);
+                // `sort` is ONLogN — must dominate the ON / OLogN / O1 arms.
+                assert!(
+                    complexity >= Complexity::ONLogN,
+                    "named-arm driver must reach at least ONLogN via sort, got {complexity:?}"
+                );
+            }
+        }
+    }
+
+    /// efficiency_enhanced_visitors.rs:73 — RecursionDetector::visit_expr_call
+    /// non-matching-ident branch. Existing `test_non_recursive_function` uses
+    /// `add(a, b)` which has zero calls in its body; this test places a call
+    /// to a *different* function inside the candidate, so the ident-compare
+    /// arm at :73 executes but the equality branch returns false.
+    #[test]
+    fn test_recursion_detector_ignores_non_matching_ident() {
+        let code = r#"
+            fn outer(n: i32) -> i32 {
+                helper(n)
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut executor = SymbolicExecutor::new();
+
+        for item in &ast.items {
+            if let syn::Item::Fn(func) = item {
+                // `outer` calls `helper`, never `outer` — RecursionDetector
+                // visits the call, compares idents, finds non-match, and
+                // leaves is_recursive=false. analyze_function returns O1 in
+                // this path because there's no loop and no recursion boost.
+                let complexity = executor.analyze_function(func);
+                assert_eq!(
+                    complexity,
+                    Complexity::O1,
+                    "non-self-call must not inflate complexity"
+                );
+            }
+        }
+    }
+
     // === is_dynamic_programming Tests ===
 
     #[test]
