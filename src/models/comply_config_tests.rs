@@ -315,4 +315,56 @@ work: {}
             );
         }
     }
+
+    #[test]
+    fn test_save_and_load_roundtrip() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let cfg = PmatYamlConfig::default();
+
+        cfg.save(temp_dir.path()).unwrap();
+
+        let config_path = temp_dir.path().join(".pmat.yaml");
+        assert!(config_path.exists());
+
+        let loaded = PmatYamlConfig::load(temp_dir.path()).unwrap();
+        assert_eq!(
+            loaded.comply.thresholds.coverage,
+            cfg.comply.thresholds.coverage
+        );
+    }
+
+    #[test]
+    fn test_load_from_path_missing_file_errors() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let missing = temp_dir.path().join("does-not-exist.yaml");
+
+        let err = PmatYamlConfig::load_from_path(&missing).unwrap_err();
+        assert!(matches!(err, ConfigError::IoError(_)));
+    }
+
+    #[test]
+    fn test_load_from_path_malformed_yaml_errors() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let path = temp_dir.path().join("bad.yaml");
+        // Non-mapping at top level fails PmatYamlConfig deserialization.
+        std::fs::write(&path, "not: valid: yaml: here\n  broken").unwrap();
+
+        let err = PmatYamlConfig::load_from_path(&path).unwrap_err();
+        assert!(matches!(err, ConfigError::ParseError(_)));
+    }
+
+    #[test]
+    fn test_load_prefers_pmat_yml_when_pmat_yaml_missing() {
+        // Covers the `.pmat.yml` fallback branch in load().
+        let temp_dir = tempfile::tempdir().unwrap();
+        let yml_path = temp_dir.path().join(".pmat.yml");
+        let cfg = PmatYamlConfig::default();
+        std::fs::write(&yml_path, serde_yaml_ng::to_string(&cfg).unwrap()).unwrap();
+
+        let loaded = PmatYamlConfig::load(temp_dir.path()).unwrap();
+        assert_eq!(
+            loaded.comply.thresholds.complexity,
+            cfg.comply.thresholds.complexity
+        );
+    }
 }
