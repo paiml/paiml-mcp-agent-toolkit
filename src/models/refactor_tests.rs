@@ -232,6 +232,43 @@
         assert_eq!(sm.history.len(), 2);
     }
 
+    // next_target: increments current_target_index and returns Some(FileId)
+    // while there are remaining targets; None once the index passes the last.
+    #[test]
+    fn test_next_target_advances_to_next() {
+        let targets = vec![
+            PathBuf::from("a.rs"),
+            PathBuf::from("b.rs"),
+            PathBuf::from("c.rs"),
+        ];
+        let mut sm = RefactorStateMachine::new(targets, RefactorConfig::default());
+        // Fresh machine has current_target_index = 0, so next_target should
+        // land on index 1 (b.rs).
+        let next = sm.next_target();
+        assert_eq!(sm.current_target_index, 1);
+        let next = next.expect("expected Some(FileId) when targets remain");
+        assert_eq!(next.path, PathBuf::from("b.rs"));
+        assert_eq!(next.hash, 0);
+
+        // Advance to index 2 (c.rs).
+        let next = sm.next_target().expect("still expected Some");
+        assert_eq!(sm.current_target_index, 2);
+        assert_eq!(next.path, PathBuf::from("c.rs"));
+    }
+
+    #[test]
+    fn test_next_target_returns_none_at_end() {
+        let targets = vec![PathBuf::from("only.rs")];
+        let mut sm = RefactorStateMachine::new(targets, RefactorConfig::default());
+        // index moves from 0 → 1, which equals targets.len() → None branch.
+        let next = sm.next_target();
+        assert_eq!(sm.current_target_index, 1);
+        assert!(
+            next.is_none(),
+            "next_target must return None when index == targets.len()"
+        );
+    }
+
     // ========================================================================
     // RefactorOp Tests
     // ========================================================================
