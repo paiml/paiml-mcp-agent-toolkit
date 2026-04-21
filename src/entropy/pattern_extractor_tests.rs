@@ -822,6 +822,64 @@ fn test_calculate_pattern_match_variation_score() {
     assert!((0.0..=1.0).contains(&score));
 }
 
+/// pattern_extractor_ruchy.rs:397 — early return when match_matches.len() < 2.
+#[test]
+fn test_calculate_pattern_match_variation_score_short_circuits_single_match() {
+    use regex::Regex;
+    let extractor = PatternExtractor::new(EntropyConfig::default());
+    // Only one `match` block -> len() < 2 triggers the `return 0.0` arm before
+    // the enum/match variation branches execute.
+    let content = r#"
+        enum A { X, Y }
+        match a { A::X => 1, A::Y => 2 }
+    "#;
+
+    let enum_pattern = Regex::new(r"enum\s+\w+\s*\{").unwrap();
+    let match_pattern = Regex::new(r"match\s+\w+\s*\{").unwrap();
+    let arrow_pattern = Regex::new(r"\w+::\w+\s*=>").unwrap();
+
+    let enums: Vec<_> = enum_pattern.find_iter(content).collect();
+    let matches: Vec<_> = match_pattern.find_iter(content).collect();
+    let arrows: Vec<_> = arrow_pattern.find_iter(content).collect();
+    assert_eq!(matches.len(), 1, "precondition: exactly one match block");
+
+    let score =
+        extractor.calculate_pattern_match_variation_score(&enums, &matches, &arrows, content);
+    assert_eq!(score, 0.0, "fewer than 2 match blocks must short-circuit to 0.0");
+}
+
+/// pattern_extractor_ruchy.rs:405 — enum_matches.len() <= 1 low-variation arm (0.3).
+#[test]
+fn test_calculate_pattern_match_variation_score_single_enum_low_variation() {
+    use regex::Regex;
+    let extractor = PatternExtractor::new(EntropyConfig::default());
+    // Single enum but 2 match blocks -> enum_variation = 0.3 (not 0.6).
+    let content = r#"
+        enum A { X, Y }
+        match a { A::X => 1, A::Y => 2 }
+        match b { A::X => 3, A::Y => 4 }
+    "#;
+
+    let enum_pattern = Regex::new(r"enum\s+\w+\s*\{").unwrap();
+    let match_pattern = Regex::new(r"match\s+\w+\s*\{").unwrap();
+    let arrow_pattern = Regex::new(r"\w+::\w+\s*=>").unwrap();
+
+    let enums: Vec<_> = enum_pattern.find_iter(content).collect();
+    let matches: Vec<_> = match_pattern.find_iter(content).collect();
+    let arrows: Vec<_> = arrow_pattern.find_iter(content).collect();
+    assert_eq!(enums.len(), 1, "precondition: exactly one enum");
+    assert_eq!(matches.len(), 2, "precondition: exactly two match blocks");
+
+    let score =
+        extractor.calculate_pattern_match_variation_score(&enums, &matches, &arrows, content);
+    // enum_variation = 0.3, match_variation = (unique patterns)/2 in [0, 1].
+    // Mean in [(0.3 + 0.0)/2, (0.3 + 1.0)/2] = [0.15, 0.65], clipped at 1.0.
+    assert!(
+        (0.15..=0.65).contains(&score),
+        "single-enum path must use 0.3 enum_variation, got {score}"
+    );
+}
+
 // File pattern extraction tests
 #[test]
 fn test_extract_file_patterns_rust() {
