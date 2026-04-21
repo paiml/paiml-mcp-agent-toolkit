@@ -342,4 +342,63 @@ mod coverage_tests {
         assert_eq!(efficiency.time_complexity, "O(n log n)");
         assert_eq!(efficiency.space_complexity, "O(n)");
     }
+
+    /// visit_expr_call: direct function call whose name contains "vec"
+    /// hits the allocations += 1 branch.
+    #[test]
+    fn test_visit_expr_call_vec_name() {
+        let mut visitor = SpaceComplexityVisitor {
+            allocations: 0,
+            recursive_depth: 0,
+        };
+        let code = "fn t() { vec_new(); }";
+        let ast = syn::parse_file(code).unwrap();
+        syn::visit::visit_file(&mut visitor, &ast);
+        assert!(visitor.allocations >= 1);
+    }
+
+    /// visit_expr_call: direct function call whose name contains "Vec"
+    /// (capitalized) hits the allocations branch.
+    #[test]
+    fn test_visit_expr_call_capital_vec_name() {
+        let mut visitor = SpaceComplexityVisitor {
+            allocations: 0,
+            recursive_depth: 0,
+        };
+        let code = "fn t() { makeVec(); }";
+        let ast = syn::parse_file(code).unwrap();
+        syn::visit::visit_file(&mut visitor, &ast);
+        assert!(visitor.allocations >= 1);
+    }
+
+    /// visit_expr_call: direct function call whose name contains "alloc"
+    /// hits the allocations branch.
+    #[test]
+    fn test_visit_expr_call_alloc_name() {
+        let mut visitor = SpaceComplexityVisitor {
+            allocations: 0,
+            recursive_depth: 0,
+        };
+        let code = "fn t() { allocate(); }";
+        let ast = syn::parse_file(code).unwrap();
+        syn::visit::visit_file(&mut visitor, &ast);
+        assert!(visitor.allocations >= 1);
+    }
+
+    /// visit_expr_call: direct function call whose name does NOT match
+    /// any allocation keyword — allocations stays 0 from this call.
+    #[test]
+    fn test_visit_expr_call_no_match() {
+        let mut visitor = SpaceComplexityVisitor {
+            allocations: 0,
+            recursive_depth: 0,
+        };
+        let code = "fn t() { plain_fn(); }";
+        let ast = syn::parse_file(code).unwrap();
+        syn::visit::visit_file(&mut visitor, &ast);
+        // No allocation keyword matched from the call itself. Note that
+        // visit_local may still increment for the implicit fn body, but
+        // there are no locals in this snippet.
+        assert_eq!(visitor.allocations, 0);
+    }
 }
