@@ -259,3 +259,84 @@
         assert_eq!(file_id.path, PathBuf::from("src/main.rs"));
         assert_eq!(file_id.hash, 0xDEADBEEF);
     }
+
+    // ========================================================================
+    // RefactorStateMachine advance - late state arms
+    // ========================================================================
+
+    #[test]
+    fn test_state_machine_advance_full_cycle_single_target() {
+        // Walk a single "complex" target through every non-Complete arm of advance():
+        // Scan -> Analyze -> Plan -> Refactor -> Test -> Lint -> Emit -> Checkpoint -> Complete.
+        let targets = vec![PathBuf::from("src/complex_module.rs")];
+        let mut sm = RefactorStateMachine::new(targets, RefactorConfig::default());
+
+        sm.advance().unwrap(); // Scan -> Analyze
+        sm.advance().unwrap(); // Analyze -> Plan
+        sm.advance().unwrap(); // Plan (violations present for "complex") -> Refactor
+        assert!(matches!(sm.current, State::Refactor { .. }));
+
+        sm.advance().unwrap(); // Refactor -> Test
+        assert!(matches!(sm.current, State::Test { .. }));
+
+        sm.advance().unwrap(); // Test -> Lint
+        assert!(matches!(sm.current, State::Lint { .. }));
+
+        sm.advance().unwrap(); // Lint -> Emit
+        assert!(matches!(sm.current, State::Emit { .. }));
+
+        sm.advance().unwrap(); // Emit -> Checkpoint
+        assert!(matches!(sm.current, State::Checkpoint { .. }));
+
+        sm.advance().unwrap(); // Checkpoint -> Complete (next_target = None for single-target run)
+        assert!(matches!(sm.current, State::Complete { .. }));
+    }
+
+    #[test]
+    fn test_state_machine_advance_checkpoint_to_analyze_multi_target() {
+        // Two targets: first file complete through Checkpoint, next_target returns Some,
+        // so Checkpoint advances to Analyze on the second target.
+        let targets = vec![
+            PathBuf::from("src/complex_a.rs"),
+            PathBuf::from("src/complex_b.rs"),
+        ];
+        let mut sm = RefactorStateMachine::new(targets, RefactorConfig::default());
+
+        // Drive to Checkpoint (7 advances: Scan→Analyze→Plan→Refactor→Test→Lint→Emit→Checkpoint)
+        for _ in 0..7 {
+            sm.advance().unwrap();
+        }
+        assert!(matches!(sm.current, State::Checkpoint { .. }));
+
+        sm.advance().unwrap(); // Checkpoint -> Analyze (second target)
+        assert!(matches!(sm.current, State::Analyze { .. }));
+    }
+
+    #[test]
+    fn test_state_machine_advance_plan_empty_multi_target_goes_analyze() {
+        // Two non-complex targets: Plan finds no violations on first, next_target
+        // returns Some, so Plan -> Analyze (second target), not Complete.
+        let targets = vec![
+            PathBuf::from("src/simple_a.rs"),
+            PathBuf::from("src/simple_b.rs"),
+        ];
+        let mut sm = RefactorStateMachine::new(targets, RefactorConfig::default());
+
+        sm.advance().unwrap(); // Scan -> Analyze
+        sm.advance().unwrap(); // Analyze -> Plan (empty violations)
+        sm.advance().unwrap(); // Plan -> Analyze (next target)
+        assert!(matches!(sm.current, State::Analyze { .. }));
+    }
+
+    #[test]
+    fn test_state_machine_advance_complete_is_terminal() {
+        // From Complete, advance() must return Ok without pushing history.
+        let mut sm = RefactorStateMachine::new(vec![], RefactorConfig::default());
+        assert!(matches!(sm.current, State::Complete { .. }));
+        let before = sm.history.len();
+
+        let result = sm.advance();
+        assert!(result.is_ok());
+        assert!(matches!(sm.current, State::Complete { .. }));
+        assert_eq!(sm.history.len(), before, "Complete must not advance");
+    }
