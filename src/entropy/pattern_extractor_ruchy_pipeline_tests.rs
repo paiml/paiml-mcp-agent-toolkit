@@ -123,3 +123,45 @@ fn location_line_numbers_reflect_newline_positions() {
     let lines: Vec<usize> = pattern.locations.iter().map(|l| l.line).collect();
     assert_eq!(lines, vec![2, 3, 4, 5]);
 }
+
+// calculate_pipeline_variation_score — only len<2 branch was covered.
+// The multi-match branches (unique-set, identical ops, mixed) are below.
+
+#[test]
+fn test_calculate_pipeline_variation_score_all_distinct() {
+    use regex::Regex;
+    let extractor = PatternExtractor::new(EntropyConfig::default());
+    // Three distinct operators → unique_operations.len() == matches.len() → 1.0.
+    let content = "|>a |>b |>c";
+    let pattern = Regex::new(r"\|>\w").unwrap();
+    let matches: Vec<_> = pattern.find_iter(content).collect();
+    assert_eq!(matches.len(), 3);
+    let score = extractor.calculate_pipeline_variation_score(&matches, content);
+    assert!((score - 1.0).abs() < f64::EPSILON, "got {score}");
+}
+
+#[test]
+fn test_calculate_pipeline_variation_score_all_identical() {
+    use regex::Regex;
+    let extractor = PatternExtractor::new(EntropyConfig::default());
+    // All same operator text → unique_operations has one entry → 1/3 ≈ 0.333.
+    let content = "|>a |>a |>a";
+    let pattern = Regex::new(r"\|>\w").unwrap();
+    let matches: Vec<_> = pattern.find_iter(content).collect();
+    assert_eq!(matches.len(), 3);
+    let score = extractor.calculate_pipeline_variation_score(&matches, content);
+    assert!((score - (1.0 / 3.0)).abs() < 1e-9, "got {score}");
+}
+
+#[test]
+fn test_calculate_pipeline_variation_score_partial() {
+    use regex::Regex;
+    let extractor = PatternExtractor::new(EntropyConfig::default());
+    // Two distinct ops out of four matches → 0.5.
+    let content = "|>a |>b |>a |>b";
+    let pattern = Regex::new(r"\|>\w").unwrap();
+    let matches: Vec<_> = pattern.find_iter(content).collect();
+    assert_eq!(matches.len(), 4);
+    let score = extractor.calculate_pipeline_variation_score(&matches, content);
+    assert!((score - 0.5).abs() < 1e-9, "got {score}");
+}
