@@ -32,6 +32,31 @@ mod tests {
         assert!(result.is_err());
     }
 
+    /// ticket_parsing.rs:37-39 — `ok_or_else(|| ParseError("Invalid metadata
+    /// format for {key}"))` fires when a line starts with `key` but the
+    /// remainder does not start with ":". `.strip_prefix(key)` succeeds but
+    /// `.and_then(|s| s.strip_prefix(":"))` returns None.
+    #[test]
+    fn test_extract_metadata_parse_error_when_key_missing_colon() {
+        let lines: Vec<&str> = vec!["**Status**Active"];
+        let result = extract_metadata(&lines, "**Status**");
+        match result {
+            Err(TicketError::ParseError(msg)) => {
+                assert!(
+                    msg.contains("Invalid metadata format"),
+                    "ParseError message must mention the invalid format, got {msg:?}"
+                );
+                assert!(
+                    msg.contains("**Status**"),
+                    "ParseError message must echo the key, got {msg:?}"
+                );
+            }
+            other => panic!(
+                "expected ParseError for key-without-colon line, got {other:?}"
+            ),
+        }
+    }
+
     #[test]
     fn test_extract_section_missing_header() {
         // No matching header → empty content → MissingField arm.
