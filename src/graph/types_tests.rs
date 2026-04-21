@@ -291,6 +291,21 @@ mod tests {
         assert_eq!(graph.edge_weight(n1, n0), Some(1.5));
     }
 
+    #[test]
+    fn test_undirected_graph_node_references_iterates_all_nodes() {
+        let mut graph = UndirectedGraph::new();
+        let n0 = graph.add_node(create_test_node(0));
+        let n1 = graph.add_node(create_test_node(1));
+        let n2 = graph.add_node(create_test_node(2));
+
+        let refs: Vec<_> = graph.node_references().collect();
+        assert_eq!(refs.len(), 3);
+        let ids: std::collections::HashSet<_> = refs.iter().map(|(id, _)| *id).collect();
+        assert!(ids.contains(&n0));
+        assert!(ids.contains(&n1));
+        assert!(ids.contains(&n2));
+    }
+
     // ============================================================
     // EdgeData Tests
     // ============================================================
