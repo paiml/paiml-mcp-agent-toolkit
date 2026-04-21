@@ -315,4 +315,34 @@ work: {}
             );
         }
     }
+
+    /// comply_config_impls.rs:87 — `std::fs::read_to_string(path).map_err(IoError)`
+    /// fires when the target path does not exist. Task #140 (roundtrip) only
+    /// exercises the success arm of read_to_string.
+    #[test]
+    fn test_load_from_path_returns_io_error_for_missing_file() {
+        let missing =
+            std::path::Path::new("/tmp/pmat_load_from_path_nonexistent_0xC0FFEE_xyz.yaml");
+        let result = PmatYamlConfig::load_from_path(missing);
+        match result {
+            Err(ConfigError::IoError(_)) => {}
+            other => panic!("expected IoError for missing path, got {other:?}"),
+        }
+    }
+
+    /// comply_config_impls.rs:89 — `serde_yaml_ng::from_str(...).map_err(ParseError)`
+    /// fires when the file content is syntactically invalid YAML.
+    #[test]
+    fn test_load_from_path_returns_parse_error_for_malformed_yaml() {
+        let tmp = tempfile::NamedTempFile::new().expect("create tempfile");
+        // Unbalanced braces + tab indent: not valid YAML.
+        std::fs::write(tmp.path(), "comply: {checks: [cb-050\n\tbroken: :")
+            .expect("write malformed yaml");
+
+        let result = PmatYamlConfig::load_from_path(tmp.path());
+        match result {
+            Err(ConfigError::ParseError(_)) => {}
+            other => panic!("expected ParseError for malformed yaml, got {other:?}"),
+        }
+    }
 }
