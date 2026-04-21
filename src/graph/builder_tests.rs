@@ -441,4 +441,77 @@ let other = 5;
         assert_eq!(builder.graph.node_count(), 1);
         assert!(builder.graph.node_weight(node_id).is_some());
     }
+
+    /// builder_file_collection.rs:16-17 — `if !dir.is_dir() { return Ok(()) }`.
+    /// Reachable by passing a file path as the root to from_workspace, which
+    /// forwards to collect_source_files -> collect_files_recursive. The
+    /// non-directory early-return must leave the collected files vec empty.
+    #[test]
+    fn test_from_workspace_non_directory_path_is_noop() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let file_as_root = temp_dir.path().join("lone_file.rs");
+        fs::write(&file_as_root, "pub fn solo() {}\n").unwrap();
+
+        // Pass the file (not its parent) as the workspace root.
+        let builder = DependencyGraphBuilder::from_workspace(&file_as_root)
+            .expect("non-directory root must not error — must early-return Ok");
+        let graph = builder.build().expect("build must succeed on empty graph");
+        assert_eq!(
+            graph.node_count(),
+            0,
+            "non-directory root must produce zero nodes (nothing collected)"
+        );
+    }
+
+    /// builder_file_collection.rs:26-30 — skip arm for dirs starting with '.'
+    /// or named `target`/`node_modules`, plus the recursive call for normal
+    /// subdirs. Build a tree with a hidden dir, a `target` dir, a
+    /// `node_modules` dir (each containing a .rs file that MUST be skipped),
+    /// and a plain subdir (containing a .rs file that MUST be picked up).
+    #[test]
+    fn test_collect_files_recursive_skips_hidden_target_and_node_modules() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let root = TempDir::new().unwrap();
+
+        // Plain subdirectory — file here MUST be picked up via recursion.
+        let plain = root.path().join("subdir");
+        fs::create_dir(&plain).unwrap();
+        fs::write(plain.join("good.rs"), "pub fn good() {}\n").unwrap();
+
+        // Hidden subdirectory — must be skipped.
+        let hidden = root.path().join(".hidden");
+        fs::create_dir(&hidden).unwrap();
+        fs::write(hidden.join("skip.rs"), "pub fn hidden_skip() {}\n").unwrap();
+
+        // target/ — must be skipped.
+        let target = root.path().join("target");
+        fs::create_dir(&target).unwrap();
+        fs::write(target.join("skip.rs"), "pub fn target_skip() {}\n").unwrap();
+
+        // node_modules/ — must be skipped.
+        let nm = root.path().join("node_modules");
+        fs::create_dir(&nm).unwrap();
+        fs::write(nm.join("skip.rs"), "pub fn nm_skip() {}\n").unwrap();
+
+        // Also a .rs file at the root level — picked up directly.
+        fs::write(root.path().join("top.rs"), "pub fn at_root() {}\n").unwrap();
+
+        let builder = DependencyGraphBuilder::from_workspace(root.path())
+            .expect("from_workspace must succeed");
+        let graph = builder.build().unwrap();
+
+        // Exactly two files should have been collected: top.rs + subdir/good.rs.
+        // The three skip-dirs each contain a .rs that MUST NOT appear.
+        assert_eq!(
+            graph.node_count(),
+            2,
+            "expected 2 nodes (top.rs + subdir/good.rs); skipped dirs \
+             (.hidden, target, node_modules) must not contribute"
+        );
+    }
 }
