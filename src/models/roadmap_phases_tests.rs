@@ -120,4 +120,24 @@ phases:
             "got: {err}"
         );
     }
+
+    /// Exercise `PhasesVisitor::expecting` by feeding a non-sequence value.
+    /// serde_yaml_ng calls the visitor's `expecting` when reporting the
+    /// type mismatch, so the resulting error message must reference the
+    /// description returned by that method.
+    #[test]
+    fn test_phases_non_sequence_triggers_expecting() {
+        let yaml = "\
+id: T-1
+title: t
+status: planned
+phases:
+  not_a_sequence: 1
+";
+        let err = parse_item(yaml).unwrap_err().to_string();
+        assert!(
+            err.contains("sequence of Phase structs"),
+            "expected `expecting()` message in error; got: {err}"
+        );
+    }
 }
