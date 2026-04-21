@@ -290,4 +290,37 @@ mod tests {
         // File should still exist
         assert!(file_path.exists());
     }
+
+    /// gates_checks.rs:231-233 — `if path.is_dir() { remove_dir_all(&path) }`.
+    /// Previous tests only exercised the `else { remove_file(&path) }` arm for
+    /// stale files. This creates a stale SUB-DIRECTORY (with nested content)
+    /// under a 0-second max_age window so the dir branch fires.
+    #[test]
+    fn test_clean_old_files_removes_old_directory() {
+        use std::fs::{self, File};
+        use std::io::Write;
+        use tempfile::tempdir;
+
+        let temp = tempdir().unwrap();
+        let root = temp.path().join("root");
+        fs::create_dir(&root).unwrap();
+
+        // Stale sub-dir with nested file — must be removed via remove_dir_all.
+        let stale_subdir = root.join("stale_sub");
+        fs::create_dir(&stale_subdir).unwrap();
+        let nested = stale_subdir.join("inner.txt");
+        let mut f = File::create(&nested).unwrap();
+        writeln!(f, "stale").unwrap();
+
+        clean_old_files(&root, 0); // everything counts as "old"
+
+        assert!(
+            !stale_subdir.exists(),
+            "is_dir() arm must delete the whole stale subdirectory recursively"
+        );
+        assert!(
+            !nested.exists(),
+            "nested file under the deleted dir must be gone too"
+        );
+    }
 }
