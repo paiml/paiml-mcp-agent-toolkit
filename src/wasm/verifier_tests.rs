@@ -187,6 +187,85 @@ mod coverage_tests {
         );
     }
 
+    // WASM module with i32.load at an out-of-bounds static offset.
+    // memory is 1 page (65536 bytes), access_size=4, so any offset >65532 is OOB.
+    // Offset 65533 LEB128 = 0xFD 0xFF 0x03 (3 bytes).
+    fn oob_load_wasm() -> Vec<u8> {
+        vec![
+            0x00, 0x61, 0x73, 0x6d, // magic
+            0x01, 0x00, 0x00, 0x00, // version
+            // Type section: () -> i32
+            0x01, 0x05, 0x01, 0x60, 0x00, 0x01, 0x7f,
+            // Function section
+            0x03, 0x02, 0x01, 0x00,
+            // Memory section: 1 page min
+            0x05, 0x03, 0x01, 0x00, 0x01,
+            // Code section
+            0x0a, 0x0b, // section size 11
+            0x01, // 1 body
+            0x09, // body size 9
+            0x00, // 0 locals
+            0x41, 0x00, // i32.const 0 (address)
+            0x28, 0x02, // i32.load align=2
+            0xfd, 0xff, 0x03, // offset=65533 (OOB: >65532)
+            0x0b, // end
+        ]
+    }
+
+    // WASM module with i32.store at OOB static offset.
+    fn oob_store_wasm() -> Vec<u8> {
+        vec![
+            0x00, 0x61, 0x73, 0x6d, // magic
+            0x01, 0x00, 0x00, 0x00, // version
+            // Type section: () -> ()
+            0x01, 0x04, 0x01, 0x60, 0x00, 0x00,
+            // Function section
+            0x03, 0x02, 0x01, 0x00,
+            // Memory section: 1 page
+            0x05, 0x03, 0x01, 0x00, 0x01,
+            // Code section
+            0x0a, 0x0d, // section size 13
+            0x01, // 1 body
+            0x0b, // body size 11
+            0x00, // 0 locals
+            0x41, 0x00, // i32.const 0 (address)
+            0x41, 0x2a, // i32.const 42 (value)
+            0x36, 0x02, // i32.store align=2
+            0xfd, 0xff, 0x03, // offset=65533 (OOB)
+            0x0b, // end
+        ]
+    }
+
+    #[test]
+    fn test_verify_i32_load_out_of_bounds() {
+        let verifier = IncrementalVerifier::new().unwrap();
+        let result = verifier
+            .verify_module(&oob_load_wasm())
+            .expect("parse should succeed");
+        match result {
+            VerificationResult::OutOfBounds { offset, size } => {
+                assert_eq!(offset, 65533);
+                assert_eq!(size, 65536);
+            }
+            other => panic!("expected OutOfBounds, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_verify_i32_store_out_of_bounds() {
+        let verifier = IncrementalVerifier::new().unwrap();
+        let result = verifier
+            .verify_module(&oob_store_wasm())
+            .expect("parse should succeed");
+        match result {
+            VerificationResult::OutOfBounds { offset, size } => {
+                assert_eq!(offset, 65533);
+                assert_eq!(size, 65536);
+            }
+            other => panic!("expected OutOfBounds, got {:?}", other),
+        }
+    }
+
     #[test]
     fn test_verify_invalid_wasm() {
         let verifier = IncrementalVerifier::new().unwrap();
