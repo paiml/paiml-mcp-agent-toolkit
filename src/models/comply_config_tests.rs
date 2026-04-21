@@ -256,4 +256,24 @@ scoring:
         let config = ComplyConfig::default();
         assert_eq!(config.get_severity("cb-200"), CheckSeverity::Error);
     }
+
+    /// Display for ConfigError covers all three variants.
+    #[test]
+    fn test_config_error_display_all_variants() {
+        let io = ConfigError::IoError("disk gone".to_string());
+        assert_eq!(format!("{io}"), "IO error loading config: disk gone");
+
+        let parse = ConfigError::ParseError("bad yaml".to_string());
+        assert_eq!(format!("{parse}"), "Parse error in .pmat.yaml: bad yaml");
+
+        let ser = ConfigError::SerializeError("non-utf8".to_string());
+        assert_eq!(format!("{ser}"), "Serialization error: non-utf8");
+    }
+
+    /// ConfigError implements std::error::Error so it can be boxed as dyn Error.
+    #[test]
+    fn test_config_error_is_std_error() {
+        let err: Box<dyn std::error::Error> = Box::new(ConfigError::IoError("fail".to_string()));
+        assert!(err.to_string().contains("fail"));
+    }
 }
