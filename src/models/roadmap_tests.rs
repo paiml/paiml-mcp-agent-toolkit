@@ -477,6 +477,37 @@ roadmap:
             assert!(err.contains("did you mean"));
         }
 
+        /// roadmap_status.rs:164-165 — `a_len == 0` early-return arm returns
+        /// `b_len`. from_string normalizes input to lowercase-no-hyphens and
+        /// feeds it as `a` to levenshtein_distance against each valid_status.
+        /// An empty input string produces normalized == "", triggering the
+        /// a_len-zero arm against every valid_status candidate.
+        #[test]
+        fn test_empty_status_string_triggers_levenshtein_empty_a_arm() {
+            let err = ItemStatus::from_string("").unwrap_err();
+            assert!(err.contains("unknown status"));
+            // Suggestion is present: min_by_key picks one valid_status; the
+            // a_len==0 arm returned b_len for every candidate, so all ties
+            // collapse to the first — "completed" (longest list entry still
+            // present). Just verify the suggestion scaffold rendered.
+            assert!(
+                err.contains("did you mean"),
+                "empty input must still produce a suggestion, got {err:?}"
+            );
+        }
+
+        /// roadmap_status.rs:167-168 — `b_len == 0` arm. from_string never
+        /// passes an empty valid_status to levenshtein_distance, so this arm
+        /// is unreachable via the public API. Call the private helper
+        /// directly to cover the arm. Private fn is visible through the
+        /// include! parent scope.
+        #[test]
+        fn test_levenshtein_distance_empty_b_returns_a_len() {
+            assert_eq!(levenshtein_distance("hello", ""), 5);
+            assert_eq!(levenshtein_distance("", ""), 0);
+            assert_eq!(levenshtein_distance("", "world"), 5);
+        }
+
         #[test]
         fn test_yaml_parsing_with_aliases() {
             let yaml = r#"
