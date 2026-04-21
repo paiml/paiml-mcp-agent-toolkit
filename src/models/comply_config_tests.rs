@@ -276,4 +276,43 @@ scoring:
         let err: Box<dyn std::error::Error> = Box::new(ConfigError::IoError("fail".to_string()));
         assert!(err.to_string().contains("fail"));
     }
+
+    /// Private serde default helpers are exercised indirectly via deserialization
+    /// of partial YAML that omits the matching fields. This forces serde to call
+    /// each `default_*` helper to populate the missing value.
+    #[test]
+    fn test_serde_defaults_for_omitted_fields() {
+        // YAML provides empty maps for each section so serde populates their
+        // fields via the default_* helpers (rather than Default::default(),
+        // which yields f64::default() == 0.0 and i64::default() == 0).
+        let yaml = r#"
+comply: {}
+quality: {}
+work: {}
+"#;
+        let cfg: PmatYamlConfig =
+            serde_yaml_ng::from_str(yaml).expect("minimal yaml must deserialize");
+
+        // default_tdg_score -> 70.0 (QualityConfig::min_tdg_score)
+        assert!((cfg.quality.min_tdg_score - 70.0).abs() < 0.0001);
+        // default_cache_warn_hours -> 1 (WorkConfig::cache_warn_hours)
+        assert_eq!(cfg.work.cache_warn_hours, 1);
+        // default_cache_block_hours -> 24 (WorkConfig::cache_block_hours)
+        assert_eq!(cfg.work.cache_block_hours, 24);
+    }
+
+    /// PmatYamlConfig::default() flows through `default_true` and other helpers
+    /// to produce the enabled-by-default check set. Spot-check several checks
+    /// whose `enabled` field is populated via default_true.
+    #[test]
+    fn test_default_true_populates_check_enabled() {
+        let cfg = PmatYamlConfig::default();
+        // Every default check is enabled: default_true returns true.
+        for id in ["cb-050", "cb-060", "cb-128", "cb-200"] {
+            assert!(
+                cfg.comply.is_check_enabled(id),
+                "{id} should be enabled by default"
+            );
+        }
+    }
 }
