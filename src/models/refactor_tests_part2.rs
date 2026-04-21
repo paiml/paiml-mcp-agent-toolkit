@@ -340,3 +340,46 @@
         assert!(matches!(sm.current, State::Complete { .. }));
         assert_eq!(sm.history.len(), before, "Complete must not advance");
     }
+
+    /// refactor_impls.rs:96-101 — State::Plan arm where violations[0].suggested_fix
+    /// is None triggers the `unwrap_or(RefactorOp::SimplifyExpression { .. })`
+    /// fallback. find_violations() always returns Some, so this branch requires
+    /// a hand-crafted Plan state with a None-suggested_fix violation injected
+    /// directly into sm.current before calling advance().
+    #[test]
+    fn test_state_machine_advance_plan_unwrap_or_fallback_when_suggested_fix_is_none() {
+        let mut sm = RefactorStateMachine::new(
+            vec![PathBuf::from("src/anything.rs")],
+            RefactorConfig::default(),
+        );
+
+        // Override the current state with a Plan containing a None-suggested_fix
+        // violation so the advance() unwrap_or fallback path fires.
+        sm.current = State::Plan {
+            violations: vec![Violation {
+                violation_type: ViolationType::HighComplexity,
+                location: Location {
+                    file: PathBuf::from("src/anything.rs"),
+                    line: 1,
+                    column: 1,
+                },
+                severity: Severity::High,
+                description: "no suggested fix".to_string(),
+                suggested_fix: None,
+            }],
+        };
+
+        sm.advance().unwrap();
+        // Must land in Refactor with the SimplifyExpression fallback op.
+        match &sm.current {
+            State::Refactor {
+                operation: RefactorOp::SimplifyExpression { expr, simplified },
+            } => {
+                assert_eq!(expr, "complex");
+                assert_eq!(simplified, "simple");
+            }
+            other => panic!(
+                "unwrap_or fallback must produce SimplifyExpression, got {other:?}"
+            ),
+        }
+    }
