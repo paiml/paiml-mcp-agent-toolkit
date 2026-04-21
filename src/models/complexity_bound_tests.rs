@@ -52,6 +52,69 @@ mod tests {
         assert_eq!(quadratic.estimate_operations(100.0), 10000.0);
     }
 
+    /// Display for BigOClass covers all 9 variants via notation().
+    #[test]
+    fn test_big_o_class_display_all_variants() {
+        assert_eq!(format!("{}", BigOClass::Constant), "O(1)");
+        assert_eq!(format!("{}", BigOClass::Logarithmic), "O(log n)");
+        assert_eq!(format!("{}", BigOClass::Linear), "O(n)");
+        assert_eq!(format!("{}", BigOClass::Linearithmic), "O(n log n)");
+        assert_eq!(format!("{}", BigOClass::Quadratic), "O(n²)");
+        assert_eq!(format!("{}", BigOClass::Cubic), "O(n³)");
+        assert_eq!(format!("{}", BigOClass::Exponential), "O(2^n)");
+        assert_eq!(format!("{}", BigOClass::Factorial), "O(n!)");
+        assert_eq!(format!("{}", BigOClass::Unknown), "O(?)");
+    }
+
+    /// Display for InputVariable covers all 5 variants.
+    #[test]
+    fn test_input_variable_display_all_variants() {
+        assert_eq!(format!("{}", InputVariable::N), "n");
+        assert_eq!(format!("{}", InputVariable::M), "m");
+        assert_eq!(format!("{}", InputVariable::K), "k");
+        assert_eq!(format!("{}", InputVariable::D), "d");
+        assert_eq!(format!("{}", InputVariable::Custom), "x");
+    }
+
+    /// growth_factor covers every BigOClass arm, including the
+    /// Stirling-approximation branch inside Factorial (n > 20).
+    #[test]
+    fn test_big_o_class_growth_factor_all_variants() {
+        assert_eq!(BigOClass::Constant.growth_factor(100.0), 1.0);
+        assert_eq!(BigOClass::Logarithmic.growth_factor(4.0), 2.0);
+        assert_eq!(BigOClass::Linear.growth_factor(100.0), 100.0);
+        assert_eq!(BigOClass::Linearithmic.growth_factor(4.0), 4.0 * 2.0);
+        assert_eq!(BigOClass::Quadratic.growth_factor(10.0), 100.0);
+        assert_eq!(BigOClass::Cubic.growth_factor(10.0), 1000.0);
+        assert_eq!(BigOClass::Exponential.growth_factor(3.0), 8.0);
+        // Factorial small-n branch: 5! = 120
+        assert_eq!(BigOClass::Factorial.growth_factor(5.0), 120.0);
+        // Factorial Stirling branch: n > 20 hits the approximation arm
+        assert!(BigOClass::Factorial.growth_factor(25.0).is_finite());
+        // Unknown maps to NaN
+        assert!(BigOClass::Unknown.growth_factor(10.0).is_nan());
+    }
+
+    /// ComplexityFlags covers new/with/has/is_worst_case/is_proven.
+    #[test]
+    fn test_complexity_flags_builder_and_queries() {
+        let empty = ComplexityFlags::new();
+        assert!(!empty.has(ComplexityFlags::WORST_CASE));
+        assert!(!empty.is_worst_case());
+        assert!(!empty.is_proven());
+
+        let flags = ComplexityFlags::new()
+            .with(ComplexityFlags::WORST_CASE)
+            .with(ComplexityFlags::PROVEN)
+            .with(ComplexityFlags::TIGHT_BOUND);
+        assert!(flags.has(ComplexityFlags::WORST_CASE));
+        assert!(flags.has(ComplexityFlags::PROVEN));
+        assert!(flags.has(ComplexityFlags::TIGHT_BOUND));
+        assert!(flags.is_worst_case());
+        assert!(flags.is_proven());
+        assert!(!flags.has(ComplexityFlags::EMPIRICAL));
+    }
+
     #[test]
     fn test_master_theorem() {
         // Test case: T(n) = 2T(n/2) + O(n) -> O(n log n)
