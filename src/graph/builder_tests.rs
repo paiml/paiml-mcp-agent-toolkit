@@ -232,6 +232,85 @@ let other = 5;
         assert!(builder.parse_typescript_symbols("").unwrap().is_empty());
     }
 
+    /// Parse Rust: `use x;` (picked), `use y` (no semicolon, skipped),
+    /// `fn` (skipped). Covers strip_prefix/strip_suffix path.
+    #[test]
+    fn test_parse_rust_imports_covers_branches() {
+        let builder = DependencyGraphBuilder::new();
+        let content = "\
+use std::path::Path;
+use crate::graph::Node;
+  use indented::Import;
+use missing_semicolon
+fn main() {}
+// comment
+";
+        let imports = builder.parse_rust_imports(content).unwrap();
+        assert_eq!(imports.len(), 3);
+        assert_eq!(imports[0], "std::path::Path");
+        assert_eq!(imports[1], "crate::graph::Node");
+        assert_eq!(imports[2], "indented::Import");
+    }
+
+    #[test]
+    fn test_parse_rust_imports_empty_content() {
+        let builder = DependencyGraphBuilder::new();
+        assert!(builder.parse_rust_imports("").unwrap().is_empty());
+    }
+
+    /// Parse Python: `import` and `from` both picked;
+    /// other lines (def, comment, code) skipped.
+    #[test]
+    fn test_parse_python_imports_covers_branches() {
+        let builder = DependencyGraphBuilder::new();
+        let content = "\
+import os
+from pathlib import Path
+  from indented import Foo
+def main():
+    pass
+# a comment
+x = 1
+";
+        let imports = builder.parse_python_imports(content).unwrap();
+        assert_eq!(imports.len(), 3);
+        assert_eq!(imports[0], "import os");
+        assert_eq!(imports[1], "from pathlib import Path");
+        assert_eq!(imports[2], "from indented import Foo");
+    }
+
+    #[test]
+    fn test_parse_python_imports_empty_content() {
+        let builder = DependencyGraphBuilder::new();
+        assert!(builder.parse_python_imports("").unwrap().is_empty());
+    }
+
+    /// Parse TS/JS: `import ... from '...'` (picked, quote-stripped),
+    /// `import` with no `from` (skipped), `const X = require('...')` (picked),
+    /// `const` without require (skipped), other lines skipped.
+    #[test]
+    fn test_parse_typescript_imports_covers_branches() {
+        let builder = DependencyGraphBuilder::new();
+        let content = "\
+import { x } from 'lodash';
+import \"side-effect-only\";
+const fs = require('fs');
+const unused = 42;
+let other = 5;
+// comment
+";
+        let imports = builder.parse_typescript_imports(content).unwrap();
+        assert_eq!(imports.len(), 2);
+        assert_eq!(imports[0], "lodash");
+        assert_eq!(imports[1], "fs");
+    }
+
+    #[test]
+    fn test_parse_typescript_imports_empty_content() {
+        let builder = DependencyGraphBuilder::new();
+        assert!(builder.parse_typescript_imports("").unwrap().is_empty());
+    }
+
     /// Test first-time file analysis creates both node and hash entry
     /// Validates initialization path (lines 189-195)
     #[test]
