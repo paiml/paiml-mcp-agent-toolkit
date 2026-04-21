@@ -63,6 +63,62 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_content_success() {
+        let content = "# TICKET-PMAT-9001: Coverage Sample\n\n\
+             **Status**: RED\n\
+             **Priority**: P1\n\
+             **Complexity**: 5\n\
+             **Estimated Time**: 2 hours\n\
+             **Dependencies**: None\n\
+             **Sprint**: Sprint 42\n\n\
+             ## Objective\n\n\
+             Cover parse_content success path.\n\n\
+             ## Success Criteria\n\n\
+             - [ ] First criterion\n\
+             - [ ] Second criterion\n";
+        let ticket = TicketFile::parse_content(content).unwrap();
+        assert_eq!(ticket.id, "TICKET-PMAT-9001");
+        assert_eq!(ticket.title, "Coverage Sample");
+        assert_eq!(ticket.status, TicketStatus::Red);
+        assert_eq!(ticket.priority, Priority::P1);
+        assert_eq!(ticket.complexity, 5);
+        assert_eq!(ticket.estimated_time, "2 hours");
+        assert!(ticket.dependencies.is_empty());
+        assert_eq!(ticket.sprint, "Sprint 42");
+        assert!(!ticket.objective.is_empty());
+        assert_eq!(ticket.success_criteria.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_content_empty_errors() {
+        let result = TicketFile::parse_content("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_ticket_file_from_file_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("TICKET-PMAT-9002.md");
+        let content = "# TICKET-PMAT-9002: File Roundtrip\n\n\
+             **Status**: GREEN\n\
+             **Priority**: P0\n\
+             **Complexity**: 3\n\
+             **Estimated Time**: 1 hour\n\
+             **Dependencies**: None\n\
+             **Sprint**: Sprint 42\n\n\
+             ## Objective\n\n\
+             Cover from_file path.\n\n\
+             ## Success Criteria\n\n\
+             - [ ] Only criterion\n";
+        std::fs::write(&path, content).unwrap();
+
+        let ticket = TicketFile::from_file(&path).unwrap();
+        assert_eq!(ticket.id, "TICKET-PMAT-9002");
+        assert_eq!(ticket.file_path, path);
+        assert!(ticket.validate().is_ok());
+    }
+
+    #[test]
     fn test_validate_ticket_invalid_complexity() {
         let ticket = TicketFile {
             id: "TICKET-PMAT-5011".into(),
