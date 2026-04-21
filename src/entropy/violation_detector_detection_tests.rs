@@ -176,6 +176,54 @@ mod detection_tests {
         assert_eq!(deduped[0].priority_score, 10.0);
     }
 
+    /// violation_detector_impl.rs:312-314 — "keep existing" arm fires when the
+    /// newly-seen duplicate has priority_score <= existing. The prior test inserts
+    /// low-then-high (always replaces); this inserts high-then-low (always keeps).
+    #[test]
+    fn test_deduplicate_violations_keeps_existing_higher_priority() {
+        let detector = ViolationDetector::new(EntropyConfig::default());
+
+        let violations = vec![
+            ActionableViolation {
+                severity: Severity::High,
+                pattern: PatternSummary {
+                    pattern_type: PatternType::ErrorHandling,
+                    repetitions: 5,
+                    variation_score: 0.1,
+                    example_code: "code1".to_string(),
+                },
+                message: "higher_first".to_string(),
+                fix_suggestion: "fix1".to_string(),
+                estimated_loc_reduction: 20,
+                affected_files: vec![],
+                priority_score: 10.0, // Inserted first, must survive.
+            },
+            ActionableViolation {
+                severity: Severity::Medium,
+                pattern: PatternSummary {
+                    pattern_type: PatternType::ErrorHandling,
+                    repetitions: 5,
+                    variation_score: 0.1,
+                    example_code: "code1".to_string(), // Same dedupe key.
+                },
+                message: "lower_second".to_string(),
+                fix_suggestion: "fix2".to_string(),
+                estimated_loc_reduction: 10,
+                affected_files: vec![],
+                priority_score: 5.0, // Must be discarded via the keep-existing arm.
+            },
+        ];
+
+        let deduped = detector.deduplicate_violations(violations);
+
+        assert_eq!(deduped.len(), 1, "same key must collapse to one entry");
+        assert_eq!(
+            deduped[0].priority_score, 10.0,
+            "keep-existing arm must preserve the first (higher-priority) insert"
+        );
+        assert_eq!(deduped[0].message, "higher_first");
+    }
+
     #[test]
     fn test_violations_sorted_by_priority() {
         let config = EntropyConfig {
