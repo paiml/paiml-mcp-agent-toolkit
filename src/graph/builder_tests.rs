@@ -216,6 +216,44 @@ mod tests {
         );
     }
 
+    /// Parse Rust: `pub fn` (public), `fn` (private), `pub struct`, and skipped lines.
+    #[test]
+    fn test_parse_rust_symbols_covers_all_branches() {
+        let builder = DependencyGraphBuilder::new();
+        let content = "\
+pub fn public_fn() {}
+fn private_fn(x: i32) {}
+pub struct MyStruct {
+    field: u32,
+}
+use std::collections::HashMap;
+// comment
+";
+        let symbols = builder.parse_rust_symbols(content).unwrap();
+        assert_eq!(symbols.len(), 3);
+
+        assert_eq!(symbols[0].name, "public_fn");
+        assert_eq!(symbols[0].kind, SymbolKind::Function);
+        assert_eq!(symbols[0].visibility, Visibility::Public);
+        assert_eq!(symbols[0].line, 0);
+
+        assert_eq!(symbols[1].name, "private_fn");
+        assert_eq!(symbols[1].kind, SymbolKind::Function);
+        assert_eq!(symbols[1].visibility, Visibility::Private);
+        assert_eq!(symbols[1].line, 1);
+
+        assert_eq!(symbols[2].name, "MyStruct");
+        assert_eq!(symbols[2].kind, SymbolKind::Struct);
+        assert_eq!(symbols[2].visibility, Visibility::Public);
+        assert_eq!(symbols[2].line, 2);
+    }
+
+    #[test]
+    fn test_parse_rust_symbols_empty_content() {
+        let builder = DependencyGraphBuilder::new();
+        assert!(builder.parse_rust_symbols("").unwrap().is_empty());
+    }
+
     /// Parse Python: `def` (public), `def _` (private), `class`, and skipped lines.
     #[test]
     fn test_parse_python_symbols_covers_all_branches() {
