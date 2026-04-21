@@ -21,6 +21,59 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_sprint_status_all_arms() {
+        // Complete + InProgress are covered by other tests; this locks the Planned fall-through.
+        assert_eq!(
+            parse_sprint_status("Some Name (2 days) - COMPLETE"),
+            SprintStatus::Complete
+        );
+        assert_eq!(
+            parse_sprint_status("Some Name (2 days) - IN PROGRESS"),
+            SprintStatus::InProgress
+        );
+        assert_eq!(
+            parse_sprint_status("Some Name (2 days) - PLANNED"),
+            SprintStatus::Planned
+        );
+        // Unknown status still routes to Planned (default fall-through)
+        assert_eq!(parse_sprint_status("no status markers here"), SprintStatus::Planned);
+    }
+
+    #[test]
+    fn test_extract_duration_missing_parens() {
+        // Missing parens returns the "unknown" sentinel.
+        assert_eq!(extract_duration("no parens here"), "unknown");
+    }
+
+    #[test]
+    fn test_extract_duration_with_parens() {
+        assert_eq!(extract_duration("Sprint (2-3 days) - COMPLETE"), "2-3 days");
+    }
+
+    #[test]
+    fn test_parse_quality_gate_none_when_no_prefix() {
+        // No leading "- " means not a quality-gate line.
+        assert!(parse_quality_gate("something else").is_none());
+        assert!(parse_quality_gate("").is_none());
+    }
+
+    #[test]
+    fn test_parse_quality_gate_some_when_prefix() {
+        let gate = parse_quality_gate("- Complexity <10 for all functions").unwrap();
+        assert_eq!(gate, "Complexity <10 for all functions");
+    }
+
+    #[test]
+    fn test_parse_sprint_header_rejects_non_sprint() {
+        // Early-return: wrong prefix
+        assert!(parse_sprint_header("## Not a sprint").is_none());
+        // Early-return: missing colon after sprint number
+        assert!(parse_sprint_header("### Sprint 16 no colon").is_none());
+        // Early-return: non-numeric sprint number
+        assert!(parse_sprint_header("### Sprint ABC: Bad").is_none());
+    }
+
+    #[test]
     fn test_parse_ticket_line_completed() {
         let line = "- [x] TICKET-PMAT-5001: Core ScaffoldEngine implementation (commit: 1adfcd7)";
         let ticket = parse_ticket_line(line).unwrap();
