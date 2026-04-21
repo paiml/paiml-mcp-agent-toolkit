@@ -484,6 +484,8 @@ coverage: ## Coverage summary + threshold check (<5 min)
 		|| true
 	@echo "📊 Generating report..."
 	@cargo +nightly llvm-cov report --summary-only $(COVERAGE_EXCLUDE) | tee target/coverage/summary.txt | grep -E "^TOTAL"
+	@# Emit LCOV at target/coverage/lcov.info so `pmat query --coverage-gaps` auto-discovers it.
+	@cargo +nightly llvm-cov report --lcov --output-path target/coverage/lcov.info $(COVERAGE_EXCLUDE) >/dev/null 2>&1 || true
 	@./scripts/record-metric.sh coverage
 	@COV_PCT=$$(grep -E '^TOTAL' target/coverage/summary.txt | awk '{n=0; for(i=1;i<=NF;i++){if($$i ~ /[0-9]+\.[0-9]+%/){n++; if(n==3){gsub(/%/,"",$$i);print $$i;exit}}}}'); \
 	if [ -n "$$COV_PCT" ] && [ $$(echo "$$COV_PCT < $(COV_THRESHOLD)" | bc -l) -eq 1 ]; then \
@@ -508,9 +510,13 @@ coverage-broad: ## Honest project-wide coverage (no regex, no --skip, no coverag
 		|| true
 	@echo "📊 Generating broad report (informational)..."
 	@cargo +nightly llvm-cov report --summary-only | tee target/coverage-broad/summary.txt | grep -E "^TOTAL"
+	@# Emit LCOV at target/coverage/lcov.info so `pmat query --coverage-gaps` auto-discovers it.
+	@mkdir -p target/coverage
+	@cargo +nightly llvm-cov report --lcov --output-path target/coverage/lcov.info >/dev/null 2>&1 || true
 	@COV_PCT=$$(grep -E '^TOTAL' target/coverage-broad/summary.txt | awk '{n=0; for(i=1;i<=NF;i++){if($$i ~ /[0-9]+\.[0-9]+%/){n++; if(n==3){gsub(/%/,"",$$i);print $$i;exit}}}}'); \
 	echo ""; \
 	echo "ℹ️  Broad coverage: $${COV_PCT}% (informational, not gated)"; \
+	echo "ℹ️  LCOV: target/coverage/lcov.info — feeds 'pmat query --coverage-gaps'"; \
 	echo "ℹ️  Target: 95% per docs/specifications/improve-coverage-80-95.md"
 
 coverage-html: ## Generate HTML report from last coverage run
