@@ -358,4 +358,32 @@
         assert!(deps.is_empty());
     }
 
+    // Covers the `let Some(target_ids) = name_map.get(target_name) else { continue }`
+    // branch in `resolve_against_name_map` — an unresolved reference whose
+    // target name exists nowhere in the node set.
+    #[test]
+    fn test_resolve_against_name_map_target_missing_from_name_map() {
+        let mut java_node = create_test_node(
+            "Java:class:Orphan",
+            NodeKind::Class,
+            "Orphan",
+            "com.example.Orphan",
+            Language::Java,
+        );
+        // Reference to a name that is not in the node set at all.
+        java_node.add_reference(ReferenceKind::Uses, "NowhereType".to_string(), None);
+
+        let ts_node = create_test_node(
+            "TypeScript:class:Unrelated",
+            NodeKind::Class,
+            "Unrelated",
+            "Unrelated",
+            Language::TypeScript,
+        );
+
+        let deps = CrossLanguageDependencies::detect(&[java_node], &[ts_node]);
+        // Reference resolves to nothing → no cross-language dependency produced.
+        assert!(deps.is_empty());
+    }
+
     // Test different ReferenceKind types in DOT output

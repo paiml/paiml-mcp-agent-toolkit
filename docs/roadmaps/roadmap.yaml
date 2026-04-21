@@ -3197,3 +3197,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-628
+  github_issue: null
+  item_type: task
+  title: 'Coverage: resolve_against_name_map missing-target branch'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-04-21T17:39:22Z
+  updated: 2026-04-21T17:39:22Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
