@@ -616,7 +616,9 @@ mod unified_ast_types_tests {
     #[test]
     fn test_node_metadata_clone() {
         let metadata = NodeMetadata { complexity: 42 };
-        let cloned = metadata;
+        // Invoke the explicit Clone impl (not the implicit Copy) so the
+        // `impl Clone for NodeMetadata` body is exercised for coverage.
+        let cloned: NodeMetadata = Clone::clone(&metadata);
         // SAFETY: Test-only: reading the same union field (`complexity`) that was just written, no UB.
         unsafe {
             assert_eq!(metadata.complexity, cloned.complexity);

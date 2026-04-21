@@ -366,4 +366,12 @@ mod coverage_tests {
         // Verify default invariants are created
         assert_eq!(checker.invariants.len(), 4);
     }
+
+    #[test]
+    fn test_invariant_checker_check_all_returns_empty_vec() {
+        let checker = InvariantChecker::new();
+        let violations = checker.check_all(&[0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
+        // Current impl is a placeholder that always returns an empty Vec.
+        assert!(violations.is_empty());
+    }
 }
