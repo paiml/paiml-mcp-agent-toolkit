@@ -80,3 +80,61 @@
         assert_eq!(nodes[1].kind, NodeKind::Function); // Methods are represented as Function in AstItem
         assert_eq!(nodes[1].name, "testMethod");
     }
+
+    /// Exercise every arm of `create_test_ast_item` to stop the helper
+    /// from reporting 23 uncovered lines. Each returned `AstItem` variant
+    /// is fed through `JavaMapper::convert_ast_items` so the assertion
+    /// also validates the mapper handles every kind the helper can produce.
+    #[test]
+    fn test_create_test_ast_item_covers_all_variant_arms() {
+        let mapper = JavaMapper::new();
+        let file_path = Path::new("/path/to/Test.java");
+
+        let items = vec![
+            create_test_ast_item("trait", "MyTrait"),
+            create_test_ast_item("interface", "MyIface"),
+            create_test_ast_item("enum", "MyEnum"),
+            create_test_ast_item("module", "MyMod"),
+            create_test_ast_item("namespace", "MyNs"),
+            create_test_ast_item("unknown_kind", "Fallback"),
+        ];
+
+        // trait/interface → Trait
+        if let AstItem::Trait { name, .. } = &items[0] {
+            assert_eq!(name, "MyTrait");
+        } else {
+            panic!("Expected Trait for 'trait'");
+        }
+        if let AstItem::Trait { name, .. } = &items[1] {
+            assert_eq!(name, "MyIface");
+        } else {
+            panic!("Expected Trait for 'interface'");
+        }
+        // enum → Enum
+        if let AstItem::Enum { name, .. } = &items[2] {
+            assert_eq!(name, "MyEnum");
+        } else {
+            panic!("Expected Enum for 'enum'");
+        }
+        // module/namespace → Module
+        if let AstItem::Module { name, .. } = &items[3] {
+            assert_eq!(name, "MyMod");
+        } else {
+            panic!("Expected Module for 'module'");
+        }
+        if let AstItem::Module { name, .. } = &items[4] {
+            assert_eq!(name, "MyNs");
+        } else {
+            panic!("Expected Module for 'namespace'");
+        }
+        // default `_` → Struct
+        if let AstItem::Struct { name, .. } = &items[5] {
+            assert_eq!(name, "Fallback");
+        } else {
+            panic!("Expected Struct for default arm");
+        }
+
+        // Drive through the mapper to confirm each variant is convertible.
+        let nodes = mapper.convert_ast_items(&items, file_path);
+        assert_eq!(nodes.len(), 6);
+    }
