@@ -238,6 +238,80 @@ roadmap:
         assert_eq!(item.completion_percentage(), 100);
     }
 
+    /// Covers the status arms missing from `test_completion_percentage`:
+    /// `Cancelled` and `Blocked` both return 0.
+    #[test]
+    fn test_completion_percentage_cancelled_and_blocked() {
+        let mut item = RoadmapItem::new("TEST-CB".to_string(), "Test".to_string());
+
+        item.status = ItemStatus::Cancelled;
+        assert_eq!(item.completion_percentage(), 0);
+
+        item.status = ItemStatus::Blocked;
+        assert_eq!(item.completion_percentage(), 0);
+    }
+
+    /// Covers the subtasks branch: epic completion is the integer average
+    /// of subtask `completion` values. Status is irrelevant because
+    /// subtasks take priority over the status match.
+    #[test]
+    fn test_completion_percentage_subtasks_branch() {
+        let mut item = RoadmapItem::new("TEST-E".to_string(), "Epic".to_string());
+        item.status = ItemStatus::Completed; // Should be ignored once subtasks exist.
+        item.subtasks = vec![
+            Subtask {
+                id: "s1".into(),
+                github_issue: None,
+                title: "a".into(),
+                status: ItemStatus::Completed,
+                completion: 100,
+            },
+            Subtask {
+                id: "s2".into(),
+                github_issue: None,
+                title: "b".into(),
+                status: ItemStatus::InProgress,
+                completion: 40,
+            },
+        ];
+        // (100 + 40) / 2 = 70
+        assert_eq!(item.completion_percentage(), 70);
+    }
+
+    /// Covers the phases branch (no subtasks, at least one phase).
+    #[test]
+    fn test_completion_percentage_phases_branch() {
+        let mut item = RoadmapItem::new("TEST-P".to_string(), "Multi".to_string());
+        item.status = ItemStatus::Planned; // Should be ignored once phases exist.
+        item.phases = vec![
+            Phase {
+                name: "A".into(),
+                status: ItemStatus::Completed,
+                estimated_effort: None,
+                completion: 80,
+            },
+            Phase {
+                name: "B".into(),
+                status: ItemStatus::InProgress,
+                estimated_effort: None,
+                completion: 20,
+            },
+        ];
+        // (80 + 20) / 2 = 50
+        assert_eq!(item.completion_percentage(), 50);
+    }
+
+    /// Covers the acceptance-criteria branch (no subtasks, no phases,
+    /// non-empty acceptance_criteria). The current implementation is a
+    /// placeholder that always returns 0.
+    #[test]
+    fn test_completion_percentage_acceptance_criteria_branch() {
+        let mut item = RoadmapItem::new("TEST-AC".to_string(), "Story".to_string());
+        item.status = ItemStatus::Completed; // Should be ignored once criteria exist.
+        item.acceptance_criteria = vec!["criterion 1".into(), "criterion 2".into()];
+        assert_eq!(item.completion_percentage(), 0);
+    }
+
     #[test]
     fn test_find_item() {
         let mut roadmap = Roadmap::new(None);
