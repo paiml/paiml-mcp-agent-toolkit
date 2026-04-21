@@ -50,6 +50,70 @@ mod tests {
         assert_eq!(roadmap.roadmap[0].status, ItemStatus::Completed);
     }
 
+    #[test]
+    fn test_yaml_only_items_empty_roadmap() {
+        let roadmap = Roadmap::new(None);
+        assert!(roadmap.yaml_only_items().is_empty());
+    }
+
+    #[test]
+    fn test_yaml_only_items_filters_github_synced() {
+        let mut roadmap = Roadmap::new(None);
+        roadmap.upsert_item(RoadmapItem::new(
+            "YAML-1".to_string(),
+            "Pure yaml".to_string(),
+        ));
+        roadmap.upsert_item(RoadmapItem::from_github_issue(
+            42,
+            "Synced".to_string(),
+        ));
+        roadmap.upsert_item(RoadmapItem::new(
+            "YAML-2".to_string(),
+            "Another yaml".to_string(),
+        ));
+
+        let yaml_only = roadmap.yaml_only_items();
+        assert_eq!(yaml_only.len(), 2);
+        assert!(yaml_only.iter().all(|i| i.github_issue.is_none()));
+        let ids: Vec<&str> = yaml_only.iter().map(|i| i.id.as_str()).collect();
+        assert!(ids.contains(&"YAML-1"));
+        assert!(ids.contains(&"YAML-2"));
+    }
+
+    #[test]
+    fn test_epic_items_empty_roadmap() {
+        let roadmap = Roadmap::new(None);
+        assert!(roadmap.epic_items().is_empty());
+    }
+
+    #[test]
+    fn test_epic_items_filters_by_type() {
+        let mut roadmap = Roadmap::new(None);
+        let mut epic = RoadmapItem::new("EPIC-1".to_string(), "Big effort".to_string());
+        epic.item_type = ItemType::Epic;
+        let task = RoadmapItem::new("TASK-1".to_string(), "Small task".to_string());
+        let mut epic2 = RoadmapItem::new("EPIC-2".to_string(), "Another epic".to_string());
+        epic2.item_type = ItemType::Epic;
+
+        roadmap.upsert_item(epic);
+        roadmap.upsert_item(task);
+        roadmap.upsert_item(epic2);
+
+        let epics = roadmap.epic_items();
+        assert_eq!(epics.len(), 2);
+        assert!(epics.iter().all(|i| i.item_type == ItemType::Epic));
+    }
+
+    #[test]
+    fn test_epic_items_no_epics() {
+        let mut roadmap = Roadmap::new(None);
+        roadmap.upsert_item(RoadmapItem::new(
+            "TASK-1".to_string(),
+            "Just a task".to_string(),
+        ));
+        assert!(roadmap.epic_items().is_empty());
+    }
+
     /// Test fuzzy ID matching for improved UX
     #[test]
     fn test_fuzzy_id_matching() {
