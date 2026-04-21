@@ -3145,3 +3145,23 @@ roadmap:
   - provable-contracts
   - component-31
   notes: null
+- id: PMAT-625
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: cover deserialize_phases + 3 error branches (PR #394)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-21T11:57:46Z
+  updated: 2026-04-21T11:57:48.540881516+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Close 23 uncovered lines in src/models/roadmap_types.rs:204 via 7 tests exercising all 3 match arms in PhasesVisitor::visit_seq (String/Mapping/other) + edge cases. Split into roadmap_phases_tests.rs to stay under 500-line pre-commit gate. PR #394. Part of #101 (overall 95% broad coverage).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels:
+  - coverage-95-push
+  - phase1
+  - pr-394
+  notes: null
