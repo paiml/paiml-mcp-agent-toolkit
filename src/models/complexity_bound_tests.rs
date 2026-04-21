@@ -141,6 +141,28 @@ mod tests {
         assert_eq!(bound.class, unknown.class);
         assert_eq!(bound.confidence, unknown.confidence);
     }
+
+    /// Display for ComplexityBound (core.rs:280) formats as
+    /// "{notation} ({confidence}% confidence)".
+    #[test]
+    fn test_complexity_bound_display_formats_notation_and_confidence() {
+        let bound = ComplexityBound::linear().with_confidence(85);
+        let rendered = format!("{bound}");
+        assert!(
+            rendered.contains("85%") && rendered.contains("confidence"),
+            "Display must include confidence number + label, got {rendered:?}"
+        );
+        assert_eq!(rendered, format!("{} (85% confidence)", bound.notation()));
+    }
+
+    /// CacheComplexity::default() (core.rs:301) delegates to new(0, 1, Unknown).
+    #[test]
+    fn test_cache_complexity_default_is_zero_miss_one_penalty_unknown() {
+        let cache: CacheComplexity = Default::default();
+        assert_eq!(cache.hit_ratio, 0);
+        assert_eq!(cache.miss_penalty, 1);
+        assert_eq!(cache.working_set, BigOClass::Unknown);
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
