@@ -3164,3 +3164,20 @@ roadmap:
   - coverage-95-push
   - phase1
   notes: null
+- id: PMAT-626
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: cover parse_python_imports + parse_typescript_imports + parse_rust_imports'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-21T13:14:04Z
+  updated: 2026-04-21T13:14:08.412846003+00:00
+  spec: null
+  acceptance_criteria:
+  - 'Close ~53 uncovered lines in src/graph/builder_import_parsing.rs (parse_typescript_imports 22 uncov, parse_python_imports 9 uncov, parse_rust_imports also uncovered). 6 tests covering all branches. Sibling to PR #397.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
