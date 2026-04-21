@@ -514,4 +514,81 @@ let other = 5;
              (.hidden, target, node_modules) must not contribute"
         );
     }
+
+    /// builder_symbol_parsing.rs:14 — `Some("py") => self.parse_python_symbols(...)`.
+    /// Reachable by putting a .py file in the workspace root. is_source_file
+    /// accepts "py", so from_workspace forwards to build_file_symbols which
+    /// must dispatch to the Python parser. Verifies the Python arm populates
+    /// the symbol table.
+    #[test]
+    fn test_build_file_symbols_python_extension_hits_python_parser() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let root = TempDir::new().unwrap();
+        fs::write(
+            root.path().join("script.py"),
+            "def my_public_fn():\n    pass\n",
+        )
+        .unwrap();
+
+        let builder = DependencyGraphBuilder::from_workspace(root.path())
+            .expect("from_workspace with .py file must succeed");
+        assert!(
+            !builder.symbol_table().is_empty(),
+            "Python arm must parse `def my_public_fn` into the symbol table \
+             — empty table means the Some(\"py\") arm never ran"
+        );
+    }
+
+    /// builder_symbol_parsing.rs:15-17 — TypeScript/JavaScript arm
+    /// `Some("ts") | Some("tsx") | Some("js") | Some("jsx")`. Reachable via a
+    /// .ts file in the workspace; from_workspace -> build_file_symbols must
+    /// dispatch to parse_typescript_symbols.
+    #[test]
+    fn test_build_file_symbols_typescript_extension_hits_typescript_parser() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let root = TempDir::new().unwrap();
+        fs::write(
+            root.path().join("module.ts"),
+            "export function exported_fn() {}\n",
+        )
+        .unwrap();
+
+        let builder = DependencyGraphBuilder::from_workspace(root.path())
+            .expect("from_workspace with .ts file must succeed");
+        assert!(
+            !builder.symbol_table().is_empty(),
+            "TypeScript arm must parse `export function exported_fn` into \
+             the symbol table — empty table means the .ts arm never ran"
+        );
+    }
+
+    /// builder_symbol_parsing.rs:18 — `_ => vec![]` unsupported-extension
+    /// fallback. is_source_file accepts "go"/"java"/"c"/"cpp"/"h"/"hpp" but
+    /// build_file_symbols has no arm for them, so they fall through to the
+    /// empty-Vec default. No symbols should be produced for a .go-only workspace.
+    #[test]
+    fn test_build_file_symbols_unsupported_extension_falls_through_to_empty() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let root = TempDir::new().unwrap();
+        fs::write(
+            root.path().join("only.go"),
+            "package main\nfunc Hello() {}\n",
+        )
+        .unwrap();
+
+        let builder = DependencyGraphBuilder::from_workspace(root.path())
+            .expect("from_workspace with .go file must succeed even when \
+                 build_file_symbols has no parser arm for it");
+        assert!(
+            builder.symbol_table().is_empty(),
+            "Go files must hit the `_ => vec![]` fallback arm — symbol \
+             table should remain empty for a .go-only workspace"
+        );
+    }
 }
