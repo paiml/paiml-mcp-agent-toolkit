@@ -29,3 +29,9 @@ include!("pattern_extractor_ruchy.rs");
 #[cfg(test)]
 #[path = "pattern_extractor_tests.rs"]
 mod tests;
+
+// Additional ruchy pipeline tests split into their own file to keep
+// pattern_extractor_tests.rs from growing past the 500-line gate.
+#[cfg(test)]
+#[path = "pattern_extractor_ruchy_pipeline_tests.rs"]
+mod ruchy_pipeline_tests_mod;

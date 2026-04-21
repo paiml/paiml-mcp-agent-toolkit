@@ -75,8 +75,10 @@ impl PatternExtractor {
         use regex::Regex;
 
         // Pattern: pipeline operators |>
+        // NOTE: `>` must not be escaped — `\>` is a word-end assertion in Rust
+        // `regex`, not a literal. Prior form `\|\>` matched nothing.
         let pipeline_pattern =
-            Regex::new(r"(?m)\s*\|\>\s*\w+\(").expect("Hardcoded regex pattern must be valid");
+            Regex::new(r"(?m)\s*\|>\s*\w+\(").expect("Hardcoded regex pattern must be valid");
         let matches: Vec<_> = pipeline_pattern.find_iter(content).collect();
 
         if matches.len() > 3 {

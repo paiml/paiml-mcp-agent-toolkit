@@ -665,16 +665,15 @@ fn test_extract_ruchy_pipeline_patterns() {
             .collect::<Vec<_>>()
     );
 
-    // The function's regex: \s*\|\>\s*\w+\(
-    // Since this uses \> which in Rust regex may be interpreted differently,
-    // just verify the function completes without error
+    // Function regex `\s*\|>\s*\w+\(` (post-fix: `\>` was a word-end
+    // assertion, not a literal) matches 5 pipeline ops here, so a pattern
+    // must be produced.
     let mut collection = PatternCollection::new();
     extractor
         .extract_ruchy_pipeline_patterns(&file_path, content, &mut collection)
         .expect("Should extract patterns");
 
-    // The function may not find patterns due to regex escaping of >
-    // This is acceptable behavior - the function runs without error
+    assert!(!collection.patterns.is_empty(), "must produce pattern");
 }
 
 #[test]
