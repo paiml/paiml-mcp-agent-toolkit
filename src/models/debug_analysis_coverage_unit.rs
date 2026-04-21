@@ -210,6 +210,26 @@
         assert!(evidence.value.get("notes").is_some());
     }
 
+    /// Covers the EvoScoreTrajectory branch in create_test_evidence.
+    #[test]
+    fn test_evidence_new_evoscore_trajectory() {
+        let evidence = create_test_evidence(EvidenceSource::EvoScoreTrajectory);
+
+        assert_eq!(evidence.source, EvidenceSource::EvoScoreTrajectory);
+        assert_eq!(evidence.metric, "evoscore_trajectory");
+        assert!(evidence.value.get("evoscore").is_some());
+    }
+
+    /// Covers the CoverageDelta branch in create_test_evidence.
+    #[test]
+    fn test_evidence_new_coverage_delta() {
+        let evidence = create_test_evidence(EvidenceSource::CoverageDelta);
+
+        assert_eq!(evidence.source, EvidenceSource::CoverageDelta);
+        assert_eq!(evidence.metric, "coverage_delta");
+        assert!(evidence.value.get("delta").is_some());
+    }
+
     #[test]
     fn test_evidence_serialization_roundtrip() {
         let evidence = create_test_evidence(EvidenceSource::Complexity);
