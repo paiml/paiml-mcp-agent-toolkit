@@ -31,6 +31,68 @@ mod tests {
         );
     }
 
+    /// extract_type_name strips `pub`/keyword prefix, trailing generics `<...>`
+    /// and braces `{...}`.
+    #[test]
+    fn test_extract_type_name_covers_generics_and_body() {
+        assert_eq!(
+            DependencyGraphBuilder::extract_type_name("pub struct Foo {", "struct"),
+            Some("Foo")
+        );
+        assert_eq!(
+            DependencyGraphBuilder::extract_type_name("struct Bar<T> { x: T }", "struct"),
+            Some("Bar")
+        );
+        assert_eq!(
+            DependencyGraphBuilder::extract_type_name("enum Status", "enum"),
+            Some("Status")
+        );
+        assert_eq!(
+            DependencyGraphBuilder::extract_type_name("   ", "struct"),
+            None
+        );
+    }
+
+    /// extract_ts_name strips `export`/`const`/`function`, `(...)` args, and `= ...`.
+    #[test]
+    fn test_extract_ts_name_covers_all_prefixes() {
+        assert_eq!(
+            DependencyGraphBuilder::extract_ts_name("export function foo() {}"),
+            Some("foo")
+        );
+        assert_eq!(
+            DependencyGraphBuilder::extract_ts_name("function bar(arg: number) {}"),
+            Some("bar")
+        );
+        assert_eq!(
+            DependencyGraphBuilder::extract_ts_name("export const baz = 42"),
+            Some("baz")
+        );
+        assert_eq!(
+            DependencyGraphBuilder::extract_ts_name("const qux = () => 1"),
+            Some("qux")
+        );
+        assert_eq!(DependencyGraphBuilder::extract_ts_name(""), None);
+    }
+
+    /// extract_ts_class_name strips `export`/`class` and trailing `{...}`.
+    #[test]
+    fn test_extract_ts_class_name_covers_branches() {
+        assert_eq!(
+            DependencyGraphBuilder::extract_ts_class_name("export class PubClass {}"),
+            Some("PubClass")
+        );
+        assert_eq!(
+            DependencyGraphBuilder::extract_ts_class_name("class Bare"),
+            Some("Bare")
+        );
+        assert_eq!(
+            DependencyGraphBuilder::extract_ts_class_name("class Foo{body}"),
+            Some("Foo")
+        );
+        assert_eq!(DependencyGraphBuilder::extract_ts_class_name(""), None);
+    }
+
     #[test]
     fn test_extract_python_names() {
         assert_eq!(
