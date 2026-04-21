@@ -214,4 +214,32 @@ mod coverage_tests {
         assert_eq!(memory.initial_pages, 1);
         assert_eq!(memory.max_pages, Some(256));
     }
+
+    // start_sampling spawns a tokio task with an interval loop that pushes
+    // shadow-stack samples and caps at 10000. Tested with a short interval
+    // to exercise at least a few iterations, then abort the handle.
+    #[tokio::test]
+    async fn test_start_sampling_pushes_samples() {
+        let profiler = AsyncProfiler::new();
+        let handle = profiler.start_sampling(Duration::from_micros(100));
+
+        // Give the task several ticks to push samples into the shared vec.
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        handle.abort();
+
+        let stacks = profiler.shadow_stacks.read().unwrap();
+        assert!(
+            !stacks.is_empty(),
+            "start_sampling should push at least one ShadowStack"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_start_sampling_returns_join_handle() {
+        let profiler = AsyncProfiler::new();
+        let handle = profiler.start_sampling(Duration::from_millis(1));
+        // A fresh handle is not finished; aborting it completes the task.
+        assert!(!handle.is_finished());
+        handle.abort();
+    }
 }
