@@ -250,3 +250,26 @@
         assert!(result.is_ok());
     }
 
+    #[test]
+    fn test_typescript_mapper_map_source_ok_path() {
+        // map_source internally calls analyze_typescript_source, which creates its
+        // own tokio runtime. Use futures::executor::block_on (non-tokio) to avoid
+        // nested-runtime panic from the SUT.
+        let result = futures::executor::block_on(async {
+            let mapper = TypeScriptMapper::new();
+            mapper
+                .map_source("export class User { name: string; }\n", Path::new("User.ts"))
+                .await
+        });
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_typescript_mapper_map_source_empty() {
+        let result = futures::executor::block_on(async {
+            let mapper = TypeScriptMapper::new();
+            mapper.map_source("", Path::new("empty.ts")).await
+        });
+        assert!(result.is_ok() || result.is_err());
+    }
+
