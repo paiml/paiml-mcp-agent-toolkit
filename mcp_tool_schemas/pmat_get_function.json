@@ -1,0 +1,19 @@
+{
+  "name": "pmat_get_function",
+  "description": "Get detailed information about a specific function by its ID. Returns full function metadata including source code, quality metrics, and SATD markers.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "function_id": {
+        "type": "string",
+        "description": "Function ID from pmat_query_code results (e.g., 'src/handlers/auth.rs::handle_login')"
+      },
+      "include_source": {
+        "type": "boolean",
+        "description": "Include full source code (default: true)",
+        "default": true
+      }
+    },
+    "required": ["function_id"]
+  }
+}

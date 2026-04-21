@@ -1,0 +1,28 @@
+{
+  "name": "pmat_find_similar",
+  "description": "Find functions similar to a reference function. Useful for finding related code, potential duplicates, or implementations of similar patterns.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "function_id": {
+        "type": "string",
+        "description": "Function ID to find similar functions for"
+      },
+      "limit": {
+        "type": "integer",
+        "description": "Maximum number of similar functions (default: 5, max: 20)",
+        "minimum": 1,
+        "maximum": 20,
+        "default": 5
+      },
+      "min_similarity": {
+        "type": "number",
+        "description": "Minimum similarity score (0.0-1.0, default: 0.3)",
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "default": 0.3
+      }
+    },
+    "required": ["function_id"]
+  }
+}
