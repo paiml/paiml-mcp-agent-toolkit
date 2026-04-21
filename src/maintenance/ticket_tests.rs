@@ -13,6 +13,46 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_header_invalid_format() {
+        // Wrong prefix hits the "Invalid header format" arm.
+        assert!(parse_header("## TICKET-PMAT-0001: Not hash one").is_err());
+    }
+
+    #[test]
+    fn test_parse_header_missing_title() {
+        // No colon means parts.len() < 2 — "Header missing title" arm.
+        assert!(parse_header("# TICKET-PMAT-0001 no colon separator").is_err());
+    }
+
+    #[test]
+    fn test_extract_metadata_missing_field() {
+        let lines: Vec<&str> = vec!["**Status**: GREEN", "**Priority**: P0"];
+        // Asking for a non-existent key hits the MissingField arm.
+        let result = extract_metadata(&lines, "**Sprint**");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_extract_section_missing_header() {
+        // No matching header → empty content → MissingField arm.
+        let lines: Vec<&str> = vec!["## Something Else", "body", "## Another"];
+        let result = extract_section(&lines, "## Objective");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_priority_p2_variant() {
+        // P2 arm isn't covered by the happy-path P0/P1 tests.
+        assert_eq!(parse_priority("P2").unwrap(), Priority::P2);
+    }
+
+    #[test]
+    fn test_parse_status_refactor_variant() {
+        // REFACTOR arm isn't covered by the existing RED/Green/COMPLETE test.
+        assert_eq!(parse_status("REFACTOR").unwrap(), TicketStatus::Refactor);
+    }
+
+    #[test]
     fn test_parse_status() {
         assert_eq!(parse_status("RED").unwrap(), TicketStatus::Red);
         assert_eq!(parse_status("Green").unwrap(), TicketStatus::Green);
