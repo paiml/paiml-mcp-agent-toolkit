@@ -27,7 +27,7 @@
 # Delete partially-built files on error for safety (bashrs lint compliance)
 .DELETE_ON_ERROR:
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-summary coverage-open coverage-clean clean-coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all test-stratified coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples examples example clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify coverage-fast coverage-invalidate coverage-full check-install
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-summary coverage-open coverage-clean clean-coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all test-stratified coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples examples example clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify coverage-fast coverage-invalidate coverage-full coverage-broad check-install
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -492,6 +492,26 @@ coverage: ## Coverage summary + threshold check (<5 min)
 	else \
 		echo "✅ Coverage $${COV_PCT}% meets threshold $(COV_THRESHOLD)%"; \
 	fi
+
+coverage-broad: ## Honest project-wide coverage (no regex, no --skip, no coverage(off)). Informational.
+	@echo "📊 Running broad coverage (honest baseline, no exclusions)..."
+	@echo "   See COVERAGE_POLICY.md for why this differs from 'make coverage'"
+	@which cargo-llvm-cov > /dev/null 2>&1 || { cargo install cargo-llvm-cov --locked || exit 1; }
+	@mkdir -p target/coverage-broad
+	@cargo +nightly llvm-cov clean --workspace
+	@echo "🧪 Running tests (no --skip, attributes disabled, no regex exclusions)..."
+	@env RUSTC_WRAPPER= PROPTEST_CASES=3 RUST_MIN_STACK=33554432 cargo +nightly llvm-cov test \
+		--lib \
+		--features all-languages \
+		--no-cfg-coverage --no-cfg-coverage-nightly \
+		-- --test-threads=$$(nproc) \
+		|| true
+	@echo "📊 Generating broad report (informational)..."
+	@cargo +nightly llvm-cov report --summary-only | tee target/coverage-broad/summary.txt | grep -E "^TOTAL"
+	@COV_PCT=$$(grep -E '^TOTAL' target/coverage-broad/summary.txt | awk '{n=0; for(i=1;i<=NF;i++){if($$i ~ /[0-9]+\.[0-9]+%/){n++; if(n==3){gsub(/%/,"",$$i);print $$i;exit}}}}'); \
+	echo ""; \
+	echo "ℹ️  Broad coverage: $${COV_PCT}% (informational, not gated)"; \
+	echo "ℹ️  Target: 95% per docs/specifications/improve-coverage-80-95.md"
 
 coverage-html: ## Generate HTML report from last coverage run
 	@echo "📊 Generating HTML report..."
@@ -1601,6 +1621,7 @@ help:
 	@echo "  test-safe    - Run tests with manual thread control (THREADS=n)"
 	@echo "  coverage     - Generate HTML coverage report (<10 min)"
 	@echo "  coverage-ci  - Generate LCOV for CI"
+	@echo "  coverage-broad - Honest project-wide coverage (no exclusions, informational)"
 	@echo "  coverage-open - Open HTML coverage in browser"
 	@echo "  coverage-clean - Clean coverage artifacts"
 	@echo "  audit        - Run security audit on all projects"
