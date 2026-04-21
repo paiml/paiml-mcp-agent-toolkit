@@ -441,4 +441,47 @@ let other = 5;
         assert_eq!(builder.graph.node_count(), 1);
         assert!(builder.graph.node_weight(node_id).is_some());
     }
+
+    /// Exercise `from_workspace` over every extension branch in
+    /// `build_file_symbols` and `resolve_file_dependencies`:
+    /// - `rs` (Rust arm)
+    /// - `py` (Python arm)
+    /// - `ts` (TypeScript arm)
+    /// - `go` (unsupported — fall-through `_ => vec![]`)
+    ///   Note: `.go` files pass `is_source_file` so they reach the parser
+    ///   dispatcher, where they hit the default arm in both functions.
+    #[test]
+    fn test_from_workspace_covers_all_extension_arms() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let root = temp_dir.path();
+
+        fs::write(
+            root.join("lib.rs"),
+            "use std::fmt;\npub fn rust_fn() {}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("mod.py"),
+            "import os\ndef py_fn():\n    pass\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("app.ts"),
+            "import { x } from './x';\nexport function tsFn() {}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("main.go"),
+            "package main\nfunc goFn() {}\n",
+        )
+        .unwrap();
+
+        let builder = DependencyGraphBuilder::from_workspace(root).unwrap();
+
+        // Four source files → four graph nodes regardless of parser coverage.
+        assert_eq!(builder.graph.node_count(), 4);
+    }
 }
