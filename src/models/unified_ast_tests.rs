@@ -429,6 +429,42 @@ fn test_unified_ast_node_languages() {
     assert_eq!(py_node.lang, Language::Python);
 }
 
+#[test]
+fn test_unified_ast_node_debug_format() {
+    let node = UnifiedAstNode::new(AstKind::Function(FunctionKind::Regular), Language::Rust);
+    let s = format!("{node:?}");
+    assert!(s.contains("UnifiedAstNode"));
+    assert!(s.contains("kind"));
+    assert!(s.contains("lang"));
+    assert!(s.contains("flags"));
+    assert!(s.contains("parent"));
+    assert!(s.contains("first_child"));
+    assert!(s.contains("next_sibling"));
+    assert!(s.contains("source_range"));
+    assert!(s.contains("semantic_hash"));
+    assert!(s.contains("structural_hash"));
+    assert!(s.contains("name_vector"));
+    assert!(s.contains("metadata_raw"));
+    assert!(s.contains("proof_annotations"));
+    assert!(s.contains("Rust"));
+}
+
+#[test]
+fn test_unified_ast_node_debug_format_populated() {
+    let mut node = UnifiedAstNode::new(AstKind::Class(ClassKind::Struct), Language::TypeScript);
+    node.parent = 42;
+    node.first_child = 7;
+    node.next_sibling = 13;
+    node.source_range = 100..200;
+    node.semantic_hash = 0xDEAD_BEEF;
+    node.structural_hash = 0xCAFE_BABE;
+    node.name_vector = 0xFEED_FACE;
+    let s = format!("{node:?}");
+    assert!(s.contains("42"));
+    assert!(s.contains("100..200"));
+    assert!(s.contains("TypeScript"));
+}
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {

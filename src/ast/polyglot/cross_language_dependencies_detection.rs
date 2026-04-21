@@ -60,29 +60,6 @@ impl CrossLanguageDependencies {
         }
     }
 
-    /// Detect dependencies between nodes of two specific languages
-    fn detect_between_languages(
-        &mut self,
-        nodes1: &[&UnifiedNode],
-        lang1: Language,
-        nodes2: &[&UnifiedNode],
-        lang2: Language,
-    ) {
-        // For each node in first language
-        for &source in nodes1 {
-            // For each reference in the node
-            for reference in &source.references {
-                // For each node in second language
-                for &target in nodes2 {
-                    // Check if reference matches target
-                    if self.is_reference_match(source, reference, target, lang1, lang2) {
-                        self.add_dependency(source, target, reference.kind, 1.0);
-                    }
-                }
-            }
-        }
-    }
-
     /// Check if a reference from one node matches a target node
     fn is_reference_match(
         &self,
@@ -110,26 +87,5 @@ impl CrossLanguageDependencies {
         }
 
         false
-    }
-
-    /// Add a dependency between two nodes
-    fn add_dependency(
-        &mut self,
-        source: &UnifiedNode,
-        target: &UnifiedNode,
-        kind: ReferenceKind,
-        confidence: f64,
-    ) {
-        let dependency = CrossLanguageDependency {
-            source_id: source.id.clone(),
-            target_id: target.id.clone(),
-            source_language: source.language,
-            target_language: target.language,
-            kind,
-            confidence,
-            metadata: HashMap::new(),
-        };
-
-        self.dependencies.push(dependency);
     }
 }

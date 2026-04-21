@@ -184,8 +184,7 @@ impl CrossLanguageDependencies {
     }
 }
 
-// Detection: detect_between_language_groups, find_matching_targets,
-// detect_between_languages, is_reference_match, add_dependency
+// Detection: detect_between_language_groups, find_matching_targets, is_reference_match
 include!("cross_language_dependencies_detection.rs");
 
 // Resolution: resolve_references, build_name_map,
