@@ -90,6 +90,122 @@ mod tests {
     }
 
     #[test]
+    fn test_sprint_completion_percentage_empty() {
+        let sprint = Sprint {
+            number: 99,
+            name: "Empty".to_string(),
+            focus: "".to_string(),
+            status: SprintStatus::Planned,
+            duration: "0 days".to_string(),
+            tickets: vec![],
+            quality_gates: vec![],
+        };
+        // Empty tickets branch returns 0.0
+        assert_eq!(sprint.completion_percentage(), 0.0);
+    }
+
+    #[test]
+    fn test_roadmap_completion_percentage_found() {
+        let roadmap = Roadmap {
+            version: "1.0".to_string(),
+            sprints: vec![Sprint {
+                number: 42,
+                name: "Target".to_string(),
+                focus: "".to_string(),
+                status: SprintStatus::InProgress,
+                duration: "1 day".to_string(),
+                tickets: vec![
+                    Ticket {
+                        id: "TICKET-PMAT-4201".into(),
+                        description: "".into(),
+                        completed: true,
+                        commit: None,
+                    },
+                    Ticket {
+                        id: "TICKET-PMAT-4202".into(),
+                        description: "".into(),
+                        completed: false,
+                        commit: None,
+                    },
+                ],
+                quality_gates: vec![],
+            }],
+        };
+        let pct = roadmap.completion_percentage(42);
+        assert!(pct.is_some());
+        assert!((pct.unwrap() - 50.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_roadmap_completion_percentage_missing_sprint() {
+        let roadmap = Roadmap {
+            version: "1.0".to_string(),
+            sprints: vec![],
+        };
+        assert!(roadmap.completion_percentage(999).is_none());
+    }
+
+    #[test]
+    fn test_roadmap_from_file_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ROADMAP.md");
+        let content = "### Sprint 7: Demo Sprint (1 day) - IN PROGRESS\n\
+             **Focus:** testing\n\
+             - [x] TICKET-PMAT-0007: Done item (commit: abc1234)\n\
+             - [ ] TICKET-PMAT-0008: Pending item\n";
+        std::fs::write(&path, content).unwrap();
+
+        let roadmap = Roadmap::from_file(&path).unwrap();
+        assert_eq!(roadmap.sprints.len(), 1);
+        assert_eq!(roadmap.sprints[0].number, 7);
+        assert_eq!(roadmap.sprints[0].tickets.len(), 2);
+    }
+
+    #[test]
+    fn test_roadmap_validate_accepts_valid_ids() {
+        let roadmap = Roadmap {
+            version: "1.0".to_string(),
+            sprints: vec![Sprint {
+                number: 1,
+                name: "Ok".to_string(),
+                focus: "".to_string(),
+                status: SprintStatus::Complete,
+                duration: "1 day".to_string(),
+                tickets: vec![Ticket {
+                    id: "TICKET-PMAT-0001".into(),
+                    description: "".into(),
+                    completed: true,
+                    commit: None,
+                }],
+                quality_gates: vec![],
+            }],
+        };
+        assert!(roadmap.validate().is_ok());
+    }
+
+    #[test]
+    fn test_roadmap_validate_rejects_bad_ticket_id() {
+        let roadmap = Roadmap {
+            version: "1.0".to_string(),
+            sprints: vec![Sprint {
+                number: 1,
+                name: "Bad".to_string(),
+                focus: "".to_string(),
+                status: SprintStatus::Complete,
+                duration: "1 day".to_string(),
+                tickets: vec![Ticket {
+                    id: "BAD-FORMAT".into(),
+                    description: "".into(),
+                    completed: false,
+                    commit: None,
+                }],
+                quality_gates: vec![],
+            }],
+        };
+        assert!(roadmap.validate().is_err());
+    }
+
+    #[test]
     fn test_sprint_is_complete() {
         let complete_sprint = Sprint {
             number: 16,
