@@ -17,3 +17,6 @@ include!("roadmap_impl.rs");
 
 #[cfg(test)]
 include!("roadmap_tests.rs");
+
+#[cfg(test)]
+include!("roadmap_phases_tests.rs");
