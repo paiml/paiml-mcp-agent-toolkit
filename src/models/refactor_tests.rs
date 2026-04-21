@@ -232,6 +232,77 @@
         assert_eq!(sm.history.len(), 2);
     }
 
+    #[test]
+    fn test_state_machine_advance_plan_with_violations_to_refactor() {
+        // "complex" path triggers a synthetic HighComplexity violation in
+        // find_violations, driving Plan -> Refactor.
+        let targets = vec![PathBuf::from("complex_module.rs")];
+        let config = RefactorConfig::default();
+        let mut sm = RefactorStateMachine::new(targets, config);
+
+        let _ = sm.advance(); // Scan -> Analyze
+        let _ = sm.advance(); // Analyze -> Plan
+        let result = sm.advance(); // Plan -> Refactor
+
+        assert!(matches!(result.unwrap(), State::Refactor { .. }));
+    }
+
+    #[test]
+    fn test_state_machine_advance_plan_empty_completes() {
+        // Non-"complex" path produces no violations; Plan -> next_target()
+        // which returns None (single target), so Plan -> Complete.
+        let targets = vec![PathBuf::from("clean.rs")];
+        let config = RefactorConfig::default();
+        let mut sm = RefactorStateMachine::new(targets, config);
+
+        let _ = sm.advance(); // Scan -> Analyze
+        let _ = sm.advance(); // Analyze -> Plan
+        let result = sm.advance(); // Plan -> Complete (via next_target None)
+
+        assert!(matches!(result.unwrap(), State::Complete { .. }));
+    }
+
+    #[test]
+    fn test_state_machine_advance_full_cycle_refactor_to_checkpoint() {
+        // Drive a full refactor cycle through Refactor -> Test -> Lint ->
+        // Emit -> Checkpoint, exercising the middle arms of `advance`.
+        let targets = vec![PathBuf::from("complex.rs")];
+        let config = RefactorConfig::default();
+        let mut sm = RefactorStateMachine::new(targets, config);
+
+        let _ = sm.advance(); // Scan -> Analyze
+        let _ = sm.advance(); // Analyze -> Plan
+        let _ = sm.advance(); // Plan -> Refactor
+        let test_state = sm.advance().unwrap().clone();
+        assert!(matches!(test_state, State::Test { .. }));
+
+        let lint_state = sm.advance().unwrap().clone();
+        assert!(matches!(lint_state, State::Lint { .. }));
+
+        let emit_state = sm.advance().unwrap().clone();
+        assert!(matches!(emit_state, State::Emit { .. }));
+
+        let checkpoint_state = sm.advance().unwrap().clone();
+        assert!(matches!(checkpoint_state, State::Checkpoint { .. }));
+    }
+
+    #[test]
+    fn test_state_machine_advance_complete_is_idempotent() {
+        // Complete state early-returns Ok(&self.current) without transitioning.
+        let targets = vec![];
+        let config = RefactorConfig::default();
+        let mut sm = RefactorStateMachine::new(targets, config);
+
+        // Starts in Complete (empty targets)
+        assert!(matches!(sm.current, State::Complete { .. }));
+        let history_len_before = sm.history.len();
+
+        let result = sm.advance();
+        assert!(matches!(result.unwrap(), State::Complete { .. }));
+        // History should NOT grow on Complete -> Complete
+        assert_eq!(sm.history.len(), history_len_before);
+    }
+
     // ========================================================================
     // RefactorOp Tests
     // ========================================================================

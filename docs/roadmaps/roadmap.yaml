@@ -3197,3 +3197,19 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-628
+  github_issue: null
+  item_type: task
+  title: 'Coverage: RefactorStateMachine::advance late states'
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-04-21T18:03:00Z
+  updated: 2026-04-21T18:03:00Z
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
