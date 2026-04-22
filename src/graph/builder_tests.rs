@@ -610,4 +610,51 @@ let other = 5;
              table should remain empty for a .go-only workspace"
         );
     }
+
+    /// builder_import_parsing.rs:10-17 — `resolve_file_dependencies` dispatches
+    /// on file extension. Prior tests covered the .rs arm (line 11) via
+    /// `test_first_time_analysis` and the `_` fallback (line 16) via the .go
+    /// test above, but the .py (line 12) and .ts/.tsx/.js/.jsx (lines 13-14)
+    /// arms were not exercised. Hitting from_workspace with a mix of
+    /// extensions routes every file through resolve_file_dependencies.
+    #[test]
+    fn test_resolve_file_dependencies_dispatches_py_ts_and_fallback() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let root = TempDir::new().unwrap();
+        // .py arm — parse_python_imports
+        fs::write(
+            root.path().join("module.py"),
+            "import os\nfrom collections import OrderedDict\ndef main():\n    pass\n",
+        )
+        .unwrap();
+        // .ts arm — parse_typescript_imports
+        fs::write(
+            root.path().join("module.ts"),
+            "import { x } from 'lodash';\nexport function f() {}\n",
+        )
+        .unwrap();
+        // .tsx arm — same parse_typescript_imports branch
+        fs::write(
+            root.path().join("widget.tsx"),
+            "import React from 'react';\nexport const W = () => null;\n",
+        )
+        .unwrap();
+        // .jsx arm — same parser
+        fs::write(
+            root.path().join("legacy.jsx"),
+            "import { render } from 'react-dom';\n",
+        )
+        .unwrap();
+        // unknown — must hit the `_ => vec![]` fallback arm
+        fs::write(
+            root.path().join("notes.c"),
+            "int main(void) { return 0; }\n",
+        )
+        .unwrap();
+
+        let _ = DependencyGraphBuilder::from_workspace(root.path())
+            .expect("mixed-extension workspace must build without error");
+    }
 }
