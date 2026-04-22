@@ -418,4 +418,91 @@ mod tests {
         assert!(formatted.contains("Missing Ticket Files"));
         assert!(formatted.contains("TICKET-PMAT-9999"));
     }
+
+    fn sample_ticket_file(id: &str, status: super::super::ticket::TicketStatus) -> TicketFile {
+        use super::super::ticket::{Priority, TicketFile};
+        TicketFile {
+            id: id.to_string(),
+            title: "Test".into(),
+            status,
+            priority: Priority::P0,
+            complexity: 5,
+            estimated_time: "1h".into(),
+            dependencies: vec![],
+            sprint: "Sprint 1".into(),
+            objective: "Test".into(),
+            success_criteria: vec!["Test".into()],
+            file_path: PathBuf::new(),
+        }
+    }
+
+    #[test]
+    fn test_validate_roadmap_tickets_pushes_status_mismatch_on_completed_red_ticket() {
+        use super::super::roadmap::{Roadmap, Sprint, SprintStatus, Ticket};
+        use super::super::ticket::TicketStatus;
+        use std::collections::HashMap;
+
+        let ticket_id = "TICKET-PMAT-0042".to_string();
+        let roadmap = Roadmap {
+            version: "v1".into(),
+            sprints: vec![Sprint {
+                number: 1,
+                name: "Test".into(),
+                focus: String::new(),
+                status: SprintStatus::Complete,
+                duration: String::new(),
+                tickets: vec![Ticket {
+                    id: ticket_id.clone(),
+                    description: "Test".into(),
+                    completed: true,
+                    commit: None,
+                }],
+                quality_gates: vec![],
+            }],
+        };
+
+        let ticket_file = sample_ticket_file(&ticket_id, TicketStatus::Red);
+        let mut ticket_map: HashMap<String, &super::super::ticket::TicketFile> = HashMap::new();
+        ticket_map.insert(ticket_id.clone(), &ticket_file);
+
+        let mut report = ValidationReport::new("Test".to_string());
+        super::validate_roadmap_tickets(&roadmap, &ticket_map, &mut report);
+
+        assert!(report.missing_tickets.is_empty());
+        assert_eq!(report.status_mismatches.len(), 1);
+        assert_eq!(report.status_mismatches[0].ticket_id, ticket_id);
+        assert!(report.status_mismatches[0].roadmap_completed);
+    }
+
+    #[test]
+    fn test_validate_ticket_dependencies_pushes_orphaned_ticket() {
+        use super::super::roadmap::Roadmap;
+        use super::super::ticket::TicketStatus;
+        use std::collections::HashMap;
+
+        let roadmap = Roadmap {
+            version: "v1".into(),
+            sprints: vec![],
+        };
+
+        let orphan = sample_ticket_file("TICKET-PMAT-9001", TicketStatus::Green);
+        let ticket_files = vec![orphan];
+        let ticket_map: HashMap<String, &super::super::ticket::TicketFile> =
+            ticket_files.iter().map(|t| (t.id.clone(), t)).collect();
+
+        let mut report = ValidationReport::new("Test".to_string());
+        super::validate_ticket_dependencies(&roadmap, &ticket_files, &ticket_map, &mut report);
+
+        assert_eq!(report.orphaned_tickets.len(), 1);
+        assert_eq!(report.orphaned_tickets[0], "TICKET-PMAT-9001");
+        assert!(report.broken_dependencies.is_empty());
+    }
+
+    #[test]
+    fn test_status_matches_completed_with_red_returns_false() {
+        use super::super::ticket::TicketStatus;
+
+        let ticket = sample_ticket_file("TICKET-PMAT-0001", TicketStatus::Red);
+        assert!(!status_matches(&ticket, true));
+    }
 }
