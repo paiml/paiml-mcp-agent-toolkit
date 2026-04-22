@@ -149,6 +149,49 @@ mod tests {
         assert!(diff < 100); // Within 100MB variance
     }
 
+    // ============ parse_vmrss_kb Tests ============
+
+    #[test]
+    fn test_parse_vmrss_kb_real_status_format() {
+        let status = "Name:\tpmat\n\
+                      VmPeak:\t  123456 kB\n\
+                      VmSize:\t  100000 kB\n\
+                      VmRSS:\t    8192 kB\n\
+                      VmData:\t   50000 kB\n";
+        assert_eq!(parse_vmrss_kb(status), Some(8192));
+    }
+
+    #[test]
+    fn test_parse_vmrss_kb_missing_line() {
+        let status = "Name:\tpmat\nVmSize:\t  100000 kB\n";
+        assert_eq!(parse_vmrss_kb(status), None);
+    }
+
+    #[test]
+    fn test_parse_vmrss_kb_empty() {
+        assert_eq!(parse_vmrss_kb(""), None);
+    }
+
+    #[test]
+    fn test_parse_vmrss_kb_non_numeric_value() {
+        let status = "VmRSS:\tnot_a_number kB\n";
+        assert_eq!(parse_vmrss_kb(status), None);
+    }
+
+    #[test]
+    fn test_parse_vmrss_kb_prefix_match_not_exact() {
+        // Line must *start* with "VmRSS:" — a line containing it elsewhere is ignored.
+        let status = "Comment: VmRSS: 9999 kB\nVmRSS:\t  4096 kB\n";
+        assert_eq!(parse_vmrss_kb(status), Some(4096));
+    }
+
+    #[test]
+    fn test_parse_vmrss_kb_no_whitespace_fields() {
+        // Only "VmRSS:" with no second whitespace-separated token → nth(1) is None.
+        let status = "VmRSS:\n";
+        assert_eq!(parse_vmrss_kb(status), None);
+    }
+
     // ============ PerformanceTargets Field Tests ============
 
     #[test]
