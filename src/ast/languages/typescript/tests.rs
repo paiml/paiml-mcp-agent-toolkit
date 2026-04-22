@@ -869,6 +869,39 @@ mod tests {
         assert!(imports.is_empty(), "Empty dag should have no imports");
     }
 
+    #[test]
+    fn test_typescript_strategy_default_impl() {
+        let strategy = <TypeScriptStrategy as Default>::default();
+        assert_eq!(strategy.language(), Language::TypeScript);
+    }
+
+    #[test]
+    fn test_javascript_strategy_default_impl() {
+        let strategy = <JavaScriptStrategy as Default>::default();
+        assert_eq!(strategy.language(), Language::JavaScript);
+    }
+
+    #[test]
+    fn test_typescript_complexity_counts_control_flow_flagged_nodes() {
+        use crate::ast::core::{AstKind, StmtKind, UnifiedAstNode};
+        let strategy = TypeScriptStrategy::new();
+        let mut dag = AstDag::new();
+
+        let mut if_node =
+            UnifiedAstNode::new(AstKind::Statement(StmtKind::If), Language::TypeScript);
+        if_node.flags.set(NodeFlags::CONTROL_FLOW);
+        dag.add_node(if_node);
+
+        let mut while_node =
+            UnifiedAstNode::new(AstKind::Statement(StmtKind::While), Language::TypeScript);
+        while_node.flags.set(NodeFlags::CONTROL_FLOW);
+        dag.add_node(while_node);
+
+        let (cyclomatic, cognitive) = strategy.calculate_complexity(&dag);
+        assert_eq!(cyclomatic, 3, "base 1 + 2 CONTROL_FLOW nodes");
+        assert_eq!(cognitive, 2, "1 per CONTROL_FLOW node");
+    }
+
     // ==================== File Extension Tests ====================
 
     #[tokio::test]
