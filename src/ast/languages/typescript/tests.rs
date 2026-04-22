@@ -968,4 +968,56 @@ mod tests {
         let functions = strategy.extract_functions(&dag);
         assert!(!functions.is_empty(), "Should find function");
     }
+
+    #[tokio::test]
+    async fn test_object_literal_with_spread_and_getter() {
+        // visitor.rs:176 (Spread `continue`) + visitor.rs:189 (`_ =>` catch-all).
+        // Spread drops into the let-else continue; Getter isn't Method/KeyValue
+        // so it falls through to the `_ =>` arm.
+        let strategy = TypeScriptStrategy::new();
+        let content = r#"
+            const base = { a: 1 };
+            const obj = {
+                ...base,
+                get computed() { return 42; },
+                set value(v) { this._v = v; },
+            };
+        "#;
+
+        let path = PathBuf::from("test.ts");
+        let dag = strategy.parse_file(&path, content).await.unwrap();
+
+        // Spread/getter/setter props don't emit nodes themselves; this test
+        // just verifies the traversal reaches the Spread `continue` and the
+        // `_ =>` catch-all arm without panicking and without emitting spurious
+        // function nodes for the getter/setter.
+        let functions = strategy.extract_functions(&dag);
+        assert!(
+            functions.is_empty(),
+            "getter/setter must not emit function nodes, got {}",
+            functions.len()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_object_literal_with_method_prop() {
+        // Covers the Prop::Method arm (visitor.rs:179-184) — object method
+        // emits a Function(Regular) node distinct from a KeyValue prop.
+        let strategy = TypeScriptStrategy::new();
+        let content = r#"
+            const obj = {
+                greet() { return "hi"; },
+                name: "world",
+            };
+        "#;
+
+        let path = PathBuf::from("test.ts");
+        let dag = strategy.parse_file(&path, content).await.unwrap();
+
+        let functions = strategy.extract_functions(&dag);
+        assert!(
+            !functions.is_empty(),
+            "Prop::Method should emit a function node"
+        );
+    }
 }
