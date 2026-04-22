@@ -3,7 +3,7 @@
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod coverage_tests {
-    use super::c_cpp_strategy::{CStrategy, CppStrategy};
+    use super::super::c_cpp_strategy::{CStrategy, CppStrategy};
     use crate::ast::core::{
         AstDag, AstKind, ClassKind, FunctionKind, ImportKind, Language, NodeFlags, StmtKind,
         UnifiedAstNode,
