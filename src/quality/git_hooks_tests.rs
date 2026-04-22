@@ -304,4 +304,78 @@ mod tests {
 
         assert_eq!(checker.cache.len(), 2);
     }
+
+    /// git_hooks_validate.rs:44-51 — the `!all_passed` println! arm of
+    /// `run_pre_commit_checks`. Existing `test_run_pre_commit_checks`
+    /// just discards the result with `let _ =` and, because no git repo
+    /// exists under the tempdir, `validate_staged_files` returns an empty
+    /// `reports` vec → `all_passed` is vacuously true → the `if` at line
+    /// 44 never fires. Here we build a real git repo with a staged `.rs`
+    /// file containing a `TODO` word — `satd_tolerance: 0` in
+    /// `QualityThresholds::default()` guarantees `validate_module`
+    /// returns `Err(SatdDetected)`, forcing `report.passed = false` and
+    /// exercising the println! block.
+    ///
+    /// serial_test::serial because `validate_staged_files` shells out to
+    /// `git diff --cached` against the current working directory rather
+    /// than `self.repo_path` — concurrent tests changing CWD would race.
+    #[test]
+    #[serial_test::serial]
+    fn test_run_pre_commit_checks_prints_violations_and_returns_false() {
+        use std::process::Command;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo = temp_dir.path();
+
+        let git_init = Command::new("git")
+            .arg("init")
+            .arg("--quiet")
+            .current_dir(repo)
+            .status()
+            .expect("git init must run");
+        assert!(git_init.success(), "git init failed");
+
+        // Minimum config so `git add` doesn't refuse on fresh repos that
+        // require user.name/email (some CI runners).
+        for (k, v) in [("user.email", "t@t"), ("user.name", "t"), ("commit.gpgsign", "false")] {
+            Command::new("git")
+                .args(["config", k, v])
+                .current_dir(repo)
+                .status()
+                .expect("git config must run");
+        }
+
+        // Valid Rust AST + SATD TODO marker.  syn::parse_file succeeds,
+        // SatdDetector counts 1 `\bTODO\b`, exceeds satd_tolerance=0.
+        let rs_file = repo.join("offender.rs");
+        fs::write(&rs_file, "// TODO: resolve\nfn main() {}\n").unwrap();
+
+        let add = Command::new("git")
+            .args(["add", "offender.rs"])
+            .current_dir(repo)
+            .status()
+            .expect("git add must run");
+        assert!(add.success(), "git add failed");
+
+        // CWD guard: validate_staged_files uses `git diff --cached` against
+        // the *process* cwd, not self.repo_path. Capture original CWD and
+        // restore it even on assertion failure.
+        struct CwdGuard(PathBuf);
+        impl Drop for CwdGuard {
+            fn drop(&mut self) {
+                let _ = std::env::set_current_dir(&self.0);
+            }
+        }
+        let _g = CwdGuard(std::env::current_dir().unwrap());
+        std::env::set_current_dir(repo).unwrap();
+
+        let manager = GitHookManager::new(repo);
+        let result = manager
+            .run_pre_commit_checks()
+            .expect("pre-commit must not propagate — the SATD path returns Ok(false)");
+        assert!(
+            !result,
+            "staged .rs with a TODO must fail satd_tolerance=0 → Ok(false) via the !all_passed println! arm"
+        );
+    }
 }
