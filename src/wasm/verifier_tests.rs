@@ -148,6 +148,45 @@ mod coverage_tests {
         assert!(result.is_ok());
     }
 
+    /// verifier_core.rs:61-66 — `if stack_types.pop() != Some(ValType::I32)` TypeError
+    /// arm of the I32Store match. Existing `test_verify_memory_store` covers the
+    /// happy path (stack is [i32, i32] before store). To hit this arm the stack
+    /// must be [NOT-i32, i32] before i32.store — check_i32_load_store pops the
+    /// top i32 (address), leaving a non-i32 for the subsequent pop. We craft a
+    /// module whose body is: i64.const 0; i32.const 0; i32.store offset=0 end.
+    #[test]
+    fn test_verify_i32_store_non_i32_value_hits_type_error() {
+        let bytes: Vec<u8> = vec![
+            // magic + version
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+            // Type section: () -> ()
+            0x01, 0x04, 0x01, 0x60, 0x00, 0x00,
+            // Function section: 1 func, type 0
+            0x03, 0x02, 0x01, 0x00,
+            // Memory section: 1 memory, flags=0, min=1
+            0x05, 0x03, 0x01, 0x00, 0x01,
+            // Code section
+            0x0a, 0x0c, // section size 12
+            0x01, // 1 body
+            0x0a, // body size 10
+            0x00, // 0 locals
+            0x42, 0x00, // i64.const 0        — leaves i64 under the address
+            0x41, 0x00, // i32.const 0        — address
+            0x36, 0x02, 0x00, // i32.store align=2 offset=0
+            0x1a, // drop                    — consume the leftover i64 if we got here
+            0x0b, // end
+        ];
+
+        let verifier = IncrementalVerifier::new().unwrap();
+        let result = verifier.verify_module(&bytes).expect("parse must succeed");
+        assert!(
+            matches!(result, VerificationResult::TypeError { .. }),
+            "stack [i64, i32] before i32.store must hit the TypeError arm of \
+             verify_function — got {:?}",
+            result
+        );
+    }
+
     #[test]
     fn test_verify_invalid_wasm() {
         let verifier = IncrementalVerifier::new().unwrap();
