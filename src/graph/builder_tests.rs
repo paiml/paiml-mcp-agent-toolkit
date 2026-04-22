@@ -591,4 +591,34 @@ let other = 5;
              table should remain empty for a .go-only workspace"
         );
     }
+
+    /// builder_import_parsing.rs:20-28 — the `if let Some(target_node)` arm in
+    /// resolve_file_dependencies that actually adds an Import edge. Existing
+    /// tests only compile files with zero imports, so the edge-creation body
+    /// never runs. Here, `importer.rs` has `use target;` which
+    /// parse_rust_imports emits as the string "target"; resolve_import_to_node
+    /// then matches it against `target.rs` in node_map (path_to_module →
+    /// "target", "target".contains("target") is true).
+    #[test]
+    fn test_resolve_file_dependencies_creates_import_edge() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let root = TempDir::new().unwrap();
+        fs::write(root.path().join("target.rs"), "pub fn exported() {}\n").unwrap();
+        fs::write(root.path().join("importer.rs"), "use target;\n").unwrap();
+
+        let builder = DependencyGraphBuilder::from_workspace(root.path())
+            .expect("from_workspace must succeed");
+        let graph = builder.build().unwrap();
+
+        assert_eq!(graph.node_count(), 2, "both .rs files must be nodes");
+        assert_eq!(
+            graph.edge_count(),
+            1,
+            "`use target;` in importer.rs must create exactly one Import edge \
+             — the `if let Some(target_node)` branch of resolve_file_dependencies \
+             only runs when resolve_import_to_node returns Some"
+        );
+    }
 }
