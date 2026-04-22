@@ -475,6 +475,107 @@ dead_code_threshold = 2.0
         assert_eq!(default_cognitive_warning(), 15);
         assert_eq!(default_cognitive_error(), 30);
     }
+
+    // === Private detect_* helper tests (coverage for lines 10/15/19/21/26/31/32) ===
+    //
+    // These call the module-private fns directly via include!() scope and
+    // serialize CWD changes with serial_test::serial so parallel tests don't race.
+    use serial_test::serial;
+
+    struct CwdGuard(std::path::PathBuf);
+    impl Drop for CwdGuard {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.0);
+        }
+    }
+    fn guard_and_chdir(target: &Path) -> CwdGuard {
+        let original = std::env::current_dir().unwrap();
+        let guard = CwdGuard(original);
+        std::env::set_current_dir(target).unwrap();
+        guard
+    }
+
+    #[test]
+    #[serial]
+    fn test_detect_bin_targets_pushes_every_file_stem() {
+        let temp_dir = TempDir::new().unwrap();
+        let bin_dir = temp_dir.path().join("src/bin");
+        fs::create_dir_all(&bin_dir).unwrap();
+        fs::write(bin_dir.join("alpha.rs"), "fn main() {}").unwrap();
+        fs::write(bin_dir.join("beta.rs"), "fn main() {}").unwrap();
+
+        let _g = guard_and_chdir(temp_dir.path());
+        let mut eps = Vec::new();
+        super::detect_bin_targets(&mut eps);
+        assert!(eps.contains(&"bin/alpha".to_string()));
+        assert!(eps.contains(&"bin/beta".to_string()));
+    }
+
+    #[test]
+    #[serial]
+    fn test_detect_wasm_entry_points_missing_cargo_toml_returns() {
+        let temp_dir = TempDir::new().unwrap();
+        let _g = guard_and_chdir(temp_dir.path());
+        let mut eps = Vec::new();
+        super::detect_wasm_entry_points(&mut eps);
+        assert!(eps.is_empty(), "no Cargo.toml → early return, no push");
+    }
+
+    #[test]
+    #[serial]
+    fn test_detect_wasm_entry_points_cargo_with_wasm_bindgen_pushes() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[dependencies]\nwasm-bindgen = \"0.2\"\n",
+        )
+        .unwrap();
+        let _g = guard_and_chdir(temp_dir.path());
+        let mut eps = Vec::new();
+        super::detect_wasm_entry_points(&mut eps);
+        assert_eq!(eps, vec!["wasm_bindgen".to_string()]);
+    }
+
+    #[test]
+    #[serial]
+    fn test_detect_wasm_entry_points_cargo_without_wasm_is_noop() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname=\"x\"\n").unwrap();
+        let _g = guard_and_chdir(temp_dir.path());
+        let mut eps = Vec::new();
+        super::detect_wasm_entry_points(&mut eps);
+        assert!(eps.is_empty());
+    }
+
+    #[test]
+    #[serial]
+    fn test_detect_ffi_entry_points_missing_src_returns() {
+        let temp_dir = TempDir::new().unwrap();
+        let _g = guard_and_chdir(temp_dir.path());
+        let mut eps = Vec::new();
+        super::detect_ffi_entry_points(&mut eps);
+        assert!(eps.is_empty(), "no src/ → early return");
+    }
+
+    #[test]
+    #[serial]
+    fn test_detect_ffi_entry_points_finds_no_mangle_then_early_returns() {
+        let temp_dir = TempDir::new().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        fs::create_dir(&src_dir).unwrap();
+        fs::write(src_dir.join("plain.rs"), "fn main() {}\n").unwrap();
+        fs::write(
+            src_dir.join("ffi.rs"),
+            "#[no_mangle] pub extern \"C\" fn f() {}\n",
+        )
+        .unwrap();
+
+        let _g = guard_and_chdir(temp_dir.path());
+        let mut eps = Vec::new();
+        super::detect_ffi_entry_points(&mut eps);
+        // Exactly one push — the second match short-circuits via `return`.
+        assert_eq!(eps, vec!["no_mangle".to_string()]);
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
