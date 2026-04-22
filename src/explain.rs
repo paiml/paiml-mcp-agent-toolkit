@@ -300,3 +300,72 @@ pub static EXPLANATIONS: &[CheckExplanation] = &[
         see_also: &["TDG-C (Intermediate Target)", "pmat five-whys"],
     },
 ];
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lookup_exact_match_case_insensitive() {
+        let results = lookup("cb-120");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].id, "CB-120");
+    }
+
+    #[test]
+    fn test_lookup_prefix_match_returns_multiple() {
+        let results = lookup("CB-12");
+        assert!(results.len() >= 2, "CB-12 prefix should match CB-120, CB-121, CB-1200, ...");
+        for entry in &results {
+            assert!(entry.id.to_uppercase().starts_with("CB-12"));
+        }
+    }
+
+    #[test]
+    fn test_lookup_fuzzy_match_name_or_what() {
+        let results = lookup("lock poisoning");
+        assert!(
+            results.iter().any(|e| e.id == "CB-121"),
+            "fuzzy match on 'lock poisoning' should find CB-121"
+        );
+    }
+
+    #[test]
+    fn test_lookup_no_match_returns_empty() {
+        let results = lookup("totally-nonexistent-pattern-xyzzy");
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_list_all_groups_by_domain() {
+        let groups = list_all();
+        assert!(!groups.is_empty(), "list_all should return at least one domain");
+        let labels: Vec<_> = groups.iter().map(|(label, _)| *label).collect();
+        assert!(labels.contains(&"Compliance (CB-xxx)"));
+        assert!(labels.contains(&"TDG Grades"));
+        for (_, entries) in &groups {
+            assert!(!entries.is_empty(), "domains with zero matches must be filtered out");
+        }
+    }
+
+    #[test]
+    fn test_format_explanation_contains_all_sections() {
+        let entry = lookup("CB-120").into_iter().next().unwrap();
+        let formatted = format_explanation(entry);
+        assert!(formatted.contains("CB-120"));
+        assert!(formatted.contains("What it checks"));
+        assert!(formatted.contains("Why it matters"));
+        assert!(formatted.contains("FAIL when"));
+        assert!(formatted.contains("How to fix"));
+        assert!(formatted.contains("See also"));
+    }
+
+    #[test]
+    fn test_format_explanation_omits_empty_sections() {
+        let entry = lookup("TDG-A+").into_iter().next().unwrap();
+        let formatted = format_explanation(entry);
+        assert!(formatted.contains("TDG-A+"));
+        assert!(!formatted.contains("FAIL when"));
+    }
+}
