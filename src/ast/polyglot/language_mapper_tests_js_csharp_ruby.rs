@@ -124,6 +124,23 @@
         assert!(result.is_ok());
     }
 
+    /// language_mapper_web.rs:124 — JavaScriptMapper::map_source.
+    /// Prior tasks #139 / #164 claimed coverage but actually only exercised
+    /// map_file + process_javascript_specific — the async map_source entry
+    /// was 0% until now. Under default features (javascript-ast enabled),
+    /// analyze_javascript_source creates its own tokio Runtime and block_on's,
+    /// so this test uses futures::executor::block_on instead of #[tokio::test]
+    /// to avoid nested-runtime panic.
+    #[test]
+    fn test_javascript_mapper_map_source_ok_arm() {
+        let result = futures::executor::block_on(async {
+            let mapper = JavaScriptMapper::new();
+            let source = "class Greeter { constructor(name) { this.name = name; } }";
+            mapper.map_source(source, Path::new("greeter.js")).await
+        });
+        assert!(result.is_ok(), "map_source must return Ok, got {result:?}");
+    }
+
     // CSharpMapper Tests
 
     #[test]

@@ -250,3 +250,20 @@
         assert!(result.is_ok());
     }
 
+    /// language_mapper_web.rs:52 — TypeScriptMapper::map_source.
+    /// Prior tasks #139 / #164 claimed coverage but actually only exercised
+    /// map_file + process_typescript_specific — the async map_source entry
+    /// was 0% until now. Under default features (typescript-ast enabled),
+    /// analyze_typescript_source creates its own tokio Runtime and block_on's,
+    /// so this test uses futures::executor::block_on instead of #[tokio::test]
+    /// to avoid nested-runtime panic.
+    #[test]
+    fn test_typescript_mapper_map_source_ok_arm() {
+        let result = futures::executor::block_on(async {
+            let mapper = TypeScriptMapper::new();
+            let source = "interface User { id: number; name: string; }";
+            mapper.map_source(source, Path::new("user.ts")).await
+        });
+        assert!(result.is_ok(), "map_source must return Ok, got {result:?}");
+    }
+
