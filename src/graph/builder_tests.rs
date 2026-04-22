@@ -182,6 +182,45 @@ mod tests {
         );
     }
 
+    /// builder_analysis.rs:128-134 — estimate_complexity increment arms.
+    /// Existing tests use minimal fixtures (`fn main() {}`) so complexity is
+    /// always 1.0 and the `complexity += 1.0 / 2.0 / 1.5` bodies never fire.
+    /// This writes a file whose lines, after trim, start with each of `if `,
+    /// `for `, `while `, `match `, and `switch ` so every arm of the
+    /// if/else-if ladder contributes to the returned complexity.
+    #[test]
+    fn test_estimate_complexity_control_flow_arms() {
+        use std::fs;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let test_file = temp_dir.path().join("flow.rs");
+        // Each control-flow keyword starts its own line (post-trim) so
+        // starts_with matches. `switch ` is not Rust, but estimate_complexity
+        // is a pure string scan — it happily counts it too.
+        let content = "\
+fn flow() {
+    if cond {}
+    else {}
+    for _ in 0..1 {}
+    while cond {}
+    match x {}
+    switch x {}
+}
+";
+        fs::write(&test_file, content).unwrap();
+
+        let mut builder = DependencyGraphBuilder::new();
+        let node_id = builder.analyze_file(&test_file).unwrap();
+        let complexity = builder.graph.node_weight(node_id).unwrap().complexity;
+
+        // Base 1.0 + if/else (x2 × +1.0) + for/while (x2 × +2.0) + match/switch (x2 × +1.5) = 10.0
+        assert!(
+            complexity >= 9.0,
+            "control-flow file must accumulate complexity across all three arms, got {complexity}"
+        );
+    }
+
     /// Test that node_map and processed_hashes stay synchronized
     /// Validates invariant that both maps are updated together (lines 191-195)
     #[test]
