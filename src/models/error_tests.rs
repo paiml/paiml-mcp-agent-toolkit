@@ -1278,4 +1278,50 @@ mod coverage_tests {
             assert!(!display.is_empty());
         }
     }
+
+    /// error.rs:294 — outer `_ => -32000` fallback arm of
+    /// `get_error_code_by_category`. `PmatError::Template` is the only
+    /// variant that doesn't match any named arm (it's short-circuited
+    /// in the public `to_mcp_code` dispatcher), so calling the private
+    /// helper directly with it is the only way to hit this arm.
+    #[test]
+    fn test_get_error_code_by_category_template_falls_through_to_minus_32000() {
+        let template_err = PmatError::Template(TemplateError::InvalidUri {
+            uri: "pmat://missing".into(),
+        });
+        assert_eq!(
+            template_err.get_error_code_by_category(),
+            -32000,
+            "Template variant routes through to_mcp_code separately; when called \
+             through get_error_code_by_category it must hit the outer _ fallback"
+        );
+    }
+
+    /// error.rs:306/318/329/340/351/363/380/395 — the 8 inner fallback
+    /// `_ =>` arms of the per-category helpers. They're defensive; the
+    /// outer dispatcher never calls them with a mismatched variant. To
+    /// hit the arms we invoke each private helper directly with a
+    /// variant outside its category.
+    #[test]
+    fn test_get_category_error_code_helpers_fallback_arms() {
+        // CacheError is only matched by get_storage_error_code; every other
+        // helper's `_ =>` fallback fires.
+        let cache = PmatError::CacheError {
+            operation: "probe".into(),
+        };
+        assert_eq!(cache.get_io_error_code(), -32001);
+        assert_eq!(cache.get_parsing_error_code(), -32004);
+        assert_eq!(cache.get_simd_error_code(), -32008);
+        assert_eq!(cache.get_ml_error_code(), -32011);
+        assert_eq!(cache.get_config_error_code(), -32014);
+        assert_eq!(cache.get_network_error_code(), -32019);
+        assert_eq!(cache.get_vcs_error_code(), -32028);
+
+        // For get_storage_error_code use a non-storage variant so its
+        // CacheError arm doesn't fire — we want the `_ => -32022` line.
+        let git = PmatError::GitError {
+            operation: "probe".into(),
+        };
+        assert_eq!(git.get_storage_error_code(), -32022);
+    }
 }
