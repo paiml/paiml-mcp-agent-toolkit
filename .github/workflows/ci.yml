@@ -14,6 +14,16 @@ jobs:
     uses: paiml/.github/.github/workflows/sovereign-ci.yml@main
     with:
       repo: ${{ github.event.repository.name }}
+      # 2026-04-22: re-disable after #386 restore. Runner image's
+      # rustc-sccache shim is triggering intermittent OUT_DIR failures
+      # on native C/asm deps (aws-lc-sys, zstd-sys) and "could not
+      # compile" errors on tokio/regex-automata. Master run 24779319051
+      # happened to pass but 17+ open PRs are wedged with BLOCKED state.
+      # Fallback `cargo clippy -p paiml-mcp-agent-toolkit` also always
+      # fails because our crate is named `pmat` (not repo name), so the
+      # sovereign-ci retry path can never succeed once the primary trips.
+      # Re-enable (delete this line) after upstream shim stabilizes.
+      enable_sccache: false
     secrets: inherit
 
   # Top-level gate satisfies the org ruleset "Green Main" which requires a
