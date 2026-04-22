@@ -57,6 +57,103 @@
         assert!(dot.contains("solid")); // Calls (and default)
     }
 
+    /// cross_language_dependencies_resolvers.rs:128-130 — the
+    /// `target.fqn.ends_with(&reference.target_name) { return true; }` arm.
+    /// Existing `test_typescript_java_resolver_fqn_ends_with_match` looks like
+    /// it targets this branch but short-circuits at the preceding direct-name
+    /// match (target.name equals reference.target_name). To reach line 129 we
+    /// need reference.target_name != target.name AND target.fqn to end with it.
+    #[test]
+    fn test_typescript_java_resolver_fqn_ends_with_after_name_mismatch() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:class:Client",
+            NodeKind::Class,
+            "Client",
+            "Client",
+            Language::TypeScript,
+        );
+
+        // target.name differs from the dotted reference so line 122 fails,
+        // but target.fqn ends with the dotted reference so line 128 fires.
+        let java_node = create_test_node(
+            "Java:class:UserService",
+            NodeKind::Class,
+            "UserService",
+            "com.example.api.UserService",
+            Language::Java,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "api.UserService".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        assert!(
+            resolver.can_resolve(
+                Language::TypeScript,
+                Language::Java,
+                &ts_node,
+                &reference,
+                &java_node,
+            ),
+            "target.name != reference.target_name but target.fqn.ends_with it — \
+             must hit the ends_with short-circuit at line 129"
+        );
+    }
+
+    /// cross_language_dependencies_resolvers.rs:141-143 — inside the
+    /// `starts_with('I')` branch, the second sub-arm
+    /// `if target.fqn.ends_with(name_without_i) { return true; }`.
+    /// Existing `test_typescript_java_resolver_interface_prefix_fqn` intends
+    /// to cover this but its java_node has name="UserService" == name_without_i,
+    /// so line 138 returns first. To reach line 141, target.name must differ
+    /// from name_without_i while target.fqn still ends with name_without_i.
+    #[test]
+    fn test_typescript_java_resolver_iname_fqn_ends_with_fallback() {
+        let resolver = TypeScriptJavaResolver;
+
+        let ts_node = create_test_node(
+            "TypeScript:interface:IUserService",
+            NodeKind::Interface,
+            "IUserService",
+            "IUserService",
+            Language::TypeScript,
+        );
+
+        // target.name differs from name_without_i ("UserService") so line 138
+        // fails, but target.fqn ends with "UserService" so line 141 fires.
+        let java_node = create_test_node(
+            "Java:class:InternalUserService",
+            NodeKind::Class,
+            "InternalUserService",
+            "com.example.api.UserService",
+            Language::Java,
+        );
+
+        let reference = crate::ast::polyglot::unified_node::NodeReference {
+            kind: ReferenceKind::Uses,
+            target_id: String::new(),
+            target_name: "IUserService".to_string(),
+            target_language: Some(Language::Java),
+        };
+
+        assert!(
+            resolver.can_resolve(
+                Language::TypeScript,
+                Language::Java,
+                &ts_node,
+                &reference,
+                &java_node,
+            ),
+            "name_without_i != target.name but target.fqn.ends_with(name_without_i) — \
+             must hit the interface-prefix fqn-fallback arm at line 141-143"
+        );
+    }
+
     // Test TypeScriptJavaResolver with short interface name
     #[test]
     fn test_typescript_interface_single_char_after_i() {
