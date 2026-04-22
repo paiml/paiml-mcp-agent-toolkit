@@ -345,4 +345,33 @@ work: {}
             other => panic!("expected ParseError for malformed yaml, got {other:?}"),
         }
     }
+
+    /// comply_config_impls.rs:94 — PmatYamlConfig::save roundtrip. Prior
+    /// coverage work only exercised load/load_from_path; the serialize +
+    /// fs::write arms at lines 97-99 were never hit. Verify the file lands
+    /// at `.pmat.yaml`, contains YAML, and round-trips back via load().
+    #[test]
+    fn test_save_roundtrip_writes_pmat_yaml_and_reloads() {
+        let tmp = tempfile::TempDir::new().expect("create tempdir");
+        let config = PmatYamlConfig::default();
+
+        config.save(tmp.path()).expect("save must succeed");
+
+        let written = tmp.path().join(".pmat.yaml");
+        assert!(written.exists(), ".pmat.yaml must exist after save");
+
+        let content = std::fs::read_to_string(&written).expect("read back");
+        assert!(!content.is_empty(), "saved YAML must not be empty");
+        assert!(
+            content.contains("comply:"),
+            "serialized YAML must include comply section, got: {content}"
+        );
+
+        let reloaded = PmatYamlConfig::load(tmp.path()).expect("load must succeed");
+        assert_eq!(
+            reloaded.comply.thresholds.coverage,
+            config.comply.thresholds.coverage,
+            "roundtrip must preserve coverage threshold"
+        );
+    }
 }
