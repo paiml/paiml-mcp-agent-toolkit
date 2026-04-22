@@ -88,6 +88,22 @@ mod stack_analyzer_tests {
         assert_eq!(stack[0], ValType::I64);
     }
 
+    /// verifier_stack.rs:112-114 — `if stack.len() < 2` underflow arm of
+    /// pop_binary_i64. The i32 sibling already has an underflow test; only
+    /// the i64 happy path was covered before, leaving the underflow branch
+    /// at 88.9% file coverage. Dispatch via any i64 binary op with <2 operands.
+    #[test]
+    fn test_stack_analyzer_i64_add_underflow() {
+        let analyzer = StackAnalyzer::new();
+        let mut stack = vec![ValType::I64]; // only one operand
+        let op = Operator::I64Add;
+        let result = analyzer.update_stack(&mut stack, &op);
+        assert!(
+            result.is_err(),
+            "i64.add with <2 operands must hit pop_binary_i64 stack-underflow arm"
+        );
+    }
+
     #[test]
     fn test_stack_analyzer_i32_eqz_valid() {
         let analyzer = StackAnalyzer::new();
