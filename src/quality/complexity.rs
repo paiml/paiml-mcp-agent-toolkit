@@ -333,6 +333,31 @@ mod coverage_tests {
     }
 
     #[test]
+    fn test_calculate_cognitive_with_while() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = "fn with_while() { while true { } }";
+        let ast = syn::parse_file(code).unwrap();
+        let cognitive = analyzer.calculate_cognitive(&ast);
+        assert_eq!(cognitive, 1); // +1 for while at nesting 0
+    }
+
+    #[test]
+    fn test_calculate_cognitive_with_nested_while() {
+        let analyzer = ComplexityAnalyzer::new();
+        let code = r#"
+            fn nested_while() {
+                while true {
+                    while false { }
+                }
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let cognitive = analyzer.calculate_cognitive(&ast);
+        // outer while = 1, inner while = 1 + nesting_depth(1) = 2, total = 3
+        assert_eq!(cognitive, 3);
+    }
+
+    #[test]
     fn test_analyze_string_success() {
         let analyzer = ComplexityAnalyzer::new();
         let code = "fn test() { if true { } }";
