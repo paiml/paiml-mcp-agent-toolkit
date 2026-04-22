@@ -187,6 +187,80 @@ mod coverage_tests {
         );
     }
 
+    /// verifier_core.rs:48-50 — `if let Some(result) = check { return Ok(result); }`
+    /// short-circuit on the I32Load arm. Existing `test_verify_memory_load` only
+    /// walks the None branch (valid offset, push i32). To hit line 49, force
+    /// `check_i32_load_store` to return `Some(OutOfBounds { .. })` — offset
+    /// 65535 with access_size=4 exceeds memory_size-access_size (65532).
+    #[test]
+    fn test_verify_i32_load_oob_hits_return_arm() {
+        let bytes: Vec<u8> = vec![
+            // magic + version
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+            // Type section: () -> i32
+            0x01, 0x05, 0x01, 0x60, 0x00, 0x01, 0x7f,
+            // Function section: 1 func, type 0
+            0x03, 0x02, 0x01, 0x00,
+            // Memory section: 1 memory, flags=0, min=1 page
+            0x05, 0x03, 0x01, 0x00, 0x01,
+            // Code section
+            0x0a, 0x0c, // section size 12
+            0x01, // 1 body
+            0x0a, // body size 10
+            0x00, // 0 locals
+            0x41, 0x00, // i32.const 0 (address)
+            0x28, 0x02, 0xff, 0xff, 0x03, // i32.load align=2 offset=65535 (OOB)
+            0x1a, // drop
+            0x0b, // end
+        ];
+
+        let verifier = IncrementalVerifier::new().unwrap();
+        let result = verifier.verify_module(&bytes).expect("parse must succeed");
+        assert!(
+            matches!(result, VerificationResult::OutOfBounds { .. }),
+            "i32.load offset=65535 with memory_size=65536 must trip check_i32_load_store \
+             OOB and return via verifier_core.rs:49 — got {:?}",
+            result
+        );
+    }
+
+    /// verifier_core.rs:57-59 — `if let Some(result) = check { return Ok(result); }`
+    /// short-circuit on the I32Store arm. `test_verify_memory_store` covers the
+    /// None path and `test_verify_i32_store_non_i32_value_hits_type_error` (#173)
+    /// covers the post-check pop type-error arm. Neither forces check itself to
+    /// return Some. A large static offset on i32.store triggers OOB.
+    #[test]
+    fn test_verify_i32_store_oob_hits_return_arm() {
+        let bytes: Vec<u8> = vec![
+            // magic + version
+            0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+            // Type section: () -> ()
+            0x01, 0x04, 0x01, 0x60, 0x00, 0x00,
+            // Function section: 1 func, type 0
+            0x03, 0x02, 0x01, 0x00,
+            // Memory section: 1 memory, flags=0, min=1 page
+            0x05, 0x03, 0x01, 0x00, 0x01,
+            // Code section
+            0x0a, 0x0d, // section size 13
+            0x01, // 1 body
+            0x0b, // body size 11
+            0x00, // 0 locals
+            0x41, 0x00, // i32.const 0 (address)
+            0x41, 0x2a, // i32.const 42 (value)
+            0x36, 0x02, 0xff, 0xff, 0x03, // i32.store align=2 offset=65535 (OOB)
+            0x0b, // end
+        ];
+
+        let verifier = IncrementalVerifier::new().unwrap();
+        let result = verifier.verify_module(&bytes).expect("parse must succeed");
+        assert!(
+            matches!(result, VerificationResult::OutOfBounds { .. }),
+            "i32.store offset=65535 with memory_size=65536 must trip check_i32_load_store \
+             OOB and return via verifier_core.rs:58 — got {:?}",
+            result
+        );
+    }
+
     #[test]
     fn test_verify_invalid_wasm() {
         let verifier = IncrementalVerifier::new().unwrap();
