@@ -451,6 +451,27 @@ mod tests_part2 {
         assert!(!analyzer.allocations.is_empty());
     }
 
+    /// efficiency_enhanced_space_analysis.rs:87-89 — `else { None }` arm of
+    /// check_macro_allocation. The `vec` arm is covered above; this exercises
+    /// the fallthrough where the macro name is neither `"vec"` nor contains
+    /// `"string"`, so no Allocation is recorded. `format_args!` expands to a
+    /// non-String/non-Vec value, so `check_macro_allocation` must return None.
+    #[test]
+    fn test_space_complexity_non_alloc_macro() {
+        let code = r#"
+            fn with_format_args_macro() {
+                let _x = format_args!("hi");
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut analyzer = SpaceComplexityAnalyzer::new();
+        let _complexity = analyzer.analyze(&ast);
+        assert!(
+            analyzer.allocations.is_empty(),
+            "format_args!() must hit the None arm of check_macro_allocation — no allocation recorded"
+        );
+    }
+
     #[test]
     fn test_space_complexity_multiple_allocations() {
         let code = r#"
