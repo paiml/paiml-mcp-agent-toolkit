@@ -293,6 +293,25 @@ use std::collections::HashMap;
         assert!(builder.parse_rust_symbols("").unwrap().is_empty());
     }
 
+    /// builder_symbol_parsing.rs:47/56/65 — the three `if let Some(name) = ...`
+    /// None arms in parse_rust_symbols. Lines starting with `pub fn `/`fn `/
+    /// `pub struct ` where only whitespace follows make extract_function_name
+    /// or extract_type_name return None, so the symbol is NOT pushed and the
+    /// branch falls through. Existing tests only exercise the Some path.
+    #[test]
+    fn test_parse_rust_symbols_extract_none_fallthrough() {
+        let builder = DependencyGraphBuilder::new();
+        // Each line trips its starts_with guard but extract_* returns None,
+        // so no symbols are produced.
+        let content = "pub fn \nfn \npub struct \n";
+        let symbols = builder.parse_rust_symbols(content).unwrap();
+        assert!(
+            symbols.is_empty(),
+            "keyword-only lines must hit the None arms of extract_function_name / \
+             extract_type_name and produce no symbols, got: {symbols:?}"
+        );
+    }
+
     /// Parse Python: `def` (public), `def _` (private), `class`, and skipped lines.
     #[test]
     fn test_parse_python_symbols_covers_all_branches() {
