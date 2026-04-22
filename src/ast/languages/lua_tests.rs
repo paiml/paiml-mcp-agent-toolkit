@@ -85,6 +85,67 @@ mod coverage_tests {
         assert_eq!(cognitive, 2);
     }
 
+    /// lua.rs:21-23 — Default impl body calls Self::new(). The existing
+    /// test_lua_strategy_default constructs LuaStrategy via struct literal,
+    /// which bypasses the Default::default() path entirely.
+    #[test]
+    fn test_lua_strategy_default_trait_dispatches_to_new() {
+        let s = <LuaStrategy as Default>::default();
+        assert_eq!(s.language(), Language::Lua);
+    }
+
+    /// lua.rs:115-124 — extract_imports matches on AstKind::Import(_). The
+    /// _empty test never enters the match arm; seed an Import node so the
+    /// `imports.push(...)` branch is exercised.
+    #[test]
+    fn test_extract_imports_with_import_node_pushes() {
+        let strategy = LuaStrategy::new();
+        let mut dag = AstDag::new();
+        let node = UnifiedAstNode::new(
+            AstKind::Import(crate::ast::core::ImportKind::Module),
+            Language::Lua,
+        );
+        dag.add_node(node);
+
+        let imports = strategy.extract_imports(&dag);
+        assert_eq!(imports.len(), 1);
+        assert!(imports[0].starts_with("import_"));
+    }
+
+    /// lua.rs:127-136 — extract_functions pushes nodes where kind matches
+    /// AstKind::Function(_). Seed a Function node to hit the push arm.
+    #[test]
+    fn test_extract_functions_with_function_node_pushes() {
+        let strategy = LuaStrategy::new();
+        let mut dag = AstDag::new();
+        let node = UnifiedAstNode::new(
+            AstKind::Function(crate::ast::core::FunctionKind::Regular),
+            Language::Lua,
+        );
+        dag.add_node(node);
+
+        let functions = strategy.extract_functions(&dag);
+        assert_eq!(functions.len(), 1);
+        assert!(matches!(functions[0].kind, AstKind::Function(_)));
+    }
+
+    /// lua.rs:139-148 — extract_types pushes nodes matching AstKind::Class(_).
+    /// Seed a Class node to hit the push arm.
+    #[test]
+    fn test_extract_types_with_class_node_pushes() {
+        let strategy = LuaStrategy::new();
+        let mut dag = AstDag::new();
+        let node = UnifiedAstNode::new(
+            AstKind::Class(crate::ast::core::ClassKind::Regular),
+            Language::Lua,
+        );
+        dag.add_node(node);
+
+        let types = strategy.extract_types(&dag);
+        assert_eq!(types.len(), 1);
+        assert!(matches!(types[0].kind, AstKind::Class(_)));
+    }
+
     #[cfg(feature = "lua-ast")]
     mod lua_ast_tests {
         use super::*;
