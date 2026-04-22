@@ -451,6 +451,29 @@ mod tests_part2 {
         assert!(!analyzer.allocations.is_empty());
     }
 
+    /// efficiency_enhanced_space_analysis.rs:70 — fall-through `None` of
+    /// check_call_allocation. Existing tests (with_vec / with_string_new /
+    /// multiple_allocations) only exercise the `contains("Vec")` and
+    /// `contains("String")` arms. HashMap::new() is a Path call whose
+    /// path_str contains neither, so the function must return None and
+    /// nothing gets pushed onto `analyzer.allocations`.
+    #[test]
+    fn test_space_complexity_non_alloc_call() {
+        let code = r#"
+            fn with_hashmap() {
+                let m = HashMap::new();
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut analyzer = SpaceComplexityAnalyzer::new();
+        let _complexity = analyzer.analyze(&ast);
+        assert!(
+            analyzer.allocations.is_empty(),
+            "HashMap::new() path contains neither `Vec` nor `String` — \
+             check_call_allocation must return None and record no allocation"
+        );
+    }
+
     /// efficiency_enhanced_space_analysis.rs:87-89 — `else { None }` arm of
     /// check_macro_allocation. The `vec` arm is covered above; this exercises
     /// the fallthrough where the macro name is neither `"vec"` nor contains
