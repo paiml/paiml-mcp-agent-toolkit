@@ -326,6 +326,141 @@ mod tests {
         assert!(content.contains("TICKET-PMAT-5013"));
     }
 
+    /// updater.rs:66-67 — the `"COMPLETE ✅"` arm of format_roadmap_markdown
+    /// fires only when Sprint::is_complete() returns true. The existing
+    /// fixtures all have `completed: false`, so this arm stayed uncovered.
+    #[test]
+    fn test_format_roadmap_markdown_sprint_complete_marker() {
+        let mut roadmap = create_test_roadmap();
+        for ticket in &mut roadmap.sprints[0].tickets {
+            ticket.completed = true;
+            ticket.commit = Some("abcdef1".into());
+        }
+
+        let markdown = format_roadmap_markdown(&roadmap);
+        assert!(
+            markdown.contains("COMPLETE ✅"),
+            "all-tickets-completed sprint must render the COMPLETE ✅ marker"
+        );
+    }
+
+    fn write_green_ticket(dir: &Path, ticket_id: &str) {
+        let content = format!(
+            "# {}: Coverage Fixture\n\n\
+             **Status**: GREEN\n\
+             **Priority**: P1\n\
+             **Complexity**: 3\n\
+             **Estimated Time**: 1 hour\n\
+             **Dependencies**: None\n\
+             **Sprint**: Sprint 17\n\n\
+             ## Objective\n\n\
+             Exercise process_ticket_update.\n\n\
+             ## Success Criteria\n\n\
+             - [ ] Criterion one\n",
+            ticket_id
+        );
+        std::fs::write(dir.join(format!("{}.md", ticket_id)), content).unwrap();
+    }
+
+    /// updater.rs:170-173 — `if !ticket_file_updated(..) { return Ok(false); }`.
+    /// Commit that doesn't touch docs/tickets/{id}.md takes this short-circuit.
+    #[test]
+    fn test_process_ticket_update_returns_false_when_ticket_file_not_in_commit() {
+        let tickets_dir = tempfile::tempdir().unwrap();
+        write_green_ticket(tickets_dir.path(), "TICKET-PMAT-5013");
+        let mut roadmap = create_test_roadmap();
+        let commit = CommitInfo {
+            hash: "deadbee".into(),
+            message: "random".into(),
+            files: vec!["src/lib.rs".into()], // no ticket file
+        };
+
+        let result =
+            process_ticket_update(&mut roadmap, &commit, "TICKET-PMAT-5013", tickets_dir.path())
+                .unwrap();
+        assert!(!result, "must short-circuit when ticket file not in commit");
+        assert!(!roadmap.sprints[0].tickets[0].completed);
+    }
+
+    /// updater.rs:177-180 — `TicketFile::from_file(..) Err => Ok(false)`.
+    /// Commit references the file, but the file doesn't exist on disk.
+    #[test]
+    fn test_process_ticket_update_returns_false_when_ticket_file_missing() {
+        let tickets_dir = tempfile::tempdir().unwrap();
+        let mut roadmap = create_test_roadmap();
+        let commit = CommitInfo {
+            hash: "deadbee".into(),
+            message: "fix: TICKET-PMAT-5013".into(),
+            files: vec!["docs/tickets/TICKET-PMAT-5013.md".into()],
+        };
+
+        let result =
+            process_ticket_update(&mut roadmap, &commit, "TICKET-PMAT-5013", tickets_dir.path())
+                .unwrap();
+        assert!(!result, "missing ticket file must return Ok(false), not error");
+        assert!(!roadmap.sprints[0].tickets[0].completed);
+    }
+
+    /// updater.rs:182-187 — status is neither Green nor Complete (here: RED),
+    /// so the `!matches!` arm returns Ok(false) without updating the roadmap.
+    #[test]
+    fn test_process_ticket_update_returns_false_when_status_not_green_or_complete() {
+        let tickets_dir = tempfile::tempdir().unwrap();
+        let red_content = "# TICKET-PMAT-5013: RED Fixture\n\n\
+             **Status**: RED\n\
+             **Priority**: P1\n\
+             **Complexity**: 3\n\
+             **Estimated Time**: 1 hour\n\
+             **Dependencies**: None\n\
+             **Sprint**: Sprint 17\n\n\
+             ## Objective\n\n\
+             Still failing.\n\n\
+             ## Success Criteria\n\n\
+             - [ ] One\n";
+        std::fs::write(
+            tickets_dir.path().join("TICKET-PMAT-5013.md"),
+            red_content,
+        )
+        .unwrap();
+        let mut roadmap = create_test_roadmap();
+        let commit = CommitInfo {
+            hash: "deadbee".into(),
+            message: "wip: TICKET-PMAT-5013".into(),
+            files: vec!["docs/tickets/TICKET-PMAT-5013.md".into()],
+        };
+
+        let result =
+            process_ticket_update(&mut roadmap, &commit, "TICKET-PMAT-5013", tickets_dir.path())
+                .unwrap();
+        assert!(!result, "RED ticket must not mark roadmap completed");
+        assert!(!roadmap.sprints[0].tickets[0].completed);
+    }
+
+    /// updater.rs:189-190 — happy path: commit touches the ticket file,
+    /// parse succeeds, status is GREEN, so update_roadmap_ticket runs and
+    /// returns Ok(true) with the roadmap actually mutated.
+    #[test]
+    fn test_process_ticket_update_success_marks_roadmap_completed() {
+        let tickets_dir = tempfile::tempdir().unwrap();
+        write_green_ticket(tickets_dir.path(), "TICKET-PMAT-5013");
+        let mut roadmap = create_test_roadmap();
+        let commit = CommitInfo {
+            hash: "cafef00d".into(),
+            message: "feat: TICKET-PMAT-5013 done".into(),
+            files: vec!["docs/tickets/TICKET-PMAT-5013.md".into()],
+        };
+
+        let result =
+            process_ticket_update(&mut roadmap, &commit, "TICKET-PMAT-5013", tickets_dir.path())
+                .unwrap();
+        assert!(result, "GREEN ticket must flip roadmap entry");
+        assert!(roadmap.sprints[0].tickets[0].completed);
+        assert_eq!(
+            roadmap.sprints[0].tickets[0].commit,
+            Some("cafef00d".into())
+        );
+    }
+
     #[test]
     fn test_update_multiple_sprints() {
         let mut roadmap = Roadmap {
