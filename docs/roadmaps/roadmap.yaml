@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-630
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: cover accurate_complexity_analyzer::analyze_function suppressed-branch (BH-MUT-0002)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-23T17:02:39Z
+  updated: 2026-04-23T17:02:41Z
+  spec: null
+  acceptance_criteria:
+  - Target src/services/accurate_complexity_analyzer_core.rs:63 — BH-MUT-0002 at `self.respect_annotations && self.has_suppress_annotation(&func.attrs)`. Neither that boolean conjunction nor has_suppress_annotation had any direct tests. Add 9 tests covering all 4 truth-table cells of the && (killing the `&&`→`||` mutant) plus 5 branches of has_suppress_annotation (non-allow attr, allow without complex_function, allow(complex_function), mixed multi-attr, allow-path-no-list require_list() err path).
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

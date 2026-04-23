@@ -235,4 +235,99 @@ mod unit_tests {
         assert!(!analyzer.exclude_tests);
         assert!(!analyzer.respect_annotations);
     }
+
+    // --- analyze_function + has_suppress_annotation branch coverage ---
+    //
+    // accurate_complexity_analyzer_core.rs:63
+    //   let suppressed = self.respect_annotations && self.has_suppress_annotation(&func.attrs);
+    // is BH-MUT-0002 (`&&` → `||`). To kill it, assert all 4 truth-table cells
+    // of (respect_annotations, has_suppress_annotation).
+
+    fn parse_fn(src: &str) -> ItemFn {
+        syn::parse_str::<ItemFn>(src).expect("parse fn")
+    }
+
+    #[test]
+    fn test_analyze_function_suppressed_when_both_true() {
+        // respect_annotations=true AND #[allow(complex_function)] → suppressed=true.
+        let func = parse_fn("#[allow(complex_function)] fn f() { if true {} else {} }");
+        let analyzer = AccurateComplexityAnalyzer::new().respect_annotations(true);
+        let metrics = analyzer.analyze_function(&func, 1);
+        assert_eq!(metrics.name, "f");
+        assert!(metrics.suppressed, "both sides true: must be suppressed");
+    }
+
+    #[test]
+    fn test_analyze_function_not_suppressed_when_only_flag_true() {
+        // Kills `&&`→`||`: flag true but no attribute → suppressed must be false.
+        let func = parse_fn("fn f() { if true {} else {} }");
+        let analyzer = AccurateComplexityAnalyzer::new().respect_annotations(true);
+        let metrics = analyzer.analyze_function(&func, 1);
+        assert!(
+            !metrics.suppressed,
+            "respect_annotations alone must not suppress"
+        );
+    }
+
+    #[test]
+    fn test_analyze_function_not_suppressed_when_only_attr_true() {
+        // Kills `&&`→`||`: attribute present but respect_annotations=false → suppressed=false.
+        let func = parse_fn("#[allow(complex_function)] fn f() { if true {} else {} }");
+        let analyzer = AccurateComplexityAnalyzer::new(); // respect_annotations defaults to false
+        let metrics = analyzer.analyze_function(&func, 1);
+        assert!(
+            !metrics.suppressed,
+            "attr alone must not suppress without respect_annotations=true"
+        );
+    }
+
+    #[test]
+    fn test_analyze_function_not_suppressed_when_both_false() {
+        let func = parse_fn("fn f() {}");
+        let analyzer = AccurateComplexityAnalyzer::new();
+        let metrics = analyzer.analyze_function(&func, 42);
+        assert!(!metrics.suppressed);
+        assert_eq!(metrics.line_start, 42, "line_start must be propagated");
+    }
+
+    #[test]
+    fn test_has_suppress_annotation_non_allow_attr() {
+        // Branch: attribute is not `allow(..)` → the `else { false }` arm.
+        let func = parse_fn("#[inline] fn f() {}");
+        let analyzer = AccurateComplexityAnalyzer::new();
+        assert!(!analyzer.has_suppress_annotation(&func.attrs));
+    }
+
+    #[test]
+    fn test_has_suppress_annotation_allow_without_complex_function() {
+        // Branch: allow(..) but not `complex_function` → returns false.
+        let func = parse_fn("#[allow(dead_code)] fn f() {}");
+        let analyzer = AccurateComplexityAnalyzer::new();
+        assert!(!analyzer.has_suppress_annotation(&func.attrs));
+    }
+
+    #[test]
+    fn test_has_suppress_annotation_allow_complex_function() {
+        // Branch: allow(complex_function) → returns true.
+        let func = parse_fn("#[allow(complex_function)] fn f() {}");
+        let analyzer = AccurateComplexityAnalyzer::new();
+        assert!(analyzer.has_suppress_annotation(&func.attrs));
+    }
+
+    #[test]
+    fn test_has_suppress_annotation_mixed_multi_attr() {
+        // Multiple attributes; any matching allow(complex_function) triggers true.
+        let func = parse_fn("#[inline] #[allow(complex_function)] fn f() {}");
+        let analyzer = AccurateComplexityAnalyzer::new();
+        assert!(analyzer.has_suppress_annotation(&func.attrs));
+    }
+
+    #[test]
+    fn test_has_suppress_annotation_allow_path_no_list() {
+        // `#[allow = "x"]` has no token list → `require_list()` errs → falls to "" which
+        // doesn't contain "complex_function" → returns false. Covers the `.unwrap_or_default()` arm.
+        let func = parse_fn(r#"#[allow = "whatever"] fn f() {}"#);
+        let analyzer = AccurateComplexityAnalyzer::new();
+        assert!(!analyzer.has_suppress_annotation(&func.attrs));
+    }
 }
