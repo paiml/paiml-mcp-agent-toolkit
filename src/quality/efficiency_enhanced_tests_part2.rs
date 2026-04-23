@@ -495,6 +495,26 @@ mod tests_part2 {
         );
     }
 
+    /// efficiency_enhanced_space_analysis.rs:114 — closing arm of
+    /// `if let Some(local_init) = &node.init`. Fires when `node.init` is
+    /// None, i.e. a `let x;` statement with no initializer. Existing tests
+    /// all supply initializers, so this branch is otherwise uncovered.
+    #[test]
+    fn test_space_complexity_let_without_init() {
+        let code = r#"
+            fn no_init() {
+                let _x: i32;
+            }
+        "#;
+        let ast = syn::parse_file(code).unwrap();
+        let mut analyzer = SpaceComplexityAnalyzer::new();
+        let _complexity = analyzer.analyze(&ast);
+        assert!(
+            analyzer.allocations.is_empty(),
+            "let without initializer must not record any allocation"
+        );
+    }
+
     #[test]
     fn test_space_complexity_multiple_allocations() {
         let code = r#"
