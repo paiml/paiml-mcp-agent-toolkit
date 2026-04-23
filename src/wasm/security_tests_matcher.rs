@@ -88,6 +88,16 @@ mod coverage_tests_matcher {
     }
 
     #[test]
+    fn test_operator_matcher_call_indirect() {
+        let op = Operator::CallIndirect {
+            type_index: 0,
+            table_index: 0,
+        };
+        assert!(OperatorMatcher::CallIndirect.matches(&op));
+        assert!(!OperatorMatcher::Call.matches(&op));
+    }
+
+    #[test]
     fn test_operator_matcher_memory_growth() {
         assert!(OperatorMatcher::MemoryGrow.matches(&Operator::MemoryGrow { mem: 0 }));
         assert!(OperatorMatcher::MemorySize.matches(&Operator::MemorySize { mem: 0 }));
