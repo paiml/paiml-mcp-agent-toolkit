@@ -345,4 +345,45 @@ work: {}
             other => panic!("expected ParseError for malformed yaml, got {other:?}"),
         }
     }
+
+    /// comply_config_impls.rs:94 — `PmatYamlConfig::save` writes `.pmat.yaml` at
+    /// `project_path/.pmat.yaml`. Despite task #193 being marked complete, no
+    /// test exercised this path (verified via grep for `.save(`). This covers
+    /// the happy arm: serialize → write → roundtrip back via `load_from_path`.
+    #[test]
+    fn test_pmat_yaml_config_save_roundtrip() {
+        let tmp = tempfile::TempDir::new().expect("create tempdir");
+        let config = PmatYamlConfig::default();
+
+        config.save(tmp.path()).expect("save must succeed");
+
+        let written = tmp.path().join(".pmat.yaml");
+        assert!(written.exists(), ".pmat.yaml must be written");
+
+        let loaded = PmatYamlConfig::load_from_path(&written).expect("load back");
+        assert_eq!(
+            loaded.comply.thresholds.coverage,
+            config.comply.thresholds.coverage
+        );
+        assert_eq!(
+            loaded.comply.thresholds.complexity,
+            config.comply.thresholds.complexity
+        );
+    }
+
+    /// comply_config_impls.rs:99 — `std::fs::write(...).map_err(IoError)` fires
+    /// when the target directory is not writable. Using a path whose parent
+    /// does not exist reliably triggers ENOENT / IoError.
+    #[test]
+    fn test_pmat_yaml_config_save_io_error_when_dir_missing() {
+        let missing_dir = std::path::Path::new(
+            "/tmp/pmat_save_nonexistent_0xDEADBEEF_xyz/nested/deeper",
+        );
+        let config = PmatYamlConfig::default();
+
+        match config.save(missing_dir) {
+            Err(ConfigError::IoError(_)) => {}
+            other => panic!("expected IoError when parent dir missing, got {other:?}"),
+        }
+    }
 }
