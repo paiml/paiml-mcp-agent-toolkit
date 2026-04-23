@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-631
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: cover known_defects_scorer score_internal + recommendations branches + boundary mutations'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-23T17:08:37Z
+  updated: 2026-04-23T17:08:40Z
+  spec: null
+  acceptance_criteria:
+  - Target src/services/rust_project_score/known_defects_scorer_scoring.rs. score_internal's missing-Cargo.toml error branch, recommendations() 'if production_unwraps > 0' else-arm, score_with_mode delegation, and the boundary mutation between bucket 0 (0-99 unwraps → 20pts) and bucket 1 (100-199 → 15pts) at line 14 had no tests. 6 new tests.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
