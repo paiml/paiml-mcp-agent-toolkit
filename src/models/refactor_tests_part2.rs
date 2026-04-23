@@ -152,6 +152,43 @@
         }
     }
 
+    /// refactor_impls.rs:267-270 — Violation::to_op `_ =>` fall-through arm for
+    /// LongFunction / DeadCode / PoorNaming with suggested_fix=None. The three
+    /// explicit arms (HighComplexity, DeepNesting, SelfAdmittedTechDebt) are
+    /// tested above, but the three remaining variants land on the wildcard
+    /// that emits SimplifyExpression { expr: "complex", simplified: "simple" }.
+    /// Task #134 was marked complete but left the actual to_op() wildcard
+    /// untested — the state-machine test at line 349 uses HighComplexity.
+    #[test]
+    fn test_violation_to_op_fall_through_variants() {
+        for vtype in [
+            ViolationType::LongFunction,
+            ViolationType::DeadCode,
+            ViolationType::PoorNaming,
+        ] {
+            let violation = Violation {
+                violation_type: vtype,
+                location: Location {
+                    file: PathBuf::from("test.rs"),
+                    line: 1,
+                    column: 1,
+                },
+                severity: Severity::Medium,
+                description: "fall-through".to_string(),
+                suggested_fix: None,
+            };
+            match violation.to_op() {
+                RefactorOp::SimplifyExpression { expr, simplified } => {
+                    assert_eq!(expr, "complex");
+                    assert_eq!(simplified, "simple");
+                }
+                other => panic!(
+                    "fall-through arm must yield SimplifyExpression, got {other:?}"
+                ),
+            }
+        }
+    }
+
     // ========================================================================
     // SatdFix Tests
     // ========================================================================
