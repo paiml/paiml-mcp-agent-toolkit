@@ -405,4 +405,58 @@ mod tests {
     fn test_default_schema_version() {
         assert_eq!(default_schema_version(), "1.0");
     }
+
+    /// project_metadata_impls.rs:32-33 — `fs::create_dir_all(parent)` error
+    /// propagation through `.with_context(...)?`. When `project_path` is a
+    /// regular file, `get_path` returns `<file>/.pmat/project.toml` whose
+    /// parent `<file>/.pmat` cannot be created because the intermediate
+    /// path component `<file>` is a non-directory. The error path wraps the
+    /// underlying IO error with the "Failed to create directory" context.
+    #[test]
+    fn test_save_create_dir_all_error_when_project_path_is_a_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_as_project_root = temp_dir.path().join("not_a_dir.txt");
+        std::fs::write(&file_as_project_root, b"this is a file, not a dir").unwrap();
+
+        let metadata = ProjectMetadata::new("1.0.0");
+        let result = metadata.save(&file_as_project_root);
+
+        assert!(
+            result.is_err(),
+            "save must error when project_path is a file (can't create .pmat inside it)"
+        );
+        let err_msg = format!("{:#}", result.unwrap_err());
+        assert!(
+            err_msg.contains("Failed to create directory"),
+            "error must carry the create_dir_all context: {err_msg}"
+        );
+    }
+
+    /// project_metadata_impls.rs:39 — `fs::write(&path, content)` error
+    /// propagation through `.with_context(...)`. When a directory already
+    /// exists at `.pmat/project.toml`, `fs::write` fails because the path
+    /// is a directory. The error path wraps with "Failed to write"
+    /// context. This exercises the terminal ? of save() after both the
+    /// create_dir_all and toml::to_string_pretty branches succeed.
+    #[test]
+    fn test_save_write_error_when_path_is_a_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        // Pre-create .pmat/project.toml as a directory so fs::write fails.
+        let pmat_dir = temp_dir.path().join(".pmat");
+        std::fs::create_dir_all(&pmat_dir).unwrap();
+        std::fs::create_dir(pmat_dir.join("project.toml")).unwrap();
+
+        let metadata = ProjectMetadata::new("1.0.0");
+        let result = metadata.save(temp_dir.path());
+
+        assert!(
+            result.is_err(),
+            "save must error when .pmat/project.toml exists as a directory"
+        );
+        let err_msg = format!("{:#}", result.unwrap_err());
+        assert!(
+            err_msg.contains("Failed to write"),
+            "error must carry the fs::write context: {err_msg}"
+        );
+    }
 }
