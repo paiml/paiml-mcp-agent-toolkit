@@ -152,6 +152,72 @@
         }
     }
 
+    #[test]
+    fn test_violation_to_op_long_function_wildcard() {
+        let violation = Violation {
+            violation_type: ViolationType::LongFunction,
+            location: Location {
+                file: PathBuf::from("test.rs"),
+                line: 10,
+                column: 1,
+            },
+            severity: Severity::Medium,
+            description: "Test".to_string(),
+            suggested_fix: None,
+        };
+
+        let op = violation.to_op();
+        match op {
+            RefactorOp::SimplifyExpression { expr, simplified } => {
+                assert_eq!(expr, "complex");
+                assert_eq!(simplified, "simple");
+            }
+            other => panic!("Expected SimplifyExpression for LongFunction wildcard, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_violation_to_op_dead_code_wildcard() {
+        let violation = Violation {
+            violation_type: ViolationType::DeadCode,
+            location: Location {
+                file: PathBuf::from("test.rs"),
+                line: 10,
+                column: 1,
+            },
+            severity: Severity::Low,
+            description: "Test".to_string(),
+            suggested_fix: None,
+        };
+
+        let op = violation.to_op();
+        match op {
+            RefactorOp::SimplifyExpression { .. } => {}
+            other => panic!("Expected SimplifyExpression for DeadCode wildcard, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_violation_to_op_poor_naming_wildcard() {
+        let violation = Violation {
+            violation_type: ViolationType::PoorNaming,
+            location: Location {
+                file: PathBuf::from("test.rs"),
+                line: 10,
+                column: 1,
+            },
+            severity: Severity::Low,
+            description: "Test".to_string(),
+            suggested_fix: None,
+        };
+
+        let op = violation.to_op();
+        match op {
+            RefactorOp::SimplifyExpression { .. } => {}
+            other => panic!("Expected SimplifyExpression for PoorNaming wildcard, got {other:?}"),
+        }
+    }
+
     // ========================================================================
     // SatdFix Tests
     // ========================================================================
