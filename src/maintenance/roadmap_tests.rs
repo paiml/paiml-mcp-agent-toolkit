@@ -50,6 +50,26 @@ mod tests {
         assert_eq!(extract_duration("Sprint (2-3 days) - COMPLETE"), "2-3 days");
     }
 
+    /// roadmap_parsing.rs:83 — when `(` is present but `)` is missing, the
+    /// inner `if let Some(end)` is false and execution falls through to
+    /// `"unknown".to_string()`. Previously only the outer `(` absent path
+    /// covered this sentinel; this covers the inner-None branch.
+    #[test]
+    fn test_extract_duration_open_paren_no_close() {
+        assert_eq!(extract_duration("Sprint (2-3 days - no close"), "unknown");
+    }
+
+    /// roadmap_parsing.rs:80 — when `)` appears before `(`, the slice
+    /// `start+1..end` is an invalid range and `text.get(..)` returns None,
+    /// making `unwrap_or_default()` yield an empty string. This exercises
+    /// the defensive `unwrap_or_default` branch on the Option returned by
+    /// the slice accessor.
+    #[test]
+    fn test_extract_duration_reversed_parens_empty() {
+        // ')' at index 5, '(' at index 9 → get(10..5) is None.
+        assert_eq!(extract_duration("abc )xyz(inverted"), "");
+    }
+
     #[test]
     fn test_parse_quality_gate_none_when_no_prefix() {
         // No leading "- " means not a quality-gate line.
