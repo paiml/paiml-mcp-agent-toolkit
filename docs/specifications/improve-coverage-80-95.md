@@ -179,21 +179,23 @@ This ties directly into CB-1400 (contract gate) and KAIZEN-0190 (SCHEMA-003 etc.
 
 Each phase is independently shippable. Do not chase the next phase until the current one holds for 2 weeks on `main`.
 
-### Phase 0 — Honesty baseline (1 day, v3.15.1)
+### Phase 0 — Honesty baseline (1 day, v3.15.1) — **shipped 2026-04-21 (PR #390)**
 
-- [ ] Add `make coverage-broad` target: no `COVERAGE_EXCLUDE`, no `--skip`, no `coverage(off)` via `--no-cfg-coverage --no-cfg-coverage-nightly`.
-- [ ] Report both numbers in CI: narrow (gate) and broad (informational).
-- [ ] Commit `COVERAGE_POLICY.md` cataloguing every current exclusion with justification.
-- [ ] Document PROPTEST_CASES=3 for coverage runs (bashrs pattern).
+- [x] Add `make coverage-broad` target: no `COVERAGE_EXCLUDE`, no `--skip`, no `coverage(off)` via `--no-cfg-coverage --no-cfg-coverage-nightly`.
+- [x] Report both numbers in CI: narrow (gate) and broad (informational).
+- [x] Commit `COVERAGE_POLICY.md` cataloguing every current exclusion with justification.
+- [x] Document PROPTEST_CASES=3 for coverage runs (bashrs pattern).
+
+Latest broad measurement (2026-04-23, local): **73.46%** (311,207 lines, 79,724 missed). Flat vs the 73.14% baseline — recent coverage PRs have landed in the narrow slice, not broad.
 
 ### Phase 1 — 73% → 80% (1 week, v3.16.0)
 
 **Strategy: delete, don't test.**
 
-- [ ] Delete confirmed dead code surfaced by `pmat query --faults --dead-code` + manual verification (project memory: include!() files need all-includer inspection).
-- [ ] Un-skip `cli_integration_tests` in `make coverage`. These are the highest-ROI tests.
-- [ ] Snapshot-test every `src/scaffold/**` generator via `insta`. Target: 0% → 90% in that tree.
-- [ ] Collapse 10+ CLI dispatch `match` arms into the existing macro pattern. Lower denominator.
+- [ ] ~~Delete confirmed dead code~~ — dead end per investigation (memory: `project_coverage_95_baseline.md`). Sub-agent dead-code scans are unreliable; no low-hanging dead code remains after the Feb 2026 sweep.
+- [ ] ~~Un-skip `cli_integration_tests`~~ — dead end. These tests are `#[ignore]`'d because they spawn the `pmat` binary as a subprocess; naive un-skip is a no-op. Real fix requires a separate `make coverage-cli-integration` target with `cargo build --bin pmat` + `--ignored` + binary+lib instrumentation.
+- [ ] Snapshot-test every `src/scaffold/**` generator via `insta`. Target: 0% → 90% in that tree. **In progress — PR #479 lifts `scaffold/mod.rs` private helpers (27.12% baseline) via unit tests, not `insta` (the generators don't emit deterministic strings; direct assertions on the registry/file-path logic are the fit here).**
+- [ ] ~~Collapse 10+ CLI dispatch `match` arms~~ — dead end. The existing dispatcher tree is already enriched via macros; further collapse hurts readability without moving the needle.
 
 Exit criteria: `make coverage-broad` reports ≥80% and `make coverage` (gate) stays ≥95%.
 
