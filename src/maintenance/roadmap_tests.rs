@@ -95,6 +95,36 @@ mod tests {
         assert_eq!(ticket.commit, None);
     }
 
+    /// roadmap_parsing.rs:103 — `if !line.contains("TICKET-")` early-return.
+    /// Existing happy-path tests always include "TICKET-"; lines that start
+    /// with "- [" but lack TICKET- never reach this branch. A checkbox list
+    /// item that isn't a ticket (e.g. a generic todo) must return None.
+    #[test]
+    fn test_parse_ticket_line_no_ticket_prefix_returns_none() {
+        assert!(parse_ticket_line("- [ ] Just a plain todo item").is_none());
+        assert!(parse_ticket_line("- [x] Another non-ticket checkbox").is_none());
+    }
+
+    /// roadmap_parsing.rs:117 — `if parts.len() < 2 { return None }` arm.
+    /// A line with "- [" and "TICKET-" but no colon separator produces
+    /// parts.len() == 1 after split(':'), triggering the early return.
+    /// Existing tests always include ':' after the ticket id.
+    #[test]
+    fn test_parse_ticket_line_missing_colon_returns_none() {
+        assert!(parse_ticket_line("- [ ] TICKET-PMAT-5001 no colon separator").is_none());
+    }
+
+    /// roadmap_parsing.rs:97-98 — `if !line.starts_with("- [")` early-return.
+    /// While parse_content drives many non-"- [" lines through this branch
+    /// indirectly, a direct unit assertion locks the sentinel and documents
+    /// the contract on the public-ish parser entry point.
+    #[test]
+    fn test_parse_ticket_line_not_list_item_returns_none() {
+        assert!(parse_ticket_line("### Sprint header line").is_none());
+        assert!(parse_ticket_line("plain prose with TICKET-PMAT-1 mentioned").is_none());
+        assert!(parse_ticket_line("").is_none());
+    }
+
     #[test]
     fn test_validate_ticket_id_valid() {
         assert!(validate_ticket_id("TICKET-PMAT-5001").is_ok());
