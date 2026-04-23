@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-632
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: cover Violation::to_op fall-through arms + ExtractFunction constants (refactor_impls)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-23T17:42:59Z
+  updated: 2026-04-23T17:43:03Z
+  spec: null
+  acceptance_criteria:
+  - 'Target src/models/refactor_impls.rs:241 Violation::to_op. 4 uncov lines at 85.7%. Existing tests cover HighComplexity, DeepNesting, SelfAdmittedTechDebt and the suggested_fix shortcut. Previously uncovered: the fall-through _ arm (line 267) for LongFunction/DeadCode/PoorNaming → SimplifyExpression, plus the specific constants inside ExtractFunction (byte 0/100, start.line + 10 offset, params=[]).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
