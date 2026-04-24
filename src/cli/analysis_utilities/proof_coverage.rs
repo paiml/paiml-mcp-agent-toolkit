@@ -476,8 +476,8 @@ mod proof_coverage_tests {
         ];
         let ids = create_file_ids_from_changes(&changes).unwrap();
         assert_eq!(ids.len(), 2);
-        assert!(ids.iter().any(|f| f.path == std::path::PathBuf::from("a.rs")));
-        assert!(ids.iter().any(|f| f.path == std::path::PathBuf::from("b.rs")));
+        assert!(ids.iter().any(|f| f.path == std::path::Path::new("a.rs")));
+        assert!(ids.iter().any(|f| f.path == std::path::Path::new("b.rs")));
     }
 
     #[test]
