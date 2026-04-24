@@ -375,9 +375,13 @@ mod tests {
             files: vec!["src/lib.rs".into()], // no ticket file
         };
 
-        let result =
-            process_ticket_update(&mut roadmap, &commit, "TICKET-PMAT-5013", tickets_dir.path())
-                .unwrap();
+        let result = process_ticket_update(
+            &mut roadmap,
+            &commit,
+            "TICKET-PMAT-5013",
+            tickets_dir.path(),
+        )
+        .unwrap();
         assert!(!result, "must short-circuit when ticket file not in commit");
         assert!(!roadmap.sprints[0].tickets[0].completed);
     }
@@ -394,10 +398,17 @@ mod tests {
             files: vec!["docs/tickets/TICKET-PMAT-5013.md".into()],
         };
 
-        let result =
-            process_ticket_update(&mut roadmap, &commit, "TICKET-PMAT-5013", tickets_dir.path())
-                .unwrap();
-        assert!(!result, "missing ticket file must return Ok(false), not error");
+        let result = process_ticket_update(
+            &mut roadmap,
+            &commit,
+            "TICKET-PMAT-5013",
+            tickets_dir.path(),
+        )
+        .unwrap();
+        assert!(
+            !result,
+            "missing ticket file must return Ok(false), not error"
+        );
         assert!(!roadmap.sprints[0].tickets[0].completed);
     }
 
@@ -417,11 +428,7 @@ mod tests {
              Still failing.\n\n\
              ## Success Criteria\n\n\
              - [ ] One\n";
-        std::fs::write(
-            tickets_dir.path().join("TICKET-PMAT-5013.md"),
-            red_content,
-        )
-        .unwrap();
+        std::fs::write(tickets_dir.path().join("TICKET-PMAT-5013.md"), red_content).unwrap();
         let mut roadmap = create_test_roadmap();
         let commit = CommitInfo {
             hash: "deadbee".into(),
@@ -429,9 +436,13 @@ mod tests {
             files: vec!["docs/tickets/TICKET-PMAT-5013.md".into()],
         };
 
-        let result =
-            process_ticket_update(&mut roadmap, &commit, "TICKET-PMAT-5013", tickets_dir.path())
-                .unwrap();
+        let result = process_ticket_update(
+            &mut roadmap,
+            &commit,
+            "TICKET-PMAT-5013",
+            tickets_dir.path(),
+        )
+        .unwrap();
         assert!(!result, "RED ticket must not mark roadmap completed");
         assert!(!roadmap.sprints[0].tickets[0].completed);
     }
@@ -450,9 +461,13 @@ mod tests {
             files: vec!["docs/tickets/TICKET-PMAT-5013.md".into()],
         };
 
-        let result =
-            process_ticket_update(&mut roadmap, &commit, "TICKET-PMAT-5013", tickets_dir.path())
-                .unwrap();
+        let result = process_ticket_update(
+            &mut roadmap,
+            &commit,
+            "TICKET-PMAT-5013",
+            tickets_dir.path(),
+        )
+        .unwrap();
         assert!(result, "GREEN ticket must flip roadmap entry");
         assert!(roadmap.sprints[0].tickets[0].completed);
         assert_eq!(
