@@ -54,68 +54,132 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     thread::sleep(Duration::from_secs(10));
 
     // 1. initialize handshake
-    let resp = rpc(&mut writer, &mut reader, 1, "initialize", json!({
-        "protocolVersion": "2024-11-05",
-        "capabilities": {},
-        "clientInfo": { "name": "mcp_agent_context_demo", "version": "1.0" }
-    }))?;
-    let server_info = resp.pointer("/result/serverInfo/name").cloned().unwrap_or(json!("?"));
+    let resp = rpc(
+        &mut writer,
+        &mut reader,
+        1,
+        "initialize",
+        json!({
+            "protocolVersion": "2024-11-05",
+            "capabilities": {},
+            "clientInfo": { "name": "mcp_agent_context_demo", "version": "1.0" }
+        }),
+    )?;
+    let server_info = resp
+        .pointer("/result/serverInfo/name")
+        .cloned()
+        .unwrap_or(json!("?"));
     println!("[initialize] server={}", server_info);
 
     // 2. tools/list — sanity check that the 4 pmat_* tools are registered
     let resp = rpc(&mut writer, &mut reader, 2, "tools/list", json!({}))?;
-    let tools = resp.pointer("/result/tools").and_then(|v| v.as_array()).cloned().unwrap_or_default();
-    let pmat_tools: Vec<&str> = tools.iter()
+    let tools = resp
+        .pointer("/result/tools")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let pmat_tools: Vec<&str> = tools
+        .iter()
         .filter_map(|t| t.get("name").and_then(|n| n.as_str()))
         .filter(|n| n.starts_with("pmat_"))
         .collect();
-    println!("[tools/list] total={} pmat_*={} ({:?})", tools.len(), pmat_tools.len(), pmat_tools);
+    println!(
+        "[tools/list] total={} pmat_*={} ({:?})",
+        tools.len(),
+        pmat_tools.len(),
+        pmat_tools
+    );
 
     // 3. pmat_index_stats — pick up a real function_id we can reuse below
-    let resp = call_tool(&mut writer, &mut reader, 3, "pmat_index_stats",
-        json!({ "rebuild": false }))?;
+    let resp = call_tool(
+        &mut writer,
+        &mut reader,
+        3,
+        "pmat_index_stats",
+        json!({ "rebuild": false }),
+    )?;
     let index_result = extract_tool_result(&resp);
-    let fn_count = index_result.pointer("/manifest/function_count").cloned().unwrap_or(json!(0));
-    let file_count = index_result.pointer("/manifest/file_count").cloned().unwrap_or(json!(0));
-    println!("[pmat_index_stats] ok: functions={} files={}", fn_count, file_count);
+    let fn_count = index_result
+        .pointer("/manifest/function_count")
+        .cloned()
+        .unwrap_or(json!(0));
+    let file_count = index_result
+        .pointer("/manifest/file_count")
+        .cloned()
+        .unwrap_or(json!(0));
+    println!(
+        "[pmat_index_stats] ok: functions={} files={}",
+        fn_count, file_count
+    );
 
     // 4. pmat_query_code — realistic semantic query
-    let resp = call_tool(&mut writer, &mut reader, 4, "pmat_query_code",
-        json!({ "query": "error handling", "limit": 3 }))?;
+    let resp = call_tool(
+        &mut writer,
+        &mut reader,
+        4,
+        "pmat_query_code",
+        json!({ "query": "error handling", "limit": 3 }),
+    )?;
     let query_result = extract_tool_result(&resp);
-    let result_count = query_result.get("results")
+    let result_count = query_result
+        .get("results")
         .or_else(|| query_result.get("functions"))
         .and_then(|v| v.as_array())
         .map(|a| a.len())
         .unwrap_or(0);
-    let first_id = query_result.pointer("/results/0/id")
+    let first_id = query_result
+        .pointer("/results/0/id")
         .or_else(|| query_result.pointer("/functions/0/id"))
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
-    println!("[pmat_query_code] ok: {} results; first_id={:?}", result_count, first_id);
+    println!(
+        "[pmat_query_code] ok: {} results; first_id={:?}",
+        result_count, first_id
+    );
 
     // 5. pmat_get_function — use the first id from query_code, or fall back to "main"
-    let function_id = first_id.clone().unwrap_or_else(|| "src/bin/pmat.rs::main".to_string());
-    let resp = call_tool(&mut writer, &mut reader, 5, "pmat_get_function",
-        json!({ "function_id": function_id, "include_source": false }))?;
+    let function_id = first_id
+        .clone()
+        .unwrap_or_else(|| "src/bin/pmat.rs::main".to_string());
+    let resp = call_tool(
+        &mut writer,
+        &mut reader,
+        5,
+        "pmat_get_function",
+        json!({ "function_id": function_id, "include_source": false }),
+    )?;
     match resp.get("error") {
-        Some(err) => println!("[pmat_get_function] graceful miss for {:?}: {}", function_id,
-            err.get("message").and_then(|m| m.as_str()).unwrap_or("?")),
+        Some(err) => println!(
+            "[pmat_get_function] graceful miss for {:?}: {}",
+            function_id,
+            err.get("message").and_then(|m| m.as_str()).unwrap_or("?")
+        ),
         None => {
             let gf = extract_tool_result(&resp);
-            println!("[pmat_get_function] ok: name={} grade={}",
+            println!(
+                "[pmat_get_function] ok: name={} grade={}",
                 gf.get("name").and_then(|v| v.as_str()).unwrap_or("?"),
-                gf.pointer("/quality/grade").and_then(|v| v.as_str()).unwrap_or("?"));
+                gf.pointer("/quality/grade")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("?")
+            );
         }
     }
 
     // 6. pmat_find_similar — only meaningful if we got a real id from the query
     if let Some(id) = first_id {
-        let resp = call_tool(&mut writer, &mut reader, 6, "pmat_find_similar",
-            json!({ "function_id": id, "limit": 3, "min_similarity": 0.3 }))?;
+        let resp = call_tool(
+            &mut writer,
+            &mut reader,
+            6,
+            "pmat_find_similar",
+            json!({ "function_id": id, "limit": 3, "min_similarity": 0.3 }),
+        )?;
         match resp.get("error") {
-            Some(err) => println!("[pmat_find_similar] error: {}",
-                err.get("message").and_then(|m| m.as_str()).unwrap_or("?")),
+            Some(err) => println!(
+                "[pmat_find_similar] error: {}",
+                err.get("message").and_then(|m| m.as_str()).unwrap_or("?")
+            ),
             None => {
                 let sim = extract_tool_result(&resp);
                 let total = sim.get("total").and_then(|v| v.as_u64()).unwrap_or(0);
@@ -162,7 +226,13 @@ fn call_tool(
     name: &str,
     args: Value,
 ) -> Result<Value, Box<dyn std::error::Error>> {
-    rpc(writer, reader, id, "tools/call", json!({ "name": name, "arguments": args }))
+    rpc(
+        writer,
+        reader,
+        id,
+        "tools/call",
+        json!({ "name": name, "arguments": args }),
+    )
 }
 
 /// MCP `tools/call` wraps results in `result.content[0].text` (JSON string) or
@@ -171,7 +241,10 @@ fn extract_tool_result(resp: &Value) -> Value {
     if let Some(sc) = resp.pointer("/result/structuredContent") {
         return sc.clone();
     }
-    if let Some(text) = resp.pointer("/result/content/0/text").and_then(|v| v.as_str()) {
+    if let Some(text) = resp
+        .pointer("/result/content/0/text")
+        .and_then(|v| v.as_str())
+    {
         if let Ok(parsed) = serde_json::from_str::<Value>(text) {
             return parsed;
         }
