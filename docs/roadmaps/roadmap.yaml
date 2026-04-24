@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-643
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: services/agent_context/query/coverage/profdata.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T08:18:40Z
+  updated: 2026-04-24T08:18:40Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI/services pivot — profdata.rs is 0/340 broad-covered. Cover pure-compute helpers: dir_mtime, target_dir_from_cargo_config (parses TOML target-dir, relative + absolute + missing), mnt_target_candidates (scans /mnt, handles missing dir), collect_fast_candidates (stored_path + CARGO_TARGET_DIR + cargo config + mnt + default target), extract_target_directory (JSON parse), write_coverage_cache + write_negative_coverage_cache (JSON round-trip), load_coverage_from_cache (valid mtime / invalid mtime / fallback git-hash / corrupt JSON). Skip subprocess paths (run_llvm_cov_subprocess, wait_with_timeout, cargo_metadata_target_dir) — they spawn cargo.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
