@@ -389,7 +389,13 @@ mod tests {
         item_impl
             .items
             .iter()
-            .find_map(|i| if let syn::ImplItem::Fn(f) = i { Some(f) } else { None })
+            .find_map(|i| {
+                if let syn::ImplItem::Fn(f) = i {
+                    Some(f)
+                } else {
+                    None
+                }
+            })
             .expect("impl has a method")
     }
 
@@ -403,7 +409,8 @@ mod tests {
             }
         });
         let method = first_method(&item_impl);
-        let out = analyze_impl_method(method, &item_impl.attrs).expect("bindgen method is a boundary");
+        let out =
+            analyze_impl_method(method, &item_impl.attrs).expect("bindgen method is a boundary");
         assert!(out.is_wasm_bindgen);
         assert!(!out.is_extern_c);
         assert!(!out.is_no_mangle);
@@ -421,8 +428,8 @@ mod tests {
             }
         });
         let method = first_method(&item_impl);
-        let out =
-            analyze_impl_method(method, &item_impl.attrs).expect("inherited impl-block attr must mark boundary");
+        let out = analyze_impl_method(method, &item_impl.attrs)
+            .expect("inherited impl-block attr must mark boundary");
         assert!(out.is_wasm_bindgen, "impl-block attr must be inherited");
         assert!(!out.is_no_mangle);
         assert!(!out.is_extern_c);
@@ -467,7 +474,8 @@ mod tests {
             }
         });
         let method = first_method(&item_impl);
-        let out = analyze_impl_method(method, &item_impl.attrs).expect("no_mangle method is a boundary");
+        let out =
+            analyze_impl_method(method, &item_impl.attrs).expect("no_mangle method is a boundary");
         assert!(out.is_no_mangle);
         assert!(!out.is_wasm_bindgen);
         assert!(!out.is_extern_c);

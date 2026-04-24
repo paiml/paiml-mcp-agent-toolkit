@@ -256,6 +256,198 @@ mod tests {
         assert!(files1.contains_file(Path::new("file2.txt")));
         assert_eq!(files1.permissions.len(), 2);
     }
+
+    // --- PMAT-640 additions: cover untested surface ---
+
+    /// Minimal concrete TemplateGenerator impl that does NOT override
+    /// `post_generation_hooks`, so calling it exercises the default trait impl.
+    struct MinimalGenerator;
+
+    #[async_trait]
+    impl TemplateGenerator for MinimalGenerator {
+        fn generate(&self, _ctx: &AgentContext) -> Result<GeneratedFiles> {
+            Ok(GeneratedFiles::new())
+        }
+        fn validate_context(&self, _ctx: &AgentContext) -> Result<()> {
+            Ok(())
+        }
+        fn name(&self) -> &str {
+            "minimal"
+        }
+        fn description(&self) -> &str {
+            "minimal test generator"
+        }
+    }
+
+    #[test]
+    fn test_post_generation_hooks_default_returns_ok() {
+        let g = MinimalGenerator;
+        let tmp = TempDir::new().unwrap();
+        g.post_generation_hooks(tmp.path()).expect("default Ok");
+    }
+
+    #[test]
+    fn test_generated_files_default_matches_new() {
+        let a = GeneratedFiles::default();
+        let b = GeneratedFiles::new();
+        assert_eq!(a.file_count(), b.file_count());
+        assert_eq!(a.permissions.len(), b.permissions.len());
+        assert_eq!(a.symlinks.len(), b.symlinks.len());
+    }
+
+    #[test]
+    fn test_empty_collection_file_count_and_contains() {
+        let files = GeneratedFiles::new();
+        assert_eq!(files.file_count(), 0);
+        assert!(!files.contains_file(Path::new("missing.txt")));
+    }
+
+    #[test]
+    fn test_add_template_file_stores_as_template_variant() {
+        let mut files = GeneratedFiles::new();
+        files.add_template_file("tpl.md.tmpl", "hello {{name}}");
+        let content = files.files.get(Path::new("tpl.md.tmpl")).unwrap();
+        assert!(matches!(content, FileContent::Template(_)));
+        assert_eq!(content.as_str(), Some("hello {{name}}"));
+    }
+
+    #[test]
+    fn test_add_symlink_appends_pair() {
+        let mut files = GeneratedFiles::new();
+        files.add_symlink("real.txt", "link.txt");
+        files.add_symlink("src/a.rs", "src/b.rs");
+        assert_eq!(files.symlinks.len(), 2);
+        assert_eq!(
+            files.symlinks[0],
+            (PathBuf::from("real.txt"), PathBuf::from("link.txt"))
+        );
+        assert_eq!(
+            files.symlinks[1],
+            (PathBuf::from("src/a.rs"), PathBuf::from("src/b.rs"))
+        );
+    }
+
+    #[test]
+    fn test_file_content_template_as_str_and_bytes() {
+        let tpl = FileContent::Template("tpl".to_string());
+        assert_eq!(tpl.as_str(), Some("tpl"));
+        assert_eq!(tpl.as_bytes(), b"tpl");
+    }
+
+    #[tokio::test]
+    async fn test_write_to_disk_writes_binary_and_template_variants() {
+        let tmp = TempDir::new().unwrap();
+        let mut files = GeneratedFiles::new();
+        files.add_binary_file("data.bin", vec![0xDE, 0xAD, 0xBE, 0xEF]);
+        files.add_template_file("tpl.txt", "raw template content");
+
+        files.write_to_disk(tmp.path()).await.expect("write");
+
+        let bin = fs::read(tmp.path().join("data.bin"))
+            .await
+            .expect("read bin");
+        assert_eq!(bin, vec![0xDE, 0xAD, 0xBE, 0xEF]);
+
+        let tpl = fs::read_to_string(tmp.path().join("tpl.txt"))
+            .await
+            .expect("read tpl");
+        assert_eq!(tpl, "raw template content");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_write_to_disk_applies_permissions_on_unix() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = TempDir::new().unwrap();
+        let mut files = GeneratedFiles::new();
+        files.add_text_file("run.sh", "#!/bin/sh\necho hi");
+        files.set_permissions("run.sh", 0o755);
+
+        files.write_to_disk(tmp.path()).await.expect("write");
+
+        let meta = std::fs::metadata(tmp.path().join("run.sh")).expect("meta");
+        let mode = meta.permissions().mode() & 0o777;
+        assert_eq!(mode, 0o755, "expected 0o755, got 0o{:o}", mode);
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_write_to_disk_creates_symlinks_when_source_exists() {
+        let tmp = TempDir::new().unwrap();
+        let mut files = GeneratedFiles::new();
+        files.add_text_file("real.txt", "the real file");
+        files.add_symlink("real.txt", "alias.txt");
+
+        files.write_to_disk(tmp.path()).await.expect("write");
+
+        let alias = tmp.path().join("alias.txt");
+        // symlink_metadata follows symlinks only when called via metadata() —
+        // use symlink_metadata to distinguish a link from a regular file.
+        let sym_meta = std::fs::symlink_metadata(&alias).expect("symlink metadata");
+        assert!(
+            sym_meta.file_type().is_symlink(),
+            "alias.txt is not a symlink: {:?}",
+            sym_meta.file_type()
+        );
+        // Reading through the symlink returns the real content.
+        let read_through = std::fs::read_to_string(&alias).expect("read through symlink");
+        assert_eq!(read_through, "the real file");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_write_to_disk_skips_symlink_when_source_missing() {
+        // Covers the `if source_path.exists()` guard: when source does not exist,
+        // no symlink should be created and no error should bubble up.
+        let tmp = TempDir::new().unwrap();
+        let mut files = GeneratedFiles::new();
+        files.add_symlink("does-not-exist", "alias.txt");
+
+        files.write_to_disk(tmp.path()).await.expect("write");
+        assert!(!tmp.path().join("alias.txt").exists());
+    }
+
+    #[test]
+    fn test_merge_preserves_symlinks_and_overwrites_duplicates() {
+        let mut a = GeneratedFiles::new();
+        a.add_text_file("shared.txt", "from a");
+        a.add_symlink("real_a", "link_a");
+
+        let mut b = GeneratedFiles::new();
+        b.add_text_file("shared.txt", "from b"); // collision
+        b.add_symlink("real_b", "link_b");
+        b.set_permissions("shared.txt", 0o644);
+
+        a.merge(b);
+
+        // Merge extends files via HashMap extend → b's value wins on collision.
+        match a.files.get(Path::new("shared.txt")).unwrap() {
+            FileContent::Text(s) => assert_eq!(s, "from b"),
+            other => panic!("expected Text, got {other:?}"),
+        }
+        // Symlinks accumulate from both.
+        assert_eq!(a.symlinks.len(), 2);
+        assert_eq!(a.permissions.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_write_to_disk_on_existing_directory_is_ok() {
+        // create_dir_all on an existing dir is a no-op — exercise that branch.
+        let tmp = TempDir::new().unwrap();
+        // Pre-create the target so fs::create_dir_all has "nothing to do".
+        std::fs::create_dir_all(tmp.path().join("sub")).unwrap();
+        let mut files = GeneratedFiles::new();
+        files.add_text_file("sub/hello.txt", "hi");
+
+        files
+            .write_to_disk(tmp.path())
+            .await
+            .expect("write over existing dir");
+        let content = fs::read_to_string(tmp.path().join("sub/hello.txt"))
+            .await
+            .expect("read");
+        assert_eq!(content, "hi");
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
