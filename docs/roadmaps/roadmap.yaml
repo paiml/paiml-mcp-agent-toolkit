@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-640
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: scaffold/agent/generator.rs coverage (Phase-1 tactic #3)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T07:52:18Z
+  updated: 2026-04-24T07:52:18Z
+  spec: null
+  acceptance_criteria:
+  - 'Per Phase-1 tactic #3, cover generator.rs untested surface: TemplateGenerator::post_generation_hooks default impl (via concrete test impl that does NOT override), GeneratedFiles::Default::default delegation, add_template_file, add_symlink, write_to_disk for Binary + Template content, write_to_disk with permissions (unix), write_to_disk with symlinks (unix), FileContent::Template as_str/as_bytes, merge with symlinks, contains_file false, file_count on empty.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
