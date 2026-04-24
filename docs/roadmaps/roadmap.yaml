@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-637
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: scaffold/agent/features.rs coverage (Phase-1 tactic #3)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T07:38:09Z
+  updated: 2026-04-24T07:38:09Z
+  spec: null
+  acceptance_criteria:
+  - 'Per Phase-1 tactic #3 (scaffold 0→90%), cover features.rs untested surface: QualityLevel::Strict thresholds (all 6 getters), min_branch/function_coverage for all 3 levels, AgentFeature::FromStr remaining arms (state-machine no-colon default, quality-gates no-colon default Standard, tool-composition/async-handlers/resource-subscriptions/complexity-analysis/satd-detection/dead-code-elimination/health-checks zero-field, monitoring no-colon default, tracing with & without exporter), AgentFeature serde round-trip, MonitoringBackend opentelemetry/case-insensitive/custom-fallback, TraceExporter case-insensitivity + error message, AgentFeature parse error message surfaces input.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
