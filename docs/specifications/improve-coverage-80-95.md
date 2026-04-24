@@ -197,6 +197,18 @@ Each phase is independently shippable. Do not chase the next phase until the cur
 
 Exit criteria: `make coverage-broad` reports ≥80% and `make coverage` (gate) stays ≥95%.
 
+#### Phase 1 drip-feed log (appended per PR; keeps intent durable between sessions)
+
+| PR / commit | PMAT ticket | Surface | Line/branch targets |
+|-------------|-------------|---------|---------------------|
+| #394, #396 | PMAT-625 | `src/entropy/pattern_extractor_ruchy.rs` | pipeline-regex + `>3` / `>15` break, location capping, score variation |
+| #398 | PMAT-626 | `src/graph/builder_import_parsing.rs` | `parse_rust_imports` + `parse_python_imports` + `parse_typescript_imports` branches |
+| #415 | PMAT-627 | polyglot `NameResolver` | `can_resolve` fall-through branches |
+| #420 | PMAT-628 | polyglot `resolve_against_name_map` | target-missing-from-name-map branch |
+| next | PMAT-629 | `src/services/rust_wasm_analyzer.rs` (`deep-wasm`-gated) | `analyze_impl_method` — method_attr ∥ impl_attr disjunction, `!bindgen && !no_mangle && !extern_c` guard, full-file dispatcher pickup |
+
+Pattern for pickers (per-session loop): run `pmat query --coverage-gaps --rank-by impact --limit 30 --exclude-tests`, skip feature-gated code unless its feature is on in the coverage invocation, skip `coverage(off)` modules, prefer high-impact branch-heavy single functions (these are the mutation-testing sweet spot), keep PRs to one surface.
+
 ### Phase 2 — 80% → 90% (3 weeks, v3.17.0)
 
 **Strategy: TDD on hot paths ranked by impact.**

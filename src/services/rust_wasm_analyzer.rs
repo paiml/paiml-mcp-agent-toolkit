@@ -376,4 +376,131 @@ mod tests {
         assert_eq!(analysis.boundary_functions.len(), 2);
         assert_eq!(analysis.extern_blocks.len(), 1);
     }
+
+    // analyze_impl_method guard at line 124:
+    //   if !is_wasm_bindgen && !is_no_mangle && !is_extern_c { return None; }
+    // and the `method_attr || impl_attr` disjunction at line 120.
+
+    fn parse_impl(code: proc_macro2::TokenStream) -> syn::ItemImpl {
+        syn::parse2(code).expect("parse impl")
+    }
+
+    fn first_method(item_impl: &syn::ItemImpl) -> &syn::ImplItemFn {
+        item_impl
+            .items
+            .iter()
+            .find_map(|i| if let syn::ImplItem::Fn(f) = i { Some(f) } else { None })
+            .expect("impl has a method")
+    }
+
+    #[test]
+    fn test_analyze_impl_method_bindgen_on_method() {
+        // wasm_bindgen on the method itself → Some, is_wasm_bindgen=true.
+        let item_impl = parse_impl(quote! {
+            impl Widget {
+                #[wasm_bindgen]
+                pub fn new() -> Self { Widget }
+            }
+        });
+        let method = first_method(&item_impl);
+        let out = analyze_impl_method(method, &item_impl.attrs).expect("bindgen method is a boundary");
+        assert!(out.is_wasm_bindgen);
+        assert!(!out.is_extern_c);
+        assert!(!out.is_no_mangle);
+        assert_eq!(out.name, "new");
+    }
+
+    #[test]
+    fn test_analyze_impl_method_bindgen_on_impl_block() {
+        // wasm_bindgen on the impl block (not the method) must still mark the method as a boundary
+        // via the RHS of `has_attribute(&method.attrs, "wasm_bindgen") || has_attribute(impl_attrs, "wasm_bindgen")`.
+        let item_impl = parse_impl(quote! {
+            #[wasm_bindgen]
+            impl Widget {
+                pub fn bare_method(&self) -> i32 { 0 }
+            }
+        });
+        let method = first_method(&item_impl);
+        let out =
+            analyze_impl_method(method, &item_impl.attrs).expect("inherited impl-block attr must mark boundary");
+        assert!(out.is_wasm_bindgen, "impl-block attr must be inherited");
+        assert!(!out.is_no_mangle);
+        assert!(!out.is_extern_c);
+        assert_eq!(out.name, "bare_method");
+    }
+
+    #[test]
+    fn test_analyze_impl_method_non_boundary_returns_none() {
+        // No wasm_bindgen, no no_mangle, no extern "C" → early return None.
+        // Kills the `&&` → `||` mutation at line 124 (would otherwise return Some(..)).
+        let item_impl = parse_impl(quote! {
+            impl Widget {
+                pub fn plain(&self) {}
+            }
+        });
+        let method = first_method(&item_impl);
+        assert!(analyze_impl_method(method, &item_impl.attrs).is_none());
+    }
+
+    #[test]
+    fn test_analyze_impl_method_extern_c_abi() {
+        // `extern "C"` on the method's sig.abi alone is enough to make it a boundary.
+        let item_impl = parse_impl(quote! {
+            impl Widget {
+                pub extern "C" fn ffi_call(x: i32) -> i32 { x }
+            }
+        });
+        let method = first_method(&item_impl);
+        let out = analyze_impl_method(method, &item_impl.attrs).expect("extern C is a boundary");
+        assert!(out.is_extern_c);
+        assert!(!out.is_wasm_bindgen);
+        assert!(!out.is_no_mangle);
+    }
+
+    #[test]
+    fn test_analyze_impl_method_no_mangle_only() {
+        // #[no_mangle] alone (without extern "C") also flags the method as a boundary.
+        let item_impl = parse_impl(quote! {
+            impl Widget {
+                #[no_mangle]
+                pub fn exported(&self) {}
+            }
+        });
+        let method = first_method(&item_impl);
+        let out = analyze_impl_method(method, &item_impl.attrs).expect("no_mangle method is a boundary");
+        assert!(out.is_no_mangle);
+        assert!(!out.is_wasm_bindgen);
+        assert!(!out.is_extern_c);
+    }
+
+    #[test]
+    fn test_full_file_analysis_picks_up_impl_methods() {
+        // analyze_wasm_constructs dispatcher at lines 72-80 must collect impl-method boundaries.
+        let file: syn::File = syn::parse2(quote! {
+            #[wasm_bindgen]
+            impl Api {
+                pub fn greet() {}
+                pub fn farewell() {}
+            }
+
+            impl Plain {
+                pub fn unrelated(&self) {}
+            }
+        })
+        .unwrap();
+        let analysis = analyze_wasm_constructs(&file);
+        assert_eq!(
+            analysis.boundary_functions.len(),
+            2,
+            "both methods on #[wasm_bindgen] impl are boundaries; method on plain impl is not"
+        );
+        let names: Vec<&str> = analysis
+            .boundary_functions
+            .iter()
+            .map(|f| f.name.as_str())
+            .collect();
+        assert!(names.contains(&"greet"));
+        assert!(names.contains(&"farewell"));
+        assert!(!names.contains(&"unrelated"));
+    }
 }
