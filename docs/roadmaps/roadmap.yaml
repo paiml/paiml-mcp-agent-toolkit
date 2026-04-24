@@ -3217,11 +3217,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Phase 1: scaffold/agent/templates.rs branch + content coverage (Phase-1 tactic #3)'
-  status: inprogress
+  status: review
   priority: medium
   assigned_to: null
   created: 2026-04-23T21:07:57Z
-  updated: 2026-04-23T21:10:00Z
+  updated: 2026-04-23T21:10:58Z
   spec: null
   acceptance_criteria:
   - 'Per spec Phase 1 tactic #3 (''insta snapshot tests per scaffold generator; 0% → 90%''), expand MCPServerTemplate + StateMachineTemplate test coverage: Default fields, name/description getters, all generated files by path, Standard-vs-Strict-vs-Extreme quality-level branching in MCPServerTemplate (if !Standard → adds src/quality/* + mod quality; in main.rs), ctx.name flowthrough, validate_context empty-name error, Cargo.toml pmcp dep pinning, state enum/event variant assertions, AgentTemplate enum serde round-trip. 16 new tests, no insta dependency (explicit assertions cover the same surface).'
