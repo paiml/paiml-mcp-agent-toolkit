@@ -335,4 +335,159 @@ exclude = ["**/gqa.rs"]
         assert_eq!(results.total_violations, 3);
         assert_eq!(results.entropy_violations, 0);
     }
+
+    // ===================
+    // Filesystem helpers: count_source_files / has_matching_extension /
+    // is_traversable_dir / count_files_recursive / scale_entropy_for_project_size
+    // (0%-covered leaves of load_entropy_threshold; quality_gate_config.rs:91..142)
+    // ===================
+
+    #[test]
+    fn test_has_matching_extension_hit_and_miss() {
+        let exts = &["rs", "py"];
+        assert!(has_matching_extension(std::path::Path::new("foo.rs"), exts));
+        assert!(has_matching_extension(std::path::Path::new("bar/baz.py"), exts));
+        assert!(!has_matching_extension(
+            std::path::Path::new("foo.md"),
+            exts
+        ));
+        // No extension at all — extension() returns None, so is_some_and is false.
+        assert!(!has_matching_extension(std::path::Path::new("README"), exts));
+    }
+
+    #[test]
+    fn test_is_traversable_dir_rejects_hidden_target_node_modules() {
+        assert!(is_traversable_dir(std::path::Path::new("src")));
+        assert!(is_traversable_dir(std::path::Path::new("lib/nested")));
+        // Hidden dot-dir
+        assert!(!is_traversable_dir(std::path::Path::new(".git")));
+        assert!(!is_traversable_dir(std::path::Path::new("foo/.hidden")));
+        // Explicit disallow list
+        assert!(!is_traversable_dir(std::path::Path::new("target")));
+        assert!(!is_traversable_dir(std::path::Path::new("node_modules")));
+        // Non-UTF8 / no file name (root) — and_then(to_str) → None → is_some_and = false.
+        assert!(!is_traversable_dir(std::path::Path::new("/")));
+    }
+
+    #[test]
+    fn test_count_files_recursive_counts_only_matching_extensions() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        // Matching: 3 .rs
+        std::fs::write(tmp.path().join("a.rs"), "").unwrap();
+        std::fs::write(tmp.path().join("b.rs"), "").unwrap();
+        let nested = tmp.path().join("nested");
+        std::fs::create_dir(&nested).unwrap();
+        std::fs::write(nested.join("c.rs"), "").unwrap();
+        // Non-matching
+        std::fs::write(tmp.path().join("d.md"), "").unwrap();
+        std::fs::write(nested.join("e.txt"), "").unwrap();
+
+        let count = count_files_recursive(tmp.path(), &["rs"], 0);
+        assert_eq!(count, 3, "should count only .rs files, not .md/.txt");
+    }
+
+    #[test]
+    fn test_count_files_recursive_skips_target_and_hidden_dirs() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        // Top-level match counts.
+        std::fs::write(tmp.path().join("top.rs"), "").unwrap();
+        // target/ is skipped by is_traversable_dir.
+        let target = tmp.path().join("target");
+        std::fs::create_dir(&target).unwrap();
+        std::fs::write(target.join("inside.rs"), "").unwrap();
+        // .git/ (hidden) is skipped.
+        let git = tmp.path().join(".git");
+        std::fs::create_dir(&git).unwrap();
+        std::fs::write(git.join("hook.rs"), "").unwrap();
+
+        let count = count_files_recursive(tmp.path(), &["rs"], 0);
+        assert_eq!(count, 1, "only the top-level .rs should be counted");
+    }
+
+    #[test]
+    fn test_count_files_recursive_depth_limit_returns_zero() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        std::fs::write(tmp.path().join("x.rs"), "").unwrap();
+        // Pass depth=11 (> max 10) — hits the early-return arm.
+        assert_eq!(count_files_recursive(tmp.path(), &["rs"], 11), 0);
+    }
+
+    #[test]
+    fn test_count_files_recursive_read_dir_error_returns_zero() {
+        // Point at a non-existent path so std::fs::read_dir returns Err.
+        let missing = std::path::Path::new("/nonexistent/pmat/dir/0xC0FFEE");
+        assert_eq!(count_files_recursive(missing, &["rs"], 0), 0);
+    }
+
+    #[test]
+    fn test_count_source_files_uses_src_dir_when_present() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let src = tmp.path().join("src");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::write(src.join("lib.rs"), "").unwrap();
+        std::fs::write(src.join("main.rs"), "").unwrap();
+        // Outside src/ — should NOT be counted once src/ exists.
+        std::fs::write(tmp.path().join("root.rs"), "").unwrap();
+
+        let count = count_source_files(tmp.path());
+        assert_eq!(count, 2, "only src/ contents should count");
+    }
+
+    #[test]
+    fn test_count_source_files_falls_back_to_root_when_no_source_dir() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        // No src/lib/app/pkg/crates — fall back to root shallow count.
+        std::fs::write(tmp.path().join("script.py"), "").unwrap();
+        std::fs::write(tmp.path().join("README.md"), "").unwrap();
+
+        let count = count_source_files(tmp.path());
+        assert_eq!(count, 1, ".py counts, .md does not");
+    }
+
+    #[test]
+    fn test_scale_entropy_for_project_size_all_bands() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let src = tmp.path().join("src");
+        std::fs::create_dir(&src).unwrap();
+
+        // < 10 files → scale 0.5
+        for i in 0..5 {
+            std::fs::write(src.join(format!("a{i}.rs")), "").unwrap();
+        }
+        let scaled = scale_entropy_for_project_size(tmp.path(), 1.0);
+        assert!(
+            (scaled - 0.5).abs() < f64::EPSILON,
+            "< 10 files → 0.5 (got {scaled})"
+        );
+
+        // 10–24 files → scale 0.7
+        for i in 5..15 {
+            std::fs::write(src.join(format!("a{i}.rs")), "").unwrap();
+        }
+        let scaled = scale_entropy_for_project_size(tmp.path(), 1.0);
+        assert!(
+            (scaled - 0.7).abs() < f64::EPSILON,
+            "10–24 files → 0.7 (got {scaled})"
+        );
+
+        // 25–49 files → scale 0.85
+        for i in 15..35 {
+            std::fs::write(src.join(format!("a{i}.rs")), "").unwrap();
+        }
+        let scaled = scale_entropy_for_project_size(tmp.path(), 1.0);
+        assert!(
+            (scaled - 0.85).abs() < f64::EPSILON,
+            "25–49 files → 0.85 (got {scaled})"
+        );
+
+        // ≥ 50 files → scale 1.0 (no scaling)
+        for i in 35..60 {
+            std::fs::write(src.join(format!("a{i}.rs")), "").unwrap();
+        }
+        let scaled = scale_entropy_for_project_size(tmp.path(), 0.42);
+        assert!(
+            (scaled - 0.42).abs() < f64::EPSILON,
+            "≥ 50 files → identity (got {scaled})"
+        );
+    }
 }
