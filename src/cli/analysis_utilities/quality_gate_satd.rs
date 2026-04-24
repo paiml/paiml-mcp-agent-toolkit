@@ -154,3 +154,133 @@ pub async fn handle_analyze_dag(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod quality_gate_satd_tests {
+    //! Covers apply_satd_filters + generate_satd_output (quality_gate_satd.rs,
+    //! 41 uncov on broad, 0% cov).
+    use super::*;
+    use crate::services::satd_detector::{DebtCategory, Severity, TechnicalDebt};
+    use std::path::PathBuf;
+
+    fn item(sev: Severity) -> TechnicalDebt {
+        TechnicalDebt {
+            category: DebtCategory::Design,
+            severity: sev,
+            text: "TODO".into(),
+            file: PathBuf::from("a.rs"),
+            line: 1,
+            column: 1,
+            context_hash: [0u8; 16],
+        }
+    }
+
+    #[test]
+    fn test_apply_satd_filters_no_filters_retains_all() {
+        let items = vec![
+            item(Severity::Low),
+            item(Severity::Medium),
+            item(Severity::High),
+            item(Severity::Critical),
+        ];
+        let out = apply_satd_filters(items, None, false);
+        assert_eq!(out.len(), 4);
+    }
+
+    #[test]
+    fn test_apply_satd_filters_severity_low_retains_all() {
+        let items = vec![
+            item(Severity::Low),
+            item(Severity::Medium),
+            item(Severity::High),
+            item(Severity::Critical),
+        ];
+        let out = apply_satd_filters(items, Some(SatdSeverity::Low), false);
+        assert_eq!(out.len(), 4);
+    }
+
+    #[test]
+    fn test_apply_satd_filters_severity_high_drops_low_and_medium() {
+        let items = vec![
+            item(Severity::Low),
+            item(Severity::Medium),
+            item(Severity::High),
+            item(Severity::Critical),
+        ];
+        let out = apply_satd_filters(items, Some(SatdSeverity::High), false);
+        assert_eq!(out.len(), 2);
+        for x in &out {
+            assert!(matches!(x.severity, Severity::High | Severity::Critical));
+        }
+    }
+
+    #[test]
+    fn test_apply_satd_filters_severity_critical_keeps_only_critical() {
+        let items = vec![
+            item(Severity::Low),
+            item(Severity::Medium),
+            item(Severity::High),
+            item(Severity::Critical),
+        ];
+        let out = apply_satd_filters(items, Some(SatdSeverity::Critical), false);
+        assert_eq!(out.len(), 1);
+        assert!(matches!(out[0].severity, Severity::Critical));
+    }
+
+    #[test]
+    fn test_apply_satd_filters_critical_only_keeps_high_and_critical() {
+        let items = vec![
+            item(Severity::Low),
+            item(Severity::Medium),
+            item(Severity::High),
+            item(Severity::Critical),
+        ];
+        let out = apply_satd_filters(items, None, true);
+        assert_eq!(out.len(), 2);
+        for x in &out {
+            assert!(matches!(x.severity, Severity::High | Severity::Critical));
+        }
+    }
+
+    #[test]
+    fn test_apply_satd_filters_combined_severity_and_critical_only() {
+        let items = vec![
+            item(Severity::Low),
+            item(Severity::Medium),
+            item(Severity::High),
+            item(Severity::Critical),
+        ];
+        let out = apply_satd_filters(items, Some(SatdSeverity::Medium), true);
+        assert_eq!(out.len(), 2);
+        for x in &out {
+            assert!(matches!(x.severity, Severity::High | Severity::Critical));
+        }
+    }
+
+    #[test]
+    fn test_generate_satd_output_summary_nonempty() {
+        let items = vec![item(Severity::High)];
+        let out = generate_satd_output(SatdOutputFormat::Summary, &items, false, false, 0);
+        assert!(!out.is_empty());
+    }
+
+    #[test]
+    fn test_generate_satd_output_json_is_valid() {
+        let items = vec![item(Severity::High)];
+        let out = generate_satd_output(SatdOutputFormat::Json, &items, true, false, 0);
+        let _: serde_json::Value = serde_json::from_str(&out).unwrap();
+    }
+
+    #[test]
+    fn test_generate_satd_output_sarif_nonempty() {
+        let out = generate_satd_output(SatdOutputFormat::Sarif, &[], false, false, 0);
+        assert!(!out.is_empty());
+    }
+
+    #[test]
+    fn test_generate_satd_output_markdown_nonempty() {
+        let items = vec![item(Severity::Low)];
+        let out = generate_satd_output(SatdOutputFormat::Markdown, &items, false, true, 30);
+        assert!(!out.is_empty());
+    }
+}
