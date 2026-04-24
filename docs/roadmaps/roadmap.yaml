@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-645
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: cli/handlers/query_handler/git_history_formatting.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T08:30:45Z
+  updated: 2026-04-24T08:30:45Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI pivot — git_history_formatting.rs is 356 lines, 252/276 broad-covered on master, 0 async. Cover classify_commit_type all 10 cases (9 rules + default), format_timestamp known dates, grade_to_color all 5 grade letters + unknown, format_fix/decay/risk_indicator all 3 branches each, format_top_author empty + populated, format_cochange_section empty branch.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
