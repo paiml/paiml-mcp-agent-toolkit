@@ -199,15 +199,21 @@ Exit criteria: `make coverage-broad` reports ≥80% and `make coverage` (gate) s
 
 #### Phase 1 drip-feed log (appended per PR; keeps intent durable between sessions)
 
-| PR / commit | PMAT ticket | Surface | Line/branch targets |
-|-------------|-------------|---------|---------------------|
-| #394, #396 | PMAT-625 | `src/entropy/pattern_extractor_ruchy.rs` | pipeline-regex + `>3` / `>15` break, location capping, score variation |
-| #398 | PMAT-626 | `src/graph/builder_import_parsing.rs` | `parse_rust_imports` + `parse_python_imports` + `parse_typescript_imports` branches |
-| #415 | PMAT-627 | polyglot `NameResolver` | `can_resolve` fall-through branches |
-| #420 | PMAT-628 | polyglot `resolve_against_name_map` | target-missing-from-name-map branch |
-| next | PMAT-629 | `src/services/rust_wasm_analyzer.rs` (`deep-wasm`-gated) | `analyze_impl_method` — method_attr ∥ impl_attr disjunction, `!bindgen && !no_mangle && !extern_c` guard, full-file dispatcher pickup |
+| PR | PMAT ticket | Surface | Line/branch targets | Strategic tactic |
+|----|-------------|---------|---------------------|------------------|
+| #394, #396 | PMAT-625 | `src/entropy/pattern_extractor_ruchy.rs` | pipeline-regex + `>3` / `>15` break, location capping, score variation | drip-feed (mutation) |
+| #398 | PMAT-626 | `src/graph/builder_import_parsing.rs` | `parse_rust/python/typescript_imports` branches | drip-feed (mutation) |
+| #415 | PMAT-627 | polyglot `NameResolver` | `can_resolve` fall-through branches | drip-feed (mutation) |
+| #420 | PMAT-628 | polyglot `resolve_against_name_map` | target-missing-from-name-map branch | drip-feed (mutation) |
+| #494 | PMAT-629 | `src/services/rust_wasm_analyzer.rs` (`deep-wasm`-gated) | `analyze_impl_method` disjunction + guard | drip-feed (mutation) |
+| #495 | PMAT-630 | `src/services/accurate_complexity_analyzer_core.rs` | `analyze_function` BH-MUT-0002 `&&` truth-table + `has_suppress_annotation` branches | drip-feed (mutation) |
+| #496 | PMAT-631 | `src/services/rust_project_score/known_defects_scorer_scoring.rs` | `score_internal` Cargo.toml-missing, `recommendations` empty/Err arms, 99/100 boundary, `score_with_mode` delegation | drip-feed (mutation) |
+| #487 + #497 | — / PMAT-632 | `src/models/refactor_impls.rs` `Violation::to_op` | fall-through arms (#487) + ExtractFunction constant pins (#497 — location-field `+10` offset, `byte: 0`/`100`, `params: vec![]`) | drip-feed (mutation) |
+| next | PMAT-633 | `src/scaffold/agent/templates.rs` | MCP + state-machine generators: Standard/Strict/Extreme branching, validate_context err, ctx.name flowthrough, all generated file paths, Cargo.toml pmcp dep pinning, AgentTemplate serde round-trip | **tactic #3: scaffold 0→90%** |
 
-Pattern for pickers (per-session loop): run `pmat query --coverage-gaps --rank-by impact --limit 30 --exclude-tests`, skip feature-gated code unless its feature is on in the coverage invocation, skip `coverage(off)` modules, prefer high-impact branch-heavy single functions (these are the mutation-testing sweet spot), keep PRs to one surface.
+Five Whys pivot (2026-04-23): the drip-feed pattern (#394..#497) optimizes for mutation-killing on files *already in the narrow-gate measured set* and leaves the 73% broad baseline effectively unchanged (~0.03 pp per PR on a 324k denominator). Phase 1 exit requires ≥80% broad, which needs one of the four listed tactics, not more drip-feed. PMAT-633 starts tactic #3 (scaffold). Next Phase-1 picks should come from tactics #1 (dead-code delete), #2 (un-skip `cli_integration_tests`), or #4 (CLI match-arm collapse) — each moves the denominator or adds bulk numerator, not individual functions.
+
+Pattern for pickers (per-session loop): run `pmat query --coverage-gaps --rank-by impact --limit 30 --exclude-tests` when coverage data is present, else fall back to `pmat query --faults --max-complexity 12 --rank-by impact`. Always: skip feature-gated code unless its feature is on in the coverage invocation, skip `coverage(off)` modules for the narrow gate but remember they still count in broad, prefer surfaces where the tests-per-function ratio on the existing suite is <1. **Before picking, classify the target against the four Phase-1 tactics — if none apply, the pick is drip-feed not Phase-1 critical-path.**
 
 ### Phase 2 — 80% → 90% (3 weeks, v3.17.0)
 

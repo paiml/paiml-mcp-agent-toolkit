@@ -319,6 +319,259 @@ mod tests {
         ));
         assert!("invalid".parse::<TraceExporter>().is_err());
     }
+
+    // --- PMAT-637 additions: cover untested surface area ---
+
+    #[test]
+    fn test_quality_level_strict_all_thresholds() {
+        let strict = QualityLevel::Strict;
+        assert_eq!(strict.max_complexity(), 15);
+        assert_eq!(strict.max_cognitive_complexity(), 10);
+        assert_eq!(strict.max_nesting(), 4);
+        assert_eq!(strict.min_line_coverage(), 80.0);
+        assert_eq!(strict.min_branch_coverage(), 75.0);
+        assert_eq!(strict.min_function_coverage(), 90.0);
+    }
+
+    #[test]
+    fn test_quality_level_min_branch_coverage_all_levels() {
+        assert_eq!(QualityLevel::Standard.min_branch_coverage(), 60.0);
+        assert_eq!(QualityLevel::Strict.min_branch_coverage(), 75.0);
+        assert_eq!(QualityLevel::Extreme.min_branch_coverage(), 85.0);
+    }
+
+    #[test]
+    fn test_quality_level_min_function_coverage_all_levels() {
+        assert_eq!(QualityLevel::Standard.min_function_coverage(), 80.0);
+        assert_eq!(QualityLevel::Strict.min_function_coverage(), 90.0);
+        assert_eq!(QualityLevel::Extreme.min_function_coverage(), 95.0);
+    }
+
+    #[test]
+    fn test_quality_level_parse_is_case_insensitive() {
+        // The impl lowercases input, so mixed-case should still parse.
+        assert!(matches!(
+            "STANDARD".parse::<QualityLevel>().unwrap(),
+            QualityLevel::Standard
+        ));
+        assert!(matches!(
+            "Strict".parse::<QualityLevel>().unwrap(),
+            QualityLevel::Strict
+        ));
+        assert!(matches!(
+            "Extreme".parse::<QualityLevel>().unwrap(),
+            QualityLevel::Extreme
+        ));
+    }
+
+    #[test]
+    fn test_quality_level_parse_error_names_input() {
+        let err = "bogus".parse::<QualityLevel>().unwrap_err().to_string();
+        assert!(err.contains("bogus"), "err was: {err}");
+    }
+
+    #[test]
+    fn test_state_machine_feature_parses_without_colon_uses_defaults() {
+        let feature = "state-machine".parse::<AgentFeature>().unwrap();
+        match feature {
+            AgentFeature::StateMachine { states } => {
+                assert_eq!(states, vec!["Initial", "Processing", "Complete"]);
+            }
+            other => panic!("expected StateMachine, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_quality_gates_feature_parses_without_colon_defaults_to_standard() {
+        let feature = "quality-gates".parse::<AgentFeature>().unwrap();
+        assert!(matches!(
+            feature,
+            AgentFeature::QualityGates {
+                level: QualityLevel::Standard
+            }
+        ));
+    }
+
+    #[test]
+    fn test_quality_gates_feature_propagates_invalid_level() {
+        // "quality-gates:bogus" → propagates QualityLevel::FromStr error.
+        assert!("quality-gates:bogus".parse::<AgentFeature>().is_err());
+    }
+
+    #[test]
+    fn test_zero_field_agent_features_parse() {
+        for (s, expect) in [
+            ("tool-composition", AgentFeature::ToolComposition),
+            ("async-handlers", AgentFeature::AsyncHandlers),
+            (
+                "resource-subscriptions",
+                AgentFeature::ResourceSubscriptions,
+            ),
+            ("complexity-analysis", AgentFeature::ComplexityAnalysis),
+            ("satd-detection", AgentFeature::SATDDetection),
+            ("dead-code-elimination", AgentFeature::DeadCodeElimination),
+            ("health-checks", AgentFeature::HealthChecks),
+        ] {
+            let parsed = s.parse::<AgentFeature>().expect(s);
+            assert_eq!(parsed, expect, "parse({s}) mismatch");
+        }
+    }
+
+    #[test]
+    fn test_monitoring_feature_parses_without_colon_defaults_to_prometheus() {
+        let feature = "monitoring".parse::<AgentFeature>().unwrap();
+        assert!(matches!(
+            feature,
+            AgentFeature::Monitoring {
+                backend: MonitoringBackend::Prometheus
+            }
+        ));
+    }
+
+    #[test]
+    fn test_tracing_feature_parses_without_colon_defaults_to_otlp() {
+        let feature = "tracing".parse::<AgentFeature>().unwrap();
+        assert!(matches!(
+            feature,
+            AgentFeature::Tracing {
+                exporter: TraceExporter::OTLP
+            }
+        ));
+    }
+
+    #[test]
+    fn test_tracing_feature_with_jaeger_exporter_value() {
+        let feature = "tracing:jaeger".parse::<AgentFeature>().unwrap();
+        assert!(matches!(
+            feature,
+            AgentFeature::Tracing {
+                exporter: TraceExporter::Jaeger
+            }
+        ));
+    }
+
+    #[test]
+    fn test_tracing_feature_propagates_invalid_exporter() {
+        assert!("tracing:invalid".parse::<AgentFeature>().is_err());
+    }
+
+    #[test]
+    fn test_agent_feature_parse_error_names_input() {
+        let err = "bogus-feature"
+            .parse::<AgentFeature>()
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("bogus-feature"), "err was: {err}");
+    }
+
+    #[test]
+    fn test_monitoring_backend_opentelemetry_fullname() {
+        assert!(matches!(
+            "opentelemetry".parse::<MonitoringBackend>().unwrap(),
+            MonitoringBackend::OpenTelemetry
+        ));
+    }
+
+    #[test]
+    fn test_monitoring_backend_case_insensitive_prometheus() {
+        assert!(matches!(
+            "PROMETHEUS".parse::<MonitoringBackend>().unwrap(),
+            MonitoringBackend::Prometheus
+        ));
+    }
+
+    #[test]
+    fn test_monitoring_backend_custom_is_lowercased() {
+        // The impl lowercases before matching, so Custom stores the lowercase form.
+        match "StatsD-Backend".parse::<MonitoringBackend>().unwrap() {
+            MonitoringBackend::Custom(s) => assert_eq!(s, "statsd-backend"),
+            other => panic!("expected Custom, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_trace_exporter_case_insensitive() {
+        assert!(matches!(
+            "JAEGER".parse::<TraceExporter>().unwrap(),
+            TraceExporter::Jaeger
+        ));
+        assert!(matches!(
+            "OtLp".parse::<TraceExporter>().unwrap(),
+            TraceExporter::OTLP
+        ));
+    }
+
+    #[test]
+    fn test_trace_exporter_parse_error_names_input() {
+        let err = "zzz".parse::<TraceExporter>().unwrap_err().to_string();
+        assert!(err.contains("zzz"), "err was: {err}");
+    }
+
+    #[test]
+    fn test_agent_feature_serde_round_trip_all_variants() {
+        let variants = vec![
+            AgentFeature::StateMachine {
+                states: vec!["A".to_string(), "B".to_string()],
+            },
+            AgentFeature::QualityGates {
+                level: QualityLevel::Extreme,
+            },
+            AgentFeature::ToolComposition,
+            AgentFeature::AsyncHandlers,
+            AgentFeature::ResourceSubscriptions,
+            AgentFeature::ComplexityAnalysis,
+            AgentFeature::SATDDetection,
+            AgentFeature::DeadCodeElimination,
+            AgentFeature::Monitoring {
+                backend: MonitoringBackend::Custom("x".to_string()),
+            },
+            AgentFeature::Tracing {
+                exporter: TraceExporter::Zipkin,
+            },
+            AgentFeature::HealthChecks,
+        ];
+        for v in variants {
+            let json = serde_json::to_string(&v).expect("serialize");
+            let back: AgentFeature = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back, v);
+        }
+    }
+
+    #[test]
+    fn test_quality_level_serde_round_trip() {
+        for level in [
+            QualityLevel::Standard,
+            QualityLevel::Strict,
+            QualityLevel::Extreme,
+        ] {
+            let json = serde_json::to_string(&level).expect("serialize");
+            let back: QualityLevel = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(back, level);
+        }
+    }
+
+    #[test]
+    fn test_state_machine_feature_colon_only_parses_empty_state() {
+        // Edge case: "state-machine:" has parts=[..,""], which splits on ',' to [""]
+        // → single empty-string state. Exercises the `parts.len() > 1` branch with
+        // a degenerate value.
+        let feature = "state-machine:".parse::<AgentFeature>().unwrap();
+        match feature {
+            AgentFeature::StateMachine { states } => {
+                assert_eq!(states, vec![""]);
+            }
+            other => panic!("expected StateMachine, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_quality_level_is_copy() {
+        // Copy semantics — passing by value after prior use should still compile + work.
+        let q = QualityLevel::Strict;
+        let _a = q;
+        let _b = q;
+        assert_eq!(q, QualityLevel::Strict);
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
