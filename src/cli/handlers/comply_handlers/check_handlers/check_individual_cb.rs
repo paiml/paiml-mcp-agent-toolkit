@@ -302,3 +302,167 @@ pub(crate) fn check_coverage_quality_patterns(project_path: &Path) -> Compliance
     )
 }
 
+#[cfg(test)]
+mod check_individual_cb_tests {
+    //! Covers pure-compute helpers in check_individual_cb.rs (94 uncov on
+    //! broad, 0% cov). Skips fs-walking compute_brick / oip_tarantula
+    //! detectors.
+    use super::*;
+    use crate::cli::handlers::comply_cb_detect::{
+        CbPatternViolation, Severity as CbSev,
+    };
+
+    fn viol(pid: &str, sev: CbSev, desc: &str) -> CbPatternViolation {
+        CbPatternViolation {
+            pattern_id: pid.to_string(),
+            file: "src/a.rs".to_string(),
+            line: 1,
+            description: desc.to_string(),
+            severity: sev,
+        }
+    }
+
+    // ── append_violation: formats "PID: description (file:line)" ──
+
+    #[test]
+    fn test_append_violation_format_matches_template() {
+        let mut issues = Vec::new();
+        let v = viol("CB-001", CbSev::Warning, "bounds check");
+        append_violation(&mut issues, &v);
+        assert_eq!(issues, vec!["CB-001: bounds check (src/a.rs:1)"]);
+    }
+
+    #[test]
+    fn test_append_violation_accumulates() {
+        let mut issues = vec!["existing".to_string()];
+        let v = viol("CB-002", CbSev::Error, "barrier");
+        append_violation(&mut issues, &v);
+        assert_eq!(issues.len(), 2);
+        assert_eq!(issues[1], "CB-002: barrier (src/a.rs:1)");
+    }
+
+    // ── collect_violations_with_counts (critical vs warning via is_critical flag) ──
+
+    #[test]
+    fn test_collect_violations_with_counts_empty_detections_returns_zeros() {
+        let (issues, critical, warning) = collect_violations_with_counts(&[]);
+        assert!(issues.is_empty());
+        assert_eq!(critical, 0);
+        assert_eq!(warning, 0);
+    }
+
+    #[test]
+    fn test_collect_violations_with_counts_sums_critical_and_warning() {
+        let detections = vec![
+            (vec![viol("A", CbSev::Error, "x"), viol("B", CbSev::Error, "y")], true),
+            (vec![viol("C", CbSev::Warning, "z")], false),
+        ];
+        let (issues, critical, warning) = collect_violations_with_counts(&detections);
+        assert_eq!(issues.len(), 3);
+        assert_eq!(critical, 2);
+        assert_eq!(warning, 1);
+    }
+
+    // ── build_cb_result: 3 arms (Fail on critical, Warn on warning, Pass) ──
+
+    #[test]
+    fn test_build_cb_result_critical_fails() {
+        let c = build_cb_result(vec!["x".to_string()], 1, 0);
+        assert!(matches!(c.status, CheckStatus::Fail));
+        assert_eq!(c.severity, Severity::Critical);
+        assert!(c.message.contains("1 critical"));
+    }
+
+    #[test]
+    fn test_build_cb_result_warning_only_warns() {
+        let c = build_cb_result(vec!["x".to_string()], 0, 2);
+        assert!(matches!(c.status, CheckStatus::Warn));
+        assert_eq!(c.severity, Severity::Warning);
+        assert!(c.message.contains("2 warnings"));
+    }
+
+    #[test]
+    fn test_build_cb_result_no_violations_passes() {
+        let c = build_cb_result(vec![], 0, 0);
+        assert!(matches!(c.status, CheckStatus::Pass));
+        assert_eq!(c.severity, Severity::Info);
+        assert!(c.message.contains("no violations"));
+    }
+
+    #[test]
+    fn test_build_cb_result_critical_plus_warnings_still_fails() {
+        // critical present → Fail regardless of warnings.
+        let c = build_cb_result(vec!["x".to_string()], 2, 3);
+        assert!(matches!(c.status, CheckStatus::Fail));
+        assert_eq!(c.severity, Severity::Critical);
+        assert!(c.message.contains("2 critical"));
+        assert!(c.message.contains("3 warnings"));
+    }
+
+    // ── collect_triaged_violations: classifies by CbSev → (critical, error, warning) ──
+
+    #[test]
+    fn test_collect_triaged_violations_splits_by_severity() {
+        let sets = vec![vec![
+            viol("A", CbSev::Critical, "cc"),
+            viol("B", CbSev::Critical, "cd"),
+            viol("C", CbSev::Error, "ee"),
+            viol("D", CbSev::Warning, "ww"),
+            // Info falls into the `_ => warning` arm.
+            viol("E", CbSev::Info, "ii"),
+        ]];
+        let (issues, critical, error, warning) = collect_triaged_violations(&sets);
+        assert_eq!(issues.len(), 5);
+        assert_eq!(critical, 2);
+        assert_eq!(error, 1);
+        assert_eq!(warning, 2, "Warning + Info both count as warning");
+    }
+
+    // ── build_triaged_check: 4 arms (Fail-critical, Fail-error, Warn, Pass) ──
+
+    #[test]
+    fn test_build_triaged_check_critical_fails_critical() {
+        let c = build_triaged_check("Test", vec!["x".into()], 1, 0, 0, "ok");
+        assert!(matches!(c.status, CheckStatus::Fail));
+        assert_eq!(c.severity, Severity::Critical);
+        assert_eq!(c.name, "Test");
+    }
+
+    #[test]
+    fn test_build_triaged_check_error_fails_error() {
+        let c = build_triaged_check("Test", vec!["x".into()], 0, 1, 0, "ok");
+        assert!(matches!(c.status, CheckStatus::Fail));
+        assert_eq!(c.severity, Severity::Error);
+    }
+
+    #[test]
+    fn test_build_triaged_check_warning_warns() {
+        let c = build_triaged_check("Test", vec!["x".into()], 0, 0, 1, "ok");
+        assert!(matches!(c.status, CheckStatus::Warn));
+        assert_eq!(c.severity, Severity::Warning);
+    }
+
+    #[test]
+    fn test_build_triaged_check_no_violations_passes_with_msg() {
+        let c = build_triaged_check("Test", vec![], 0, 0, 0, "all-good");
+        assert!(matches!(c.status, CheckStatus::Pass));
+        assert_eq!(c.severity, Severity::Info);
+        assert_eq!(c.message, "all-good");
+    }
+
+    // ── collect_cb_violations: thin wrapper over multiple detectors ──
+    // collect_cb_violations runs fs-walking detectors so we just verify it
+    // doesn't panic on an empty tempdir (all detectors → empty result).
+
+    #[test]
+    fn test_collect_cb_violations_empty_project_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        // has_probar=false + has_brick_dir=false skips the detectors that
+        // require those fixtures — empty project → empty result.
+        let (issues, critical, warning) = collect_cb_violations(tmp.path(), false, false);
+        assert!(issues.is_empty());
+        assert_eq!(critical, 0);
+        assert_eq!(warning, 0);
+    }
+}
+
