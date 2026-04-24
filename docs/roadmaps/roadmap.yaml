@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-654
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: services/polyglot_analyzer_dependencies.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T10:28:39Z
+  updated: 2026-04-24T10:28:39Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI/services pivot — polyglot_analyzer_dependencies.rs is 316 lines, 237/247 missed broad. Cover sync helpers: is_skipped_dir (node_modules/target/build/.git/__pycache__/.venv/venv allowlist + non-match), build_config_dependency_pairs (empty, 2 langs = 1 pair, 3 langs = 3 pairs with shared coupling_strength), count_files_recursive (no dir no-op, matching ext, nested dirs, skip node_modules), has_potential_integration (rust-python, js-ts, no-match), infer_dependency_type (FFI/SharedDataStructure/ProcessCommunication fallback).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
