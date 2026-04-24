@@ -245,3 +245,135 @@ pub(super) fn run_raw_counts_for_merge(
     }
 }
 
+// `items_after_test_module` fires because `modes_raw_search.rs` is
+// include!()'d into modes.rs ahead of the other `modes_*.rs` siblings —
+// so this test module is *textually* followed by production items from
+// other include files. Silence the lint since reordering the includes
+// would churn the entire handler module for no gain.
+#[allow(clippy::items_after_test_module)]
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod modes_raw_search_tests {
+    use super::*;
+
+    /// Drives print_raw_match_context through all four arms:
+    /// empty/non-empty context_before × empty/non-empty context_after.
+    #[test]
+    fn test_print_raw_match_context_all_context_shapes() {
+        // No context either side — skips both for/iter blocks.
+        print_raw_match_context("a.rs", 10, "let x = 1;", &[], &[]);
+        // Before only.
+        print_raw_match_context(
+            "a.rs",
+            10,
+            "let x = 1;",
+            &["fn foo() {".to_string(), "    // body".to_string()],
+            &[],
+        );
+        // After only.
+        print_raw_match_context(
+            "a.rs",
+            10,
+            "let x = 1;",
+            &[],
+            &["    return x;".to_string(), "}".to_string()],
+        );
+        // Both.
+        print_raw_match_context(
+            "a.rs",
+            10,
+            "let x = 1;",
+            &["before".to_string()],
+            &["after".to_string()],
+        );
+    }
+
+    /// print_raw_search_output dispatches on the RawSearchOutput variant.
+    /// Each arm only does println!, so just calling it ticks coverage.
+    #[test]
+    fn test_print_raw_search_output_files_variant() {
+        let out = RawSearchOutput::Files(vec!["a.rs".into(), "b.rs".into()]);
+        print_raw_search_output(&out, &QueryOutputFormat::Text, true).unwrap();
+    }
+
+    #[test]
+    fn test_print_raw_search_output_counts_variant() {
+        let out = RawSearchOutput::Counts(vec![
+            crate::services::agent_context::FileMatchCount {
+                file_path: "a.rs".into(),
+                count: 3,
+            },
+            crate::services::agent_context::FileMatchCount {
+                file_path: "b.rs".into(),
+                count: 1,
+            },
+        ]);
+        print_raw_search_output(&out, &QueryOutputFormat::Text, true).unwrap();
+    }
+
+    #[test]
+    fn test_print_raw_search_output_lines_variant_text_format() {
+        let out = RawSearchOutput::Lines(vec![RawSearchResult {
+            file_path: "a.rs".into(),
+            line_number: 1,
+            line_content: "fn x() {}".into(),
+            context_before: vec![],
+            context_after: vec![],
+        }]);
+        // Text format → delegates to print_raw_lines → print_raw_match_context.
+        print_raw_search_output(&out, &QueryOutputFormat::Text, true).unwrap();
+    }
+
+    #[test]
+    fn test_print_raw_search_output_lines_variant_json_format() {
+        let out = RawSearchOutput::Lines(vec![RawSearchResult {
+            file_path: "a.rs".into(),
+            line_number: 1,
+            line_content: "fn x() {}".into(),
+            context_before: vec!["before".into()],
+            context_after: vec!["after".into()],
+        }]);
+        // JSON format → serializes via serde_json::to_string_pretty.
+        print_raw_search_output(&out, &QueryOutputFormat::Json, true).unwrap();
+    }
+
+    /// print_raw_lines non-quiet vs quiet: the trailing "N matches" eprintln
+    /// only fires when quiet=false.
+    #[test]
+    fn test_print_raw_lines_quiet_vs_verbose() {
+        let lines = vec![RawSearchResult {
+            file_path: "a.rs".into(),
+            line_number: 1,
+            line_content: "x".into(),
+            context_before: vec![],
+            context_after: vec![],
+        }];
+        // Verbose: hits the `!quiet` eprintln branch.
+        print_raw_lines(&lines, &QueryOutputFormat::Text, false).unwrap();
+        // Quiet: skips it.
+        print_raw_lines(&lines, &QueryOutputFormat::Text, true).unwrap();
+    }
+
+    /// run_raw_search_for_merge should return empty when `remaining = 0`
+    /// (the early-exit branch on line 147). limit=0 with empty indexed =>
+    /// 0.saturating_sub(0) == 0 => early return.
+    #[test]
+    fn test_run_raw_search_for_merge_early_exit_on_zero_limit() {
+        let tmp = tempfile::tempdir().unwrap();
+        let out = run_raw_search_for_merge(
+            "fn",
+            0, // limit=0 → remaining=0 → early exit
+            false,
+            false,
+            &None,
+            &[],
+            &[],
+            None,
+            None,
+            None,
+            tmp.path(),
+            &[],
+        );
+        assert!(out.is_empty(), "limit=0 → empty merge result");
+    }
+}

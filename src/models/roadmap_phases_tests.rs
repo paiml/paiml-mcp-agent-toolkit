@@ -120,4 +120,45 @@ phases:
             "got: {err}"
         );
     }
+
+    /// roadmap_types.rs:216 — `PhasesVisitor::expecting` fires when the YAML
+    /// supplies a non-sequence value (string, mapping, scalar) where a
+    /// `Vec<Phase>` is expected. Serde's default visit_* impls call
+    /// expecting() to build the error message.
+    #[test]
+    fn test_phases_non_sequence_surfaces_expecting_message() {
+        // A bare string is neither a sequence nor null — default visit_str
+        // generates an Unexpected error that embeds expecting()'s output.
+        let yaml = "\
+id: T-1
+title: t
+status: planned
+phases: \"not a list\"
+";
+        let err = parse_item(yaml).unwrap_err().to_string();
+        assert!(
+            err.contains("a sequence of Phase structs"),
+            "expecting() message must appear in error: {err}"
+        );
+    }
+
+    /// Mapping at the top-level `phases:` key (not a sequence) — also a
+    /// non-sequence input, triggers the expecting message through
+    /// visit_map's default impl.
+    #[test]
+    fn test_phases_mapping_instead_of_sequence_surfaces_expecting() {
+        let yaml = "\
+id: T-1
+title: t
+status: planned
+phases:
+  name: not-a-list
+  status: planned
+";
+        let err = parse_item(yaml).unwrap_err().to_string();
+        assert!(
+            err.contains("a sequence of Phase structs"),
+            "expecting() message must appear: {err}"
+        );
+    }
 }

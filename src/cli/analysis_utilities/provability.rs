@@ -297,3 +297,133 @@ async fn output_defect_result(content: String, output: Option<PathBuf>) -> Resul
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod provability_tests {
+    //! Covers the pure-compute helpers in provability.rs (158 uncov on broad, 0% cov).
+    //! The async handlers + pmat-query-spawning paths are skipped.
+    use super::*;
+    use crate::services::defect_probability::{DefectScore, RiskLevel};
+
+    fn score_with(probability: f32, risk: RiskLevel, confidence: f32) -> DefectScore {
+        DefectScore {
+            probability,
+            contributing_factors: vec![("churn".to_string(), 0.5)],
+            confidence,
+            risk_level: risk,
+            recommendations: vec!["refactor".to_string()],
+        }
+    }
+
+    #[test]
+    fn test_should_include_prediction_high_risk_only_rejects_low_and_medium() {
+        let low = score_with(0.1, RiskLevel::Low, 0.9);
+        assert!(!should_include_prediction(&low, true, true, 0.0));
+
+        let medium = score_with(0.5, RiskLevel::Medium, 0.9);
+        assert!(!should_include_prediction(&medium, true, true, 0.0));
+    }
+
+    #[test]
+    fn test_should_include_prediction_high_risk_only_accepts_high() {
+        let high = score_with(0.9, RiskLevel::High, 0.9);
+        assert!(should_include_prediction(&high, true, true, 0.0));
+    }
+
+    #[test]
+    fn test_should_include_prediction_low_confidence_filter_rejects_below_threshold() {
+        let low_prob = score_with(0.2, RiskLevel::Low, 0.9);
+        assert!(!should_include_prediction(&low_prob, false, false, 0.5));
+    }
+
+    #[test]
+    fn test_should_include_prediction_low_confidence_filter_accepts_at_or_above_threshold() {
+        let at_thresh = score_with(0.5, RiskLevel::Medium, 0.9);
+        assert!(should_include_prediction(&at_thresh, false, false, 0.5));
+    }
+
+    #[test]
+    fn test_should_include_prediction_include_low_confidence_bypasses_threshold() {
+        let low_prob = score_with(0.1, RiskLevel::Low, 0.9);
+        assert!(should_include_prediction(&low_prob, false, true, 0.99));
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_orders_by_probability_desc() {
+        let preds = vec![
+            ("a.rs".to_string(), score_with(0.2, RiskLevel::Low, 0.9)),
+            ("b.rs".to_string(), score_with(0.8, RiskLevel::High, 0.9)),
+            ("c.rs".to_string(), score_with(0.5, RiskLevel::Medium, 0.9)),
+        ];
+        let sorted = filter_and_sort_predictions(preds, 10);
+        assert_eq!(sorted[0].0, "b.rs");
+        assert_eq!(sorted[1].0, "c.rs");
+        assert_eq!(sorted[2].0, "a.rs");
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_truncates_to_top_n() {
+        let preds = vec![
+            ("a.rs".to_string(), score_with(0.2, RiskLevel::Low, 0.9)),
+            ("b.rs".to_string(), score_with(0.8, RiskLevel::High, 0.9)),
+            ("c.rs".to_string(), score_with(0.5, RiskLevel::Medium, 0.9)),
+        ];
+        let sorted = filter_and_sort_predictions(preds, 2);
+        assert_eq!(sorted.len(), 2);
+        assert_eq!(sorted[0].0, "b.rs");
+        assert_eq!(sorted[1].0, "c.rs");
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_empty_is_empty() {
+        let sorted = filter_and_sort_predictions(vec![], 5);
+        assert!(sorted.is_empty());
+    }
+
+    #[test]
+    fn test_create_defect_config_copies_all_fields() {
+        let cfg = create_defect_config(
+            0.7,
+            100,
+            true,
+            false,
+            true,
+            Some("src/*".into()),
+            Some("tests/*".into()),
+        );
+        assert!((cfg.confidence_threshold - 0.7).abs() < 1e-6);
+        assert_eq!(cfg.min_lines, 100);
+        assert!(cfg.include_low_confidence);
+        assert!(!cfg.high_risk_only);
+        assert!(cfg.include_recommendations);
+        assert_eq!(cfg.include.as_deref(), Some("src/*"));
+        assert_eq!(cfg.exclude.as_deref(), Some("tests/*"));
+    }
+
+    #[test]
+    fn test_create_file_metrics_derives_from_line_count() {
+        let m = create_file_metrics(std::path::Path::new("src/a.rs"), 200);
+        assert_eq!(m.lines_of_code, 200);
+        assert_eq!(m.cyclomatic_complexity, 10);
+        assert_eq!(m.cognitive_complexity, 13);
+        assert_eq!(m.file_path, "src/a.rs");
+        assert!((m.churn_score - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_create_file_metrics_small_file_floors_complexity() {
+        let m = create_file_metrics(std::path::Path::new("t.rs"), 5);
+        assert_eq!(m.cyclomatic_complexity, 0);
+        assert_eq!(m.cognitive_complexity, 0);
+    }
+
+    #[test]
+    fn test_print_defect_analysis_header_runs() {
+        print_defect_analysis_header(
+            std::path::Path::new("/tmp/x"),
+            true,
+            false,
+            &DefectPredictionOutputFormat::Summary,
+        );
+    }
+}

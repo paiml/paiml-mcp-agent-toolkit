@@ -156,4 +156,211 @@ fn write_comp_duplicates_section(output: &mut String, duplicates: &DuplicateRepo
     Ok(())
 }
 
+#[cfg(test)]
+mod comprehensive_formatting_tests {
+    //! PMAT-633 cohort: cover comprehensive_formatting.rs (0% on broad,
+    //! 106 missed lines). The Report* structs are module-private but
+    //! constructible inside this include!()'d scope.
+    use super::*;
+
+    fn complexity_report() -> ComplexityReport {
+        ComplexityReport {
+            total_functions: 42,
+            high_complexity_count: 3,
+            average_complexity: 4.5,
+            p99_complexity: 25,
+            hotspots: vec![ComplexityHotspot {
+                function: "foo".into(),
+                file: "src/a.rs".into(),
+                complexity: 30,
+            }],
+        }
+    }
+
+    fn satd_report() -> SatdReport {
+        let mut by_type = HashMap::new();
+        by_type.insert("TODO".to_string(), 5);
+        let mut by_sev = HashMap::new();
+        by_sev.insert("Low".to_string(), 5);
+        SatdReport {
+            total_items: 5,
+            by_type,
+            by_severity: by_sev,
+            items: vec![SatdItem {
+                file: "src/a.rs".into(),
+                line: 10,
+                text: "TODO fix".into(),
+                satd_type: "TODO".into(),
+                severity: "Low".into(),
+            }],
+        }
+    }
+
+    fn tdg_report() -> TdgReport {
+        TdgReport {
+            average_tdg: 2.5,
+            critical_files: vec![TdgFile {
+                file: "src/c.rs".into(),
+                tdg_score: 3.0,
+                complexity: 20,
+                churn: 8,
+            }],
+            hotspot_count: 1,
+        }
+    }
+
+    fn dead_code_report() -> DeadCodeReport {
+        DeadCodeReport {
+            total_items: 7,
+            dead_code_percentage: 1.5,
+            items: vec![DeadCodeItem {
+                name: "unused".into(),
+                file: "src/d.rs".into(),
+                line: 99,
+                item_type: "function".into(),
+            }],
+        }
+    }
+
+    fn defect_report() -> DefectReport {
+        DefectReport {
+            high_risk_files: vec![DefectPrediction {
+                file: "src/e.rs".into(),
+                probability: 0.85,
+                factors: vec!["high churn".into()],
+            }],
+            total_analyzed: 100,
+            high_risk_count: 1,
+        }
+    }
+
+    fn duplicate_report() -> DuplicateReport {
+        DuplicateReport {
+            duplicate_blocks: 3,
+            duplicate_lines: 150,
+            duplicate_percentage: 4.2,
+            blocks: vec![DuplicateBlock {
+                files: vec!["src/a.rs".into(), "src/b.rs".into()],
+                lines: 50,
+                tokens: 200,
+            }],
+        }
+    }
+
+    fn full_report() -> ComprehensiveReport {
+        ComprehensiveReport {
+            complexity: Some(complexity_report()),
+            satd: Some(satd_report()),
+            tdg: Some(tdg_report()),
+            dead_code: Some(dead_code_report()),
+            defects: Some(defect_report()),
+            duplicates: Some(duplicate_report()),
+        }
+    }
+
+    // ── format_comp_as_json ──
+
+    #[test]
+    fn test_format_comp_as_json_empty_report_is_valid_json() {
+        let report = ComprehensiveReport::default();
+        let out = format_comp_as_json(&report).unwrap();
+        // Should parse back as JSON.
+        let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn test_format_comp_as_json_populated_contains_all_sections() {
+        let report = full_report();
+        let out = format_comp_as_json(&report).unwrap();
+        for section in ["complexity", "satd", "tdg", "dead_code", "defects", "duplicates"] {
+            assert!(out.contains(section), "missing {section} in JSON: {out}");
+        }
+    }
+
+    // ── format_comp_as_markdown ──
+
+    #[test]
+    fn test_format_comp_as_markdown_no_exec_summary() {
+        let out = format_comp_as_markdown(&full_report(), false).unwrap();
+        assert!(out.contains("# Comprehensive Code Analysis Report"));
+        assert!(!out.contains("Executive Summary"));
+    }
+
+    #[test]
+    fn test_format_comp_as_markdown_with_exec_summary() {
+        let out = format_comp_as_markdown(&full_report(), true).unwrap();
+        assert!(out.contains("# Comprehensive Code Analysis Report"));
+        assert!(out.contains("Executive Summary"));
+    }
+
+    #[test]
+    fn test_format_comp_as_markdown_none_sections_are_skipped() {
+        // Empty report → headers for individual analyses absent.
+        let report = ComprehensiveReport::default();
+        let out = format_comp_as_markdown(&report, false).unwrap();
+        assert!(!out.contains("## Complexity Analysis"));
+        assert!(!out.contains("## Technical Debt (SATD)"));
+    }
+
+    #[test]
+    fn test_format_comp_as_markdown_populated_contains_all_section_headers() {
+        let out = format_comp_as_markdown(&full_report(), false).unwrap();
+        for header in [
+            "## Complexity Analysis",
+            "## Technical Debt (SATD)",
+            "## Technical Debt Gradient",
+            "## Dead Code",
+            "## Defect Prediction",
+            "## Code Duplication",
+        ] {
+            assert!(out.contains(header), "missing header `{header}`");
+        }
+    }
+
+    // ── format_comprehensive_report top-level dispatcher ──
+
+    #[test]
+    fn test_format_comprehensive_report_json_dispatch() {
+        let out = format_comprehensive_report(
+            &full_report(),
+            ComprehensiveOutputFormat::Json,
+            false,
+        )
+        .unwrap();
+        let _: serde_json::Value = serde_json::from_str(&out).unwrap();
+    }
+
+    #[test]
+    fn test_format_comprehensive_report_markdown_dispatch() {
+        let out = format_comprehensive_report(
+            &full_report(),
+            ComprehensiveOutputFormat::Markdown,
+            false,
+        )
+        .unwrap();
+        assert!(out.contains("# Comprehensive Code Analysis Report"));
+    }
+
+    #[test]
+    fn test_format_comprehensive_report_unrecognized_format_fallback() {
+        // Summary / Detailed / Sarif all fall into the catch-all string arm.
+        let out = format_comprehensive_report(
+            &full_report(),
+            ComprehensiveOutputFormat::Summary,
+            false,
+        )
+        .unwrap();
+        assert_eq!(out, "Comprehensive analysis completed.");
+
+        let out = format_comprehensive_report(
+            &full_report(),
+            ComprehensiveOutputFormat::Sarif,
+            false,
+        )
+        .unwrap();
+        assert_eq!(out, "Comprehensive analysis completed.");
+    }
+}
+
 // Incremental coverage stub data structures

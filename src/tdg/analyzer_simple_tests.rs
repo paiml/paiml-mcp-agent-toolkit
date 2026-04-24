@@ -579,6 +579,158 @@ def foo : Nat := 42
         let score = analyzer.analyze_documentation(source, Language::Lean, &mut tracker);
         assert!(score > 0.0, "Lean documentation analysis should detect doc comments");
     }
+
+    // === analyze_source dispatcher: language arms missing from existing
+    // JavaScript/TypeScript/Go coverage. Each test drives analyze_source
+    // through a distinct Language arm to fire the respective analyze_*_ast
+    // or analyze_*_heuristic branch in analyzer_impl1_source_dispatch.rs. ===
+
+    #[test]
+    fn test_analyze_source_java() {
+        let source = r#"
+/** Javadoc block */
+public class Greeter {
+    public void greet(String name) {
+        System.out.println("Hello, " + name);
+    }
+}
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer
+            .analyze_source(source, Language::Java, None)
+            .expect("Java dispatch must succeed");
+        assert_eq!(score.language, Language::Java);
+    }
+
+    #[test]
+    fn test_analyze_source_c() {
+        let source = r#"
+/* A C function */
+#include <stdio.h>
+int main(void) {
+    printf("hello\n");
+    return 0;
+}
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer
+            .analyze_source(source, Language::C, None)
+            .expect("C dispatch must succeed");
+        assert_eq!(score.language, Language::C);
+    }
+
+    #[test]
+    fn test_analyze_source_cpp() {
+        let source = r#"
+/// C++ class
+class Foo {
+public:
+    Foo() = default;
+    void bar() const {}
+};
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer
+            .analyze_source(source, Language::Cpp, None)
+            .expect("C++ dispatch must succeed");
+        // C++ goes through the same analyze_c_ast arm — confidence set per language
+        assert_eq!(score.language, Language::Cpp);
+    }
+
+    #[test]
+    fn test_analyze_source_lua() {
+        let source = r#"
+-- Module docstring
+local M = {}
+function M.greet(name)
+    print("Hello, " .. name)
+end
+return M
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer
+            .analyze_source(source, Language::Lua, None)
+            .expect("Lua dispatch must succeed");
+        assert_eq!(score.language, Language::Lua);
+    }
+
+    #[test]
+    fn test_analyze_source_sql() {
+        let source = r#"
+-- Select all users
+SELECT id, name
+FROM users
+WHERE active = TRUE
+ORDER BY id ASC;
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer
+            .analyze_source(source, Language::Sql, None)
+            .expect("SQL dispatch must succeed");
+        assert_eq!(score.language, Language::Sql);
+    }
+
+    #[test]
+    fn test_analyze_source_scala() {
+        let source = r#"
+/** Scala greeter */
+object Greeter {
+  def greet(name: String): String = s"Hello, $name"
+}
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer
+            .analyze_source(source, Language::Scala, None)
+            .expect("Scala dispatch must succeed");
+        assert_eq!(score.language, Language::Scala);
+    }
+
+    #[test]
+    fn test_analyze_source_yaml() {
+        let source = r#"
+# YAML config
+name: pmat
+version: "3.15.0"
+deps:
+  - serde
+  - tokio
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer
+            .analyze_source(source, Language::Yaml, None)
+            .expect("YAML dispatch must succeed");
+        assert_eq!(score.language, Language::Yaml);
+    }
+
+    #[test]
+    fn test_analyze_source_lean() {
+        let source = r#"
+-- | A documented definition
+def answer : Nat := 42
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer
+            .analyze_source(source, Language::Lean, None)
+            .expect("Lean dispatch must succeed");
+        assert_eq!(score.language, Language::Lean);
+    }
+
+    #[test]
+    fn test_analyze_source_markdown() {
+        let source = r#"# Heading
+
+Some prose.
+
+```rust
+fn main() {}
+```
+"#;
+        let analyzer = TdgAnalyzer::new().unwrap();
+        let score = analyzer
+            .analyze_source(source, Language::Markdown, None)
+            .expect("Markdown dispatch must succeed");
+        assert_eq!(score.language, Language::Markdown);
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

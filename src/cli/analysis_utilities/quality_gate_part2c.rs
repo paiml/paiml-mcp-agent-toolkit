@@ -267,3 +267,144 @@ async fn check_single_file_security(
 
     Ok(violations)
 }
+
+#[cfg(test)]
+mod quality_gate_part2c_pure_tests {
+    //! Covers the pure-compute helpers in quality_gate_part2c.rs (202 uncov
+    //! on broad, 0% cov). Skipped: async fn's that hit disk / AST analysis.
+    use super::*;
+    use crate::services::complexity::{ComplexityMetrics, FunctionComplexity};
+
+    fn make_func(name: &str, cyclomatic: u16) -> FunctionComplexity {
+        FunctionComplexity {
+            name: name.to_string(),
+            line_start: 10,
+            line_end: 30,
+            metrics: ComplexityMetrics {
+                cyclomatic,
+                cognitive: cyclomatic,
+                nesting_max: 3,
+                lines: 20,
+                halstead: None,
+            },
+        }
+    }
+
+    // ── resolve_absolute_file_path: both branches ──
+
+    #[test]
+    fn test_resolve_absolute_file_path_absolute_input_preserved() {
+        let abs = std::path::Path::new("/tmp/a.rs");
+        let result = resolve_absolute_file_path(std::path::Path::new("/ignored"), abs);
+        assert_eq!(result, std::path::PathBuf::from("/tmp/a.rs"));
+    }
+
+    #[test]
+    fn test_resolve_absolute_file_path_relative_joined_with_project() {
+        let base = std::path::Path::new("/home/proj");
+        let rel = std::path::Path::new("src/a.rs");
+        let result = resolve_absolute_file_path(base, rel);
+        assert_eq!(result, std::path::PathBuf::from("/home/proj/src/a.rs"));
+    }
+
+    // ── validate_file_exists: ok + err arms ──
+
+    #[test]
+    fn test_validate_file_exists_missing_returns_err() {
+        let missing = std::path::Path::new("/tmp/pmat_nope_0xDEADBEEF.rs");
+        let err = validate_file_exists(missing).unwrap_err();
+        assert!(err.to_string().contains("File not found"));
+    }
+
+    #[test]
+    fn test_validate_file_exists_existing_path_returns_ok() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        assert!(validate_file_exists(tmp.path()).is_ok());
+    }
+
+    // ── function_exceeds_complexity_threshold: both branches ──
+
+    #[test]
+    fn test_function_exceeds_complexity_threshold_below_is_false() {
+        let f = make_func("f", 5);
+        assert!(!function_exceeds_complexity_threshold(&f, 10));
+    }
+
+    #[test]
+    fn test_function_exceeds_complexity_threshold_equal_is_false() {
+        let f = make_func("f", 10);
+        // Uses > (strict), so equal to max_complexity does NOT exceed.
+        assert!(!function_exceeds_complexity_threshold(&f, 10));
+    }
+
+    #[test]
+    fn test_function_exceeds_complexity_threshold_above_is_true() {
+        let f = make_func("f", 25);
+        assert!(function_exceeds_complexity_threshold(&f, 10));
+    }
+
+    // ── create_complexity_violation: shape of emitted violation ──
+
+    #[test]
+    fn test_create_complexity_violation_fills_all_fields() {
+        let f = make_func("foo_bar", 42);
+        let violation =
+            create_complexity_violation(&f, std::path::Path::new("src/foo.rs"), 10);
+        assert_eq!(violation.check_type, "complexity");
+        assert_eq!(violation.severity, "error");
+        assert_eq!(violation.file, "src/foo.rs");
+        assert_eq!(violation.line, Some(10)); // line_start=10
+        assert!(
+            violation.message.contains("foo_bar"),
+            "msg must name the function: {}",
+            violation.message
+        );
+        assert!(
+            violation.message.contains("42"),
+            "msg must carry cyclomatic value"
+        );
+        assert!(
+            violation.message.contains("max: 10"),
+            "msg must carry threshold"
+        );
+        assert!(violation.details.is_none());
+    }
+
+    // ── analyze_file_complexity early-return on non-rust extensions ──
+
+    #[tokio::test]
+    async fn test_analyze_file_complexity_non_rust_extension_is_no_op() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("a.py");
+        std::fs::write(&path, "print(1)").unwrap();
+        let mut violations = Vec::new();
+        // Non-rust extension → early return without touching the analyzer.
+        let res = analyze_file_complexity(&path, std::path::Path::new("a.py"), 10, &mut violations)
+            .await;
+        assert!(res.is_ok());
+        assert!(violations.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_analyze_file_complexity_no_extension_is_no_op() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("README");
+        std::fs::write(&path, "hi").unwrap();
+        let mut violations = Vec::new();
+        let res =
+            analyze_file_complexity(&path, std::path::Path::new("README"), 10, &mut violations)
+                .await;
+        assert!(res.is_ok());
+        assert!(violations.is_empty());
+    }
+
+    // ── check_single_file_dead_code on missing file short-circuits ──
+
+    #[tokio::test]
+    async fn test_check_single_file_dead_code_missing_file_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let missing = tmp.path().join("nope.rs");
+        let res = check_single_file_dead_code(tmp.path(), &missing).await.unwrap();
+        assert!(res.is_empty(), "missing file → 0 violations");
+    }
+}

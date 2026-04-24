@@ -100,3 +100,128 @@ async fn format_and_write_churn_output(
 
     crate::cli::analysis_utilities::write_churn_output(content, output).await
 }
+
+#[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
+mod churn_handler_tests {
+    //! Covers the pure-compute helpers in complexity_handlers/churn.rs
+    //! (50 uncov on broad, 0% cov).
+    use super::*;
+    use crate::models::churn::{ChurnSummary, CodeChurnAnalysis, FileChurnMetrics};
+    use crate::utils::file_filter::FileFilter;
+    use chrono::Utc;
+    use std::path::PathBuf;
+
+    fn make_file(path: &str, commits: usize) -> FileChurnMetrics {
+        FileChurnMetrics {
+            path: PathBuf::from(path),
+            relative_path: path.to_string(),
+            commit_count: commits,
+            unique_authors: vec!["a".into()],
+            additions: 10,
+            deletions: 5,
+            churn_score: commits as f32 * 0.1,
+            last_modified: Utc::now(),
+            first_seen: Utc::now(),
+        }
+    }
+
+    fn make_analysis(files: Vec<FileChurnMetrics>) -> CodeChurnAnalysis {
+        let total_commits: usize = files.iter().map(|f| f.commit_count).sum();
+        CodeChurnAnalysis {
+            generated_at: Utc::now(),
+            period_days: 30,
+            repository_root: PathBuf::from("."),
+            files,
+            summary: ChurnSummary {
+                total_commits,
+                total_files_changed: 0,
+                hotspot_files: vec![],
+                stable_files: vec![],
+                author_contributions: Default::default(),
+                mean_churn_score: 0.0,
+                variance_churn_score: 0.0,
+                stddev_churn_score: 0.0,
+            },
+        }
+    }
+
+    // ── create_and_report_file_filter ──
+
+    #[test]
+    fn test_create_and_report_file_filter_no_patterns() {
+        let filter = create_and_report_file_filter(vec![], vec![]).unwrap();
+        assert!(!filter.has_filters());
+    }
+
+    #[test]
+    fn test_create_and_report_file_filter_include_only() {
+        let filter = create_and_report_file_filter(vec!["src/**".into()], vec![]).unwrap();
+        assert!(filter.has_filters());
+    }
+
+    #[test]
+    fn test_create_and_report_file_filter_exclude_only() {
+        let filter = create_and_report_file_filter(vec![], vec!["tests/**".into()]).unwrap();
+        assert!(filter.has_filters());
+    }
+
+    #[test]
+    fn test_create_and_report_file_filter_both_sides() {
+        let filter =
+            create_and_report_file_filter(vec!["src/**".into()], vec!["tests/**".into()]).unwrap();
+        assert!(filter.has_filters());
+    }
+
+    // ── apply_churn_filters ──
+
+    #[test]
+    fn test_apply_churn_filters_no_filters_and_no_limit_keeps_all() {
+        let mut a = make_analysis(vec![
+            make_file("a.rs", 3),
+            make_file("b.rs", 1),
+            make_file("c.rs", 5),
+        ]);
+        let filter = FileFilter::new(vec![], vec![]).unwrap();
+        apply_churn_filters(&mut a, &filter, 0);
+        assert_eq!(a.files.len(), 3);
+    }
+
+    #[test]
+    fn test_apply_churn_filters_top_limit_truncates_by_commit_count_desc() {
+        let mut a = make_analysis(vec![
+            make_file("a.rs", 3),
+            make_file("b.rs", 10),
+            make_file("c.rs", 1),
+        ]);
+        let filter = FileFilter::new(vec![], vec![]).unwrap();
+        apply_churn_filters(&mut a, &filter, 2);
+        assert_eq!(a.files.len(), 2);
+        assert_eq!(a.files[0].commit_count, 10); // highest first
+        assert_eq!(a.files[1].commit_count, 3);
+    }
+
+    #[test]
+    fn test_apply_churn_filters_limit_larger_than_count_keeps_all() {
+        let mut a = make_analysis(vec![make_file("a.rs", 1), make_file("b.rs", 2)]);
+        let filter = FileFilter::new(vec![], vec![]).unwrap();
+        apply_churn_filters(&mut a, &filter, 99);
+        assert_eq!(a.files.len(), 2);
+    }
+
+    #[test]
+    fn test_apply_churn_filters_with_include_pattern_retains_only_match() {
+        let mut a = make_analysis(vec![
+            make_file("src/a.rs", 3),
+            make_file("tests/b.rs", 5),
+            make_file("src/c.rs", 1),
+        ]);
+        let filter = FileFilter::new(vec!["src/**".into()], vec![]).unwrap();
+        apply_churn_filters(&mut a, &filter, 0);
+        assert_eq!(a.files.len(), 2);
+        assert!(a.files.iter().all(|f| f.relative_path.starts_with("src/")));
+        // Summary totals must have been recomputed.
+        assert_eq!(a.summary.total_files_changed, 2);
+        assert_eq!(a.summary.total_commits, 4); // 3 + 1
+    }
+}

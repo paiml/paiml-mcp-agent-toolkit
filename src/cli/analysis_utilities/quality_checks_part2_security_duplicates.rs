@@ -261,3 +261,176 @@ pub fn calculate_content_hash(content: &str) -> u64 {
     content.hash(&mut hasher);
     hasher.finish()
 }
+
+#[cfg(test)]
+mod security_duplicates_tests {
+    //! Covers pure-compute helpers in quality_checks_part2_security_duplicates.rs
+    //! (129 uncov on broad, 0% cov).
+    use super::*;
+
+    // ── get_security_patterns: regex list ──
+
+    #[test]
+    fn test_get_security_patterns_contains_password_api_key_secret() {
+        let patterns = get_security_patterns();
+        assert_eq!(patterns.len(), 3);
+        let messages: Vec<&str> = patterns.iter().map(|(_, m)| *m).collect();
+        assert!(messages.iter().any(|m| m.contains("password")));
+        assert!(messages.iter().any(|m| m.contains("API key")));
+        assert!(messages.iter().any(|m| m.contains("secret")));
+    }
+
+    #[test]
+    fn test_get_security_patterns_regexes_compile() {
+        for (pat, _msg) in get_security_patterns() {
+            regex::Regex::new(pat).expect("pattern must be a valid regex");
+        }
+    }
+
+    // ── scan_content_for_pattern: match / no-match + line numbers ──
+
+    #[test]
+    fn test_scan_content_for_pattern_match_adds_violation_with_1based_line() {
+        let re = regex::Regex::new(r#"(?i)password\s*=\s*["'][^"']+["']"#).unwrap();
+        let content = "// comment\nlet password = \"hunter2\"\nok";
+        let mut v: Vec<QualityViolation> = Vec::new();
+        scan_content_for_pattern(
+            content,
+            &re,
+            "password!",
+            std::path::Path::new("src/a.rs"),
+            &mut v,
+        );
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].line, Some(2));
+        assert_eq!(v[0].check_type, "security");
+        assert_eq!(v[0].message, "password!");
+    }
+
+    #[test]
+    fn test_scan_content_for_pattern_miss_adds_nothing() {
+        let re = regex::Regex::new(r#"NEVER_MATCHES"#).unwrap();
+        let mut v = Vec::new();
+        scan_content_for_pattern(
+            "plain code",
+            &re,
+            "unused",
+            std::path::Path::new("f.rs"),
+            &mut v,
+        );
+        assert!(v.is_empty());
+    }
+
+    // ── is_file_large_enough ──
+
+    #[test]
+    fn test_is_file_large_enough_at_or_below_50_is_false() {
+        assert!(!is_file_large_enough(""));
+        assert!(!is_file_large_enough(&"x".repeat(50)));
+    }
+
+    #[test]
+    fn test_is_file_large_enough_above_50_is_true() {
+        assert!(is_file_large_enough(&"x".repeat(51)));
+        assert!(is_file_large_enough(&"x".repeat(1000)));
+    }
+
+    // ── generate_duplicate_violations + create_violations_for_duplicate_group ──
+
+    #[test]
+    fn test_generate_duplicate_violations_emits_one_per_file_in_dup_group() {
+        let mut map: std::collections::HashMap<u64, Vec<PathBuf>> =
+            std::collections::HashMap::new();
+        map.insert(
+            42,
+            vec![PathBuf::from("src/a.rs"), PathBuf::from("src/b.rs")],
+        );
+        // Singleton group should be ignored.
+        map.insert(99, vec![PathBuf::from("src/solo.rs")]);
+        let mut v: Vec<QualityViolation> = Vec::new();
+        generate_duplicate_violations(&map, &mut v);
+        assert_eq!(v.len(), 2);
+        assert!(v.iter().all(|x| x.check_type == "duplicate"));
+        assert!(v.iter().all(|x| x.severity == "warning"));
+    }
+
+    #[test]
+    fn test_generate_duplicate_violations_empty_map_produces_nothing() {
+        let map: std::collections::HashMap<u64, Vec<PathBuf>> = std::collections::HashMap::new();
+        let mut v: Vec<QualityViolation> = Vec::new();
+        generate_duplicate_violations(&map, &mut v);
+        assert!(v.is_empty());
+    }
+
+    // ── format_file_list ──
+
+    #[test]
+    fn test_format_file_list_joins_with_comma_space() {
+        let out = format_file_list(&[PathBuf::from("a.rs"), PathBuf::from("b.rs")]);
+        assert_eq!(out, "a.rs, b.rs");
+    }
+
+    #[test]
+    fn test_format_file_list_single_has_no_separator() {
+        let out = format_file_list(&[PathBuf::from("only.rs")]);
+        assert_eq!(out, "only.rs");
+    }
+
+    #[test]
+    fn test_format_file_list_empty_produces_empty_string() {
+        let out = format_file_list(&[]);
+        assert_eq!(out, "");
+    }
+
+    // ── normalize_code_content ──
+
+    #[test]
+    fn test_normalize_code_content_strips_blank_and_comment_lines() {
+        let src = "\n// comment\n/* block-start\nreal line\n  indented line  \n\n";
+        let norm = normalize_code_content(src);
+        // Blank + `//` + `/*` lines filtered; real lines trimmed; joined by "\n".
+        assert!(norm.contains("real line"));
+        assert!(norm.contains("indented line"));
+        assert!(!norm.contains("// comment"));
+        assert!(!norm.contains("/* block-start"));
+    }
+
+    #[test]
+    fn test_normalize_code_content_empty_input_is_empty_output() {
+        assert_eq!(normalize_code_content(""), "");
+    }
+
+    // ── calculate_content_hash: deterministic + collision-free on distinct input ──
+
+    #[test]
+    fn test_calculate_content_hash_deterministic() {
+        let a = calculate_content_hash("pmat");
+        let b = calculate_content_hash("pmat");
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_calculate_content_hash_distinct_for_distinct_input() {
+        let a = calculate_content_hash("pmat");
+        let b = calculate_content_hash("pmat ");
+        assert_ne!(a, b);
+    }
+
+    // ── should_process_file_for_duplicates: delegates to helpers, exercise
+    //    the `is_file()` false branch via a path that's not a file ──
+
+    #[test]
+    fn test_should_process_file_for_duplicates_non_file_path_rejected() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Directory, not a file → false.
+        assert!(!should_process_file_for_duplicates(tmp.path()));
+    }
+
+    #[test]
+    fn test_should_process_file_for_duplicates_accepts_rust_source() {
+        let tmp = tempfile::tempdir().unwrap();
+        let src = tmp.path().join("a.rs");
+        std::fs::write(&src, "fn x() {}").unwrap();
+        assert!(should_process_file_for_duplicates(&src));
+    }
+}

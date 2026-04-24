@@ -203,3 +203,151 @@ fn process_complexity_violation(
         });
     }
 }
+
+#[cfg(test)]
+mod part1_complexity_tests {
+    //! Covers the pure-compute helpers in quality_checks_part1_complexity.rs
+    //! (77 uncov on broad, 0% cov).
+    use super::*;
+    use crate::services::complexity::Violation;
+
+    fn error_violation(file: &str, value: u16, threshold: u16) -> Violation {
+        Violation::Error {
+            rule: "cyclomatic".into(),
+            message: "too complex".into(),
+            value,
+            threshold,
+            file: file.into(),
+            line: 42,
+            function: Some("my_fn".into()),
+        }
+    }
+
+    fn warning_violation(file: &str, value: u16, threshold: u16) -> Violation {
+        Violation::Warning {
+            rule: "cyclomatic".into(),
+            message: "too complex".into(),
+            value,
+            threshold,
+            file: file.into(),
+            line: 42,
+            function: None, // exercises `.unwrap_or("global")` branch
+        }
+    }
+
+    // ── load_exclude_paths ──
+
+    #[test]
+    fn test_load_exclude_paths_no_config_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = load_exclude_paths(tmp.path());
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn test_load_exclude_paths_invalid_toml_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join(".pmat-metrics.toml"), "not = [valid toml").unwrap();
+        let paths = load_exclude_paths(tmp.path());
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn test_load_exclude_paths_missing_section_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join(".pmat-metrics.toml"), "[thresholds]\n").unwrap();
+        let paths = load_exclude_paths(tmp.path());
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn test_load_exclude_paths_parses_array_of_patterns() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".pmat-metrics.toml"),
+            "exclude_paths = [\"tests/**\", \"benches/**\", \"vendor/*\"]\n",
+        )
+        .unwrap();
+        let paths = load_exclude_paths(tmp.path());
+        assert_eq!(paths.len(), 3);
+    }
+
+    #[test]
+    fn test_load_exclude_paths_skips_invalid_globs() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".pmat-metrics.toml"),
+            // `[` is an invalid glob start (unclosed char class).
+            "exclude_paths = [\"tests/**\", \"[bad\"]\n",
+        )
+        .unwrap();
+        let paths = load_exclude_paths(tmp.path());
+        assert_eq!(paths.len(), 1, "invalid glob dropped via filter_map");
+    }
+
+    // ── is_violation_excluded ──
+
+    #[test]
+    fn test_is_violation_excluded_no_globs_never_excluded() {
+        let v = error_violation("src/a.rs", 50, 10);
+        assert!(!is_violation_excluded(&v, &[]));
+    }
+
+    #[test]
+    fn test_is_violation_excluded_matching_glob_excluded() {
+        let v = error_violation("tests/foo.rs", 50, 10);
+        let globs = vec![glob::Pattern::new("tests/**").unwrap()];
+        assert!(is_violation_excluded(&v, &globs));
+    }
+
+    #[test]
+    fn test_is_violation_excluded_nonmatching_glob_not_excluded() {
+        let v = error_violation("src/a.rs", 50, 10);
+        let globs = vec![glob::Pattern::new("tests/**").unwrap()];
+        assert!(!is_violation_excluded(&v, &globs));
+    }
+
+    #[test]
+    fn test_is_violation_excluded_matches_warning_variant_too() {
+        let v = warning_violation("benches/bench.rs", 20, 10);
+        let globs = vec![glob::Pattern::new("benches/**").unwrap()];
+        assert!(is_violation_excluded(&v, &globs));
+    }
+
+    // ── process_complexity_violation ──
+
+    #[test]
+    fn test_process_complexity_violation_error_above_threshold_pushes() {
+        let v = error_violation("src/a.rs", 50, 10);
+        let mut out = Vec::new();
+        process_complexity_violation(&v, &mut out);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].check_type, "complexity");
+        assert_eq!(out[0].severity, "error");
+        assert_eq!(out[0].line, Some(42));
+        // Function name embedded in message.
+        assert!(out[0].message.contains("my_fn"));
+        assert!(out[0].message.contains("complexity: 50"));
+        assert!(out[0].message.contains("threshold: 10"));
+    }
+
+    #[test]
+    fn test_process_complexity_violation_warning_above_threshold_uses_global_fn() {
+        let v = warning_violation("src/b.rs", 20, 10);
+        let mut out = Vec::new();
+        process_complexity_violation(&v, &mut out);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].severity, "warning");
+        // function=None → unwrap_or("global") arm.
+        assert!(out[0].message.starts_with("global:"));
+    }
+
+    #[test]
+    fn test_process_complexity_violation_below_threshold_not_pushed() {
+        // value ≤ threshold → skipped.
+        let v = error_violation("src/a.rs", 10, 10);
+        let mut out = Vec::new();
+        process_complexity_violation(&v, &mut out);
+        assert!(out.is_empty());
+    }
+}

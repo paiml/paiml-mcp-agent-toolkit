@@ -534,4 +534,36 @@ roadmap:
             assert_eq!(roadmap.roadmap[2].status, ItemStatus::Blocked);
         }
     }
+
+    /// roadmap_impl.rs:152 — `completion_percentage` leaf-status branches.
+    /// Fires the ItemStatus match arms that run only when the item has no
+    /// subtasks, no phases, and no acceptance_criteria (the "leaf" path).
+    #[test]
+    fn test_completion_percentage_leaf_status_arms() {
+        let mut item = RoadmapItem::new("LEAF-001".to_string(), "leaf".to_string());
+        // Freshly constructed — subtasks, phases, acceptance_criteria all empty.
+        item.status = ItemStatus::Planned;
+        assert_eq!(item.completion_percentage(), 0, "Planned → 0");
+        item.status = ItemStatus::InProgress;
+        assert_eq!(item.completion_percentage(), 50, "InProgress → 50");
+        item.status = ItemStatus::Review;
+        assert_eq!(item.completion_percentage(), 90, "Review → 90");
+        item.status = ItemStatus::Completed;
+        assert_eq!(item.completion_percentage(), 100, "Completed → 100");
+        item.status = ItemStatus::Cancelled;
+        assert_eq!(item.completion_percentage(), 0, "Cancelled → 0");
+        item.status = ItemStatus::Blocked;
+        assert_eq!(item.completion_percentage(), 0, "Blocked → 0");
+    }
+
+    /// roadmap_impl.rs:161 — acceptance_criteria non-empty, subtasks & phases
+    /// empty. Falls through to the `0` placeholder branch.
+    #[test]
+    fn test_completion_percentage_acceptance_criteria_returns_zero() {
+        let mut item = RoadmapItem::new("AC-001".to_string(), "ac".to_string());
+        item.acceptance_criteria = vec!["criterion 1".to_string(), "criterion 2".to_string()];
+        // Status shouldn't affect this branch — the AC branch returns 0 unconditionally.
+        item.status = ItemStatus::Completed;
+        assert_eq!(item.completion_percentage(), 0);
+    }
 }
