@@ -3217,7 +3217,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Phase 1 pivot: services/polyglot_analyzer_dependencies.rs coverage'
-  status: inprogress
+  status: review
   priority: medium
   assigned_to: null
   created: 2026-04-24T10:28:39Z
