@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-646
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: cli/language_analyzer/dynamic_lua.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T08:37:57Z
+  updated: 2026-04-24T08:37:57Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI pivot — dynamic_lua.rs is 300 lines, 250/250 broad-covered, 0 async. Both tree-sitter (lua-ast feature, default-on) and heuristic fallback paths testable. Cover is_function_declaration, extract_function_name (local + function + empty), find_function_end (normal end, nested blocks, repeat/until, EOF fallback), extract_functions_heuristic, estimate_complexity_heuristic (if/for/while/repeat/and/or branches + nesting + elseif), LanguageAnalyzer trait impls (extract_functions + estimate_complexity) which go through tree-sitter path first.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
