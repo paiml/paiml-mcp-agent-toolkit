@@ -45,7 +45,10 @@ pub fn paths_object_schema(extra_properties: Value, required: Vec<&str>) -> Valu
             base.insert(k.clone(), v.clone());
         }
     }
-    let req: Vec<Value> = required.into_iter().map(|s| Value::String(s.into())).collect();
+    let req: Vec<Value> = required
+        .into_iter()
+        .map(|s| Value::String(s.into()))
+        .collect();
     json!({
         "type": "object",
         "properties": base_props,

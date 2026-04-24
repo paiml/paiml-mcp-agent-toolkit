@@ -37,11 +37,7 @@ macro_rules! impl_pmat_handler {
 
         #[async_trait]
         impl ToolHandler for $wrapper {
-            async fn handle(
-                &self,
-                args: Value,
-                _extra: RequestHandlerExtra,
-            ) -> PmcpResult<Value> {
+            async fn handle(&self, args: Value, _extra: RequestHandlerExtra) -> PmcpResult<Value> {
                 self.inner.execute(args).await.map_err(PmcpError::internal)
             }
 

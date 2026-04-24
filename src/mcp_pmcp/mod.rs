@@ -103,12 +103,12 @@ pub mod quality_handlers;
 pub mod quality_proxy_handler;
 pub mod server;
 pub mod simple_unified_server;
-pub mod tool_schemas;
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 pub mod tdg_git_context_tests;
 pub mod tdg_handlers;
 pub mod tool_functions;
+pub mod tool_schemas;
 pub mod tool_schemas_generated; // KAIZEN-0178: build.rs-generated tool schema registry
 pub mod tools; // Sprint 65 Phase 2B: MCP git-context integration
 
