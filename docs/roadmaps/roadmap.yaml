@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-636
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: scaffold/agent/hybrid.rs coverage (Phase-1 tactic #3)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T07:24:16Z
+  updated: 2026-04-24T07:24:16Z
+  spec: null
+  acceptance_criteria:
+  - 'Per Phase-1 tactic #3 (scaffold 0→90%), cover hybrid.rs untested surface: CoreSpec/WrapperSpec/BoundarySpec Default impls and new() initial state, all enum variants for VerificationMethod/ModelType/FallbackStrategy/SerializationFormat/ValidationStrategy/ErrorPropagation/InvariantSeverity, Invariant::with_severity, validate_complexity_for_quality boundary checks for all 3 QualityLevels, HybridAgentSpec serde round-trip with non-default fields.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
