@@ -402,3 +402,209 @@ pub fn format_sarif_output(filtered_predictions: &[(String, DefectScore)]) -> Re
 
     serde_json::to_string_pretty(&sarif).map_err(Into::into)
 }
+
+#[cfg(test)]
+mod defect_prediction_formatters_tests {
+    //! Covers defect_prediction_formatters.rs (36 uncov on broad, 0% cov).
+    use super::*;
+    use crate::services::defect_probability::{DefectScore, RiskLevel};
+
+    fn score(prob: f32, risk: RiskLevel, factors: Vec<(String, f32)>) -> DefectScore {
+        DefectScore {
+            probability: prob,
+            contributing_factors: factors,
+            confidence: 0.9,
+            risk_level: risk,
+            recommendations: vec![],
+        }
+    }
+
+    fn high_risk_with_factors() -> (String, DefectScore) {
+        (
+            "src/foo.rs".to_string(),
+            score(
+                0.85,
+                RiskLevel::High,
+                vec![
+                    ("complexity".into(), 0.8),
+                    ("churn".into(), 0.85),
+                    ("coupling".into(), 0.9),
+                    ("duplication".into(), 0.5),
+                ],
+            ),
+        )
+    }
+
+    // ── format_summary_output ──
+
+    #[test]
+    fn test_format_summary_output_includes_file_count_and_header() {
+        let preds = vec![high_risk_with_factors()];
+        let dist = RiskDistribution {
+            high_risk_count: 1,
+            medium_risk_count: 0,
+            low_risk_count: 0,
+        };
+        let out = format_summary_output(42, &preds, &dist, false, std::time::Duration::from_millis(5));
+        assert!(out.contains("Defect Prediction Analysis Summary"));
+        assert!(out.contains("42")); // files analyzed count
+    }
+
+    #[test]
+    fn test_format_summary_output_perf_flag_no_panic() {
+        let dist = RiskDistribution {
+            high_risk_count: 0,
+            medium_risk_count: 0,
+            low_risk_count: 0,
+        };
+        let out = format_summary_output(0, &[], &dist, true, std::time::Duration::from_millis(99));
+        assert!(!out.is_empty());
+    }
+
+    // ── generate_recommendations ──
+
+    #[test]
+    fn test_generate_recommendations_empty_predictions_empty() {
+        assert!(generate_recommendations(&[]).is_empty());
+    }
+
+    #[test]
+    fn test_generate_recommendations_high_factor_emits_specific_advice() {
+        let preds = vec![high_risk_with_factors()];
+        let recs = generate_recommendations(&preds);
+        let joined = recs.join("\n");
+        // All 4 factor-specific recs (complexity > 0.7, churn > 0.7, coupling > 0.7,
+        // duplication > 0.3) should fire.
+        assert!(joined.contains("High complexity"));
+        assert!(joined.contains("High churn"));
+        assert!(joined.contains("High coupling"));
+        assert!(joined.contains("Code duplication"));
+    }
+
+    #[test]
+    fn test_generate_recommendations_low_factor_no_advice() {
+        let preds = vec![(
+            "src/clean.rs".to_string(),
+            score(
+                0.1,
+                RiskLevel::Low,
+                vec![
+                    ("complexity".into(), 0.3),
+                    ("churn".into(), 0.2),
+                ],
+            ),
+        )];
+        let recs = generate_recommendations(&preds);
+        let joined = recs.join("\n");
+        // Risk header still appears, but no specific advice strings.
+        assert!(joined.contains("clean.rs"));
+        assert!(!joined.contains("High complexity"));
+        assert!(!joined.contains("High churn"));
+    }
+
+    #[test]
+    fn test_generate_recommendations_takes_top_5_only() {
+        let preds: Vec<(String, DefectScore)> = (0..10)
+            .map(|i| {
+                (
+                    format!("src/f{i}.rs"),
+                    score(0.9, RiskLevel::High, vec![]),
+                )
+            })
+            .collect();
+        let recs = generate_recommendations(&preds);
+        // 5 files × (header + blank) = 10 entries minimum.
+        let file_lines: usize = recs.iter().filter(|r| r.contains("90.0% risk")).count();
+        assert_eq!(file_lines, 5, "must emit at most 5 file headers");
+    }
+
+    // ── format_detailed_output ──
+
+    #[test]
+    fn test_format_detailed_output_with_recs_includes_recommendations_section() {
+        let preds = vec![high_risk_with_factors()];
+        let out = format_detailed_output(&preds, true);
+        assert!(!out.is_empty());
+        assert!(out.contains("foo.rs"));
+    }
+
+    #[test]
+    fn test_format_detailed_output_without_recs_empty_recs() {
+        let preds = vec![high_risk_with_factors()];
+        let out = format_detailed_output(&preds, false);
+        assert!(!out.is_empty());
+    }
+
+    #[test]
+    fn test_format_detailed_output_empty_predictions() {
+        let out = format_detailed_output(&[], false);
+        assert!(!out.is_empty());
+    }
+
+    // ── format_json_output ──
+
+    #[test]
+    fn test_format_json_output_round_trips_as_json() {
+        let preds = vec![high_risk_with_factors()];
+        let out = format_json_output(42, &preds, true, false, std::time::Duration::from_millis(5))
+            .unwrap();
+        let _: serde_json::Value = serde_json::from_str(&out).unwrap();
+    }
+
+    #[test]
+    fn test_format_json_output_perf_adds_performance_section() {
+        let preds = vec![high_risk_with_factors()];
+        let out = format_json_output(42, &preds, false, true, std::time::Duration::from_millis(123))
+            .unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(parsed.get("performance").is_some(), "perf=true should add performance section");
+    }
+
+    // ── format_markdown_output ──
+
+    #[test]
+    fn test_format_markdown_output_with_recs_contains_md_headers() {
+        let preds = vec![high_risk_with_factors()];
+        let out = format_markdown_output(&preds, true);
+        assert!(out.contains('#'));
+    }
+
+    #[test]
+    fn test_format_markdown_output_without_recs_still_valid() {
+        let preds = vec![high_risk_with_factors()];
+        let out = format_markdown_output(&preds, false);
+        assert!(!out.is_empty());
+    }
+
+    // ── format_csv_output ──
+
+    #[test]
+    fn test_format_csv_output_has_header() {
+        let preds = vec![high_risk_with_factors()];
+        let out = format_csv_output(&preds);
+        let first_line = out.lines().next().unwrap_or_default();
+        assert!(first_line.contains(','), "CSV header must have commas");
+    }
+
+    #[test]
+    fn test_format_csv_output_empty_predictions_still_has_header() {
+        let out = format_csv_output(&[]);
+        assert!(!out.is_empty());
+    }
+
+    // ── format_sarif_output ──
+
+    #[test]
+    fn test_format_sarif_output_round_trips_as_json() {
+        let preds = vec![high_risk_with_factors()];
+        let out = format_sarif_output(&preds).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn test_format_sarif_output_empty_predictions_valid_sarif() {
+        let out = format_sarif_output(&[]).unwrap();
+        let _: serde_json::Value = serde_json::from_str(&out).unwrap();
+    }
+}
