@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-644
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: services/deep_context/analyzer_formatting/ast_formatting.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T08:25:02Z
+  updated: 2026-04-24T08:25:02Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI/services pivot — ast_formatting.rs is 484 lines, 0/282 broad-covered, 100% sync. Cover format_import_path all 3 branches, categorize_single_ast_item all 8 AstItem variants (including Import with/without items/alias), each write_*_section empty/populated/truncation branches (functions >10, structs/enums/traits/impls/modules >5, imports ≤8 vs count-only), full format_enhanced_ast_section integration test.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
