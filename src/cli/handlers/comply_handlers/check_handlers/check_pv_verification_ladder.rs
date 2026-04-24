@@ -490,3 +490,68 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
     }
 }
 
+#[cfg(test)]
+mod check_pv_verification_ladder_tests {
+    //! Covers the "no contracts/ → Skip" early-return arms for all 4
+    //! verification-ladder checks in check_pv_verification_ladder.rs
+    //! (55 uncov on broad, 0% cov).
+    use super::*;
+
+    #[test]
+    fn test_check_build_rs_pipeline_no_contracts_dir_skips() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_build_rs_pipeline(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Skip));
+        assert_eq!(check.severity, Severity::Info);
+        assert!(check.message.contains("No contracts/ directory"));
+        assert_eq!(check.name, "CB-1204: Build.rs Pipeline");
+    }
+
+    #[test]
+    fn test_check_build_rs_pipeline_contracts_no_preconditions_passes() {
+        let tmp = tempfile::tempdir().unwrap();
+        let cd = tmp.path().join("contracts");
+        std::fs::create_dir(&cd).unwrap();
+        std::fs::write(cd.join("c.yaml"), "name: foo\nversion: 1\n").unwrap();
+        let check = check_build_rs_pipeline(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert!(check.message.contains("pipeline not required"));
+    }
+
+    #[test]
+    fn test_check_provability_invariant_no_contracts_dir_skips() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_provability_invariant(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Skip));
+        assert!(check.message.contains("No contracts/ directory"));
+        assert_eq!(check.name, "CB-1205: Provability Invariant");
+    }
+
+    #[test]
+    fn test_check_provability_invariant_empty_contracts_dir_runs() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("contracts")).unwrap();
+        let check = check_provability_invariant(tmp.path());
+        assert_eq!(check.name, "CB-1205: Provability Invariant");
+    }
+
+    #[test]
+    fn test_check_contract_drift_no_contracts_skips() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_contract_drift(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Skip));
+        assert_eq!(check.name, "CB-1207: Contract Drift");
+    }
+
+    #[test]
+    fn test_check_verification_levels_on_empty_project_runs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let thresholds = ComplyThresholds::default();
+        let check = check_verification_levels(tmp.path(), &thresholds);
+        assert!(matches!(
+            check.status,
+            CheckStatus::Skip | CheckStatus::Pass | CheckStatus::Warn | CheckStatus::Fail
+        ));
+    }
+}
+
