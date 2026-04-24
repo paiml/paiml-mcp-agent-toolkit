@@ -26,6 +26,7 @@ include!("git_history_formatting.rs");
 include!("git_history_parsing.rs");
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod annotations_tests {
     //! PMAT-653: cover git_history_annotations.rs pure helpers.
     use super::*;
