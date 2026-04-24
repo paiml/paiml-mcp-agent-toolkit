@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-648
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: handlers/tools_advanced_part2.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T08:49:46Z
+  updated: 2026-04-24T08:49:46Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI pivot — tools_advanced_part2.rs is 464 lines, 297/303 missed on master broad, 2 async (handlers only; all helpers pure). Cover get_confidence_level_text (3 variants), format_confidence_emoji (3 variants), calculate_dead_files_percentage (zero-guard + ratio), calculate_percentage (zero-guard + ratio), write_dead_code_* helpers (header, summary, metrics, table), format_dead_code_as_sarif_mcp, format_dead_code_as_markdown_mcp, write_single_dead_code_row, parse_tdg_args (valid + err), extract_tdg_project_path (None/empty Err), format_tdg_summary full pipeline, append_tdg_hotspots_section empty+populated.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
