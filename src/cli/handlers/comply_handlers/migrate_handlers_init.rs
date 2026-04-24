@@ -67,7 +67,7 @@ comply:
   # Check configurations (disable individual checks)
   checks:
     cb-050: { enabled: true, severity: critical }
-    cb-060: { enabled: true, severity: high }
+    cb-060: { enabled: true, severity: error }
   # Global thresholds
   thresholds:
     coverage: 85.0
