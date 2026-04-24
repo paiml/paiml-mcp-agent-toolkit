@@ -156,7 +156,6 @@ mod cross_crate_types_tests {
             min_body_lines: 5,
             min_tokens: 20,
             cc003_min_similarity: 0.9,
-            ..Default::default()
         };
         let dc = DetectionConfig::from_yaml(&cc);
         assert!(dc.excluded_functions.contains("serialize"));
@@ -178,7 +177,6 @@ mod cross_crate_types_tests {
             min_body_lines: 0,
             min_tokens: 0,
             cc003_min_similarity: 0.0,
-            ..Default::default()
         };
         let dc = DetectionConfig::from_yaml(&cc);
         assert_eq!(dc.excluded_crate_pairs.len(), 2);
@@ -198,7 +196,6 @@ mod cross_crate_types_tests {
             min_body_lines: 42,
             min_tokens: 100,
             cc003_min_similarity: 0.75,
-            ..Default::default()
         };
         let dc = DetectionConfig::from_yaml(&cc);
         assert_eq!(dc.min_body_lines, 42);
