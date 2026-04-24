@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-641
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: scaffold/agent/error.rs coverage (Phase-1 tactic #3)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T07:56:32Z
+  updated: 2026-04-24T07:56:32Z
+  spec: null
+  acceptance_criteria:
+  - 'Per Phase-1 tactic #3, cover error.rs untested ScaffoldError variants: InvalidConfiguration, GenerationFailed, HookFailed, ValidationFailed, MissingFeature, RenderError, InvalidTemplate, NetworkError, ParseError display strings; GenerationFailed + ValidationFailed source-chain via Error::source(); IoError display string; ScaffoldResult alias smoke test.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

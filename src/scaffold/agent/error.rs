@@ -110,6 +110,138 @@ mod tests {
         let scaffold_err = ScaffoldError::from(io_err);
         assert!(matches!(scaffold_err, ScaffoldError::IoError(_)));
     }
+
+    // --- PMAT-641 additions: cover all Display arms + source chains ---
+
+    use std::error::Error as StdError;
+
+    #[test]
+    fn test_display_invalid_configuration() {
+        let e = ScaffoldError::InvalidConfiguration("missing name field".to_string());
+        assert_eq!(
+            e.to_string(),
+            "Invalid agent configuration: missing name field"
+        );
+    }
+
+    #[test]
+    fn test_display_hook_failed() {
+        let e = ScaffoldError::HookFailed("cargo fmt exit 1".to_string());
+        assert_eq!(
+            e.to_string(),
+            "Post-generation hook failed: cargo fmt exit 1"
+        );
+    }
+
+    #[test]
+    fn test_display_missing_feature() {
+        let e = ScaffoldError::MissingFeature("wasm-support".to_string());
+        assert_eq!(e.to_string(), "Missing required feature: wasm-support");
+    }
+
+    #[test]
+    fn test_display_render_error() {
+        let e = ScaffoldError::RenderError("unresolved variable `name`".to_string());
+        assert_eq!(
+            e.to_string(),
+            "Template rendering failed: unresolved variable `name`"
+        );
+    }
+
+    #[test]
+    fn test_display_invalid_template() {
+        let e = ScaffoldError::InvalidTemplate("bad YAML at line 3".to_string());
+        assert_eq!(e.to_string(), "Invalid template syntax: bad YAML at line 3");
+    }
+
+    #[test]
+    fn test_display_network_error() {
+        let e = ScaffoldError::NetworkError("timeout after 30s".to_string());
+        assert_eq!(e.to_string(), "Network error: timeout after 30s");
+    }
+
+    #[test]
+    fn test_display_parse_error() {
+        let e = ScaffoldError::ParseError("expected ':' at column 5".to_string());
+        assert_eq!(e.to_string(), "Parse error: expected ':' at column 5");
+    }
+
+    #[test]
+    fn test_display_generation_failed_is_static_message() {
+        // GenerationFailed uses `#[source]` — the Display only prints the outer
+        // message; the inner cause is available via Error::source().
+        let cause = anyhow::anyhow!("syn parse error");
+        let e = ScaffoldError::GenerationFailed(cause);
+        assert_eq!(e.to_string(), "Template generation failed");
+    }
+
+    #[test]
+    fn test_display_validation_failed_is_static_message() {
+        let cause = anyhow::anyhow!("bad invariant");
+        let e = ScaffoldError::ValidationFailed(cause);
+        assert_eq!(e.to_string(), "Template validation failed");
+    }
+
+    #[test]
+    fn test_generation_failed_exposes_inner_cause_via_source() {
+        let cause = anyhow::anyhow!("root cause from syn");
+        let e = ScaffoldError::GenerationFailed(cause);
+        let src = e.source().expect("has source");
+        assert!(src.to_string().contains("root cause from syn"));
+    }
+
+    #[test]
+    fn test_validation_failed_exposes_inner_cause_via_source() {
+        let cause = anyhow::anyhow!("root cause validation failed");
+        let e = ScaffoldError::ValidationFailed(cause);
+        let src = e.source().expect("has source");
+        assert!(src.to_string().contains("validation failed"));
+    }
+
+    #[test]
+    fn test_io_error_display_and_source_chain() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "cannot write");
+        let e = ScaffoldError::from(io_err);
+        // IoError has static Display "I/O error"; inner io::Error is exposed via source.
+        assert_eq!(e.to_string(), "I/O error");
+        let src = e.source().expect("has source");
+        assert!(src.to_string().contains("cannot write"));
+    }
+
+    #[test]
+    fn test_scaffold_result_alias_compiles_and_ok() {
+        // The alias is unit-testable by exercising both arms.
+        let ok: ScaffoldResult<u32> = Ok(42);
+        let err: ScaffoldResult<u32> = Err(ScaffoldError::MissingFeature("x".to_string()));
+        assert_eq!(ok.unwrap(), 42);
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn test_template_not_found_preserves_input_string() {
+        let e = ScaffoldError::TemplateNotFound("mcp-server".to_string());
+        // Covers the fmt args escape correctly.
+        let rendered = format!("{e}");
+        assert!(rendered.starts_with("Template not found: "));
+        assert!(rendered.contains("mcp-server"));
+    }
+
+    #[test]
+    fn test_debug_formatting_mentions_variant_name() {
+        // Exercise the auto-derived Debug impl for a couple of variants.
+        let dbg = format!("{:?}", ScaffoldError::UserCancelled);
+        assert!(dbg.contains("UserCancelled"));
+        let dbg = format!(
+            "{:?}",
+            ScaffoldError::IncompatibleVersion {
+                required: "1.0".into(),
+                current: "0.9".into(),
+            }
+        );
+        assert!(dbg.contains("IncompatibleVersion"));
+        assert!(dbg.contains("1.0"));
+        assert!(dbg.contains("0.9"));
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
