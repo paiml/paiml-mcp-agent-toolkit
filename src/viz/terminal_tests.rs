@@ -64,6 +64,21 @@ mod tests {
     }
 
     #[test]
+    fn test_below_critical_threshold_uses_normal_color() {
+        // Default critical_threshold is 0.1; a node at 0.0 must hit the else arm
+        // (is_critical = false) which calls config.theme.normal_color().
+        // Covers terminal_rendering.rs:44.
+        let mut graph = VisGraph::new();
+        graph.add_node("low".to_string(), 0.0);
+
+        let config = RenderConfig::default();
+        let result = graph.render_terminal(&config);
+
+        assert!(result.is_ok(), "render must succeed with a sub-threshold node");
+        assert!(config.critical_threshold > 0.0);
+    }
+
+    #[test]
     fn test_ansi_mode_has_color_codes() {
         let mut graph = VisGraph::new();
         graph.add_node("test".to_string(), 0.5);
