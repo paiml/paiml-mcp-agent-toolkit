@@ -135,3 +135,132 @@ include!("language_analyzer_core.rs");
 
 // Individual analysis implementations: complexity, SATD, security, style, etc.
 include!("language_analyzer_analyses.rs");
+
+// Pure-compute helpers in language_analyzer_analyses.rs were 0%-covered on
+// broad (239 missed lines). The legacy `language_analyzer_tests.rs` split
+// across part1..4.rs has unbalanced braces per file and cannot be wired into
+// the module tree as-is. This inline test module covers the key leaf
+// helpers (keyword lists, pattern counters) that don't require async setup.
+#[cfg(test)]
+mod inline_tests {
+    use super::*;
+
+    /// get_complexity_keywords returns language-specific control-flow tokens.
+    #[test]
+    fn test_get_complexity_keywords_returns_nonempty_for_known_languages() {
+        let a = LanguageAnalyzer::new();
+        for lang in [
+            Language::Rust,
+            Language::Python,
+            Language::JavaScript,
+            Language::TypeScript,
+            Language::Go,
+            Language::Java,
+        ] {
+            let kws = a.get_complexity_keywords(lang);
+            assert!(
+                !kws.is_empty(),
+                "language {lang:?} must have complexity keywords"
+            );
+            for kw in &kws {
+                assert!(!kw.is_empty(), "no empty keyword for {lang:?}");
+            }
+        }
+    }
+
+    /// calculate_keyword_complexity counts occurrences of any of the given
+    /// keywords plus 1 base complexity (mirrors cyclomatic McCabe).
+    #[test]
+    fn test_calculate_keyword_complexity_counts_matches_plus_base() {
+        let a = LanguageAnalyzer::new();
+        let content = "if a { for b in c { while d { if e {} } } }";
+        let count = a.calculate_keyword_complexity(content, &["if", "for", "while"]);
+        // 2*"if" + 1*"for" + 1*"while" = 4, + 1 base = 5
+        assert_eq!(count, 5);
+    }
+
+    #[test]
+    fn test_calculate_keyword_complexity_returns_base_on_no_match() {
+        let a = LanguageAnalyzer::new();
+        let count = a.calculate_keyword_complexity("plain text", &["if", "for"]);
+        assert_eq!(count, 1, "base complexity is 1 when no keyword matches");
+    }
+
+    #[test]
+    fn test_calculate_keyword_complexity_empty_keyword_list_returns_base() {
+        let a = LanguageAnalyzer::new();
+        let count = a.calculate_keyword_complexity("if a { for b {} }", &[]);
+        assert_eq!(count, 1);
+    }
+
+    /// get_security_patterns returns language-specific known-bad patterns.
+    #[test]
+    fn test_get_security_patterns_nonempty_for_common_langs() {
+        let a = LanguageAnalyzer::new();
+        for lang in [Language::Python, Language::JavaScript, Language::Rust] {
+            let pats = a.get_security_patterns(lang);
+            // Not every language has a pattern list but these common ones do.
+            assert!(!pats.is_empty(), "expected security patterns for {lang:?}");
+        }
+    }
+
+    /// find_security_issues returns a non-empty vec when the content contains
+    /// the pattern, empty otherwise. Drives both arms.
+    #[test]
+    fn test_find_security_issues_match_vs_miss() {
+        let a = LanguageAnalyzer::new();
+        let patterns = ["eval("];
+        let hits = a.find_security_issues("x = eval(expr)", &patterns);
+        assert!(!hits.is_empty(), "must detect eval(");
+
+        let misses = a.find_security_issues("x = 1 + 2", &patterns);
+        assert!(misses.is_empty(), "clean code → no hits");
+    }
+
+    /// get_import_patterns returns language-specific import-statement prefixes.
+    #[test]
+    fn test_get_import_patterns_nonempty_for_common_langs() {
+        let a = LanguageAnalyzer::new();
+        for lang in [
+            Language::Rust,
+            Language::Python,
+            Language::JavaScript,
+            Language::Go,
+        ] {
+            let pats = a.get_import_patterns(lang);
+            assert!(!pats.is_empty(), "{lang:?} should have import patterns");
+        }
+    }
+
+    /// find_imports collects lines matching any of the import-prefix patterns.
+    #[test]
+    fn test_find_imports_match_vs_miss() {
+        let a = LanguageAnalyzer::new();
+        let patterns = ["use ", "import "];
+        let src = "use foo::bar;\nlet x = 1;\nimport baz;\n// use commented";
+        let hits = a.find_imports(src, &patterns);
+        // Two matches: `use foo::bar;` and `import baz;`
+        assert_eq!(hits.len(), 2);
+    }
+
+    #[test]
+    fn test_find_imports_empty_on_no_match() {
+        let a = LanguageAnalyzer::new();
+        let hits = a.find_imports("fn main() {}\n", &["use ", "import "]);
+        assert!(hits.is_empty());
+    }
+
+    /// create_unsupported_analysis_result returns a result flagged as
+    /// unsuccessful with an error field that names the language + analysis.
+    #[test]
+    fn test_create_unsupported_analysis_result_shape() {
+        let a = LanguageAnalyzer::new();
+        let result =
+            a.create_unsupported_analysis_result(AnalysisType::Security, Language::Markdown);
+        assert!(!result.success, "unsupported → success=false");
+        assert!(
+            result.error.is_some(),
+            "unsupported → must carry an error message"
+        );
+    }
+}
