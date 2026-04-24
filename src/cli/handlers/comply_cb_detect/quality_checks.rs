@@ -136,3 +136,174 @@ include!("quality_checks_slow_tests.rs");
 
 // CB-400/401/402: Shell & Makefile quality (bashrs integration)
 include!("quality_checks_bashrs.rs");
+
+#[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
+mod coverage_target_state_tests {
+    //! Covers the CoverageTargetState state machine in quality_checks.rs
+    //! (68 uncov on broad, 0% cov). Exercises reset, update_from_line, and
+    //! collect_violations without needing a full Makefile fixture.
+    use super::*;
+
+    // ── reset: restores a clean `active=true` state with a new line ──
+
+    #[test]
+    fn test_coverage_target_state_reset_clears_all_flags_and_sets_line() {
+        let mut s = CoverageTargetState::default();
+        // Pre-populate to verify reset actually clears things.
+        s.has_nextest = true;
+        s.has_llvm_cov = true;
+        s.has_proptest_cases = true;
+        s.has_lib_flag = true;
+        s.runs_cargo_tests = true;
+        s.line = 999;
+        s.active = false;
+
+        s.reset(42);
+
+        assert!(s.active, "reset must activate the target");
+        assert_eq!(s.line, 42);
+        assert!(!s.has_nextest);
+        assert!(!s.has_llvm_cov);
+        assert!(!s.has_proptest_cases);
+        assert!(!s.has_lib_flag);
+        assert!(!s.runs_cargo_tests);
+    }
+
+    // ── update_from_line: each detector arm ──
+
+    #[test]
+    fn test_update_from_line_detects_nextest_and_marks_runs_cargo_tests() {
+        let mut s = CoverageTargetState::default();
+        s.update_from_line("\tcargo nextest run --lib");
+        assert!(s.has_nextest);
+        assert!(s.runs_cargo_tests);
+    }
+
+    #[test]
+    fn test_update_from_line_detects_llvm_cov_does_not_mark_runs_cargo_tests() {
+        let mut s = CoverageTargetState::default();
+        s.update_from_line("\tcargo llvm-cov report --html");
+        assert!(s.has_llvm_cov);
+        assert!(
+            !s.runs_cargo_tests,
+            "plain llvm-cov report must NOT mark runs_cargo_tests"
+        );
+    }
+
+    #[test]
+    fn test_update_from_line_detects_cargo_llvm_cov_test_marks_runs_cargo_tests() {
+        let mut s = CoverageTargetState::default();
+        s.update_from_line("\tcargo llvm-cov test --lib");
+        assert!(s.has_llvm_cov);
+        assert!(s.runs_cargo_tests, "llvm-cov TEST marks runs_cargo_tests");
+    }
+
+    #[test]
+    fn test_update_from_line_detects_cargo_test_alone() {
+        let mut s = CoverageTargetState::default();
+        s.update_from_line("\tcargo test --lib --quiet");
+        assert!(s.runs_cargo_tests);
+        assert!(s.has_lib_flag);
+    }
+
+    #[test]
+    fn test_update_from_line_detects_proptest_cases_env_var() {
+        let mut s = CoverageTargetState::default();
+        s.update_from_line("\tPROPTEST_CASES=1000 cargo test");
+        assert!(s.has_proptest_cases);
+
+        let mut s = CoverageTargetState::default();
+        s.update_from_line("\tQUICKCHECK_TESTS=1000 cargo test");
+        assert!(s.has_proptest_cases);
+    }
+
+    #[test]
+    fn test_update_from_line_comment_lines_are_skipped() {
+        let mut s = CoverageTargetState::default();
+        s.update_from_line("# cargo test --lib with nextest");
+        assert!(!s.runs_cargo_tests);
+        assert!(!s.has_nextest);
+    }
+
+    #[test]
+    fn test_update_from_line_echo_lines_do_not_mark_runs_cargo_tests() {
+        let mut s = CoverageTargetState::default();
+        s.update_from_line("\t@echo \"Running nextest...\"");
+        // `echo` should suppress the nextest + cargo test signals.
+        assert!(!s.has_nextest);
+        assert!(!s.runs_cargo_tests);
+    }
+
+    // ── collect_violations: gating + per-rule firing ──
+
+    #[test]
+    fn test_collect_violations_empty_when_not_running_cargo_tests() {
+        let mut s = CoverageTargetState::default();
+        s.reset(10);
+        // runs_cargo_tests=false → all violations suppressed.
+        let v = s.collect_violations("Makefile");
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_collect_violations_cb127a_fires_for_nextest_plus_llvm_cov() {
+        let mut s = CoverageTargetState::default();
+        s.reset(20);
+        s.runs_cargo_tests = true;
+        s.has_nextest = true;
+        s.has_llvm_cov = true;
+        // Also meet proptest/lib requirements so those rules don't fire.
+        s.has_proptest_cases = true;
+        s.has_lib_flag = true;
+        let v = s.collect_violations("Makefile");
+        assert!(v.iter().any(|x| x.pattern_id == "CB-127-A"));
+    }
+
+    #[test]
+    fn test_collect_violations_cb127b_fires_when_proptest_cases_missing() {
+        let mut s = CoverageTargetState::default();
+        s.reset(20);
+        s.runs_cargo_tests = true;
+        // has_proptest_cases=false by default.
+        let v = s.collect_violations("Makefile");
+        assert!(v.iter().any(|x| x.pattern_id == "CB-127-B"));
+    }
+
+    #[test]
+    fn test_collect_violations_cb127c_fires_for_llvm_cov_without_lib_flag() {
+        let mut s = CoverageTargetState::default();
+        s.reset(20);
+        s.runs_cargo_tests = true;
+        s.has_llvm_cov = true;
+        s.has_proptest_cases = true; // avoid CB-127-B
+                                     // has_lib_flag=false by default.
+        let v = s.collect_violations("Makefile");
+        assert!(v.iter().any(|x| x.pattern_id == "CB-127-C"));
+    }
+
+    #[test]
+    fn test_collect_violations_no_violations_when_all_good() {
+        let mut s = CoverageTargetState::default();
+        s.reset(20);
+        s.runs_cargo_tests = true;
+        s.has_llvm_cov = true;
+        s.has_proptest_cases = true;
+        s.has_lib_flag = true;
+        // No nextest+llvm-cov combo; proptest+lib present → zero violations.
+        let v = s.collect_violations("Makefile");
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_collect_violations_carries_file_path_and_line() {
+        let mut s = CoverageTargetState::default();
+        s.reset(77);
+        s.runs_cargo_tests = true;
+        // Force CB-127-B to fire.
+        let v = s.collect_violations("sub/Makefile");
+        let cb_b = v.iter().find(|x| x.pattern_id == "CB-127-B").unwrap();
+        assert_eq!(cb_b.file, "sub/Makefile");
+        assert_eq!(cb_b.line, 77);
+    }
+}
