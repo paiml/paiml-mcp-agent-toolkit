@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-638
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: scaffold/agent/invariants.rs coverage (Phase-1 tactic #3)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T07:43:50Z
+  updated: 2026-04-24T07:43:50Z
+  spec: null
+  acceptance_criteria:
+  - 'Per Phase-1 tactic #3 (scaffold 0→90%), cover invariants.rs untested surface: InvariantChecker::with_handler alternate ctor, ViolationHandler::default delegation to Log, ViolationHandler::handle for Panic and Fallback actions, InvariantChecker::check Panic path via catch_unwind, Fallback path (logs without panic), NonEmptyInvariant::new+check+name, multi-invariant add+count, violation_name field access. Note: ViolationAction::Fallback takes fn()->() so needs a bare fn not closure.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
