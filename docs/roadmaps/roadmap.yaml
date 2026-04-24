@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-635
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: scaffold/agent/registry.rs coverage (Phase-1 tactic #3)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T07:04:56Z
+  updated: 2026-04-24T07:04:56Z
+  spec: null
+  acceptance_criteria:
+  - 'Per Phase-1 tactic #3 (scaffold 0→90%), cover TemplateRegistry untested surface: get() for DeterministicCalculator/HybridAnalyzer/CustomAgent arms, load_custom_template for nonexistent/non-toml/toml branches, fetch_remote for unregistered + NetworkError paths, validate_template_file for both branches, get_template_info None arm, Default delegation. Also cover embedded DeterministicCalculatorTemplate + HybridAnalyzerTemplate: default name/description, generate happy-path + hybrid missing-spec Err, validate_context (empty-name, missing spec, Ok), TemplateSource Custom/Remote construction. File has coverage(off) so broad-gate only.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
