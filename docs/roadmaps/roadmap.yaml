@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-642
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: cli/handlers/score_handler_compute.rs coverage — CLI handlers tactic'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T08:14:04Z
+  updated: 2026-04-24T08:14:04Z
+  spec: null
+  acceptance_criteria:
+  - 'Post-measurement pivot: scaffold sweep only moves broad ~0.03pp per PR (measured 2026-04-24). cli/handlers/score_handler_compute.rs has 0% broad coverage on master (404/404 lines missed). File is pure fs+compute (no async, no tokio), highly testable. Cover compute_pv_lint (5 branches), compute_pipeline_depth (6 scorers: yaml/build.rs/contract-macros/lean/kani/proof-status), compute_contract_drift, compute_file_health, geometric_mean (empty/single/zero/positive), cross_validate (6 XV rules), persist_score, get_head_sha. Tests in score_handler.rs mod tests (include! file shares module scope).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
