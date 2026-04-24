@@ -449,6 +449,291 @@ mod tests {
         assert_eq!(info.name, "mcp-server");
         assert!(matches!(info.source, TemplateSource::Builtin));
     }
+
+    // --- PMAT-635 additions: cover TemplateRegistry + embedded templates ---
+
+    use crate::scaffold::agent::context::AgentContext;
+    use crate::scaffold::agent::features::QualityLevel;
+    use crate::scaffold::agent::generator::FileContent;
+    use crate::scaffold::agent::hybrid::{CoreSpec, WrapperSpec};
+
+    fn text_file<'a>(files: &'a GeneratedFiles, path: &str) -> &'a str {
+        match files.files.get(Path::new(path)) {
+            Some(FileContent::Text(s)) => s.as_str(),
+            _ => panic!("expected text file at {path}"),
+        }
+    }
+
+    fn scaffold_err<T>(r: ScaffoldResult<T>) -> ScaffoldError {
+        match r {
+            Ok(_) => panic!("expected ScaffoldError, got Ok"),
+            Err(e) => e,
+        }
+    }
+
+    fn anyhow_err<T>(r: Result<T>) -> anyhow::Error {
+        match r {
+            Ok(_) => panic!("expected anyhow::Error, got Ok"),
+            Err(e) => e,
+        }
+    }
+
+    fn ctx_named(name: &str) -> AgentContext {
+        AgentContext {
+            name: name.to_string(),
+            template_type: AgentTemplate::MCPToolServer,
+            features: std::collections::HashSet::new(),
+            quality_level: QualityLevel::Standard,
+            deterministic_core: None,
+            probabilistic_wrapper: None,
+        }
+    }
+
+    fn ctx_hybrid(name: &str) -> AgentContext {
+        AgentContext {
+            name: name.to_string(),
+            template_type: AgentTemplate::HybridAnalyzer,
+            features: std::collections::HashSet::new(),
+            quality_level: QualityLevel::Standard,
+            deterministic_core: Some(CoreSpec::default()),
+            probabilistic_wrapper: Some(WrapperSpec::default()),
+        }
+    }
+
+    #[test]
+    fn test_get_calculator_template_arm() {
+        let registry = TemplateRegistry::new();
+        let gen = registry
+            .get(&AgentTemplate::DeterministicCalculator)
+            .expect("calculator arm");
+        assert_eq!(gen.name(), "calculator");
+    }
+
+    #[test]
+    fn test_get_hybrid_template_arm() {
+        let registry = TemplateRegistry::new();
+        let gen = registry
+            .get(&AgentTemplate::HybridAnalyzer)
+            .expect("hybrid arm");
+        assert_eq!(gen.name(), "hybrid");
+    }
+
+    #[test]
+    fn test_get_custom_agent_nonexistent_path() {
+        let registry = TemplateRegistry::new();
+        let missing = std::path::PathBuf::from("/tmp/definitely/does/not/exist/template.toml");
+        let err = scaffold_err(registry.get(&AgentTemplate::CustomAgent(missing)));
+        assert!(matches!(err, ScaffoldError::TemplateNotFound(_)));
+    }
+
+    #[test]
+    fn test_get_custom_agent_toml_placeholder_err() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let p = tmp.path().join("custom.toml");
+        std::fs::write(&p, "name = \"x\"").unwrap();
+        let registry = TemplateRegistry::new();
+        let err = scaffold_err(registry.get(&AgentTemplate::CustomAgent(p)));
+        assert!(matches!(err, ScaffoldError::InvalidTemplate(_)));
+        assert!(err.to_string().contains("Custom template support requires"));
+    }
+
+    #[test]
+    fn test_get_custom_agent_yaml_placeholder_err() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let p = tmp.path().join("custom.yaml");
+        std::fs::write(&p, "name: x").unwrap();
+        let registry = TemplateRegistry::new();
+        let err = scaffold_err(registry.get(&AgentTemplate::CustomAgent(p)));
+        assert!(matches!(err, ScaffoldError::InvalidTemplate(_)));
+    }
+
+    #[test]
+    fn test_get_custom_agent_wrong_extension_err() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let p = tmp.path().join("not-supported.md");
+        std::fs::write(&p, "# oops").unwrap();
+        let registry = TemplateRegistry::new();
+        let err = scaffold_err(registry.get(&AgentTemplate::CustomAgent(p)));
+        assert!(matches!(err, ScaffoldError::InvalidTemplate(_)));
+        assert!(err.to_string().contains("must be a TOML or YAML file"));
+    }
+
+    #[test]
+    fn test_get_custom_agent_directory_is_invalid() {
+        // A directory path exists but is not a .toml/.yaml file, so the code
+        // takes the else-branch of `path.is_file() && ext == toml|yaml`.
+        let tmp = tempfile::TempDir::new().unwrap();
+        let registry = TemplateRegistry::new();
+        let err = scaffold_err(registry.get(&AgentTemplate::CustomAgent(tmp.path().to_path_buf())));
+        assert!(matches!(err, ScaffoldError::InvalidTemplate(_)));
+    }
+
+    #[test]
+    fn test_validate_template_file_missing() {
+        let registry = TemplateRegistry::new();
+        let missing = std::path::PathBuf::from("/tmp/definitely/nope.toml");
+        let err = anyhow_err(registry.validate_template_file(&missing));
+        assert!(err.to_string().contains("nope.toml"));
+    }
+
+    #[test]
+    fn test_validate_template_file_existing_ok() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let p = tmp.path().join("exists.toml");
+        std::fs::write(&p, "").unwrap();
+        let registry = TemplateRegistry::new();
+        registry.validate_template_file(&p).expect("file exists");
+    }
+
+    #[tokio::test]
+    async fn test_fetch_remote_unregistered_name() {
+        let registry = TemplateRegistry::new();
+        let err = scaffold_err(registry.fetch_remote("does-not-exist").await);
+        assert!(matches!(err, ScaffoldError::TemplateNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_fetch_remote_registered_returns_network_error() {
+        let mut registry = TemplateRegistry::new();
+        let url = Url::parse("https://example.com/t").unwrap();
+        registry.register_remote("remote-x", url);
+        let err = scaffold_err(registry.fetch_remote("remote-x").await);
+        assert!(
+            matches!(err, ScaffoldError::NetworkError(_)),
+            "expected NetworkError, got {err:?}"
+        );
+        assert!(err.to_string().contains("requires network access"));
+    }
+
+    #[test]
+    fn test_get_template_info_none_for_unknown() {
+        let registry = TemplateRegistry::new();
+        assert!(registry.get_template_info("not-a-builtin").is_none());
+    }
+
+    #[test]
+    fn test_get_template_info_none_for_custom() {
+        // Custom-registered templates don't have TemplateInfo yet — only builtins do.
+        let mut registry = TemplateRegistry::new();
+        registry.register_custom("my-c", "/some/path");
+        assert!(registry.get_template_info("my-c").is_none());
+    }
+
+    #[test]
+    fn test_default_equals_new() {
+        let a = TemplateRegistry::default();
+        let b = TemplateRegistry::new();
+        // Both must expose the same 4 built-in names.
+        let mut al = a.list_available();
+        let mut bl = b.list_available();
+        al.sort();
+        bl.sort();
+        assert_eq!(al, bl);
+        assert_eq!(al.len(), 4);
+    }
+
+    #[test]
+    fn test_list_available_is_sorted_and_includes_custom_remote() {
+        let mut registry = TemplateRegistry::new();
+        registry.register_custom("zz-custom", "/p");
+        registry.register_remote("aa-remote", Url::parse("https://x.example").unwrap());
+        let list = registry.list_available();
+        let mut sorted = list.clone();
+        sorted.sort();
+        assert_eq!(list, sorted, "list_available must be sorted");
+        assert!(list.contains(&"zz-custom".to_string()));
+        assert!(list.contains(&"aa-remote".to_string()));
+        assert_eq!(list.len(), 6);
+    }
+
+    #[test]
+    fn test_template_source_variants_construct() {
+        let c = TemplateSource::Custom(PathBuf::from("/p"));
+        let r = TemplateSource::Remote(Url::parse("https://x.example").unwrap());
+        assert!(matches!(c, TemplateSource::Custom(_)));
+        assert!(matches!(r, TemplateSource::Remote(_)));
+    }
+
+    // --- Embedded DeterministicCalculatorTemplate ---
+
+    #[test]
+    fn test_calculator_template_default_fields() {
+        let t = DeterministicCalculatorTemplate::default();
+        assert_eq!(t.name(), "calculator");
+        assert!(t.description().contains("Deterministic calculator"));
+    }
+
+    #[test]
+    fn test_calculator_template_generate_produces_two_files() {
+        let t = DeterministicCalculatorTemplate::default();
+        let files = t.generate(&ctx_named("calc_agent")).expect("generate");
+        assert_eq!(files.file_count(), 2);
+        assert!(text_file(&files, "Cargo.toml").contains("name = \"calc_agent\""));
+        assert!(text_file(&files, "src/main.rs").contains("calc_agent"));
+    }
+
+    #[test]
+    fn test_calculator_template_validate_context_empty_name_err() {
+        let t = DeterministicCalculatorTemplate::default();
+        let err = anyhow_err(t.validate_context(&ctx_named("")));
+        assert!(err.to_string().contains("name is required"));
+    }
+
+    #[test]
+    fn test_calculator_template_validate_context_nonempty_ok() {
+        let t = DeterministicCalculatorTemplate::default();
+        t.validate_context(&ctx_named("ok")).expect("ok");
+    }
+
+    // --- Embedded HybridAnalyzerTemplate ---
+
+    #[test]
+    fn test_hybrid_template_default_fields() {
+        let t = HybridAnalyzerTemplate::default();
+        assert_eq!(t.name(), "hybrid");
+        assert!(t.description().contains("Hybrid agent"));
+    }
+
+    #[test]
+    fn test_hybrid_template_generate_requires_core_and_wrapper() {
+        let t = HybridAnalyzerTemplate::default();
+        let err = anyhow_err(t.generate(&ctx_named("bad")));
+        assert!(err.to_string().contains("deterministic core"));
+    }
+
+    #[test]
+    fn test_hybrid_template_generate_produces_four_files() {
+        let t = HybridAnalyzerTemplate::default();
+        let files = t.generate(&ctx_hybrid("hyb_agent")).expect("generate");
+        assert_eq!(files.file_count(), 4);
+        for path in ["Cargo.toml", "src/main.rs", "src/core.rs", "src/wrapper.rs"] {
+            assert!(files.contains_file(Path::new(path)), "missing {path}");
+        }
+        assert!(text_file(&files, "Cargo.toml").contains("name = \"hyb_agent\""));
+    }
+
+    #[test]
+    fn test_hybrid_template_validate_context_empty_name_err() {
+        let t = HybridAnalyzerTemplate::default();
+        let mut ctx = ctx_hybrid("x");
+        ctx.name = String::new();
+        let err = anyhow_err(t.validate_context(&ctx));
+        assert!(err.to_string().contains("name is required"));
+    }
+
+    #[test]
+    fn test_hybrid_template_validate_context_missing_specs_err() {
+        let t = HybridAnalyzerTemplate::default();
+        // Non-empty name but missing specs → second branch.
+        let err = anyhow_err(t.validate_context(&ctx_named("nm")));
+        assert!(err.to_string().contains("core and wrapper"));
+    }
+
+    #[test]
+    fn test_hybrid_template_validate_context_ok() {
+        let t = HybridAnalyzerTemplate::default();
+        t.validate_context(&ctx_hybrid("ok")).expect("ok");
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

@@ -1857,3 +1857,6 @@ pub fn my_fn(x: i32) -> i32 { x }
         );
     }
 }
+
+#[cfg(test)]
+include!("check_pv_enforcement_tests.rs");

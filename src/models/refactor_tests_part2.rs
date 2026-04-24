@@ -152,6 +152,48 @@
         }
     }
 
+    // PR #487 covers the three fall-through variants (LongFunction/DeadCode/PoorNaming)
+    // by matching on `RefactorOp::SimplifyExpression { .. }`. This test adds the
+    // orthogonal signal: the specific constants inside the HighComplexity arm
+    // (byte offsets, `start.line + 10`, `column=0`, `params=[]`) which neither
+    // the existing `test_violation_to_op_high_complexity` nor #487 assert.
+
+    #[test]
+    fn test_violation_to_op_high_complexity_location_fields() {
+        // Kills mutations on the `self.location.line + 10`, `byte: 0` → `byte: 1`,
+        // `byte: 100` → `byte: 99`, `column: 0` → `column: 1`, and `params: vec![]`
+        // constants inside the ExtractFunction arm.
+        let violation = Violation {
+            violation_type: ViolationType::HighComplexity,
+            location: Location {
+                file: PathBuf::from("test.rs"),
+                line: 42,
+                column: 7,
+            },
+            severity: Severity::High,
+            description: "Test".to_string(),
+            suggested_fix: None,
+        };
+        match violation.to_op() {
+            RefactorOp::ExtractFunction {
+                name,
+                start,
+                end,
+                params,
+            } => {
+                assert_eq!(name, "extracted_function");
+                assert_eq!(start.byte, 0);
+                assert_eq!(start.line, 42);
+                assert_eq!(start.column, 7);
+                assert_eq!(end.byte, 100);
+                assert_eq!(end.line, 52, "end.line == start.line + 10");
+                assert_eq!(end.column, 0);
+                assert!(params.is_empty());
+            }
+            other => panic!("expected ExtractFunction, got {other:?}"),
+        }
+    }
+
     // ========================================================================
     // SatdFix Tests
     // ========================================================================

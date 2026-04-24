@@ -294,6 +294,162 @@ mod tests {
         checker.add_invariant(Box::new(PositiveValueInvariant));
         assert_eq!(checker.invariant_count(), 1);
     }
+
+    // --- PMAT-638 additions: cover untested surface ---
+
+    struct AlwaysFailInvariant;
+    impl Invariant<TestState, TestContext> for AlwaysFailInvariant {
+        fn check(&self, _state: &TestState, _ctx: &TestContext) -> Result<()> {
+            anyhow::bail!("always fails");
+        }
+        fn name(&self) -> &str {
+            "AlwaysFail"
+        }
+    }
+
+    fn fallback_noop() {}
+
+    #[test]
+    fn test_violation_handler_default_is_log() {
+        let h = ViolationHandler::default();
+        let v = InvariantViolation {
+            invariant_name: "x".into(),
+            message: "m".into(),
+        };
+        assert!(matches!(h.handle(&v), ViolationAction::Log));
+    }
+
+    #[test]
+    fn test_violation_handler_returns_panic_action() {
+        let h = ViolationHandler::new(ViolationAction::Panic);
+        let v = InvariantViolation {
+            invariant_name: "x".into(),
+            message: "m".into(),
+        };
+        assert!(matches!(h.handle(&v), ViolationAction::Panic));
+    }
+
+    #[test]
+    fn test_violation_handler_returns_fallback_action() {
+        let h = ViolationHandler::new(ViolationAction::Fallback(fallback_noop));
+        let v = InvariantViolation {
+            invariant_name: "x".into(),
+            message: "m".into(),
+        };
+        assert!(matches!(h.handle(&v), ViolationAction::Fallback(_)));
+    }
+
+    #[test]
+    fn test_invariant_checker_with_handler_uses_custom_handler() {
+        let checker: InvariantChecker<TestState, TestContext> = InvariantChecker::with_handler(
+            vec![Box::new(AlwaysFailInvariant)],
+            ViolationHandler::new(ViolationAction::Fallback(fallback_noop)),
+        );
+        // Fallback path only logs; check() returns Ok.
+        let ctx = TestContext;
+        let state = TestState { value: 1 };
+        assert!(checker.check(&state, &ctx).is_ok());
+    }
+
+    #[test]
+    fn test_invariant_checker_panic_path_on_violation() {
+        let checker: InvariantChecker<TestState, TestContext> = InvariantChecker::with_handler(
+            vec![Box::new(AlwaysFailInvariant)],
+            ViolationHandler::new(ViolationAction::Panic),
+        );
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = checker.check(&TestState { value: 0 }, &TestContext);
+        }));
+        let err = result.expect_err("expected panic from Panic handler");
+        let panic_msg = err
+            .downcast_ref::<String>()
+            .cloned()
+            .or_else(|| err.downcast_ref::<&'static str>().map(|s| s.to_string()))
+            .unwrap_or_default();
+        assert!(
+            panic_msg.contains("AlwaysFail") && panic_msg.contains("violated"),
+            "panic msg was: {panic_msg}"
+        );
+    }
+
+    #[test]
+    fn test_invariant_checker_all_passing_returns_ok() {
+        let checker: InvariantChecker<TestState, TestContext> = InvariantChecker::new(vec![
+            Box::new(PositiveValueInvariant),
+            Box::new(PositiveValueInvariant),
+        ]);
+        assert_eq!(checker.invariant_count(), 2);
+        let ctx = TestContext;
+        checker.check(&TestState { value: 7 }, &ctx).expect("ok");
+    }
+
+    #[test]
+    fn test_invariant_checker_continues_past_first_failure() {
+        // Mix: failing + passing invariants. check() should not short-circuit —
+        // it logs each failure via the handler and returns Ok.
+        let checker: InvariantChecker<TestState, TestContext> = InvariantChecker::new(vec![
+            Box::new(AlwaysFailInvariant),
+            Box::new(PositiveValueInvariant),
+        ]);
+        let result = checker.check(&TestState { value: 7 }, &TestContext);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_non_empty_invariant_name_is_non_empty() {
+        let inv = NonEmptyInvariant::new("some_field");
+        // Generic over <S, C> — pick concretes that satisfy the bounds.
+        let name: &str = <NonEmptyInvariant as Invariant<TestState, TestContext>>::name(&inv);
+        assert_eq!(name, "NonEmpty");
+    }
+
+    #[test]
+    fn test_non_empty_invariant_check_passes_on_debuggable_state() {
+        let inv = NonEmptyInvariant::new("field");
+        // Debug-formatted TestState is "TestState { value: 3 }" — never empty,
+        // so the invariant passes. Exercises the Ok path + trait generics.
+        let ctx = TestContext;
+        let state = TestState { value: 3 };
+        Invariant::<TestState, TestContext>::check(&inv, &state, &ctx).expect("Ok");
+    }
+
+    #[test]
+    fn test_non_empty_invariant_preserves_field_name() {
+        // Even though field_name is private, the ctor type-checks impl<Into<String>>
+        // for both &str and String. Cover both forms.
+        let _from_str = NonEmptyInvariant::new("a");
+        let _from_string = NonEmptyInvariant::new(String::from("b"));
+    }
+
+    #[test]
+    fn test_invariant_violation_fields_public() {
+        let v = InvariantViolation {
+            invariant_name: "Inv".into(),
+            message: "msg".into(),
+        };
+        // Public fields can be read without getters.
+        assert_eq!(v.invariant_name, "Inv");
+        assert_eq!(v.message, "msg");
+    }
+
+    #[test]
+    fn test_violation_action_clone_variants() {
+        // Ensure Clone + Debug are wired across all variants (they're derived, but
+        // exercise them so their impls get reached under broad coverage).
+        let a = ViolationAction::Panic;
+        let b = ViolationAction::Log;
+        let c = ViolationAction::Fallback(fallback_noop);
+        let _a2 = a.clone();
+        let _b2 = b.clone();
+        let _c2 = c.clone();
+        for v in [
+            ViolationAction::Panic,
+            ViolationAction::Log,
+            ViolationAction::Fallback(fallback_noop),
+        ] {
+            let _ = format!("{v:?}");
+        }
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

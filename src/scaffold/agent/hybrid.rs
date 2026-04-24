@@ -324,6 +324,244 @@ mod tests {
             crate::scaffold::QualityLevel::Extreme
         ));
     }
+
+    // --- PMAT-636 additions: cover untested surface area ---
+
+    use crate::scaffold::QualityLevel;
+
+    #[test]
+    fn test_core_spec_new_initial_state() {
+        let spec = CoreSpec::new();
+        assert!(matches!(
+            spec.verification_method,
+            VerificationMethod::PropertyTests
+        ));
+        assert_eq!(spec.max_complexity, 10);
+        assert!(spec.invariants.is_empty());
+    }
+
+    #[test]
+    fn test_core_spec_default_delegates_to_new() {
+        let a = CoreSpec::default();
+        let b = CoreSpec::new();
+        assert_eq!(a.max_complexity, b.max_complexity);
+        assert_eq!(a.invariants.len(), b.invariants.len());
+        assert!(matches!(
+            a.verification_method,
+            VerificationMethod::PropertyTests
+        ));
+    }
+
+    #[test]
+    fn test_core_spec_verification_method_model_checking_variant() {
+        let spec = CoreSpec::new().verification_method(VerificationMethod::ModelChecking);
+        assert!(matches!(
+            spec.verification_method,
+            VerificationMethod::ModelChecking
+        ));
+    }
+
+    #[test]
+    fn test_core_spec_add_invariant_appends() {
+        let spec = CoreSpec::new()
+            .add_invariant(Invariant::new("a", "A"))
+            .add_invariant(Invariant::new("b", "B"))
+            .add_invariant(Invariant::new("c", "C"));
+        assert_eq!(spec.invariants.len(), 3);
+        assert_eq!(spec.invariants[0].name, "a");
+        assert_eq!(spec.invariants[2].name, "c");
+    }
+
+    #[test]
+    fn test_wrapper_spec_new_initial_state() {
+        let spec = WrapperSpec::new();
+        assert_eq!(spec.model_type, ModelType::GPT4);
+        assert_eq!(spec.fallback_strategy, FallbackStrategy::Deterministic);
+        assert_eq!(spec.confidence_threshold, 0.95);
+    }
+
+    #[test]
+    fn test_wrapper_spec_default_delegates_to_new() {
+        let a = WrapperSpec::default();
+        let b = WrapperSpec::new();
+        assert_eq!(a.model_type, b.model_type);
+        assert_eq!(a.fallback_strategy, b.fallback_strategy);
+        assert_eq!(a.confidence_threshold, b.confidence_threshold);
+    }
+
+    #[test]
+    fn test_wrapper_spec_model_type_local_variant() {
+        let spec = WrapperSpec::new().model_type(ModelType::Local("/models/m.gguf".to_string()));
+        match &spec.model_type {
+            ModelType::Local(p) => assert_eq!(p, "/models/m.gguf"),
+            other => panic!("expected Local, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_wrapper_spec_fallback_default_value_variant() {
+        let spec = WrapperSpec::new().fallback_strategy(FallbackStrategy::DefaultValue);
+        assert_eq!(spec.fallback_strategy, FallbackStrategy::DefaultValue);
+    }
+
+    #[test]
+    fn test_boundary_spec_default_fields() {
+        let b = BoundarySpec::default();
+        assert!(matches!(b.serialization, SerializationFormat::JSON));
+        assert!(matches!(b.validation, ValidationStrategy::Both));
+        assert!(matches!(b.error_propagation, ErrorPropagation::Immediate));
+    }
+
+    #[test]
+    fn test_invariant_default_severity_is_error() {
+        let inv = Invariant::new("x", "X");
+        assert!(matches!(inv.severity, InvariantSeverity::Error));
+    }
+
+    #[test]
+    fn test_invariant_with_severity_sets_all_variants() {
+        for sev in [
+            InvariantSeverity::Warning,
+            InvariantSeverity::Error,
+            InvariantSeverity::Critical,
+        ] {
+            let inv = Invariant::new("x", "X").with_severity(sev.clone());
+            match (&inv.severity, &sev) {
+                (InvariantSeverity::Warning, InvariantSeverity::Warning)
+                | (InvariantSeverity::Error, InvariantSeverity::Error)
+                | (InvariantSeverity::Critical, InvariantSeverity::Critical) => {}
+                _ => panic!("severity mismatch after with_severity"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_validate_complexity_standard_boundary() {
+        // Standard cap is 20.
+        assert!(validate_complexity_for_quality(
+            &CoreSpec::new().max_complexity(20),
+            QualityLevel::Standard
+        ));
+        assert!(!validate_complexity_for_quality(
+            &CoreSpec::new().max_complexity(21),
+            QualityLevel::Standard
+        ));
+    }
+
+    #[test]
+    fn test_validate_complexity_strict_boundary() {
+        // Strict cap is 15.
+        assert!(validate_complexity_for_quality(
+            &CoreSpec::new().max_complexity(15),
+            QualityLevel::Strict
+        ));
+        assert!(!validate_complexity_for_quality(
+            &CoreSpec::new().max_complexity(16),
+            QualityLevel::Strict
+        ));
+    }
+
+    #[test]
+    fn test_validate_complexity_extreme_boundary() {
+        // Extreme cap is 10 (new()'s default max_complexity).
+        assert!(validate_complexity_for_quality(
+            &CoreSpec::new().max_complexity(10),
+            QualityLevel::Extreme
+        ));
+        assert!(!validate_complexity_for_quality(
+            &CoreSpec::new().max_complexity(11),
+            QualityLevel::Extreme
+        ));
+    }
+
+    #[test]
+    fn test_serialization_format_variants_round_trip() {
+        for fmt in [
+            SerializationFormat::JSON,
+            SerializationFormat::MessagePack,
+            SerializationFormat::Protobuf,
+        ] {
+            let s = serde_json::to_string(&fmt).expect("serialize");
+            let back: SerializationFormat = serde_json::from_str(&s).expect("deserialize");
+            // Serde representation should round-trip.
+            let s2 = serde_json::to_string(&back).expect("re-serialize");
+            assert_eq!(s, s2);
+        }
+    }
+
+    #[test]
+    fn test_validation_strategy_variants_round_trip() {
+        for v in [
+            ValidationStrategy::Schema,
+            ValidationStrategy::Runtime,
+            ValidationStrategy::Both,
+        ] {
+            let s = serde_json::to_string(&v).expect("serialize");
+            let back: ValidationStrategy = serde_json::from_str(&s).expect("deserialize");
+            let s2 = serde_json::to_string(&back).expect("re-serialize");
+            assert_eq!(s, s2);
+        }
+    }
+
+    #[test]
+    fn test_error_propagation_variants_round_trip() {
+        for v in [
+            ErrorPropagation::Immediate,
+            ErrorPropagation::Deferred,
+            ErrorPropagation::Logged,
+        ] {
+            let s = serde_json::to_string(&v).expect("serialize");
+            let back: ErrorPropagation = serde_json::from_str(&s).expect("deserialize");
+            let s2 = serde_json::to_string(&back).expect("re-serialize");
+            assert_eq!(s, s2);
+        }
+    }
+
+    #[test]
+    fn test_hybrid_spec_serialization_with_non_default_fields() {
+        // Forces serde to walk every nested enum/struct with non-default variants.
+        let spec = HybridAgentSpec {
+            deterministic_core: CoreSpec::new()
+                .verification_method(VerificationMethod::FormalProof)
+                .max_complexity(7)
+                .add_invariant(
+                    Invariant::new("n1", "d1").with_severity(InvariantSeverity::Critical),
+                ),
+            probabilistic_wrapper: WrapperSpec::new()
+                .model_type(ModelType::Local("/m".to_string()))
+                .fallback_strategy(FallbackStrategy::DefaultValue)
+                .confidence_threshold(0.42),
+            boundary: BoundarySpec {
+                serialization: SerializationFormat::Protobuf,
+                validation: ValidationStrategy::Runtime,
+                error_propagation: ErrorPropagation::Logged,
+            },
+        };
+        let json = serde_json::to_string(&spec).expect("serialize");
+        let back: HybridAgentSpec = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(back.deterministic_core.max_complexity, 7);
+        assert_eq!(back.probabilistic_wrapper.confidence_threshold, 0.42);
+        assert_eq!(
+            back.probabilistic_wrapper.fallback_strategy,
+            FallbackStrategy::DefaultValue
+        );
+        match &back.probabilistic_wrapper.model_type {
+            ModelType::Local(p) => assert_eq!(p, "/m"),
+            other => panic!("expected Local, got {other:?}"),
+        }
+        assert!(matches!(
+            back.boundary.serialization,
+            SerializationFormat::Protobuf
+        ));
+        assert!(matches!(
+            back.boundary.validation,
+            ValidationStrategy::Runtime
+        ));
+        assert!(matches!(
+            back.boundary.error_propagation,
+            ErrorPropagation::Logged
+        ));
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
