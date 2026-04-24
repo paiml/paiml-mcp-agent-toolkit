@@ -3217,7 +3217,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Phase 1 pivot: cli/handlers/comply_handlers/check_pv_enforcement_helpers.rs coverage'
-  status: inprogress
+  status: review
   priority: medium
   assigned_to: null
   created: 2026-04-24T09:17:22Z
