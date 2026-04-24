@@ -245,6 +245,12 @@ pub(super) fn run_raw_counts_for_merge(
     }
 }
 
+// `items_after_test_module` fires because `modes_raw_search.rs` is
+// include!()'d into modes.rs ahead of the other `modes_*.rs` siblings —
+// so this test module is *textually* followed by production items from
+// other include files. Silence the lint since reordering the includes
+// would churn the entire handler module for no gain.
+#[allow(clippy::items_after_test_module)]
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod modes_raw_search_tests {

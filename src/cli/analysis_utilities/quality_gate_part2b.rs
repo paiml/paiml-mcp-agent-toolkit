@@ -169,6 +169,7 @@ fn parse_loc_reduction(message: &str) -> usize {
 }
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod part2b_pure_tests {
     //! Covers the pure-compute helpers in quality_gate_part2b.rs (145 uncov
     //! on broad, 0% cov). The SQLite persistence async fn's are skipped.
