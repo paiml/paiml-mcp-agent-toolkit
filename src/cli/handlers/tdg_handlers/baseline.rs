@@ -389,3 +389,91 @@ async fn update_baseline(
 
     Ok(())
 }
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod baseline_tests {
+    use super::*;
+    use crate::tdg::TdgBaseline;
+
+    /// extract_git_context returns None immediately when with_git_context=false,
+    /// skipping the GitContext::try_from_current_dir path.
+    #[test]
+    fn test_extract_git_context_disabled_returns_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        let result = extract_git_context(tmp.path(), false);
+        assert!(result.is_none());
+    }
+
+    /// extract_git_context on a non-git directory hits the None arm
+    /// of try_from_current_dir (logs "Not in a git repository").
+    #[test]
+    fn test_extract_git_context_non_git_dir_returns_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Tempdir is not a git repo → try_from_current_dir returns None →
+        // the warning-log arm fires and returns None.
+        let result = extract_git_context(tmp.path(), true);
+        assert!(result.is_none());
+    }
+
+    /// find_baseline_files returns empty for a dir with no baseline files.
+    #[test]
+    fn test_find_baseline_files_empty_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let out = find_baseline_files(tmp.path());
+        assert!(out.is_empty());
+    }
+
+    /// find_baseline_files picks up a real baseline file written with the
+    /// canonical `-baseline.json` suffix at the project root.
+    #[test]
+    fn test_find_baseline_files_matches_suffix() {
+        let tmp = tempfile::tempdir().unwrap();
+        let baseline = TdgBaseline::new(None);
+        let out_path = tmp.path().join("my-baseline.json");
+        baseline.save(&out_path).unwrap();
+
+        let found = find_baseline_files(tmp.path());
+        assert_eq!(found.len(), 1, "must find the -baseline.json file");
+        assert_eq!(found[0].0, out_path);
+    }
+
+    /// find_baseline_files picks up the canonical `.pmat-baseline.json` dotfile
+    /// name (second name arm of the `||` match).
+    #[test]
+    fn test_find_baseline_files_matches_pmat_dotfile_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let baseline = TdgBaseline::new(None);
+        let out_path = tmp.path().join(".pmat-baseline.json");
+        baseline.save(&out_path).unwrap();
+
+        let found = find_baseline_files(tmp.path());
+        assert_eq!(found.len(), 1, "must find .pmat-baseline.json");
+        assert_eq!(found[0].0, out_path);
+    }
+
+    /// find_baseline_files ignores files that don't match either naming rule.
+    #[test]
+    fn test_find_baseline_files_ignores_unrelated_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("unrelated.json"), "{}").unwrap();
+        std::fs::write(tmp.path().join("baseline.json"), "{}").unwrap(); // no `-` prefix
+        std::fs::write(tmp.path().join("notes.txt"), "hi").unwrap();
+
+        let found = find_baseline_files(tmp.path());
+        assert!(found.is_empty(), "must not pick up non-matching names");
+    }
+
+    /// find_baseline_files gracefully skips baseline files that fail to load
+    /// (invalid JSON content) — the `TdgBaseline::load(...).ok().map(...)`
+    /// returns None and filter_map drops the entry.
+    #[test]
+    fn test_find_baseline_files_skips_unreadable_baseline() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Matching name but invalid JSON → load returns Err, filter_map drops.
+        std::fs::write(tmp.path().join("bad-baseline.json"), "not json").unwrap();
+
+        let found = find_baseline_files(tmp.path());
+        assert!(found.is_empty(), "invalid content must be dropped");
+    }
+}
