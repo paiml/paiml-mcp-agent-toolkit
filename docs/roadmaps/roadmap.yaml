@@ -3217,7 +3217,7 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Phase 1: scaffold/agent/registry.rs coverage (Phase-1 tactic #3)'
-  status: inprogress
+  status: review
   priority: medium
   assigned_to: null
   created: 2026-04-24T07:04:56Z
