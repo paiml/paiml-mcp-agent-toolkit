@@ -281,3 +281,237 @@ mod property_tests;
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "coverage_tests.rs"]
 mod coverage_tests;
+
+#[cfg(test)]
+mod proof_annotation_formatter_tests {
+    //! Covers proof_annotation_formatter/mod.rs (37 uncov on broad, 0% cov).
+    use super::*;
+    use crate::models::unified_ast::{
+        BytePos, ConfidenceLevel, EvidenceType, Location, ProofAnnotation, PropertyType, Span,
+        VerificationMethod,
+    };
+    use chrono::Utc;
+    use std::path::PathBuf;
+    use uuid::Uuid;
+
+    fn loc() -> Location {
+        Location {
+            file_path: PathBuf::from("src/a.rs"),
+            span: Span {
+                start: BytePos(10),
+                end: BytePos(50),
+            },
+        }
+    }
+
+    fn ann_with(
+        confidence: ConfidenceLevel,
+        method: VerificationMethod,
+        property: PropertyType,
+        assumptions: Vec<String>,
+    ) -> ProofAnnotation {
+        ProofAnnotation {
+            annotation_id: Uuid::new_v4(),
+            property_proven: property,
+            specification_id: Some("spec-001".into()),
+            method,
+            tool_name: "test-tool".into(),
+            tool_version: "1.0".into(),
+            confidence_level: confidence,
+            assumptions,
+            evidence_type: EvidenceType::ImplicitTypeSystemGuarantee,
+            evidence_location: None,
+            date_verified: Utc::now(),
+        }
+    }
+
+    fn high_conf_ann() -> ProofAnnotation {
+        ann_with(
+            ConfidenceLevel::High,
+            VerificationMethod::BorrowChecker,
+            PropertyType::MemorySafety,
+            vec![],
+        )
+    }
+
+    // ── format_confidence_stats ──
+
+    #[test]
+    fn test_format_confidence_stats_empty_writes_nothing() {
+        let mut out = String::new();
+        format_confidence_stats(&[], &mut out).unwrap();
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_format_confidence_stats_groups_by_confidence() {
+        let anns = vec![
+            (
+                loc(),
+                ann_with(
+                    ConfidenceLevel::High,
+                    VerificationMethod::BorrowChecker,
+                    PropertyType::MemorySafety,
+                    vec![],
+                ),
+            ),
+            (
+                loc(),
+                ann_with(
+                    ConfidenceLevel::High,
+                    VerificationMethod::BorrowChecker,
+                    PropertyType::MemorySafety,
+                    vec![],
+                ),
+            ),
+            (
+                loc(),
+                ann_with(
+                    ConfidenceLevel::Low,
+                    VerificationMethod::BorrowChecker,
+                    PropertyType::MemorySafety,
+                    vec![],
+                ),
+            ),
+        ];
+        let mut out = String::new();
+        format_confidence_stats(&anns, &mut out).unwrap();
+        assert!(out.contains("Confidence Levels"));
+        assert!(out.contains("High: 2"));
+        assert!(out.contains("Low: 1"));
+    }
+
+    // ── format_method_stats ──
+
+    #[test]
+    fn test_format_method_stats_empty_writes_nothing() {
+        let mut out = String::new();
+        format_method_stats(&[], &mut out).unwrap();
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_format_method_stats_groups_by_method() {
+        let anns = vec![
+            (
+                loc(),
+                ann_with(
+                    ConfidenceLevel::High,
+                    VerificationMethod::BorrowChecker,
+                    PropertyType::MemorySafety,
+                    vec![],
+                ),
+            ),
+            (
+                loc(),
+                ann_with(
+                    ConfidenceLevel::High,
+                    VerificationMethod::AbstractInterpretation,
+                    PropertyType::MemorySafety,
+                    vec![],
+                ),
+            ),
+        ];
+        let mut out = String::new();
+        format_method_stats(&anns, &mut out).unwrap();
+        assert!(!out.is_empty());
+    }
+
+    // ── format_property_stats ──
+
+    #[test]
+    fn test_format_property_stats_empty_writes_nothing() {
+        let mut out = String::new();
+        format_property_stats(&[], &mut out).unwrap();
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_format_property_stats_with_anns_writes_section() {
+        let anns = vec![(loc(), high_conf_ann())];
+        let mut out = String::new();
+        format_property_stats(&anns, &mut out).unwrap();
+        assert!(!out.is_empty());
+    }
+
+    // ── group_by_file ──
+
+    #[test]
+    fn test_group_by_file_empty_returns_empty_map() {
+        let anns: Vec<(Location, ProofAnnotation)> = vec![];
+        let groups = group_by_file(&anns);
+        assert!(groups.is_empty());
+    }
+
+    #[test]
+    fn test_group_by_file_groups_by_path() {
+        let mut l1 = loc();
+        l1.file_path = PathBuf::from("src/a.rs");
+        let mut l2 = loc();
+        l2.file_path = PathBuf::from("src/b.rs");
+        let anns = vec![
+            (l1.clone(), high_conf_ann()),
+            (l2.clone(), high_conf_ann()),
+            (l1.clone(), high_conf_ann()),
+        ];
+        let groups = group_by_file(&anns);
+        assert_eq!(groups.len(), 2);
+        // src/a.rs should have 2 entries.
+        let a_count = groups
+            .get(&PathBuf::from("src/a.rs"))
+            .map(|v| v.len())
+            .unwrap_or(0);
+        let b_count = groups
+            .get(&PathBuf::from("src/b.rs"))
+            .map(|v| v.len())
+            .unwrap_or(0);
+        assert_eq!(a_count, 2);
+        assert_eq!(b_count, 1);
+    }
+
+    // ── format_single_proof ──
+
+    #[test]
+    fn test_format_single_proof_includes_position_and_metadata() {
+        let mut out = String::new();
+        format_single_proof(&loc(), &high_conf_ann(), &mut out, false).unwrap();
+        assert!(out.contains("Position 10-50"));
+        assert!(out.contains("Property"));
+        assert!(out.contains("Method"));
+        assert!(out.contains("Tool"));
+        assert!(out.contains("Confidence"));
+        assert!(out.contains("Verified"));
+    }
+
+    #[test]
+    fn test_format_single_proof_with_assumptions_includes_them() {
+        let ann = ann_with(
+            ConfidenceLevel::High,
+            VerificationMethod::BorrowChecker,
+            PropertyType::MemorySafety,
+            vec!["arr.len() > 0".into(), "no aliasing".into()],
+        );
+        let mut out = String::new();
+        format_single_proof(&loc(), &ann, &mut out, false).unwrap();
+        assert!(out.contains("Assumptions"));
+        assert!(out.contains("arr.len() > 0"));
+        assert!(out.contains("no aliasing"));
+    }
+
+    #[test]
+    fn test_format_single_proof_with_evidence_includes_evidence_section() {
+        let mut out = String::new();
+        format_single_proof(&loc(), &high_conf_ann(), &mut out, true).unwrap();
+        assert!(out.contains("Evidence"));
+        // specification_id is Some("spec-001") in our fixture.
+        assert!(out.contains("spec-001"));
+    }
+
+    #[test]
+    fn test_format_single_proof_without_evidence_skips_section() {
+        let mut out = String::new();
+        format_single_proof(&loc(), &high_conf_ann(), &mut out, false).unwrap();
+        // include_evidence=false → no Evidence section.
+        assert!(!out.contains("Evidence"));
+    }
+}
