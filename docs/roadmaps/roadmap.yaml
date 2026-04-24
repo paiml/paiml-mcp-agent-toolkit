@@ -3149,11 +3149,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Phase 1: cover extract_ruchy_pipeline_patterns branches'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-04-21T12:33:32Z
-  updated: 2026-04-21T12:33:32Z
+  updated: 2026-04-23T13:23:17Z
   spec: null
   acceptance_criteria:
   - 'Target src/entropy/pattern_extractor_ruchy.rs:69 — 29 uncovered, 31% cov, impact 3.4. Existing test runs but skips asserting matches>3 branch. Add tests for: (a) >3 match path with AstPattern field assertions, (b) >15 matches triggering break, (c) pattern_type==DataTransformation + estimated_loc invariants.'
@@ -3168,11 +3168,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Phase 1: cover parse_python_imports + parse_typescript_imports + parse_rust_imports'
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-04-21T13:14:04Z
-  updated: 2026-04-21T13:14:08.412846003+00:00
+  updated: 2026-04-23T13:23:13Z
   spec: null
   acceptance_criteria:
   - 'Close ~53 uncovered lines in src/graph/builder_import_parsing.rs (parse_typescript_imports 22 uncov, parse_python_imports 9 uncov, parse_rust_imports also uncovered). 6 tests covering all branches. Sibling to PR #397.'
@@ -3185,11 +3185,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: Cover polyglot NameResolver can_resolve branches
-  status: inprogress
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-04-21T17:14:33Z
-  updated: 2026-04-21T17:14:36.232270027+00:00
+  updated: 2026-04-23T13:23:19Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3201,11 +3201,11 @@ roadmap:
   github_issue: null
   item_type: task
   title: 'Coverage: resolve_against_name_map missing-target branch'
-  status: planned
+  status: completed
   priority: medium
   assigned_to: null
   created: 2026-04-21T17:39:22Z
-  updated: 2026-04-21T17:39:22Z
+  updated: 2026-04-23T13:23:17Z
   spec: null
   acceptance_criteria: []
   phases: []
@@ -3213,18 +3213,18 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
-- id: PMAT-633
+- id: PMAT-629
   github_issue: null
   item_type: task
-  title: 'Phase 1: scaffold/agent/templates.rs branch + content coverage (Phase-1 tactic #3)'
-  status: review
+  title: 'Phase 1: cover rust_wasm_analyzer::analyze_impl_method branches'
+  status: inprogress
   priority: medium
   assigned_to: null
-  created: 2026-04-23T21:07:57Z
-  updated: 2026-04-23T21:10:58Z
+  created: 2026-04-23T16:58:28Z
+  updated: 2026-04-23T16:58:37Z
   spec: null
   acceptance_criteria:
-  - 'Per spec Phase 1 tactic #3 (''insta snapshot tests per scaffold generator; 0% → 90%''), expand MCPServerTemplate + StateMachineTemplate test coverage: Default fields, name/description getters, all generated files by path, Standard-vs-Strict-vs-Extreme quality-level branching in MCPServerTemplate (if !Standard → adds src/quality/* + mod quality; in main.rs), ctx.name flowthrough, validate_context empty-name error, Cargo.toml pmcp dep pinning, state enum/event variant assertions, AgentTemplate enum serde round-trip. 16 new tests, no insta dependency (explicit assertions cover the same surface).'
+  - 'Target src/services/rust_wasm_analyzer.rs analyze_impl_method (lines 114-141). Previously untested: the method_attr || impl_attr disjunction at line 120 and the !is_wasm_bindgen && !is_no_mangle && !is_extern_c guard at line 124. Add 6 tests: bindgen on method, bindgen on impl-block (inheritance), non-boundary None, extern C ABI, no_mangle only, and full-file dispatcher picks up impl methods. Module is feature-gated behind deep-wasm.'
   phases: []
   subtasks: []
   estimated_effort: null
