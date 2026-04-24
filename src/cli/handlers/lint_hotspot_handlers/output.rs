@@ -339,3 +339,141 @@ fn format_sarif(result: &LintHotspotResult) -> Result<String> {
 
     serde_json::to_string_pretty(&sarif).context("Failed to serialize to SARIF")
 }
+
+#[cfg(test)]
+mod lint_hotspot_output_tests {
+    //! Covers format_output dispatcher + format_json/sarif in
+    //! lint_hotspot_handlers/output.rs (40 uncov on broad, 0% cov).
+    use super::*;
+
+    fn empty_result() -> LintHotspotResult {
+        LintHotspotResult {
+            hotspot: LintHotspot {
+                file: "src/a.rs".into(),
+                defect_density: 0.0,
+                total_violations: 0,
+                sloc: 100,
+                severity_distribution: SeverityDistribution::default(),
+                top_lints: vec![],
+                detailed_violations: vec![],
+            },
+            all_violations: vec![],
+            summary_by_file: std::collections::HashMap::new(),
+            total_project_violations: 0,
+            enforcement: None,
+            refactor_chain: None,
+            quality_gate: QualityGateStatus {
+                passed: true,
+                violations: vec![],
+                blocking: false,
+            },
+        }
+    }
+
+    #[test]
+    fn test_format_output_json_returns_valid_json() {
+        let out = format_output(
+            &empty_result(),
+            LintHotspotOutputFormat::Json,
+            false,
+            std::time::Duration::from_millis(10),
+            5,
+        )
+        .unwrap();
+        let _: serde_json::Value = serde_json::from_str(&out).unwrap();
+    }
+
+    #[test]
+    fn test_format_output_enforcement_json_dispatch() {
+        let out = format_output(
+            &empty_result(),
+            LintHotspotOutputFormat::EnforcementJson,
+            false,
+            std::time::Duration::from_millis(10),
+            5,
+        )
+        .unwrap();
+        let _: serde_json::Value = serde_json::from_str(&out).unwrap();
+    }
+
+    #[test]
+    fn test_format_output_sarif_returns_sarif_envelope() {
+        let out = format_output(
+            &empty_result(),
+            LintHotspotOutputFormat::Sarif,
+            false,
+            std::time::Duration::from_millis(10),
+            5,
+        )
+        .unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert!(parsed.is_object());
+        let obj = parsed.as_object().unwrap();
+        assert!(
+            obj.contains_key("version") || obj.contains_key("runs"),
+            "SARIF envelope missing"
+        );
+    }
+
+    #[test]
+    fn test_format_output_summary_dispatch() {
+        let out = format_output(
+            &empty_result(),
+            LintHotspotOutputFormat::Summary,
+            false,
+            std::time::Duration::from_millis(10),
+            5,
+        )
+        .unwrap();
+        assert!(!out.is_empty());
+    }
+
+    #[test]
+    fn test_format_output_detailed_dispatch() {
+        let out = format_output(
+            &empty_result(),
+            LintHotspotOutputFormat::Detailed,
+            false,
+            std::time::Duration::from_millis(10),
+            5,
+        )
+        .unwrap();
+        assert!(!out.is_empty());
+    }
+
+    #[test]
+    fn test_format_json_enforcement_vs_non_enforcement_both_valid() {
+        let non_enf = format_json(&empty_result(), false).unwrap();
+        let enf = format_json(&empty_result(), true).unwrap();
+        let _: serde_json::Value = serde_json::from_str(&non_enf).unwrap();
+        let _: serde_json::Value = serde_json::from_str(&enf).unwrap();
+    }
+
+    #[test]
+    fn test_format_sarif_empty_result_valid_json() {
+        let out = format_sarif(&empty_result()).unwrap();
+        let _: serde_json::Value = serde_json::from_str(&out).unwrap();
+    }
+
+    #[test]
+    fn test_format_output_perf_flag_toggle() {
+        let out_off = format_output(
+            &empty_result(),
+            LintHotspotOutputFormat::Summary,
+            false,
+            std::time::Duration::from_millis(5),
+            3,
+        )
+        .unwrap();
+        let out_on = format_output(
+            &empty_result(),
+            LintHotspotOutputFormat::Summary,
+            true,
+            std::time::Duration::from_millis(5),
+            3,
+        )
+        .unwrap();
+        assert!(!out_off.is_empty());
+        assert!(!out_on.is_empty());
+    }
+}
