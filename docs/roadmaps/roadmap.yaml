@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-651
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: cli/handlers/comply_handlers/check_pv_enforcement_helpers.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T09:17:22Z
+  updated: 2026-04-24T09:17:22Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI pivot — check_pv_enforcement_helpers.rs is 480 lines, 381/437 missed broad. ZERO actual async fns (the 3 grep matches were string literals). 12 pure fs+compute helpers. Cover extract_names_from_source (10+ fn-prefix variants + const variants), cross_reference_bindings (verified counter, dedup via seen, missing list capping), parse_binding_entries (Type::fn stripping, status filter), has_contract_yamls (yaml/yml present, excludes binding), resolve_contracts_dir (sibling provable-contracts vs local), collect_stems_recursive (skip binding files), detect_buildrs_enforcement (root + crates/* + keyword match), count_contract_test_refs.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
