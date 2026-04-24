@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-652
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: cli/handlers/qa_work_handler/impl_spec.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T09:22:49Z
+  updated: 2026-04-24T09:22:49Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI pivot — impl_spec.rs is 446 lines, 274/274 missed broad. 2 async (handle_spec, run_validation_command) skipped. Cover sync helpers: print_task_status (no checklist + complete + in-progress + pending branches), resolve_spec_path (direct .md path, project-relative, exact spec, hyphen normalization, partial match, GH-X / #X reference, not-found Err), format_spec_result_markdown (passed/failed gateway + total status + missing JSON fields default).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
