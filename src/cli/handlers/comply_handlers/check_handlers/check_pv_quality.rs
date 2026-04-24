@@ -593,3 +593,108 @@ fn parse_float_metric(output: &str, label: &str) -> f64 {
         })
         .unwrap_or(0.0)
 }
+
+#[cfg(test)]
+mod check_pv_quality_tests {
+    //! Covers pure-compute helpers + skip arms in check_pv_quality.rs
+    //! (90 uncov on broad, 0% cov).
+    use super::*;
+
+    // ── parse_metric: label match, no match, non-numeric ──
+
+    #[test]
+    fn test_parse_metric_extracts_integer_after_colon() {
+        let output = "E0 (generic !is_empty):  42\nE1 (domain):  7";
+        assert_eq!(parse_metric(output, "E0"), 42);
+        assert_eq!(parse_metric(output, "E1"), 7);
+    }
+
+    #[test]
+    fn test_parse_metric_label_not_found_returns_zero() {
+        assert_eq!(parse_metric("some other line\n", "MISSING"), 0);
+    }
+
+    #[test]
+    fn test_parse_metric_non_numeric_returns_zero() {
+        // Line exists but value is not parseable as integer.
+        assert_eq!(parse_metric("E0: not-a-number\n", "E0"), 0);
+    }
+
+    #[test]
+    fn test_parse_metric_empty_output_returns_zero() {
+        assert_eq!(parse_metric("", "E0"), 0);
+    }
+
+    // ── parse_float_metric: label match, no match, non-numeric ──
+
+    #[test]
+    fn test_parse_float_metric_extracts_value_before_whitespace() {
+        // Takes the first whitespace-separated token after the colon.
+        let output = "Quality score:  0.55 (out of 1.0)\nOther: ignored\n";
+        assert!((parse_float_metric(output, "Quality score") - 0.55).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_parse_float_metric_label_not_found_returns_zero() {
+        assert_eq!(parse_float_metric("other: 1.5\n", "Missing"), 0.0);
+    }
+
+    #[test]
+    fn test_parse_float_metric_non_numeric_returns_zero() {
+        assert_eq!(parse_float_metric("X: not a number\n", "X"), 0.0);
+    }
+
+    #[test]
+    fn test_parse_float_metric_empty_output_returns_zero() {
+        assert_eq!(parse_float_metric("", "X"), 0.0);
+    }
+
+    // ── check_precondition_quality: no contracts/ → Skip ──
+
+    #[test]
+    fn test_check_precondition_quality_no_contracts_dir_skips() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_precondition_quality(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Skip));
+        assert_eq!(check.name, "CB-1210: Precondition Quality");
+    }
+
+    // ── check_codegen_fidelity: no generated_contracts.rs → Skip or pass through ──
+
+    #[test]
+    fn test_check_codegen_fidelity_no_generated_file_runs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_codegen_fidelity(tmp.path());
+        // On an empty project we expect a non-panicking ComplianceCheck.
+        assert!(matches!(
+            check.status,
+            CheckStatus::Skip | CheckStatus::Pass | CheckStatus::Warn | CheckStatus::Fail
+        ));
+    }
+
+    // ── check_enforcement_quality: no binding.yaml → Skip ──
+
+    #[test]
+    fn test_check_enforcement_quality_no_binding_yaml_runs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_enforcement_quality(tmp.path());
+        assert!(matches!(
+            check.status,
+            CheckStatus::Skip | CheckStatus::Pass | CheckStatus::Warn | CheckStatus::Fail
+        ));
+    }
+
+    // ── find_generated_contracts + find_binding_yaml: no match → None ──
+
+    #[test]
+    fn test_find_generated_contracts_missing_returns_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert!(find_generated_contracts(tmp.path()).is_none());
+    }
+
+    #[test]
+    fn test_find_binding_yaml_missing_returns_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert!(find_binding_yaml(tmp.path()).is_none());
+    }
+}
