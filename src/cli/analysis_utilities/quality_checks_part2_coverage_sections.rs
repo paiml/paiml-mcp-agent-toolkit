@@ -94,3 +94,241 @@ async fn check_sections(project_path: &Path) -> Result<Vec<QualityViolation>> {
 
     Ok(violations)
 }
+
+#[cfg(test)]
+mod coverage_sections_tests {
+    //! Covers quality_checks_part2_coverage_sections.rs pure-compute helpers
+    //! (73 uncov on broad, 0% cov).
+    use super::*;
+
+    // ── compute_line_coverage: sum across per-file hit maps ──
+
+    #[test]
+    fn test_compute_line_coverage_empty_files_map_is_zero_zero() {
+        let files = serde_json::Map::new();
+        let (total, covered) = compute_line_coverage(&files);
+        assert_eq!(total, 0);
+        assert_eq!(covered, 0);
+    }
+
+    #[test]
+    fn test_compute_line_coverage_counts_only_object_values() {
+        let json = serde_json::json!({
+            "src/a.rs": {"1": 5, "2": 0, "3": 12},
+            "src/b.rs": "not-an-object",  // skipped by as_object() branch
+            "src/c.rs": {"1": 0}
+        });
+        let files = json.as_object().unwrap().clone();
+        let (total, covered) = compute_line_coverage(&files);
+        assert_eq!(total, 4, "3 from a.rs + 1 from c.rs = 4");
+        assert_eq!(covered, 2, "a.rs:1=5 and a.rs:3=12 → 2 covered");
+    }
+
+    #[test]
+    fn test_compute_line_coverage_non_numeric_hits_count_as_uncovered() {
+        // count.as_u64() returns None for strings → unwrap_or(0) → not > 0 → uncovered.
+        let json = serde_json::json!({
+            "f.rs": {"1": "notanumber", "2": 3}
+        });
+        let files = json.as_object().unwrap().clone();
+        let (total, covered) = compute_line_coverage(&files);
+        assert_eq!(total, 2);
+        assert_eq!(covered, 1);
+    }
+
+    // ── read_coverage_from_detail_cache ──
+
+    #[test]
+    fn test_read_coverage_from_detail_cache_missing_file_is_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
+    }
+
+    #[test]
+    fn test_read_coverage_from_detail_cache_malformed_json_is_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
+        std::fs::write(tmp.path().join(".pmat/coverage-cache.json"), "not json").unwrap();
+        assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
+    }
+
+    #[test]
+    fn test_read_coverage_from_detail_cache_no_files_key_is_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
+        std::fs::write(tmp.path().join(".pmat/coverage-cache.json"), "{}").unwrap();
+        assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
+    }
+
+    #[test]
+    fn test_read_coverage_from_detail_cache_total_zero_is_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
+        // Empty files object → total=0 → None.
+        std::fs::write(
+            tmp.path().join(".pmat/coverage-cache.json"),
+            "{\"files\":{}}",
+        )
+        .unwrap();
+        assert!(read_coverage_from_detail_cache(tmp.path()).is_none());
+    }
+
+    #[test]
+    fn test_read_coverage_from_detail_cache_valid_returns_percentage() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
+        // 4 lines, 3 covered → 75%.
+        std::fs::write(
+            tmp.path().join(".pmat/coverage-cache.json"),
+            "{\"files\":{\"a.rs\":{\"1\":1,\"2\":2,\"3\":0,\"4\":5}}}",
+        )
+        .unwrap();
+        let pct = read_coverage_from_detail_cache(tmp.path()).unwrap();
+        assert!((pct - 75.0).abs() < 1e-6);
+    }
+
+    // ── read_coverage_from_metrics ──
+
+    #[test]
+    fn test_read_coverage_from_metrics_missing_file_is_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert!(read_coverage_from_metrics(tmp.path()).is_none());
+    }
+
+    #[test]
+    fn test_read_coverage_from_metrics_valid_returns_value() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
+        std::fs::write(
+            tmp.path().join(".pmat-metrics/coverage.json"),
+            "{\"coverage\": 92.5}",
+        )
+        .unwrap();
+        let pct = read_coverage_from_metrics(tmp.path()).unwrap();
+        assert!((pct - 92.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_read_coverage_from_metrics_missing_coverage_key_is_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
+        std::fs::write(
+            tmp.path().join(".pmat-metrics/coverage.json"),
+            "{\"other\": 1}",
+        )
+        .unwrap();
+        assert!(read_coverage_from_metrics(tmp.path()).is_none());
+    }
+
+    // ── read_coverage_from_cache: falls back from detail to metrics ──
+
+    #[test]
+    fn test_read_coverage_from_cache_detail_preferred_over_metrics() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat")).unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
+        // Detail cache present + metrics also present → detail wins.
+        std::fs::write(
+            tmp.path().join(".pmat/coverage-cache.json"),
+            "{\"files\":{\"a.rs\":{\"1\":1,\"2\":0}}}",
+        )
+        .unwrap(); // 50%
+        std::fs::write(
+            tmp.path().join(".pmat-metrics/coverage.json"),
+            "{\"coverage\": 92.5}",
+        )
+        .unwrap();
+        let pct = read_coverage_from_cache(tmp.path()).unwrap();
+        assert!((pct - 50.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_read_coverage_from_cache_falls_back_to_metrics() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
+        // No detail cache → fallback to metrics.
+        std::fs::write(
+            tmp.path().join(".pmat-metrics/coverage.json"),
+            "{\"coverage\": 80.0}",
+        )
+        .unwrap();
+        let pct = read_coverage_from_cache(tmp.path()).unwrap();
+        assert!((pct - 80.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_read_coverage_from_cache_no_files_is_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert!(read_coverage_from_cache(tmp.path()).is_none());
+    }
+
+    // ── check_coverage async ──
+
+    #[tokio::test]
+    async fn test_check_coverage_no_data_no_violations() {
+        let tmp = tempfile::tempdir().unwrap();
+        let v = check_coverage(tmp.path(), 95.0).await.unwrap();
+        assert!(v.is_empty(), "no data → skip, no violations");
+    }
+
+    #[tokio::test]
+    async fn test_check_coverage_below_threshold_flagged() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
+        std::fs::write(
+            tmp.path().join(".pmat-metrics/coverage.json"),
+            "{\"coverage\": 60.0}",
+        )
+        .unwrap();
+        let v = check_coverage(tmp.path(), 95.0).await.unwrap();
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].check_type, "coverage");
+        assert_eq!(v[0].severity, "error");
+    }
+
+    #[tokio::test]
+    async fn test_check_coverage_above_threshold_no_violation() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".pmat-metrics")).unwrap();
+        std::fs::write(
+            tmp.path().join(".pmat-metrics/coverage.json"),
+            "{\"coverage\": 97.0}",
+        )
+        .unwrap();
+        let v = check_coverage(tmp.path(), 95.0).await.unwrap();
+        assert!(v.is_empty());
+    }
+
+    // ── check_sections async ──
+
+    #[tokio::test]
+    async fn test_check_sections_no_readme_no_violations() {
+        let tmp = tempfile::tempdir().unwrap();
+        let v = check_sections(tmp.path()).await.unwrap();
+        assert!(v.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_check_sections_complete_readme_no_violations() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("README.md"),
+            "# Project\n## Installation\n## Usage\n## Contributing\n## License\n",
+        )
+        .unwrap();
+        let v = check_sections(tmp.path()).await.unwrap();
+        assert!(v.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_check_sections_missing_sections_all_flagged() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("README.md"), "# Project only\n").unwrap();
+        let v = check_sections(tmp.path()).await.unwrap();
+        assert_eq!(v.len(), 4, "all 4 required sections missing");
+        for x in &v {
+            assert_eq!(x.check_type, "sections");
+            assert_eq!(x.severity, "warning");
+        }
+    }
+}

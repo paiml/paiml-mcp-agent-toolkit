@@ -806,3 +806,182 @@ pub(crate) fn check_lean_best_practices_with_config(
         true,
     )
 }
+
+#[cfg(test)]
+mod check_best_practices_tests {
+    //! Covers pure-compute helpers in check_best_practices.rs (69 uncov on
+    //! broad, 0% cov). Skips fs-walking check_*_best_practices detectors.
+    use super::*;
+    use crate::cli::handlers::comply_cb_detect::{CbPatternViolation, Severity as CbSev};
+
+    fn viol(sev: CbSev, pid: &str, file: &str) -> CbPatternViolation {
+        CbPatternViolation {
+            pattern_id: pid.to_string(),
+            file: file.to_string(),
+            line: 1,
+            description: "desc".to_string(),
+            severity: sev,
+        }
+    }
+
+    #[test]
+    fn test_suppression_suffix_zero_count_empty() {
+        assert_eq!(suppression_suffix(0, " ("), "");
+        assert_eq!(suppression_suffix(0, ", "), "");
+    }
+
+    #[test]
+    fn test_suppression_suffix_nonzero_count_has_prefix_and_count() {
+        assert_eq!(suppression_suffix(3, " ("), " (3 suppressed via .pmat.yaml");
+        assert_eq!(suppression_suffix(1, ", "), ", 1 suppressed via .pmat.yaml");
+    }
+
+    #[test]
+    fn test_truncate_issues_at_or_below_20_unchanged() {
+        let issues: Vec<String> = (0..20).map(|i| format!("item{i}")).collect();
+        let out = truncate_issues(issues.clone());
+        assert_eq!(out, issues);
+
+        let small: Vec<String> = (0..5).map(|i| format!("i{i}")).collect();
+        assert_eq!(truncate_issues(small.clone()), small);
+    }
+
+    #[test]
+    fn test_truncate_issues_above_20_adds_ellipsis() {
+        let issues: Vec<String> = (0..25).map(|i| format!("item{i}")).collect();
+        let out = truncate_issues(issues);
+        assert_eq!(out.len(), 21);
+        assert_eq!(out[20], "    ... and 5 more");
+        assert_eq!(out[0], "item0");
+        assert_eq!(out[19], "item19");
+    }
+
+    #[test]
+    fn test_is_cb_suppressed_no_config_returns_false() {
+        let v = viol(CbSev::Error, "CB-500", "src/a.rs");
+        assert!(!is_cb_suppressed(&v, None));
+    }
+
+    #[test]
+    fn test_is_cb_suppressed_config_without_matching_rule_returns_false() {
+        use crate::models::comply_config::ComplyConfig;
+        let cfg = ComplyConfig::default();
+        let v = viol(CbSev::Error, "CB-999", "src/a.rs");
+        assert!(!is_cb_suppressed(&v, Some(&cfg)));
+    }
+
+    #[test]
+    fn test_is_cb_suppressed_config_with_matching_rule_returns_true() {
+        use crate::models::comply_config::{ComplyConfig, SuppressionYamlRule};
+        let cfg = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-500".to_string()],
+                files: vec![],
+                reason: "test".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        let v = viol(CbSev::Error, "CB-500", "src/a.rs");
+        assert!(is_cb_suppressed(&v, Some(&cfg)));
+    }
+
+    #[test]
+    fn test_aggregate_violations_no_violations_passes() {
+        let check = aggregate_violations("Test", &[], None, true);
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert_eq!(check.severity, Severity::Info);
+        assert!(check.message.contains("No violations detected"));
+    }
+
+    #[test]
+    fn test_aggregate_violations_errors_with_fail_on_error_fails() {
+        let detectors = vec![(
+            "D1",
+            vec![
+                viol(CbSev::Error, "CB-500", "a.rs"),
+                viol(CbSev::Error, "CB-501", "b.rs"),
+            ],
+        )];
+        let check = aggregate_violations("Test", &detectors, None, true);
+        assert!(matches!(check.status, CheckStatus::Fail));
+        assert!(check.message.contains("2 errors"));
+    }
+
+    #[test]
+    fn test_aggregate_violations_errors_without_fail_on_error_warns() {
+        let detectors = vec![("D1", vec![viol(CbSev::Error, "CB-500", "a.rs")])];
+        let check = aggregate_violations("Test", &detectors, None, false);
+        assert!(matches!(check.status, CheckStatus::Warn));
+    }
+
+    #[test]
+    fn test_aggregate_violations_only_warnings_warns() {
+        let detectors = vec![(
+            "D1",
+            vec![
+                viol(CbSev::Warning, "CB-500", "a.rs"),
+                viol(CbSev::Info, "CB-501", "b.rs"),
+            ],
+        )];
+        let check = aggregate_violations("Test", &detectors, None, true);
+        assert!(matches!(check.status, CheckStatus::Warn));
+        assert!(check.message.contains("0 errors"));
+        assert!(check.message.contains("1 warnings"));
+        assert!(check.message.contains("1 info"));
+    }
+
+    #[test]
+    fn test_aggregate_violations_truncates_at_20_issues() {
+        let violations: Vec<CbPatternViolation> = (0..25)
+            .map(|i| viol(CbSev::Warning, &format!("CB-{i}"), "a.rs"))
+            .collect();
+        let detectors = vec![("D1", violations)];
+        let check = aggregate_violations("Test", &detectors, None, true);
+        assert!(check.message.contains("and 5 more"));
+    }
+
+    #[test]
+    fn test_aggregate_violations_suppressed_not_counted() {
+        use crate::models::comply_config::{ComplyConfig, SuppressionYamlRule};
+        let cfg = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-500".to_string()],
+                files: vec![],
+                reason: "test".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        let detectors = vec![(
+            "D1",
+            vec![
+                viol(CbSev::Error, "CB-500", "a.rs"),
+                viol(CbSev::Warning, "CB-600", "b.rs"),
+            ],
+        )];
+        let check = aggregate_violations("Test", &detectors, Some(&cfg), true);
+        assert!(matches!(check.status, CheckStatus::Warn));
+        assert!(check.message.contains("0 errors"));
+        assert!(check.message.contains("1 suppressed"));
+    }
+
+    #[test]
+    fn test_aggregate_violations_all_suppressed_still_passes() {
+        use crate::models::comply_config::{ComplyConfig, SuppressionYamlRule};
+        let cfg = ComplyConfig {
+            suppressions: vec![SuppressionYamlRule {
+                rules: vec!["CB-500".to_string()],
+                files: vec![],
+                reason: "test".to_string(),
+                expires: None,
+            }],
+            ..Default::default()
+        };
+        let detectors = vec![("D1", vec![viol(CbSev::Error, "CB-500", "a.rs")])];
+        let check = aggregate_violations("Test", &detectors, Some(&cfg), true);
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert!(check.message.contains("No violations detected"));
+        assert!(check.message.contains("1 suppressed"));
+    }
+}
