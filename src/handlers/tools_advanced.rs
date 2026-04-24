@@ -352,7 +352,7 @@ mod part2_tests {
         s.hotspots = vec![
             TDGHotspot {
                 path: "src/a.rs".to_string(),
-                tdg_score: 3.14,
+                tdg_score: 3.15,
                 primary_factor: "Complexity".to_string(),
                 estimated_hours: 4.5,
             },
@@ -367,7 +367,7 @@ mod part2_tests {
         append_tdg_hotspots_section(&mut out, &s);
         assert!(out.contains("## Top Hotspots"));
         assert!(out.contains("src/a.rs"));
-        assert!(out.contains("3.14"));
+        assert!(out.contains("3.15"));
         assert!(out.contains("Complexity"));
         assert!(out.contains("src/b.rs"));
         assert!(out.contains("Duplication"));
