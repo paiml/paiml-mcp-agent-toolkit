@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-649
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: cli/analysis_utilities/tdg_formatting.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T08:55:52Z
+  updated: 2026-04-24T08:55:52Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI pivot — tdg_formatting.rs is 294 lines, 232/232 missed on master broad, 0 async, pure output formatting. Cover format_output_from_summary (4 format arms), format_empty_results (4 arms), format_tdg_single_file_output (severity mapping to critical/warning counts), format_table_output (with/without hotspots + components+verbose), format_json_output (with/without components), format_markdown_output (full pipeline + add_markdown_components toggle), format_sarif_output (empty + populated + error-vs-warning level).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
