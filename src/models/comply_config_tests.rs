@@ -345,4 +345,48 @@ work: {}
             other => panic!("expected ParseError for malformed yaml, got {other:?}"),
         }
     }
+
+    /// comply_config_impls.rs:94 — `PmatYamlConfig::save` happy path.
+    /// Writes the serialized YAML to `<project_path>/.pmat.yaml` and a fresh
+    /// `load_from_path` of the same file returns an equivalent config.
+    #[test]
+    fn test_save_roundtrip_to_temp_dir() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let cfg = PmatYamlConfig::default();
+
+        cfg.save(tmp.path()).expect("save must succeed in tempdir");
+
+        let yaml_path = tmp.path().join(".pmat.yaml");
+        assert!(yaml_path.exists(), ".pmat.yaml must be created by save()");
+
+        let reloaded = PmatYamlConfig::load_from_path(&yaml_path)
+            .expect("saved file must be parseable as PmatYamlConfig");
+        assert_eq!(
+            reloaded.comply.thresholds.coverage,
+            cfg.comply.thresholds.coverage,
+            "round-trip must preserve coverage threshold",
+        );
+        assert_eq!(
+            reloaded.comply.thresholds.complexity,
+            cfg.comply.thresholds.complexity,
+            "round-trip must preserve complexity threshold",
+        );
+    }
+
+    /// comply_config_impls.rs:99 — `std::fs::write(...).map_err(IoError)` fires
+    /// when the target path cannot be created (e.g. parent directory is missing
+    /// and not auto-created by `save`). `save` does not create the parent, so
+    /// pointing at a non-existent nested directory triggers the IoError arm.
+    #[test]
+    fn test_save_returns_io_error_when_parent_missing() {
+        let tmp = tempfile::tempdir().expect("create tempdir");
+        let missing_parent = tmp.path().join("does").join("not").join("exist");
+        let cfg = PmatYamlConfig::default();
+
+        let result = cfg.save(&missing_parent);
+        match result {
+            Err(ConfigError::IoError(_)) => {}
+            other => panic!("expected IoError when parent missing, got {other:?}"),
+        }
+    }
 }
