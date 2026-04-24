@@ -417,3 +417,151 @@ async fn output_coverage_result(content: String, output: Option<PathBuf>) -> Res
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod proof_coverage_tests {
+    //! Covers 0%-covered pure-compute helpers in proof_coverage.rs
+    //! (60 uncov on broad).
+    use super::*;
+
+    fn empty_report() -> IncrementalCoverageReport {
+        IncrementalCoverageReport {
+            base_branch: "main".into(),
+            target_branch: "HEAD".into(),
+            coverage_threshold: 0.9,
+            files: vec![],
+            summary: CoverageSummary {
+                total_files_changed: 0,
+                files_improved: 0,
+                files_degraded: 0,
+                overall_delta: 0.0,
+                meets_threshold: true,
+            },
+        }
+    }
+
+    // ── print_coverage_analysis_header: exercise both target_branch arms ──
+
+    #[test]
+    fn test_print_coverage_analysis_header_with_target_branch() {
+        print_coverage_analysis_header(
+            std::path::Path::new("/tmp/proj"),
+            "main",
+            &Some("feat/x".to_string()),
+            0.95,
+            &IncrementalCoverageOutputFormat::Summary,
+        );
+    }
+
+    #[test]
+    fn test_print_coverage_analysis_header_target_branch_defaults_to_head() {
+        print_coverage_analysis_header(
+            std::path::Path::new("/tmp/proj"),
+            "main",
+            &None, // triggers unwrap_or("HEAD") arm
+            0.95,
+            &IncrementalCoverageOutputFormat::Json,
+        );
+    }
+
+    // ── create_file_ids_from_changes: only "M" and "A" entries kept, hashes distinct ──
+
+    #[test]
+    fn test_create_file_ids_from_changes_keeps_modified_and_added_only() {
+        let changes = vec![
+            (std::path::PathBuf::from("a.rs"), "M".to_string()),
+            (std::path::PathBuf::from("b.rs"), "A".to_string()),
+            (std::path::PathBuf::from("c.rs"), "D".to_string()), // deleted
+            (std::path::PathBuf::from("d.rs"), "R".to_string()), // renamed
+        ];
+        let ids = create_file_ids_from_changes(&changes).unwrap();
+        assert_eq!(ids.len(), 2);
+        assert!(ids.iter().any(|f| f.path == std::path::PathBuf::from("a.rs")));
+        assert!(ids.iter().any(|f| f.path == std::path::PathBuf::from("b.rs")));
+    }
+
+    #[test]
+    fn test_create_file_ids_from_changes_empty_input_returns_empty() {
+        let ids = create_file_ids_from_changes(&[]).unwrap();
+        assert!(ids.is_empty());
+    }
+
+    #[test]
+    fn test_create_file_ids_from_changes_distinct_paths_produce_distinct_hashes() {
+        let changes = vec![
+            (std::path::PathBuf::from("a.rs"), "M".to_string()),
+            (std::path::PathBuf::from("b.rs"), "M".to_string()),
+        ];
+        let ids = create_file_ids_from_changes(&changes).unwrap();
+        assert_eq!(ids.len(), 2);
+        assert_ne!(
+            ids[0].hash, ids[1].hash,
+            "different paths must yield different SHA256 hashes"
+        );
+    }
+
+    #[test]
+    fn test_create_file_ids_from_changes_same_path_produces_same_hash() {
+        let changes = vec![(std::path::PathBuf::from("a.rs"), "M".to_string())];
+        let a = create_file_ids_from_changes(&changes).unwrap();
+        let b = create_file_ids_from_changes(&changes).unwrap();
+        assert_eq!(a[0].hash, b[0].hash, "hash must be deterministic");
+    }
+
+    // ── format_coverage_report: dispatcher hits Summary/Detailed/Json/Markdown/Lcov/Delta/Sarif arms ──
+
+    #[test]
+    fn test_format_coverage_report_json_variant_round_trips_as_json() {
+        let report = empty_report();
+        let out =
+            format_coverage_report(&report, IncrementalCoverageOutputFormat::Json, 10).unwrap();
+        let _: serde_json::Value = serde_json::from_str(&out).unwrap();
+    }
+
+    #[test]
+    fn test_format_coverage_report_summary_variant_returns_nonempty() {
+        let report = empty_report();
+        let out =
+            format_coverage_report(&report, IncrementalCoverageOutputFormat::Summary, 10).unwrap();
+        assert!(!out.is_empty());
+    }
+
+    #[test]
+    fn test_format_coverage_report_lcov_variant_returns_string() {
+        let report = empty_report();
+        let out =
+            format_coverage_report(&report, IncrementalCoverageOutputFormat::Lcov, 10).unwrap();
+        // LCOV format is always string (even if empty).
+        let _ = out;
+    }
+
+    #[test]
+    fn test_format_coverage_report_delta_variant_returns_string() {
+        let report = empty_report();
+        let _out =
+            format_coverage_report(&report, IncrementalCoverageOutputFormat::Delta, 10).unwrap();
+    }
+
+    #[test]
+    fn test_format_coverage_report_sarif_variant_returns_string() {
+        let report = empty_report();
+        let _out =
+            format_coverage_report(&report, IncrementalCoverageOutputFormat::Sarif, 10).unwrap();
+    }
+
+    #[test]
+    fn test_format_coverage_report_markdown_variant_returns_string() {
+        let report = empty_report();
+        let _out =
+            format_coverage_report(&report, IncrementalCoverageOutputFormat::Markdown, 10)
+                .unwrap();
+    }
+
+    #[test]
+    fn test_format_coverage_report_detailed_variant_returns_string() {
+        let report = empty_report();
+        let _out =
+            format_coverage_report(&report, IncrementalCoverageOutputFormat::Detailed, 10)
+                .unwrap();
+    }
+}
