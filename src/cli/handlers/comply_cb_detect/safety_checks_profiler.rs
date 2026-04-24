@@ -158,3 +158,192 @@ pub fn extract_brick_name(content: &str, target_line: &str) -> String {
     }
     "unknown".to_string()
 }
+
+#[cfg(test)]
+mod safety_checks_profiler_tests {
+    //! Covers safety_checks_profiler.rs pure helpers (79 uncov on broad, 0% cov).
+    use super::*;
+
+    // ── extract_json_number ──
+
+    #[test]
+    fn test_extract_json_number_parses_plain_value() {
+        assert_eq!(extract_json_number("\"cv\": 0.18,"), Some(0.18));
+    }
+
+    #[test]
+    fn test_extract_json_number_strips_trailing_comma_and_brace() {
+        assert_eq!(extract_json_number("\"cv\": 20.5}"), Some(20.5));
+    }
+
+    #[test]
+    fn test_extract_json_number_no_colon_returns_none() {
+        assert_eq!(extract_json_number("just a string"), None);
+    }
+
+    #[test]
+    fn test_extract_json_number_non_numeric_returns_none() {
+        assert_eq!(extract_json_number("\"x\": not_a_number,"), None);
+    }
+
+    // ── extract_brick_name ──
+
+    #[test]
+    fn test_extract_brick_name_finds_name_field_above_target() {
+        let content = "  \"name\": \"my_brick\",\n  \"cv\": 0.25,\n";
+        let name = extract_brick_name(content, "  \"cv\": 0.25,");
+        assert_eq!(name, "my_brick");
+    }
+
+    #[test]
+    fn test_extract_brick_name_finds_brick_name_field() {
+        let content = "  \"brick_name\": \"other_brick\",\n  \"cv\": 0.25,\n";
+        let name = extract_brick_name(content, "  \"cv\": 0.25,");
+        assert_eq!(name, "other_brick");
+    }
+
+    #[test]
+    fn test_extract_brick_name_target_missing_returns_unknown() {
+        let content = "  \"name\": \"x\",\n  \"other\": 1,\n";
+        assert_eq!(extract_brick_name(content, "does not appear"), "unknown");
+    }
+
+    #[test]
+    fn test_extract_brick_name_target_found_but_no_name_above_returns_unknown() {
+        let content = "  \"other\": 1,\n  \"cv\": 0.25,\n";
+        assert_eq!(extract_brick_name(content, "  \"cv\": 0.25,"), "unknown");
+    }
+
+    // ── check_cv_anomaly ──
+
+    #[test]
+    fn test_check_cv_anomaly_non_cv_line_returns_none() {
+        assert!(check_cv_anomaly("\"other\": 0.5", "").is_none());
+    }
+
+    #[test]
+    fn test_check_cv_anomaly_below_threshold_returns_none() {
+        // cv = 0.1 * 100 = 10% < 15%
+        let line = "\"cv\": 0.1,";
+        assert!(check_cv_anomaly(line, line).is_none());
+    }
+
+    #[test]
+    fn test_check_cv_anomaly_above_threshold_ratio_form() {
+        // cv = 0.25 * 100 = 25% > 15%
+        let line = "\"cv\": 0.25,";
+        let a = check_cv_anomaly(line, line).unwrap();
+        assert_eq!(a.anomaly_type, "HIGH_CV");
+        assert!((a.value - 25.0).abs() < 1e-6);
+        assert_eq!(a.threshold, 15.0);
+    }
+
+    #[test]
+    fn test_check_cv_anomaly_above_threshold_percent_form() {
+        // Already a percent (value >= 1.0) → used as-is.
+        let line = "\"cv_percent\": 20.0";
+        let a = check_cv_anomaly(line, line).unwrap();
+        assert!((a.value - 20.0).abs() < 1e-6);
+    }
+
+    // ── check_efficiency_anomaly ──
+
+    #[test]
+    fn test_check_efficiency_anomaly_non_eff_line_returns_none() {
+        assert!(check_efficiency_anomaly("\"cv\": 0.1", "").is_none());
+    }
+
+    #[test]
+    fn test_check_efficiency_anomaly_above_threshold_returns_none() {
+        // 0.5 * 100 = 50% > 25% (threshold is LOW efficiency, so >25 is OK).
+        let line = "\"efficiency\": 0.5";
+        assert!(check_efficiency_anomaly(line, line).is_none());
+    }
+
+    #[test]
+    fn test_check_efficiency_anomaly_below_threshold_emits() {
+        // 0.1 * 100 = 10% < 25%
+        let line = "\"efficiency\": 0.1,";
+        let a = check_efficiency_anomaly(line, line).unwrap();
+        assert_eq!(a.anomaly_type, "LOW_EFFICIENCY");
+        assert!((a.value - 10.0).abs() < 1e-6);
+        assert_eq!(a.threshold, 25.0);
+    }
+
+    // ── check_profiler_file: combines CV + efficiency over all lines ──
+
+    #[test]
+    fn test_check_profiler_file_empty_returns_empty() {
+        let v = check_profiler_file("");
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_check_profiler_file_detects_both_anomaly_types() {
+        let content = "  \"name\": \"b1\",\n  \"cv\": 0.25,\n  \"efficiency\": 0.1,\n";
+        let v = check_profiler_file(content);
+        assert_eq!(v.len(), 2);
+        assert!(v.iter().any(|a| a.anomaly_type == "HIGH_CV"));
+        assert!(v.iter().any(|a| a.anomaly_type == "LOW_EFFICIENCY"));
+    }
+
+    // ── detect_profiler_anomalies: no file → empty ──
+
+    #[test]
+    fn test_detect_profiler_anomalies_missing_file_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let v = detect_profiler_anomalies(tmp.path());
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_detect_profiler_anomalies_reads_brick_profile_json() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("brick-profile.json"),
+            "{\n  \"name\": \"bad\",\n  \"cv\": 0.8\n}",
+        )
+        .unwrap();
+        let v = detect_profiler_anomalies(tmp.path());
+        assert!(!v.is_empty());
+    }
+
+    // ── detect_bricks_without_assertions: missing src/brick/ → empty ──
+
+    #[test]
+    fn test_detect_bricks_without_assertions_missing_dir_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let v = detect_bricks_without_assertions(tmp.path());
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_detect_bricks_without_assertions_brick_without_assertions_flagged() {
+        let tmp = tempfile::tempdir().unwrap();
+        let brick_dir = tmp.path().join("src").join("brick");
+        std::fs::create_dir_all(&brick_dir).unwrap();
+        // impl + Brick + no assert/debug_assert/validate/etc → flagged.
+        std::fs::write(
+            brick_dir.join("a.rs"),
+            "impl Brick for Foo { fn run(&self) {} }\n",
+        )
+        .unwrap();
+        let v = detect_bricks_without_assertions(tmp.path());
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].pattern_id, "CB-BUDGET");
+    }
+
+    #[test]
+    fn test_detect_bricks_without_assertions_brick_with_assertion_not_flagged() {
+        let tmp = tempfile::tempdir().unwrap();
+        let brick_dir = tmp.path().join("src").join("brick");
+        std::fs::create_dir_all(&brick_dir).unwrap();
+        std::fs::write(
+            brick_dir.join("a.rs"),
+            "impl Brick for Foo { fn run(&self) { assert!(true); } }\n",
+        )
+        .unwrap();
+        let v = detect_bricks_without_assertions(tmp.path());
+        assert!(v.is_empty());
+    }
+}
