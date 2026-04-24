@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-653
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: cli/handlers/query_handler/git_history_annotations.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T10:20:47Z
+  updated: 2026-04-24T10:20:47Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI pivot — git_history_annotations.rs is 319 lines, 235/262 missed broad, 0 async. 13 pure helpers. Cover count_pairwise_cochanges (empty, 2 files, 3 files), aggregate_hotspots (multi-commit accumulation, >15-file-skip for co-change, fix/feat flags), compute_decay_score (all 5 TDG grades + unknown + zero commits + with dead code), compute_impact_risk (zero commits, with pagerank+fault), compute_cochange_pairs (filter <3 threshold, sort desc, truncate to 5, jaccard calc), load_work_ticket (non-PMAT/non-# prefix → None, # prefix → PMAT- format, missing contract.json → None, valid contract counts passed vs falsified), load_commit_quality (missing → None), aggregate_bug_hunter_faults (missing dir → empty).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
