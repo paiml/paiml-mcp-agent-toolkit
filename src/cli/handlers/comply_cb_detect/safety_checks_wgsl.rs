@@ -158,3 +158,168 @@ pub fn detect_cb002_wgsl_barrier_divergence(project_path: &Path) -> Vec<CbPatter
 
     violations
 }
+
+#[cfg(test)]
+mod safety_checks_wgsl_tests {
+    //! Covers safety_checks_wgsl.rs (86 uncov on broad, 0% cov).
+    use super::*;
+
+    // ── has_bounds_check_nearby ──
+
+    #[test]
+    fn test_has_bounds_check_nearby_if_less_than_within_5_lines_true() {
+        let lines = vec!["if i < 10 {", "    // body", "arr[i]"];
+        assert!(has_bounds_check_nearby(&lines, 2));
+    }
+
+    #[test]
+    fn test_has_bounds_check_nearby_if_gte_within_5_lines_true() {
+        let lines = vec!["if i >= 0 {", "    // body", "arr[i]"];
+        assert!(has_bounds_check_nearby(&lines, 2));
+    }
+
+    #[test]
+    fn test_has_bounds_check_nearby_no_if_returns_false() {
+        let lines = vec!["let x = 1;", "let y = 2;", "arr[i]"];
+        assert!(!has_bounds_check_nearby(&lines, 2));
+    }
+
+    #[test]
+    fn test_has_bounds_check_nearby_if_without_comparison_returns_false() {
+        // `if` but no `<` nor `>=` → false.
+        let lines = vec!["if cond {", "arr[i]"];
+        assert!(!has_bounds_check_nearby(&lines, 1));
+    }
+
+    #[test]
+    fn test_has_bounds_check_nearby_out_of_window_returns_false() {
+        // bounds check 6 lines back → outside the 5-line window.
+        let lines = vec![
+            "if i < 10 {",
+            "a", "b", "c", "d", "e", "arr[i]",
+        ];
+        assert!(!has_bounds_check_nearby(&lines, 6));
+    }
+
+    // ── check_wgsl_file_for_bounds_violations ──
+
+    #[test]
+    fn test_check_bounds_violations_array_without_guard_flagged() {
+        let tmp = tempfile::tempdir().unwrap();
+        let f = tmp.path().join("a.wgsl");
+        std::fs::write(&f, "let x = arr[i];\n").unwrap();
+        let v = check_wgsl_file_for_bounds_violations(&f);
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].pattern_id, "CB-001");
+    }
+
+    #[test]
+    fn test_check_bounds_violations_with_guard_not_flagged() {
+        let tmp = tempfile::tempdir().unwrap();
+        let f = tmp.path().join("a.wgsl");
+        std::fs::write(&f, "if i < 10 {\n    let x = arr[i];\n}\n").unwrap();
+        let v = check_wgsl_file_for_bounds_violations(&f);
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_check_bounds_violations_missing_file_returns_empty() {
+        let missing = std::path::Path::new("/tmp/pmat_missing_wgsl_xyz.wgsl");
+        let v = check_wgsl_file_for_bounds_violations(missing);
+        assert!(v.is_empty());
+    }
+
+    // ── walkdir_wgsl_files ──
+
+    #[test]
+    fn test_walkdir_wgsl_files_empty_dir_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let out = walkdir_wgsl_files(tmp.path()).unwrap();
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_walkdir_wgsl_files_finds_nested_wgsl_ignores_others() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("a.wgsl"), "").unwrap();
+        let nested = tmp.path().join("nested");
+        std::fs::create_dir(&nested).unwrap();
+        std::fs::write(nested.join("b.wgsl"), "").unwrap();
+        std::fs::write(nested.join("c.rs"), "").unwrap();
+        let out = walkdir_wgsl_files(tmp.path()).unwrap();
+        assert_eq!(out.len(), 2, "2 .wgsl files, 0 .rs");
+    }
+
+    // ── check_line_for_barrier ──
+
+    #[test]
+    fn test_check_line_for_barrier_not_in_conditional_returns_none() {
+        let v = check_line_for_barrier("workgroupBarrier();", false, 0, "a.wgsl");
+        assert!(v.is_none());
+    }
+
+    #[test]
+    fn test_check_line_for_barrier_in_conditional_workgroup_detected() {
+        let v = check_line_for_barrier("workgroupBarrier();", true, 5, "a.wgsl");
+        let v = v.unwrap();
+        assert_eq!(v.pattern_id, "CB-002");
+        assert_eq!(v.line, 6);
+        assert!(matches!(v.severity, Severity::Critical));
+    }
+
+    #[test]
+    fn test_check_line_for_barrier_in_conditional_storage_detected() {
+        let v = check_line_for_barrier("storageBarrier();", true, 0, "a.wgsl");
+        assert!(v.is_some());
+    }
+
+    #[test]
+    fn test_check_line_for_barrier_no_barrier_keyword_in_conditional_none() {
+        let v = check_line_for_barrier("let x = 1;", true, 0, "a.wgsl");
+        assert!(v.is_none());
+    }
+
+    // ── check_wgsl_file_for_barrier_divergence ──
+
+    #[test]
+    fn test_barrier_divergence_missing_file_returns_empty() {
+        let missing = std::path::Path::new("/tmp/pmat_missing_wgsl_b.wgsl");
+        let v = check_wgsl_file_for_barrier_divergence(missing);
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_barrier_divergence_barrier_inside_if_flagged() {
+        let tmp = tempfile::tempdir().unwrap();
+        let f = tmp.path().join("b.wgsl");
+        std::fs::write(&f, "if cond {\n    workgroupBarrier();\n}\n").unwrap();
+        let v = check_wgsl_file_for_barrier_divergence(&f);
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].pattern_id, "CB-002");
+    }
+
+    #[test]
+    fn test_barrier_divergence_barrier_outside_conditional_not_flagged() {
+        let tmp = tempfile::tempdir().unwrap();
+        let f = tmp.path().join("b.wgsl");
+        std::fs::write(&f, "fn kernel() {\n    workgroupBarrier();\n}\n").unwrap();
+        let v = check_wgsl_file_for_barrier_divergence(&f);
+        assert!(v.is_empty());
+    }
+
+    // ── detect_cb001 + detect_cb002 top-level: missing dirs → empty ──
+
+    #[test]
+    fn test_detect_cb001_missing_dirs_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let v = detect_cb001_wgsl_no_bounds_check(tmp.path());
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb002_missing_dirs_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let v = detect_cb002_wgsl_barrier_divergence(tmp.path());
+        assert!(v.is_empty());
+    }
+}
