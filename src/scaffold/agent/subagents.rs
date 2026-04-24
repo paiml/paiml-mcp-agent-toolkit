@@ -385,4 +385,220 @@ mod tests {
             .to_string()
             .contains("not yet implemented"));
     }
+
+    // --- PMAT-634 additions: cover untested surface area for Phase-1 tactic #3 ---
+
+    #[test]
+    fn test_name_covers_all_variants() {
+        // Every variant returns a kebab-case identifier matching FromStr round-trip.
+        for agent in PmatSubAgent::all() {
+            let name = agent.name();
+            assert!(!name.is_empty(), "variant name is empty");
+            let parsed: PmatSubAgent = name.parse().expect("round-trip parse");
+            assert_eq!(parsed, agent, "FromStr inverse of name failed");
+        }
+    }
+
+    #[test]
+    fn test_description_non_empty_and_unique_across_variants() {
+        let descs: Vec<&'static str> = PmatSubAgent::all()
+            .iter()
+            .map(|a| a.description())
+            .collect();
+        assert_eq!(descs.len(), 12);
+        for d in &descs {
+            assert!(!d.is_empty(), "description is empty");
+        }
+        let mut sorted = descs.clone();
+        sorted.sort();
+        sorted.dedup();
+        assert_eq!(sorted.len(), descs.len(), "descriptions not unique");
+    }
+
+    #[test]
+    fn test_is_mvp_false_for_future_variants() {
+        let future = [
+            PmatSubAgent::RustQualityExpert,
+            PmatSubAgent::PythonQualityExpert,
+            PmatSubAgent::TypeScriptQualityExpert,
+            PmatSubAgent::WasmDeepInspector,
+            PmatSubAgent::RefactoringAdvisor,
+            PmatSubAgent::TestCoverageAnalyst,
+            PmatSubAgent::QualityGateOrchestrator,
+        ];
+        for a in future {
+            assert!(!a.is_mvp(), "{} should not be MVP", a.name());
+        }
+    }
+
+    #[test]
+    fn test_primary_tools_non_empty_for_all_variants() {
+        for agent in PmatSubAgent::all() {
+            let tools = agent.primary_tools();
+            assert!(
+                !tools.is_empty(),
+                "primary_tools empty for {}",
+                agent.name()
+            );
+            for t in tools {
+                assert!(!t.is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn test_primary_tools_specific_mappings() {
+        assert_eq!(
+            PmatSubAgent::SATDDetector.primary_tools(),
+            vec!["analyze_satd", "analyze_context"]
+        );
+        assert_eq!(
+            PmatSubAgent::DeadCodeEliminator.primary_tools(),
+            vec!["analyze_dead_code", "analyze_imports"]
+        );
+        assert_eq!(
+            PmatSubAgent::DocumentationEnforcer.primary_tools(),
+            vec!["check_generic_docs", "analyze_context"]
+        );
+        assert_eq!(
+            PmatSubAgent::WasmDeepInspector.primary_tools(),
+            vec!["deep_wasm_analyze", "wasm_disassemble"]
+        );
+        assert_eq!(
+            PmatSubAgent::QualityGateOrchestrator.primary_tools(),
+            vec!["run_quality_gates", "aggregate_metrics"]
+        );
+    }
+
+    #[test]
+    fn test_all_returns_full_roster() {
+        let all = PmatSubAgent::all();
+        assert_eq!(all.len(), 12);
+        // The first 5 must match all_mvp() in order (contract relied on by all_mvp).
+        assert_eq!(&all[..5], &PmatSubAgent::all_mvp()[..]);
+        // No duplicates.
+        let mut sorted = all.clone();
+        sorted.sort_by_key(|a| a.name());
+        sorted.dedup();
+        assert_eq!(sorted.len(), 12);
+    }
+
+    #[test]
+    fn test_from_str_round_trip_all_variants() {
+        // name() → FromStr → name() should be a fixed point for all 12 variants.
+        for a in PmatSubAgent::all() {
+            let parsed: PmatSubAgent = a.name().parse().expect("parse");
+            assert_eq!(parsed.name(), a.name());
+        }
+    }
+
+    #[test]
+    fn test_display_matches_name() {
+        for a in PmatSubAgent::all() {
+            assert_eq!(format!("{}", a), a.name());
+        }
+    }
+
+    #[test]
+    fn test_from_str_error_message_names_input() {
+        let err = "not-a-real-agent"
+            .parse::<PmatSubAgent>()
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("not-a-real-agent"), "err was: {err}");
+    }
+
+    #[test]
+    fn test_with_template_dir_sets_field() {
+        let dir = std::path::PathBuf::from("/tmp/custom-subagent-templates");
+        let gen = SubAgentGenerator::with_template_dir(dir.clone());
+        assert_eq!(gen._template_dir, dir);
+    }
+
+    #[test]
+    fn test_default_matches_new() {
+        let a = SubAgentGenerator::default();
+        let b = SubAgentGenerator::new();
+        assert_eq!(a._template_dir, b._template_dir);
+    }
+
+    #[test]
+    fn test_generate_subagent_returns_non_empty_for_all_mvp() {
+        let gen = SubAgentGenerator::new();
+        for agent in PmatSubAgent::all_mvp() {
+            let content = gen.generate_subagent(agent).expect("MVP generate ok");
+            assert!(!content.is_empty(), "empty content for {}", agent.name());
+        }
+    }
+
+    #[test]
+    fn test_export_for_claude_code_writes_file_and_returns_path() {
+        let tmp = tempfile::TempDir::new().expect("tmp");
+        let gen = SubAgentGenerator::new();
+        let path = gen
+            .export_for_claude_code(PmatSubAgent::ComplexityAnalyst, tmp.path())
+            .expect("export");
+        assert_eq!(path, tmp.path().join("complexity-analyst.md"));
+        let disk = std::fs::read_to_string(&path).expect("read");
+        let expected = gen
+            .generate_subagent(PmatSubAgent::ComplexityAnalyst)
+            .unwrap();
+        assert_eq!(disk, expected);
+    }
+
+    #[test]
+    fn test_export_for_claude_code_creates_missing_directory() {
+        let tmp = tempfile::TempDir::new().expect("tmp");
+        let nested = tmp.path().join("does/not/exist/yet");
+        assert!(!nested.exists());
+        let gen = SubAgentGenerator::new();
+        let path = gen
+            .export_for_claude_code(PmatSubAgent::SATDDetector, &nested)
+            .expect("export with nested");
+        assert!(path.exists());
+        assert!(nested.is_dir());
+    }
+
+    #[test]
+    fn test_export_for_claude_code_non_mvp_propagates_error() {
+        let tmp = tempfile::TempDir::new().expect("tmp");
+        let gen = SubAgentGenerator::new();
+        let err = gen
+            .export_for_claude_code(PmatSubAgent::RefactoringAdvisor, tmp.path())
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("not yet implemented"), "err was: {err}");
+        // No file should have been written on the error path.
+        assert!(!tmp.path().join("refactoring-advisor.md").exists());
+    }
+
+    #[test]
+    fn test_export_all_mvp_writes_five_files() {
+        let tmp = tempfile::TempDir::new().expect("tmp");
+        let gen = SubAgentGenerator::new();
+        let paths = gen.export_all_mvp(tmp.path()).expect("export all");
+        assert_eq!(paths.len(), 5);
+        for p in &paths {
+            assert!(p.exists(), "missing {}", p.display());
+            assert!(p.starts_with(tmp.path()));
+        }
+        for agent in PmatSubAgent::all_mvp() {
+            let expected = tmp.path().join(format!("{}.md", agent.name()));
+            assert!(
+                paths.contains(&expected),
+                "missing path for {}",
+                agent.name()
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_tool_mapping_covers_every_variant() {
+        let mapping = SubAgentGenerator::get_tool_mapping();
+        assert_eq!(mapping.len(), 12);
+        for agent in PmatSubAgent::all() {
+            let tools = mapping.get(&agent).expect("entry");
+            assert_eq!(tools, &agent.primary_tools());
+        }
+    }
 }

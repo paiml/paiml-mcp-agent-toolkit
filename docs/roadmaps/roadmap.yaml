@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-634
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: scaffold/agent/subagents.rs coverage (Phase-1 tactic #3)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T06:56:16Z
+  updated: 2026-04-24T06:56:16Z
+  spec: null
+  acceptance_criteria:
+  - 'Per Phase-1 tactic #3 (scaffold 0→90%), cover SubAgentGenerator + PmatSubAgent untested surface: description() all 12 variants, all() full list, Display trait, is_mvp false-branches, with_template_dir constructor, export_for_claude_code (writes file to dir), export_all_mvp (5 files), Default::default() (→ new()), name()/from_str()/primary_tools() remaining variants. File has coverage(off) so this moves broad gate, not narrow.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
