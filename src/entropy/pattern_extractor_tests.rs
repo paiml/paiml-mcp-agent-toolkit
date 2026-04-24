@@ -845,7 +845,10 @@ fn test_calculate_pattern_match_variation_score_short_circuits_single_match() {
 
     let score =
         extractor.calculate_pattern_match_variation_score(&enums, &matches, &arrows, content);
-    assert_eq!(score, 0.0, "fewer than 2 match blocks must short-circuit to 0.0");
+    assert_eq!(
+        score, 0.0,
+        "fewer than 2 match blocks must short-circuit to 0.0"
+    );
 }
 
 /// pattern_extractor_ruchy.rs:405 — enum_matches.len() <= 1 low-variation arm (0.3).
