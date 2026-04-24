@@ -519,3 +519,152 @@ fn analyze_project_health(
         all_metrics,
     ))
 }
+
+#[cfg(test)]
+mod check_sovereign_tests {
+    //! Covers pure-compute helpers in check_sovereign.rs (86 uncov on broad,
+    //! 0% cov). Skips git-spawning check_five_whys_patterns /
+    //! check_ml_commit_classification / check_ticket_refs and the fs-walking
+    //! dynamic helpers.
+    use super::*;
+
+    // ── is_sovereign_stack_project ──
+
+    #[test]
+    fn test_is_sovereign_stack_project_trueno_dep_true() {
+        assert!(is_sovereign_stack_project(
+            "[dependencies]\ntrueno = \"0.5\"\n"
+        ));
+    }
+
+    #[test]
+    fn test_is_sovereign_stack_project_aprender_dep_true() {
+        assert!(is_sovereign_stack_project(
+            "[dependencies]\naprender = { path = \"../aprender\" }\n"
+        ));
+    }
+
+    #[test]
+    fn test_is_sovereign_stack_project_batuta_dep_true() {
+        assert!(is_sovereign_stack_project("batuta = \"1.0\""));
+    }
+
+    #[test]
+    fn test_is_sovereign_stack_project_renacer_dep_true() {
+        assert!(is_sovereign_stack_project("renacer = \"0.2\""));
+    }
+
+    #[test]
+    fn test_is_sovereign_stack_project_realizar_dep_true() {
+        assert!(is_sovereign_stack_project("realizar = \"0.1\""));
+    }
+
+    #[test]
+    fn test_is_sovereign_stack_project_no_sovereign_deps_false() {
+        let cargo_toml = "[dependencies]\nserde = \"1.0\"\ntokio = \"1.0\"\n";
+        assert!(!is_sovereign_stack_project(cargo_toml));
+    }
+
+    #[test]
+    fn test_is_sovereign_stack_project_empty_content_false() {
+        assert!(!is_sovereign_stack_project(""));
+    }
+
+    // ── build_sovereign_result: all 3 arms ──
+
+    #[test]
+    fn test_build_sovereign_result_no_issues_with_patterns_passes() {
+        let good = vec!["Five-Whys".to_string(), "Falsification".to_string()];
+        let check = build_sovereign_result(&[], &good);
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert_eq!(check.severity, Severity::Info);
+        assert!(check.message.contains("Five-Whys"));
+    }
+
+    #[test]
+    fn test_build_sovereign_result_issues_present_warns() {
+        let issues = vec!["No Five-Whys in recent fix commits".to_string()];
+        let check = build_sovereign_result(&issues, &[]);
+        assert!(matches!(check.status, CheckStatus::Warn));
+        assert_eq!(check.severity, Severity::Warning);
+        assert!(check.message.contains("Missing"));
+        assert!(check.message.contains("Five-Whys"));
+    }
+
+    #[test]
+    fn test_build_sovereign_result_no_issues_no_patterns_passes_default() {
+        let check = build_sovereign_result(&[], &[]);
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert_eq!(check.severity, Severity::Info);
+        assert!(check.message.contains("Sovereign Stack project"));
+    }
+
+    #[test]
+    fn test_build_sovereign_result_issues_and_patterns_still_warns() {
+        // When there are issues, warn takes priority even if good_patterns exist.
+        let issues = vec!["something missing".to_string()];
+        let good = vec!["a good pattern".to_string()];
+        let check = build_sovereign_result(&issues, &good);
+        assert!(matches!(check.status, CheckStatus::Warn));
+    }
+
+    // ── make_paiml_check: pass-through constructor ──
+
+    #[test]
+    fn test_make_paiml_check_forwards_all_fields() {
+        let c = make_paiml_check(CheckStatus::Fail, "bad".into(), Severity::Error);
+        assert_eq!(c.name, "PAIML Deps Workspace");
+        assert!(matches!(c.status, CheckStatus::Fail));
+        assert_eq!(c.message, "bad");
+        assert_eq!(c.severity, Severity::Error);
+    }
+
+    // ── classify_local_deps: missing src/ subdir returns empty ──
+
+    #[test]
+    fn test_classify_local_deps_empty_when_no_dep_dirs() {
+        let tmp = tempfile::tempdir().unwrap();
+        // src_dir has no aprender/trueno/etc subdirs → both vectors empty.
+        let (dirty, clean) = classify_local_deps(tmp.path(), &["aprender", "trueno"]);
+        assert!(dirty.is_empty());
+        assert!(clean.is_empty());
+    }
+
+    #[test]
+    fn test_classify_local_deps_nonexistent_deps_skipped() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Only one of three deps exists (and it's not a git repo → skipped).
+        std::fs::create_dir(tmp.path().join("aprender")).unwrap();
+        let (dirty, clean) = classify_local_deps(tmp.path(), &["aprender", "missing1", "missing2"]);
+        // aprender exists but git status errors → either skipped or classified.
+        // missing1/missing2 → skipped (dep_path.exists() false).
+        // So at most 1 entry total.
+        assert!(
+            dirty.len() + clean.len() <= 1,
+            "total classified deps must be ≤ 1 (one exists, others skipped)"
+        );
+    }
+
+    // ── check_sovereign_stack_patterns integration: no Cargo.toml ──
+
+    #[test]
+    fn test_check_sovereign_stack_patterns_no_cargo_toml_skips() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_sovereign_stack_patterns(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Skip));
+        assert!(check.message.contains("No Cargo.toml"));
+    }
+
+    #[test]
+    fn test_check_sovereign_stack_patterns_non_sovereign_cargo_skips() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[package]\nname = \"x\"\n[dependencies]\nserde = \"1.0\"\n",
+        )
+        .unwrap();
+        let check = check_sovereign_stack_patterns(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Skip));
+        assert!(check.message.contains("Not a Sovereign Stack project"));
+    }
+}
