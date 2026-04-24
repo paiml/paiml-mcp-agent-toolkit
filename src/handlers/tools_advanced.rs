@@ -406,3 +406,187 @@ mod part2_tests {
         assert!(content.contains("# Technical Debt Gradient Analysis"));
     }
 }
+
+#[cfg(test)]
+mod part1_pure_helpers_tests {
+    //! Cover the pure-compute helpers in tools_advanced_part1.rs that
+    //! were 0%-covered on broad (259 missed lines). Handlers themselves are
+    //! async and hit disk/analysis pipelines — skipped here.
+    use super::*;
+
+    // ── require_project_path_advanced (D101 guard) ──
+
+    #[test]
+    fn test_require_project_path_advanced_none_is_rejected() {
+        let err = require_project_path_advanced(None).unwrap_err();
+        assert!(err.contains("'project_path' is required"), "got: {err}");
+        assert!(err.contains("R22-1"), "must tag R22-1/D101: {err}");
+    }
+
+    #[test]
+    fn test_require_project_path_advanced_empty_string_is_rejected() {
+        let err = require_project_path_advanced(Some(String::new())).unwrap_err();
+        assert!(err.contains("non-empty string"), "got: {err}");
+    }
+
+    #[test]
+    fn test_require_project_path_advanced_whitespace_is_rejected() {
+        let err = require_project_path_advanced(Some("   \t\n  ".to_string())).unwrap_err();
+        assert!(err.contains("non-empty string"), "got: {err}");
+    }
+
+    #[test]
+    fn test_require_project_path_advanced_valid_returns_pathbuf() {
+        let path = require_project_path_advanced(Some("/tmp/proj".to_string())).unwrap();
+        assert_eq!(path, std::path::PathBuf::from("/tmp/proj"));
+    }
+
+    // ── require_non_empty_path ──
+
+    #[test]
+    fn test_require_non_empty_path_empty_rejected() {
+        let err = require_non_empty_path("", "output").unwrap_err();
+        assert!(err.contains("'output'"), "field name must appear: {err}");
+        assert!(err.contains("non-empty string"), "got: {err}");
+    }
+
+    #[test]
+    fn test_require_non_empty_path_whitespace_rejected() {
+        let err = require_non_empty_path("   ", "project_path").unwrap_err();
+        assert!(err.contains("'project_path'"), "got: {err}");
+    }
+
+    #[test]
+    fn test_require_non_empty_path_valid_returns_pathbuf() {
+        let path = require_non_empty_path("/tmp/x", "project_path").unwrap();
+        assert_eq!(path, std::path::PathBuf::from("/tmp/x"));
+    }
+
+    // ── get_relative_path ──
+
+    #[test]
+    fn test_get_relative_path_strips_prefix() {
+        let base = std::path::Path::new("/home/noah/project");
+        let file = std::path::Path::new("/home/noah/project/src/main.rs");
+        assert_eq!(get_relative_path(file, base), "src/main.rs");
+    }
+
+    #[test]
+    fn test_get_relative_path_no_prefix_match_returns_original() {
+        let base = std::path::Path::new("/home/noah/project");
+        let file = std::path::Path::new("/tmp/other.rs");
+        // strip_prefix returns Err → unwrap_or(path) → original.
+        assert_eq!(get_relative_path(file, base), "/tmp/other.rs");
+    }
+
+    // ── calculate_cyclomatic_complexity + calculate_cognitive_complexity ──
+
+    #[test]
+    fn test_calculate_cyclomatic_complexity_trivial() {
+        // No control flow → base complexity 1.
+        assert_eq!(calculate_cyclomatic_complexity("fn f() {}"), 1);
+    }
+
+    #[test]
+    fn test_calculate_cyclomatic_complexity_counts_control_flow() {
+        let src = "if cond { for x in xs { while y { match z {} } } }";
+        let c = calculate_cyclomatic_complexity(src);
+        assert!(c >= 5, "if+for+while+match should count: got {c}");
+    }
+
+    #[test]
+    fn test_calculate_cognitive_complexity_is_1_5x_cyclomatic() {
+        assert_eq!(calculate_cognitive_complexity(10), 15);
+        assert_eq!(calculate_cognitive_complexity(1), 1); // (1 * 1.5) as u32 == 1
+        assert_eq!(calculate_cognitive_complexity(0), 0);
+    }
+
+    // ── calculate_duplicate_ratio ──
+
+    #[test]
+    fn test_calculate_duplicate_ratio_empty_returns_zero() {
+        let lines: Vec<&str> = vec![];
+        let r = calculate_duplicate_ratio(&lines);
+        assert_eq!(r, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_duplicate_ratio_all_unique_is_zero() {
+        let lines = vec!["let a = 1;", "let b = 2;", "let c = 3;"];
+        assert_eq!(calculate_duplicate_ratio(&lines), 0.0);
+    }
+
+    #[test]
+    fn test_calculate_duplicate_ratio_duplicates_counted() {
+        let lines = vec!["let x = 1;", "let x = 1;", "let y = 2;"];
+        // line_counts: "let x = 1;" → 2, "let y = 2;" → 1
+        // duplicates = (2-1) = 1; total lines = 3; ratio = 1/3
+        let r = calculate_duplicate_ratio(&lines);
+        assert!((r - (1.0f32 / 3.0f32)).abs() < 1e-5, "got {r}");
+    }
+
+    #[test]
+    fn test_calculate_duplicate_ratio_skips_comments_and_blanks() {
+        // // comment lines and blanks are ignored in the count but still
+        // contribute to the denominator (lines.len()).
+        let lines = vec!["// comment", "", "let x = 1;", "let x = 1;", "// another"];
+        let r = calculate_duplicate_ratio(&lines);
+        // duplicates = 1 (one extra "let x = 1;"); total lines = 5; ratio = 0.2
+        assert!((r - 0.2).abs() < 1e-5, "got {r}");
+    }
+
+    // ── calculate_efferent_coupling ──
+
+    #[test]
+    fn test_calculate_efferent_coupling_counts_use_lines() {
+        let src = "use foo::bar;\nuse x::y::z;\nfn main() {}\n// use commented";
+        assert_eq!(calculate_efferent_coupling(src), 2.0);
+    }
+
+    #[test]
+    fn test_calculate_efferent_coupling_zero_when_no_imports() {
+        assert_eq!(calculate_efferent_coupling("fn main() {}"), 0.0);
+    }
+
+    // ── is_public_declaration ──
+
+    #[test]
+    fn test_is_public_declaration_recognizes_pub_items() {
+        assert!(is_public_declaration("pub fn foo() {}"));
+        assert!(is_public_declaration("    pub struct Bar;"));
+        assert!(is_public_declaration("pub enum E { A }"));
+    }
+
+    #[test]
+    fn test_is_public_declaration_rejects_non_pub() {
+        assert!(!is_public_declaration("fn foo() {}"));
+        assert!(!is_public_declaration("struct S;"));
+        assert!(!is_public_declaration("// pub fn comment"));
+    }
+
+    // ── get_churn_score ──
+
+    #[test]
+    fn test_get_churn_score_found() {
+        let mut m = std::collections::HashMap::new();
+        m.insert("src/foo.rs".to_string(), 0.75_f32);
+        assert!((get_churn_score("src/foo.rs", &m) - 0.75).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_get_churn_score_not_found_returns_default_floor() {
+        // Fallback is 0.1 (not 0.0) — get(key).copied().unwrap_or(0.1).
+        let m: std::collections::HashMap<String, f32> = std::collections::HashMap::new();
+        assert!((get_churn_score("src/missing.rs", &m) - 0.1).abs() < 1e-6);
+    }
+
+    // ── calculate_afferent_coupling (constant in this implementation) ──
+
+    #[test]
+    fn test_calculate_afferent_coupling_is_deterministic() {
+        // Both calls on the same content produce the same value.
+        let a = calculate_afferent_coupling("fn x() {}");
+        let b = calculate_afferent_coupling("fn x() {}");
+        assert!((a - b).abs() < 1e-6);
+    }
+}
