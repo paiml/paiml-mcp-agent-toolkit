@@ -32,7 +32,8 @@ use tracing::debug;
 // MCP tools (see R15 #3 bench matrix).
 pub use self::{
     ComplexityTool as AnalyzeComplexityTool, DeadCodeTool as AnalyzeDeadCodeTool,
-    SatdTool as AnalyzeSatdTool, TdgCompareTool as AnalyzeTdgCompareTool, TdgTool as AnalyzeTdgTool,
+    SatdTool as AnalyzeSatdTool, TdgCompareTool as AnalyzeTdgCompareTool,
+    TdgTool as AnalyzeTdgTool,
 };
 
 // Complexity analysis tool handler
