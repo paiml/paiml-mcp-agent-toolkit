@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-639
+  github_issue: null
+  item_type: task
+  title: 'Phase 1: scaffold/agent/context.rs coverage (Phase-1 tactic #3)'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T07:47:40Z
+  updated: 2026-04-24T07:47:40Z
+  spec: null
+  acceptance_criteria:
+  - 'Per Phase-1 tactic #3, cover context.rs untested surface: AgentContext::default(), AgentContextBuilder::new template-string matching for all 5 AgentTemplate arms (calculator, state-machine, hybrid, mcp-server, "custom:..." prefix) + unknown-template fallback to MCPToolServer, with_feature / with_feature_str (valid + invalid silently dropped) / with_quality_level / with_deterministic_core / with_probabilistic_wrapper, create_agent_context() free fn, build() success with hybrid+both specs, build() success with calculator/state-machine/custom prefix, build() error for non-alphanumeric/underscore chars.'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
