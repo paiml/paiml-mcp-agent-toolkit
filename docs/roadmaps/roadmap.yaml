@@ -3213,3 +3213,20 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: PMAT-650
+  github_issue: null
+  item_type: task
+  title: 'Phase 1 pivot: cli/analysis_utilities/churn.rs coverage'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-04-24T09:09:02Z
+  updated: 2026-04-24T09:09:02Z
+  spec: null
+  acceptance_criteria:
+  - 'Phase 1 CLI pivot — churn.rs is 498 lines, 230/230 missed on master broad. Pure formatting fns only (handle_analyze_churn + write_churn_output are async but everything else is sync). Cover format_churn_as_{json,summary,markdown,csv} integration, format_churn_content dispatch (4 ChurnOutputFormat arms), apply_churn_file_filtering (top_files=0 keeps all, top_files>=len no-op, top_files<len truncates with sort), write_summary_{top_files,hotspot_files,stable_files,top_contributors} empty-vs-populated, write_markdown_recommendations static content, write_*_row helpers (commits/files_changed/hotspot/stable/authors).'
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
