@@ -244,3 +244,213 @@ fn format_text_output(
 
     out
 }
+
+#[cfg(test)]
+mod format_text_tests {
+    //! Covers format_text_output in infra_score_handlers.rs (246 lines,
+    //! 0 prior tests). Skips async handle_infra_score (filesystem +
+    //! process exit + InfraScoreAggregator subprocess work).
+    use super::*;
+    use crate::services::infra_score::models::{
+        InfraCategoryScores, InfraCheck, InfraFinding, InfraGrade, InfraRecommendation, InfraScore,
+        InfraScoreMetadata, InfraSeverity,
+    };
+    use std::path::PathBuf;
+
+    fn empty_metadata() -> InfraScoreMetadata {
+        InfraScoreMetadata::new(PathBuf::from("/tmp"))
+    }
+
+    fn make_score(total: f64, grade: InfraGrade, auto_fail: bool) -> InfraScore {
+        InfraScore {
+            total_score: total,
+            grade,
+            auto_fail,
+            categories: InfraCategoryScores::default(),
+            recommendations: vec![],
+            metadata: empty_metadata(),
+        }
+    }
+
+    fn check(id: &str, name: &str, passed: bool, evidence: Vec<String>) -> InfraCheck {
+        InfraCheck {
+            id: id.to_string(),
+            name: name.to_string(),
+            score: if passed { 5.0 } else { 0.0 },
+            max_score: 5.0,
+            passed,
+            evidence,
+        }
+    }
+
+    fn finding(severity: InfraSeverity, check_id: &str, msg: &str) -> InfraFinding {
+        InfraFinding {
+            severity,
+            check_id: check_id.to_string(),
+            message: msg.to_string(),
+            location: Some("file:line".to_string()),
+            impact_points: 1.0,
+        }
+    }
+
+    // ── Score-color tier arms ──
+
+    #[test]
+    fn test_format_text_output_high_score_uses_green() {
+        let r = make_score(95.0, InfraGrade::APlus, false);
+        let out = format_text_output(&r, false, false);
+        // Score >= 90 → green ANSI \x1b[32m.
+        assert!(out.contains("\x1b[32m"));
+        assert!(out.contains("PASS"));
+    }
+
+    #[test]
+    fn test_format_text_output_mid_score_uses_yellow() {
+        let r = make_score(85.0, InfraGrade::B, true);
+        let out = format_text_output(&r, false, false);
+        // Score 80-89 → yellow.
+        assert!(out.contains("\x1b[33m"));
+        assert!(out.contains("AUTO-FAIL"));
+    }
+
+    #[test]
+    fn test_format_text_output_low_score_uses_red() {
+        let r = make_score(50.0, InfraGrade::D, true);
+        let out = format_text_output(&r, false, false);
+        // Score < 80 → red.
+        assert!(out.contains("\x1b[31m"));
+        assert!(out.contains("AUTO-FAIL"));
+    }
+
+    // ── Bonus block ──
+
+    #[test]
+    fn test_format_text_output_with_provable_bonus_emits_total_with_bonus() {
+        let mut r = make_score(95.0, InfraGrade::APlus, false);
+        r.categories.provable_contracts.score = 5.0;
+        r.categories.provable_contracts.percentage = 50.0;
+        let out = format_text_output(&r, false, false);
+        assert!(out.contains("Bonus:"));
+        assert!(out.contains("Total with bonus:"));
+    }
+
+    #[test]
+    fn test_format_text_output_no_bonus_skips_bonus_block() {
+        let r = make_score(95.0, InfraGrade::APlus, false);
+        // bonus = 0 by default.
+        let out = format_text_output(&r, false, false);
+        assert!(!out.contains("Total with bonus:"));
+    }
+
+    // ── Categories table icon arms ──
+
+    #[test]
+    fn test_format_text_output_category_icons_for_each_threshold() {
+        let mut r = make_score(80.0, InfraGrade::B, true);
+        // High (>= 90%) → ✓
+        r.categories.workflow_architecture.percentage = 95.0;
+        // Mid (70-90) → ⚠
+        r.categories.build_reliability.percentage = 80.0;
+        // Low (< 70) → ✗
+        r.categories.quality_pipeline.percentage = 50.0;
+        let out = format_text_output(&r, false, false);
+        assert!(out.contains("✓"));
+        assert!(out.contains("⚠"));
+        assert!(out.contains("✗"));
+    }
+
+    // ── Verbose mode ──
+
+    #[test]
+    fn test_format_text_output_verbose_includes_check_evidence() {
+        let mut r = make_score(95.0, InfraGrade::APlus, false);
+        r.categories.workflow_architecture.checks = vec![check(
+            "WA-01",
+            "Workflow",
+            true,
+            vec!["evidence line 1".to_string()],
+        )];
+        let out = format_text_output(&r, true, false);
+        assert!(out.contains("WA-01"));
+        assert!(out.contains("Workflow"));
+    }
+
+    #[test]
+    fn test_format_text_output_failures_only_skips_passed_checks() {
+        let mut r = make_score(95.0, InfraGrade::APlus, false);
+        r.categories.workflow_architecture.checks = vec![
+            check("PASS-01", "Pass", true, vec![]),
+            check("FAIL-01", "Fail", false, vec![]),
+        ];
+        let out = format_text_output(&r, true, true);
+        // failures_only=true with verbose=true → only failed check shown.
+        assert!(out.contains("FAIL-01"));
+        assert!(!out.contains("PASS-01"));
+    }
+
+    // ── Findings ──
+
+    #[test]
+    fn test_format_text_output_emits_findings_with_severity_icons() {
+        let mut r = make_score(80.0, InfraGrade::B, true);
+        r.categories.workflow_architecture.findings = vec![
+            finding(InfraSeverity::Fail, "F-01", "Failed"),
+            finding(InfraSeverity::Warning, "W-01", "Warning"),
+            finding(InfraSeverity::Info, "I-01", "Info"),
+            finding(InfraSeverity::Pass, "P-01", "Pass"),
+        ];
+        let out = format_text_output(&r, false, false);
+        assert!(out.contains("Findings"));
+        // All 4 finding severities reachable.
+        assert!(out.contains("F-01"));
+        assert!(out.contains("W-01"));
+        assert!(out.contains("I-01"));
+        assert!(out.contains("P-01"));
+    }
+
+    #[test]
+    fn test_format_text_output_no_findings_skips_findings_section() {
+        let r = make_score(95.0, InfraGrade::APlus, false);
+        // No findings populated.
+        let out = format_text_output(&r, false, false);
+        // Section header not emitted when findings empty.
+        assert!(!out.contains("\x1b[1mFindings\x1b[0m"));
+    }
+
+    // ── Recommendations ──
+
+    #[test]
+    fn test_format_text_output_with_recommendations_emits_section() {
+        let mut r = make_score(80.0, InfraGrade::B, true);
+        r.recommendations.push(InfraRecommendation {
+            priority: crate::services::infra_score::models::InfraPriority::High,
+            check_id: "WA-01".to_string(),
+            title: "Add OIDC".to_string(),
+            description: "Switch to OIDC for AWS".to_string(),
+            impact_points: 5.0,
+            estimated_effort: "1h".to_string(),
+        });
+        let out = format_text_output(&r, false, false);
+        assert!(out.contains("Recommendations"));
+        assert!(out.contains("WA-01"));
+        assert!(out.contains("Switch to OIDC"));
+    }
+
+    #[test]
+    fn test_format_text_output_no_recommendations_skips_section() {
+        let r = make_score(95.0, InfraGrade::APlus, false);
+        let out = format_text_output(&r, false, false);
+        assert!(!out.contains("\x1b[1mRecommendations\x1b[0m"));
+    }
+
+    // ── Header always present ──
+
+    #[test]
+    fn test_format_text_output_always_emits_header_and_footer() {
+        let r = make_score(95.0, InfraGrade::APlus, false);
+        let out = format_text_output(&r, false, false);
+        assert!(out.contains("Infra Score v1.0"));
+        assert!(out.contains("Executed in"));
+        assert!(out.contains("pmat v"));
+    }
+}
