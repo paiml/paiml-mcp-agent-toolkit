@@ -29,3 +29,80 @@ include!("output_handler_orchestration.rs");
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "refactor_auto_handlers_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod output_handler_iteration_pure_tests {
+    //! Covers should_retry_refactoring + apply_*_reduction stubs in
+    //! output_handler_iteration.rs (207 uncov on broad, 0% cov).
+    //! Skips async pipeline orchestration (execute_refactoring_iteration,
+    //! validate_refactoring_results, etc.) which require RefactorContext
+    //! + project fixtures.
+    use super::*;
+
+    // ── should_retry_refactoring: 4 keyword arms + miss ──
+
+    #[test]
+    fn test_should_retry_refactoring_timeout_keyword_true() {
+        let err = anyhow::anyhow!("operation Timeout exceeded");
+        assert!(should_retry_refactoring(&err));
+    }
+
+    #[test]
+    fn test_should_retry_refactoring_network_keyword_true() {
+        let err = anyhow::anyhow!("Network unreachable");
+        assert!(should_retry_refactoring(&err));
+    }
+
+    #[test]
+    fn test_should_retry_refactoring_temporary_keyword_true() {
+        let err = anyhow::anyhow!("temporary failure");
+        assert!(should_retry_refactoring(&err));
+    }
+
+    #[test]
+    fn test_should_retry_refactoring_unrelated_error_false() {
+        let err = anyhow::anyhow!("syntax error in file foo.rs");
+        assert!(!should_retry_refactoring(&err));
+    }
+
+    #[test]
+    fn test_should_retry_refactoring_case_insensitive() {
+        let err = anyhow::anyhow!("Connection TIMEOUT after 30s");
+        assert!(should_retry_refactoring(&err));
+    }
+
+    #[test]
+    fn test_should_retry_refactoring_empty_error_message_false() {
+        let err = anyhow::anyhow!("");
+        assert!(!should_retry_refactoring(&err));
+    }
+
+    // ── apply_*_reduction stubs: 3 placeholder fns ──
+
+    #[tokio::test]
+    async fn test_apply_complexity_reduction_returns_two_messages() {
+        let result = apply_complexity_reduction(std::path::Path::new("a.rs"), "instructions")
+            .await
+            .unwrap();
+        assert_eq!(result.len(), 2);
+        assert!(result.iter().any(|s| s.contains("Extracted")));
+    }
+
+    #[tokio::test]
+    async fn test_apply_lint_fixes_returns_two_messages() {
+        let result = apply_lint_fixes(std::path::Path::new("a.rs"), "instructions")
+            .await
+            .unwrap();
+        assert_eq!(result.len(), 2);
+        assert!(result.iter().any(|s| s.contains("clippy")));
+    }
+
+    #[tokio::test]
+    async fn test_apply_satd_cleanup_returns_two_messages() {
+        let result = apply_satd_cleanup(std::path::Path::new("a.rs"), "instructions")
+            .await
+            .unwrap();
+        assert_eq!(result.len(), 2);
+        assert!(result.iter().any(|s| s.contains("TODO")));
+    }
+}
