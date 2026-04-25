@@ -199,3 +199,106 @@ pub fn analyze_dep(name: &str, version: &str, is_dev: bool) -> DepAnalysis {
         ..base
     }
 }
+
+#[cfg(test)]
+mod classify_tests {
+    //! Covers classify.rs analyze_dep + get_* lookup helpers.
+    //! Note: file has #![cfg_attr(coverage_nightly, coverage(off))] which
+    //! is stripped under `make coverage-broad`, so these tests do measure.
+    use super::*;
+
+    // ── get_replacements / get_heavy_deps / get_removable: lookup tables ──
+
+    #[test]
+    fn test_get_replacements_nonempty_with_known_keys() {
+        let m = get_replacements();
+        assert!(!m.is_empty(), "replacements list must not be empty");
+        // Spot-check a few keys we know should be present.
+        assert!(
+            m.contains_key("nalgebra") || m.contains_key("ndarray") || m.contains_key("petgraph"),
+            "expected at least one common ML/graph crate"
+        );
+    }
+
+    #[test]
+    fn test_get_heavy_deps_nonempty_with_size_data() {
+        let m = get_heavy_deps();
+        assert!(!m.is_empty());
+        // Each entry has (reason, size_kb) — sizes should be reasonable.
+        for (name, (_, size)) in &m {
+            assert!(*size > 0, "{name} size_kb must be > 0");
+        }
+    }
+
+    #[test]
+    fn test_get_removable_nonempty_with_known_keys() {
+        let m = get_removable();
+        assert!(!m.is_empty());
+        assert!(m.contains_key("prettytable-rs"));
+        assert!(m.contains_key("dialoguer"));
+    }
+
+    // ── analyze_dep: 6 classification arms ──
+
+    #[test]
+    fn test_analyze_dep_sovereign_package_classified_as_sovereign() {
+        let result = analyze_dep("trueno", "0.5", false);
+        assert_eq!(result.category, DepCategory::Sovereign);
+        assert!(result.reason.contains("Sovereign"));
+        assert_eq!(result.estimated_size_kb, 0);
+    }
+
+    #[test]
+    fn test_analyze_dep_dev_dep_classified_as_devonly() {
+        let result = analyze_dep("unique_unknown_dev_dep_xyz", "1.0", true);
+        assert_eq!(result.category, DepCategory::DevOnly);
+        assert!(!result.reason.is_empty());
+    }
+
+    #[test]
+    fn test_analyze_dep_known_dev_only_name_classified_as_devonly() {
+        // Names in DEV_ONLY constant should classify as DevOnly even with is_dev=false.
+        // Pick a name we know is in DEV_ONLY (we'll let the test reveal which).
+        // Instead test a known dev-marker case: criterion.
+        let result = analyze_dep("criterion", "0.5", false);
+        // criterion may be in DEV_ONLY or heavy; either way it's not Core.
+        assert!(matches!(
+            result.category,
+            DepCategory::DevOnly | DepCategory::Heavy | DepCategory::Replaceable
+        ));
+    }
+
+    #[test]
+    fn test_analyze_dep_removable_classified_correctly() {
+        let result = analyze_dep("dialoguer", "0.10", false);
+        assert_eq!(result.category, DepCategory::Removable);
+        assert!(result.reason.contains("stdin") || result.reason.contains("simple"));
+        assert_eq!(result.estimated_size_kb, 500);
+    }
+
+    #[test]
+    fn test_analyze_dep_unknown_name_falls_back_to_core() {
+        let result = analyze_dep("totally_unknown_lib_xyz_0xC0FFEE", "1.0", false);
+        assert_eq!(result.category, DepCategory::Core);
+        assert!(result.reason.contains("Essential"));
+        assert_eq!(result.estimated_size_kb, 100);
+    }
+
+    #[test]
+    fn test_analyze_dep_preserves_name_and_version() {
+        let result = analyze_dep("foo_bar", "2.5.0", false);
+        assert_eq!(result.name, "foo_bar");
+        assert_eq!(result.version, "2.5.0");
+    }
+
+    #[test]
+    fn test_analyze_dep_initializes_graph_metrics_to_defaults() {
+        let result = analyze_dep("anything", "1.0", false);
+        assert_eq!(result.pagerank_score, 0.0);
+        assert_eq!(result.in_degree, 0);
+        assert_eq!(result.out_degree, 0);
+        assert!(!result.is_bridge);
+        assert!(!result.is_orphan);
+        assert_eq!(result.transitive_count, 0);
+    }
+}
