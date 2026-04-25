@@ -204,6 +204,62 @@ The "extend `pmat query --coverage-gaps` with `--contract-gap` flag" row is now 
 
 Each test added to a 0%-cov pure-compute helper *also* establishes the "this function's behaviour is observable from outside" property that a `binding.yaml` precondition needs. The two efforts compound rather than compete.
 
+### 4.5 Five Whys: 95% convergence ceiling (2026-04-25)
+
+After Wave 30 (21 PRs, ~280 tests, +4.03pp from 73.42% → 77.45%), measured rate is **~70 tests per percentage point** of broad coverage. At observed cadence (≈14 tests/PR), reaching 95% requires ~90 more PRs (~4–5 sessions). Five Whys identifies why drip-feed alone won't converge:
+
+**Why 1 — per-PR delta is 0.05–0.20pp:** Denominator math. Broad measures 329,231 lines (1pp ≡ 3,292 lines). A typical pure-helper test fires 5–20 lines, so 1pp ≈ 70–250 tests. Observed exactly.
+
+**Why 2 — denominator is so large:** `make coverage-broad` strips `coverage_nightly` from 707+ files (1,257 functions) and unsupresses 2,987 functions in 769 files matched by Makefile `COVERAGE_EXCLUDE` regex. These were narrow-gate-invisible by design.
+
+**Why 3 — so many files are excluded:** Phase 0 dual-gate model: narrow gate measures testable code, broad gate is honest. Exclusions cover CLI handlers (subprocess), MCP infra (network I/O), printers (stdout side-effects). Each individually defensible; collectively they're 42% of non-test source.
+
+**Why 4 — wave 30 yields diminishing returns:** Three structural ceilings bind simultaneously:
+- **Easy targets exhausted.** Of 21 wave-30 PRs, 16 hit 0-prior-test files. Remaining 0%-cov files are subprocess-bound (`mutate_output.rs` skipped — uses cargo subprocess), filesystem-bound (`spec_handlers_sync.rs` had 9 fs-helpers I had to skip), or async-with-fixture (`oracle_handlers` async fns).
+- **Stale-test gates.** `qa_work_handler/tests.rs`, `mutate_tests.rs`, `spec_handlers/tests.rs` are gated behind `feature = "broken-tests"` because file-splitting "broke syntax". ~50–100 tests are dark in the default build.
+- **CI starvation.** PR #552 restarted CI on every push (21×). The `pmat score` Quality Gate is the only pending check; CI takes ~10 min. Sequential merge cadence is the long pole, not test authoring.
+
+**Why 5 — trajectory predicted but not redirected:** Spec §4.3 + §4.4 + memory `feedback_autonomous_scaffold_loop` all predicted diminishing returns. User's standing instruction prioritizes "measure often, don't ask for approval." Loop is doing what was specified — but the spec did NOT include exit conditions like "stop drip-feed when rate < 0.10pp/PR and pivot to bundle/refactor." Those escalation actions need explicit authorization.
+
+**Root cause:** The drip-feed cadence is correct for what was authorized, but 95% is not reachable at this rate within reasonable session count. Three independent ceilings (target exhaustion, stale-test gates, CI throughput) all bind at the same time.
+
+#### Corrective actions (recommendations)
+
+Ordered by ROI; each is a discrete escalation from drip-feed to higher-leverage work.
+
+**R1 — Revive `feature = "broken-tests"`-gated tests (highest single-PR ROI).**
+- 3 modules have ~50–100 tests gated and dark: `qa_work_handler/tests.rs` (uses `handle_generate_checklist` + `print_task_status` + epic summary fixtures), `mutate_tests.rs` (uses stale `MutationOperator::ArithmeticReplace` enum names + `MutationResult.test_output` field — needs renames to current `MutationOperatorType::ArithmeticReplacement` / current struct shape), `spec_handlers/tests.rs` (broken by include!() file split — likely just needs path fixes).
+- Per module: read the gated file, fix the type/field mismatch, rename to current identifiers, drop the `feature = "broken-tests"` gate, run tests, push.
+- Expected gain: +0.5–1.0pp on broad per module reanimated, atomic per-PR.
+- Owner: autonomous loop OR explicit user instruction.
+
+**R2 — Bundle PR for wave 30 (CI throughput unlock).**
+- Wave 30's 21 commits are independently good but each push restarts ~10-min CI. Bundle pattern from PR #520 (wave 22, 22 sub-PRs squashed): single CI run, single squash merge.
+- Mechanics: branch from current master, replay each wave-30 commit via `git cherry-pick`, `git reset --soft origin/master && git commit` to flatten into one squash-ready commit, push and merge.
+- Expected gain: 0pp coverage (cumulative work already on branch) but **unblocks the next wave** by freeing CI runners and removing the BLOCKED merge state.
+- Owner: explicit user authorization (rebase/squash is destructive on the working branch).
+
+**R3 — Audit `coverage(off)` decisions (denominator reduction).**
+- 707 files have `#![cfg_attr(coverage_nightly, coverage(off))]`. Many are pure-compute (e.g., `src/services/satd_detector/types.rs` — types-only file with 100% pure-compute, opted out anyway). Sampling suggests ~10% over-suppression.
+- Per file: read top of file, check whether the contents are pure-compute (no `Command::new`, no `tokio::fs`, no terminal I/O) — if pure-compute, lift the attribute. Run `make coverage` to verify narrow gate still passes (these files were excluded from narrow originally; lifting is safe IF they have tests).
+- Expected gain: 0.5–2.0pp on broad cumulative (mechanical pass, no new tests required).
+- Owner: explicit user authorization (changes coverage policy at file-level).
+
+**R4 — Set 85% intermediate target before pushing to 95%.**
+- Spec §5 Phase 2 milestone is 80% → 90%. Reaching 85% from 77.45% is 7.5pp away (~525 tests at observed rate, ~37 PRs).
+- Ship the 80% milestone (Phase 1 exit) first, declare a v3.16.0 release boundary, then reassess whether 95% is still the right Phase-2 exit or whether 90% is more honest given stack-wide constraints.
+- Expected impact: re-prioritization, not coverage gain. Lets the team ship a real milestone instead of grinding indefinitely.
+- Owner: spec author / user.
+
+**R5 — Refactor subprocess-spawning helpers (long-term denominator unlock).**
+- `qa_work_handler/impl_validation.rs` runs `cargo test`/`cargo clippy`/`pmat analyze complexity` via `Command::new`. The decision logic (parse output → ValidationStatus arm) is pure-compute trapped behind subprocess invocation.
+- `git_history_parsing.rs` parses `git log` output — same pattern. Pure parser inside, subprocess outside.
+- Refactor: extract pure parser/decision functions taking `&str` (the captured stdout). Subprocess-spawning wrapper becomes thin and is itself coverage(off) by ergonomics.
+- Expected gain: 1–3pp on broad per refactored module, plus contract surface area unlocks.
+- Owner: explicit user authorization (architectural change, not autonomous-loop scope).
+
+**Default if no escalation authorized:** continue R5-style autonomous loop on remaining 0%-cov pure-compute slice. Convergence to 95% will take ~4–5 sessions at observed rate.
+
 ---
 
 ## 5. Phased Milestones
@@ -219,12 +275,15 @@ Each phase is independently shippable. Do not chase the next phase until the cur
 
 ### Phase 1 — 73% → 80% (1 week, v3.16.0)
 
-**Strategy: delete, don't test.**
+**Strategy: delete, don't test.** (Original plan; superseded by §4.5 R1–R5 corrective actions after wave-30 evidence showed drip-feed ceiling.)
 
-- [ ] Delete confirmed dead code surfaced by `pmat query --faults --dead-code` + manual verification (project memory: include!() files need all-includer inspection).
-- [ ] Un-skip `cli_integration_tests` in `make coverage`. These are the highest-ROI tests.
-- [ ] Snapshot-test every `src/scaffold/**` generator via `insta`. Target: 0% → 90% in that tree.
-- [ ] Collapse 10+ CLI dispatch `match` arms into the existing macro pattern. Lower denominator.
+- [ ] Delete confirmed dead code surfaced by `pmat query --faults --dead-code` + manual verification (project memory: include!() files need all-includer inspection). *(memory `project_coverage_95_baseline.md` reports `pmat analyze dead-code` returns 0 dead lines in `src/`; this bullet is exhausted.)*
+- [ ] Un-skip `cli_integration_tests` in `make coverage`. These are the highest-ROI tests. *(memory reports test bodies are TODO stubs; un-skipping adds zero coverage; this bullet is exhausted.)*
+- [ ] Snapshot-test every `src/scaffold/**` generator via `insta`. Target: 0% → 90% in that tree. *(Done via PRs #498–#506, PMAT-633..641; sweep complete.)*
+- [ ] Collapse 10+ CLI dispatch `match` arms into the existing macro pattern. Lower denominator. *(memory reports main dispatcher has only 10 arms; not a big-denominator collapse; this bullet is exhausted.)*
+- [ ] **R1 — Revive `feature = "broken-tests"`-gated tests** (qa_work_handler, mutate, spec_handlers — see §4.5).
+- [ ] **R3 — Audit `coverage(off)` over-suppression** (mechanical lift on pure-compute files; see §4.5).
+- [ ] Continue drip-feed on remaining 0%-cov pure-compute slice (autonomous loop default).
 
 Exit criteria: `make coverage-broad` reports ≥80% and `make coverage` (gate) stays ≥95%.
 
@@ -241,8 +300,11 @@ Exit criteria: `make coverage-broad` reports ≥80% and `make coverage` (gate) s
 | #496 | PMAT-631 | `src/services/rust_project_score/known_defects_scorer_scoring.rs` | `score_internal` Cargo.toml-missing, `recommendations` empty/Err arms, 99/100 boundary, `score_with_mode` delegation | drip-feed (mutation) |
 | #487 + #497 | — / PMAT-632 | `src/models/refactor_impls.rs` `Violation::to_op` | fall-through arms (#487) + ExtractFunction constant pins (#497 — location-field `+10` offset, `byte: 0`/`100`, `params: vec![]`) | drip-feed (mutation) |
 | next | PMAT-633 | `src/scaffold/agent/templates.rs` | MCP + state-machine generators: Standard/Strict/Extreme branching, validate_context err, ctx.name flowthrough, all generated file paths, Cargo.toml pmcp dep pinning, AgentTemplate serde round-trip | **tactic #3: scaffold 0→90%** |
+| Wave 30 (2026-04-25, branch `coverage/wave30-helpers`) | — | 21 files: deps_audit/graph, quality_gate_service, qa_work_handler/impl_print, roadmap_impl, dead_code_handlers_output, duplicates_output, satd_handler_formatting, oracle_handlers_formatting, project_diag_advanced_formatters, qa_work_handler/format_checklist_text, help_generator_formatting, satd_detector/types, spec_handlers_sync, markdown_best_practices, extended_tools_complexity, formatters_helpers, proof_annotation_helpers_report, enrichment, satd_detector/detection_extraction, work_handlers/resolution | ~280 tests; +4.03pp (73.42% → 77.45% measured) | drip-feed (CLI handlers + format dispatchers); see §4.5 for diminishing-returns analysis |
 
 Five Whys pivot (2026-04-23): the drip-feed pattern (#394..#497) optimizes for mutation-killing on files *already in the narrow-gate measured set* and leaves the 73% broad baseline effectively unchanged (~0.03 pp per PR on a 324k denominator). Phase 1 exit requires ≥80% broad, which needs one of the four listed tactics, not more drip-feed. PMAT-633 starts tactic #3 (scaffold). Next Phase-1 picks should come from tactics #1 (dead-code delete), #2 (un-skip `cli_integration_tests`), or #4 (CLI match-arm collapse) — each moves the denominator or adds bulk numerator, not individual functions.
+
+Five Whys revision (2026-04-25, post-wave-30): drip-feed continued through wave 30 (~280 tests, +4.03pp) but rate held at ~70 tests/pp. §4.5 identifies three structural ceilings (target exhaustion, stale-test gates, CI throughput) and proposes 5 escalation paths (R1–R5). **Phase 1 exit (80%) now requires R1 (revive broken-tests gates) or R3 (lift over-suppressed `coverage(off)`) in addition to drip-feed continuation.** R2 (bundle PR) is needed to unblock CI cadence regardless of which numerator-growth path chosen.
 
 Pattern for pickers (per-session loop): run `pmat query --coverage-gaps --rank-by impact --limit 30 --exclude-tests` when coverage data is present, else fall back to `pmat query --faults --max-complexity 12 --rank-by impact`. Always: skip feature-gated code unless its feature is on in the coverage invocation, skip `coverage(off)` modules for the narrow gate but remember they still count in broad, prefer surfaces where the tests-per-function ratio on the existing suite is <1. **Before picking, classify the target against the four Phase-1 tactics — if none apply, the pick is drip-feed not Phase-1 critical-path.**
 
