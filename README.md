@@ -17,6 +17,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![MSRV](https://img.shields.io/badge/MSRV-1.80-orange.svg)](https://www.rust-lang.org)
 [![CHANGELOG](https://img.shields.io/badge/changelog-Keep%20a%20Changelog-blue)](CHANGELOG.md)
+[![SafeSkill 30/100](https://img.shields.io/badge/SafeSkill-30%2F100_Blocked-red)](https://safeskill.dev/scan/paiml-paiml-mcp-agent-toolkit)
 
 [Installation](#installation) | [Usage](#usage) | [Features](#features) | [Examples](#examples) | [Documentation](https://paiml.github.io/pmat-book/)
 
