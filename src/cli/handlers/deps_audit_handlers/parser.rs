@@ -111,3 +111,137 @@ pub fn parse_cargo_lock(path: &Path) -> Result<(Vec<String>, Vec<DepEdge>)> {
 
     Ok((all_packages, edges))
 }
+
+#[cfg(test)]
+mod parser_tests {
+    //! Covers parse_cargo_toml + parse_cargo_lock in
+    //! deps_audit_handlers/parser.rs (13 uncov on broad, 0% cov).
+    use super::*;
+
+    // ── parse_cargo_toml ──
+
+    #[test]
+    fn test_parse_cargo_toml_missing_file_returns_err() {
+        let missing = std::path::Path::new("/tmp/pmat_missing_cargo_xyz.toml");
+        assert!(parse_cargo_toml(missing).is_err());
+    }
+
+    #[test]
+    fn test_parse_cargo_toml_invalid_toml_returns_err() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), "not = [valid toml").unwrap();
+        assert!(parse_cargo_toml(tmp.path()).is_err());
+    }
+
+    #[test]
+    fn test_parse_cargo_toml_empty_file_returns_empty_lists() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), "[package]\nname = \"x\"\n").unwrap();
+        let (deps, dev_deps) = parse_cargo_toml(tmp.path()).unwrap();
+        assert!(deps.is_empty());
+        assert!(dev_deps.is_empty());
+    }
+
+    #[test]
+    fn test_parse_cargo_toml_string_dep_version() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(
+            tmp.path(),
+            "[dependencies]\nserde = \"1.0\"\n[dev-dependencies]\nproptest = \"1.5\"\n",
+        )
+        .unwrap();
+        let (deps, dev_deps) = parse_cargo_toml(tmp.path()).unwrap();
+        assert_eq!(deps.len(), 1);
+        assert_eq!(deps[0], ("serde".to_string(), "1.0".to_string(), false));
+        assert_eq!(dev_deps.len(), 1);
+        assert_eq!(
+            dev_deps[0],
+            ("proptest".to_string(), "1.5".to_string(), true)
+        );
+    }
+
+    #[test]
+    fn test_parse_cargo_toml_table_dep_with_version() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(
+            tmp.path(),
+            "[dependencies.serde]\nversion = \"1.0\"\nfeatures = [\"derive\"]\n",
+        )
+        .unwrap();
+        let (deps, _) = parse_cargo_toml(tmp.path()).unwrap();
+        assert_eq!(deps.len(), 1);
+        assert_eq!(deps[0].0, "serde");
+        assert_eq!(deps[0].1, "1.0");
+    }
+
+    #[test]
+    fn test_parse_cargo_toml_table_dep_without_version_defaults_to_star() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(
+            tmp.path(),
+            "[dependencies.local-thing]\npath = \"../local\"\n",
+        )
+        .unwrap();
+        let (deps, _) = parse_cargo_toml(tmp.path()).unwrap();
+        assert_eq!(deps[0].1, "*");
+    }
+
+    // ── parse_cargo_lock ──
+
+    #[test]
+    fn test_parse_cargo_lock_no_lock_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (packages, edges) = parse_cargo_lock(tmp.path()).unwrap();
+        assert!(packages.is_empty());
+        assert!(edges.is_empty());
+    }
+
+    #[test]
+    fn test_parse_cargo_lock_finds_in_parent_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let sub = tmp.path().join("subcrate");
+        std::fs::create_dir(&sub).unwrap();
+        // Create Cargo.lock in parent.
+        std::fs::write(
+            tmp.path().join("Cargo.lock"),
+            "[[package]]\nname = \"x\"\nversion = \"1.0\"\n",
+        )
+        .unwrap();
+        let (packages, _) = parse_cargo_lock(&sub).unwrap();
+        assert_eq!(packages, vec!["x".to_string()]);
+    }
+
+    #[test]
+    fn test_parse_cargo_lock_extracts_packages_and_edges() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.lock"),
+            "[[package]]\nname = \"foo\"\nversion = \"1.0\"\ndependencies = [\n \"bar 2.0\",\n \"baz 0.5 (registry+https://github.com/rust-lang/crates.io-index)\",\n]\n[[package]]\nname = \"bar\"\nversion = \"2.0\"\n",
+        )
+        .unwrap();
+        let (packages, edges) = parse_cargo_lock(tmp.path()).unwrap();
+        assert_eq!(packages.len(), 2);
+        assert!(packages.contains(&"foo".to_string()));
+        assert!(packages.contains(&"bar".to_string()));
+        // 2 edges from foo (bar + baz, name only).
+        assert_eq!(edges.len(), 2);
+        assert!(edges.iter().any(|e| e.from == "foo" && e.to == "bar"));
+        assert!(edges.iter().any(|e| e.from == "foo" && e.to == "baz"));
+    }
+
+    #[test]
+    fn test_parse_cargo_lock_invalid_toml_returns_err() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("Cargo.lock"), "garbage [not toml").unwrap();
+        assert!(parse_cargo_lock(tmp.path()).is_err());
+    }
+
+    #[test]
+    fn test_parse_cargo_lock_no_package_section_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("Cargo.lock"), "version = 3\n").unwrap();
+        let (packages, edges) = parse_cargo_lock(tmp.path()).unwrap();
+        assert!(packages.is_empty());
+        assert!(edges.is_empty());
+    }
+}
