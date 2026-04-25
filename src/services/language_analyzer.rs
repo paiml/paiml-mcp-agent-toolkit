@@ -263,4 +263,104 @@ mod inline_tests {
             "unsupported → must carry an error message"
         );
     }
+
+    // ── Coverage for language_analyzer_core.rs (48 uncov on broad, 0% cov) ──
+
+    #[test]
+    fn test_supported_languages_returns_nonempty_slice() {
+        let a = LanguageAnalyzer::new();
+        assert!(a.supported_languages().len() >= 50);
+    }
+
+    #[test]
+    fn test_supports_analysis_complexity_for_rust() {
+        let a = LanguageAnalyzer::new();
+        assert!(a.supports_analysis(Language::Rust, &AnalysisType::Complexity));
+    }
+
+    #[test]
+    fn test_supports_analysis_satd_for_any_language() {
+        let a = LanguageAnalyzer::new();
+        // SATD is supported for any text file.
+        assert!(a.supports_analysis(Language::Unknown, &AnalysisType::Satd));
+        assert!(a.supports_analysis(Language::Rust, &AnalysisType::Satd));
+    }
+
+    #[test]
+    fn test_supports_analysis_metrics_for_any_language() {
+        let a = LanguageAnalyzer::new();
+        assert!(a.supports_analysis(Language::Unknown, &AnalysisType::Metrics));
+    }
+
+    #[test]
+    fn test_supports_analysis_documentation_only_for_doc_languages() {
+        let a = LanguageAnalyzer::new();
+        // Documentation supports Markdown / LaTeX / AsciiDoc / Unknown.
+        assert!(a.supports_analysis(Language::Markdown, &AnalysisType::Documentation));
+        // But NOT for Rust.
+        assert!(!a.supports_analysis(Language::Rust, &AnalysisType::Documentation));
+    }
+
+    // ── analyze_file: real file → populated metadata + analysis ──
+
+    #[tokio::test]
+    async fn test_analyze_file_real_file_populates_metadata() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("a.rs");
+        std::fs::write(&path, "// comment\nfn main() {}\n\n").unwrap();
+        let a = LanguageAnalyzer::new();
+        let result = a
+            .analyze_file(&path, vec![AnalysisType::Metrics])
+            .await
+            .unwrap();
+        assert_eq!(result.language, Language::Rust);
+        assert_eq!(result.metadata.lines_total, 3);
+        // 1 comment + 1 code + 1 blank.
+        assert_eq!(result.metadata.lines_comment, 1);
+        assert_eq!(result.metadata.lines_code, 1);
+        assert_eq!(result.metadata.lines_blank, 1);
+        assert!(result.metadata.file_size_bytes > 0);
+    }
+
+    #[tokio::test]
+    async fn test_analyze_file_python_hash_comments_counted() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("a.py");
+        std::fs::write(&path, "# python comment\nx = 1\n").unwrap();
+        let a = LanguageAnalyzer::new();
+        let result = a
+            .analyze_file(&path, vec![AnalysisType::Metrics])
+            .await
+            .unwrap();
+        assert_eq!(result.metadata.lines_comment, 1);
+        assert_eq!(result.metadata.lines_code, 1);
+    }
+
+    #[tokio::test]
+    async fn test_analyze_file_sql_double_dash_comments_counted() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("a.sql");
+        std::fs::write(&path, "-- sql comment\nSELECT 1;\n").unwrap();
+        let a = LanguageAnalyzer::new();
+        let result = a
+            .analyze_file(&path, vec![AnalysisType::Metrics])
+            .await
+            .unwrap();
+        assert_eq!(result.metadata.lines_comment, 1);
+    }
+
+    #[tokio::test]
+    async fn test_analyze_file_unknown_language_no_comment_counting() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join("file.xyz");
+        std::fs::write(&path, "anything\nany text\n").unwrap();
+        let a = LanguageAnalyzer::new();
+        let result = a
+            .analyze_file(&path, vec![AnalysisType::Metrics])
+            .await
+            .unwrap();
+        // Unknown extension → CommentStyle::None → all non-blank lines counted as code.
+        assert_eq!(result.metadata.lines_code, 2);
+        assert_eq!(result.metadata.lines_comment, 0);
+    }
 }
