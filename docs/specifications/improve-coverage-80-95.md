@@ -173,6 +173,37 @@ The user-requested loop (rephrased): *contracts flush out coverage issues*. Mech
 
 This ties directly into CB-1400 (contract gate) and KAIZEN-0190 (SCHEMA-003 etc.) — the same machinery.
 
+### 4.4 Empirical evidence from the autonomous loop (2026-04-24..25)
+
+The Phase-1 autonomous loop demonstrated the §4.3 prediction in practice. While covering the comply checks and shared compliance helpers, we landed direct improvements to the provable-contracts surface:
+
+**PV check coverage landed:**
+
+| PR | File | Covers | What broke / found |
+|----|------|--------|--------------------|
+| #527 | `check_pv_quality.rs` | parse_metric / parse_float_metric helpers + 4 skip arms | — |
+| #528 | `check_pv_quality_gate.rs` (CB-1202/CB-1208/CB-1209) | no-src/ + no-contracts/ skip arms | — |
+| #528 | `check_pv_verification_ladder.rs` (CB-1204/CB-1205/CB-1207) | all 4 "no contracts/ → Skip" arms + Pass arms | — |
+| #527 | `migrate_handlers_init::generate_default_pmat_yaml` | round-trip through `PmatYamlConfig::load_from_path` | **DEFECT FIXED**: scaffolded yaml had `severity: high`, but `PmatYamlConfig` only accepts `info/warning/error/critical` — fresh `pmat comply init` produced an unloadable `.pmat.yaml`. Caught by the round-trip test; fixed to `severity: error`. |
+
+**Concrete realisation of §4.3.1:**
+
+The default-yaml defect is exactly the failure mode §4.3 predicts: a function existed (with line coverage from other tests), but **no test asserted the post-condition that what it wrote could be loaded by its sibling parser**. Adding the round-trip test (which is what a `binding.yaml` post-condition would have generated automatically) immediately exposed it. The fix was 1 line; finding it required co-evolving coverage and contracts.
+
+**Update to the §4.2 priority table:**
+
+The "extend `pmat query --coverage-gaps` with `--contract-gap` flag" row is now scoped: until that flag exists, the autonomous loop should treat **every PR that touches a `pub` fn missing a `binding.yaml` entry** as an opportunity to add one. PRs #527/#528/#529 covered PV-check entry points — these should appear in `binding.yaml` alongside the new tests, so the contract status follows the test status.
+
+**Loop convergence model (revised):**
+
+| Phase | Mechanism | Per-PR coverage gain | Per-PR contract gain |
+|-------|-----------|----------------------|----------------------|
+| Wave 1 (PRs #521..#522) | Bundle + check.rs split | +0.31pp | 0 (refactor only) |
+| Wave 2 (PRs #523..#549) | One file per PR, pure-compute leaves | +0.05–0.20pp each | 1–2 functions per PR ready for `binding.yaml` |
+| Wave 3 (next) | Async handlers + RefactorContext fixtures | +0.15–0.30pp est | Contract surface area expands to handlers |
+
+Each test added to a 0%-cov pure-compute helper *also* establishes the "this function's behaviour is observable from outside" property that a `binding.yaml` precondition needs. The two efforts compound rather than compete.
+
 ---
 
 ## 5. Phased Milestones
