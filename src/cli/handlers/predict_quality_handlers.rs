@@ -178,3 +178,74 @@ mod tests {
         assert!(result.unwrap_err().to_string().contains("Must specify"));
     }
 }
+
+#[cfg(test)]
+mod predict_quality_print_tests {
+    //! Covers print_predictions_table in predict_quality_handlers.rs
+    //! (46 uncov on broad, 0% cov). Drives all four urgency arms,
+    //! the no-breach arm, and the recommendations arm.
+    use super::*;
+    use crate::services::metric_trends::PredictionResult;
+
+    fn pred(metric: &str, breach_days: Option<usize>, recs: Vec<&str>) -> PredictionResult {
+        PredictionResult {
+            metric: metric.into(),
+            current_value: 100.0,
+            threshold: 200.0,
+            breach_in_days: breach_days,
+            predicted_value: breach_days.map(|_| 250.0),
+            confidence: 0.85,
+            recommendations: recs.into_iter().map(String::from).collect(),
+            forecast: vec![],
+        }
+    }
+
+    #[test]
+    fn test_print_predictions_table_no_breach_arm() {
+        // breach_in_days=None → "No breach predicted" arm fires.
+        let p = pred("lint_p99", None, vec![]);
+        print_predictions_table(&[p]);
+    }
+
+    #[test]
+    fn test_print_predictions_table_urgent_arm() {
+        // days <= 7 → URGENT.
+        let p = pred("test_p99", Some(3), vec![]);
+        print_predictions_table(&[p]);
+    }
+
+    #[test]
+    fn test_print_predictions_table_warning_arm() {
+        // 7 < days <= 14 → WARNING.
+        let p = pred("test_p99", Some(10), vec![]);
+        print_predictions_table(&[p]);
+    }
+
+    #[test]
+    fn test_print_predictions_table_info_arm() {
+        // days > 14 → INFO.
+        let p = pred("test_p99", Some(30), vec![]);
+        print_predictions_table(&[p]);
+    }
+
+    #[test]
+    fn test_print_predictions_table_with_recommendations() {
+        let p = pred("complexity", Some(5), vec!["Refactor X", "Extract Y"]);
+        print_predictions_table(&[p]);
+    }
+
+    #[test]
+    fn test_print_predictions_table_empty_input_no_panic() {
+        print_predictions_table(&[]);
+    }
+
+    #[test]
+    fn test_print_predictions_table_multiple_predictions() {
+        let preds = vec![
+            pred("a", None, vec![]),
+            pred("b", Some(3), vec!["fix it"]),
+            pred("c", Some(20), vec![]),
+        ];
+        print_predictions_table(&preds);
+    }
+}
