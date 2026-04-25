@@ -247,3 +247,49 @@ pub(crate) fn persist_provability_scores(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod sqlite_persist_tests {
+    //! Covers early-return arms in sqlite_backend/persist.rs (25 uncov on
+    //! broad, 0% cov). Skips full happy-path which requires a populated
+    //! context.db with `quality_violations` schema already present.
+    use super::*;
+
+    #[test]
+    fn test_persist_quality_violations_missing_db_returns_err() {
+        let missing = std::path::Path::new("/tmp/pmat_no_db_xyz_0xC0FFEE.db");
+        let result = persist_quality_violations(missing, &[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("No index database"));
+    }
+
+    #[test]
+    fn test_persist_entropy_violations_missing_db_returns_ok_noop() {
+        let missing = std::path::Path::new("/tmp/pmat_no_db_entropy_xyz.db");
+        let result = persist_entropy_violations(missing, &[]);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_persist_entropy_violations_empty_violations_returns_ok_noop() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        // File exists but violations empty → early-return Ok.
+        let result = persist_entropy_violations(tmp.path(), &[]);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_persist_provability_scores_missing_db_returns_ok_noop() {
+        let missing = std::path::Path::new("/tmp/pmat_no_db_prov_xyz.db");
+        let result = persist_provability_scores(missing, &[]);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_persist_provability_scores_empty_returns_ok_noop() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let result = persist_provability_scores(tmp.path(), &[]);
+        assert!(result.is_ok());
+    }
+}
