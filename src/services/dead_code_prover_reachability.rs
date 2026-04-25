@@ -71,3 +71,92 @@ impl ReachabilityAnalyzer {
         false
     }
 }
+
+#[cfg(test)]
+mod reachability_analyzer_tests {
+    //! Covers the placeholder ReachabilityAnalyzer methods in
+    //! dead_code_prover_reachability.rs (36 uncov on broad, 0% cov).
+    use super::*;
+    use crate::models::unified_ast::{
+        AstKind, FunctionKind, Language, UnifiedAstNode,
+    };
+
+    #[test]
+    fn test_new_returns_empty_state() {
+        let analyzer = ReachabilityAnalyzer::new();
+        assert!(analyzer.entry_points.is_empty());
+        assert!(analyzer.reachable.is_empty());
+        assert!(analyzer.ffi_exports.is_empty());
+        assert!(analyzer.dynamic_targets.is_empty());
+    }
+
+    #[test]
+    fn test_default_matches_new() {
+        let from_default = ReachabilityAnalyzer::default();
+        let from_new = ReachabilityAnalyzer::new();
+        // Both should produce empty sets — compare by emptiness.
+        assert_eq!(
+            from_default.entry_points.len(),
+            from_new.entry_points.len()
+        );
+        assert_eq!(from_default.reachable.len(), from_new.reachable.len());
+    }
+
+    #[test]
+    fn test_extract_function_name_returns_none_placeholder() {
+        // The current implementation always returns None — placeholder method.
+        let analyzer = ReachabilityAnalyzer::new();
+        let node = UnifiedAstNode::new(
+            AstKind::Function(FunctionKind::Regular),
+            Language::Rust,
+        );
+        assert!(analyzer.extract_function_name(&node).is_none());
+    }
+
+    #[test]
+    fn test_has_test_attribute_returns_false_placeholder() {
+        let analyzer = ReachabilityAnalyzer::new();
+        let node = UnifiedAstNode::new(
+            AstKind::Function(FunctionKind::Regular),
+            Language::Rust,
+        );
+        assert!(!analyzer.has_test_attribute(&node));
+    }
+
+    #[test]
+    fn test_has_benchmark_attribute_returns_false_placeholder() {
+        let analyzer = ReachabilityAnalyzer::new();
+        let node = UnifiedAstNode::new(
+            AstKind::Function(FunctionKind::Regular),
+            Language::Rust,
+        );
+        assert!(!analyzer.has_benchmark_attribute(&node));
+    }
+
+    #[test]
+    fn test_find_entry_points_function_node_no_entry_points_due_to_placeholder() {
+        // visit_for_entry_points only adds entry_points when extract_function_name
+        // returns Some(name). Since the placeholder returns None, no entries get
+        // added even for Function nodes.
+        let mut analyzer = ReachabilityAnalyzer::new();
+        let node = UnifiedAstNode::new(
+            AstKind::Function(FunctionKind::Regular),
+            Language::Rust,
+        );
+        analyzer.find_entry_points(&node, "src/a.rs");
+        assert!(analyzer.entry_points.is_empty());
+    }
+
+    #[test]
+    fn test_find_entry_points_non_function_node_no_entry_points() {
+        // Non-function AST kinds should not add entry points either.
+        use crate::models::unified_ast::ClassKind;
+        let mut analyzer = ReachabilityAnalyzer::new();
+        let node = UnifiedAstNode::new(
+            AstKind::Class(ClassKind::Regular),
+            Language::Rust,
+        );
+        analyzer.find_entry_points(&node, "src/a.rs");
+        assert!(analyzer.entry_points.is_empty());
+    }
+}
