@@ -386,3 +386,234 @@ pub async fn enrich_results_with_faults(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod enrichment_pure_tests {
+    //! Covers pure helpers in enrichment.rs: enrich_with_churn,
+    //! build_churn_map, detect_language_for_duplication, faults_in_range.
+    //! Skips async fns (coverage(off)) and filesystem-bound fns.
+    use super::*;
+    use crate::services::duplicate_detector::Language;
+
+    fn make_result(path: &str) -> QueryResult {
+        let mut r = QueryResult {
+            function_name: "f".to_string(),
+            file_path: path.to_string(),
+            signature: "fn f()".to_string(),
+            definition_type: "function".to_string(),
+            doc_comment: None,
+            start_line: 1,
+            end_line: 10,
+            language: "Rust".to_string(),
+            tdg_score: 80.0,
+            tdg_grade: "A".to_string(),
+            complexity: 5,
+            big_o: "O(1)".to_string(),
+            satd_count: 0,
+            loc: 10,
+            relevance_score: 0.95,
+            source: None,
+            calls: Vec::new(),
+            called_by: Vec::new(),
+            pagerank: 0.0,
+            in_degree: 0,
+            out_degree: 0,
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            duplication_score: 0.0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
+            line_coverage_pct: 0.0,
+            lines_covered: 0,
+            lines_total: 0,
+            missed_lines: 0,
+            impact_score: 0.0,
+            coverage_status: String::new(),
+            coverage_diff: 0.0,
+            coverage_exclusion: Default::default(),
+            coverage_excluded: false,
+            cross_project_callers: 0,
+            io_classification: String::new(),
+            io_patterns: Vec::new(),
+            suggested_module: String::new(),
+            contract_level: None,
+            contract_equation: None,
+        };
+        r.start_line = 0;
+        r
+    }
+
+    // ── enrich_with_churn ──
+
+    #[test]
+    fn test_enrich_with_churn_applies_metrics_for_matching_paths() {
+        let mut results = vec![make_result("src/a.rs"), make_result("src/b.rs")];
+        let mut churn = HashMap::new();
+        churn.insert("src/a.rs".to_string(), (5u32, 0.5_f32));
+        enrich_with_churn(&mut results, &churn);
+        assert_eq!(results[0].commit_count, 5);
+        assert!((results[0].churn_score - 0.5).abs() < 1e-6);
+        // Unmatched stays at default.
+        assert_eq!(results[1].commit_count, 0);
+    }
+
+    #[test]
+    fn test_enrich_with_churn_empty_map_no_op() {
+        let mut results = vec![make_result("src/a.rs")];
+        enrich_with_churn(&mut results, &HashMap::new());
+        assert_eq!(results[0].commit_count, 0);
+    }
+
+    // ── build_churn_map ──
+
+    #[test]
+    fn test_build_churn_map_builds_lookup_from_metrics() {
+        use crate::models::churn::FileChurnMetrics;
+        use chrono::Utc;
+        use std::path::PathBuf;
+        let metrics = vec![
+            FileChurnMetrics {
+                path: PathBuf::from("src/a.rs"),
+                relative_path: "src/a.rs".to_string(),
+                commit_count: 3,
+                unique_authors: vec![],
+                additions: 0,
+                deletions: 0,
+                churn_score: 0.3,
+                last_modified: Utc::now(),
+                first_seen: Utc::now(),
+            },
+            FileChurnMetrics {
+                path: PathBuf::from("src/b.rs"),
+                relative_path: "src/b.rs".to_string(),
+                commit_count: 7,
+                unique_authors: vec![],
+                additions: 0,
+                deletions: 0,
+                churn_score: 0.7,
+                last_modified: Utc::now(),
+                first_seen: Utc::now(),
+            },
+        ];
+        let map = build_churn_map(&metrics);
+        assert_eq!(map.get("src/a.rs"), Some(&(3u32, 0.3_f32)));
+        assert_eq!(map.get("src/b.rs"), Some(&(7u32, 0.7_f32)));
+    }
+
+    #[test]
+    fn test_build_churn_map_empty_input_returns_empty() {
+        let map = build_churn_map(&[]);
+        assert!(map.is_empty());
+    }
+
+    // ── detect_language_for_duplication ──
+
+    #[test]
+    fn test_detect_language_rust() {
+        assert!(matches!(
+            detect_language_for_duplication("src/foo.rs"),
+            Some(Language::Rust)
+        ));
+    }
+
+    #[test]
+    fn test_detect_language_typescript_ts_and_tsx() {
+        assert!(matches!(
+            detect_language_for_duplication("foo.ts"),
+            Some(Language::TypeScript)
+        ));
+        assert!(matches!(
+            detect_language_for_duplication("foo.tsx"),
+            Some(Language::TypeScript)
+        ));
+    }
+
+    #[test]
+    fn test_detect_language_javascript_js_and_jsx() {
+        assert!(matches!(
+            detect_language_for_duplication("foo.js"),
+            Some(Language::JavaScript)
+        ));
+        assert!(matches!(
+            detect_language_for_duplication("foo.jsx"),
+            Some(Language::JavaScript)
+        ));
+    }
+
+    #[test]
+    fn test_detect_language_python() {
+        assert!(matches!(
+            detect_language_for_duplication("foo.py"),
+            Some(Language::Python)
+        ));
+    }
+
+    #[test]
+    fn test_detect_language_c_and_cpp_variants() {
+        assert!(matches!(
+            detect_language_for_duplication("a.c"),
+            Some(Language::C)
+        ));
+        for ext in &["cpp", "cc", "cxx", "cu", "cuh"] {
+            assert!(matches!(
+                detect_language_for_duplication(&format!("a.{ext}")),
+                Some(Language::Cpp)
+            ));
+        }
+    }
+
+    #[test]
+    fn test_detect_language_kotlin() {
+        assert!(matches!(
+            detect_language_for_duplication("foo.kt"),
+            Some(Language::Kotlin)
+        ));
+    }
+
+    #[test]
+    fn test_detect_language_unknown_returns_none() {
+        assert!(detect_language_for_duplication("foo.xyz").is_none());
+        assert!(detect_language_for_duplication("foo").is_none());
+    }
+
+    // ── faults_in_range ──
+
+    #[test]
+    fn test_faults_in_range_includes_in_range_only() {
+        let faults = vec![
+            "BH-1: x at line 5".to_string(),
+            "BH-2: y at line 50".to_string(),
+            "BH-3: z at line 105".to_string(),
+        ];
+        let in_range = faults_in_range(&faults, 1, 100);
+        assert_eq!(in_range.len(), 2);
+        assert!(in_range.iter().any(|f| f.contains("line 5")));
+        assert!(in_range.iter().any(|f| f.contains("line 50")));
+    }
+
+    #[test]
+    fn test_faults_in_range_empty_input_returns_empty() {
+        let in_range = faults_in_range(&[], 1, 100);
+        assert!(in_range.is_empty());
+    }
+
+    #[test]
+    fn test_faults_in_range_skips_unparseable_line_marker() {
+        let faults = vec!["BH-1: badly formatted".to_string()];
+        let in_range = faults_in_range(&faults, 1, 100);
+        // No "at line N" suffix → skipped.
+        assert!(in_range.is_empty());
+    }
+
+    #[test]
+    fn test_faults_in_range_boundary_inclusive() {
+        let faults = vec![
+            "BH-1: low at line 1".to_string(),
+            "BH-2: high at line 100".to_string(),
+        ];
+        let in_range = faults_in_range(&faults, 1, 100);
+        // Both endpoints included.
+        assert_eq!(in_range.len(), 2);
+    }
+}
