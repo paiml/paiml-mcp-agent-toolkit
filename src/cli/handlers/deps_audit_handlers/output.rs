@@ -375,3 +375,125 @@ pub fn print_text_report(report: &DepsAuditReport) {
         colors::RESET
     );
 }
+
+#[cfg(test)]
+mod deps_audit_output_tests {
+    //! Covers print_pareto_report + print_text_report in
+    //! deps_audit_handlers/output.rs (12 uncov on broad, 0% cov; the rest
+    //! comes from the dispatch handler.rs).
+    use super::*;
+    use crate::cli::handlers::deps_audit_handlers::types::{DepAnalysis, ParetoEntry};
+
+    fn pareto(name: &str, trans_deps: usize, effort: ParetoEffort, roi: f32) -> ParetoEntry {
+        ParetoEntry {
+            name: name.into(),
+            transitive_deps: trans_deps,
+            effort,
+            roi,
+            reason: "test".into(),
+            category: DepCategory::Removable,
+        }
+    }
+
+    fn empty_report() -> DepsAuditReport {
+        DepsAuditReport {
+            total_deps: 0,
+            direct_deps: 0,
+            transitive_deps: 0,
+            sovereign_deps: 0,
+            replaceable_deps: 0,
+            removable_deps: 0,
+            heavy_deps: 0,
+            orphan_deps: 0,
+            bridge_deps: 0,
+            estimated_savings_kb: 0,
+            dependencies: vec![],
+            recommendations: vec![],
+            top_critical: vec![],
+            removal_candidates: vec![],
+        }
+    }
+
+    #[test]
+    fn test_print_pareto_report_empty_returns_early() {
+        // Empty entries → "No removable dependencies found." early-return.
+        print_pareto_report(&[]);
+    }
+
+    #[test]
+    fn test_print_pareto_report_single_entry_no_panic() {
+        let entries = vec![pareto("foo", 5, ParetoEffort::Low, 5.0)];
+        print_pareto_report(&entries);
+    }
+
+    #[test]
+    fn test_print_pareto_report_emits_80_marker_when_cumulative_threshold_hit() {
+        // Build entries where the second one pushes cumulative past 80% threshold.
+        let entries = vec![
+            pareto("a", 100, ParetoEffort::Low, 100.0),
+            pareto("b", 50, ParetoEffort::Medium, 25.0),
+            pareto("c", 10, ParetoEffort::High, 3.3),
+        ];
+        print_pareto_report(&entries);
+    }
+
+    #[test]
+    fn test_print_pareto_report_more_than_20_entries_takes_top_20() {
+        let entries: Vec<ParetoEntry> = (0..25)
+            .map(|i| pareto(&format!("dep{i}"), i, ParetoEffort::Low, i as f32))
+            .collect();
+        print_pareto_report(&entries);
+    }
+
+    #[test]
+    fn test_print_pareto_report_quick_wins_section_with_low_effort_high_roi() {
+        let entries = vec![
+            pareto("quick", 50, ParetoEffort::Low, 50.0), // qualifies (Low + ROI > 10)
+            pareto("hard", 50, ParetoEffort::High, 50.0), // not Low → skipped
+            pareto("low_roi", 5, ParetoEffort::Low, 5.0), // ROI ≤ 10 → skipped
+        ];
+        print_pareto_report(&entries);
+    }
+
+    // ── print_text_report ──
+
+    #[test]
+    fn test_print_text_report_empty_no_panic() {
+        let r = empty_report();
+        print_text_report(&r);
+    }
+
+    #[test]
+    fn test_print_text_report_with_savings_uses_yellow_color() {
+        let mut r = empty_report();
+        r.estimated_savings_kb = 4096; // > 0 → yellow color branch
+        print_text_report(&r);
+    }
+
+    #[test]
+    fn test_print_text_report_with_critical_deps_emits_table() {
+        let mut r = empty_report();
+        r.top_critical = vec![("serde".into(), 0.123456), ("tokio".into(), 0.098765)];
+        print_text_report(&r);
+    }
+
+    #[test]
+    fn test_print_text_report_with_recommendations_filters_heavy_deps() {
+        let mut r = empty_report();
+        r.dependencies = vec![DepAnalysis {
+            name: "huge_dep".into(),
+            version: "1.0".into(),
+            category: DepCategory::Heavy,
+            replacement: None,
+            reason: "5MB binary bloat".into(),
+            transitive_count: 50,
+            estimated_size_kb: 5000,
+            pagerank_score: 0.5,
+            in_degree: 0,
+            out_degree: 0,
+            is_bridge: false,
+            is_orphan: false,
+        }];
+        print_text_report(&r);
+    }
+}
