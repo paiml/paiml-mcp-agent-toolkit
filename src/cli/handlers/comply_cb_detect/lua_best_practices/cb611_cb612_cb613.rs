@@ -458,3 +458,399 @@ fn dfs_find_cycle(
 
     rec_stack.pop();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    // ── is_weak_key_only_declaration ────────────────────────────────────────
+
+    #[test]
+    fn test_is_weak_key_only_declaration_double_quote_k() {
+        assert!(is_weak_key_only_declaration(
+            "setmetatable(t, { __mode = \"k\" })"
+        ));
+    }
+
+    #[test]
+    fn test_is_weak_key_only_declaration_single_quote_k() {
+        assert!(is_weak_key_only_declaration(
+            "setmetatable(t, { __mode = 'k' })"
+        ));
+    }
+
+    #[test]
+    fn test_is_weak_key_only_declaration_kv_excluded() {
+        assert!(!is_weak_key_only_declaration(
+            "setmetatable(t, { __mode = \"kv\" })"
+        ));
+    }
+
+    #[test]
+    fn test_is_weak_key_only_declaration_v_excluded() {
+        assert!(!is_weak_key_only_declaration(
+            "setmetatable(t, { __mode = \"v\" })"
+        ));
+    }
+
+    #[test]
+    fn test_is_weak_key_only_declaration_no_mode_attr() {
+        assert!(!is_weak_key_only_declaration("local t = {}"));
+    }
+
+    // ── classify_bracket_key ────────────────────────────────────────────────
+
+    #[test]
+    fn test_classify_bracket_key_double_quote_string() {
+        assert_eq!(classify_bracket_key("\"key\"]"), Some("string"));
+    }
+
+    #[test]
+    fn test_classify_bracket_key_single_quote_string() {
+        assert_eq!(classify_bracket_key("'key']"), Some("string"));
+    }
+
+    #[test]
+    fn test_classify_bracket_key_numeric() {
+        assert_eq!(classify_bracket_key("42]"), Some("numeric"));
+        assert_eq!(classify_bracket_key("0]"), Some("numeric"));
+    }
+
+    #[test]
+    fn test_classify_bracket_key_other_returns_none() {
+        // variable, function call, etc. — not a value-type literal
+        assert_eq!(classify_bracket_key("var]"), None);
+        assert_eq!(classify_bracket_key("getKey()]"), None);
+        assert_eq!(classify_bracket_key(""), None);
+    }
+
+    // ── extract_weak_table_var ──────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_weak_table_var_local_assignment() {
+        let v = extract_weak_table_var("local cache = setmetatable({}, { __mode = \"k\" })");
+        assert_eq!(v, Some("cache".to_string()));
+    }
+
+    #[test]
+    fn test_extract_weak_table_var_plain_assignment() {
+        let v = extract_weak_table_var("cache = setmetatable({}, { __mode = \"k\" })");
+        assert_eq!(v, Some("cache".to_string()));
+    }
+
+    #[test]
+    fn test_extract_weak_table_var_no_eq_returns_none() {
+        assert!(extract_weak_table_var("just a comment").is_none());
+    }
+
+    #[test]
+    fn test_extract_weak_table_var_dotted_lhs_rejected() {
+        assert!(extract_weak_table_var("M.cache = setmetatable({}, {})").is_none());
+    }
+
+    #[test]
+    fn test_extract_weak_table_var_indexed_lhs_rejected() {
+        assert!(extract_weak_table_var("t[\"k\"] = setmetatable({}, {})").is_none());
+    }
+
+    #[test]
+    fn test_extract_weak_table_var_empty_var_rejected() {
+        // "= rhs" with no name on the left
+        assert!(extract_weak_table_var(" = setmetatable({}, {})").is_none());
+    }
+
+    // ── detect_weak_key_with_value_types ────────────────────────────────────
+
+    #[test]
+    fn test_detect_weak_key_with_value_types_string_key_flagged() {
+        let lines = vec![
+            (
+                1usize,
+                "local cache = setmetatable({}, { __mode = \"k\" })".to_string(),
+            ),
+            (5, "cache[\"id\"] = data".to_string()),
+        ];
+        let mut violations = Vec::new();
+        detect_weak_key_with_value_types(&lines, "test.lua", &mut violations);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-611");
+        assert_eq!(violations[0].line, 5);
+        assert!(violations[0].description.contains("string"));
+    }
+
+    #[test]
+    fn test_detect_weak_key_with_value_types_numeric_key_flagged() {
+        let lines = vec![
+            (
+                1usize,
+                "local cache = setmetatable({}, { __mode = \"k\" })".to_string(),
+            ),
+            (3, "cache[42] = data".to_string()),
+        ];
+        let mut violations = Vec::new();
+        detect_weak_key_with_value_types(&lines, "test.lua", &mut violations);
+        assert_eq!(violations.len(), 1);
+        assert!(violations[0].description.contains("numeric"));
+    }
+
+    #[test]
+    fn test_detect_weak_key_with_value_types_no_weak_vars_returns_early() {
+        let lines = vec![(1usize, "local x = 1".to_string())];
+        let mut violations = Vec::new();
+        detect_weak_key_with_value_types(&lines, "test.lua", &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_detect_weak_key_with_value_types_variable_key_not_flagged() {
+        // Indexing with a variable name (not a string/numeric literal) is fine
+        let lines = vec![
+            (
+                1usize,
+                "local cache = setmetatable({}, { __mode = \"k\" })".to_string(),
+            ),
+            (5, "cache[obj] = data".to_string()),
+        ];
+        let mut violations = Vec::new();
+        detect_weak_key_with_value_types(&lines, "test.lua", &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    // ── LuaTestFramework Display ────────────────────────────────────────────
+
+    #[test]
+    fn test_lua_test_framework_display_all_arms() {
+        assert_eq!(LuaTestFramework::Busted.to_string(), "busted");
+        assert_eq!(LuaTestFramework::TestNginx.to_string(), "Test::Nginx");
+        assert_eq!(LuaTestFramework::LuaUnit.to_string(), "LuaUnit");
+        assert_eq!(LuaTestFramework::Telescope.to_string(), "telescope");
+        assert_eq!(LuaTestFramework::Custom.to_string(), "custom");
+    }
+
+    // ── has_require_pattern ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_has_require_pattern_double_quote_call() {
+        assert!(has_require_pattern("local m = require(\"foo\")", "foo"));
+    }
+
+    #[test]
+    fn test_has_require_pattern_single_quote_call() {
+        assert!(has_require_pattern("local m = require('foo')", "foo"));
+    }
+
+    #[test]
+    fn test_has_require_pattern_no_parens() {
+        assert!(has_require_pattern("local m = require \"foo\"", "foo"));
+    }
+
+    #[test]
+    fn test_has_require_pattern_other_module_not_matched() {
+        assert!(!has_require_pattern("require(\"bar\")", "foo"));
+    }
+
+    // ── extract_require_module ──────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_require_module_double_quote_parens() {
+        assert_eq!(
+            extract_require_module("local m = require(\"foo\")"),
+            Some("foo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_require_module_single_quote_parens() {
+        assert_eq!(
+            extract_require_module("local m = require('foo.bar')"),
+            Some("foo.bar".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_require_module_no_parens() {
+        assert_eq!(
+            extract_require_module("require \"foo\""),
+            Some("foo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_require_module_no_require_word() {
+        assert!(extract_require_module("local x = 1").is_none());
+    }
+
+    #[test]
+    fn test_extract_require_module_part_of_other_word() {
+        // `prerequire` shouldn't be detected
+        assert!(extract_require_module("local prerequire = 1").is_none());
+    }
+
+    #[test]
+    fn test_extract_require_module_empty_module_rejected() {
+        assert!(extract_require_module("require(\"\")").is_none());
+    }
+
+    #[test]
+    fn test_extract_require_module_no_quote_after_require() {
+        assert!(extract_require_module("require xyz").is_none());
+    }
+
+    // ── extract_top_level_requires ──────────────────────────────────────────
+
+    #[test]
+    fn test_extract_top_level_requires_collects_top_level() {
+        let content = "local a = require(\"mod_a\")\nlocal b = require(\"mod_b\")\n";
+        let reqs = extract_top_level_requires(content);
+        assert_eq!(reqs, vec!["mod_a".to_string(), "mod_b".to_string()]);
+    }
+
+    #[test]
+    fn test_extract_top_level_requires_skips_function_scoped() {
+        let content =
+            "function foo()\n  local x = require(\"inner\")\nend\nlocal m = require(\"outer\")\n";
+        let reqs = extract_top_level_requires(content);
+        assert_eq!(reqs, vec!["outer".to_string()]);
+    }
+
+    #[test]
+    fn test_extract_top_level_requires_skips_comment_lines() {
+        let content = "-- require(\"commented_out\")\nlocal m = require(\"real\")\n";
+        let reqs = extract_top_level_requires(content);
+        assert_eq!(reqs, vec!["real".to_string()]);
+    }
+
+    #[test]
+    fn test_extract_top_level_requires_handles_local_function() {
+        let content =
+            "local function bar()\n  local x = require(\"inner\")\nend\nrequire(\"outer\")\n";
+        let reqs = extract_top_level_requires(content);
+        assert_eq!(reqs, vec!["outer".to_string()]);
+    }
+
+    #[test]
+    fn test_extract_top_level_requires_empty_input() {
+        assert!(extract_top_level_requires("").is_empty());
+    }
+
+    // ── find_require_cycles / dfs_find_cycle ────────────────────────────────
+
+    #[test]
+    fn test_find_require_cycles_acyclic_returns_empty() {
+        let mut graph = HashMap::new();
+        graph.insert("a".to_string(), vec!["b".to_string()]);
+        graph.insert("b".to_string(), vec!["c".to_string()]);
+        graph.insert("c".to_string(), vec![]);
+        let cycles = find_require_cycles(&graph);
+        assert!(cycles.is_empty());
+    }
+
+    #[test]
+    fn test_find_require_cycles_two_node_cycle() {
+        let mut graph = HashMap::new();
+        graph.insert("a".to_string(), vec!["b".to_string()]);
+        graph.insert("b".to_string(), vec!["a".to_string()]);
+        let cycles = find_require_cycles(&graph);
+        assert!(!cycles.is_empty());
+        // A two-node cycle yields a cycle of length 2
+        assert!(cycles.iter().any(|c| c.len() == 2));
+    }
+
+    #[test]
+    fn test_find_require_cycles_self_loop() {
+        let mut graph = HashMap::new();
+        graph.insert("a".to_string(), vec!["a".to_string()]);
+        let cycles = find_require_cycles(&graph);
+        assert!(!cycles.is_empty());
+        assert_eq!(cycles[0], vec!["a".to_string()]);
+    }
+
+    #[test]
+    fn test_find_require_cycles_unrelated_components() {
+        let mut graph = HashMap::new();
+        graph.insert("a".to_string(), vec!["b".to_string()]);
+        graph.insert("b".to_string(), vec![]);
+        graph.insert("x".to_string(), vec!["y".to_string()]);
+        graph.insert("y".to_string(), vec!["x".to_string()]);
+        let cycles = find_require_cycles(&graph);
+        assert!(!cycles.is_empty());
+    }
+
+    // ── filesystem-bound entrypoints (use tempfile) ─────────────────────────
+
+    #[test]
+    fn test_detect_cb611_weak_table_misuse_no_lua_files_returns_empty() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        let v = detect_cb611_weak_table_misuse(tmp.path());
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb611_weak_table_misuse_finds_string_key_violation() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("mod.lua"),
+            "local cache = setmetatable({}, { __mode = \"k\" })\ncache[\"id\"] = 1\n",
+        )
+        .unwrap();
+        let v = detect_cb611_weak_table_misuse(tmp.path());
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].pattern_id, "CB-611");
+    }
+
+    #[test]
+    fn test_detect_cb612_test_framework_no_lua_files_no_violations() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        let v = detect_cb612_test_framework(tmp.path());
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb612_test_framework_busted_spec_file_detected() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("things_spec.lua"),
+            "describe('x', function() it('y', function() end) end)\n",
+        )
+        .unwrap();
+        let v = detect_cb612_test_framework(tmp.path());
+        assert_eq!(v.len(), 1);
+        assert!(v[0].description.contains("busted"));
+    }
+
+    #[test]
+    fn test_detect_cb613_require_cycles_too_few_files_returns_empty() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(tmp.path().join("only.lua"), "local x = 1\n").unwrap();
+        // Fewer than 2 files → empty
+        let v = detect_cb613_require_cycles(tmp.path());
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb613_require_cycles_no_requires_returns_empty() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(tmp.path().join("a.lua"), "return {}\n").unwrap();
+        fs::write(tmp.path().join("b.lua"), "return {}\n").unwrap();
+        let v = detect_cb613_require_cycles(tmp.path());
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn test_detect_lua_test_frameworks_empty_project() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_lua_test_frameworks(tmp.path()).is_empty());
+    }
+}
