@@ -243,4 +243,120 @@ mod parallel_tests {
         // If this compiles, all types exist
         assert_eq!(types.len(), 5);
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // print_health_report / print_health_table / print_health_yaml smoke
+    //
+    // These print to stderr/stdout with no return value, so we cover them
+    // for line counts (no panic) under each format arm + edge case.
+    // health_handler_output.rs:41-145.
+    // ─────────────────────────────────────────────────────────────────────
+
+    fn make_check(name: &str, status: CheckStatus, with_details: bool) -> HealthCheck {
+        HealthCheck {
+            name: name.to_string(),
+            status,
+            message: format!("{name} message"),
+            details: if with_details {
+                Some("some/path".to_string())
+            } else {
+                None
+            },
+        }
+    }
+
+    fn make_report(checks: Vec<HealthCheck>, healthy: bool) -> HealthReport {
+        let summary = calculate_summary(&checks);
+        HealthReport {
+            healthy,
+            checks,
+            summary,
+        }
+    }
+
+    #[test]
+    fn test_print_health_report_json_arm() {
+        let report = make_report(vec![make_check("Build", CheckStatus::Pass, true)], true);
+        // OutputFormat::Json arm — serde_json round-trip, no panic.
+        print_health_report(&report, &OutputFormat::Json).unwrap();
+    }
+
+    #[test]
+    fn test_print_health_report_yaml_arm() {
+        let report = make_report(
+            vec![make_check("Build", CheckStatus::Pass, false)],
+            true,
+        );
+        print_health_report(&report, &OutputFormat::Yaml).unwrap();
+    }
+
+    #[test]
+    fn test_print_health_report_table_arm() {
+        let report = make_report(
+            vec![make_check("Build", CheckStatus::Pass, false)],
+            true,
+        );
+        print_health_report(&report, &OutputFormat::Table).unwrap();
+    }
+
+    #[test]
+    fn test_print_health_report_default_arm_for_unknown_format() {
+        // Any other OutputFormat falls through to print_health_table.
+        let report = make_report(
+            vec![make_check("Build", CheckStatus::Pass, false)],
+            true,
+        );
+        print_health_report(&report, &OutputFormat::Csv).unwrap();
+    }
+
+    #[test]
+    fn test_print_health_table_with_all_4_status_arms_and_details() {
+        // Covers all CheckStatus icon arms + the `details` Some branch.
+        let checks = vec![
+            make_check("P", CheckStatus::Pass, true),
+            make_check("W", CheckStatus::Warn, true),
+            make_check("F", CheckStatus::Fail, true),
+            make_check("S", CheckStatus::Skip, true),
+        ];
+        let report = make_report(checks, false);
+        print_health_table(&report);
+    }
+
+    #[test]
+    fn test_print_health_table_healthy_arm() {
+        // healthy = true → "Project is healthy!" branch.
+        let report = make_report(
+            vec![make_check("P", CheckStatus::Pass, false)],
+            true,
+        );
+        print_health_table(&report);
+    }
+
+    #[test]
+    fn test_print_health_table_unhealthy_arm() {
+        // healthy = false → "Project has N issue(s)" branch.
+        let report = make_report(
+            vec![make_check("F", CheckStatus::Fail, false)],
+            false,
+        );
+        print_health_table(&report);
+    }
+
+    #[test]
+    fn test_print_health_yaml_with_details_some_and_none() {
+        // Covers both `details: Some(...)` and `details: None` branches in
+        // the YAML printer's per-check loop.
+        let checks = vec![
+            make_check("with-details", CheckStatus::Pass, true),
+            make_check("no-details", CheckStatus::Skip, false),
+        ];
+        let report = make_report(checks, true);
+        print_health_yaml(&report);
+    }
+
+    #[test]
+    fn test_print_health_yaml_empty_checks() {
+        let report = make_report(vec![], true);
+        print_health_yaml(&report);
+    }
 }
