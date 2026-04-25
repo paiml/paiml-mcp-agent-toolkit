@@ -97,3 +97,99 @@ include!("ticket_score.rs");
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "work_handlers_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod ticket_handlers_pure_tests {
+    //! Covers pure-compute helpers in ticket_handlers.rs (46 uncov on broad,
+    //! 0% cov). Skips fuzzy-match (requires populated roadmap fixture).
+    use super::*;
+
+    // ── extract_line_from_yaml_error ──
+
+    #[test]
+    fn test_extract_line_from_yaml_error_finds_at_line_pattern() {
+        let err = "parse error at line 42 column 5: bad yaml";
+        assert_eq!(extract_line_from_yaml_error(err), Some(42));
+    }
+
+    #[test]
+    fn test_extract_line_from_yaml_error_no_at_line_pattern() {
+        assert_eq!(extract_line_from_yaml_error("generic error"), None);
+        assert_eq!(extract_line_from_yaml_error(""), None);
+    }
+
+    #[test]
+    fn test_extract_line_from_yaml_error_at_line_without_space_after() {
+        // No space after the number → end-of-string fallback returns None.
+        let err = "at line 42";
+        assert_eq!(extract_line_from_yaml_error(err), None);
+    }
+
+    #[test]
+    fn test_extract_line_from_yaml_error_non_numeric_value() {
+        let err = "at line abc column 1";
+        assert_eq!(extract_line_from_yaml_error(err), None);
+    }
+
+    // ── generate_next_id ──
+
+    #[test]
+    fn test_generate_next_id_empty_roadmap_starts_at_001() {
+        use crate::models::roadmap::Roadmap;
+        let roadmap = Roadmap::new(None);
+        assert_eq!(generate_next_id(&roadmap), "PMAT-001");
+    }
+
+    #[test]
+    fn test_generate_next_id_picks_max_plus_one() {
+        use crate::models::roadmap::{Roadmap, RoadmapItem};
+        let mut roadmap = Roadmap::new(None);
+        roadmap
+            .roadmap
+            .push(RoadmapItem::new("PMAT-005".into(), "x".into()));
+        roadmap
+            .roadmap
+            .push(RoadmapItem::new("PMAT-100".into(), "y".into()));
+        roadmap
+            .roadmap
+            .push(RoadmapItem::new("PMAT-042".into(), "z".into()));
+        assert_eq!(generate_next_id(&roadmap), "PMAT-101");
+    }
+
+    #[test]
+    fn test_generate_next_id_handles_mixed_id_prefixes() {
+        use crate::models::roadmap::{Roadmap, RoadmapItem};
+        let mut roadmap = Roadmap::new(None);
+        roadmap
+            .roadmap
+            .push(RoadmapItem::new("GH-50".into(), "x".into()));
+        roadmap
+            .roadmap
+            .push(RoadmapItem::new("PMAT-007".into(), "y".into()));
+        // max(50, 7) = 50, so next is PMAT-051.
+        assert_eq!(generate_next_id(&roadmap), "PMAT-051");
+    }
+
+    #[test]
+    fn test_generate_next_id_skips_non_numeric_suffixes() {
+        use crate::models::roadmap::{Roadmap, RoadmapItem};
+        let mut roadmap = Roadmap::new(None);
+        roadmap
+            .roadmap
+            .push(RoadmapItem::new("PMAT-XX".into(), "non-num".into()));
+        roadmap
+            .roadmap
+            .push(RoadmapItem::new("PMAT-009".into(), "num".into()));
+        // Non-numeric suffix is ignored; next is 9 + 1 = 10.
+        assert_eq!(generate_next_id(&roadmap), "PMAT-010");
+    }
+
+    #[test]
+    fn test_generate_next_id_pads_to_3_digits() {
+        use crate::models::roadmap::Roadmap;
+        let roadmap = Roadmap::new(None);
+        // Empty → max=0, next=1 → "PMAT-001" (3-digit zero pad).
+        let id = generate_next_id(&roadmap);
+        assert_eq!(id, "PMAT-001");
+    }
+}
