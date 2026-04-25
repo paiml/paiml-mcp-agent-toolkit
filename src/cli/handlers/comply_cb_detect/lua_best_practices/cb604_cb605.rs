@@ -109,3 +109,115 @@ pub fn detect_cb605_string_concat_in_loop(project_path: &Path) -> Vec<CbPatternV
 
     violations
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn tmp_with(file: &str, content: &str) -> TempDir {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join(file), content).unwrap();
+        dir
+    }
+
+    // ── detect_cb604_unused_variables ───────────────────────────────────────
+
+    #[test]
+    fn test_detect_cb604_no_files_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb604_unused_variables(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb604_unused_variable_flagged() {
+        let tmp = tmp_with("a.lua", "local unused_var = 42\nreturn 1\n");
+        let v = detect_cb604_unused_variables(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-604");
+        assert!(v[0].description.contains("unused_var"));
+    }
+
+    #[test]
+    fn test_detect_cb604_used_variable_clean() {
+        let tmp = tmp_with(
+            "a.lua",
+            "local used_var = 42\nprint(used_var)\nreturn used_var\n",
+        );
+        let v = detect_cb604_unused_variables(tmp.path());
+        // used_var appears 3 times → not flagged
+        assert!(!v.iter().any(|x| x.description.contains("used_var")));
+    }
+
+    #[test]
+    fn test_detect_cb604_test_files_skipped() {
+        // *_spec.lua / *_test.lua are skipped by is_lua_test_file
+        let tmp = tmp_with("a_spec.lua", "local unused = 1\n");
+        // Test files aren't analyzed for CB-604 — should be empty
+        let v = detect_cb604_unused_variables(tmp.path());
+        assert!(v.is_empty());
+    }
+
+    // ── detect_cb605_string_concat_in_loop ──────────────────────────────────
+
+    #[test]
+    fn test_detect_cb605_no_files_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb605_string_concat_in_loop(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb605_concat_in_for_loop_flagged() {
+        let tmp = tmp_with(
+            "a.lua",
+            "local s = \"\"\nfor i = 1, 10 do\n  s = s .. i\nend\n",
+        );
+        let v = detect_cb605_string_concat_in_loop(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-605");
+    }
+
+    #[test]
+    fn test_detect_cb605_concat_in_while_loop_flagged() {
+        let tmp = tmp_with(
+            "a.lua",
+            "local s = \"\"\nlocal i = 0\nwhile i < 5 do\n  s = s .. i\n  i = i + 1\nend\n",
+        );
+        let v = detect_cb605_string_concat_in_loop(tmp.path());
+        assert!(!v.is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb605_concat_in_repeat_loop_flagged() {
+        let tmp = tmp_with(
+            "a.lua",
+            "local s = \"\"\nlocal i = 0\nrepeat\n  s = s .. i\n  i = i + 1\nuntil i > 3\n",
+        );
+        let v = detect_cb605_string_concat_in_loop(tmp.path());
+        assert!(!v.is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb605_concat_outside_loop_clean() {
+        let tmp = tmp_with("a.lua", "local s = \"a\" .. \"b\"\n");
+        assert!(detect_cb605_string_concat_in_loop(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb605_no_concat_in_loop_clean() {
+        let tmp = tmp_with("a.lua", "for i = 1, 10 do\n  print(i)\nend\n");
+        assert!(detect_cb605_string_concat_in_loop(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb605_loop_depth_tracks_nested() {
+        // nested loops; concat inside inner loop still has loop_depth > 0
+        let tmp = tmp_with(
+            "a.lua",
+            "for i = 1, 3 do\n  for j = 1, 3 do\n    local x = i .. j\n  end\nend\n",
+        );
+        let v = detect_cb605_string_concat_in_loop(tmp.path());
+        assert!(!v.is_empty());
+    }
+}
