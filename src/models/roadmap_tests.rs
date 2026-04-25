@@ -238,6 +238,55 @@ roadmap:
         assert_eq!(item.completion_percentage(), 100);
     }
 
+    /// roadmap_impl.rs:153 — subtasks branch wins over phases / criteria
+    /// / status arms when populated. Tests the non-empty-subtasks code path
+    /// (existing tests only cover the leaf-status branch).
+    #[test]
+    fn test_completion_percentage_subtasks_branch() {
+        let mut item = RoadmapItem::new("EPIC-1".to_string(), "Epic".to_string());
+        item.subtasks = vec![
+            Subtask {
+                id: "S1".to_string(),
+                github_issue: None,
+                title: "S1".to_string(),
+                status: ItemStatus::Completed,
+                completion: 100,
+            },
+            Subtask {
+                id: "S2".to_string(),
+                github_issue: None,
+                title: "S2".to_string(),
+                status: ItemStatus::InProgress,
+                completion: 50,
+            },
+        ];
+        // (100 + 50) / 2 = 75.
+        assert_eq!(item.completion_percentage(), 75);
+    }
+
+    /// roadmap_impl.rs:157 — phases branch wins over criteria / status arms
+    /// when subtasks empty but phases populated.
+    #[test]
+    fn test_completion_percentage_phases_branch() {
+        let mut item = RoadmapItem::new("MULTI-1".to_string(), "Multi".to_string());
+        item.phases = vec![
+            Phase {
+                name: "P1".to_string(),
+                status: ItemStatus::Completed,
+                estimated_effort: None,
+                completion: 80,
+            },
+            Phase {
+                name: "P2".to_string(),
+                status: ItemStatus::InProgress,
+                estimated_effort: None,
+                completion: 20,
+            },
+        ];
+        // (80 + 20) / 2 = 50.
+        assert_eq!(item.completion_percentage(), 50);
+    }
+
     #[test]
     fn test_find_item() {
         let mut roadmap = Roadmap::new(None);
