@@ -107,3 +107,120 @@ pub(crate) fn check_ci_configured(project_path: &Path) -> ComplianceCheck {
         severity: Severity::Warning,
     }
 }
+
+#[cfg(test)]
+mod check_individual_ci_tests {
+    //! Covers check_individual_ci.rs CI/MSRV/Cargo.lock checks
+    //! (28 uncov on broad, 0% cov).
+    use super::*;
+
+    // ── check_cargo_lock ──
+
+    #[test]
+    fn test_check_cargo_lock_no_cargo_toml_skips() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_cargo_lock(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Skip));
+        assert!(check.message.contains("Not a Rust project"));
+    }
+
+    #[test]
+    fn test_check_cargo_lock_present_passes() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("Cargo.toml"), "[package]\nname = \"x\"").unwrap();
+        std::fs::write(tmp.path().join("Cargo.lock"), "# auto-generated").unwrap();
+        let check = check_cargo_lock(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert!(check.message.contains("reproducible"));
+    }
+
+    #[test]
+    fn test_check_cargo_lock_missing_fails() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("Cargo.toml"), "[package]\nname = \"x\"").unwrap();
+        let check = check_cargo_lock(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Fail));
+        assert!(check.message.contains("Missing Cargo.lock"));
+    }
+
+    // ── check_msrv ──
+
+    #[test]
+    fn test_check_msrv_no_cargo_toml_skips() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_msrv(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Skip));
+    }
+
+    #[test]
+    fn test_check_msrv_with_rust_version_passes() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[package]\nname = \"x\"\nrust-version = \"1.85\"\n",
+        )
+        .unwrap();
+        let check = check_msrv(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert!(check.message.contains("rust-version"));
+    }
+
+    #[test]
+    fn test_check_msrv_without_rust_version_warns() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("Cargo.toml"), "[package]\nname = \"x\"\n").unwrap();
+        let check = check_msrv(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Warn));
+        assert!(check.message.contains("No rust-version"));
+    }
+
+    // ── check_ci_configured: 4 arms ──
+
+    #[test]
+    fn test_check_ci_configured_github_actions_workflows_pass() {
+        let tmp = tempfile::tempdir().unwrap();
+        let wf = tmp.path().join(".github").join("workflows");
+        std::fs::create_dir_all(&wf).unwrap();
+        std::fs::write(wf.join("ci.yml"), "name: CI\n").unwrap();
+        let check = check_ci_configured(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert!(check.message.contains("GitHub Actions"));
+    }
+
+    #[test]
+    fn test_check_ci_configured_gitlab_ci_pass() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join(".gitlab-ci.yml"), "stages: []\n").unwrap();
+        let check = check_ci_configured(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert!(check.message.contains("GitLab"));
+    }
+
+    #[test]
+    fn test_check_ci_configured_jenkinsfile_pass() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("Jenkinsfile"), "pipeline {}\n").unwrap();
+        let check = check_ci_configured(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert!(check.message.contains("Jenkins"));
+    }
+
+    #[test]
+    fn test_check_ci_configured_no_ci_warns() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_ci_configured(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Warn));
+        assert!(check.message.contains("No CI"));
+    }
+
+    #[test]
+    fn test_check_ci_configured_empty_workflows_dir_falls_through_to_warn() {
+        // .github/workflows exists but contains no files → falls through.
+        let tmp = tempfile::tempdir().unwrap();
+        let wf = tmp.path().join(".github").join("workflows");
+        std::fs::create_dir_all(&wf).unwrap();
+        let check = check_ci_configured(tmp.path());
+        // Empty workflows dir + no GitLab/Jenkins → warn.
+        assert!(matches!(check.status, CheckStatus::Warn));
+    }
+}
