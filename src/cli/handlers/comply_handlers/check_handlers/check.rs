@@ -231,6 +231,106 @@ fn try_pv_lint_sarif(project_path: &Path) -> Option<String> {
     }
 }
 
+#[cfg(test)]
+mod build_compliance_report_tests {
+    use super::*;
+
+    fn check(name: &str, status: CheckStatus) -> ComplianceCheck {
+        ComplianceCheck {
+            name: name.into(),
+            status,
+            message: format!("msg for {name}"),
+            severity: Severity::Info,
+        }
+    }
+
+    #[test]
+    fn test_compliant_when_no_failures() {
+        let checks = vec![check("a", CheckStatus::Pass), check("b", CheckStatus::Warn)];
+        let report = build_compliance_report(checks, "1.0.0", false);
+        assert!(report.is_compliant);
+        assert_eq!(report.checks.len(), 2);
+    }
+
+    #[test]
+    fn test_non_compliant_when_any_fail() {
+        let checks = vec![check("a", CheckStatus::Pass), check("b", CheckStatus::Fail)];
+        let report = build_compliance_report(checks, "1.0.0", false);
+        assert!(!report.is_compliant);
+    }
+
+    #[test]
+    fn test_failures_only_filter_drops_non_fail_checks() {
+        let checks = vec![
+            check("p", CheckStatus::Pass),
+            check("w", CheckStatus::Warn),
+            check("s", CheckStatus::Skip),
+            check("f", CheckStatus::Fail),
+        ];
+        let report = build_compliance_report(checks, "1.0.0", true);
+        assert_eq!(report.checks.len(), 1);
+        assert_eq!(report.checks[0].name, "f");
+    }
+
+    #[test]
+    fn test_failures_only_false_keeps_all_checks() {
+        let checks = vec![
+            check("p", CheckStatus::Pass),
+            check("w", CheckStatus::Warn),
+            check("f", CheckStatus::Fail),
+        ];
+        let report = build_compliance_report(checks, "1.0.0", false);
+        assert_eq!(report.checks.len(), 3);
+    }
+
+    #[test]
+    fn test_project_version_propagates() {
+        let report = build_compliance_report(vec![], "2.5.0", false);
+        assert_eq!(report.project_version, "2.5.0");
+        assert!(!report.current_version.is_empty());
+    }
+
+    #[test]
+    fn test_empty_checks_compliant() {
+        // No failures = compliant by definition
+        let report = build_compliance_report(vec![], "1.0.0", false);
+        assert!(report.is_compliant);
+        assert_eq!(report.checks.len(), 0);
+    }
+
+    #[test]
+    fn test_apply_exit_policy_returns_ok_when_compliant_no_warnings() {
+        let report = ComplianceReport {
+            project_version: "1.0".into(),
+            current_version: "1.0".into(),
+            is_compliant: true,
+            versions_behind: 0,
+            checks: vec![],
+            breaking_changes: vec![],
+            recommendations: vec![],
+            timestamp: Utc::now(),
+        };
+        // strict=false, no warnings → Ok
+        assert!(apply_exit_policy(&report, false).is_ok());
+    }
+
+    #[test]
+    fn test_apply_exit_policy_returns_ok_when_strict_but_no_warnings() {
+        let report = ComplianceReport {
+            project_version: "1.0".into(),
+            current_version: "1.0".into(),
+            is_compliant: true,
+            versions_behind: 0,
+            checks: vec![check("p", CheckStatus::Pass)],
+            breaking_changes: vec![],
+            recommendations: vec![],
+            timestamp: Utc::now(),
+        };
+        // is_compliant=true, no warnings even with strict → Ok (no exit)
+        assert!(apply_exit_policy(&report, true).is_ok());
+    }
+}
+
 // Provable-contracts enforcement helpers (shared by CB-1201 through CB-1209)
 include!("check_pv_enforcement_helpers.rs");
 // Provable-contracts enforcement checks (CB-1201, CB-1203)
