@@ -195,3 +195,86 @@ fn collect_rs_files(dir: &std::path::Path, root: &std::path::Path, out: &mut Vec
         }
     }
 }
+
+#[cfg(test)]
+mod contract_query_handlers_tests {
+    //! Covers collect_rs_files in contract_query_handlers.rs
+    //! (33 uncov on broad, 0% cov). Skips the pv-spawning handlers.
+    use super::*;
+
+    #[test]
+    fn test_collect_rs_files_empty_dir_returns_empty() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut out = Vec::new();
+        collect_rs_files(tmp.path(), tmp.path(), &mut out);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_collect_rs_files_finds_top_level_rs_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("a.rs"), "").unwrap();
+        let mut out = Vec::new();
+        collect_rs_files(tmp.path(), tmp.path(), &mut out);
+        assert_eq!(out, vec!["a.rs".to_string()]);
+    }
+
+    #[test]
+    fn test_collect_rs_files_recurses_into_subdirs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let nested = tmp.path().join("nested").join("deeper");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(tmp.path().join("a.rs"), "").unwrap();
+        std::fs::write(nested.join("b.rs"), "").unwrap();
+        let mut out = Vec::new();
+        collect_rs_files(tmp.path(), tmp.path(), &mut out);
+        out.sort();
+        assert_eq!(
+            out,
+            vec!["a.rs".to_string(), "nested/deeper/b.rs".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_collect_rs_files_skips_target_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let target = tmp.path().join("target");
+        std::fs::create_dir(&target).unwrap();
+        std::fs::write(target.join("ignored.rs"), "").unwrap();
+        std::fs::write(tmp.path().join("kept.rs"), "").unwrap();
+        let mut out = Vec::new();
+        collect_rs_files(tmp.path(), tmp.path(), &mut out);
+        assert_eq!(out, vec!["kept.rs".to_string()]);
+    }
+
+    #[test]
+    fn test_collect_rs_files_skips_dot_git_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let git = tmp.path().join(".git");
+        std::fs::create_dir(&git).unwrap();
+        std::fs::write(git.join("hook.rs"), "").unwrap();
+        std::fs::write(tmp.path().join("real.rs"), "").unwrap();
+        let mut out = Vec::new();
+        collect_rs_files(tmp.path(), tmp.path(), &mut out);
+        assert_eq!(out, vec!["real.rs".to_string()]);
+    }
+
+    #[test]
+    fn test_collect_rs_files_ignores_non_rs_extensions() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("a.rs"), "").unwrap();
+        std::fs::write(tmp.path().join("b.md"), "").unwrap();
+        std::fs::write(tmp.path().join("c.txt"), "").unwrap();
+        let mut out = Vec::new();
+        collect_rs_files(tmp.path(), tmp.path(), &mut out);
+        assert_eq!(out, vec!["a.rs".to_string()]);
+    }
+
+    #[test]
+    fn test_collect_rs_files_unreadable_dir_returns_empty() {
+        let missing = std::path::Path::new("/tmp/pmat_missing_xyz_0xC0FFEE/nope");
+        let mut out = Vec::new();
+        collect_rs_files(missing, missing, &mut out);
+        assert!(out.is_empty());
+    }
+}
