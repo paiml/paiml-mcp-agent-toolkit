@@ -462,3 +462,270 @@ pub fn detect_cb521_format_without_magic_bytes(project_path: &Path) -> Vec<CbPat
 
     violations
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn write_rs(dir: &Path, name: &str, content: &str) {
+        let src_dir = dir.join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::write(src_dir.join(name), content).unwrap();
+    }
+
+    // ── CB-517: Stale Debug Artifacts ───────────────────────────────────────
+
+    #[test]
+    fn test_cb517_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        // No `src/` subdir → walkdir errors → empty
+        assert!(detect_cb517_stale_debug_artifacts(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb517_atomic_static_flagged() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "use std::sync::atomic::AtomicUsize;\nstatic COUNTER: AtomicUsize = AtomicUsize::new(0);\n",
+        );
+        let v = detect_cb517_stale_debug_artifacts(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-517");
+    }
+
+    #[test]
+    fn test_cb517_atomic_bool_static_flagged() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "use std::sync::atomic::AtomicBool;\nstatic FLAG: AtomicBool = AtomicBool::new(false);\n",
+        );
+        let v = detect_cb517_stale_debug_artifacts(tmp.path());
+        assert!(!v.is_empty());
+    }
+
+    #[test]
+    fn test_cb517_const_atomic_skipped() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "const FOO: AtomicUsize = AtomicUsize::new(0);\n",
+        );
+        // const-prefixed → skipped
+        assert!(detect_cb517_stale_debug_artifacts(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb517_allow_unused_on_static_flagged() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "#[allow(unused)]\nstatic LEFTOVER: usize = 0;\n",
+        );
+        let v = detect_cb517_stale_debug_artifacts(tmp.path());
+        assert!(!v.is_empty());
+        assert!(v[0].description.contains("allow(unused)"));
+    }
+
+    #[test]
+    fn test_cb517_comment_lines_skipped() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "// static FOO: AtomicUsize = AtomicUsize::new(0);\n",
+        );
+        assert!(detect_cb517_stale_debug_artifacts(tmp.path()).is_empty());
+    }
+
+    // ── CB-518: Expensive Clone in Loop ─────────────────────────────────────
+
+    #[test]
+    fn test_cb518_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb518_expensive_clone_in_loop(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb518_zero_clones_clean() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  for x in 0..10 {\n    println!(\"{}\", x);\n  }\n}\n",
+        );
+        assert!(detect_cb518_expensive_clone_in_loop(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb518_three_or_fewer_clones_clean() {
+        // Threshold is > 3 → 3 clones still clean
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  for x in v {\n    let a = x.clone();\n    let b = x.clone();\n    let c = x.clone();\n  }\n}\n",
+        );
+        assert!(detect_cb518_expensive_clone_in_loop(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb518_four_clones_flagged() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  for x in v {\n    let a = x.clone();\n    let b = x.clone();\n    let c = x.clone();\n    let d = x.clone();\n  }\n}\n",
+        );
+        let v = detect_cb518_expensive_clone_in_loop(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-518");
+    }
+
+    #[test]
+    fn test_cb518_while_loop_also_tracked() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  while cond {\n    let a = x.clone();\n    let b = x.clone();\n    let c = x.clone();\n    let d = x.clone();\n  }\n}\n",
+        );
+        let v = detect_cb518_expensive_clone_in_loop(tmp.path());
+        assert!(!v.is_empty());
+    }
+
+    // ── CB-519: Lossy Data Pipeline ─────────────────────────────────────────
+
+    #[test]
+    fn test_cb519_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb519_lossy_data_pipeline(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb519_no_lossy_pair_clean() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  let x = 1;\n  let y = 2;\n}\n",
+        );
+        assert!(detect_cb519_lossy_data_pipeline(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb519_quantize_dequantize_pair_flagged() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  let q = quantize(input);\n  let d = dequantize(q);\n}\n",
+        );
+        let v = detect_cb519_lossy_data_pipeline(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-519");
+    }
+
+    // ── CB-520: Expensive Init in Loop (via scan_cb520_file) ────────────────
+
+    #[test]
+    fn test_cb520_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb520_expensive_init_in_loop(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb520_zero_inits_clean() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  for x in 0..10 {\n    println!(\"{}\", x);\n  }\n}\n",
+        );
+        assert!(detect_cb520_expensive_init_in_loop(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb520_two_or_more_inits_flagged() {
+        // Two HashMap::new() calls in loop → flagged
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "use std::collections::HashMap;\nfn f() {\n  for _ in 0..10 {\n    let m1 = HashMap::new();\n    let m2 = HashMap::new();\n  }\n}\n",
+        );
+        let v = detect_cb520_expensive_init_in_loop(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-520");
+    }
+
+    #[test]
+    fn test_cb520_inits_in_spawn_closure_skipped() {
+        // Init inside spawn() closure is per-thread — should not be flagged
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "use std::collections::HashMap;\nfn f() {\n  for _ in 0..10 {\n    std::thread::spawn(|| {\n      let m1 = HashMap::new();\n      let m2 = HashMap::new();\n    });\n  }\n}\n",
+        );
+        // Inside a spawn closure → should not flag
+        let v = detect_cb520_expensive_init_in_loop(tmp.path());
+        assert!(v.is_empty());
+    }
+
+    // ── CB-521: Format Detection Without Magic Bytes ────────────────────────
+
+    #[test]
+    fn test_cb521_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb521_format_without_magic_bytes(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb521_no_binary_read_clean() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  let x = 1;\n  let y = x + 1;\n}\n",
+        );
+        assert!(detect_cb521_format_without_magic_bytes(tmp.path()).is_empty());
+    }
+
+    // ── test-file skipping (shared across detectors) ────────────────────────
+
+    #[test]
+    fn test_cb517_skips_test_files() {
+        let tmp = TempDir::new().unwrap();
+        let src_dir = tmp.path().join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+        // is_test_file matches *_test.rs / *_tests.rs / file in /tests/
+        fs::write(
+            src_dir.join("foo_test.rs"),
+            "static COUNTER: AtomicUsize = AtomicUsize::new(0);\n",
+        )
+        .unwrap();
+        // Test files are skipped → no violations even though pattern matches
+        assert!(detect_cb517_stale_debug_artifacts(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb518_skips_test_files() {
+        let tmp = TempDir::new().unwrap();
+        let src_dir = tmp.path().join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::write(
+            src_dir.join("foo_test.rs"),
+            "fn t() {\n  for _ in 0..10 {\n    let a = x.clone();\n    let b = x.clone();\n    let c = x.clone();\n    let d = x.clone();\n  }\n}\n",
+        )
+        .unwrap();
+        assert!(detect_cb518_expensive_clone_in_loop(tmp.path()).is_empty());
+    }
+}
