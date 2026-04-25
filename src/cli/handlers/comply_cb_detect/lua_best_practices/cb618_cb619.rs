@@ -218,3 +218,250 @@ fn detect_oop_in_file(content: &str) -> Vec<LuaOopPattern> {
 
     patterns
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── LuaOopPattern Display ───────────────────────────────────────────────
+
+    #[test]
+    fn test_lua_oop_pattern_display_arms() {
+        assert_eq!(
+            LuaOopPattern::SeparateMetatable.to_string(),
+            "separate-metatable"
+        );
+        assert_eq!(
+            LuaOopPattern::PrototypalInheritance.to_string(),
+            "prototypal-inheritance"
+        );
+        assert_eq!(
+            LuaOopPattern::CallConstructor.to_string(),
+            "__call-constructor"
+        );
+        assert_eq!(
+            LuaOopPattern::SelfAsMetatable.to_string(),
+            "self-as-metatable"
+        );
+    }
+
+    // ── check_ffi_resource_call ─────────────────────────────────────────────
+
+    #[test]
+    fn test_check_ffi_resource_call_no_match_returns() {
+        let mut violations = Vec::new();
+        let content = "local x = 1\n";
+        check_ffi_resource_call(content.trim(), 1, "f.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_ffi_resource_call_c_open_no_check_flagged() {
+        let mut violations = Vec::new();
+        let content = "local fd = C.open(\"/tmp/x\")\nuse(fd)\n";
+        let line1 = content.lines().next().unwrap();
+        check_ffi_resource_call(line1.trim(), 1, "f.lua", content, &mut violations);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-618");
+        assert!(violations[0].description.contains("C.open"));
+    }
+
+    #[test]
+    fn test_check_ffi_resource_call_with_lt_zero_check_clean() {
+        let mut violations = Vec::new();
+        let content = "local fd = C.open(\"/tmp/x\")\nif fd < 0 then error end\n";
+        let line1 = content.lines().next().unwrap();
+        check_ffi_resource_call(line1.trim(), 1, "f.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_ffi_resource_call_with_eq_nil_check_clean() {
+        let mut violations = Vec::new();
+        let content = "local sock = C.socket(AF, ST, 0)\nif sock == nil then error end\n";
+        let line1 = content.lines().next().unwrap();
+        check_ffi_resource_call(line1.trim(), 1, "f.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_ffi_resource_call_with_neq_nil_check_clean() {
+        let mut violations = Vec::new();
+        let content = "local p = C.malloc(64)\nif p ~= nil then use(p) end\n";
+        let line1 = content.lines().next().unwrap();
+        check_ffi_resource_call(line1.trim(), 1, "f.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_ffi_resource_call_with_eq_neg_one_check_clean() {
+        let mut violations = Vec::new();
+        let content = "local p = C.mmap(NULL, 4096)\nif p == -1 then error end\n";
+        let line1 = content.lines().next().unwrap();
+        check_ffi_resource_call(line1.trim(), 1, "f.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_ffi_resource_call_with_if_not_check_clean() {
+        let mut violations = Vec::new();
+        let content = "local fd = C.open(\"/tmp/x\")\nif not fd then error end\n";
+        let line1 = content.lines().next().unwrap();
+        check_ffi_resource_call(line1.trim(), 1, "f.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_ffi_resource_call_first_match_wins() {
+        // The function returns after the first matched function — verify by ensuring
+        // a single line with multiple resource calls only emits one violation.
+        let mut violations = Vec::new();
+        let content = "local x = C.open(p) + C.malloc(64)\n";
+        let line1 = content.lines().next().unwrap();
+        check_ffi_resource_call(line1.trim(), 1, "f.lua", content, &mut violations);
+        assert_eq!(violations.len(), 1);
+    }
+
+    // ── check_ffi_patterns ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_check_ffi_patterns_skips_comments() {
+        let mut violations = Vec::new();
+        let content = "-- C.open(\"x\")\n";
+        check_ffi_patterns(content, "f.lua", &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_ffi_patterns_finds_unsafe_call() {
+        let mut violations = Vec::new();
+        let content = "local fd = C.open(\"/tmp/x\")\nuse(fd)\n";
+        check_ffi_patterns(content, "f.lua", &mut violations);
+        assert_eq!(violations.len(), 1);
+    }
+
+    // ── detect_oop_in_file ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_oop_in_file_no_setmetatable_returns_empty() {
+        let p = detect_oop_in_file("local x = 1\n");
+        assert!(p.is_empty());
+    }
+
+    #[test]
+    fn test_detect_oop_in_file_separate_metatable() {
+        let content = "local M = {}\nlocal mt = { __index = M }\nsetmetatable({}, mt)\n";
+        let p = detect_oop_in_file(content);
+        assert!(p.contains(&LuaOopPattern::SeparateMetatable));
+    }
+
+    #[test]
+    fn test_detect_oop_in_file_separate_metatable_underscore_m_variant() {
+        let content = "local mt = { __index = _M }\nsetmetatable(self, mt)\n";
+        let p = detect_oop_in_file(content);
+        assert!(p.contains(&LuaOopPattern::SeparateMetatable));
+    }
+
+    #[test]
+    fn test_detect_oop_in_file_prototypal_self_index_self() {
+        let content = "function Class.new()\n  setmetatable(o, mt)\n  self.__index = self\nend\n";
+        let p = detect_oop_in_file(content);
+        assert!(p.contains(&LuaOopPattern::PrototypalInheritance));
+    }
+
+    #[test]
+    fn test_detect_oop_in_file_prototypal_extend_method() {
+        let content = "function Base:extend()\n  setmetatable(o, mt)\nend\n";
+        let p = detect_oop_in_file(content);
+        assert!(p.contains(&LuaOopPattern::PrototypalInheritance));
+    }
+
+    #[test]
+    fn test_detect_oop_in_file_call_constructor() {
+        let content = "setmetatable(M, { __call = function() end })\n";
+        let p = detect_oop_in_file(content);
+        assert!(p.contains(&LuaOopPattern::CallConstructor));
+    }
+
+    #[test]
+    fn test_detect_oop_in_file_self_as_metatable() {
+        // `setmetatable(X, X)` with non-{ first arg
+        let content = "setmetatable(M, M)\n";
+        let p = detect_oop_in_file(content);
+        assert!(p.contains(&LuaOopPattern::SelfAsMetatable));
+    }
+
+    #[test]
+    fn test_detect_oop_in_file_self_metatable_curly_first_arg_skipped() {
+        // arg1 starts with `{` → skipped (would be `setmetatable({}, {})` etc.)
+        let content = "setmetatable({}, {})\n";
+        let p = detect_oop_in_file(content);
+        assert!(!p.contains(&LuaOopPattern::SelfAsMetatable));
+    }
+
+    // ── filesystem entrypoints ──────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_cb618_no_files_returns_empty() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb618_ffi_safety(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb618_no_ffi_files_returns_empty() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(tmp.path().join("a.lua"), "local x = 1\n").unwrap();
+        assert!(detect_cb618_ffi_safety(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb618_with_ffi_emits_summary() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("a.lua"),
+            "local ffi = require(\"ffi\")\nlocal fd = C.open(\"/tmp\")\nif fd < 0 then end\n",
+        )
+        .unwrap();
+        let v = detect_cb618_ffi_safety(tmp.path());
+        // Expect a single CB-618 summary (the open call has a check)
+        assert!(!v.is_empty());
+        assert!(v.iter().any(|r| r.description.contains("FFI used in")));
+    }
+
+    #[test]
+    fn test_detect_cb619_no_files_returns_empty() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb619_oop_patterns(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb619_no_oop_returns_empty() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(tmp.path().join("a.lua"), "local x = 1\n").unwrap();
+        assert!(detect_cb619_oop_patterns(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb619_with_oop_emits_summary() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("a.lua"),
+            "local M = {}\nfunction Class:new()\n  setmetatable(o, mt)\n  self.__index = self\nend\n",
+        )
+        .unwrap();
+        let v = detect_cb619_oop_patterns(tmp.path());
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].pattern_id, "CB-619");
+        assert!(v[0].description.contains("OOP patterns"));
+    }
+}
