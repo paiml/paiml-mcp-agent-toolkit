@@ -423,3 +423,487 @@ pub fn format_ptx_diagnostics_json(result: &PtxDiagnosticResult) -> String {
     })
     .to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fdiag(sev: PtxSeverity, cat: &str, msg: &str, val: f32) -> PtxDiagnostic {
+        PtxDiagnostic {
+            severity: sev,
+            category: cat.into(),
+            message: msg.into(),
+            value: val,
+        }
+    }
+
+    fn func_diag(name: &str, sev: PtxSeverity) -> PtxFunctionDiagnostics {
+        PtxFunctionDiagnostics {
+            function_name: name.into(),
+            file_path: format!("kernels/{name}.cu"),
+            project: "demo".into(),
+            register_count: 16,
+            branch_density: 0.1,
+            shared_memory_bytes: 0,
+            barrier_count: 0,
+            diagnostics: vec![fdiag(sev, "test", "msg", 0.0)],
+        }
+    }
+
+    // ── PtxSeverity Display + Ord ───────────────────────────────────────────
+
+    #[test]
+    fn test_ptx_severity_display_arms() {
+        assert_eq!(PtxSeverity::Info.to_string(), "info");
+        assert_eq!(PtxSeverity::Warning.to_string(), "warning");
+        assert_eq!(PtxSeverity::Critical.to_string(), "critical");
+    }
+
+    #[test]
+    fn test_ptx_severity_ord_critical_greatest() {
+        assert!(PtxSeverity::Critical > PtxSeverity::Warning);
+        assert!(PtxSeverity::Warning > PtxSeverity::Info);
+    }
+
+    // ── count_registers ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_count_registers_distinct_regs() {
+        // %r1, %r2, %f1, %p0 — 4 distinct
+        let src =
+            "mov.u32 %r1, 0;\nadd.u32 %r2, %r1, 1;\nmov.f32 %f1, 0.0;\nsetp.eq.s32 %p0, %r1, 0;";
+        assert_eq!(count_registers(src), 4);
+    }
+
+    #[test]
+    fn test_count_registers_dedupes_same_name() {
+        // %r1 appears 3 times → counts once
+        let src = "%r1 %r1 %r1 %r2";
+        assert_eq!(count_registers(src), 2);
+    }
+
+    #[test]
+    fn test_count_registers_empty_source_zero() {
+        assert_eq!(count_registers(""), 0);
+    }
+
+    #[test]
+    fn test_count_registers_no_register_pattern_zero() {
+        assert_eq!(count_registers("just some text"), 0);
+    }
+
+    #[test]
+    fn test_count_registers_b_register_kind() {
+        // The regex is %[rfpb]\d+ — `%b3` should match
+        let src = "%b3";
+        assert_eq!(count_registers(src), 1);
+    }
+
+    // ── compute_branch_density ──────────────────────────────────────────────
+
+    #[test]
+    fn test_compute_branch_density_no_instructions_zero() {
+        // Only blank/comment/directive lines → 0 instructions → 0.0 density
+        let src = "// comment\n.version 7.0\n\n.target sm_70\n";
+        assert!((compute_branch_density(src) - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_compute_branch_density_no_branches_zero() {
+        let src = "mov.u32 %r1, 0;\nadd.u32 %r2, %r1, 1;\nret;";
+        assert!((compute_branch_density(src) - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_compute_branch_density_bra_counted() {
+        // 2 instructions, 1 of which is `bra` → 0.5 density
+        let src = "mov.u32 %r1, 0;\nbra LBB1_5;";
+        assert!((compute_branch_density(src) - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_compute_branch_density_at_predicate_counted() {
+        // @-prefixed lines count as branches
+        let src = "mov.u32 %r1, 0;\n@%p0 bra LBB1_2;";
+        assert!((compute_branch_density(src) - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_compute_branch_density_if_else_counted() {
+        let src = "mov.u32 %r1, 0;\nif (cond) {\nelse {";
+        // 3 instructions, 2 branches (the if line and the else line)
+        let d = compute_branch_density(src);
+        assert!(d > 0.6 && d < 0.7, "expected ~0.667, got {d}");
+    }
+
+    #[test]
+    fn test_compute_branch_density_match_counted() {
+        let src = "mov.u32 %r1, 0;\nmatch x {";
+        let d = compute_branch_density(src);
+        assert!((d - 0.5).abs() < 1e-6);
+    }
+
+    // ── count_shared_memory ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_count_shared_memory_ptx_directive() {
+        // `.shared .u32 buf[256]` → 256 bytes
+        let src = ".shared .u32 buf[256]";
+        assert_eq!(count_shared_memory(src), 256);
+    }
+
+    #[test]
+    fn test_count_shared_memory_multiple_arrays_summed() {
+        let src = ".shared .u32 a[64]\n.shared .f32 b[128]";
+        assert_eq!(count_shared_memory(src), 64 + 128);
+    }
+
+    #[test]
+    fn test_count_shared_memory_cuda_marker_alone() {
+        // No `.shared` directive but CUDA `__shared__` → at least 1
+        let src = "__shared__ int s[64];";
+        assert_eq!(count_shared_memory(src), 1);
+    }
+
+    #[test]
+    fn test_count_shared_memory_directive_keeps_max_with_marker() {
+        // PTX directive sums to 64; presence of __shared__ uses .max(1) → still 64
+        let src = ".shared .u32 a[64]\n__shared__ stuff";
+        assert_eq!(count_shared_memory(src), 64);
+    }
+
+    #[test]
+    fn test_count_shared_memory_no_shared_zero() {
+        assert_eq!(count_shared_memory("nothing here"), 0);
+    }
+
+    // ── count_barriers ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_count_barriers_bar_sync() {
+        assert_eq!(count_barriers("bar.sync 0;"), 1);
+    }
+
+    #[test]
+    fn test_count_barriers_syncthreads() {
+        assert_eq!(count_barriers("__syncthreads();"), 1);
+    }
+
+    #[test]
+    fn test_count_barriers_barrier_double_colon() {
+        assert_eq!(count_barriers("barrier::arrive_and_wait();"), 1);
+    }
+
+    #[test]
+    fn test_count_barriers_membar() {
+        assert_eq!(count_barriers("membar.gl;"), 1);
+    }
+
+    #[test]
+    fn test_count_barriers_multiline_summed() {
+        let src = "bar.sync 0;\n__syncthreads();\nmembar.gl;";
+        assert_eq!(count_barriers(src), 3);
+    }
+
+    #[test]
+    fn test_count_barriers_no_barriers_zero() {
+        assert_eq!(count_barriers("just regular code"), 0);
+    }
+
+    // ── is_ptx_relevant ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_is_ptx_relevant_ptx_extension() {
+        assert!(is_ptx_relevant("", "kernel.ptx"));
+    }
+
+    #[test]
+    fn test_is_ptx_relevant_cu_extension() {
+        assert!(is_ptx_relevant("", "kernel.cu"));
+    }
+
+    #[test]
+    fn test_is_ptx_relevant_cuh_extension() {
+        assert!(is_ptx_relevant("", "kernel.cuh"));
+    }
+
+    #[test]
+    fn test_is_ptx_relevant_version_directive() {
+        assert!(is_ptx_relevant(".version 7.0", "any.rs"));
+    }
+
+    #[test]
+    fn test_is_ptx_relevant_target_sm() {
+        assert!(is_ptx_relevant(".target sm_70", "any.rs"));
+    }
+
+    #[test]
+    fn test_is_ptx_relevant_global_marker() {
+        assert!(is_ptx_relevant("__global__ void foo()", "any.rs"));
+    }
+
+    #[test]
+    fn test_is_ptx_relevant_device_marker() {
+        assert!(is_ptx_relevant("__device__ int x;", "any.rs"));
+    }
+
+    #[test]
+    fn test_is_ptx_relevant_shared_marker() {
+        assert!(is_ptx_relevant("__shared__ int x;", "any.rs"));
+    }
+
+    #[test]
+    fn test_is_ptx_relevant_asm_macro() {
+        assert!(is_ptx_relevant("asm!(\"mov\")", "any.rs"));
+    }
+
+    #[test]
+    fn test_is_ptx_relevant_substring_keywords() {
+        assert!(is_ptx_relevant("ptx flow", "any.rs"));
+        assert!(is_ptx_relevant("cuda kernel", "any.rs"));
+        assert!(is_ptx_relevant("detect_ptx", "any.rs"));
+        assert!(is_ptx_relevant("barrier_divergence", "any.rs"));
+        assert!(is_ptx_relevant("shared_memory", "any.rs"));
+    }
+
+    #[test]
+    fn test_is_ptx_relevant_unrelated_returns_false() {
+        assert!(!is_ptx_relevant(
+            "fn add(x: i32) -> i32 { x }",
+            "src/lib.rs"
+        ));
+    }
+
+    // ── collect_register_diag ───────────────────────────────────────────────
+
+    #[test]
+    fn test_collect_register_diag_above_64_critical() {
+        let mut d = Vec::new();
+        collect_register_diag(&mut d, 80);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].severity, PtxSeverity::Critical);
+        assert!(d[0].message.contains("80 registers"));
+    }
+
+    #[test]
+    fn test_collect_register_diag_at_64_no_critical() {
+        // boundary: > 64 critical, == 64 falls through to else-if (> 32 → warning)
+        let mut d = Vec::new();
+        collect_register_diag(&mut d, 64);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].severity, PtxSeverity::Warning);
+    }
+
+    #[test]
+    fn test_collect_register_diag_above_32_warning() {
+        let mut d = Vec::new();
+        collect_register_diag(&mut d, 50);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].severity, PtxSeverity::Warning);
+    }
+
+    #[test]
+    fn test_collect_register_diag_at_or_below_32_no_diag() {
+        let mut d = Vec::new();
+        collect_register_diag(&mut d, 32);
+        assert!(d.is_empty());
+        let mut d2 = Vec::new();
+        collect_register_diag(&mut d2, 0);
+        assert!(d2.is_empty());
+    }
+
+    // ── collect_branch_diag ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_collect_branch_diag_above_03_critical() {
+        let mut d = Vec::new();
+        collect_branch_diag(&mut d, 0.5);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].severity, PtxSeverity::Critical);
+        assert!(d[0].message.contains("50%"));
+    }
+
+    #[test]
+    fn test_collect_branch_diag_above_015_warning() {
+        let mut d = Vec::new();
+        collect_branch_diag(&mut d, 0.20);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].severity, PtxSeverity::Warning);
+    }
+
+    #[test]
+    fn test_collect_branch_diag_at_or_below_015_no_diag() {
+        let mut d = Vec::new();
+        collect_branch_diag(&mut d, 0.10);
+        assert!(d.is_empty());
+        let mut d2 = Vec::new();
+        collect_branch_diag(&mut d2, 0.0);
+        assert!(d2.is_empty());
+    }
+
+    // ── collect_shmem_diag ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_collect_shmem_diag_above_48k_critical() {
+        let mut d = Vec::new();
+        collect_shmem_diag(&mut d, 50_000);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].severity, PtxSeverity::Critical);
+    }
+
+    #[test]
+    fn test_collect_shmem_diag_above_zero_info() {
+        let mut d = Vec::new();
+        collect_shmem_diag(&mut d, 1024);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].severity, PtxSeverity::Info);
+    }
+
+    #[test]
+    fn test_collect_shmem_diag_zero_no_diag() {
+        let mut d = Vec::new();
+        collect_shmem_diag(&mut d, 0);
+        assert!(d.is_empty());
+    }
+
+    // ── collect_barrier_diag ────────────────────────────────────────────────
+
+    #[test]
+    fn test_collect_barrier_diag_above_5_warning() {
+        let mut d = Vec::new();
+        collect_barrier_diag(&mut d, 10);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].severity, PtxSeverity::Warning);
+    }
+
+    #[test]
+    fn test_collect_barrier_diag_above_zero_info() {
+        let mut d = Vec::new();
+        collect_barrier_diag(&mut d, 2);
+        assert_eq!(d.len(), 1);
+        assert_eq!(d[0].severity, PtxSeverity::Info);
+    }
+
+    #[test]
+    fn test_collect_barrier_diag_zero_no_diag() {
+        let mut d = Vec::new();
+        collect_barrier_diag(&mut d, 0);
+        assert!(d.is_empty());
+    }
+
+    // ── collect_metric_diagnostics (orchestrator) ───────────────────────────
+
+    #[test]
+    fn test_collect_metric_diagnostics_aggregates_all_kinds() {
+        // Critical regs + critical branch + critical shmem + warning barriers
+        let d = collect_metric_diagnostics(80, 0.5, 60_000, 10);
+        assert_eq!(d.len(), 4);
+    }
+
+    #[test]
+    fn test_collect_metric_diagnostics_empty_when_all_clean() {
+        let d = collect_metric_diagnostics(10, 0.05, 0, 0);
+        assert!(d.is_empty());
+    }
+
+    // ── format_ptx_diagnostics_text ─────────────────────────────────────────
+
+    #[test]
+    fn test_format_text_empty_result_emits_no_functions_message() {
+        let r = PtxDiagnosticResult {
+            functions: vec![],
+            total_critical: 0,
+            total_warning: 0,
+            total_info: 0,
+        };
+        let s = format_ptx_diagnostics_text(&r);
+        assert!(s.contains("PTX Diagnostics"));
+        assert!(s.contains("No PTX-related functions"));
+    }
+
+    #[test]
+    fn test_format_text_with_functions_includes_metrics() {
+        let r = PtxDiagnosticResult {
+            functions: vec![func_diag("kernel_a", PtxSeverity::Critical)],
+            total_critical: 1,
+            total_warning: 0,
+            total_info: 0,
+        };
+        let s = format_ptx_diagnostics_text(&r);
+        assert!(s.contains("kernel_a"));
+        assert!(s.contains("regs:16"));
+        assert!(s.contains("critical"));
+    }
+
+    #[test]
+    fn test_format_text_severity_color_arms() {
+        // All three severity arms hit different ANSI color codes
+        let r = PtxDiagnosticResult {
+            functions: vec![
+                func_diag("a", PtxSeverity::Critical),
+                func_diag("b", PtxSeverity::Warning),
+                func_diag("c", PtxSeverity::Info),
+            ],
+            total_critical: 1,
+            total_warning: 1,
+            total_info: 1,
+        };
+        let s = format_ptx_diagnostics_text(&r);
+        assert!(s.contains("\x1b[1;31m")); // critical
+        assert!(s.contains("\x1b[1;33m")); // warning
+        assert!(s.contains("\x1b[2m")); // info
+    }
+
+    // ── format_ptx_diagnostics_json ─────────────────────────────────────────
+
+    #[test]
+    fn test_format_json_empty_result_valid_json() {
+        let r = PtxDiagnosticResult {
+            functions: vec![],
+            total_critical: 0,
+            total_warning: 0,
+            total_info: 0,
+        };
+        let s = format_ptx_diagnostics_json(&r);
+        let parsed: serde_json::Value = serde_json::from_str(&s).unwrap();
+        assert!(parsed.get("ptx_diagnostics").is_some());
+        let inner = &parsed["ptx_diagnostics"];
+        assert_eq!(inner["functions"].as_array().unwrap().len(), 0);
+        assert_eq!(inner["total_critical"], 0);
+    }
+
+    #[test]
+    fn test_format_json_includes_function_fields() {
+        let r = PtxDiagnosticResult {
+            functions: vec![func_diag("kernel_x", PtxSeverity::Warning)],
+            total_critical: 0,
+            total_warning: 1,
+            total_info: 0,
+        };
+        let s = format_ptx_diagnostics_json(&r);
+        let parsed: serde_json::Value = serde_json::from_str(&s).unwrap();
+        let funcs = parsed["ptx_diagnostics"]["functions"].as_array().unwrap();
+        assert_eq!(funcs.len(), 1);
+        let f = &funcs[0];
+        assert_eq!(f["function_name"], "kernel_x");
+        assert_eq!(f["register_count"], 16);
+        assert!(f["diagnostics"].is_array());
+        assert_eq!(f["diagnostics"][0]["severity"], "warning");
+    }
+
+    #[test]
+    fn test_format_json_totals_propagate() {
+        let r = PtxDiagnosticResult {
+            functions: vec![],
+            total_critical: 5,
+            total_warning: 3,
+            total_info: 2,
+        };
+        let s = format_ptx_diagnostics_json(&r);
+        let parsed: serde_json::Value = serde_json::from_str(&s).unwrap();
+        let inner = &parsed["ptx_diagnostics"];
+        assert_eq!(inner["total_critical"], 5);
+        assert_eq!(inner["total_warning"], 3);
+        assert_eq!(inner["total_info"], 2);
+    }
+}
