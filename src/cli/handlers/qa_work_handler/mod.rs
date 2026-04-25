@@ -347,6 +347,221 @@ mod validation_format_tests {
 }
 
 #[cfg(test)]
+mod r5_pure_helpers_tests {
+    //! Spec §4.7 R5 — tests for pure-compute helpers extracted from
+    //! impl_validation.rs. Each helper wears a `#[contract(...)]`
+    //! decorator for invariant enforcement.
+    use super::*;
+    use std::os::unix::process::ExitStatusExt;
+    use std::process::{ExitStatus, Output};
+
+    // ── classify_command_outcome ────────────────────────────────────────────
+
+    fn ok_output(success_code: i32) -> std::io::Result<Output> {
+        Ok(Output {
+            status: ExitStatus::from_raw(success_code),
+            stdout: vec![],
+            stderr: vec![],
+        })
+    }
+
+    fn err_output() -> std::io::Result<Output> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "not found",
+        ))
+    }
+
+    #[test]
+    fn test_classify_command_outcome_success_is_passed() {
+        // ExitStatus::from_raw(0) = success on linux (encodes raw wait status)
+        let result = classify_command_outcome(ok_output(0));
+        assert_eq!(result, ValidationStatus::Passed);
+    }
+
+    #[test]
+    fn test_classify_command_outcome_non_zero_exit_is_failed() {
+        // Encode exit code 1 as 1 << 8 = 256 in raw wait status
+        let result = classify_command_outcome(ok_output(1 << 8));
+        assert_eq!(result, ValidationStatus::Failed);
+    }
+
+    #[test]
+    fn test_classify_command_outcome_spawn_error_is_skipped() {
+        let result = classify_command_outcome(err_output());
+        assert_eq!(result, ValidationStatus::Skipped);
+    }
+
+    // ── classify_doc_command_outcome ────────────────────────────────────────
+
+    #[test]
+    fn test_classify_doc_command_outcome_success_is_passed() {
+        let result = classify_doc_command_outcome(ok_output(0));
+        assert_eq!(result, ValidationStatus::Passed);
+    }
+
+    #[test]
+    fn test_classify_doc_command_outcome_non_zero_is_warning_not_failed() {
+        // Doc-specific: non-zero is Warning (not Failed) — missing rustdoc isn't fatal
+        let result = classify_doc_command_outcome(ok_output(1 << 8));
+        assert_eq!(result, ValidationStatus::Warning);
+    }
+
+    #[test]
+    fn test_classify_doc_command_outcome_spawn_error_is_skipped() {
+        let result = classify_doc_command_outcome(err_output());
+        assert_eq!(result, ValidationStatus::Skipped);
+    }
+
+    // ── classify_git_log_for_task ───────────────────────────────────────────
+
+    #[test]
+    fn test_classify_git_log_for_task_id_present() {
+        let log = "abc123 fix: PMAT-100 something\ndef456 chore: cleanup";
+        assert_eq!(
+            classify_git_log_for_task(log, "PMAT-100"),
+            ValidationStatus::Passed
+        );
+    }
+
+    #[test]
+    fn test_classify_git_log_for_task_hashtag_present() {
+        let log = "abc123 fix: #42 issue\n";
+        assert_eq!(
+            classify_git_log_for_task(log, "42"),
+            ValidationStatus::Passed
+        );
+    }
+
+    #[test]
+    fn test_classify_git_log_for_task_absent_is_warning() {
+        let log = "abc123 chore: cleanup\ndef456 docs: typo";
+        assert_eq!(
+            classify_git_log_for_task(log, "PMAT-100"),
+            ValidationStatus::Warning
+        );
+    }
+
+    #[test]
+    fn test_classify_git_log_for_task_empty_log_is_warning() {
+        assert_eq!(
+            classify_git_log_for_task("", "PMAT-100"),
+            ValidationStatus::Warning
+        );
+    }
+
+    // ── classify_changelog_for_task ─────────────────────────────────────────
+
+    #[test]
+    fn test_classify_changelog_for_task_id_present() {
+        let cl = "## v3.16.0 - 2026-04-25\n- PMAT-100 added thing\n";
+        assert_eq!(
+            classify_changelog_for_task(cl, "PMAT-100"),
+            ValidationStatus::Passed
+        );
+    }
+
+    #[test]
+    fn test_classify_changelog_for_task_unreleased_header_passes() {
+        // Even if task_id absent, an "Unreleased" header counts as evidence
+        let cl = "## Unreleased\n- some change\n";
+        assert_eq!(
+            classify_changelog_for_task(cl, "PMAT-999"),
+            ValidationStatus::Passed
+        );
+    }
+
+    #[test]
+    fn test_classify_changelog_for_task_absent_is_warning() {
+        let cl = "## v3.15.0\n- old changes only\n";
+        assert_eq!(
+            classify_changelog_for_task(cl, "PMAT-100"),
+            ValidationStatus::Warning
+        );
+    }
+
+    // ── calculate_overall_score ─────────────────────────────────────────────
+
+    fn cat(passed: u32, total: u32) -> CategoryResult {
+        CategoryResult {
+            name: "test".into(),
+            passed,
+            total,
+            items: vec![],
+        }
+    }
+
+    #[test]
+    fn test_calculate_overall_score_empty_categories() {
+        let map: HashMap<String, CategoryResult> = HashMap::new();
+        assert_eq!(calculate_overall_score(&map), 0.0);
+    }
+
+    #[test]
+    fn test_calculate_overall_score_all_passing() {
+        let mut map = HashMap::new();
+        map.insert("a".into(), cat(5, 5));
+        map.insert("b".into(), cat(3, 3));
+        // 8/8 = 100%
+        assert_eq!(calculate_overall_score(&map), 100.0);
+    }
+
+    #[test]
+    fn test_calculate_overall_score_partial() {
+        let mut map = HashMap::new();
+        map.insert("a".into(), cat(2, 5));
+        map.insert("b".into(), cat(3, 5));
+        // 5/10 = 50%
+        assert_eq!(calculate_overall_score(&map), 50.0);
+    }
+
+    #[test]
+    fn test_calculate_overall_score_zero_total_no_div_by_zero() {
+        // Edge case: category with passed=0, total=0 → no contribution, score=0
+        let mut map = HashMap::new();
+        map.insert("a".into(), cat(0, 0));
+        assert_eq!(calculate_overall_score(&map), 0.0);
+    }
+
+    // ── determine_pass ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_determine_pass_strict_false_above_80() {
+        assert!(determine_pass(81.0, false));
+        assert!(determine_pass(80.0, false));
+    }
+
+    #[test]
+    fn test_determine_pass_strict_false_below_80_fails() {
+        assert!(!determine_pass(79.9, false));
+    }
+
+    #[test]
+    fn test_determine_pass_strict_true_below_80_fails() {
+        // Strict mode + score < 80 → false (95-OR doesn't trigger)
+        assert!(!determine_pass(79.0, true));
+    }
+
+    #[test]
+    fn test_determine_pass_strict_true_at_or_above_95_passes() {
+        // Strict mode: pass-threshold becomes 95
+        assert!(determine_pass(95.0, true));
+        assert!(determine_pass(99.5, true));
+    }
+
+    #[test]
+    fn test_determine_pass_operator_precedence_pin() {
+        // Pinned behavior: `score >= 80.0 && !strict || score >= 95.0` parses as
+        // `(score >= 80.0 && !strict) || (score >= 95.0)`. So in strict mode
+        // with score == 81, the LEFT side `(81 >= 80 && !true)` = `(true && false)`
+        // = false; the RIGHT side `(81 >= 95)` = false; combined = false.
+        // This pin documents the precedence for future readers.
+        assert!(!determine_pass(81.0, true));
+        assert!(!determine_pass(94.9, true));
+    }
+}
+
+#[cfg(test)]
 mod impl_spec_tests {
     //! PMAT-652: cover impl_spec.rs sync helpers.
     use super::*;
