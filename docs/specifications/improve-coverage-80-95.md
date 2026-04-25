@@ -269,6 +269,37 @@ Ordered by ROI; each is a discrete escalation from drip-feed to higher-leverage 
 
 **Default if no escalation authorized:** continue R5-style autonomous loop on remaining 0%-cov pure-compute slice. Convergence to 95% will take ~4–5 sessions at observed rate.
 
+### 4.6 Target reframe — 85% honest exit (R4 accepted, 2026-04-25)
+
+After waves 31-34 empirically tested every theoretical lever in §4.5:
+- R1 (broken-tests revival): ~2-3pp ceiling realistically (per-gate triage costly)
+- R3 (`coverage(off)` lifts / orphan deletes): 0pp on broad gate (uncompiled = uncounted; broad already strips `coverage_nightly` cfg)
+- Drip-feed at observed ~1,160 tests/pp: needs ~14k more tests for 95%
+
+**Target reframed to 85%** (Phase 1 exit) per user authorization. Rationale:
+- 333,002-line broad denominator includes ~30% MCP/subprocess/printer infra that's `coverage(off)`-tagged for legitimate I/O reasons. The §3 honest-baseline has structural ceilings that drip-feed cannot break.
+- 85% is reachable: 78.50% → 85% = 6.5pp ≈ 7,500 tests at observed rate ≈ 5-6 sessions of disciplined drip-feed + R5 refactors.
+- 95% remains aspirational and only attainable via heavy R5 refactor work plus substantial test investment on the now-uncovered `coverage(off)` leaf functions.
+
+**Phase 1 exit: 85% broad** (was 80%). **Phase 2 exit: 90% broad** (was 90%). **Phase 3 stretch: 95% broad** (was Phase 3 95%, no change but framed as stretch not commitment).
+
+### 4.7 R5 in motion — provable-contracts subprocess refactor (2026-04-25)
+
+R5 work begins on `qa_work_handler/impl_validation.rs` (447 lines, 5 fns, 0 tests). Pattern observed:
+- 5x `Command::new(...)` calls with shape `match result { Ok(out) if out.status.success() => Passed, Ok(_) => Failed, Err(_) => Skipped }` — all extractable as a single `classify_command_outcome` pure function.
+- 1x git-log substring check on captured stdout — extractable as `classify_git_log_for_task(stdout, task_id)`.
+- 1x CHANGELOG substring check on file content — extractable as `classify_changelog_for_task(content, task_id)`.
+- Score calculation + pass-criterion — both pure-compute on `&HashMap<String, CategoryResult>` and `(f64, bool)` respectively.
+
+Each extraction wears a `#[provable_contracts_macros::contract(...)]` decorator (post-condition that the resulting `ValidationStatus` falls within the documented arms). The decorators give us mutation-test-style invariant checks under the existing PV pipeline.
+
+Per-function expected gain:
+- 6-8 pure helpers extracted from impl_validation.rs
+- ~20-25 tests writeable on extracted helpers (each test fires 5-15 lines)
+- Estimated +0.10-0.15pp from this single refactor; +1-3pp predicted by §4.5 R5 was over-optimistic for this module specifically (the parsing logic is shallow), but the **pattern** generalises.
+
+If the pattern generalises across ~10-15 subprocess-bound files in PMAT, total R5 contribution toward 85%: ~1.5-2pp.
+
 ---
 
 ## 5. Phased Milestones
@@ -282,7 +313,7 @@ Each phase is independently shippable. Do not chase the next phase until the cur
 - [ ] Commit `COVERAGE_POLICY.md` cataloguing every current exclusion with justification.
 - [ ] Document PROPTEST_CASES=3 for coverage runs (bashrs pattern).
 
-### Phase 1 — 73% → 80% (1 week, v3.16.0)
+### Phase 1 — 73% → 85% (per §4.6 reframe; was 80%, 1 week, v3.16.0)
 
 **Strategy: delete, don't test.** (Original plan; superseded by §4.5 R1–R5 corrective actions after wave-30 evidence showed drip-feed ceiling.)
 
