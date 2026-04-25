@@ -1,9 +1,15 @@
-mod tests {
-    use super::*;
-    use crate::services::spec_parser::{
-        AcceptanceCriterion, ClaimCategory, CodeExample, TestRequirement, ValidationClaim,
+// Part 1 of split tests; outer `mod tests {` lives in tests.rs (CB-040 split fix)
+    use super::{
+        calculate_spec_score, format_spec_score_json, format_spec_score_markdown,
+        format_spec_score_text, handle_spec_comply, handle_spec_create, handle_spec_list,
     };
-    use std::path::PathBuf;
+    use crate::cli::commands::SpecOutputFormat;
+    use crate::services::spec_parser::{
+        AcceptanceCriterion, ClaimCategory, CodeExample, ParsedSpec, TestRequirement,
+        ValidationClaim,
+    };
+    use std::fs;
+    use std::path::{Path, PathBuf};
     use tempfile::TempDir;
 
     // ============================================================================
@@ -549,5 +555,3 @@ mod tests {
         let content = fs::read_to_string(&expected_file).unwrap();
         assert!(content.contains("#999"));
     }
-
-    #[tokio::test]

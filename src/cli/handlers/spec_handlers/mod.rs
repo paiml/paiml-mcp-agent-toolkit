@@ -18,9 +18,9 @@ include!("spec_handlers_scoring.rs");
 // Sync and drift: handle_spec_sync, handle_spec_drift
 include!("spec_handlers_sync.rs");
 
-// Tests split for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax (functions/modules split across files)
-#[cfg(all(test, feature = "broken-tests"))]
+// Tests split for file health compliance (CB-040). Re-enabled after fixing
+// the nested `mod tests` issue per spec §4.5 R1 (revive broken-tests gate).
+#[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
 
