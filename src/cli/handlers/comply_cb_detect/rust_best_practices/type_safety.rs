@@ -419,3 +419,299 @@ pub fn detect_cb516_hardcoded_magic_numbers(project_path: &Path) -> Vec<CbPatter
 
     violations
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn write_rs(dir: &Path, name: &str, content: &str) {
+        let src_dir = dir.join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::write(src_dir.join(name), content).unwrap();
+    }
+
+    fn unwrap_calls(n: usize) -> String {
+        let mut s = String::from("fn f() {\n");
+        for i in 0..n {
+            s.push_str(&format!("  let x{i} = opt.unwrap();\n"));
+        }
+        s.push_str("}\n");
+        s
+    }
+
+    // ── CB-501 ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_cb501_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb501_unwrap_density(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb501_zero_unwraps_clean() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", "fn f() { let x = 1; }\n");
+        assert!(detect_cb501_unwrap_density(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb501_at_threshold_5_clean() {
+        // Threshold is > 5; 5 unwraps still clean
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", &unwrap_calls(5));
+        assert!(detect_cb501_unwrap_density(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb501_above_5_warning() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", &unwrap_calls(7));
+        let v = detect_cb501_unwrap_density(tmp.path());
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].severity, Severity::Warning);
+    }
+
+    #[test]
+    fn test_cb501_above_10_error() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", &unwrap_calls(15));
+        let v = detect_cb501_unwrap_density(tmp.path());
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].severity, Severity::Error);
+    }
+
+    // ── CB-502 ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_cb502_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb502_expect_quality(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb502_quality_message_clean() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() { opt.expect(\"config file must be readable\"); }\n",
+        );
+        assert!(detect_cb502_expect_quality(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb502_lazy_failed_message_flagged() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", "fn f() { opt.expect(\"failed\"); }\n");
+        let v = detect_cb502_expect_quality(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-502");
+    }
+
+    #[test]
+    fn test_cb502_lazy_empty_message_flagged() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", "fn f() { opt.expect(\"\"); }\n");
+        let v = detect_cb502_expect_quality(tmp.path());
+        assert!(!v.is_empty());
+    }
+
+    // ── CB-506 ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_cb506_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb506_string_byte_indexing(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb506_no_indexing_clean() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", "fn f() { let x = s.chars(); }\n");
+        assert!(detect_cb506_string_byte_indexing(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb506_byte_slice_flagged() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", "fn f() { let p = &name[0..3]; }\n");
+        let v = detect_cb506_string_byte_indexing(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-506");
+    }
+
+    #[test]
+    fn test_cb506_open_ended_slice_flagged() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", "fn f() { let p = &foo[..5]; }\n");
+        assert!(!detect_cb506_string_byte_indexing(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb506_comment_indexing_skipped() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", "// let p = &name[0..3];\n");
+        assert!(detect_cb506_string_byte_indexing(tmp.path()).is_empty());
+    }
+
+    // ── CB-508 ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_cb508_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb508_lossy_numeric_casts(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb508_below_threshold_clean() {
+        let tmp = TempDir::new().unwrap();
+        // 5 casts < threshold of 10
+        let mut content = String::from("fn f() {\n");
+        for i in 0..5 {
+            content.push_str(&format!("  let x{i} = (y{i} as u8);\n"));
+        }
+        content.push_str("}\n");
+        write_rs(tmp.path(), "lib.rs", &content);
+        assert!(detect_cb508_lossy_numeric_casts(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb508_above_threshold_flagged() {
+        let tmp = TempDir::new().unwrap();
+        let mut content = String::from("fn f() {\n");
+        for i in 0..15 {
+            content.push_str(&format!("  let x{i} = (y{i} as u8);\n"));
+        }
+        content.push_str("}\n");
+        write_rs(tmp.path(), "lib.rs", &content);
+        let v = detect_cb508_lossy_numeric_casts(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-508");
+    }
+
+    // ── CB-515 ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_cb515_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb515_catch_all_match_default(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb515_no_match_clean() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", "fn f() { let x = 1; }\n");
+        assert!(detect_cb515_catch_all_match_default(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb515_concrete_value_arm_flagged() {
+        // The parser checks `trimmed.starts_with("_ =>")` — `_ =>` must be the
+        // line's leading non-whitespace token (multi-line match formatting).
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  match x {\n    1 => \"one\",\n    _ => \"unknown\",\n  };\n}\n",
+        );
+        let v = detect_cb515_catch_all_match_default(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-515");
+    }
+
+    #[test]
+    fn test_cb515_safe_pattern_returning_err_skipped() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  match x {\n    1 => Ok(()),\n    _ => Err(\"x\"),\n  };\n}\n",
+        );
+        // `_ => Err(...)` — safe pattern → no violation
+        assert!(detect_cb515_catch_all_match_default(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb515_safe_panic_skipped() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  match x {\n    1 => 1,\n    _ => panic!(\"bad\"),\n  };\n}\n",
+        );
+        assert!(detect_cb515_catch_all_match_default(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb515_empty_block_arm_skipped() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() {\n  match x {\n    1 => 1,\n    _ => {},\n  };\n}\n",
+        );
+        assert!(detect_cb515_catch_all_match_default(tmp.path()).is_empty());
+    }
+
+    // ── CB-516 ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_cb516_no_src_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb516_hardcoded_magic_numbers(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb516_small_number_clean() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f(timeout: u32) { x(timeout: 50); }\n",
+        );
+        // 50 doesn't match the regex (\d{3,}) — needs ≥3 digits
+        assert!(detect_cb516_hardcoded_magic_numbers(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb516_common_value_skipped() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() { Config { capacity: 1024, threshold: 256 }; }\n",
+        );
+        // 1024 and 256 are in the common_values set → skipped
+        assert!(detect_cb516_hardcoded_magic_numbers(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb516_unusual_large_number_flagged() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(
+            tmp.path(),
+            "lib.rs",
+            "fn f() { Config { timeout: 7777, retry: 3333 }; }\n",
+        );
+        let v = detect_cb516_hardcoded_magic_numbers(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-516");
+    }
+
+    #[test]
+    fn test_cb516_const_declaration_skipped() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", "const FOO: u32 = 7777;\n");
+        // const-prefixed lines are intentionally named constants
+        assert!(detect_cb516_hardcoded_magic_numbers(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_cb516_static_declaration_skipped() {
+        let tmp = TempDir::new().unwrap();
+        write_rs(tmp.path(), "lib.rs", "static FOO: u32 = 7777;\n");
+        assert!(detect_cb516_hardcoded_magic_numbers(tmp.path()).is_empty());
+    }
+}
