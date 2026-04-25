@@ -232,6 +232,14 @@ Ordered by ROI; each is a discrete escalation from drip-feed to higher-leverage 
 - Per module: read the gated file, fix the type/field mismatch, rename to current identifiers, drop the `feature = "broken-tests"` gate, run tests, push.
 - Expected gain: +0.5–1.0pp on broad per module reanimated, atomic per-PR.
 - Owner: autonomous loop OR explicit user instruction.
+- **WAVE 34 EMPIRICAL CORRECTION (2026-04-25):** R1 is NOT a fast win as originally estimated. Three reasons surfaced when attempting revival on the smallest gates (`command_dispatcher/tests.rs`, `services/satd_detector/mod.rs`, `services/complexity/mod.rs`):
+  1. **Demo-feature dependence**: command_dispatcher tests assume `feature = "demo"` is on; without it, `convert_demo_protocol`/`create_demo_args` aren't on `CommandDispatcher`, and `crate::demo` is gated. 156 errors.
+  2. **Private-method access**: satd_detector tests reference private methods (`extract_comment_content`, `find_comment_column`) that became cross-module-private after the file split. ~30 errors.
+  3. **Duplicate/superseded gates**: `services/complexity/mod.rs` declares both `mod tests;` (active, 594 lines, working) AND `mod broken_tests;` (gated, 9-line shim that includes 4 partition files). The gated tests are *redundant* — superseded by the active set, not unique-value tests.
+  
+  The §4.5 R1 expected-gain (+0.5-1.0pp per module) was based on the assumption that gated tests had unique coverage value. Empirically, that's true only for some gates; others guard duplicate/old code. **Per-module triage is required before estimating value**: read the gated file, diff against the active sibling, only proceed if unique.
+  
+  **Revised estimate**: across the ~30 broken-tests gates, expect ~5-10 to have unique-value tests. Plan for ~0.2-0.3pp per gate after triage cost. Total realistic R1 ceiling: ~2-3pp not 5-10pp.
 
 **R2 — Bundle PR for wave 30 (CI throughput unlock).**
 - Wave 30's 21 commits are independently good but each push restarts ~10-min CI. Bundle pattern from PR #520 (wave 22, 22 sub-PRs squashed): single CI run, single squash merge.
