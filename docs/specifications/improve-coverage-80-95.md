@@ -329,6 +329,12 @@ R5 pattern now validated on FOUR prototypes — pattern is portable:
 
 **~10-15 more candidate files identified by `Command::new` density** that will follow this template. Per-file yield ~10-20 tests. Total wave-35 contribution: **52 tests in ~10 minutes of session time**, matching the prediction in §4.7 of "modest broad-pp gain but valuable testability + provable-contract surface".
 
+**Wave 35 measured: 78.54% → 78.56% = +0.02pp on 52 tests = ~2,600 tests/pp** — the worst rate of the session. **Why so bad?** R5 helpers are tiny (3-7 lines each); 13 helpers × ~5 lines ≈ 65 lines hit. 65 / 333k = 0.02pp. This pins the **R5 broad-gate yield model**: per-helper-line, not per-test, not per-helper. The pattern is still valuable (testability + invariant enforcement under PV) but **not a coverage convergence lever** unless extracted helpers are big.
+
+**Updated R5 outlook for 85% target:** if remaining ~10-15 R5 candidates yield ~50-100 lines each (best case), total R5 contribution ≈ ~0.5pp. **R5 alone won't close the 6.46pp gap**; it must combine with drip-feed on bigger orchestrator functions (each test firing 50-100 lines).
+
+The "right" R5 target is therefore not subprocess-bound files with thin helpers but **subprocess-bound files with FAT inner logic** (e.g., 50+ line parsers). Two such files were predicted but turned out to be already-pure (`git_history_parsing.rs`) or shallow (the four prototypes here). The spec's §4.5 R5 estimate (1-3pp per refactor) was correct for hypothetical fat-inner cases, not for what's actually present in PMAT.
+
 ---
 
 ## 5. Phased Milestones
