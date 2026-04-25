@@ -619,3 +619,177 @@ pub(crate) fn estimate_avg_complexity(content: &str) -> f32 {
 
 // Sovereign stack patterns and PAIML deps checks (from migrate_handlers.rs)
 pub(crate) use super::check_sovereign::*;
+
+#[cfg(test)]
+mod check_extended_tests {
+    //! Covers pure-compute helpers in check_extended.rs (207 uncov on broad,
+    //! 0% cov). Skips fs-walking check_muda_waste / check_reproducibility /
+    //! check_dead_code_percentage / check_dependency_count happy paths.
+    use super::*;
+    use crate::cli::handlers::comply_cb_detect::{
+        CbPatternViolation, DependencyCountReport, Severity as CbSev,
+    };
+
+    fn make_report() -> DependencyCountReport {
+        DependencyCountReport {
+            direct_count: 50,
+            transitive_count: 200,
+            prod_transitive_count: Some(180),
+            score: 4,
+            duplicate_crates: vec![],
+            feature_gated_count: 30,
+            feature_gated_pct: 60.0,
+            sovereign_crates: vec![],
+            sovereign_bonus: 0,
+            trend: None,
+            violations: vec![],
+        }
+    }
+
+    // ── format_dependency_message: 4 conditional branches ──
+
+    #[test]
+    fn test_format_dependency_message_with_prod_transitive() {
+        let r = make_report();
+        let msg = format_dependency_message(&r);
+        assert!(msg.contains("Score: 4/5"));
+        assert!(msg.contains("50 direct"));
+        assert!(msg.contains("180 prod transitive"));
+        assert!(msg.contains("200 total w/dev"));
+        assert!(msg.contains("60% feature-gated"));
+    }
+
+    #[test]
+    fn test_format_dependency_message_without_prod_transitive() {
+        let mut r = make_report();
+        r.prod_transitive_count = None;
+        let msg = format_dependency_message(&r);
+        // Falls back to "{} transitive" without the prod/total split.
+        assert!(msg.contains("200 transitive"));
+        assert!(!msg.contains("prod transitive"));
+    }
+
+    #[test]
+    fn test_format_dependency_message_with_trend_delta() {
+        use crate::cli::handlers::comply_cb_detect::DependencyTrend;
+        let mut r = make_report();
+        r.trend = Some(DependencyTrend {
+            direct_delta: 5,
+            transitive_delta: -3,
+            previous_timestamp: "2024-01-01".to_string(),
+        });
+        let msg = format_dependency_message(&r);
+        assert!(msg.contains("+5") || msg.contains("-3"));
+    }
+
+    #[test]
+    fn test_format_dependency_message_with_zero_trend_skipped() {
+        use crate::cli::handlers::comply_cb_detect::DependencyTrend;
+        let mut r = make_report();
+        r.trend = Some(DependencyTrend {
+            direct_delta: 0,
+            transitive_delta: 0,
+            previous_timestamp: "2024-01-01".to_string(),
+        });
+        let msg = format_dependency_message(&r);
+        // Zero deltas → trend section should not appear.
+        assert!(!msg.contains("\u{0394}"));
+    }
+
+    #[test]
+    fn test_format_dependency_message_with_duplicate_crates() {
+        use crate::cli::handlers::comply_cb_detect::DuplicateCrate;
+        let mut r = make_report();
+        r.duplicate_crates = vec![DuplicateCrate {
+            name: "rand".into(),
+            versions: vec!["0.8".into(), "0.9".into()],
+        }];
+        let msg = format_dependency_message(&r);
+        assert!(msg.contains("1 duplicates"));
+    }
+
+    #[test]
+    fn test_format_dependency_message_with_sovereign_bonus() {
+        let mut r = make_report();
+        r.sovereign_bonus = 2;
+        r.sovereign_crates = vec!["trueno".into(), "aprender".into()];
+        let msg = format_dependency_message(&r);
+        assert!(msg.contains("+2 sovereign"));
+        assert!(msg.contains("trueno") || msg.contains("aprender"));
+    }
+
+    // ── append_violation_details ──
+
+    #[test]
+    fn test_append_violation_details_error_uses_x_icon() {
+        let r = DependencyCountReport {
+            violations: vec![CbPatternViolation {
+                pattern_id: "CB-081".into(),
+                file: "Cargo.toml".into(),
+                line: 1,
+                description: "too many deps".into(),
+                severity: CbSev::Error,
+            }],
+            ..make_report()
+        };
+        let mut msg = String::new();
+        append_violation_details(&mut msg, &r, 5);
+        assert!(msg.contains("\u{2717}"), "error → ✗ icon");
+        assert!(msg.contains("too many deps"));
+    }
+
+    #[test]
+    fn test_append_violation_details_warning_uses_warning_icon() {
+        let r = DependencyCountReport {
+            violations: vec![CbPatternViolation {
+                pattern_id: "CB-081".into(),
+                file: "Cargo.toml".into(),
+                line: 1,
+                description: "warning desc".into(),
+                severity: CbSev::Warning,
+            }],
+            ..make_report()
+        };
+        let mut msg = String::new();
+        append_violation_details(&mut msg, &r, 5);
+        assert!(msg.contains("\u{26a0}"), "warning → ⚠ icon");
+    }
+
+    #[test]
+    fn test_append_violation_details_respects_limit() {
+        let r = DependencyCountReport {
+            violations: (0..10)
+                .map(|i| CbPatternViolation {
+                    pattern_id: format!("CB-{i}"),
+                    file: "Cargo.toml".into(),
+                    line: i,
+                    description: format!("violation {i}"),
+                    severity: CbSev::Warning,
+                })
+                .collect(),
+            ..make_report()
+        };
+        let mut msg = String::new();
+        append_violation_details(&mut msg, &r, 3);
+        // Only 3 lines should appear.
+        assert_eq!(msg.matches("violation").count(), 3);
+    }
+
+    #[test]
+    fn test_append_violation_details_empty_violations_no_change() {
+        let r = make_report();
+        let mut msg = "existing".to_string();
+        append_violation_details(&mut msg, &r, 5);
+        assert_eq!(msg, "existing");
+    }
+
+    // ── check_dependency_count: no-Cargo.toml skip path ──
+
+    #[test]
+    fn test_check_dependency_count_no_cargo_toml_skips() {
+        let tmp = tempfile::tempdir().unwrap();
+        let check = check_dependency_count(tmp.path());
+        assert!(matches!(check.status, CheckStatus::Skip));
+        assert!(check.message.contains("Not a Rust project"));
+    }
+}
