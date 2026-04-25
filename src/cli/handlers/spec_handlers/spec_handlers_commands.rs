@@ -367,3 +367,82 @@ fn print_spec_list(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod spec_handlers_commands_tests {
+    //! Covers spec_display_name + print_spec_list dispatcher in
+    //! spec_handlers_commands.rs (49 uncov on broad, 0% cov).
+    use super::*;
+    use std::path::PathBuf;
+
+    // ── spec_display_name: title vs path-stem fallback ──
+
+    #[test]
+    fn test_spec_display_name_uses_title_when_present() {
+        let path = std::path::Path::new("docs/some-spec.md");
+        assert_eq!(spec_display_name(path, "My Spec Title"), "My Spec Title");
+    }
+
+    #[test]
+    fn test_spec_display_name_falls_back_to_file_stem_when_title_empty() {
+        let path = std::path::Path::new("docs/some-spec.md");
+        assert_eq!(spec_display_name(path, ""), "some-spec");
+    }
+
+    #[test]
+    fn test_spec_display_name_unknown_when_no_stem_no_title() {
+        let path = std::path::Path::new("");
+        // Empty path → no stem → "unknown".
+        assert_eq!(spec_display_name(path, ""), "unknown");
+    }
+
+    // ── print_spec_list: dispatch all 3 formats ──
+
+    fn sample_results() -> Vec<(PathBuf, String, f64, bool)> {
+        vec![
+            (PathBuf::from("docs/spec-1.md"), "Spec 1".into(), 96.0, true),
+            (PathBuf::from("docs/spec-2.md"), "Spec 2".into(), 60.0, false),
+            (PathBuf::from("docs/spec-3.md"), String::new(), 95.0, true),
+        ]
+    }
+
+    #[test]
+    fn test_print_spec_list_text_format_no_panic() {
+        let results = sample_results();
+        let dir = std::path::Path::new("docs");
+        print_spec_list(&results, dir, SpecOutputFormat::Text).unwrap();
+    }
+
+    #[test]
+    fn test_print_spec_list_json_format_no_panic() {
+        let results = sample_results();
+        let dir = std::path::Path::new("docs");
+        print_spec_list(&results, dir, SpecOutputFormat::Json).unwrap();
+    }
+
+    #[test]
+    fn test_print_spec_list_markdown_format_no_panic() {
+        let results = sample_results();
+        let dir = std::path::Path::new("docs");
+        print_spec_list(&results, dir, SpecOutputFormat::Markdown).unwrap();
+    }
+
+    #[test]
+    fn test_print_spec_list_empty_results_text_no_panic() {
+        let dir = std::path::Path::new("docs");
+        print_spec_list(&[], dir, SpecOutputFormat::Text).unwrap();
+    }
+
+    #[test]
+    fn test_print_spec_list_empty_results_json_emits_empty_array() {
+        let dir = std::path::Path::new("docs");
+        // Json branch runs serde_json::to_string_pretty over [] without panic.
+        print_spec_list(&[], dir, SpecOutputFormat::Json).unwrap();
+    }
+
+    #[test]
+    fn test_print_spec_list_empty_results_markdown_no_panic() {
+        let dir = std::path::Path::new("docs");
+        print_spec_list(&[], dir, SpecOutputFormat::Markdown).unwrap();
+    }
+}
