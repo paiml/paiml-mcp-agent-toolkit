@@ -1,3 +1,51 @@
+/// Pure-compute classifier extracted for R5 testability (per spec §4.7).
+/// Maps a coverage percentage to a CheckStatus tier.
+/// - >= 80%: Pass
+/// - >= 60%: Warn
+/// - else: Fail
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+fn classify_coverage_status(coverage: f64) -> CheckStatus {
+    if coverage >= 80.0 {
+        CheckStatus::Pass
+    } else if coverage >= 60.0 {
+        CheckStatus::Warn
+    } else {
+        CheckStatus::Fail
+    }
+}
+
+/// Pure-compute classifier extracted for R5 testability.
+/// Maps complexity-violation count to a CheckStatus tier.
+/// - 0 violations: Pass
+/// - 1..=5: Warn
+/// - >5: Fail
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+fn classify_complexity_status(violations: usize) -> CheckStatus {
+    if violations == 0 {
+        CheckStatus::Pass
+    } else if violations <= 5 {
+        CheckStatus::Warn
+    } else {
+        CheckStatus::Fail
+    }
+}
+
+/// Pure-compute classifier extracted for R5 testability.
+/// Maps SATD totals to a CheckStatus tier.
+/// - 0 total: Pass
+/// - 0 high-severity (any total): Warn
+/// - else: Fail
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+fn classify_satd_status(total: usize, high_severity: usize) -> CheckStatus {
+    if total == 0 {
+        CheckStatus::Pass
+    } else if high_severity == 0 {
+        CheckStatus::Warn
+    } else {
+        CheckStatus::Fail
+    }
+}
+
 /// Run build health check
 async fn run_build_check(project_dir: &PathBuf) -> Result<HealthCheck> {
     use crate::cli::progress::ProgressIndicator;
@@ -110,13 +158,7 @@ async fn run_coverage_check(project_dir: &PathBuf) -> Result<HealthCheck> {
             // Parse coverage percentage from output
             let coverage = parse_coverage_percentage(&stdout);
 
-            let status = if coverage >= 80.0 {
-                CheckStatus::Pass
-            } else if coverage >= 60.0 {
-                CheckStatus::Warn
-            } else {
-                CheckStatus::Fail
-            };
+            let status = classify_coverage_status(coverage);
 
             progress.finish_with_message(&format!(
                 "Coverage: {:.1}% ({:.1}s)",
@@ -171,13 +213,7 @@ async fn run_complexity_check(project_dir: &PathBuf) -> Result<HealthCheck> {
             let (total_functions, violations, max_complexity) =
                 count_complexity_violations(&file_metrics);
 
-            let status = if violations == 0 {
-                CheckStatus::Pass
-            } else if violations <= 5 {
-                CheckStatus::Warn
-            } else {
-                CheckStatus::Fail
-            };
+            let status = classify_complexity_status(violations);
 
             progress.finish_with_message(&format!(
                 "Complexity: {} functions, {} violations ({:.1}s)",
@@ -262,13 +298,7 @@ async fn run_satd_check(project_dir: &PathBuf) -> Result<HealthCheck> {
                 .filter(|m| matches!(m.severity, Severity::High | Severity::Critical))
                 .count();
 
-            let status = if total_items == 0 {
-                CheckStatus::Pass
-            } else if high_severity == 0 {
-                CheckStatus::Warn
-            } else {
-                CheckStatus::Fail
-            };
+            let status = classify_satd_status(total_items, high_severity);
 
             progress.finish_with_message(&format!(
                 "SATD: {} items found ({} high severity) ({:.1}s)",

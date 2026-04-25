@@ -360,3 +360,85 @@ mod parallel_tests {
         print_health_yaml(&report);
     }
 }
+
+// ── Wave 35 PR2: R5 status-classifier tests for health_handler_checks.rs ──
+
+#[cfg(test)]
+mod r5_classifier_tests {
+    use super::*;
+
+    // ── classify_coverage_status ────────────────────────────────────────────
+
+    #[test]
+    fn test_classify_coverage_at_80_passes() {
+        // Boundary: >= 80 → Pass
+        assert_eq!(classify_coverage_status(80.0), CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_classify_coverage_above_80_passes() {
+        assert_eq!(classify_coverage_status(95.5), CheckStatus::Pass);
+        assert_eq!(classify_coverage_status(100.0), CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_classify_coverage_at_60_warns() {
+        // Boundary: >= 60 && < 80 → Warn
+        assert_eq!(classify_coverage_status(60.0), CheckStatus::Warn);
+    }
+
+    #[test]
+    fn test_classify_coverage_between_60_and_80_warns() {
+        assert_eq!(classify_coverage_status(65.0), CheckStatus::Warn);
+        assert_eq!(classify_coverage_status(79.9), CheckStatus::Warn);
+    }
+
+    #[test]
+    fn test_classify_coverage_below_60_fails() {
+        assert_eq!(classify_coverage_status(0.0), CheckStatus::Fail);
+        assert_eq!(classify_coverage_status(59.9), CheckStatus::Fail);
+    }
+
+    // ── classify_complexity_status ──────────────────────────────────────────
+
+    #[test]
+    fn test_classify_complexity_zero_violations_passes() {
+        assert_eq!(classify_complexity_status(0), CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_classify_complexity_one_to_five_warns() {
+        // Inclusive range 1..=5 → Warn
+        for v in 1..=5 {
+            assert_eq!(classify_complexity_status(v), CheckStatus::Warn);
+        }
+    }
+
+    #[test]
+    fn test_classify_complexity_six_or_more_fails() {
+        assert_eq!(classify_complexity_status(6), CheckStatus::Fail);
+        assert_eq!(classify_complexity_status(100), CheckStatus::Fail);
+    }
+
+    // ── classify_satd_status ────────────────────────────────────────────────
+
+    #[test]
+    fn test_classify_satd_zero_total_passes() {
+        // Even high_severity > 0 with total == 0 is unreachable; total dominates
+        assert_eq!(classify_satd_status(0, 0), CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_classify_satd_with_items_no_high_severity_warns() {
+        // Items present, but no high-severity → Warn
+        assert_eq!(classify_satd_status(5, 0), CheckStatus::Warn);
+        assert_eq!(classify_satd_status(100, 0), CheckStatus::Warn);
+    }
+
+    #[test]
+    fn test_classify_satd_with_high_severity_fails() {
+        // Any high-severity (with total > 0) → Fail
+        assert_eq!(classify_satd_status(1, 1), CheckStatus::Fail);
+        assert_eq!(classify_satd_status(10, 3), CheckStatus::Fail);
+    }
+}
