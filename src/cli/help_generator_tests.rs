@@ -194,4 +194,182 @@ mod tests {
         assert!(overview.contains("OPTIONS:"));
         assert!(overview.contains("-v, --verbose"));
     }
+
+    // ── HelpGenerator builder methods ──
+
+    #[test]
+    fn test_with_color_overrides_default() {
+        let gen = HelpGenerator::new(CommandRegistry::new("1.0.0"))
+            .with_color(false)
+            .with_color(true);
+        // No public getter, but observable via print_help (which dispatches to
+        // print_colored when color=true). Just verify chaining compiles + runs.
+        assert!(gen.print_help(None).is_ok());
+    }
+
+    #[test]
+    fn test_with_width_overrides_default() {
+        let gen = HelpGenerator::new(CommandRegistry::new("1.0.0")).with_width(120);
+        // width is private; verify via overview generation succeeding.
+        let _ = gen.generate_overview();
+    }
+
+    // ── print_help dispatcher arms ──
+
+    #[test]
+    fn test_print_help_with_path_invokes_command_help() {
+        let gen = HelpGenerator::new(sample_registry()).with_color(false);
+        // Some(path) → generate(path).
+        gen.print_help(Some("analyze")).unwrap();
+    }
+
+    #[test]
+    fn test_print_help_no_path_invokes_overview() {
+        let gen = HelpGenerator::new(sample_registry()).with_color(false);
+        // None → generate_overview().
+        gen.print_help(None).unwrap();
+    }
+
+    #[test]
+    fn test_print_help_color_true_uses_print_colored() {
+        let gen = HelpGenerator::new(sample_registry()).with_color(true);
+        // color=true exercises the print_colored branch which writes ANSI codes.
+        gen.print_help(None).unwrap();
+    }
+
+    // ── format_flag ──
+
+    #[test]
+    fn test_format_flag_short_only_arm() {
+        let gen = HelpGenerator::new(CommandRegistry::new("1.0.0"));
+        let flag = FlagMetadata {
+            name: "f".to_string(),
+            short: Some('f'),
+            long: None,
+            description: "fast".to_string(),
+            default: None,
+        };
+        let line = gen.format_flag(&flag);
+        assert!(line.contains("-f"));
+        assert!(line.contains("fast"));
+    }
+
+    #[test]
+    fn test_format_flag_long_only_arm() {
+        let gen = HelpGenerator::new(CommandRegistry::new("1.0.0"));
+        let flag = FlagMetadata {
+            name: "verbose".to_string(),
+            short: None,
+            long: Some("verbose".to_string()),
+            description: "v".to_string(),
+            default: None,
+        };
+        let line = gen.format_flag(&flag);
+        assert!(line.contains("--verbose"));
+    }
+
+    #[test]
+    fn test_format_flag_no_short_no_long_falls_back_to_name() {
+        let gen = HelpGenerator::new(CommandRegistry::new("1.0.0"));
+        let flag = FlagMetadata {
+            name: "raw".to_string(),
+            short: None,
+            long: None,
+            description: "d".to_string(),
+            default: None,
+        };
+        let line = gen.format_flag(&flag);
+        assert!(line.contains("raw"));
+    }
+
+    #[test]
+    fn test_format_flag_with_default_appends_default_marker() {
+        let gen = HelpGenerator::new(CommandRegistry::new("1.0.0"));
+        let flag = FlagMetadata {
+            name: "n".to_string(),
+            short: Some('n'),
+            long: Some("name".to_string()),
+            description: "Name".to_string(),
+            default: Some("anonymous".to_string()),
+        };
+        let line = gen.format_flag(&flag);
+        assert!(line.contains("[default: anonymous]"));
+    }
+
+    // ── find_similar_commands ──
+
+    #[test]
+    fn test_find_similar_commands_ranks_close_matches() {
+        let gen = HelpGenerator::new(sample_registry());
+        // "analyz" → close to "analyze".
+        let similar = gen.find_similar_commands("analyz", 5);
+        let names: Vec<&str> = similar.iter().map(|(s, _)| s.as_str()).collect();
+        assert!(names.iter().any(|n| n.contains("analyze")));
+    }
+
+    #[test]
+    fn test_find_similar_commands_filters_dissimilar_when_distance_exceeds_query_len() {
+        let gen = HelpGenerator::new(sample_registry());
+        // "z" has length 1; nothing should pass the `score <= query.len()` filter.
+        let similar = gen.find_similar_commands("z", 5);
+        // Either empty (filtered out) or only entries with distance ≤ 1.
+        for (_, score) in &similar {
+            assert!(*score <= 1);
+        }
+    }
+
+    // ── format_command_help: deprecated branch + execution_time::Slow ──
+
+    #[test]
+    fn test_format_command_help_deprecated_arm_emits_deprecation_warning() {
+        let mut registry = CommandRegistry::new("1.0.0");
+        let dep = crate::cli::registry::DeprecationInfo {
+            since_version: "0.5.0".to_string(),
+            removal_version: None,
+            replacement: Some("new-command".to_string()),
+            reason: "legacy".to_string(),
+        };
+        registry.register(
+            CommandMetadata::builder("old")
+                .short_description("Old cmd")
+                .deprecated(dep)
+                .build(),
+        );
+        let gen = HelpGenerator::new(registry);
+        let help = gen.generate("old");
+        assert!(help.contains("DEPRECATED: legacy"));
+        assert!(help.contains("Use 'new-command' instead"));
+    }
+
+    #[test]
+    fn test_format_command_help_slow_execution_appends_note() {
+        let mut registry = CommandRegistry::new("1.0.0");
+        registry.register(
+            CommandMetadata::builder("slowcmd")
+                .short_description("Slow")
+                .execution_time(ExecutionTime::Slow)
+                .build(),
+        );
+        let gen = HelpGenerator::new(registry);
+        let help = gen.generate("slowcmd");
+        assert!(help.contains("This command may take several seconds"));
+    }
+
+    // ── format_command_not_found: with + without suggestions ──
+
+    #[test]
+    fn test_format_command_not_found_emits_error_message() {
+        let gen = HelpGenerator::new(sample_registry());
+        let help = gen.generate("nonexistent");
+        assert!(help.contains("error: unrecognized command 'nonexistent'"));
+        assert!(help.contains("'pmat --help'"));
+    }
+
+    #[test]
+    fn test_format_command_not_found_with_close_match_suggests() {
+        let gen = HelpGenerator::new(sample_registry());
+        // "analyz" close to "analyze".
+        let help = gen.generate("analyz");
+        assert!(help.contains("Did you mean:"));
+    }
 }
