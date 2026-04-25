@@ -250,6 +250,101 @@ include!("impl_spec.rs");
 mod tests;
 
 #[cfg(test)]
+mod validation_format_tests {
+    //! Covers format_checklist_text in impl_validation.rs (the rest of
+    //! impl_validation.rs requires cargo/git subprocess execution and is
+    //! covered by qa_work_tests_part3.rs when feature="broken-tests").
+    use super::*;
+
+    fn make_item(id: &str, checked: bool, automated: bool) -> ChecklistItem {
+        ChecklistItem {
+            id: id.to_string(),
+            description: format!("{id}-desc"),
+            checked,
+            automated,
+            evidence: None,
+        }
+    }
+
+    fn make_checklist_with_all_categories() -> QaChecklist {
+        QaChecklist {
+            task_id: "PMAT-999".to_string(),
+            task_type: "Feature".to_string(),
+            generated: Utc::now(),
+            categories: ChecklistCategories {
+                safety_ethics: vec![make_item("A1", true, false)],
+                code_quality: vec![make_item("B1", false, true)],
+                testing: vec![make_item("C1", true, true)],
+                documentation: vec![make_item("D1", false, false)],
+                process: vec![make_item("E1", true, false)],
+            },
+        }
+    }
+
+    #[test]
+    fn test_format_checklist_text_emits_header_with_task_id_and_type() {
+        let cl = make_checklist_with_all_categories();
+        let out = format_checklist_text(&cl);
+        assert!(out.contains("# QA Checklist for PMAT-999"));
+        assert!(out.contains("Task Type: Feature"));
+        assert!(out.contains("Generated:"));
+    }
+
+    #[test]
+    fn test_format_checklist_text_emits_section_per_category() {
+        let cl = make_checklist_with_all_categories();
+        let out = format_checklist_text(&cl);
+        assert!(out.contains("## Safety & Ethics"));
+        assert!(out.contains("## Code Quality"));
+        assert!(out.contains("## Testing"));
+        assert!(out.contains("## Documentation"));
+        assert!(out.contains("## Process"));
+    }
+
+    #[test]
+    fn test_format_checklist_text_renders_checked_vs_unchecked_boxes() {
+        let cl = make_checklist_with_all_categories();
+        let out = format_checklist_text(&cl);
+        // A1 checked → [x], B1 unchecked → [ ].
+        assert!(out.contains("[x] A1:"));
+        assert!(out.contains("[ ] B1:"));
+    }
+
+    #[test]
+    fn test_format_checklist_text_marks_automated_items_with_auto_suffix() {
+        let cl = make_checklist_with_all_categories();
+        let out = format_checklist_text(&cl);
+        // B1 automated → " (auto)" suffix.
+        assert!(out.contains("B1: B1-desc (auto)"));
+        // A1 not automated → no suffix.
+        assert!(out.contains("A1: A1-desc\n"));
+    }
+
+    #[test]
+    fn test_format_checklist_text_with_empty_categories_emits_section_headers_only() {
+        let cl = QaChecklist {
+            task_id: "EMPTY".to_string(),
+            task_type: "T".to_string(),
+            generated: Utc::now(),
+            categories: ChecklistCategories {
+                safety_ethics: vec![],
+                code_quality: vec![],
+                testing: vec![],
+                documentation: vec![],
+                process: vec![],
+            },
+        };
+        let out = format_checklist_text(&cl);
+        // Headers present even when items absent.
+        assert!(out.contains("## Safety & Ethics"));
+        assert!(out.contains("## Process"));
+        // No checkboxes anywhere.
+        assert!(!out.contains("[x]"));
+        assert!(!out.contains("[ ]"));
+    }
+}
+
+#[cfg(test)]
 mod impl_spec_tests {
     //! PMAT-652: cover impl_spec.rs sync helpers.
     use super::*;
