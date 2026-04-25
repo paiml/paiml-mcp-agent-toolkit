@@ -300,6 +300,10 @@ Per-function expected gain:
 
 If the pattern generalises across ~10-15 subprocess-bound files in PMAT, total R5 contribution toward 85%: ~1.5-2pp.
 
+**Measured rate after R5 prototypes (2026-04-25):** 78.50% → 78.54% on 38 wave-34 tests (PR2 check.rs + PR3 impl_validation + PR4 git.rs) = **~950 tests/pp**, an incremental improvement on wave 33's 1,160 tests/pp but still far from a step-function. Per-file R5 yield is ~0.02-0.04pp (small absolute line count of extracted helpers); total session yield was +0.04pp. The pattern is correct but each refactor's broad-gate contribution is modest — the value is more in *testability + provable-contract surface* than raw broad-pp gain.
+
+**Reaching 85%**: 78.54% → 85.00% = 6.46pp ≈ 6,100 tests at observed rate. With aggressive R5 across ~10-15 files contributing ~1-2pp, plus ~5pp from focused drip-feed on still-uncovered areas, **85% is reachable in ~3-5 disciplined sessions** (~1,500-2,000 tests/session).
+
 ---
 
 ## 5. Phased Milestones
