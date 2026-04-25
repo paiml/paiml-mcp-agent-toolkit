@@ -244,7 +244,9 @@ include!("impl_epic.rs");
 include!("impl_spec.rs");
 
 // Tests extracted to qa_work_handler_tests.rs for file health compliance (CB-040)
-// TEMPORARILY DISABLED: File splitting broke syntax
+// TEMPORARILY DISABLED: File splitting broke syntax (per spec §4.5 R1, the
+// triple-nested `use super::*` in 4 part files needs explicit-named-import
+// rewrites across ~150 tests; deferred to a separate PR).
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "tests.rs"]
 mod tests;
