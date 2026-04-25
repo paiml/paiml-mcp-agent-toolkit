@@ -324,3 +324,65 @@ fn default_supported_languages() -> Vec<String> {
 fn default_cache_expiration() -> u32 {
     30
 }
+
+#[cfg(test)]
+mod configuration_types_defaults_tests {
+    //! Covers default_* helper functions in configuration_types.rs
+    //! (31 uncov on broad, 0% cov).
+    use super::*;
+
+    #[test]
+    fn test_default_embedding_model() {
+        assert_eq!(default_embedding_model(), "aprender-tfidf-local");
+    }
+
+    #[test]
+    fn test_default_embedding_dimensions() {
+        assert_eq!(default_embedding_dimensions(), 256);
+    }
+
+    #[test]
+    fn test_default_search_mode() {
+        assert_eq!(default_search_mode(), "hybrid");
+    }
+
+    #[test]
+    fn test_default_limit() {
+        assert_eq!(default_limit(), 10);
+    }
+
+    #[test]
+    fn test_default_sync_interval() {
+        assert_eq!(default_sync_interval(), 300);
+    }
+
+    #[test]
+    fn test_default_max_chunk_tokens() {
+        assert_eq!(default_max_chunk_tokens(), 500);
+    }
+
+    #[test]
+    fn test_default_supported_languages_includes_core_set() {
+        let langs = default_supported_languages();
+        assert_eq!(langs.len(), 7);
+        for required in [
+            "rust",
+            "python",
+            "typescript",
+            "javascript",
+            "go",
+            "c",
+            "cpp",
+        ] {
+            assert!(
+                langs.iter().any(|l| l == required),
+                "missing required language: {required}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_default_cache_expiration() {
+        assert_eq!(default_cache_expiration(), 30);
+    }
+}
