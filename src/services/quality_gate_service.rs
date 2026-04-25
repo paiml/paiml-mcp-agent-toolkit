@@ -424,6 +424,134 @@ impl Default for QualityGateService {
     }
 }
 
+#[cfg(test)]
+mod quality_gate_service_tests {
+    //! Covers QualityGateService validate_input + name + simple
+    //! constructor paths in services/quality_gate_service.rs
+    //! (188 uncov on broad, 0% cov). The async check_* methods that
+    //! delegate to AnalysisService are skipped (they require fixtures).
+    use super::*;
+
+    #[test]
+    fn test_quality_gate_service_new_creates_default_instance() {
+        let svc = QualityGateService::new();
+        assert_eq!(svc.name(), "QualityGateService");
+    }
+
+    #[test]
+    fn test_quality_gate_service_default_matches_new() {
+        let svc = QualityGateService::default();
+        assert_eq!(svc.name(), "QualityGateService");
+    }
+
+    #[test]
+    fn test_validate_input_missing_path_errors() {
+        let svc = QualityGateService::new();
+        let input = QualityGateInput {
+            path: PathBuf::from("/tmp/pmat_nope_quality_xyz_0xC0FFEE"),
+            checks: vec![QualityCheck::Lint],
+            strict: false,
+        };
+        let err = svc.validate_input(&input).unwrap_err();
+        assert!(matches!(err, ValidationError::InvalidValue { .. }));
+    }
+
+    #[test]
+    fn test_validate_input_empty_checks_errors() {
+        let tmp = tempfile::tempdir().unwrap();
+        let svc = QualityGateService::new();
+        let input = QualityGateInput {
+            path: tmp.path().to_path_buf(),
+            checks: vec![],
+            strict: false,
+        };
+        let err = svc.validate_input(&input).unwrap_err();
+        assert!(matches!(err, ValidationError::MissingField { .. }));
+    }
+
+    #[test]
+    fn test_validate_input_existing_path_with_checks_ok() {
+        let tmp = tempfile::tempdir().unwrap();
+        let svc = QualityGateService::new();
+        let input = QualityGateInput {
+            path: tmp.path().to_path_buf(),
+            checks: vec![QualityCheck::Lint, QualityCheck::Documentation],
+            strict: true,
+        };
+        assert!(svc.validate_input(&input).is_ok());
+    }
+
+    #[test]
+    fn test_quality_check_complexity_serde_roundtrip() {
+        let check = QualityCheck::Complexity { max: 20 };
+        let json = serde_json::to_string(&check).unwrap();
+        let decoded: QualityCheck = serde_json::from_str(&json).unwrap();
+        assert!(matches!(decoded, QualityCheck::Complexity { max: 20 }));
+    }
+
+    #[test]
+    fn test_quality_check_satd_serde_roundtrip() {
+        let check = QualityCheck::Satd { tolerance: 5 };
+        let json = serde_json::to_string(&check).unwrap();
+        let decoded: QualityCheck = serde_json::from_str(&json).unwrap();
+        assert!(matches!(decoded, QualityCheck::Satd { tolerance: 5 }));
+    }
+
+    #[test]
+    fn test_quality_check_dead_code_serde_roundtrip() {
+        let check = QualityCheck::DeadCode {
+            max_percentage: 5.0,
+        };
+        let json = serde_json::to_string(&check).unwrap();
+        let decoded: QualityCheck = serde_json::from_str(&json).unwrap();
+        assert!(matches!(
+            decoded,
+            QualityCheck::DeadCode { max_percentage } if (max_percentage - 5.0).abs() < 1e-6
+        ));
+    }
+
+    #[test]
+    fn test_quality_check_lint_serde_roundtrip() {
+        let check = QualityCheck::Lint;
+        let json = serde_json::to_string(&check).unwrap();
+        let decoded: QualityCheck = serde_json::from_str(&json).unwrap();
+        assert!(matches!(decoded, QualityCheck::Lint));
+    }
+
+    #[test]
+    fn test_quality_summary_default_values() {
+        // QualitySummary should be constructible with all-zero defaults.
+        let s = QualitySummary {
+            total_checks: 0,
+            passed_checks: 0,
+            failed_checks: 0,
+            total_violations: 0,
+            error_count: 0,
+            warning_count: 0,
+        };
+        assert_eq!(s.total_checks, 0);
+    }
+
+    #[tokio::test]
+    async fn test_process_validates_and_processes_empty_failsafe() {
+        // Empty checks → validate_input fails with MissingField.
+        // We exercise process() through Service trait method dispatch.
+        use super::Service;
+        let tmp = tempfile::tempdir().unwrap();
+        let svc = QualityGateService::new();
+        // Via process(), with empty checks, returns success (just empty results).
+        // validate_input is called separately by callers.
+        let input = QualityGateInput {
+            path: tmp.path().to_path_buf(),
+            checks: vec![],
+            strict: false,
+        };
+        let result = svc.process(input).await.unwrap();
+        assert_eq!(result.summary.total_checks, 0);
+        assert!(result.passed, "no checks → vacuously passed");
+    }
+}
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {
