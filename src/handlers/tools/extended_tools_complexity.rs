@@ -390,3 +390,224 @@ fn format_complexity_rankings(
         output
     }
 }
+
+#[cfg(test)]
+mod extended_tools_complexity_tests {
+    //! Covers pure helpers in extended_tools_complexity.rs (392 lines, 0
+    //! prior tests). Skips async fns + MCP response builders that require
+    //! a server fixture.
+    use super::*;
+
+    fn args(format: Option<&str>, top_files: Option<usize>) -> AnalyzeComplexityArgs {
+        AnalyzeComplexityArgs {
+            project_path: Some(".".to_string()),
+            toolchain: None,
+            format: format.map(String::from),
+            max_cyclomatic: None,
+            max_cognitive: None,
+            include: None,
+            top_files,
+        }
+    }
+
+    // ── parse_complexity_args ──
+
+    #[test]
+    fn test_parse_complexity_args_minimal() {
+        let json = serde_json::json!({"project_path": "."});
+        let parsed = parse_complexity_args(json).unwrap();
+        assert_eq!(parsed.project_path, Some(".".to_string()));
+        assert_eq!(parsed.toolchain, None);
+    }
+
+    #[test]
+    fn test_parse_complexity_args_full() {
+        let json = serde_json::json!({
+            "project_path": "src",
+            "toolchain": "rust",
+            "format": "json",
+            "max_cyclomatic": 20,
+            "max_cognitive": 30,
+            "include": ["src/**", "lib/**"],
+            "top_files": 10
+        });
+        let parsed = parse_complexity_args(json).unwrap();
+        assert_eq!(parsed.toolchain, Some("rust".to_string()));
+        assert_eq!(parsed.max_cyclomatic, Some(20));
+        assert_eq!(parsed.top_files, Some(10));
+    }
+
+    #[test]
+    fn test_parse_complexity_args_invalid_json_returns_err() {
+        let json = serde_json::json!({"max_cyclomatic": "not-a-number"});
+        let result = parse_complexity_args(json);
+        assert!(result.is_err());
+    }
+
+    // ── detect_toolchain ──
+
+    #[test]
+    fn test_detect_toolchain_explicit_arg_wins() {
+        let path = Path::new("/nonexistent");
+        let toolchain = detect_toolchain(&Some("python-uv".to_string()), path);
+        assert_eq!(toolchain, "python-uv");
+    }
+
+    #[test]
+    fn test_detect_toolchain_falls_back_to_rust_on_unknown_dir() {
+        // /tmp typically has no Cargo.toml/package.json/pyproject.toml.
+        let path = Path::new("/tmp/__nonexistent_dir_xyz_test_123__");
+        let toolchain = detect_toolchain(&None, path);
+        // Default fallback is "rust".
+        assert_eq!(toolchain, "rust");
+    }
+
+    #[test]
+    fn test_detect_toolchain_uses_cwd_for_rust_detection() {
+        // The project itself has Cargo.toml.
+        let path = Path::new(".");
+        let toolchain = detect_toolchain(&None, path);
+        assert_eq!(toolchain, "rust");
+    }
+
+    // ── build_complexity_thresholds ──
+
+    #[test]
+    fn test_build_complexity_thresholds_default_when_no_overrides() {
+        let a = args(None, None);
+        let t = build_complexity_thresholds(&a);
+        // Default thresholds are non-zero.
+        assert!(t.cyclomatic_error > 0);
+        assert!(t.cognitive_error > 0);
+    }
+
+    #[test]
+    fn test_build_complexity_thresholds_overrides_set_warn_to_three_quarters() {
+        let mut a = args(None, None);
+        a.max_cyclomatic = Some(20);
+        a.max_cognitive = Some(40);
+        let t = build_complexity_thresholds(&a);
+        assert_eq!(t.cyclomatic_error, 20);
+        assert_eq!(t.cyclomatic_warn, 15); // 20 * 3 / 4
+        assert_eq!(t.cognitive_error, 40);
+        assert_eq!(t.cognitive_warn, 30); // 40 * 3 / 4
+    }
+
+    #[test]
+    fn test_build_complexity_thresholds_min_one_warn_when_max_is_one() {
+        let mut a = args(None, None);
+        a.max_cyclomatic = Some(1);
+        let t = build_complexity_thresholds(&a);
+        // 1 * 3 / 4 = 0; .max(1) clamp ensures warn >= 1.
+        assert_eq!(t.cyclomatic_warn, 1);
+    }
+
+    // ── should_analyze_file ──
+
+    #[test]
+    fn test_should_analyze_file_rust_arm() {
+        assert!(should_analyze_file(Path::new("src/foo.rs"), "rust"));
+        assert!(!should_analyze_file(Path::new("src/foo.py"), "rust"));
+    }
+
+    #[test]
+    fn test_should_analyze_file_deno_arm_accepts_ts_tsx_js_jsx() {
+        assert!(should_analyze_file(Path::new("a.ts"), "deno"));
+        assert!(should_analyze_file(Path::new("a.tsx"), "deno"));
+        assert!(should_analyze_file(Path::new("a.js"), "deno"));
+        assert!(should_analyze_file(Path::new("a.jsx"), "deno"));
+        assert!(!should_analyze_file(Path::new("a.rs"), "deno"));
+    }
+
+    #[test]
+    fn test_should_analyze_file_python_arm() {
+        assert!(should_analyze_file(Path::new("a.py"), "python-uv"));
+        assert!(!should_analyze_file(Path::new("a.rs"), "python-uv"));
+    }
+
+    #[test]
+    fn test_should_analyze_file_unknown_toolchain_returns_false() {
+        assert!(!should_analyze_file(Path::new("a.rs"), "unknown"));
+    }
+
+    // ── matches_include_filters ──
+
+    #[test]
+    fn test_matches_include_filters_none_includes_all() {
+        assert!(matches_include_filters(Path::new("any/file.rs"), &None));
+    }
+
+    #[test]
+    fn test_matches_include_filters_empty_vec_includes_all() {
+        assert!(matches_include_filters(
+            Path::new("any/file.rs"),
+            &Some(vec![])
+        ));
+    }
+
+    #[test]
+    fn test_matches_include_filters_any_match_passes() {
+        let patterns = Some(vec!["**/never".to_string(), "*.rs".to_string()]);
+        assert!(matches_include_filters(
+            Path::new("src/foo.rs"),
+            &patterns
+        ));
+    }
+
+    #[test]
+    fn test_matches_include_filters_no_match_filters_out() {
+        let patterns = Some(vec!["*.py".to_string()]);
+        assert!(!matches_include_filters(
+            Path::new("src/foo.rs"),
+            &patterns
+        ));
+    }
+
+    // ── matches_pattern ──
+
+    #[test]
+    fn test_matches_pattern_double_star_with_suffix() {
+        // `src/**` → split into ["src/", ""], len=2, suffix is "" → contains("").
+        // `**/foo` → split into ["", "/foo"], len=2, suffix "/foo" trimmed → "foo".
+        assert!(matches_pattern("a/foo/b.rs", "**/foo"));
+        assert!(!matches_pattern("a/bar/b.rs", "**/foo"));
+    }
+
+    #[test]
+    fn test_matches_pattern_extension_glob() {
+        assert!(matches_pattern("src/foo.rs", "*.rs"));
+        assert!(!matches_pattern("src/foo.py", "*.rs"));
+    }
+
+    #[test]
+    fn test_matches_pattern_substring_match() {
+        assert!(matches_pattern("src/handlers/foo.rs", "handlers"));
+        assert!(!matches_pattern("src/lib/foo.rs", "handlers"));
+    }
+
+    #[test]
+    fn test_matches_pattern_three_double_stars_returns_false() {
+        // pattern has more than one "**" → split.len() != 2 → false.
+        assert!(!matches_pattern("any/path", "**/foo/**"));
+    }
+
+    // ── resolve_project_path_complexity ──
+
+    #[test]
+    fn test_resolve_project_path_complexity_rejects_none() {
+        let r = resolve_project_path_complexity(None);
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn test_resolve_project_path_complexity_rejects_empty_string() {
+        let r = resolve_project_path_complexity(Some(String::new()));
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn test_resolve_project_path_complexity_accepts_concrete_path() {
+        let r = resolve_project_path_complexity(Some(".".to_string()));
+        assert!(r.is_ok());
+    }
+}
