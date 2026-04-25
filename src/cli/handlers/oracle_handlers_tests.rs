@@ -109,8 +109,180 @@ mod tests {
         assert!(result.contains("Coverage below 90%"));
     }
 
+    fn make_iter_result(iteration: usize, converged: bool) -> crate::services::oracle::PdcaIterationResult {
+        let metrics = crate::services::oracle::ProjectMetrics::default();
+        crate::services::oracle::PdcaIterationResult {
+            iteration,
+            defects_found: 5,
+            defects_fixed: 3,
+            defects_skipped: 2,
+            metrics_before: metrics.clone(),
+            metrics_after: metrics,
+            converged,
+        }
+    }
+
+    fn default_targets() -> crate::services::oracle::ConvergenceTargets {
+        crate::services::oracle::ConvergenceTargets::default()
+    }
+
+    // ── format_pdca_results dispatcher ──
+
     #[test]
-    fn test_format_status_json() {
+    fn test_format_pdca_results_dispatcher_text_arm() {
+        let results = vec![make_iter_result(1, true)];
+        let r = format_pdca_results(&results, &default_targets(), OracleOutputFormat::Text).unwrap();
+        assert!(r.contains("PDCA Loop Results"));
+    }
+
+    #[test]
+    fn test_format_pdca_results_dispatcher_json_arm() {
+        let results = vec![make_iter_result(1, true)];
+        let r = format_pdca_results(&results, &default_targets(), OracleOutputFormat::Json).unwrap();
+        assert!(r.contains("\"iterations\""));
+    }
+
+    #[test]
+    fn test_format_pdca_results_dispatcher_markdown_arm() {
+        let results = vec![make_iter_result(1, true)];
+        let r =
+            format_pdca_results(&results, &default_targets(), OracleOutputFormat::Markdown).unwrap();
+        assert!(r.contains("# PMAT Oracle"));
+    }
+
+    // ── format_pdca_text: converged + non-converged + summary section ──
+
+    #[test]
+    fn test_format_pdca_text_with_results_emits_summary() {
+        let results = vec![make_iter_result(1, false), make_iter_result(2, true)];
+        let r = format_pdca_text(&results, &default_targets()).unwrap();
+        assert!(r.contains("Iteration 1"));
+        assert!(r.contains("Iteration 2"));
+        assert!(r.contains("=== Summary ==="));
+        // Last iteration converged → "CONVERGED" final status.
+        assert!(r.contains("CONVERGED"));
+    }
+
+    #[test]
+    fn test_format_pdca_text_last_not_converged_shows_not_converged() {
+        let results = vec![make_iter_result(1, false)];
+        let r = format_pdca_text(&results, &default_targets()).unwrap();
+        assert!(r.contains("NOT CONVERGED"));
+    }
+
+    #[test]
+    fn test_format_pdca_text_empty_results_no_summary() {
+        let r = format_pdca_text(&[], &default_targets()).unwrap();
+        assert!(r.contains("PDCA Loop Results"));
+        assert!(!r.contains("=== Summary ==="));
+    }
+
+    #[test]
+    fn test_format_pdca_json_with_iterations_returns_correct_total() {
+        let results = vec![make_iter_result(1, true), make_iter_result(2, false)];
+        let r = format_pdca_json(&results).unwrap();
+        assert!(r.contains("\"total_iterations\": 2"));
+        // last.converged == false.
+        assert!(r.contains("\"converged\": false"));
+    }
+
+    #[test]
+    fn test_format_pdca_markdown_emits_table_row_per_iteration() {
+        let results = vec![make_iter_result(1, true), make_iter_result(2, false)];
+        let r = format_pdca_markdown(&results, &default_targets()).unwrap();
+        // Both iterations as table rows.
+        assert!(r.contains("| 1 |"));
+        assert!(r.contains("| 2 |"));
+        // Convergence-targets section.
+        assert!(r.contains("## Convergence Targets"));
+    }
+
+    // ── format_iteration_result dispatcher (no output path) ──
+
+    #[test]
+    fn test_format_iteration_result_text_to_stdout() {
+        let r = make_iter_result(1, true);
+        // None output_path → println! to stdout.
+        format_iteration_result(&r, &OracleOutputFormat::Text, None).unwrap();
+    }
+
+    #[test]
+    fn test_format_iteration_result_json_to_stdout() {
+        let r = make_iter_result(1, true);
+        format_iteration_result(&r, &OracleOutputFormat::Json, None).unwrap();
+    }
+
+    #[test]
+    fn test_format_iteration_result_markdown_to_stdout() {
+        let r = make_iter_result(1, true);
+        format_iteration_result(&r, &OracleOutputFormat::Markdown, None).unwrap();
+    }
+
+    #[test]
+    fn test_format_iteration_result_writes_to_provided_path() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let out_path = temp.path().join("iter.txt");
+        let r = make_iter_result(1, true);
+        format_iteration_result(&r, &OracleOutputFormat::Text, Some(&out_path)).unwrap();
+        let written = std::fs::read_to_string(&out_path).unwrap();
+        assert!(written.contains("Defects found:"));
+    }
+
+    // ── format_single_result dispatcher (3 arms) ──
+
+    #[test]
+    fn test_format_single_result_text_arm() {
+        let r = make_iter_result(1, true);
+        let out = format_single_result(&r, OracleOutputFormat::Text).unwrap();
+        assert!(out.contains("Single PDCA Iteration"));
+        assert!(out.contains("Converged: YES"));
+    }
+
+    #[test]
+    fn test_format_single_result_json_arm() {
+        let r = make_iter_result(2, false);
+        let out = format_single_result(&r, OracleOutputFormat::Json).unwrap();
+        // Verify it parses as JSON with expected keys.
+        let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+        assert_eq!(v["iteration"], 2);
+        assert_eq!(v["converged"], false);
+    }
+
+    #[test]
+    fn test_format_single_result_markdown_arm() {
+        let r = make_iter_result(1, false);
+        let out = format_single_result(&r, OracleOutputFormat::Markdown).unwrap();
+        assert!(out.contains("# Single PDCA Iteration"));
+        // Non-converged → ❌ in table.
+        assert!(out.contains("❌"));
+    }
+
+    // ── format_status Markdown arm (existing tests cover Text + Json) ──
+
+    #[test]
+    fn test_format_status_markdown_emits_table_with_status_icons() {
+        let metrics = crate::services::oracle::ProjectMetrics {
+            test_coverage: 0.95,
+            mutation_score: 0.80,
+            compiler_errors: 0,
+            ..Default::default()
+        };
+        let targets = crate::services::oracle::ConvergenceTargets {
+            test_coverage: 0.90,
+            mutation_score: 0.70,
+            max_compiler_errors: 5,
+            ..crate::services::oracle::ConvergenceTargets::default()
+        };
+        let status = crate::services::oracle::ConvergenceStatus::Converged;
+        let r =
+            format_status(&metrics, &targets, &status, OracleOutputFormat::Markdown).unwrap();
+        assert!(r.contains("# Project Quality Status"));
+        // All three metrics should pass with ✅.
+        assert!(r.contains("✅"));
+    }
+
+    #[test]
+    fn test_format_status_text_json() {
         let metrics = crate::services::oracle::ProjectMetrics {
             test_coverage: 0.85,
             mutation_score: 0.75,
