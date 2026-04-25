@@ -126,3 +126,149 @@ pub(super) fn format_markdown(report: &CrossCrateReport) -> String {
 
     out
 }
+
+#[cfg(test)]
+mod cross_crate_output_tests {
+    //! Covers format_text + format_markdown in
+    //! cross_crate_handlers/output.rs (97 uncov on broad, 0% cov).
+    use super::*;
+    use crate::cli::handlers::comply_handlers::cross_crate_handlers::types::{
+        CcSeverity, CrossCrateFinding, CrossCrateReport, CrossCrateSummary,
+    };
+    use std::collections::HashMap;
+
+    fn empty_report(crates: Vec<&str>) -> CrossCrateReport {
+        CrossCrateReport {
+            findings: vec![],
+            summary: CrossCrateSummary {
+                total_findings: 0,
+                errors: 0,
+                warnings: 0,
+                advisories: 0,
+                rules_triggered: HashMap::new(),
+            },
+            crates_analyzed: crates.into_iter().map(String::from).collect(),
+        }
+    }
+
+    fn finding(
+        rule: &str,
+        sev: CcSeverity,
+        crate_a: &str,
+        crate_b: &str,
+        sim: Option<f64>,
+    ) -> CrossCrateFinding {
+        CrossCrateFinding {
+            rule: rule.to_string(),
+            severity: sev,
+            crate_a: crate_a.to_string(),
+            crate_b: crate_b.to_string(),
+            function_a: "func_a".to_string(),
+            function_b: "func_b".to_string(),
+            file_a: "src/a.rs".to_string(),
+            file_b: "src/b.rs".to_string(),
+            similarity: sim,
+            recommendation: "merge".to_string(),
+        }
+    }
+
+    // ── format_text ──
+
+    #[test]
+    fn test_format_text_empty_findings_writes_no_findings_line() {
+        let r = empty_report(vec!["foo", "bar"]);
+        let out = format_text(&r);
+        assert!(out.contains("Cross-Crate Duplication Report"));
+        assert!(out.contains("foo, bar"));
+        assert!(out.contains("No cross-crate duplication findings"));
+    }
+
+    #[test]
+    fn test_format_text_single_finding_emits_rule_section() {
+        let mut r = empty_report(vec!["a", "b"]);
+        r.findings
+            .push(finding("CC-001", CcSeverity::Error, "a", "b", Some(0.85)));
+        r.summary.total_findings = 1;
+        r.summary.errors = 1;
+        let out = format_text(&r);
+        // Should include the rule + crates + function names.
+        assert!(out.contains("CC-001"));
+        assert!(out.contains("func_a") || out.contains("func_b"));
+    }
+
+    #[test]
+    fn test_format_text_findings_grouped_by_rule_in_canonical_order() {
+        let mut r = empty_report(vec!["a", "b"]);
+        r.findings
+            .push(finding("CC-005", CcSeverity::Advisory, "a", "b", None));
+        r.findings
+            .push(finding("CC-001", CcSeverity::Error, "a", "b", Some(0.95)));
+        r.findings
+            .push(finding("CC-003", CcSeverity::Warning, "a", "b", Some(0.7)));
+        r.summary.total_findings = 3;
+        let out = format_text(&r);
+        // CC-001 should appear before CC-003 should appear before CC-005.
+        let pos_001 = out.find("CC-001").unwrap();
+        let pos_003 = out.find("CC-003").unwrap();
+        let pos_005 = out.find("CC-005").unwrap();
+        assert!(pos_001 < pos_003);
+        assert!(pos_003 < pos_005);
+    }
+
+    // ── format_markdown ──
+
+    #[test]
+    fn test_format_markdown_empty_findings_no_table() {
+        let r = empty_report(vec!["x", "y"]);
+        let out = format_markdown(&r);
+        assert!(out.contains("# Cross-Crate Duplication Report"));
+        assert!(out.contains("**Crates analyzed:** x, y"));
+        assert!(out.contains("No cross-crate duplication findings"));
+        assert!(!out.contains("| Rule |"));
+    }
+
+    #[test]
+    fn test_format_markdown_with_findings_emits_table() {
+        let mut r = empty_report(vec!["a", "b"]);
+        r.findings
+            .push(finding("CC-001", CcSeverity::Error, "a", "b", Some(0.85)));
+        r.summary.total_findings = 1;
+        r.summary.errors = 1;
+        let out = format_markdown(&r);
+        assert!(out.contains("| Rule |"));
+        assert!(out.contains("CC-001"));
+        // 0.85 → "85%"
+        assert!(out.contains("85%"));
+        assert!(out.contains("**Summary:**"));
+        assert!(out.contains("1 findings"));
+    }
+
+    #[test]
+    fn test_format_markdown_no_similarity_renders_dash() {
+        let mut r = empty_report(vec!["a", "b"]);
+        r.findings
+            .push(finding("CC-002", CcSeverity::Warning, "a", "b", None));
+        r.summary.total_findings = 1;
+        r.summary.warnings = 1;
+        let out = format_markdown(&r);
+        // None similarity → "—" placeholder.
+        assert!(out.contains("—"));
+    }
+
+    #[test]
+    fn test_format_markdown_summary_counts_match_struct() {
+        let mut r = empty_report(vec!["a"]);
+        r.summary.total_findings = 5;
+        r.summary.errors = 2;
+        r.summary.warnings = 1;
+        r.summary.advisories = 2;
+        // Add one dummy finding so the summary section runs.
+        r.findings
+            .push(finding("CC-001", CcSeverity::Error, "a", "b", None));
+        let out = format_markdown(&r);
+        assert!(out.contains("5 findings"));
+        assert!(out.contains("2 errors"));
+        assert!(out.contains("1 warnings"));
+        assert!(out.contains("2 advisories"));
+    }
+}
