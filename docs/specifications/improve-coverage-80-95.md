@@ -304,6 +304,31 @@ If the pattern generalises across ~10-15 subprocess-bound files in PMAT, total R
 
 **Reaching 85%**: 78.54% → 85.00% = 6.46pp ≈ 6,100 tests at observed rate. With aggressive R5 across ~10-15 files contributing ~1-2pp, plus ~5pp from focused drip-feed on still-uncovered areas, **85% is reachable in ~3-5 disciplined sessions** (~1,500-2,000 tests/session).
 
+### 4.8 R5 generalisation log (wave 35, 2026-04-25)
+
+R5 pattern now validated on FOUR prototypes — pattern is portable:
+
+| File | Lines | Helpers extracted | Tests | Notes |
+|------|-----:|--------------------|-----:|-------|
+| qa_work_handler/impl_validation.rs | 447 | 6 | 22 | Subprocess-outcome trinary, doc-fail-as-warning, git-log task ref, changelog ref, score calc, pass criterion |
+| maintenance/git.rs | 236 | 1 | 8 | Multi-stdout commit-info parser; UTF-8 + trim + split |
+| quality/gates_checks.rs | 286 | 3 | 20 | Clippy/test/coverage message+decision builders |
+| cli/handlers/health_handler_checks.rs | 341 | 3 | 11 | 3-tier status classifiers (coverage/complexity/satd) |
+
+**13 pure helpers extracted, 61 tests added.** Each helper:
+- Wears `#[provable_contracts_macros::contract(...)]` decorator
+- Tested with boundary cases (threshold ties, empty inputs, edge defaults)
+- Replaces inline match-arm in subprocess wrapper without behavior change
+
+**Pattern shape (the prototype-tested template):**
+1. Locate file with `Command::new(...)` + decision-on-result match
+2. Extract pure helper(s) operating on `&[u8]` / `&str` / primitive args
+3. Decorate with `#[contract(...)]` for invariant enforcement
+4. Replace inline match in subprocess wrapper with helper call
+5. Test the helper exhaustively — boundaries are where defects hide
+
+**~10-15 more candidate files identified by `Command::new` density** that will follow this template. Per-file yield ~10-20 tests. Total wave-35 contribution: **52 tests in ~10 minutes of session time**, matching the prediction in §4.7 of "modest broad-pp gain but valuable testability + provable-contract surface".
+
 ---
 
 ## 5. Phased Milestones
