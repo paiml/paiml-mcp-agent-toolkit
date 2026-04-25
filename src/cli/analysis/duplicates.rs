@@ -313,6 +313,202 @@ mod tests {
         assert!(output.contains("Block 1"));
         assert!(output.contains("10 lines, 2 locations"));
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // duplicates_output.rs: format_output dispatcher + sarif/csv +
+    // write_top_files_section + write_remaining_blocks_count + extract_filename
+    // ─────────────────────────────────────────────────────────────────────
+
+    fn populated_report_with_blocks(n_blocks: usize) -> DuplicateReport {
+        let blocks = (0..n_blocks)
+            .map(|i| DuplicateBlock {
+                hash: format!("h{i}"),
+                locations: vec![
+                    DuplicateLocation {
+                        file: format!("a-{i}.rs"),
+                        start_line: 1,
+                        end_line: 5,
+                        content_preview: "preview".to_string(),
+                    },
+                    DuplicateLocation {
+                        file: format!("b-{i}.rs"),
+                        start_line: 1,
+                        end_line: 5,
+                        content_preview: "preview".to_string(),
+                    },
+                ],
+                lines: 5,
+                tokens: 10,
+                similarity: 1.0,
+            })
+            .collect();
+        let mut file_stats = HashMap::new();
+        file_stats.insert(
+            "src/x.rs".to_string(),
+            FileStats {
+                duplicate_lines: 10,
+                total_lines: 50,
+                duplication_percentage: 20.0,
+            },
+        );
+        file_stats.insert(
+            "src/y.rs".to_string(),
+            FileStats {
+                duplicate_lines: 5,
+                total_lines: 100,
+                duplication_percentage: 5.0,
+            },
+        );
+        DuplicateReport {
+            total_duplicates: n_blocks,
+            duplicate_lines: n_blocks * 5,
+            total_lines: 1000,
+            duplication_percentage: 5.0,
+            duplicate_blocks: blocks,
+            file_statistics: file_stats,
+        }
+    }
+
+    #[test]
+    fn test_format_output_dispatcher_human_arm() {
+        let r = populated_report_with_blocks(1);
+        // Human/Summary/Detailed all go to format_human_output.
+        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Human).unwrap();
+        let stripped = strip_ansi(&out);
+        assert!(stripped.contains("Duplicate Code Analysis"));
+    }
+
+    #[test]
+    fn test_format_output_dispatcher_summary_and_detailed_arms() {
+        let r = populated_report_with_blocks(1);
+        // Summary + Detailed share the human-output arm; verify both succeed.
+        format_output(&r, crate::cli::DuplicateOutputFormat::Summary).unwrap();
+        format_output(&r, crate::cli::DuplicateOutputFormat::Detailed).unwrap();
+    }
+
+    #[test]
+    fn test_format_output_dispatcher_json_arm() {
+        let r = populated_report_with_blocks(2);
+        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Json).unwrap();
+        assert!(out.contains("\"total_duplicates\""));
+        assert!(out.contains("\"entropy_analysis\""));
+        assert!(out.contains("\"metrics\""));
+    }
+
+    #[test]
+    fn test_format_output_dispatcher_sarif_arm() {
+        let r = populated_report_with_blocks(2);
+        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Sarif).unwrap();
+        assert!(out.contains("\"version\": \"2.1.0\""));
+        assert!(out.contains("duplicate-code"));
+    }
+
+    #[test]
+    fn test_format_output_dispatcher_csv_arm() {
+        let r = populated_report_with_blocks(2);
+        let out = format_output(&r, crate::cli::DuplicateOutputFormat::Csv).unwrap();
+        assert!(out.starts_with("Type,File1,Start1,End1,File2,Start2,End2\n"));
+        // 2 blocks → 2 data rows.
+        assert_eq!(out.lines().filter(|l| l.starts_with("exact,")).count(), 2);
+    }
+
+    #[test]
+    fn test_format_csv_skips_blocks_with_under_two_locations() {
+        let mut r = populated_report_with_blocks(0);
+        r.duplicate_blocks.push(DuplicateBlock {
+            hash: "single".to_string(),
+            locations: vec![DuplicateLocation {
+                file: "only.rs".to_string(),
+                start_line: 1,
+                end_line: 2,
+                content_preview: String::new(),
+            }],
+            lines: 1,
+            tokens: 1,
+            similarity: 1.0,
+        });
+        let out = format_csv_output(&r).unwrap();
+        // Header only — single-location block dropped.
+        assert_eq!(out, "Type,File1,Start1,End1,File2,Start2,End2\n");
+    }
+
+    #[test]
+    fn test_human_output_with_file_stats_emits_top_files() {
+        let r = populated_report_with_blocks(1);
+        let out = strip_ansi(&format_human_output(&r).unwrap());
+        // file_statistics non-empty → "Top Files by Duplication" section emitted.
+        assert!(out.contains("Top Files by Duplication"));
+        // Filenames extracted from full paths.
+        assert!(out.contains("x.rs"));
+        assert!(out.contains("y.rs"));
+    }
+
+    #[test]
+    fn test_human_output_skips_top_files_when_stats_empty() {
+        let mut r = populated_report_with_blocks(0);
+        r.file_statistics.clear();
+        let out = strip_ansi(&format_human_output(&r).unwrap());
+        assert!(!out.contains("Top Files by Duplication"));
+    }
+
+    #[test]
+    fn test_human_output_with_more_than_20_blocks_shows_remaining_count() {
+        let r = populated_report_with_blocks(25);
+        let out = strip_ansi(&format_human_output(&r).unwrap());
+        // First 20 emitted; remainder shown as "... and 5 more blocks".
+        assert!(out.contains("... and 5 more blocks"));
+    }
+
+    #[test]
+    fn test_human_output_no_remaining_count_when_blocks_le_20() {
+        let r = populated_report_with_blocks(15);
+        let out = strip_ansi(&format_human_output(&r).unwrap());
+        assert!(!out.contains("more blocks"));
+    }
+
+    #[test]
+    fn test_extract_filename_handles_paths_and_bare_names() {
+        // Bare name → returned unchanged.
+        assert_eq!(extract_filename("foo.rs"), "foo.rs");
+        // Full path → only basename returned.
+        assert_eq!(extract_filename("src/cli/foo.rs"), "foo.rs");
+        // No extension → still returns basename.
+        assert_eq!(extract_filename("src/cli/Makefile"), "Makefile");
+    }
+
+    #[test]
+    fn test_get_sorted_file_stats_sorts_by_dup_pct_desc() {
+        let mut stats = HashMap::new();
+        stats.insert(
+            "low.rs".to_string(),
+            FileStats {
+                duplicate_lines: 1,
+                total_lines: 100,
+                duplication_percentage: 1.0,
+            },
+        );
+        stats.insert(
+            "high.rs".to_string(),
+            FileStats {
+                duplicate_lines: 50,
+                total_lines: 100,
+                duplication_percentage: 50.0,
+            },
+        );
+        stats.insert(
+            "mid.rs".to_string(),
+            FileStats {
+                duplicate_lines: 10,
+                total_lines: 100,
+                duplication_percentage: 10.0,
+            },
+        );
+        let sorted = get_sorted_file_stats(&stats);
+        // Descending order: high → mid → low.
+        assert_eq!(sorted[0].0, "high.rs");
+        assert_eq!(sorted[1].0, "mid.rs");
+        assert_eq!(sorted[2].0, "low.rs");
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
