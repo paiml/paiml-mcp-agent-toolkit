@@ -390,7 +390,45 @@ Deletions (5 PRs, all verified by `cargo test --lib --no-run` passing):
 
 **Cumulative orphan deletes (waves 33+36+37):** ~34,000 lines total — one of the biggest single-branch denominator reductions on record for this repo.
 
-**Broad-gate measurement pending** (kicked off post-PR3, will measure post-PR5 separately). The §4.9 model predicts orphan deletion is the strongest broad-gate lever; this sweep is the test of that prediction.
+**§4.10 EMPIRICAL CORRECTION (post wave-37 broad measurement, 2026-04-26):**
+
+`make coverage-broad` after wave 36 PR5+PR6 + wave 37 PR1..PR3 measured **78.77%** — vs 78.74% baseline = **+0.03pp delta**. Orphan-file deletion is *also* a 0pp lever on broad gate, falsifying the §4.9 lever-list claim.
+
+**Why orphan-deletion = 0pp:** Files with no `mod foo;` / `include!()` / `#[path]` reference are NOT compiled by rustc. Uncompiled files have no entry in LCOV. The denominator already excluded them. Deletion is *hygiene* (source-tree cleanup, IDE/grep noise reduction, dead-code visibility) but NOT a coverage measurement lever.
+
+**The corrected broad-gate model (wave 36+37 evidence):**
+
+| Lever | Pp/PR effect | Notes |
+|-------|--------------|-------|
+| (a) Orphan deletion | **0pp** | Uncompiled = unmeasured. Hygiene only. |
+| (b) Drip-feed unit tests on reachable helpers | **0pp ± noise** | Helpers already partially covered via integration paths; new tests inflate compile-unit denominator faster than they cover novel lines. |
+| (c) Snapshot/insta tests on scaffold | exhausted | Phase-1 §4.6 audit closed this. |
+| (d) Integration tests exercising end-to-end CLI handlers | **untested** | This is the only remaining hypothesis. Many handler files are 200-900 lines at 0% coverage (see file-level summary below). |
+| (e) `coverage(off)` audit / R3 | **0pp** | Per project memory + spec §4.5. Confirmed.|
+
+**Big uncovered handler bodies (file-level summary, post wave-37):**
+
+| File | Missed lines | % cov | Total |
+|------|-------------:|------:|------:|
+| `cli/handlers/work_handlers/core_handlers/contract.rs` | 315 | 0.00% | 315 |
+| `cli/handlers/split_auto_handler.rs` | 314 | 64.32% | 880 |
+| `handlers/tools/core_tools_template_handlers.rs` | 304 | 0.00% | 304 |
+| `cli/handlers/qa_work_handler/impl_validation.rs` | 304 | 8.43% | 332 |
+| `cli/handlers/kaizen_handler/scanning_analysis.rs` | 272 | 2.16% | 278 |
+| `cli/handlers/work_quality_handlers.rs` | 265 | 0.00% | 265 |
+| `cli/handlers/test_handlers.rs` | 256 | 0.00% | 256 |
+| `cli/handlers/analysis_handlers/advanced_routes.rs` | 256 | 25.58% | 344 |
+| `cli/command_dispatcher/command_routing.rs` | 251 | 0.00% | 251 |
+| `tdg/analyzer_ast/analyzer_impl1_language_extra.rs` | 248 | 0.00% | 248 |
+| `services/languages/ruchy/complexity_analysis.rs` | 231 | 0.00% | 231 |
+| `cli/handlers/refactor_auto_handlers/output_handler_formatting.rs` | 223 | 0.00% | 223 |
+
+Top 12 files = ~3,239 missed lines / 333,742 broad denominator = ~0.97pp ceiling. Even covering ALL of them gets us to ~79.7% broad. **The 6.2pp gap to 85% cannot be closed without lever (d) on a much wider scale, AND fixing the broad-gate denominator** (e.g., reducing the size of unmeasured handler bodies via dead-code removal *that's actually compiled*).
+
+**Forward path adjusted (3 honest options):**
+1. **Lever (d) integration test sweep**: pick 5-10 of the 0%-coverage handler files (200-300 lines each), write tempfile-based integration tests that invoke them end-to-end. Each PR could yield 0.05-0.2pp. ~30-60 PRs to close gap. Significant time investment.
+2. **Lever (a)+(d) compiled-but-dead-code sweep**: find functions inside compiled modules that are never called from any production path (vs. just orphan files). These are denominator reductions WITH measurement impact. Requires call-graph analysis.
+3. **Reframe the target**: 78.77% broad gate is honest. The 95% / 85% targets are aspirational; the empirical pace per-PR makes 80% the practical near-term ceiling without a substantial change in test architecture.
 
 **Notable orphan archeology:**
 - `state/raft_consensus*` (4 files, ~2,500 lines): `pub mod raft_consensus;` was commented out at `state/mod.rs:6` with the note "async_raft v0.6 requires breaking API changes" — the entire chain has been dead since the abandonment.
