@@ -220,7 +220,10 @@ impl PolyglotAnalyzer {
         }
     }
 
-    // Helper function to check frameworks in content
+    // Helper function to check frameworks in content.
+    // Wave 39 PR23: contract added — output length is bounded by map length
+    // (`check_compliance` invariant, no unbounded allocations).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn check_frameworks(content: &str, framework_map: &[(&str, &str)]) -> Vec<String> {
         framework_map
             .iter()
@@ -345,5 +348,170 @@ impl PolyglotAnalyzer {
 
     fn estimate_test_coverage(&self, _info: &LanguageInfo) -> f64 {
         0.75
+    }
+}
+
+#[cfg(test)]
+mod polyglot_detection_tests {
+    //! Wave 39 PR23 — pure-helper coverage for polyglot_analyzer_detection.rs
+    //! (185 missed at 30% pre-wave). Async framework-detect methods do
+    //! filesystem reads (testable with tempdir). The static `check_frameworks`
+    //! helper is purely computational.
+    use super::*;
+
+    // ── check_frameworks (static, pure) ─────────────────────────────────────
+
+    #[test]
+    fn test_check_frameworks_finds_listed_terms() {
+        let map: &[(&str, &str)] = &[("tokio", "Tokio"), ("serde", "Serde"), ("clap", "Clap")];
+        let content = "[dependencies]\ntokio = \"1\"\nserde = \"1\"\n";
+        let found = PolyglotAnalyzer::check_frameworks(content, map);
+        assert!(found.contains(&"Tokio".to_string()));
+        assert!(found.contains(&"Serde".to_string()));
+        assert!(!found.contains(&"Clap".to_string()));
+    }
+
+    #[test]
+    fn test_check_frameworks_empty_content_returns_empty() {
+        let map: &[(&str, &str)] = &[("tokio", "Tokio")];
+        let found = PolyglotAnalyzer::check_frameworks("", map);
+        assert!(found.is_empty());
+    }
+
+    #[test]
+    fn test_check_frameworks_empty_map_returns_empty() {
+        // PIN: empty framework map → empty result regardless of content.
+        let found = PolyglotAnalyzer::check_frameworks("tokio = \"1\"", &[]);
+        assert!(found.is_empty());
+    }
+
+    #[test]
+    fn test_check_frameworks_substring_match_no_word_boundary() {
+        // PIN: contains() is substring match (not word-boundary). So
+        // "tokio" matches inside "tokio_metrics" too. Document this so
+        // future contributors don't tighten without intent.
+        let map: &[(&str, &str)] = &[("tokio", "Tokio")];
+        let content = "tokio_metrics = \"0.1\"";
+        let found = PolyglotAnalyzer::check_frameworks(content, map);
+        assert_eq!(found, vec!["Tokio".to_string()]);
+    }
+
+    #[test]
+    fn test_check_frameworks_preserves_order_of_map() {
+        // PIN: results are produced by filter_map over the map iter →
+        // order is the order of the map argument, not content order.
+        let map: &[(&str, &str)] = &[("axum", "Axum"), ("tokio", "Tokio")];
+        let content = "tokio = \"1\"\naxum = \"0.7\"";
+        let found = PolyglotAnalyzer::check_frameworks(content, map);
+        // Map order: Axum first, then Tokio. Despite content order being reversed.
+        assert_eq!(found, vec!["Axum".to_string(), "Tokio".to_string()]);
+    }
+
+    #[test]
+    fn test_check_frameworks_duplicate_names_each_emit_once() {
+        // PIN: filter+map doesn't dedupe; each map entry that matches emits one entry.
+        let map: &[(&str, &str)] = &[("tokio", "Tokio"), ("tokio", "Tokio")];
+        let found = PolyglotAnalyzer::check_frameworks("tokio", map);
+        assert_eq!(found.len(), 2, "each map entry contributes independently");
+    }
+
+    // ── PolyglotAnalyzer::new (constructor) ─────────────────────────────────
+
+    #[test]
+    fn test_polyglot_analyzer_new_initializes_patterns() {
+        let analyzer = PolyglotAnalyzer::new();
+        // Constructor calls initialize_patterns + initialize_architecture_signatures.
+        // Verify language_patterns has at least the major languages.
+        assert!(analyzer.language_patterns.contains_key("rust"));
+        assert!(!analyzer.architecture_signatures.is_empty());
+    }
+
+    #[test]
+    fn test_polyglot_analyzer_new_returns_non_empty_state() {
+        let a = PolyglotAnalyzer::new();
+        // Sanity: > 1 language pattern, > 0 architecture signatures.
+        assert!(a.language_patterns.len() > 1);
+        assert!(!a.architecture_signatures.is_empty());
+    }
+
+    // ── detect_rust_frameworks (async, tempdir-fixture testable) ────────────
+
+    #[tokio::test]
+    async fn test_detect_rust_frameworks_with_cargo_toml() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[dependencies]\ntokio = \"1\"\nserde = \"1\"\naxum = \"0.7\"\n",
+        )
+        .unwrap();
+        let analyzer = PolyglotAnalyzer::new();
+        let frameworks = analyzer.detect_rust_frameworks(tmp.path()).await.unwrap();
+        assert!(frameworks.contains(&"Tokio".to_string()));
+        assert!(frameworks.contains(&"Serde".to_string()));
+        assert!(frameworks.contains(&"Axum".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_detect_rust_frameworks_missing_cargo_returns_empty() {
+        // PIN: missing Cargo.toml is graceful → empty Vec, NOT error.
+        let tmp = tempfile::tempdir().unwrap();
+        let analyzer = PolyglotAnalyzer::new();
+        let frameworks = analyzer.detect_rust_frameworks(tmp.path()).await.unwrap();
+        assert!(frameworks.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_detect_rust_frameworks_no_known_frameworks() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[dependencies]\nfoo = \"1\"\nbar = \"2\"\n",
+        )
+        .unwrap();
+        let analyzer = PolyglotAnalyzer::new();
+        let frameworks = analyzer.detect_rust_frameworks(tmp.path()).await.unwrap();
+        assert!(frameworks.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_detect_python_frameworks_via_requirements_txt() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("requirements.txt"),
+            "django==4.0\nfastapi==0.100\nrequests==2.0\n",
+        )
+        .unwrap();
+        let analyzer = PolyglotAnalyzer::new();
+        let frameworks = analyzer.detect_python_frameworks(tmp.path()).await.unwrap();
+        assert!(frameworks.contains(&"Django".to_string()));
+        assert!(frameworks.contains(&"FastAPI".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_detect_language_frameworks_routes_by_language() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[dependencies]\nclap = \"4\"\n",
+        )
+        .unwrap();
+        let analyzer = PolyglotAnalyzer::new();
+        let result = analyzer
+            .detect_language_frameworks(tmp.path(), "rust")
+            .await
+            .unwrap();
+        assert!(result.contains(&"Clap".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_detect_language_frameworks_unknown_language_returns_empty() {
+        // PIN: unknown languages route to "_" arm → empty Vec (no error).
+        let tmp = tempfile::tempdir().unwrap();
+        let analyzer = PolyglotAnalyzer::new();
+        let result = analyzer
+            .detect_language_frameworks(tmp.path(), "klingon")
+            .await
+            .unwrap();
+        assert!(result.is_empty());
     }
 }
