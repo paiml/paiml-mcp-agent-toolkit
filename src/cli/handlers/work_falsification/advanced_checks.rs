@@ -417,3 +417,231 @@ pub(crate) async fn test_lint_pass(project_path: &Path) -> Result<FalsificationR
         EvidenceType::BooleanCheck(false),
     ))
 }
+
+#[cfg(test)]
+mod advanced_checks_tests {
+    //! Wave 39 PR17 — pure-helper coverage for advanced_checks.rs
+    //! (155 missed, 0% pre-wave). The async test_* functions shell out
+    //! to pmat/cargo and are disqualified per spec §4.11.
+    use super::*;
+
+    // ── is_satd_comment ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_is_satd_comment_basic_double_slash() {
+        // PIN: starts with `//` AND not `///` AND not `//!` AND not SECURITY/SAFETY.
+        assert!(is_satd_comment("// TODO: fix"));
+        assert!(is_satd_comment("// FIXME"));
+        assert!(is_satd_comment("// HACK because"));
+    }
+
+    #[test]
+    fn test_is_satd_comment_doc_comments_excluded() {
+        // PIN: doc comments are NOT SATD.
+        assert!(!is_satd_comment("/// doc comment"));
+        assert!(!is_satd_comment("//! inner doc"));
+    }
+
+    #[test]
+    fn test_is_satd_comment_security_safety_excluded() {
+        // PIN: SECURITY: and SAFETY: prefixed comments are NOT SATD even though
+        // they start with `//`.
+        assert!(!is_satd_comment("// SECURITY: validated input"));
+        assert!(!is_satd_comment("// SAFETY: invariant holds"));
+    }
+
+    #[test]
+    fn test_is_satd_comment_non_comment_lines_rejected() {
+        assert!(!is_satd_comment("fn foo() {}"));
+        assert!(!is_satd_comment(""));
+        assert!(!is_satd_comment("  let x = 42;"));
+    }
+
+    // ── extract_satd_markers ────────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_satd_markers_single_pattern() {
+        let path = PathBuf::from("foo.rs");
+        let markers =
+            extract_satd_markers("    // TODO: handle this case better", &path, &["TODO"]);
+        assert_eq!(markers.len(), 1);
+        assert!(markers[0].1.starts_with("TODO"));
+    }
+
+    #[test]
+    fn test_extract_satd_markers_multiple_patterns_all_matched() {
+        let path = PathBuf::from("foo.rs");
+        let markers = extract_satd_markers("// TODO and FIXME together", &path, &["TODO", "FIXME"]);
+        assert_eq!(markers.len(), 2);
+    }
+
+    #[test]
+    fn test_extract_satd_markers_truncates_to_50_chars() {
+        // PIN: marker text after pattern is truncated to 50 chars.
+        let path = PathBuf::from("foo.rs");
+        let suffix: String = "x".repeat(100);
+        let long_text = format!("TODO{suffix}");
+        let markers = extract_satd_markers(&long_text, &path, &["TODO"]);
+        assert_eq!(markers.len(), 1);
+        // Marker = "TODO" + first 50 chars of suffix = max ~54 chars
+        assert!(markers[0].1.len() <= 54);
+    }
+
+    #[test]
+    fn test_extract_satd_markers_no_match_returns_empty() {
+        let path = PathBuf::from("foo.rs");
+        let markers = extract_satd_markers("fn foo() {}", &path, &["TODO"]);
+        assert!(markers.is_empty());
+    }
+
+    // ── is_excluded_from_per_file_coverage ──────────────────────────────────
+
+    #[test]
+    fn test_is_excluded_from_per_file_coverage_tests_dir() {
+        assert!(is_excluded_from_per_file_coverage("/repo/tests/foo.rs"));
+        assert!(is_excluded_from_per_file_coverage("src/foo_test.rs"));
+        assert!(is_excluded_from_per_file_coverage(
+            "/repo/target/debug/build.rs"
+        ));
+    }
+
+    #[test]
+    fn test_is_excluded_from_per_file_coverage_normal_src_not_excluded() {
+        assert!(!is_excluded_from_per_file_coverage("src/foo.rs"));
+        assert!(!is_excluded_from_per_file_coverage("src/cli/main.rs"));
+    }
+
+    // ── extract_file_line_coverage ──────────────────────────────────────────
+
+    #[test]
+    fn test_extract_file_line_coverage_valid_json() {
+        let entry = serde_json::json!({
+            "summary": {
+                "lines": {
+                    "percent": 85.5
+                }
+            }
+        });
+        assert_eq!(extract_file_line_coverage(&entry), 85.5);
+    }
+
+    #[test]
+    fn test_extract_file_line_coverage_missing_summary_defaults_100() {
+        // PIN: missing fields default to 100.0 (treated as full coverage).
+        // This is INTENTIONAL — we don't fail tests for files we couldn't measure.
+        let entry = serde_json::json!({});
+        assert_eq!(extract_file_line_coverage(&entry), 100.0);
+    }
+
+    #[test]
+    fn test_extract_file_line_coverage_partial_path_defaults_100() {
+        // Missing percent value → default 100.0.
+        let entry = serde_json::json!({"summary": {"lines": {}}});
+        assert_eq!(extract_file_line_coverage(&entry), 100.0);
+    }
+
+    // ── collect_files_below_threshold ───────────────────────────────────────
+
+    #[test]
+    fn test_collect_files_below_threshold_empty_data() {
+        let json = serde_json::json!({});
+        let result = collect_files_below_threshold(&json, 80.0);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_collect_files_below_threshold_filters_by_pct() {
+        let json = serde_json::json!({
+            "data": [{
+                "files": [
+                    {"filename": "src/good.rs", "summary": {"lines": {"percent": 95.0}}},
+                    {"filename": "src/bad.rs", "summary": {"lines": {"percent": 50.0}}},
+                    {"filename": "src/edge.rs", "summary": {"lines": {"percent": 80.0}}},
+                ]
+            }]
+        });
+        // Threshold 80 → only "bad" (50%) is below; "edge" (80) is NOT (strict <).
+        let result = collect_files_below_threshold(&json, 80.0);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].0, PathBuf::from("src/bad.rs"));
+        assert_eq!(result[0].1, 50.0);
+    }
+
+    #[test]
+    fn test_collect_files_below_threshold_excludes_test_files() {
+        // PIN: exclusion rule is `/tests/` (with leading slash) OR `_test.rs`
+        // OR `/target/`. A bare `tests/foo.rs` (no leading slash) is NOT
+        // excluded — only `/tests/foo.rs` patterns. This is fragile but pinned.
+        let json = serde_json::json!({
+            "data": [{
+                "files": [
+                    {"filename": "/repo/tests/integration.rs", "summary": {"lines": {"percent": 0.0}}},
+                    {"filename": "src/foo_test.rs", "summary": {"lines": {"percent": 0.0}}},
+                    {"filename": "src/real.rs", "summary": {"lines": {"percent": 30.0}}},
+                ]
+            }]
+        });
+        let result = collect_files_below_threshold(&json, 80.0);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].0, PathBuf::from("src/real.rs"));
+    }
+
+    #[test]
+    fn test_collect_files_below_threshold_bare_tests_dir_not_excluded_pin() {
+        // PIN: `tests/foo.rs` (no leading slash) does NOT match `/tests/`.
+        // The exclusion is path-anchored.
+        let json = serde_json::json!({
+            "data": [{
+                "files": [
+                    {"filename": "tests/foo.rs", "summary": {"lines": {"percent": 0.0}}},
+                ]
+            }]
+        });
+        let result = collect_files_below_threshold(&json, 80.0);
+        assert_eq!(
+            result.len(),
+            1,
+            "bare tests/foo.rs (no leading slash) is NOT excluded"
+        );
+    }
+
+    // ── build_per_file_coverage_result ──────────────────────────────────────
+
+    #[test]
+    fn test_build_per_file_coverage_result_empty_passes() {
+        let result = build_per_file_coverage_result(vec![], 80.0);
+        assert!(!result.falsified);
+        assert!(result.explanation.contains("All files"));
+        assert!(result.explanation.contains("80.0%"));
+    }
+
+    #[test]
+    fn test_build_per_file_coverage_result_failures_truncated_to_10() {
+        // PIN: detail list is truncated to 10 files (`take(10)`).
+        let mut files = Vec::new();
+        for i in 0..15 {
+            files.push((PathBuf::from(format!("src/f{i}.rs")), 50.0));
+        }
+        let result = build_per_file_coverage_result(files, 80.0);
+        assert!(result.falsified);
+        assert!(result.explanation.contains("15 file(s) below"));
+        // Count comma-separated entries — at most 10.
+        let comma_count = result.explanation.matches(", ").count();
+        assert!(comma_count <= 10, "got {comma_count} commas");
+    }
+
+    #[test]
+    fn test_build_per_file_coverage_result_message_format() {
+        let files = vec![
+            (PathBuf::from("src/a.rs"), 50.0),
+            (PathBuf::from("src/b.rs"), 30.0),
+        ];
+        let result = build_per_file_coverage_result(files, 80.0);
+        assert!(result.falsified);
+        assert!(result
+            .explanation
+            .contains("2 file(s) below 80.0% threshold"));
+        assert!(result.explanation.contains("src/a.rs: 50.0%"));
+        assert!(result.explanation.contains("src/b.rs: 30.0%"));
+    }
+}
