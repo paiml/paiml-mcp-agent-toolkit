@@ -1015,4 +1015,160 @@ class Cat extends Animal {
         let result = analyzer.analyze_source("", Language::Scala, None);
         assert!(result.is_ok() || result.is_err());
     }
+
+    // ── Python (Wave 39 PR12 — visitors_python.rs) ──────────────────────────
+    //
+    // Targets src/tdg/analyzer_ast/visitors_python.rs (106 missed, 0% pre-wave).
+    // Goes through `analyze_source(_, Language::Python, _)` which builds a
+    // `PythonComplexityVisitor` and walks the tree-sitter parsed AST.
+
+    #[test]
+    fn test_analyze_python_simple_function() {
+        let analyzer = analyzer();
+        let src = r#"
+def add(a, b):
+    return a + b
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Python);
+    }
+
+    #[test]
+    fn test_analyze_python_with_branches_and_loops() {
+        let analyzer = analyzer();
+        let src = r#"
+def classify(x):
+    if x > 0:
+        for i in range(x):
+            if i % 2 == 0:
+                continue
+            elif i > 10:
+                break
+        return "positive"
+    elif x == 0:
+        return "zero"
+    else:
+        return "negative"
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.structural_complexity > 0.0);
+    }
+
+    #[test]
+    fn test_analyze_python_class_with_methods_and_decorators() {
+        let analyzer = analyzer();
+        let src = r#"
+import functools
+
+class UserService:
+    def __init__(self, db):
+        self.db = db
+
+    @staticmethod
+    def validate(x):
+        return x > 0
+
+    @functools.cached_property
+    def total(self):
+        return sum(u.amount for u in self.db.users)
+
+    async def fetch(self, id):
+        return await self.db.get(id)
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_python_with_try_except_and_with() {
+        let analyzer = analyzer();
+        let src = r#"
+def safe_read(path):
+    try:
+        with open(path) as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+    except IOError as e:
+        raise RuntimeError(f"read failed: {e}")
+    finally:
+        cleanup()
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_python_with_lambda_and_comprehensions() {
+        let analyzer = analyzer();
+        let src = r#"
+nums = [1, 2, 3, 4, 5]
+doubled = [x * 2 for x in nums]
+evens = list(filter(lambda x: x % 2 == 0, nums))
+squares_dict = {x: x**2 for x in nums if x > 2}
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_python_imports_collected() {
+        let analyzer = analyzer();
+        let src = r#"
+import os
+import sys
+from collections import defaultdict, OrderedDict
+from typing import List, Optional, Dict
+import numpy as np
+
+def process():
+    pass
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_python_empty_does_not_panic() {
+        let analyzer = analyzer();
+        let result = analyzer.analyze_source("", Language::Python, None);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_analyze_python_docstring_function() {
+        // Documentation coverage exercises the docstring detection path.
+        let analyzer = analyzer();
+        let src = r#"
+def documented(x):
+    """Compute square.
+
+    Args:
+        x: input number
+    Returns:
+        x*x
+    """
+    return x * x
+
+def undocumented(y):
+    return y * y
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.doc_coverage > 0.0);
+    }
 }
