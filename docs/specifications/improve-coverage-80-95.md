@@ -489,6 +489,20 @@ The "right" R5 target is therefore not subprocess-bound files with thin helpers 
 
 **Measurement cadence**: `make coverage-broad` after every 3-5 PRs. Each measurement is ~25 minutes; budget ~4 measurements per session.
 
+#### Wave 39 progress log (2026-04-26)
+
+| PR | File | Tests | Notes |
+|----|------|------:|-------|
+| PR1 | `tdg/analyzer_ast/analyzer_impl1_language_extra.rs` | 15 | JS/TS/Go/Java/Lua/C/C++ via `analyze_source` entry point |
+| PR2 | `services/languages/ruchy/complexity_analysis.rs` | 11 | RuchyAst variants via `analyze_program` (8 match arms) |
+| PR3 | `tdg/analyzer_ast/analyzer_impl2_heuristics_lean.rs` | 7 | Lean sorry counter + block-comment + word-boundary PINs |
+| PR4 | `cli/handlers/analysis_handlers/advanced_routes.rs` | 7 | DAG type + cache strategy converters (kebab-case PIN) |
+| PR5 | `cli/handlers/qa_work_handler/impl_checklist_gen.rs` | 12 | 6 task type variants + ID schema PINs + YAML round-trip |
+| PR6 | `cli/handlers/health_handler_checks.rs` | 6 | `count_complexity_violations` threshold PIN (>20 strict) |
+| **Σ** | 6 files | **58** | All passing, all under `--features all-languages` |
+
+**Coverage measurement post-PR2**: kicked off in parallel with PR3-PR6 development. Once it lands the result will validate or falsify the lever (d) hypothesis. Per §4.10 model the prediction is +0.3-1.0pp delta from these 6 PRs; if measurement shows ~0pp again, lever (d) is also confirmed weak and the §4.11 stop criterion fires (target reframe to ~79-80% confirmed as the broad-gate ceiling).
+
 Each phase is independently shippable. Do not chase the next phase until the current one holds for 2 weeks on `main`.
 
 ### Phase 0 — Honesty baseline (1 day, v3.15.1)
