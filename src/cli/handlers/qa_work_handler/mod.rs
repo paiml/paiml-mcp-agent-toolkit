@@ -843,3 +843,132 @@ mod impl_spec_tests {
         assert!(md.contains("Status**: FAILED"));
     }
 }
+
+#[cfg(test)]
+mod checklist_gen_tests {
+    //! Wave 39 PR5 — pure-helper tests for impl_checklist_gen.rs.
+    //! generate_checklist(&str, QaTaskType) -> QaChecklist is purely
+    //! computational (no I/O, no time except Utc::now() for timestamp).
+    use super::*;
+
+    #[test]
+    fn test_generate_checklist_feature_task_type_string() {
+        let cl = generate_checklist("PMAT-100", QaTaskType::Feature);
+        assert_eq!(cl.task_id, "PMAT-100");
+        assert_eq!(cl.task_type, "feature");
+    }
+
+    #[test]
+    fn test_generate_checklist_bugfix_task_type_string() {
+        let cl = generate_checklist("X", QaTaskType::Bugfix);
+        assert_eq!(cl.task_type, "bugfix");
+    }
+
+    #[test]
+    fn test_generate_checklist_refactor_task_type_string() {
+        let cl = generate_checklist("X", QaTaskType::Refactor);
+        assert_eq!(cl.task_type, "refactor");
+    }
+
+    #[test]
+    fn test_generate_checklist_docs_task_type_string() {
+        let cl = generate_checklist("X", QaTaskType::Docs);
+        assert_eq!(cl.task_type, "docs");
+    }
+
+    #[test]
+    fn test_generate_checklist_performance_task_type_string() {
+        let cl = generate_checklist("X", QaTaskType::Performance);
+        assert_eq!(cl.task_type, "performance");
+    }
+
+    #[test]
+    fn test_generate_checklist_security_task_type_string() {
+        let cl = generate_checklist("X", QaTaskType::Security);
+        assert_eq!(cl.task_type, "security");
+    }
+
+    #[test]
+    fn test_generate_checklist_safety_ethics_has_5_items() {
+        let cl = generate_checklist("X", QaTaskType::Feature);
+        assert_eq!(cl.categories.safety_ethics.len(), 5);
+        // PIN: A1..A5 IDs are stable identifiers used by validation harness.
+        let ids: Vec<&str> = cl
+            .categories
+            .safety_ethics
+            .iter()
+            .map(|i| i.id.as_str())
+            .collect();
+        assert_eq!(ids, vec!["A1", "A2", "A3", "A4", "A5"]);
+    }
+
+    #[test]
+    fn test_generate_checklist_code_quality_has_at_least_5_items() {
+        let cl = generate_checklist("X", QaTaskType::Feature);
+        assert!(cl.categories.code_quality.len() >= 5);
+        // First IDs must follow B1..B5 schema.
+        for (i, item) in cl.categories.code_quality.iter().enumerate().take(5) {
+            assert_eq!(item.id, format!("B{}", i + 1));
+        }
+    }
+
+    #[test]
+    fn test_generate_checklist_default_state_is_unchecked() {
+        // PIN: every freshly-generated item must be checked=false; if any
+        // item gets pre-flagged "checked" the contract is violated (the
+        // validation harness expects user / automation to flip them).
+        let cl = generate_checklist("X", QaTaskType::Feature);
+        for cat in [
+            &cl.categories.safety_ethics,
+            &cl.categories.code_quality,
+            &cl.categories.testing,
+            &cl.categories.documentation,
+            &cl.categories.process,
+        ] {
+            for item in cat {
+                assert!(
+                    !item.checked,
+                    "item {} should default to unchecked",
+                    item.id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_generate_checklist_all_categories_populated() {
+        let cl = generate_checklist("X", QaTaskType::Feature);
+        assert!(!cl.categories.safety_ethics.is_empty());
+        assert!(!cl.categories.code_quality.is_empty());
+        assert!(!cl.categories.testing.is_empty());
+        assert!(!cl.categories.documentation.is_empty());
+        assert!(!cl.categories.process.is_empty());
+    }
+
+    #[test]
+    fn test_generate_checklist_task_type_string_does_not_vary_by_task_id() {
+        // PIN: task_type string is determined ONLY by QaTaskType variant —
+        // task_id has no effect on type_str.
+        let cl1 = generate_checklist("PMAT-1", QaTaskType::Bugfix);
+        let cl2 = generate_checklist("PMAT-2", QaTaskType::Bugfix);
+        assert_eq!(cl1.task_type, cl2.task_type);
+    }
+
+    #[test]
+    fn test_generate_checklist_yaml_serializes_round_trip() {
+        // Integration: the checklist must serialize to YAML cleanly (used
+        // by handle_generate_checklist for persistence to .pmat-qa/<task>/checklist.yaml).
+        let cl = generate_checklist("PMAT-42", QaTaskType::Feature);
+        let yaml = serde_yaml_ng::to_string(&cl).unwrap();
+        assert!(yaml.contains("task_id: PMAT-42"));
+        assert!(yaml.contains("task_type: feature"));
+        // Round-trip: parse the YAML back and verify.
+        let parsed: QaChecklist = serde_yaml_ng::from_str(&yaml).unwrap();
+        assert_eq!(parsed.task_id, "PMAT-42");
+        assert_eq!(parsed.task_type, "feature");
+        assert_eq!(
+            parsed.categories.safety_ethics.len(),
+            cl.categories.safety_ethics.len()
+        );
+    }
+}
