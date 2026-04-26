@@ -310,6 +310,9 @@ pub struct WorkspaceScore {
 }
 
 /// Discover workspace members from Cargo.toml
+// Wave 39 PR27: contract added — output is bounded by the count of lines
+// inside the [workspace] members = [...] block. No unbounded allocations.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn discover_workspace_members(project_path: &Path) -> Vec<(String, std::path::PathBuf)> {
     let cargo_toml = project_path.join("Cargo.toml");
     let content = match std::fs::read_to_string(&cargo_toml) {
@@ -339,10 +342,12 @@ fn discover_workspace_members(project_path: &Path) -> Vec<(String, std::path::Pa
             if trimmed.starts_with(']') {
                 break;
             }
-            let member = trimmed
-                .trim_matches('"')
-                .trim_matches('\'')
-                .trim_matches(',');
+            // Wave 39 release-prep: BUG #3 fix — was using sequential
+            // `.trim_matches('"').trim_matches('\'').trim_matches(',')` which
+            // left a trailing `"` for inputs like `"foo",` because the comma
+            // sat between the quote and the end. Use a char-set predicate to
+            // strip all three in one pass.
+            let member = trimmed.trim_matches(|c: char| c == '"' || c == '\'' || c == ',');
             if !member.is_empty() && !member.starts_with('#') {
                 expand_member(project_path, member, &mut members);
             }
@@ -538,6 +543,174 @@ mod tests {
         let orch = RustProjectScoreOrchestrator::new();
         let names: Vec<&str> = orch.scorer_names();
         assert!(names.contains(&"GPU/SIMD Quality"));
+    }
+
+    // ── Wave 39 PR27: discover_workspace_members + expand_member ────────────
+
+    #[test]
+    fn test_discover_workspace_members_no_cargo_toml() {
+        let tmp = tempfile::tempdir().unwrap();
+        let members = discover_workspace_members(tmp.path());
+        assert!(members.is_empty());
+    }
+
+    #[test]
+    fn test_discover_workspace_members_no_workspace_section() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[package]\nname = \"foo\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+        let members = discover_workspace_members(tmp.path());
+        assert!(members.is_empty());
+    }
+
+    #[test]
+    fn test_discover_workspace_members_inline_members() {
+        // PIN: inline form `members = ["a", "b"]` is parsed in same line.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("crate_a")).unwrap();
+        std::fs::write(tmp.path().join("crate_a/Cargo.toml"), "[package]").unwrap();
+        std::fs::create_dir(tmp.path().join("crate_b")).unwrap();
+        std::fs::write(tmp.path().join("crate_b/Cargo.toml"), "[package]").unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\"crate_a\", \"crate_b\"]\n",
+        )
+        .unwrap();
+        let members = discover_workspace_members(tmp.path());
+        assert_eq!(members.len(), 2);
+        let names: Vec<&str> = members.iter().map(|(n, _)| n.as_str()).collect();
+        assert!(names.contains(&"crate_a"));
+        assert!(names.contains(&"crate_b"));
+    }
+
+    #[test]
+    fn test_discover_workspace_members_multiline_with_trailing_commas() {
+        // BUG #3 FIXED in release-prep: previously sequential
+        // `.trim_matches('"').trim_matches('\'').trim_matches(',')` left a
+        // trailing `"` for inputs like `"foo",`. Now uses a char-set
+        // predicate `|c| c == '"' || c == '\'' || c == ','` to strip all
+        // three in one pass.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("foo")).unwrap();
+        std::fs::write(tmp.path().join("foo/Cargo.toml"), "").unwrap();
+        std::fs::create_dir(tmp.path().join("bar")).unwrap();
+        std::fs::write(tmp.path().join("bar/Cargo.toml"), "").unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\n  \"foo\",\n  \"bar\",\n]\n",
+        )
+        .unwrap();
+        let members = discover_workspace_members(tmp.path());
+        assert_eq!(members.len(), 2);
+        let names: Vec<&str> = members.iter().map(|(n, _)| n.as_str()).collect();
+        assert!(names.contains(&"foo"));
+        assert!(names.contains(&"bar"));
+    }
+
+    #[test]
+    fn test_discover_workspace_members_multiline_no_trailing_comma_works() {
+        // PIN: the multi-line LAST entry without trailing comma works because
+        // there's no `,` to be trimmed last. `"bar"` → trim '"' → `bar`.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("bar")).unwrap();
+        std::fs::write(tmp.path().join("bar/Cargo.toml"), "").unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\n  \"bar\"\n]\n",
+        )
+        .unwrap();
+        let members = discover_workspace_members(tmp.path());
+        // Without trailing comma, the trim sequence works.
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].0, "bar");
+    }
+
+    #[test]
+    fn test_discover_workspace_members_inline_skips_missing_cargo_toml() {
+        // PIN: a member without a Cargo.toml is silently skipped.
+        // Inline form (single line) parses correctly because `.split(',')`
+        // removes commas BEFORE the trim sequence (no trim-order PIN bug).
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("crate_real")).unwrap();
+        std::fs::write(tmp.path().join("crate_real/Cargo.toml"), "").unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\"crate_real\", \"crate_phantom\"]\n",
+        )
+        .unwrap();
+        let members = discover_workspace_members(tmp.path());
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].0, "crate_real");
+    }
+
+    #[test]
+    fn test_discover_workspace_members_skips_comment_lines() {
+        // Comment lines starting with `#` are skipped inside members block.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("my_crate")).unwrap();
+        std::fs::write(tmp.path().join("my_crate/Cargo.toml"), "").unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\n  # comment\n  \"my_crate\",\n]\n",
+        )
+        .unwrap();
+        let members = discover_workspace_members(tmp.path());
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].0, "my_crate");
+    }
+
+    // ── expand_member ───────────────────────────────────────────────────────
+
+    #[test]
+    fn test_expand_member_concrete_path() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("my_crate")).unwrap();
+        std::fs::write(tmp.path().join("my_crate/Cargo.toml"), "").unwrap();
+        let mut members = Vec::new();
+        expand_member(tmp.path(), "my_crate", &mut members);
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].0, "my_crate");
+    }
+
+    #[test]
+    fn test_expand_member_glob_expansion() {
+        // PIN: pattern containing `*` triggers glob expansion.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("crates")).unwrap();
+        std::fs::create_dir(tmp.path().join("crates/foo")).unwrap();
+        std::fs::write(tmp.path().join("crates/foo/Cargo.toml"), "").unwrap();
+        std::fs::create_dir(tmp.path().join("crates/bar")).unwrap();
+        std::fs::write(tmp.path().join("crates/bar/Cargo.toml"), "").unwrap();
+        let mut members = Vec::new();
+        expand_member(tmp.path(), "crates/*", &mut members);
+        assert_eq!(members.len(), 2);
+    }
+
+    #[test]
+    fn test_expand_member_glob_skips_dirs_without_cargo_toml() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("crates")).unwrap();
+        std::fs::create_dir(tmp.path().join("crates/real")).unwrap();
+        std::fs::write(tmp.path().join("crates/real/Cargo.toml"), "").unwrap();
+        std::fs::create_dir(tmp.path().join("crates/empty")).unwrap();
+        let mut members = Vec::new();
+        expand_member(tmp.path(), "crates/*", &mut members);
+        // Only "real" has Cargo.toml.
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].0, "real");
+    }
+
+    #[test]
+    fn test_expand_member_concrete_skips_missing_cargo() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("phantom")).unwrap();
+        // No Cargo.toml in phantom dir.
+        let mut members = Vec::new();
+        expand_member(tmp.path(), "phantom", &mut members);
+        assert!(members.is_empty());
     }
 }
 // #[requires(project_path.exists())]

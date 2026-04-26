@@ -274,3 +274,336 @@ fn check_resume_without_pcall(
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── check_global_metatables ─────────────────────────────────────────────
+
+    #[test]
+    fn test_check_global_metatables_setmetatable_g_marks_newindex() {
+        let mut hi = false;
+        let mut ni = false;
+        check_global_metatables("setmetatable(_G, {})\n", &mut ni, &mut hi);
+        assert!(ni, "setmetatable(_G, ...) should set has_newindex");
+    }
+
+    #[test]
+    fn test_check_global_metatables_newindex_with_g_marks_newindex() {
+        let mut hi = false;
+        let mut ni = false;
+        check_global_metatables("__newindex = function(_G) error end\n", &mut ni, &mut hi);
+        assert!(ni);
+    }
+
+    #[test]
+    fn test_check_global_metatables_index_with_undefined_marks_index() {
+        let mut hi = false;
+        let mut ni = false;
+        check_global_metatables(
+            "__index = function() error(\"undefined\") end\n",
+            &mut ni,
+            &mut hi,
+        );
+        assert!(hi);
+    }
+
+    #[test]
+    fn test_check_global_metatables_comments_skipped() {
+        let mut hi = false;
+        let mut ni = false;
+        check_global_metatables("-- setmetatable(_G, {})\n", &mut ni, &mut hi);
+        assert!(!ni);
+        assert!(!hi);
+    }
+
+    #[test]
+    fn test_check_global_metatables_index_combined_with_newindex_only_sets_newindex() {
+        // The else-if for __index has !contains("__newindex") guard
+        let mut hi = false;
+        let mut ni = false;
+        check_global_metatables("__newindex = ... __index = ... _G\n", &mut ni, &mut hi);
+        assert!(ni);
+        assert!(!hi, "guard skips __index when __newindex is on same line");
+    }
+
+    // ── check_single_load_call (loadfile) ───────────────────────────────────
+
+    #[test]
+    fn test_check_single_load_call_loadfile_without_t_mode_flagged() {
+        let mut violations = Vec::new();
+        check_single_load_call(
+            "loadfile(\"script.lua\")",
+            "loadfile",
+            7,
+            "rel.lua",
+            &mut violations,
+        );
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-614");
+        assert_eq!(violations[0].line, 7);
+    }
+
+    #[test]
+    fn test_check_single_load_call_loadfile_with_t_mode_clean() {
+        let mut violations = Vec::new();
+        check_single_load_call(
+            "loadfile(\"script.lua\", \"t\")",
+            "loadfile",
+            7,
+            "rel.lua",
+            &mut violations,
+        );
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_single_load_call_loadfile_with_single_quote_t_clean() {
+        let mut violations = Vec::new();
+        check_single_load_call(
+            "loadfile('script.lua', 't')",
+            "loadfile",
+            1,
+            "rel.lua",
+            &mut violations,
+        );
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_single_load_call_no_call_returns() {
+        let mut violations = Vec::new();
+        check_single_load_call("local x = 1", "loadfile", 1, "rel.lua", &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_single_load_call_no_string_arg_skipped() {
+        // The check requires `after.contains('"')` — no string arg means no flag
+        let mut violations = Vec::new();
+        check_single_load_call("loadfile(path)", "loadfile", 1, "rel.lua", &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    // ── check_load_function_call ────────────────────────────────────────────
+
+    #[test]
+    fn test_check_load_function_call_with_2_commas_no_t_flagged() {
+        // load(chunk, name, mode, env) — 3 commas; missing "t" flagged
+        let mut violations = Vec::new();
+        check_load_function_call("load(chunk, \"name\", env)", 5, "rel.lua", &mut violations);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].line, 5);
+    }
+
+    #[test]
+    fn test_check_load_function_call_with_t_mode_clean() {
+        let mut violations = Vec::new();
+        check_load_function_call(
+            "load(chunk, \"name\", \"t\", env)",
+            5,
+            "rel.lua",
+            &mut violations,
+        );
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_load_function_call_too_few_commas_skipped() {
+        // load(chunk) or load(chunk, name) — fewer than 2 commas → no flag
+        let mut violations = Vec::new();
+        check_load_function_call("load(chunk)", 1, "rel.lua", &mut violations);
+        assert!(violations.is_empty());
+        let mut v2 = Vec::new();
+        check_load_function_call("load(chunk, \"name\")", 1, "rel.lua", &mut v2);
+        assert!(v2.is_empty());
+    }
+
+    #[test]
+    fn test_check_load_function_call_part_of_larger_word_skipped() {
+        // myload(...) shouldn't be detected as load(...)
+        let mut violations = Vec::new();
+        check_load_function_call("myload(chunk, name, env)", 1, "rel.lua", &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    // ── report_protection_level ─────────────────────────────────────────────
+
+    #[test]
+    fn test_report_protection_level_too_few_files_returns() {
+        let mut violations = Vec::new();
+        let files = vec![PathBuf::from("a.lua"), PathBuf::from("b.lua")];
+        report_protection_level(&files, true, true, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_report_protection_level_full_emits_info() {
+        let mut violations = Vec::new();
+        let files = vec![
+            PathBuf::from("a.lua"),
+            PathBuf::from("b.lua"),
+            PathBuf::from("c.lua"),
+        ];
+        report_protection_level(&files, true, true, &mut violations);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].severity, Severity::Info);
+        assert!(violations[0].description.contains("full"));
+    }
+
+    #[test]
+    fn test_report_protection_level_partial_emits_warning() {
+        let mut violations = Vec::new();
+        let files = vec![
+            PathBuf::from("a.lua"),
+            PathBuf::from("b.lua"),
+            PathBuf::from("c.lua"),
+        ];
+        report_protection_level(&files, true, false, &mut violations);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].severity, Severity::Warning);
+        assert!(violations[0].description.contains("partial"));
+    }
+
+    #[test]
+    fn test_report_protection_level_none_no_violation() {
+        let mut violations = Vec::new();
+        let files = vec![
+            PathBuf::from("a.lua"),
+            PathBuf::from("b.lua"),
+            PathBuf::from("c.lua"),
+        ];
+        report_protection_level(&files, false, false, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    // ── check_resume_without_pcall ──────────────────────────────────────────
+
+    #[test]
+    fn test_check_resume_without_pcall_unsafe_flagged() {
+        let mut violations = Vec::new();
+        let content = "coroutine.resume(co)\n";
+        check_resume_without_pcall(content.trim(), 1, "rel.lua", content, &mut violations);
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].pattern_id, "CB-615");
+    }
+
+    #[test]
+    fn test_check_resume_without_pcall_pcall_same_line_safe() {
+        let mut violations = Vec::new();
+        let content = "pcall(coroutine.resume, co)\n";
+        check_resume_without_pcall(content.trim(), 1, "rel.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_resume_without_pcall_xpcall_same_line_safe() {
+        let mut violations = Vec::new();
+        let content = "xpcall(coroutine.resume, h, co)\n";
+        check_resume_without_pcall(content.trim(), 1, "rel.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_resume_without_pcall_ok_capture_safe() {
+        let mut violations = Vec::new();
+        let content = "local ok, err = coroutine.resume(co)\n";
+        check_resume_without_pcall(content.trim(), 1, "rel.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_resume_without_pcall_pcall_prev_line_safe() {
+        let mut violations = Vec::new();
+        let content = "pcall(do_something)\ncoroutine.resume(co)\n";
+        let line2 = content.lines().nth(1).unwrap();
+        check_resume_without_pcall(line2.trim(), 2, "rel.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_resume_without_pcall_no_resume_returns() {
+        let mut violations = Vec::new();
+        let content = "local x = 1\n";
+        check_resume_without_pcall(content.trim(), 1, "rel.lua", content, &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    // ── check_coroutine_patterns ────────────────────────────────────────────
+
+    #[test]
+    fn test_check_coroutine_patterns_skips_comments() {
+        let mut violations = Vec::new();
+        let content = "-- coroutine.resume(co)\n";
+        check_coroutine_patterns(content, "rel.lua", &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_coroutine_patterns_finds_unsafe_resume() {
+        let mut violations = Vec::new();
+        let content = "local x = 1\ncoroutine.resume(co)\n";
+        check_coroutine_patterns(content, "rel.lua", &mut violations);
+        assert_eq!(violations.len(), 1);
+    }
+
+    // ── check_unsafe_load_calls ─────────────────────────────────────────────
+
+    #[test]
+    fn test_check_unsafe_load_calls_skips_comments() {
+        let mut violations = Vec::new();
+        let content = "-- loadfile(\"x\")\n";
+        check_unsafe_load_calls(content, "rel.lua", &mut violations);
+        assert!(violations.is_empty());
+    }
+
+    #[test]
+    fn test_check_unsafe_load_calls_loadfile_skips_when_inside_loadfile() {
+        // load(...) check must NOT flag when the call is loadfile(...) (already
+        // handled by check_single_load_call — !trimmed.contains("loadfile") guard)
+        let mut violations = Vec::new();
+        let content = "loadfile(\"x.lua\")\n";
+        check_unsafe_load_calls(content, "rel.lua", &mut violations);
+        // Only 1 flag from check_single_load_call, not 2 from also matching load()
+        assert_eq!(violations.len(), 1);
+    }
+
+    // ── filesystem entrypoints ──────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_cb614_global_protection_no_files_returns_empty() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb614_global_protection(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb614_global_protection_loadfile_warning() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(tmp.path().join("a.lua"), "loadfile(\"x.lua\")\n").unwrap();
+        let v = detect_cb614_global_protection(tmp.path());
+        assert!(!v.is_empty());
+        assert!(v.iter().any(|r| r.pattern_id == "CB-614"));
+    }
+
+    #[test]
+    fn test_detect_cb615_coroutine_checks_no_files_returns_empty() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb615_coroutine_checks(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb615_coroutine_checks_unsafe_resume_flagged() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(tmp.path().join("c.lua"), "coroutine.resume(co)\n").unwrap();
+        let v = detect_cb615_coroutine_checks(tmp.path());
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].pattern_id, "CB-615");
+    }
+}

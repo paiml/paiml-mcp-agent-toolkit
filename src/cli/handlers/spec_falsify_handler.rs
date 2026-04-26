@@ -250,3 +250,111 @@ fn truncate(s: &str, max: usize) -> String {
         format!("{}...", &s[..max.saturating_sub(3)])
     }
 }
+
+#[cfg(test)]
+mod spec_falsify_helper_tests {
+    //! Wave 39 PR19 — pure-helper coverage for spec_falsify_handler.rs.
+    //! The async handle_* functions invoke RAG indexes + spec parsing
+    //! pipelines (disqualified). The pure helpers `truncate` and
+    //! `collect_spec_files` are testable.
+    use super::*;
+
+    // ── truncate ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_truncate_under_limit_returns_original() {
+        assert_eq!(truncate("hello", 10), "hello");
+    }
+
+    #[test]
+    fn test_truncate_at_limit_returns_original() {
+        // PIN: `s.len() <= max` is INCLUSIVE — exact-length strings pass through.
+        assert_eq!(truncate("abcde", 5), "abcde");
+    }
+
+    #[test]
+    fn test_truncate_over_limit_appends_ellipsis() {
+        // PIN: truncates to (max - 3) chars then appends "..." (total length = max).
+        let result = truncate("abcdefghij", 8);
+        assert_eq!(result.len(), 8);
+        assert!(result.ends_with("..."));
+        assert_eq!(result, "abcde...");
+    }
+
+    #[test]
+    fn test_truncate_max_three_or_less_uses_saturating_sub() {
+        // PIN: max < 3 uses `saturating_sub` to avoid underflow → slice 0 chars + "..."
+        // Result is just "..." (length 3) regardless of input.
+        assert_eq!(truncate("abcdefgh", 2), "...");
+        assert_eq!(truncate("abcdefgh", 1), "...");
+        assert_eq!(truncate("abcdefgh", 0), "...");
+    }
+
+    #[test]
+    fn test_truncate_empty_input() {
+        assert_eq!(truncate("", 10), "");
+    }
+
+    // ── collect_spec_files ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_collect_spec_files_md_and_yaml_collected() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("spec1.md"), "# spec").unwrap();
+        std::fs::write(tmp.path().join("spec2.yaml"), "version: 1").unwrap();
+        std::fs::write(tmp.path().join("spec3.yml"), "version: 1").unwrap();
+        let files = collect_spec_files(tmp.path()).unwrap();
+        // PIN: .md, .yaml, .yml are ALL collected.
+        assert_eq!(files.len(), 3);
+    }
+
+    #[test]
+    fn test_collect_spec_files_filters_other_extensions() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("spec.md"), "# spec").unwrap();
+        std::fs::write(tmp.path().join("notes.txt"), "notes").unwrap();
+        std::fs::write(tmp.path().join("config.json"), "{}").unwrap();
+        let files = collect_spec_files(tmp.path()).unwrap();
+        // PIN: only .md/.yaml/.yml are collected; .txt/.json are skipped.
+        assert_eq!(files.len(), 1);
+        assert!(files[0].extension().unwrap() == "md");
+    }
+
+    #[test]
+    fn test_collect_spec_files_skips_directories() {
+        // PIN: only files (path.is_file()) are collected; subdirectories are ignored.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("subdir.md")).unwrap();
+        std::fs::write(tmp.path().join("real.md"), "# spec").unwrap();
+        let files = collect_spec_files(tmp.path()).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].file_name().unwrap(), "real.md");
+    }
+
+    #[test]
+    fn test_collect_spec_files_results_sorted() {
+        // PIN: results are sorted alphabetically.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("z.md"), "").unwrap();
+        std::fs::write(tmp.path().join("a.md"), "").unwrap();
+        std::fs::write(tmp.path().join("m.md"), "").unwrap();
+        let files = collect_spec_files(tmp.path()).unwrap();
+        assert_eq!(files[0].file_name().unwrap(), "a.md");
+        assert_eq!(files[1].file_name().unwrap(), "m.md");
+        assert_eq!(files[2].file_name().unwrap(), "z.md");
+    }
+
+    #[test]
+    fn test_collect_spec_files_empty_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let files = collect_spec_files(tmp.path()).unwrap();
+        assert!(files.is_empty());
+    }
+
+    #[test]
+    fn test_collect_spec_files_nonexistent_dir_returns_err() {
+        let nonexistent = std::path::PathBuf::from("/nonexistent/path/that/should/not/exist");
+        let result = collect_spec_files(&nonexistent);
+        assert!(result.is_err());
+    }
+}

@@ -590,3 +590,493 @@ mod part1_pure_helpers_tests {
         assert!((a - b).abs() < 1e-6);
     }
 }
+
+#[cfg(test)]
+mod part3_pure_helpers_tests {
+    //! Wave 36 PR4 — cover the pure-compute helpers in tools_advanced_part3.rs
+    //! (deep_context arg parsing + makefile lint helpers). Async handlers and
+    //! the analyzer wrappers are not tested here.
+    use super::*;
+    use crate::services::deep_context::{AnalysisType, CacheStrategy, DagType};
+    use crate::services::makefile_linter::Severity;
+
+    // ── default_project_path / default_top_files ────────────────────────────
+
+    #[test]
+    fn test_default_project_path_is_empty() {
+        // Sentinel value: serde default that downstream rejects via require_*.
+        assert_eq!(default_project_path(), "");
+    }
+
+    #[test]
+    fn test_default_top_files_is_ten() {
+        assert_eq!(default_top_files(), 10);
+    }
+
+    // ── get_default_analysis_types ──────────────────────────────────────────
+
+    #[test]
+    fn test_get_default_analysis_types_includes_ast_complexity_churn() {
+        let types = get_default_analysis_types();
+        assert_eq!(types.len(), 3);
+        assert!(matches!(types[0], AnalysisType::Ast));
+        assert!(matches!(types[1], AnalysisType::Complexity));
+        assert!(matches!(types[2], AnalysisType::Churn));
+    }
+
+    // ── parse_analysis_type_string ──────────────────────────────────────────
+
+    #[test]
+    fn test_parse_analysis_type_string_ast() {
+        assert!(matches!(
+            parse_analysis_type_string("ast"),
+            Some(AnalysisType::Ast)
+        ));
+    }
+
+    #[test]
+    fn test_parse_analysis_type_string_complexity() {
+        assert!(matches!(
+            parse_analysis_type_string("complexity"),
+            Some(AnalysisType::Complexity)
+        ));
+    }
+
+    #[test]
+    fn test_parse_analysis_type_string_churn() {
+        assert!(matches!(
+            parse_analysis_type_string("churn"),
+            Some(AnalysisType::Churn)
+        ));
+    }
+
+    #[test]
+    fn test_parse_analysis_type_string_dag() {
+        assert!(matches!(
+            parse_analysis_type_string("dag"),
+            Some(AnalysisType::Dag)
+        ));
+    }
+
+    #[test]
+    fn test_parse_analysis_type_string_dead_code() {
+        assert!(matches!(
+            parse_analysis_type_string("dead_code"),
+            Some(AnalysisType::DeadCode)
+        ));
+    }
+
+    #[test]
+    fn test_parse_analysis_type_string_satd() {
+        assert!(matches!(
+            parse_analysis_type_string("satd"),
+            Some(AnalysisType::Satd)
+        ));
+    }
+
+    #[test]
+    fn test_parse_analysis_type_string_tdg() {
+        assert!(matches!(
+            parse_analysis_type_string("tdg"),
+            Some(AnalysisType::TechnicalDebtGradient)
+        ));
+    }
+
+    #[test]
+    fn test_parse_analysis_type_string_unknown_returns_none() {
+        assert!(parse_analysis_type_string("nonsense").is_none());
+        assert!(parse_analysis_type_string("").is_none());
+    }
+
+    // ── parse_analysis_types ────────────────────────────────────────────────
+
+    #[test]
+    fn test_parse_analysis_types_none_returns_defaults() {
+        let result = parse_analysis_types(None);
+        assert_eq!(result.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_analysis_types_some_filters_unknown() {
+        // PIN: filter_map drops unknown strings silently — no error surfaced.
+        let result = parse_analysis_types(Some(vec![
+            "ast".to_string(),
+            "bogus".to_string(),
+            "satd".to_string(),
+        ]));
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_analysis_types_empty_vec_returns_empty() {
+        // PIN: explicit empty vec ≠ None — returns empty, not defaults.
+        let result = parse_analysis_types(Some(vec![]));
+        assert!(result.is_empty());
+    }
+
+    // ── parse_deep_context_dag_type ─────────────────────────────────────────
+
+    #[test]
+    fn test_parse_dag_type_import_graph() {
+        assert!(matches!(
+            parse_deep_context_dag_type(Some("import-graph".to_string())),
+            DagType::ImportGraph
+        ));
+    }
+
+    #[test]
+    fn test_parse_dag_type_inheritance() {
+        assert!(matches!(
+            parse_deep_context_dag_type(Some("inheritance".to_string())),
+            DagType::Inheritance
+        ));
+    }
+
+    #[test]
+    fn test_parse_dag_type_full_dependency() {
+        assert!(matches!(
+            parse_deep_context_dag_type(Some("full-dependency".to_string())),
+            DagType::FullDependency
+        ));
+    }
+
+    #[test]
+    fn test_parse_dag_type_call_graph_explicit() {
+        assert!(matches!(
+            parse_deep_context_dag_type(Some("call-graph".to_string())),
+            DagType::CallGraph
+        ));
+    }
+
+    #[test]
+    fn test_parse_dag_type_none_defaults_to_call_graph() {
+        assert!(matches!(
+            parse_deep_context_dag_type(None),
+            DagType::CallGraph
+        ));
+    }
+
+    #[test]
+    fn test_parse_dag_type_unknown_defaults_to_call_graph() {
+        // PIN: silent fallback — unknown values do NOT error, they coerce to CallGraph.
+        assert!(matches!(
+            parse_deep_context_dag_type(Some("garbage".to_string())),
+            DagType::CallGraph
+        ));
+    }
+
+    // ── parse_cache_strategy ────────────────────────────────────────────────
+
+    #[test]
+    fn test_parse_cache_strategy_force_refresh() {
+        assert!(matches!(
+            parse_cache_strategy(Some("force-refresh".to_string())),
+            CacheStrategy::ForceRefresh
+        ));
+    }
+
+    #[test]
+    fn test_parse_cache_strategy_offline() {
+        assert!(matches!(
+            parse_cache_strategy(Some("offline".to_string())),
+            CacheStrategy::Offline
+        ));
+    }
+
+    #[test]
+    fn test_parse_cache_strategy_normal_explicit() {
+        assert!(matches!(
+            parse_cache_strategy(Some("normal".to_string())),
+            CacheStrategy::Normal
+        ));
+    }
+
+    #[test]
+    fn test_parse_cache_strategy_none_defaults_to_normal() {
+        assert!(matches!(parse_cache_strategy(None), CacheStrategy::Normal));
+    }
+
+    #[test]
+    fn test_parse_cache_strategy_unknown_defaults_to_normal() {
+        // PIN: silent fallback — unknown values do NOT error.
+        assert!(matches!(
+            parse_cache_strategy(Some("xyzzy".to_string())),
+            CacheStrategy::Normal
+        ));
+    }
+
+    // ── parse_deep_context_args ─────────────────────────────────────────────
+
+    #[test]
+    fn test_parse_deep_context_args_minimal() {
+        let v = serde_json::json!({});
+        let args = parse_deep_context_args(v).unwrap();
+        assert!(args.project_path.is_none());
+    }
+
+    #[test]
+    fn test_parse_deep_context_args_with_path() {
+        let v = serde_json::json!({"project_path": "/tmp/x"});
+        let args = parse_deep_context_args(v).unwrap();
+        assert_eq!(args.project_path.as_deref(), Some("/tmp/x"));
+    }
+
+    #[test]
+    fn test_parse_deep_context_args_invalid_returns_err() {
+        // Wrong type for project_path → serde error.
+        let v = serde_json::json!({"project_path": 42});
+        let err = parse_deep_context_args(v).unwrap_err();
+        assert!(err.contains("Invalid analyze_deep_context"));
+    }
+
+    // ── build_deep_context_config ───────────────────────────────────────────
+
+    #[test]
+    fn test_build_deep_context_config_uses_defaults_when_unset() {
+        let args = AnalyzeDeepContextArgs {
+            project_path: None,
+            format: None,
+            include_analyses: None,
+            exclude_analyses: None,
+            period_days: None,
+            dag_type: None,
+            max_depth: None,
+            include_pattern: None,
+            exclude_pattern: None,
+            cache_strategy: None,
+            parallel: None,
+        };
+        let cfg = build_deep_context_config(&args);
+        assert_eq!(cfg.period_days, 30); // default
+        assert_eq!(cfg.parallel, 4); // default
+        assert!(matches!(cfg.dag_type, DagType::CallGraph));
+        assert!(matches!(cfg.cache_strategy, CacheStrategy::Normal));
+        assert_eq!(cfg.include_analyses.len(), 3); // default analyses
+    }
+
+    #[test]
+    fn test_build_deep_context_config_threshold_constants_pinned() {
+        // PIN: hardcoded ComplexityThresholds {10, 15} — only place these
+        // particular numbers live for the deep_context entrypoint.
+        let args = AnalyzeDeepContextArgs {
+            project_path: None,
+            format: None,
+            include_analyses: None,
+            exclude_analyses: None,
+            period_days: None,
+            dag_type: None,
+            max_depth: None,
+            include_pattern: None,
+            exclude_pattern: None,
+            cache_strategy: None,
+            parallel: None,
+        };
+        let cfg = build_deep_context_config(&args);
+        let t = cfg.complexity_thresholds.unwrap();
+        assert_eq!(t.max_cyclomatic, 10);
+        assert_eq!(t.max_cognitive, 15);
+    }
+
+    // ── format_deep_context_as_sarif ────────────────────────────────────────
+
+    #[test]
+    fn test_format_deep_context_as_sarif_emits_v2_1_0_skeleton() {
+        // Function ignores its argument; safe to pass a shoddy mock context
+        // by constructing via Default if available, but easier: use unsafe
+        // transmute? No — pass a valid via the function signature.
+        // Instead, since the body never reads the context, we can call it
+        // with any &DeepContext. Build via the public constructor path is
+        // expensive; the function is independent so we test its output shape
+        // by parsing the JSON.
+        // Minimal approach: assert the function name itself is a constant
+        // string-builder by constructing a fake DeepContext only if cheap.
+        // It is cheap:
+        let dc = stub_deep_context();
+        let sarif = format_deep_context_as_sarif(&dc);
+        let parsed: serde_json::Value = serde_json::from_str(&sarif).unwrap();
+        assert_eq!(parsed["version"], "2.1.0");
+        assert_eq!(parsed["runs"][0]["tool"]["driver"]["name"], "pmat");
+        // results array is always empty in this stub formatter.
+        assert!(parsed["runs"][0]["results"].as_array().unwrap().is_empty());
+    }
+
+    fn stub_deep_context() -> crate::services::deep_context::DeepContext {
+        // Build a minimal DeepContext via Default or its public ctor.
+        // The SARIF formatter doesn't read fields, but the type system requires &DeepContext.
+        crate::services::deep_context::DeepContext::default()
+    }
+
+    // ── map_severity ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_map_severity_error() {
+        assert_eq!(map_severity(&Severity::Error), "error");
+    }
+
+    #[test]
+    fn test_map_severity_warning() {
+        assert_eq!(map_severity(&Severity::Warning), "warning");
+    }
+
+    #[test]
+    fn test_map_severity_performance() {
+        assert_eq!(map_severity(&Severity::Performance), "performance");
+    }
+
+    #[test]
+    fn test_map_severity_info() {
+        assert_eq!(map_severity(&Severity::Info), "info");
+    }
+
+    // ── format_violation ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_format_violation_emits_all_fields() {
+        use crate::services::makefile_linter::ast::SourceSpan;
+        use crate::services::makefile_linter::Violation;
+        let v = Violation {
+            rule: "MAKE001".to_string(),
+            severity: Severity::Warning,
+            span: SourceSpan {
+                start: 0,
+                end: 5,
+                line: 7,
+                column: 3,
+            },
+            message: "uses :=".to_string(),
+            fix_hint: Some("change to =".to_string()),
+        };
+        let json = format_violation(&v);
+        assert_eq!(json["rule"], "MAKE001");
+        assert_eq!(json["severity"], "warning");
+        assert_eq!(json["line"], 7);
+        assert_eq!(json["column"], 3);
+        assert_eq!(json["message"], "uses :=");
+        assert_eq!(json["fix_hint"], "change to =");
+    }
+
+    #[test]
+    fn test_format_violation_with_no_fix_hint() {
+        use crate::services::makefile_linter::ast::SourceSpan;
+        use crate::services::makefile_linter::Violation;
+        let v = Violation {
+            rule: "MAKE002".to_string(),
+            severity: Severity::Error,
+            span: SourceSpan {
+                start: 0,
+                end: 0,
+                line: 1,
+                column: 1,
+            },
+            message: "broken".to_string(),
+            fix_hint: None,
+        };
+        let json = format_violation(&v);
+        assert!(json["fix_hint"].is_null());
+    }
+
+    // ── count_violations_by_severity ────────────────────────────────────────
+
+    #[test]
+    fn test_count_violations_by_severity_filters_correctly() {
+        // BUG #1 FIXED in release-prep: previously used `matches!(&v.severity,
+        // _target_severity)` which treated `_target_severity` as a binding
+        // pattern (matched everything). Now uses `==` comparison.
+        // Test verifies the FIXED behavior: count matches the requested
+        // severity only.
+        use crate::services::makefile_linter::ast::SourceSpan;
+        use crate::services::makefile_linter::Violation;
+        let span = SourceSpan {
+            start: 0,
+            end: 0,
+            line: 1,
+            column: 1,
+        };
+        let vs = vec![
+            Violation {
+                rule: "a".into(),
+                severity: Severity::Error,
+                span,
+                message: "".into(),
+                fix_hint: None,
+            },
+            Violation {
+                rule: "b".into(),
+                severity: Severity::Warning,
+                span,
+                message: "".into(),
+                fix_hint: None,
+            },
+            Violation {
+                rule: "c".into(),
+                severity: Severity::Info,
+                span,
+                message: "".into(),
+                fix_hint: None,
+            },
+            Violation {
+                rule: "d".into(),
+                severity: Severity::Warning,
+                span,
+                message: "".into(),
+                fix_hint: None,
+            },
+        ];
+        // Each severity bucket should be counted independently now.
+        assert_eq!(count_violations_by_severity(&vs, Severity::Error), 1);
+        assert_eq!(count_violations_by_severity(&vs, Severity::Warning), 2);
+        assert_eq!(count_violations_by_severity(&vs, Severity::Info), 1);
+        assert_eq!(count_violations_by_severity(&vs, Severity::Performance), 0);
+    }
+
+    #[test]
+    fn test_count_violations_by_severity_empty_returns_zero() {
+        assert_eq!(count_violations_by_severity(&[], Severity::Error), 0);
+    }
+
+    // ── parse_makefile_lint_args ────────────────────────────────────────────
+
+    #[test]
+    fn test_parse_makefile_lint_args_none_rejected() {
+        // PIN: MakefileLintArgs lacks `Debug`, so `unwrap_err` won't compile —
+        // use match-expression error extraction instead.
+        let err = match parse_makefile_lint_args(None) {
+            Err(e) => e,
+            Ok(_) => panic!("expected Err"),
+        };
+        assert!(err.contains("Missing required arguments"));
+    }
+
+    #[test]
+    fn test_parse_makefile_lint_args_minimal() {
+        let v = serde_json::json!({"path": "/tmp/Makefile"});
+        let args = parse_makefile_lint_args(Some(v)).unwrap();
+        assert_eq!(args.path, "/tmp/Makefile");
+        assert!(args.rules.is_empty());
+        assert!(!args.fix);
+    }
+
+    #[test]
+    fn test_parse_makefile_lint_args_full() {
+        let v = serde_json::json!({
+            "path": "/x",
+            "rules": ["MAKE001", "MAKE002"],
+            "fix": true,
+            "gnu_version": "4.3",
+        });
+        let args = parse_makefile_lint_args(Some(v)).unwrap();
+        assert_eq!(args.rules, vec!["MAKE001", "MAKE002"]);
+        assert!(args.fix);
+        assert_eq!(args.gnu_version, "4.3");
+    }
+
+    #[test]
+    fn test_parse_makefile_lint_args_invalid_returns_err() {
+        let v = serde_json::json!({"path": 42}); // path must be string
+        let err = match parse_makefile_lint_args(Some(v)) {
+            Err(e) => e,
+            Ok(_) => panic!("expected Err"),
+        };
+        assert!(err.contains("Invalid analyze_makefile_lint"));
+    }
+}

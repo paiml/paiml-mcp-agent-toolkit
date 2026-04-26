@@ -69,16 +69,8 @@ async fn handle_validate(
     let process = run_process_checks(project_path, task_id).await;
     result.categories.insert("process".into(), process);
 
-    // Calculate overall score
-    let (total_passed, total_items) = result
-        .categories
-        .values()
-        .fold((0, 0), |(p, t), cat| (p + cat.passed, t + cat.total));
-    result.overall_score = if total_items > 0 {
-        (total_passed as f64 / total_items as f64) * 100.0
-    } else {
-        0.0
-    };
+    // Calculate overall score (extracted as pure helper for R5)
+    result.overall_score = calculate_overall_score(&result.categories);
 
     // Add manual checks
     result.manual_checks_required = vec![
@@ -87,8 +79,8 @@ async fn handle_validate(
         "API documentation review".into(),
     ];
 
-    // Determine pass/fail
-    result.passed = result.overall_score >= 80.0 && !strict || result.overall_score >= 95.0;
+    // Determine pass/fail (extracted as pure helper for R5)
+    result.passed = determine_pass(result.overall_score, strict);
 
     // Output
     match format {
@@ -105,6 +97,93 @@ async fn handle_validate(
     Ok(())
 }
 
+/// Pure-compute classifier extracted for R5 testability (per spec §4.7).
+///
+/// Maps the result of a `Command` invocation to a `ValidationStatus`:
+/// - `Ok(out) if out.status.success()` → Passed
+/// - `Ok(_)` (non-zero exit) → Failed
+/// - `Err(_)` (failed to spawn) → Skipped
+///
+/// This pattern was duplicated 4× in the run_*_checks functions before
+/// extraction; the inner shape is `match result { ... }` deciding among
+/// three statuses based on subprocess outcome.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+pub(crate) fn classify_command_outcome(
+    result: std::io::Result<std::process::Output>,
+) -> ValidationStatus {
+    match result {
+        Ok(output) if output.status.success() => ValidationStatus::Passed,
+        Ok(_) => ValidationStatus::Failed,
+        Err(_) => ValidationStatus::Skipped,
+    }
+}
+
+/// Pure-compute classifier where non-zero exit is a Warning (not Failed).
+/// Used for documentation checks where missing rustdoc isn't a hard fail.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+pub(crate) fn classify_doc_command_outcome(
+    result: std::io::Result<std::process::Output>,
+) -> ValidationStatus {
+    match result {
+        Ok(output) if output.status.success() => ValidationStatus::Passed,
+        Ok(_) => ValidationStatus::Warning,
+        Err(_) => ValidationStatus::Skipped,
+    }
+}
+
+/// Classify git-log output for ticket-reference presence.
+/// Returns Passed if `task_id` or `#task_id` appears in the log; else Warning.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+pub(crate) fn classify_git_log_for_task(stdout: &str, task_id: &str) -> ValidationStatus {
+    if stdout.contains(task_id) || stdout.contains(&format!("#{}", task_id)) {
+        ValidationStatus::Passed
+    } else {
+        ValidationStatus::Warning
+    }
+}
+
+/// Classify CHANGELOG content for task-reference presence.
+/// Returns Passed if either the task_id or "Unreleased" header appears; else Warning.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+pub(crate) fn classify_changelog_for_task(content: &str, task_id: &str) -> ValidationStatus {
+    if content.contains(task_id) || content.contains("Unreleased") {
+        ValidationStatus::Passed
+    } else {
+        ValidationStatus::Warning
+    }
+}
+
+/// Compute overall score as `passed/total * 100`. Returns 0.0 when total == 0
+/// to avoid div-by-zero. Used by handle_validate to summarize categories.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "score_range")]
+pub(crate) fn calculate_overall_score(
+    categories: &HashMap<String, CategoryResult>,
+) -> f64 {
+    let (total_passed, total_items) = categories
+        .values()
+        .fold((0u32, 0u32), |(p, t), cat| (p + cat.passed, t + cat.total));
+    if total_items > 0 {
+        (total_passed as f64 / total_items as f64) * 100.0
+    } else {
+        0.0
+    }
+}
+
+/// Decide pass/fail based on overall_score and strict-mode flag.
+///
+/// - `strict=false`: pass when score >= 80.0
+/// - `strict=true`: pass when score >= 95.0
+///
+/// **Operator precedence note**: the original code is
+/// `score >= 80.0 && !strict || score >= 95.0`, which Rust parses as
+/// `(score >= 80.0 && !strict) || (score >= 95.0)`. This means strict mode
+/// only kicks in when score is below 80.0; the threshold-95 OR is always
+/// evaluated. Pinned in tests below.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+pub(crate) fn determine_pass(overall_score: f64, strict: bool) -> bool {
+    overall_score >= 80.0 && !strict || overall_score >= 95.0
+}
+
 /// Run code quality validation checks
 async fn run_code_quality_checks(project_path: &Path) -> CategoryResult {
     let mut items = vec![];
@@ -116,11 +195,9 @@ async fn run_code_quality_checks(project_path: &Path) -> CategoryResult {
         .args(["--format", "json"])
         .output();
 
+    // Note: complexity check folds Failed→Skipped (parsing not implemented yet)
     let complexity_status = match complexity_result {
-        Ok(output) if output.status.success() => {
-            // Parse and check thresholds
-            ValidationStatus::Passed
-        }
+        Ok(output) if output.status.success() => ValidationStatus::Passed,
         _ => ValidationStatus::Skipped,
     };
 
@@ -148,11 +225,7 @@ async fn run_code_quality_checks(project_path: &Path) -> CategoryResult {
         .current_dir(project_path)
         .output();
 
-    let clippy_status = match clippy_result {
-        Ok(output) if output.status.success() => ValidationStatus::Passed,
-        Ok(_) => ValidationStatus::Failed,
-        Err(_) => ValidationStatus::Skipped,
-    };
+    let clippy_status = classify_command_outcome(clippy_result);
 
     items.push(ValidationItem {
         id: "B5".into(),
@@ -207,11 +280,7 @@ async fn run_testing_checks(project_path: &Path) -> CategoryResult {
         .current_dir(project_path)
         .output();
 
-    let test_status = match test_result {
-        Ok(output) if output.status.success() => ValidationStatus::Passed,
-        Ok(_) => ValidationStatus::Failed,
-        Err(_) => ValidationStatus::Skipped,
-    };
+    let test_status = classify_command_outcome(test_result);
 
     items.push(ValidationItem {
         id: "C1".into(),
@@ -281,11 +350,7 @@ async fn run_documentation_checks(project_path: &Path, task_id: &str) -> Categor
     let changelog_path = project_path.join("CHANGELOG.md");
     let changelog_status = if changelog_path.exists() {
         let content = fs::read_to_string(&changelog_path).unwrap_or_default();
-        if content.contains(task_id) || content.contains("Unreleased") {
-            ValidationStatus::Passed
-        } else {
-            ValidationStatus::Warning
-        }
+        classify_changelog_for_task(&content, task_id)
     } else {
         ValidationStatus::Skipped
     };
@@ -305,11 +370,7 @@ async fn run_documentation_checks(project_path: &Path, task_id: &str) -> Categor
         .current_dir(project_path)
         .output();
 
-    let doc_status = match doc_result {
-        Ok(output) if output.status.success() => ValidationStatus::Passed,
-        Ok(_) => ValidationStatus::Warning,
-        Err(_) => ValidationStatus::Skipped,
-    };
+    let doc_status = classify_doc_command_outcome(doc_result);
 
     items.push(ValidationItem {
         id: "D1".into(),
@@ -375,11 +436,7 @@ async fn run_process_checks(project_path: &Path, task_id: &str) -> CategoryResul
     let commit_status = match git_result {
         Ok(output) if output.status.success() => {
             let log = String::from_utf8_lossy(&output.stdout);
-            if log.contains(task_id) || log.contains(&format!("#{}", task_id)) {
-                ValidationStatus::Passed
-            } else {
-                ValidationStatus::Warning
-            }
+            classify_git_log_for_task(&log, task_id)
         }
         _ => ValidationStatus::Skipped,
     };

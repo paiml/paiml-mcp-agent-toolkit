@@ -792,4 +792,160 @@ mod check_extended_tests {
         assert!(matches!(check.status, CheckStatus::Skip));
         assert!(check.message.contains("Not a Rust project"));
     }
+
+    // ── Wave 39 PR22: classify_file_health + build_file_health_check ────────
+
+    fn make_health_report(total: usize, avg_health: u8) -> FileHealthReport {
+        FileHealthReport {
+            project_path: std::path::PathBuf::from("/tmp"),
+            total_files: total,
+            total_lines: total * 100,
+            average_health: avg_health,
+            average_grade: crate::services::file_health::HealthGrade::from_score(avg_health),
+            critical_files: vec![],
+            problem_files: vec![],
+            warning_files: vec![],
+            healthy_files_count: total,
+            is_compliant: true,
+            recommendations: vec![],
+        }
+    }
+
+    // ── classify_file_health ────────────────────────────────────────────────
+
+    #[test]
+    fn test_classify_file_health_normal_file_under_500() {
+        let path = std::path::PathBuf::from("src/foo.rs");
+        let content: String = "fn x() {}\n".repeat(100); // 100 lines
+        let (critical, problem, over_500) = classify_file_health(&path, &content);
+        assert_eq!(critical, 0);
+        assert_eq!(problem, 0);
+        assert_eq!(over_500, 0);
+    }
+
+    #[test]
+    fn test_classify_file_health_normal_file_500_to_1000() {
+        let path = std::path::PathBuf::from("src/foo.rs");
+        let content: String = "fn x() {}\n".repeat(700);
+        let (critical, problem, over_500) = classify_file_health(&path, &content);
+        assert_eq!(critical, 0);
+        assert_eq!(problem, 0);
+        assert_eq!(over_500, 1);
+    }
+
+    #[test]
+    fn test_classify_file_health_normal_file_problem_threshold() {
+        // PIN: non-test file, problem threshold = 1000 (lines > 1000 AND <= 2000).
+        let path = std::path::PathBuf::from("src/foo.rs");
+        let content: String = "fn x() {}\n".repeat(1500);
+        let (critical, problem, over_500) = classify_file_health(&path, &content);
+        assert_eq!(critical, 0);
+        assert_eq!(problem, 1);
+        assert_eq!(over_500, 1);
+    }
+
+    #[test]
+    fn test_classify_file_health_normal_file_critical_threshold() {
+        // PIN: non-test file, critical threshold = 2000 (lines > 2000).
+        let path = std::path::PathBuf::from("src/foo.rs");
+        let content: String = "fn x() {}\n".repeat(2500);
+        let (critical, problem, _) = classify_file_health(&path, &content);
+        assert_eq!(critical, 1);
+        assert_eq!(problem, 0);
+    }
+
+    #[test]
+    fn test_classify_file_health_test_file_doubled_thresholds() {
+        // PIN: test files (path with /tests/ OR name starts with "test" OR ends "_tests.rs")
+        // get DOUBLED thresholds: critical=4000, problem=2000.
+        let path = std::path::PathBuf::from("src/foo_tests.rs");
+        let content: String = "fn x() {}\n".repeat(1500); // 1500 lines
+        let (critical, problem, _) = classify_file_health(&path, &content);
+        // Below problem threshold (2000) for test files.
+        assert_eq!(critical, 0);
+        assert_eq!(problem, 0);
+    }
+
+    #[test]
+    fn test_classify_file_health_test_file_at_problem_threshold() {
+        let path = std::path::PathBuf::from("src/foo_tests.rs");
+        let content: String = "fn x() {}\n".repeat(2500);
+        let (critical, problem, _) = classify_file_health(&path, &content);
+        // 2500 > 2000 (test problem threshold) AND <= 4000 (test critical) → problem
+        assert_eq!(critical, 0);
+        assert_eq!(problem, 1);
+    }
+
+    #[test]
+    fn test_classify_file_health_test_file_at_critical_threshold() {
+        let path = std::path::PathBuf::from("src/foo_tests.rs");
+        let content: String = "fn x() {}\n".repeat(4500);
+        let (critical, problem, _) = classify_file_health(&path, &content);
+        assert_eq!(critical, 1);
+        assert_eq!(problem, 0);
+    }
+
+    #[test]
+    fn test_classify_file_health_tests_subdirectory_treated_as_test() {
+        // PIN: any path containing "/tests/" gets test thresholds.
+        let path = std::path::PathBuf::from("src/foo/tests/integration.rs");
+        let content: String = "fn x() {}\n".repeat(2500);
+        let (critical, problem, _) = classify_file_health(&path, &content);
+        // 2500 > 2000 (problem) AND <= 4000 (critical) → problem
+        assert_eq!(problem, 1);
+        assert_eq!(critical, 0);
+    }
+
+    #[test]
+    fn test_classify_file_health_starts_with_test_prefix() {
+        // PIN: filename starting with "test" (e.g. test_foo.rs) → test thresholds.
+        let path = std::path::PathBuf::from("src/test_foo.rs");
+        let content: String = "fn x() {}\n".repeat(2500);
+        let (_, problem, _) = classify_file_health(&path, &content);
+        assert_eq!(problem, 1);
+    }
+
+    // ── build_file_health_check ─────────────────────────────────────────────
+
+    #[test]
+    fn test_build_file_health_check_critical_count_emits_critical() {
+        let report = make_health_report(10, 80);
+        let check = build_file_health_check(&report, 1, 0, 0);
+        assert!(matches!(check.status, CheckStatus::Fail));
+        assert_eq!(check.severity, Severity::Critical);
+        assert!(check.message.contains("CRITICAL"));
+    }
+
+    #[test]
+    fn test_build_file_health_check_problem_count_emits_warning() {
+        let report = make_health_report(10, 70);
+        let check = build_file_health_check(&report, 0, 1, 0);
+        assert!(matches!(check.status, CheckStatus::Warn));
+        assert_eq!(check.severity, Severity::Warning);
+    }
+
+    #[test]
+    fn test_build_file_health_check_over_500_above_5_emits_warning() {
+        // PIN: over_500_count > 5 alone (no problem/critical) emits Warn.
+        let report = make_health_report(20, 80);
+        let check = build_file_health_check(&report, 0, 0, 6);
+        assert!(matches!(check.status, CheckStatus::Warn));
+    }
+
+    #[test]
+    fn test_build_file_health_check_over_500_at_5_passes() {
+        // PIN: over_500_count == 5 (boundary) does NOT trigger warning.
+        let report = make_health_report(20, 90);
+        let check = build_file_health_check(&report, 0, 0, 5);
+        assert!(matches!(check.status, CheckStatus::Pass));
+    }
+
+    #[test]
+    fn test_build_file_health_check_clean_passes() {
+        let report = make_health_report(10, 95);
+        let check = build_file_health_check(&report, 0, 0, 0);
+        assert!(matches!(check.status, CheckStatus::Pass));
+        assert_eq!(check.severity, Severity::Info);
+        assert!(check.message.contains("all files <500 lines"));
+    }
 }

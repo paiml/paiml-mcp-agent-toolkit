@@ -2,6 +2,64 @@
 // Contains: execute_clippy, execute_tests, execute_coverage, execute_complexity,
 // and coverage artifact cleanup helpers.
 
+/// Pure-compute message builder extracted from execute_clippy for R5 testability.
+/// Builds the clippy result message from the success flag and stderr capture.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+fn build_clippy_message(passed: bool, stderr: &str) -> String {
+    if passed {
+        "✓ Clippy passed".to_string()
+    } else {
+        format!(
+            "✗ Clippy failed:\n{}",
+            stderr.lines().take(10).collect::<Vec<_>>().join("\n")
+        )
+    }
+}
+
+/// Pure-compute message builder extracted from execute_tests for R5 testability.
+/// Selects between stdout failure-line filter and stderr fallback based on which
+/// has more signal. Pinned behavior: filters lines containing FAILED/panicked/
+/// error[/failures:/indented-thread/qualified-path patterns.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+fn build_test_message(passed: bool, stdout: &str, stderr: &str) -> String {
+    if passed {
+        return "✓ Tests passed".to_string();
+    }
+    let failure_lines: Vec<&str> = stdout
+        .lines()
+        .filter(|line| {
+            line.contains("FAILED")
+                || line.contains("panicked")
+                || line.contains("error[")
+                || line.starts_with("failures:")
+                || line.starts_with("    ")
+                    && (line.contains("::") || line.trim().starts_with("thread"))
+        })
+        .take(15)
+        .collect();
+    if !failure_lines.is_empty() {
+        format!("✗ Tests failed:\n{}", failure_lines.join("\n"))
+    } else {
+        format!(
+            "✗ Tests failed:\n{}",
+            stderr.lines().take(10).collect::<Vec<_>>().join("\n")
+        )
+    }
+}
+
+/// Pure-compute decision builder extracted from execute_coverage for R5 testability.
+/// Returns (passed, message) given the parsed coverage % and the configured threshold.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+fn build_coverage_decision(coverage: f64, min_coverage: f64) -> (bool, String) {
+    let passed = coverage >= min_coverage;
+    let message = if passed {
+        format!("✓ Coverage: {:.1}% (>= {:.1}%)", coverage, min_coverage)
+    } else {
+        format!("✗ Coverage: {:.1}% (< {:.1}%)", coverage, min_coverage)
+    };
+    (passed, message)
+}
+
 /// Execute clippy gate
 ///
 /// # Complexity
@@ -25,15 +83,8 @@ pub fn execute_clippy(config: &GateConfig, project_dir: &Path) -> Result<GateRes
     let duration = start.elapsed();
 
     let passed = output.status.success();
-    let message = if passed {
-        "✓ Clippy passed".to_string()
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        format!(
-            "✗ Clippy failed:\n{}",
-            stderr.lines().take(10).collect::<Vec<_>>().join("\n")
-        )
-    };
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let message = build_clippy_message(passed, &stderr);
 
     Ok(GateResult {
         name: "clippy".to_string(),
@@ -76,37 +127,9 @@ pub fn execute_tests(config: &GateConfig, project_dir: &Path) -> Result<GateResu
     }
 
     let passed = output.status.success();
-    let message = if passed {
-        "✓ Tests passed".to_string()
-    } else {
-        // Test failures appear in stdout, compilation errors in stderr
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-
-        // Look for actual test failure lines in stdout first
-        let failure_lines: Vec<&str> = stdout
-            .lines()
-            .filter(|line| {
-                line.contains("FAILED")
-                    || line.contains("panicked")
-                    || line.contains("error[")
-                    || line.starts_with("failures:")
-                    || line.starts_with("    ")
-                        && (line.contains("::") || line.trim().starts_with("thread"))
-            })
-            .take(15)
-            .collect();
-
-        if !failure_lines.is_empty() {
-            format!("✗ Tests failed:\n{}", failure_lines.join("\n"))
-        } else {
-            // Fall back to stderr for compilation errors
-            format!(
-                "✗ Tests failed:\n{}",
-                stderr.lines().take(10).collect::<Vec<_>>().join("\n")
-            )
-        }
-    };
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let message = build_test_message(passed, &stdout, &stderr);
 
     Ok(GateResult {
         name: "tests".to_string(),
@@ -158,18 +181,7 @@ pub fn execute_coverage(config: &GateConfig, project_dir: &Path) -> Result<GateR
         });
     }
 
-    let passed = coverage >= config.min_coverage;
-    let message = if passed {
-        format!(
-            "✓ Coverage: {:.1}% (>= {:.1}%)",
-            coverage, config.min_coverage
-        )
-    } else {
-        format!(
-            "✗ Coverage: {:.1}% (< {:.1}%)",
-            coverage, config.min_coverage
-        )
-    };
+    let (passed, message) = build_coverage_decision(coverage, config.min_coverage);
 
     Ok(GateResult {
         name: "coverage".to_string(),

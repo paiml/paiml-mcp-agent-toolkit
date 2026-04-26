@@ -120,4 +120,288 @@ mod tests {
         // Should have line numbers in highlight mode
         assert!(output.contains("\u{2502}"), "missing line number separator");
     }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // formatters_helpers.rs: coverage metric + truncation + rich-metric
+    // helpers (387 lines, 0 prior tests).
+    // ─────────────────────────────────────────────────────────────────────
+
+    fn result_with_coverage(status: &str, pct: f32, total: u32) -> QueryResult {
+        let mut r = make_result("f", None);
+        r.coverage_status = status.to_string();
+        r.line_coverage_pct = pct;
+        r.lines_total = total;
+        r.lines_covered = ((pct as u32) * total) / 100;
+        r.missed_lines = total - r.lines_covered;
+        r
+    }
+
+    // ── format_coverage_metrics_md (3 status arms + impact + diff) ──
+
+    #[test]
+    fn test_format_coverage_metrics_md_uncovered_arm() {
+        let r = result_with_coverage("uncovered", 0.0, 50);
+        let mut out = String::new();
+        format_coverage_metrics_md(&r, &mut out);
+        assert!(out.contains("Uncovered (0/50 lines)"));
+    }
+
+    #[test]
+    fn test_format_coverage_metrics_md_partial_arm() {
+        let r = result_with_coverage("partial", 50.0, 100);
+        let mut out = String::new();
+        format_coverage_metrics_md(&r, &mut out);
+        assert!(out.contains("Coverage: 50%"));
+        assert!(out.contains("missed lines"));
+    }
+
+    #[test]
+    fn test_format_coverage_metrics_md_full_arm() {
+        let r = result_with_coverage("full", 100.0, 30);
+        let mut out = String::new();
+        format_coverage_metrics_md(&r, &mut out);
+        assert!(out.contains("Fully covered"));
+        assert!(out.contains("(30 lines)"));
+    }
+
+    #[test]
+    fn test_format_coverage_metrics_md_unknown_status_emits_nothing() {
+        let r = result_with_coverage("xyz", 0.0, 0);
+        let mut out = String::new();
+        format_coverage_metrics_md(&r, &mut out);
+        // Unknown status branches to `_ => {}` so output stays empty.
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_format_coverage_metrics_md_high_impact_appends_marker() {
+        let mut r = result_with_coverage("full", 100.0, 10);
+        r.impact_score = 5.5;
+        let mut out = String::new();
+        format_coverage_metrics_md(&r, &mut out);
+        assert!(out.contains("Impact: 5.5"));
+    }
+
+    // ── format_coverage_diff_md / _text ──
+
+    #[test]
+    fn test_format_coverage_diff_md_positive_arm() {
+        let mut out = String::new();
+        format_coverage_diff_md(2.5, &mut out);
+        assert!(out.contains("+2.5% coverage"));
+    }
+
+    #[test]
+    fn test_format_coverage_diff_md_negative_arm() {
+        let mut out = String::new();
+        format_coverage_diff_md(-1.0, &mut out);
+        assert!(out.contains("-1.0% coverage"));
+    }
+
+    #[test]
+    fn test_format_coverage_diff_md_zero_writes_nothing() {
+        let mut out = String::new();
+        format_coverage_diff_md(0.0, &mut out);
+        assert!(out.is_empty());
+    }
+
+    // ── format_coverage_metrics_text (3 status arms + cov_color tiers) ──
+
+    #[test]
+    fn test_format_coverage_metrics_text_partial_low_uses_red_color() {
+        let r = result_with_coverage("partial", 30.0, 100);
+        let mut out = String::new();
+        format_coverage_metrics_text(&r, &mut out);
+        // < 50% → red ANSI \x1b[1;31m.
+        assert!(out.contains("\x1b[1;31m"));
+        assert!(out.contains("Cov: 30%"));
+    }
+
+    #[test]
+    fn test_format_coverage_metrics_text_partial_mid_uses_yellow_color() {
+        let r = result_with_coverage("partial", 70.0, 100);
+        let mut out = String::new();
+        format_coverage_metrics_text(&r, &mut out);
+        // 50-80% → yellow.
+        assert!(out.contains("\x1b[33m"));
+    }
+
+    #[test]
+    fn test_format_coverage_metrics_text_partial_high_uses_green_color() {
+        let r = result_with_coverage("partial", 90.0, 100);
+        let mut out = String::new();
+        format_coverage_metrics_text(&r, &mut out);
+        // ≥ 80% → green.
+        assert!(out.contains("\x1b[32m"));
+    }
+
+    // ── truncate_doc ──
+
+    #[test]
+    fn test_truncate_doc_short_returns_unchanged() {
+        let doc = "short doc";
+        assert_eq!(truncate_doc(doc), "short doc");
+    }
+
+    #[test]
+    fn test_truncate_doc_long_truncates_with_ellipsis() {
+        let long = "x".repeat(150);
+        let r = truncate_doc(&long);
+        assert!(r.ends_with("..."));
+        assert!(r.len() <= 100);
+    }
+
+    #[test]
+    fn test_truncate_doc_takes_only_first_line() {
+        let multi = "first line is short\nsecond line is long";
+        let r = truncate_doc(multi);
+        assert_eq!(r, "first line is short");
+    }
+
+    // ── push_pagerank_metric (3 tier arms) ──
+
+    #[test]
+    fn test_push_pagerank_metric_zero_no_metric() {
+        let r = make_result("f", None);
+        let mut metrics = vec![];
+        push_pagerank_metric(&r, &mut metrics);
+        assert!(metrics.is_empty());
+    }
+
+    #[test]
+    fn test_push_pagerank_metric_high_tier_emits_star() {
+        let mut r = make_result("f", None);
+        r.pagerank = 0.005; // pr_scaled = 50.0 (>= 10.0)
+        let mut metrics = vec![];
+        push_pagerank_metric(&r, &mut metrics);
+        assert_eq!(metrics.len(), 1);
+        assert!(metrics[0].contains("★"));
+    }
+
+    #[test]
+    fn test_push_pagerank_metric_low_tier_omits() {
+        let mut r = make_result("f", None);
+        r.pagerank = 0.00005; // pr_scaled = 0.5 (< 1.0)
+        let mut metrics = vec![];
+        push_pagerank_metric(&r, &mut metrics);
+        // Below threshold → no metric.
+        assert!(metrics.is_empty());
+    }
+
+    // ── push_indegree_metric ──
+
+    #[test]
+    fn test_push_indegree_metric_zero_no_metric() {
+        let r = make_result("f", None);
+        let mut metrics = vec![];
+        push_indegree_metric(&r, &mut metrics);
+        assert!(metrics.is_empty());
+    }
+
+    #[test]
+    fn test_push_indegree_metric_low_uses_plain() {
+        let mut r = make_result("f", None);
+        r.in_degree = 3;
+        let mut metrics = vec![];
+        push_indegree_metric(&r, &mut metrics);
+        assert_eq!(metrics.len(), 1);
+        // Plain ↓ without ANSI color.
+        assert!(metrics[0].contains("↓3"));
+    }
+
+    #[test]
+    fn test_push_indegree_metric_high_uses_green() {
+        let mut r = make_result("f", None);
+        r.in_degree = 10;
+        let mut metrics = vec![];
+        push_indegree_metric(&r, &mut metrics);
+        assert_eq!(metrics.len(), 1);
+        // ≥ 5 → green ANSI.
+        assert!(metrics[0].contains("\x1b[1;32m"));
+    }
+
+    // ── push_churn_metric_rich (3 tier arms) ──
+
+    #[test]
+    fn test_push_churn_metric_rich_zero_commit_no_metric() {
+        let r = make_result("f", None);
+        let mut metrics = vec![];
+        push_churn_metric_rich(&r, &mut metrics);
+        assert!(metrics.is_empty());
+    }
+
+    #[test]
+    fn test_push_churn_metric_rich_high_tier_uses_fire() {
+        let mut r = make_result("f", None);
+        r.commit_count = 10;
+        r.churn_score = 0.8;
+        let mut metrics = vec![];
+        push_churn_metric_rich(&r, &mut metrics);
+        assert!(metrics[0].contains("🔥"));
+    }
+
+    // ── push_entropy_metric ──
+
+    #[test]
+    fn test_push_entropy_metric_zero_no_metric() {
+        let r = make_result("f", None);
+        let mut metrics = vec![];
+        push_entropy_metric(&r, &mut metrics);
+        assert!(metrics.is_empty());
+    }
+
+    #[test]
+    fn test_push_entropy_metric_low_diversity_emits_repetitive() {
+        let mut r = make_result("f", None);
+        r.pattern_diversity = 0.2;
+        let mut metrics = vec![];
+        push_entropy_metric(&r, &mut metrics);
+        assert!(metrics[0].contains("🔄"));
+    }
+
+    #[test]
+    fn test_push_entropy_metric_high_diversity_emits_h_marker() {
+        let mut r = make_result("f", None);
+        r.pattern_diversity = 0.9;
+        let mut metrics = vec![];
+        push_entropy_metric(&r, &mut metrics);
+        assert!(metrics[0].contains("H:"));
+    }
+
+    #[test]
+    fn test_push_entropy_metric_mid_diversity_omits() {
+        let mut r = make_result("f", None);
+        r.pattern_diversity = 0.5;
+        let mut metrics = vec![];
+        push_entropy_metric(&r, &mut metrics);
+        // 0.3 ≤ d ≤ 0.8 → no metric.
+        assert!(metrics.is_empty());
+    }
+
+    // ── build_rich_metrics integration ──
+
+    #[test]
+    fn test_build_rich_metrics_baseline_has_complexity_and_loc() {
+        let r = make_result("f", None);
+        let metrics = build_rich_metrics(&r);
+        // Always present: C: and L: prefixes.
+        assert!(metrics.iter().any(|m| m.starts_with("C:")));
+        assert!(metrics.iter().any(|m| m.starts_with("L:")));
+    }
+
+    #[test]
+    fn test_build_rich_metrics_with_satd_appends_warn_marker() {
+        let mut r = make_result("f", None);
+        r.satd_count = 3;
+        let metrics = build_rich_metrics(&r);
+        assert!(metrics.iter().any(|m| m.contains("⚠3")));
+    }
+
+    #[test]
+    fn test_build_rich_metrics_with_clone_count_appends_clipboard() {
+        let mut r = make_result("f", None);
+        r.clone_count = 2;
+        let metrics = build_rich_metrics(&r);
+        assert!(metrics.iter().any(|m| m.contains("📋2")));
+    }
 }

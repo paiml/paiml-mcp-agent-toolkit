@@ -297,3 +297,133 @@ impl ProjectAnalysisStats {
         Self::default()
     }
 }
+
+#[cfg(test)]
+mod types_tests {
+    //! Covers DebtCategory::as_str + Display, Severity::escalate/reduce
+    //! saturation, TestBlockTracker state machine, and ProjectAnalysisStats
+    //! defaults in satd_detector/types.rs (299 lines, 0 prior tests).
+    use super::*;
+
+    // ── DebtCategory::as_str + Display ──
+
+    #[test]
+    fn test_debt_category_as_str_all_six_arms() {
+        assert_eq!(DebtCategory::Design.as_str(), "Design");
+        assert_eq!(DebtCategory::Defect.as_str(), "Defect");
+        assert_eq!(DebtCategory::Requirement.as_str(), "Requirement");
+        assert_eq!(DebtCategory::Test.as_str(), "Test");
+        assert_eq!(DebtCategory::Performance.as_str(), "Performance");
+        assert_eq!(DebtCategory::Security.as_str(), "Security");
+    }
+
+    #[test]
+    fn test_debt_category_display_delegates_to_as_str() {
+        assert_eq!(format!("{}", DebtCategory::Design), "Design");
+        assert_eq!(format!("{}", DebtCategory::Security), "Security");
+    }
+
+    // ── Severity::escalate + reduce ──
+
+    #[test]
+    fn test_severity_escalate_chain() {
+        assert_eq!(Severity::Low.escalate(), Severity::Medium);
+        assert_eq!(Severity::Medium.escalate(), Severity::High);
+        assert_eq!(Severity::High.escalate(), Severity::Critical);
+        // Critical → Critical (saturate at max).
+        assert_eq!(Severity::Critical.escalate(), Severity::Critical);
+    }
+
+    #[test]
+    fn test_severity_reduce_chain() {
+        assert_eq!(Severity::Critical.reduce(), Severity::High);
+        assert_eq!(Severity::High.reduce(), Severity::Medium);
+        assert_eq!(Severity::Medium.reduce(), Severity::Low);
+        // Low → Low (saturate at min).
+        assert_eq!(Severity::Low.reduce(), Severity::Low);
+    }
+
+    #[test]
+    fn test_severity_ord_low_lt_critical() {
+        // Reordered Low → Critical for derive(Ord) — verify low < critical.
+        assert!(Severity::Low < Severity::Medium);
+        assert!(Severity::Medium < Severity::High);
+        assert!(Severity::High < Severity::Critical);
+    }
+
+    // ── TestBlockTracker state machine ──
+
+    #[test]
+    fn test_test_block_tracker_non_rust_file_ignores_all_lines() {
+        let mut t = TestBlockTracker::new(false);
+        t.update_from_line("#[cfg(test)]");
+        t.update_from_line("mod tests { fn x() {} }");
+        // Non-Rust files never enter test blocks.
+        assert!(!t.is_in_test_block());
+    }
+
+    #[test]
+    fn test_test_block_tracker_enters_on_cfg_test() {
+        let mut t = TestBlockTracker::new(true);
+        assert!(!t.is_in_test_block());
+        t.update_from_line("#[cfg(test)]");
+        // After #[cfg(test)] the next line is inside the block.
+        assert!(t.is_in_test_block());
+    }
+
+    #[test]
+    fn test_test_block_tracker_brace_balanced_block_exit() {
+        let mut t = TestBlockTracker::new(true);
+        t.update_from_line("#[cfg(test)]");
+        t.update_from_line("mod tests {");
+        // depth=1, still inside.
+        assert!(t.is_in_test_block());
+        t.update_from_line("    fn a() {}");
+        // open + close balance, depth back near 0 but still inside (not ended).
+        // The block ends only when a line closes to depth 0 AND ends with '}'.
+        t.update_from_line("}");
+        assert!(!t.is_in_test_block());
+    }
+
+    #[test]
+    fn test_test_block_tracker_nested_braces_keep_block_open() {
+        let mut t = TestBlockTracker::new(true);
+        t.update_from_line("#[cfg(test)]");
+        t.update_from_line("mod tests {");
+        t.update_from_line("    fn a() {");
+        // 2 opens, 0 closes → depth=2.
+        t.update_from_line("        let _ = || { };");
+        // open+close on same line → depth still 2.
+        assert!(t.is_in_test_block());
+        t.update_from_line("    }");
+        // depth=1, still inside.
+        assert!(t.is_in_test_block());
+        t.update_from_line("}");
+        // depth=0 + ends with '}' → block ends.
+        assert!(!t.is_in_test_block());
+    }
+
+    // ── ProjectAnalysisStats ──
+
+    #[test]
+    fn test_project_analysis_stats_new_is_default_with_empty_fields() {
+        let s = ProjectAnalysisStats::new();
+        assert!(s.all_debts.is_empty());
+        assert_eq!(s.files_with_debt, 0);
+        assert_eq!(s.total_files_analyzed, 0);
+    }
+
+    // ── DuplicateDetectionConfig::default — already covered via parent
+    //    duplicate_detector_tests but defaults are independent values worth
+    //    pinning as a sanity check ──
+
+    #[test]
+    fn test_severity_escalate_is_idempotent_after_3_calls_from_low() {
+        // Mutation kill: ensure escalate isn't a no-op or wraps.
+        let mut s = Severity::Low;
+        for _ in 0..3 {
+            s = s.escalate();
+        }
+        assert_eq!(s, Severity::Critical);
+    }
+}

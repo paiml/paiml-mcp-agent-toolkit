@@ -161,3 +161,210 @@ pub(crate) fn write_analysis_footer(
     writeln!(output, "⏱️  Analysis time: {elapsed:.2?}")?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::defect_probability::RiskLevel;
+    use std::time::Duration;
+
+    fn score(probability: f32, confidence: f32, risk: RiskLevel) -> DefectScore {
+        DefectScore {
+            probability,
+            confidence,
+            contributing_factors: vec![("complexity".to_string(), 0.4)],
+            risk_level: risk,
+            recommendations: vec!["refactor".to_string()],
+        }
+    }
+
+    fn pred(file: &str, p: f32, risk: RiskLevel) -> (String, DefectScore) {
+        (file.to_string(), score(p, 0.85, risk))
+    }
+
+    // ── format_risk_level_display ───────────────────────────────────────────
+
+    #[test]
+    fn test_format_risk_level_display_high() {
+        assert_eq!(format_risk_level_display(&RiskLevel::High), "🔴 HIGH");
+    }
+
+    #[test]
+    fn test_format_risk_level_display_medium() {
+        assert_eq!(format_risk_level_display(&RiskLevel::Medium), "🟡 MEDIUM");
+    }
+
+    #[test]
+    fn test_format_risk_level_display_low() {
+        assert_eq!(format_risk_level_display(&RiskLevel::Low), "🟢 LOW");
+    }
+
+    // ── write_detailed_header ───────────────────────────────────────────────
+
+    #[test]
+    fn test_write_detailed_header_emits_title() {
+        let mut out = String::new();
+        write_detailed_header(&mut out).unwrap();
+        assert!(out.contains("🔮 Defect Prediction Detailed Report"));
+        assert!(out.contains("==="));
+    }
+
+    // ── write_risk_level ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_write_risk_level_includes_pct_and_emoji() {
+        let mut out = String::new();
+        let s = score(0.85, 0.9, RiskLevel::High);
+        write_risk_level(&mut out, &s).unwrap();
+        assert!(out.contains("Risk Level"));
+        assert!(out.contains("HIGH"));
+        assert!(out.contains("85.0%"));
+    }
+
+    // ── write_confidence_level ──────────────────────────────────────────────
+
+    #[test]
+    fn test_write_confidence_level_includes_pct() {
+        let mut out = String::new();
+        let s = score(0.5, 0.92, RiskLevel::Medium);
+        write_confidence_level(&mut out, &s).unwrap();
+        assert!(out.contains("Confidence"));
+        assert!(out.contains("92.0%"));
+    }
+
+    // ── write_contributing_factors ──────────────────────────────────────────
+
+    #[test]
+    fn test_write_contributing_factors_with_factors() {
+        let mut out = String::new();
+        let s = score(0.5, 0.9, RiskLevel::Medium);
+        write_contributing_factors(&mut out, &s).unwrap();
+        assert!(out.contains("Contributing Factors"));
+        assert!(out.contains("complexity"));
+        assert!(out.contains("40.0%"));
+    }
+
+    #[test]
+    fn test_write_contributing_factors_empty_skipped() {
+        let mut out = String::new();
+        let mut s = score(0.5, 0.9, RiskLevel::Medium);
+        s.contributing_factors.clear();
+        write_contributing_factors(&mut out, &s).unwrap();
+        // Empty contributing_factors → section omitted
+        assert!(!out.contains("Contributing Factors"));
+    }
+
+    // ── write_recommendations ───────────────────────────────────────────────
+
+    #[test]
+    fn test_write_recommendations_with_items() {
+        let mut out = String::new();
+        let s = score(0.5, 0.9, RiskLevel::Medium);
+        write_recommendations(&mut out, &s).unwrap();
+        assert!(out.contains("Recommendations"));
+        assert!(out.contains("refactor"));
+    }
+
+    #[test]
+    fn test_write_recommendations_empty_skipped() {
+        let mut out = String::new();
+        let mut s = score(0.5, 0.9, RiskLevel::Medium);
+        s.recommendations.clear();
+        write_recommendations(&mut out, &s).unwrap();
+        // Empty recommendations → section omitted
+        assert!(!out.contains("Recommendations"));
+    }
+
+    // ── write_analysis_footer ───────────────────────────────────────────────
+
+    #[test]
+    fn test_write_analysis_footer_includes_timing() {
+        let mut out = String::new();
+        write_analysis_footer(&mut out, Duration::from_millis(1234)).unwrap();
+        assert!(out.contains("Analysis time"));
+    }
+
+    // ── write_file_details ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_write_file_details_with_recommendations() {
+        let mut out = String::new();
+        let s = score(0.85, 0.9, RiskLevel::High);
+        write_file_details(&mut out, "src/foo.rs", &s, true).unwrap();
+        assert!(out.contains("📄 File: src/foo.rs"));
+        assert!(out.contains("Risk Level"));
+        assert!(out.contains("Confidence"));
+        assert!(out.contains("Recommendations"));
+    }
+
+    #[test]
+    fn test_write_file_details_no_recommendations_flag() {
+        let mut out = String::new();
+        let s = score(0.85, 0.9, RiskLevel::High);
+        write_file_details(&mut out, "src/foo.rs", &s, false).unwrap();
+        assert!(out.contains("📄 File: src/foo.rs"));
+        assert!(!out.contains("Recommendations"));
+    }
+
+    // ── format_defect_detailed (orchestrator) ───────────────────────────────
+
+    #[test]
+    fn test_format_defect_detailed_full_pipeline() {
+        let preds = vec![
+            pred("a.rs", 0.9, RiskLevel::High),
+            pred("b.rs", 0.4, RiskLevel::Medium),
+        ];
+        let out = format_defect_detailed(&preds, Duration::from_millis(50), true).unwrap();
+        assert!(out.contains("🔮 Defect Prediction Detailed Report"));
+        assert!(out.contains("a.rs"));
+        assert!(out.contains("b.rs"));
+        assert!(out.contains("Recommendations"));
+        assert!(out.contains("Analysis time"));
+    }
+
+    #[test]
+    fn test_format_defect_detailed_empty_predictions() {
+        let out = format_defect_detailed(&[], Duration::from_millis(10), false).unwrap();
+        assert!(out.contains("🔮 Defect Prediction Detailed Report"));
+        assert!(out.contains("Analysis time"));
+    }
+
+    // ── format_defect_json ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_format_defect_json_basic() {
+        let preds = vec![
+            pred("a.rs", 0.9, RiskLevel::High),
+            pred("b.rs", 0.5, RiskLevel::Medium),
+            pred("c.rs", 0.1, RiskLevel::Low),
+        ];
+        let json = format_defect_json(&preds, Duration::from_millis(42)).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["analysis_type"], "defect_prediction");
+        let summary = &parsed["summary"];
+        assert_eq!(summary["total_files_analyzed"], 3);
+        assert_eq!(summary["high_risk_files"], 1);
+        assert_eq!(summary["medium_risk_files"], 1);
+        assert_eq!(summary["low_risk_files"], 1);
+        assert_eq!(summary["analysis_time_ms"], 42);
+        assert_eq!(parsed["predictions"].as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn test_format_defect_json_threshold_boundaries() {
+        // Probability 0.7 → medium (boundary check: > 0.7 is high, == 0.7 is medium)
+        let preds = vec![pred("a.rs", 0.7, RiskLevel::Medium)];
+        let json = format_defect_json(&preds, Duration::from_millis(10)).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["summary"]["high_risk_files"], 0);
+        assert_eq!(parsed["summary"]["medium_risk_files"], 1);
+    }
+
+    #[test]
+    fn test_format_defect_json_empty() {
+        let json = format_defect_json(&[], Duration::from_millis(0)).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["summary"]["total_files_analyzed"], 0);
+        assert_eq!(parsed["predictions"].as_array().unwrap().len(), 0);
+    }
+}

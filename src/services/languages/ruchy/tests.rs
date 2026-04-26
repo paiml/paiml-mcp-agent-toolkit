@@ -716,3 +716,265 @@ mod property_tests {
         }
     }
 }
+
+// =========================================================================
+// Wave 39 PR2 — integration tests for complexity_analysis.rs (231 missed,
+// 0% broad coverage). Goes through `analyze_program(&RuchyAst)` to exercise
+// the analyze_node match arms (Function, If, While, For, Match, BinaryOp,
+// Block, Import, Return, Let, Call, Pipeline, etc.).
+// =========================================================================
+#[cfg(test)]
+mod analyze_program_integration_tests {
+    use super::*;
+
+    fn boxed(ast: RuchyAst) -> Box<RuchyAst> {
+        Box::new(ast)
+    }
+
+    #[test]
+    fn test_analyze_program_empty_emits_zero_functions() {
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        let ast = RuchyAst::Program { items: vec![] };
+        let metrics = analyzer.analyze_program(&ast);
+        assert_eq!(metrics.functions.len(), 0);
+    }
+
+    #[test]
+    fn test_analyze_program_single_function_records_one() {
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        let func = RuchyAst::Function {
+            name: "foo".to_string(),
+            params: vec![],
+            return_type: None,
+            body: boxed(RuchyAst::Block { statements: vec![] }),
+            is_test: false,
+            line_start: 1,
+            line_end: 5,
+        };
+        let ast = RuchyAst::Program { items: vec![func] };
+        let metrics = analyzer.analyze_program(&ast);
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "foo");
+        assert_eq!(metrics.functions[0].metrics.cyclomatic, 1);
+    }
+
+    #[test]
+    fn test_analyze_function_with_if_increments_cyclomatic() {
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        // Function body: `if cond then expr else expr2`.
+        let body = RuchyAst::If {
+            condition: boxed(RuchyAst::Identifier("cond".to_string())),
+            then_branch: boxed(RuchyAst::Identifier("a".to_string())),
+            else_branch: Some(boxed(RuchyAst::Identifier("b".to_string()))),
+        };
+        let func = RuchyAst::Function {
+            name: "branchy".to_string(),
+            params: vec![],
+            return_type: None,
+            body: boxed(body),
+            is_test: false,
+            line_start: 1,
+            line_end: 10,
+        };
+        let ast = RuchyAst::Program { items: vec![func] };
+        let metrics = analyzer.analyze_program(&ast);
+        // base 1 + if (+1) + else (+1) = 3.
+        assert_eq!(metrics.functions[0].metrics.cyclomatic, 3);
+    }
+
+    #[test]
+    fn test_analyze_function_with_while_increments_cyclomatic() {
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        let body = RuchyAst::While {
+            condition: boxed(RuchyAst::Identifier("c".to_string())),
+            body: boxed(RuchyAst::Block { statements: vec![] }),
+        };
+        let func = RuchyAst::Function {
+            name: "looper".to_string(),
+            params: vec![],
+            return_type: None,
+            body: boxed(body),
+            is_test: false,
+            line_start: 1,
+            line_end: 5,
+        };
+        let ast = RuchyAst::Program { items: vec![func] };
+        let metrics = analyzer.analyze_program(&ast);
+        // base 1 + while (+1) = 2.
+        assert_eq!(metrics.functions[0].metrics.cyclomatic, 2);
+    }
+
+    #[test]
+    fn test_analyze_function_with_for_increments_cyclomatic() {
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        let body = RuchyAst::For {
+            variable: "i".to_string(),
+            iterable: boxed(RuchyAst::Identifier("xs".to_string())),
+            body: boxed(RuchyAst::Block { statements: vec![] }),
+        };
+        let func = RuchyAst::Function {
+            name: "iter".to_string(),
+            params: vec![],
+            return_type: None,
+            body: boxed(body),
+            is_test: false,
+            line_start: 1,
+            line_end: 5,
+        };
+        let ast = RuchyAst::Program { items: vec![func] };
+        let metrics = analyzer.analyze_program(&ast);
+        assert_eq!(metrics.functions[0].metrics.cyclomatic, 2);
+    }
+
+    #[test]
+    fn test_analyze_function_with_match_arms_increments_cyclomatic() {
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        let arms = vec![
+            (
+                RuchyAst::Identifier("Some".to_string()),
+                RuchyAst::Identifier("x".to_string()),
+            ),
+            (
+                RuchyAst::Identifier("None".to_string()),
+                RuchyAst::Identifier("0".to_string()),
+            ),
+        ];
+        let body = RuchyAst::Match {
+            expr: boxed(RuchyAst::Identifier("opt".to_string())),
+            arms,
+        };
+        let func = RuchyAst::Function {
+            name: "matcher".to_string(),
+            params: vec![],
+            return_type: None,
+            body: boxed(body),
+            is_test: false,
+            line_start: 1,
+            line_end: 5,
+        };
+        let ast = RuchyAst::Program { items: vec![func] };
+        let metrics = analyzer.analyze_program(&ast);
+        // base 1 + match arms — exact count depends on impl, but should be > 1.
+        assert!(metrics.functions[0].metrics.cyclomatic > 1);
+    }
+
+    #[test]
+    fn test_analyze_program_imports_collected() {
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        let import = RuchyAst::Import {
+            module: "std::io".to_string(),
+            items: vec!["read".to_string(), "write".to_string()],
+            line: 1,
+        };
+        let ast = RuchyAst::Program {
+            items: vec![import],
+        };
+        let _ = analyzer.analyze_program(&ast);
+        let imports = analyzer.get_imports();
+        assert!(!imports.is_empty(), "imports should be collected");
+    }
+
+    #[test]
+    fn test_analyze_program_nested_if_increments_nesting_max() {
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        // Nested if-in-if structure exercises nesting tracker.
+        let inner_if = RuchyAst::If {
+            condition: boxed(RuchyAst::Identifier("c2".to_string())),
+            then_branch: boxed(RuchyAst::Identifier("y".to_string())),
+            else_branch: None,
+        };
+        let outer_if = RuchyAst::If {
+            condition: boxed(RuchyAst::Identifier("c1".to_string())),
+            then_branch: boxed(inner_if),
+            else_branch: None,
+        };
+        let func = RuchyAst::Function {
+            name: "nested".to_string(),
+            params: vec![],
+            return_type: None,
+            body: boxed(outer_if),
+            is_test: false,
+            line_start: 1,
+            line_end: 10,
+        };
+        let ast = RuchyAst::Program { items: vec![func] };
+        let metrics = analyzer.analyze_program(&ast);
+        assert!(
+            metrics.functions[0].metrics.nesting_max >= 2,
+            "expected nesting_max >= 2, got {}",
+            metrics.functions[0].metrics.nesting_max
+        );
+    }
+
+    #[test]
+    fn test_analyze_program_block_with_let_and_call() {
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        let body = RuchyAst::Block {
+            statements: vec![
+                RuchyAst::Let {
+                    name: "x".to_string(),
+                    value: boxed(RuchyAst::Identifier("42".to_string())),
+                },
+                RuchyAst::Call {
+                    function: boxed(RuchyAst::Identifier("println".to_string())),
+                    args: vec![RuchyAst::Identifier("x".to_string())],
+                },
+            ],
+        };
+        let func = RuchyAst::Function {
+            name: "main".to_string(),
+            params: vec![],
+            return_type: None,
+            body: boxed(body),
+            is_test: false,
+            line_start: 1,
+            line_end: 5,
+        };
+        let ast = RuchyAst::Program { items: vec![func] };
+        let metrics = analyzer.analyze_program(&ast);
+        assert_eq!(metrics.functions[0].metrics.cyclomatic, 1);
+    }
+
+    #[test]
+    fn test_analyze_program_binary_op_does_not_alter_cyclomatic() {
+        // PIN: simple BinaryOp (a + b) should not bump cyclomatic complexity.
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        let body = RuchyAst::BinaryOp {
+            left: boxed(RuchyAst::Identifier("a".to_string())),
+            op: RuchyToken::Plus,
+            right: boxed(RuchyAst::Identifier("b".to_string())),
+        };
+        let func = RuchyAst::Function {
+            name: "add".to_string(),
+            params: vec![],
+            return_type: None,
+            body: boxed(body),
+            is_test: false,
+            line_start: 1,
+            line_end: 3,
+        };
+        let ast = RuchyAst::Program { items: vec![func] };
+        let metrics = analyzer.analyze_program(&ast);
+        assert_eq!(metrics.functions[0].metrics.cyclomatic, 1);
+    }
+
+    #[test]
+    fn test_analyze_program_top_level_non_program_falls_through() {
+        // PIN: passing a non-Program AST falls into the else branch which
+        // calls analyze_node directly. This exercises the fallback path.
+        let mut analyzer = RuchyComplexityAnalyzer::new();
+        let func = RuchyAst::Function {
+            name: "foo".to_string(),
+            params: vec![],
+            return_type: None,
+            body: boxed(RuchyAst::Block { statements: vec![] }),
+            is_test: false,
+            line_start: 1,
+            line_end: 5,
+        };
+        // Pass the Function directly, NOT wrapped in Program.
+        let metrics = analyzer.analyze_program(&func);
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "foo");
+    }
+}

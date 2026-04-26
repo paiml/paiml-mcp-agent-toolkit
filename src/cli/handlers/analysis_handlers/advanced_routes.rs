@@ -450,3 +450,71 @@ pub(super) async fn route_clippy_analysis(cmd: AnalyzeCommands) -> Result<()> {
         unreachable!("Expected Clippy command")
     }
 }
+
+#[cfg(test)]
+mod converter_tests {
+    //! Wave 39 PR4 — pure-helper tests for advanced_routes.rs.
+    //! The async route_* functions remain untested (heavy I/O / handler chains).
+    use super::*;
+
+    // ── convert_deep_context_dag_type ───────────────────────────────────────
+
+    #[test]
+    fn test_convert_dag_type_call_graph() {
+        assert!(matches!(
+            convert_deep_context_dag_type(cli::DeepContextDagType::CallGraph),
+            cli::DagType::CallGraph
+        ));
+    }
+
+    #[test]
+    fn test_convert_dag_type_import_graph() {
+        assert!(matches!(
+            convert_deep_context_dag_type(cli::DeepContextDagType::ImportGraph),
+            cli::DagType::ImportGraph
+        ));
+    }
+
+    #[test]
+    fn test_convert_dag_type_inheritance() {
+        assert!(matches!(
+            convert_deep_context_dag_type(cli::DeepContextDagType::Inheritance),
+            cli::DagType::Inheritance
+        ));
+    }
+
+    #[test]
+    fn test_convert_dag_type_full_dependency() {
+        assert!(matches!(
+            convert_deep_context_dag_type(cli::DeepContextDagType::FullDependency),
+            cli::DagType::FullDependency
+        ));
+    }
+
+    // ── convert_cache_strategy ──────────────────────────────────────────────
+
+    #[test]
+    fn test_convert_cache_strategy_normal() {
+        assert_eq!(
+            convert_cache_strategy(cli::DeepContextCacheStrategy::Normal),
+            "normal"
+        );
+    }
+
+    #[test]
+    fn test_convert_cache_strategy_force_refresh() {
+        // PIN: hyphenated kebab-case ("force-refresh") not snake_case.
+        assert_eq!(
+            convert_cache_strategy(cli::DeepContextCacheStrategy::ForceRefresh),
+            "force-refresh"
+        );
+    }
+
+    #[test]
+    fn test_convert_cache_strategy_offline() {
+        assert_eq!(
+            convert_cache_strategy(cli::DeepContextCacheStrategy::Offline),
+            "offline"
+        );
+    }
+}

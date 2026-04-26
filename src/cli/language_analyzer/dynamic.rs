@@ -282,4 +282,281 @@ mod lua_tests {
         // if +1, elseif +1 → cyclomatic ≥ 3.
         assert!(m.cyclomatic >= 3, "got {}", m.cyclomatic);
     }
+
+    // ── SqlAnalyzer (Wave 39 PR13 — dynamic_sql.rs) ─────────────────────────
+    //
+    // Targets dynamic_sql.rs (122 missed, 0% pre-wave). SqlAnalyzer extracts
+    // CREATE FUNCTION / PROCEDURE / VIEW / etc., plus CTEs from WITH ... AS.
+
+    #[test]
+    fn test_sql_extract_create_function() {
+        let a = SqlAnalyzer;
+        let src = "CREATE FUNCTION add(a int, b int) RETURNS int AS $$\nBEGIN\n  RETURN a + b;\nEND;\n$$ LANGUAGE plpgsql;\n";
+        let fns = a.extract_functions(src);
+        assert!(!fns.is_empty(), "expected to find CREATE FUNCTION");
+        assert!(fns.iter().any(|f| f.name.to_lowercase().contains("add")));
+    }
+
+    #[test]
+    fn test_sql_extract_create_procedure() {
+        let a = SqlAnalyzer;
+        let src = "CREATE PROCEDURE update_users()\nLANGUAGE plpgsql\nAS $$\nBEGIN\n  UPDATE users SET active = true;\nEND;\n$$;\n";
+        let fns = a.extract_functions(src);
+        assert!(!fns.is_empty());
+    }
+
+    #[test]
+    fn test_sql_extract_create_view() {
+        let a = SqlAnalyzer;
+        let src = "CREATE VIEW active_users AS\nSELECT * FROM users WHERE active = true;\n";
+        let fns = a.extract_functions(src);
+        assert!(!fns.is_empty());
+    }
+
+    #[test]
+    fn test_sql_extract_create_trigger() {
+        let a = SqlAnalyzer;
+        let src = "CREATE TRIGGER audit_trigger BEFORE UPDATE ON users\nFOR EACH ROW EXECUTE FUNCTION audit_log();\n";
+        let fns = a.extract_functions(src);
+        assert!(!fns.is_empty());
+    }
+
+    #[test]
+    fn test_sql_extract_with_cte_simple() {
+        let a = SqlAnalyzer;
+        let src = "WITH active_users AS (\n  SELECT * FROM users WHERE active = true\n)\nSELECT * FROM active_users;\n";
+        let fns = a.extract_functions(src);
+        // PIN: WITH-clause CTE names are extracted as functions.
+        assert!(
+            fns.iter().any(|f| f.name.contains("active_users")),
+            "expected CTE 'active_users' in extracted functions, got: {:?}",
+            fns.iter().map(|f| &f.name).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_sql_extract_pure_select_no_function_definitions() {
+        let a = SqlAnalyzer;
+        let src = "SELECT id, name FROM users WHERE active = 1;\n";
+        let fns = a.extract_functions(src);
+        // PIN: a plain SELECT defines no function/procedure/view/trigger/CTE.
+        let names: Vec<&str> = fns.iter().map(|f| f.name.as_str()).collect();
+        assert!(
+            fns.is_empty(),
+            "plain SELECT should yield no functions, got names: {names:?}"
+        );
+    }
+
+    #[test]
+    fn test_sql_estimate_complexity_simple() {
+        let a = SqlAnalyzer;
+        let src = "CREATE FUNCTION simple() RETURNS int AS $$\nBEGIN\n  RETURN 1;\nEND;\n$$ LANGUAGE plpgsql;\n";
+        let fns = a.extract_functions(src);
+        if !fns.is_empty() {
+            let m = a.estimate_complexity(src, &fns[0]);
+            assert!(m.cyclomatic >= 1);
+        }
+    }
+
+    #[test]
+    fn test_sql_estimate_complexity_with_branches() {
+        let a = SqlAnalyzer;
+        let src = r#"
+CREATE FUNCTION branchy(x int) RETURNS int AS $$
+BEGIN
+  IF x > 0 THEN
+    RETURN 1;
+  ELSIF x = 0 THEN
+    RETURN 0;
+  ELSE
+    RETURN -1;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+"#;
+        let fns = a.extract_functions(src);
+        if !fns.is_empty() {
+            let m = a.estimate_complexity(src, &fns[0]);
+            assert!(m.cyclomatic > 1, "branchy SQL should have cyclomatic > 1");
+        }
+    }
+
+    #[test]
+    fn test_sql_extract_empty_source() {
+        let a = SqlAnalyzer;
+        let fns = a.extract_functions("");
+        assert!(fns.is_empty());
+    }
+
+    // ── ScalaAnalyzer (Wave 39 PR16 — dynamic_scala.rs) ─────────────────────
+    //
+    // Targets dynamic_scala.rs (94 missed, 0% pre-wave). ScalaAnalyzer
+    // extract_scala_name handles 9 prefixes (def, override def, private def,
+    // protected def, class, case class, abstract class, object, trait).
+
+    #[test]
+    fn test_scala_extract_def() {
+        let a = ScalaAnalyzer;
+        let src = "def add(a: Int, b: Int): Int = a + b\n";
+        let fns = a.extract_functions(src);
+        assert!(!fns.is_empty());
+        assert_eq!(fns[0].name, "add");
+    }
+
+    #[test]
+    fn test_scala_extract_override_def() {
+        let a = ScalaAnalyzer;
+        let src = "override def speak(): String = \"woof\"\n";
+        let fns = a.extract_functions(src);
+        assert!(!fns.is_empty());
+        assert_eq!(fns[0].name, "speak");
+    }
+
+    #[test]
+    fn test_scala_extract_private_protected_def() {
+        let a = ScalaAnalyzer;
+        let src = "private def secret(): Unit = ()\nprotected def helper(x: Int): Int = x\n";
+        let fns = a.extract_functions(src);
+        let names: Vec<&str> = fns.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"secret"), "got: {names:?}");
+        assert!(names.contains(&"helper"), "got: {names:?}");
+    }
+
+    #[test]
+    fn test_scala_extract_class_and_case_class() {
+        let a = ScalaAnalyzer;
+        let src = "class User(name: String) { }\ncase class Item(id: Int)\n";
+        let fns = a.extract_functions(src);
+        let names: Vec<&str> = fns.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"User"));
+        assert!(names.contains(&"Item"));
+    }
+
+    #[test]
+    fn test_scala_extract_abstract_class() {
+        let a = ScalaAnalyzer;
+        let src = "abstract class Shape { def area(): Double }\n";
+        let fns = a.extract_functions(src);
+        let names: Vec<&str> = fns.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"Shape"));
+    }
+
+    #[test]
+    fn test_scala_extract_object_and_trait() {
+        let a = ScalaAnalyzer;
+        let src = "object Greeter { }\ntrait Animal { def speak(): String }\n";
+        let fns = a.extract_functions(src);
+        let names: Vec<&str> = fns.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"Greeter"));
+        assert!(names.contains(&"Animal"));
+    }
+
+    #[test]
+    fn test_scala_extract_empty_source() {
+        let a = ScalaAnalyzer;
+        let fns = a.extract_functions("");
+        assert!(fns.is_empty());
+    }
+
+    #[test]
+    fn test_scala_extract_no_definitions() {
+        // PIN: a simple expression with no def/class/object/trait yields no functions.
+        let a = ScalaAnalyzer;
+        let src = "val x = 42\nval y = x + 1\n";
+        let fns = a.extract_functions(src);
+        assert!(fns.is_empty(), "val-only code should have no functions");
+    }
+
+    #[test]
+    fn test_scala_estimate_complexity_simple_def() {
+        let a = ScalaAnalyzer;
+        let src = "def simple(): Int = 42\n";
+        let fns = a.extract_functions(src);
+        if !fns.is_empty() {
+            let m = a.estimate_complexity(src, &fns[0]);
+            assert_eq!(m.cyclomatic, 1, "simple def should be cyclomatic 1");
+        }
+    }
+
+    #[test]
+    fn test_scala_estimate_complexity_with_if_match() {
+        // PIN: cyclomatic increments for `if `, `case `, `while `, `for `, `catch `.
+        let a = ScalaAnalyzer;
+        let src = r#"def classify(x: Int): String = {
+  if (x > 0) {
+    x match {
+      case 1 => "one"
+      case _ => "other"
+    }
+  } else {
+    "non-positive"
+  }
+}
+"#;
+        let fns = a.extract_functions(src);
+        if !fns.is_empty() {
+            let m = a.estimate_complexity(src, &fns[0]);
+            // base 1 + if + 2 case = 4 minimum
+            assert!(m.cyclomatic >= 4, "branchy got {}", m.cyclomatic);
+        }
+    }
+
+    #[test]
+    fn test_scala_estimate_complexity_with_logical_ops() {
+        // PIN: a line containing `&&` OR `||` (or BOTH) increments cyclomatic
+        // by ONE total — the check is `if a.contains("&&") || a.contains("||")`,
+        // not "+1 per occurrence". This understates Boolean-chain complexity
+        // but is pinned to prevent silent regressions.
+        let a = ScalaAnalyzer;
+        let src = "def check(x: Int, y: Int): Boolean = x > 0 && y > 0 || x == y\n";
+        let fns = a.extract_functions(src);
+        if !fns.is_empty() {
+            let m = a.estimate_complexity(src, &fns[0]);
+            // base 1 + (&& or ||) +1 = 2 (NOT 3)
+            assert_eq!(m.cyclomatic, 2, "PIN: && and || on one line counted as +1");
+        }
+    }
+
+    #[test]
+    fn test_scala_estimate_complexity_logical_ops_per_line_increment() {
+        // Multiple lines each with logical ops DO increment per line.
+        let a = ScalaAnalyzer;
+        let src = "def check(x: Int): Boolean = {\n  val a = x > 0 && x < 10\n  val b = x == 0 || x == 100\n  a && b\n}\n";
+        let fns = a.extract_functions(src);
+        if !fns.is_empty() {
+            let m = a.estimate_complexity(src, &fns[0]);
+            // 3 lines with logical ops → +3 cyclomatic, base 1 = 4
+            assert!(m.cyclomatic >= 4, "got {}", m.cyclomatic);
+        }
+    }
+
+    #[test]
+    fn test_scala_estimate_complexity_nesting_tracked() {
+        let a = ScalaAnalyzer;
+        let src = r#"def deeply(x: Int): Int = {
+  if (x > 0) {
+    if (x > 10) {
+      if (x > 100) {
+        100
+      } else {
+        x
+      }
+    } else {
+      0
+    }
+  } else {
+    -1
+  }
+}
+"#;
+        let fns = a.extract_functions(src);
+        if !fns.is_empty() {
+            let m = a.estimate_complexity(src, &fns[0]);
+            assert!(
+                m.nesting_max >= 3,
+                "expected nesting >= 3, got {}",
+                m.nesting_max
+            );
+        }
+    }
 }

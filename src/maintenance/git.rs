@@ -59,6 +59,33 @@ pub fn extract_ticket_ids(commit_message: &str) -> Vec<String> {
         .collect()
 }
 
+/// Pure-compute parser extracted for R5 testability (per spec §4.7).
+///
+/// Builds a `CommitInfo` from the three captured stdouts produced by the
+/// subprocess calls in `get_current_commit`. Extracted so the parsing logic
+/// can be tested without a live git invocation.
+///
+/// - `hash_stdout`: bytes from `git rev-parse HEAD`
+/// - `message_stdout`: bytes from `git log -1 --pretty=%B`
+/// - `files_stdout`: bytes from `git diff-tree --no-commit-id --name-only -r HEAD`
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+pub fn parse_commit_info_from_outputs(
+    hash_stdout: &[u8],
+    message_stdout: &[u8],
+    files_stdout: &[u8],
+) -> Result<CommitInfo> {
+    Ok(CommitInfo {
+        hash: String::from_utf8(hash_stdout.to_vec())?.trim().to_string(),
+        message: String::from_utf8(message_stdout.to_vec())?
+            .trim()
+            .to_string(),
+        files: String::from_utf8(files_stdout.to_vec())?
+            .lines()
+            .map(|s| s.to_string())
+            .collect(),
+    })
+}
+
 /// Get current commit info
 ///
 /// # Complexity
@@ -94,14 +121,11 @@ pub fn get_current_commit() -> Result<CommitInfo> {
         ));
     }
 
-    Ok(CommitInfo {
-        hash: String::from_utf8(hash_output.stdout)?.trim().to_string(),
-        message: String::from_utf8(message_output.stdout)?.trim().to_string(),
-        files: String::from_utf8(files_output.stdout)?
-            .lines()
-            .map(|s| s.to_string())
-            .collect(),
-    })
+    parse_commit_info_from_outputs(
+        &hash_output.stdout,
+        &message_output.stdout,
+        &files_output.stdout,
+    )
 }
 
 /// Check if ticket file was updated in commit
@@ -232,5 +256,80 @@ mod tests {
                 );
             }
         }
+    }
+
+    // ── parse_commit_info_from_outputs (R5 extraction tests) ────────────────
+
+    #[test]
+    fn test_parse_commit_info_basic() {
+        let info = parse_commit_info_from_outputs(
+            b"abc1234\n",
+            b"feat: add thing\n",
+            b"src/lib.rs\nsrc/main.rs\n",
+        )
+        .unwrap();
+        assert_eq!(info.hash, "abc1234");
+        assert_eq!(info.message, "feat: add thing");
+        assert_eq!(info.files, vec!["src/lib.rs", "src/main.rs"]);
+    }
+
+    #[test]
+    fn test_parse_commit_info_strips_whitespace_from_hash_and_message() {
+        // git outputs trailing newlines; the parser must trim
+        let info = parse_commit_info_from_outputs(
+            b"  abc1234  \n",
+            b"\nmessage with surrounding ws\n\n",
+            b"",
+        )
+        .unwrap();
+        assert_eq!(info.hash, "abc1234");
+        assert_eq!(info.message, "message with surrounding ws");
+    }
+
+    #[test]
+    fn test_parse_commit_info_empty_files_yields_empty_vec() {
+        let info = parse_commit_info_from_outputs(b"abc\n", b"msg\n", b"").unwrap();
+        assert!(info.files.is_empty());
+    }
+
+    #[test]
+    fn test_parse_commit_info_multiline_message_trimmed() {
+        // git log --pretty=%B produces multi-line bodies; only outer ws trimmed
+        let info = parse_commit_info_from_outputs(
+            b"abc\n",
+            b"feat: subject\n\nbody line 1\nbody line 2\n",
+            b"",
+        )
+        .unwrap();
+        assert_eq!(info.message, "feat: subject\n\nbody line 1\nbody line 2");
+    }
+
+    #[test]
+    fn test_parse_commit_info_invalid_utf8_in_hash_errors() {
+        // Invalid UTF-8 sequence in any of the three buffers → Utf8Error
+        let bad_utf8 = vec![0xFFu8, 0xFEu8];
+        let result = parse_commit_info_from_outputs(&bad_utf8, b"msg", b"");
+        assert!(matches!(result, Err(GitError::Utf8Error(_))));
+    }
+
+    #[test]
+    fn test_parse_commit_info_invalid_utf8_in_message_errors() {
+        let bad_utf8 = vec![0xFFu8, 0xFEu8];
+        let result = parse_commit_info_from_outputs(b"abc", &bad_utf8, b"");
+        assert!(matches!(result, Err(GitError::Utf8Error(_))));
+    }
+
+    #[test]
+    fn test_parse_commit_info_invalid_utf8_in_files_errors() {
+        let bad_utf8 = vec![0xFFu8, 0xFEu8];
+        let result = parse_commit_info_from_outputs(b"abc", b"msg", &bad_utf8);
+        assert!(matches!(result, Err(GitError::Utf8Error(_))));
+    }
+
+    #[test]
+    fn test_parse_commit_info_files_with_blank_line_keeps_empty_entry() {
+        // .lines() on "a\n\nb\n" yields ["a", "", "b"] — pinned behavior
+        let info = parse_commit_info_from_outputs(b"abc", b"msg", b"a\n\nb\n").unwrap();
+        assert_eq!(info.files, vec!["a", "", "b"]);
     }
 }

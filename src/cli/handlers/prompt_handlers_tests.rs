@@ -127,6 +127,94 @@ mod tests {
         .await;
         assert!(result.is_ok());
     }
+
+    // ── append_scaffold_sections (prompt_handlers_generators.rs) ──
+
+    #[test]
+    fn test_append_scaffold_sections_no_flags_only_emits_structure() {
+        let mut p = String::new();
+        append_scaffold_sections(&mut p, false, false, false);
+        // No optional sections.
+        assert!(!p.contains("PMAT Tools Integration"));
+        assert!(!p.contains("bashrs Integration"));
+        assert!(!p.contains("Roadmapping Tools"));
+        // Always-on structure block.
+        assert!(p.contains("Repository Structure"));
+        assert!(p.contains("EXTREME TDD Workflow"));
+    }
+
+    #[test]
+    fn test_append_scaffold_sections_pmat_only_flag() {
+        let mut p = String::new();
+        append_scaffold_sections(&mut p, true, false, false);
+        assert!(p.contains("PMAT Tools Integration"));
+        assert!(!p.contains("bashrs Integration"));
+        assert!(!p.contains("Roadmapping Tools"));
+    }
+
+    #[test]
+    fn test_append_scaffold_sections_bashrs_only_flag() {
+        let mut p = String::new();
+        append_scaffold_sections(&mut p, false, true, false);
+        assert!(!p.contains("PMAT Tools Integration"));
+        assert!(p.contains("bashrs Integration"));
+        assert!(!p.contains("Roadmapping Tools"));
+    }
+
+    #[test]
+    fn test_append_scaffold_sections_roadmap_only_flag() {
+        let mut p = String::new();
+        append_scaffold_sections(&mut p, false, false, true);
+        assert!(!p.contains("PMAT Tools Integration"));
+        assert!(!p.contains("bashrs Integration"));
+        assert!(p.contains("Roadmapping Tools"));
+    }
+
+    #[test]
+    fn test_append_scaffold_sections_all_flags_emits_all_sections() {
+        let mut p = String::new();
+        append_scaffold_sections(&mut p, true, true, true);
+        assert!(p.contains("PMAT Tools Integration"));
+        assert!(p.contains("bashrs Integration"));
+        assert!(p.contains("Roadmapping Tools"));
+        assert!(p.contains("Repository Structure"));
+    }
+
+    #[test]
+    fn test_append_scaffold_sections_appends_to_existing() {
+        let mut p = String::from("# Existing prefix\n\n");
+        append_scaffold_sections(&mut p, true, false, false);
+        // Original prefix preserved.
+        assert!(p.starts_with("# Existing prefix"));
+        // New content appended after.
+        assert!(p.contains("PMAT Tools Integration"));
+    }
+
+    // ── write_prompt_output ──
+
+    #[test]
+    fn test_write_prompt_output_to_file_writes_content() {
+        use tempfile::TempDir;
+        let temp = TempDir::new().unwrap();
+        let out = temp.path().join("prompt.md");
+        write_prompt_output("hello prompt", &Some(out.clone()), "Test").unwrap();
+        let content = std::fs::read_to_string(&out).unwrap();
+        assert_eq!(content, "hello prompt");
+    }
+
+    #[test]
+    fn test_write_prompt_output_to_stdout_when_none() {
+        // None output → println! to stdout. Just verify no panic + Ok.
+        write_prompt_output("hello", &None, "Test").unwrap();
+    }
+
+    #[test]
+    fn test_write_prompt_output_returns_err_on_unwritable_path() {
+        // Path to a non-existent directory → write fails.
+        let bad = std::path::PathBuf::from("/proc/1/this-cannot-exist/x.md");
+        let r = write_prompt_output("hi", &Some(bad), "Test");
+        assert!(r.is_err());
+    }
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

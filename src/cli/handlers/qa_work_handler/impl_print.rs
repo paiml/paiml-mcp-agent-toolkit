@@ -248,3 +248,182 @@ async fn handle_summary(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod print_tests {
+    //! Covers print_validation_text + print_validation_markdown in
+    //! qa_work_handler/impl_print.rs (178 uncov on broad, 0% cov).
+    //! Skips async handle_report / handle_summary (require run_*_checks
+    //! infrastructure + project fixtures).
+    use super::*;
+
+    fn item(id: &str, desc: &str, status: ValidationStatus) -> ValidationItem {
+        ValidationItem {
+            id: id.to_string(),
+            description: desc.to_string(),
+            status,
+            value: None,
+            threshold: None,
+            evidence: None,
+        }
+    }
+
+    fn category(name: &str, items: Vec<ValidationItem>) -> CategoryResult {
+        let passed = items
+            .iter()
+            .filter(|i| i.status == ValidationStatus::Passed)
+            .count() as u32;
+        let total = items.len() as u32;
+        CategoryResult {
+            name: name.to_string(),
+            passed,
+            total,
+            items,
+        }
+    }
+
+    fn make_result(categories: HashMap<String, CategoryResult>) -> QaValidationResult {
+        QaValidationResult {
+            task_id: "PMAT-100".to_string(),
+            timestamp: Utc::now(),
+            categories,
+            overall_score: 80.0,
+            passed: true,
+            manual_checks_required: vec![],
+        }
+    }
+
+    // ── print_validation_text ──
+
+    #[test]
+    fn test_print_validation_text_empty_categories() {
+        let r = make_result(HashMap::new());
+        // No panic on empty.
+        print_validation_text(&r);
+    }
+
+    #[test]
+    fn test_print_validation_text_all_passed_category() {
+        let mut cats = HashMap::new();
+        cats.insert(
+            "tests".to_string(),
+            category(
+                "Tests",
+                vec![
+                    item("T1", "passes", ValidationStatus::Passed),
+                    item("T2", "passes", ValidationStatus::Passed),
+                ],
+            ),
+        );
+        print_validation_text(&make_result(cats));
+    }
+
+    #[test]
+    fn test_print_validation_text_partial_passed_category() {
+        let mut cats = HashMap::new();
+        cats.insert(
+            "tests".to_string(),
+            category(
+                "Tests",
+                vec![
+                    item("T1", "passes", ValidationStatus::Passed),
+                    item("T2", "fails", ValidationStatus::Failed),
+                ],
+            ),
+        );
+        print_validation_text(&make_result(cats));
+    }
+
+    #[test]
+    fn test_print_validation_text_all_failed_category() {
+        let mut cats = HashMap::new();
+        cats.insert(
+            "tests".to_string(),
+            category(
+                "Tests",
+                vec![
+                    item("T1", "fails", ValidationStatus::Failed),
+                    item("T2", "fails", ValidationStatus::Failed),
+                ],
+            ),
+        );
+        print_validation_text(&make_result(cats));
+    }
+
+    #[test]
+    fn test_print_validation_text_all_5_validation_statuses() {
+        let mut cats = HashMap::new();
+        cats.insert(
+            "all".to_string(),
+            category(
+                "All",
+                vec![
+                    item("P", "passed", ValidationStatus::Passed),
+                    item("F", "failed", ValidationStatus::Failed),
+                    item("W", "warning", ValidationStatus::Warning),
+                    item("S", "skipped", ValidationStatus::Skipped),
+                    item("M", "manual", ValidationStatus::Manual),
+                ],
+            ),
+        );
+        print_validation_text(&make_result(cats));
+    }
+
+    // ── print_validation_markdown ──
+
+    #[test]
+    fn test_print_validation_markdown_empty_no_panic() {
+        let r = make_result(HashMap::new());
+        print_validation_markdown(&r);
+    }
+
+    #[test]
+    fn test_print_validation_markdown_with_all_5_status_arms() {
+        let mut cats = HashMap::new();
+        cats.insert(
+            "tests".to_string(),
+            category(
+                "Tests",
+                vec![
+                    item("P", "passed", ValidationStatus::Passed),
+                    item("F", "failed", ValidationStatus::Failed),
+                    item("W", "warning", ValidationStatus::Warning),
+                    item("S", "skipped", ValidationStatus::Skipped),
+                    item("M", "manual", ValidationStatus::Manual),
+                ],
+            ),
+        );
+        print_validation_markdown(&make_result(cats));
+    }
+
+    #[test]
+    fn test_print_validation_markdown_with_manual_checks() {
+        let r = QaValidationResult {
+            task_id: "X".to_string(),
+            timestamp: Utc::now(),
+            categories: HashMap::new(),
+            overall_score: 0.0,
+            passed: false,
+            manual_checks_required: vec![
+                "Review feature flag rollout".to_string(),
+                "Verify production logs".to_string(),
+            ],
+        };
+        print_validation_markdown(&r);
+    }
+
+    #[test]
+    fn test_print_validation_markdown_no_manual_checks_section_when_empty() {
+        let r = QaValidationResult {
+            task_id: "X".to_string(),
+            timestamp: Utc::now(),
+            categories: HashMap::new(),
+            overall_score: 100.0,
+            passed: true,
+            manual_checks_required: vec![],
+        };
+        // Empty manual_checks_required → "Manual Checks Required" section skipped.
+        // Just verify no panic.
+        print_validation_markdown(&r);
+    }
+}

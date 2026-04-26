@@ -1,4 +1,3 @@
-
 /// Toyota Way: Extract Method - Get QG violation summary data rows (complexity ≤3)
 fn get_qg_violation_summary_rows(results: &QualityGateResults) -> [(&'static str, u64); 9] {
     [
@@ -510,3 +509,4 @@ pub fn format_dead_code_output(
     crate::cli::dead_code_formatter::format_and_output_dead_code(format, dead_code_result, _output)
 }
 
+include!("quality_checks_part4_tests.rs");

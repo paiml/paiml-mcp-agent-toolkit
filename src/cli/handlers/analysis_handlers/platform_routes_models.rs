@@ -233,8 +233,143 @@ fn collect_model_violations(
     all.extend(
         crate::cli::handlers::comply_cb_detect::detect_cb1007_excessive_file_size(project_path),
     );
-    all.extend(
-        crate::cli::handlers::comply_cb_detect::detect_cb1008_apr_missing_crc(project_path),
-    );
+    all.extend(crate::cli::handlers::comply_cb_detect::detect_cb1008_apr_missing_crc(project_path));
     all
+}
+
+#[cfg(test)]
+mod model_helper_tests {
+    //! Wave 39 PR20 — pure-helper coverage for platform_routes_models.rs.
+    //! `route_model_analysis` is async + filesystem-bound (disqualified);
+    //! the pure helpers `format_size`, `is_lfs_tracked`, and the parser
+    //! `detect_lfs_patterns` are testable.
+    use super::*;
+
+    // ── format_size (delegates to batuta_common::fmt) ──────────────────────
+
+    #[test]
+    fn test_format_size_zero_bytes() {
+        let s = format_size(0);
+        assert!(!s.is_empty());
+    }
+
+    #[test]
+    fn test_format_size_human_units() {
+        // batuta_common::fmt::format_bytes returns "K"/"M"/"G" suffix forms.
+        assert!(format_size(1).len() < 20);
+        assert!(format_size(1024).len() < 20);
+        assert!(format_size(1024 * 1024).len() < 20);
+        assert!(format_size(u64::MAX).len() < 30);
+    }
+
+    // ── is_lfs_tracked ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_is_lfs_tracked_glob_extension_match() {
+        let patterns = vec!["*.gguf".to_string(), "*.bin".to_string()];
+        assert!(is_lfs_tracked("model.gguf", &patterns));
+        assert!(is_lfs_tracked("weights.bin", &patterns));
+    }
+
+    #[test]
+    fn test_is_lfs_tracked_glob_extension_case_insensitive() {
+        // PIN: extension comparison is case-insensitive (eq_ignore_ascii_case).
+        let patterns = vec!["*.gguf".to_string()];
+        assert!(is_lfs_tracked("model.GGUF", &patterns));
+        assert!(is_lfs_tracked("MODEL.GgUf", &patterns));
+    }
+
+    #[test]
+    fn test_is_lfs_tracked_exact_filename_match() {
+        let patterns = vec!["secrets.env".to_string()];
+        assert!(is_lfs_tracked("secrets.env", &patterns));
+    }
+
+    #[test]
+    fn test_is_lfs_tracked_no_match_returns_false() {
+        let patterns = vec!["*.gguf".to_string()];
+        assert!(!is_lfs_tracked("model.txt", &patterns));
+        assert!(!is_lfs_tracked("notes.md", &patterns));
+    }
+
+    #[test]
+    fn test_is_lfs_tracked_empty_patterns() {
+        assert!(!is_lfs_tracked("model.gguf", &[]));
+    }
+
+    #[test]
+    fn test_is_lfs_tracked_glob_only_supports_star_dot() {
+        // PIN: simple matcher only handles `*.ext` form. More complex globs
+        // (e.g. `models/*.bin`) fall through to the exact-filename branch.
+        let patterns = vec!["models/*.bin".to_string()];
+        // Won't match because parsing only recognizes `*.` prefix exactly.
+        assert!(!is_lfs_tracked("model.bin", &patterns));
+        // Exact match still works.
+        assert!(is_lfs_tracked("models/*.bin", &patterns));
+    }
+
+    // ── detect_lfs_patterns ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_lfs_patterns_missing_gitattributes() {
+        let tmp = tempfile::tempdir().unwrap();
+        let patterns = detect_lfs_patterns(tmp.path());
+        assert!(patterns.is_empty());
+    }
+
+    #[test]
+    fn test_detect_lfs_patterns_extracts_lfs_lines() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".gitattributes"),
+            "*.gguf filter=lfs diff=lfs merge=lfs -text\n*.bin filter=lfs diff=lfs merge=lfs -text\n",
+        )
+        .unwrap();
+        let patterns = detect_lfs_patterns(tmp.path());
+        assert_eq!(patterns.len(), 2);
+        assert!(patterns.contains(&"*.gguf".to_string()));
+        assert!(patterns.contains(&"*.bin".to_string()));
+    }
+
+    #[test]
+    fn test_detect_lfs_patterns_skips_comments_and_blank_lines() {
+        // PIN: lines starting with `#` are skipped; blank lines are skipped.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".gitattributes"),
+            "# Top-level comment\n\n*.gguf filter=lfs diff=lfs merge=lfs -text\n# Another comment\n",
+        )
+        .unwrap();
+        let patterns = detect_lfs_patterns(tmp.path());
+        assert_eq!(patterns.len(), 1);
+        assert_eq!(patterns[0], "*.gguf");
+    }
+
+    #[test]
+    fn test_detect_lfs_patterns_skips_non_lfs_lines() {
+        // PIN: only lines containing `filter=lfs` are extracted.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".gitattributes"),
+            "*.txt text\n*.gguf filter=lfs diff=lfs merge=lfs -text\n*.md text=auto\n",
+        )
+        .unwrap();
+        let patterns = detect_lfs_patterns(tmp.path());
+        assert_eq!(patterns.len(), 1);
+        assert_eq!(patterns[0], "*.gguf");
+    }
+
+    #[test]
+    fn test_detect_lfs_patterns_extracts_first_token() {
+        // PIN: pattern = first whitespace-separated token.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join(".gitattributes"),
+            "models/*.safetensors filter=lfs diff=lfs merge=lfs -text\n",
+        )
+        .unwrap();
+        let patterns = detect_lfs_patterns(tmp.path());
+        assert_eq!(patterns.len(), 1);
+        assert_eq!(patterns[0], "models/*.safetensors");
+    }
 }

@@ -411,6 +411,191 @@ async fn handle_dashboard_command(
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn empty_stats() -> crate::tdg::storage::StorageStatistics {
+        crate::tdg::storage::StorageStatistics {
+            hot_entries: 0,
+            warm_entries: 0,
+            cold_entries: 0,
+            total_entries: 0,
+            hot_memory_kb: 0,
+            compression_ratio: 0.0,
+            warm_backend: "memory".into(),
+            cold_backend: "libsql".into(),
+            backend_stats: HashMap::new(),
+        }
+    }
+
+    fn populated_stats() -> crate::tdg::storage::StorageStatistics {
+        let mut backend = HashMap::new();
+        let mut warm = HashMap::new();
+        warm.insert("disk_kb".to_string(), "256".to_string());
+        warm.insert("entries".to_string(), "12".to_string());
+        backend.insert("warm".to_string(), warm);
+        crate::tdg::storage::StorageStatistics {
+            hot_entries: 50,
+            warm_entries: 100,
+            cold_entries: 200,
+            total_entries: 350,
+            hot_memory_kb: 1024,
+            compression_ratio: 0.65,
+            warm_backend: "libsql".into(),
+            cold_backend: "libsql".into(),
+            backend_stats: backend,
+        }
+    }
+
+    // ── parse_backend_type ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_parse_backend_type_libsql() {
+        let result = parse_backend_type("libsql").unwrap();
+        assert!(matches!(result, StorageBackendType::Libsql));
+    }
+
+    #[test]
+    fn test_parse_backend_type_inmemory() {
+        let result = parse_backend_type("inmemory").unwrap();
+        assert!(matches!(result, StorageBackendType::InMemory));
+    }
+
+    #[test]
+    fn test_parse_backend_type_unknown_errors() {
+        let err = parse_backend_type("redis").unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("Unknown backend type"));
+        assert!(msg.contains("redis"));
+        assert!(msg.contains("libsql"));
+        assert!(msg.contains("inmemory"));
+    }
+
+    #[test]
+    fn test_parse_backend_type_empty_errors() {
+        assert!(parse_backend_type("").is_err());
+    }
+
+    // ── create_migration_configs ────────────────────────────────────────────
+
+    #[test]
+    fn test_create_migration_configs_with_path() {
+        let path = PathBuf::from("/tmp/tdg");
+        let (warm, cold) = create_migration_configs(StorageBackendType::Libsql, Some(&path));
+
+        // Warm config: 128 MB cache, compression on, path = base/tdg-warm
+        assert_eq!(warm.cache_size_mb, Some(128));
+        assert!(warm.compression);
+        assert_eq!(warm.path, Some(PathBuf::from("/tmp/tdg/tdg-warm")));
+        assert!(matches!(warm.backend_type, StorageBackendType::Libsql));
+
+        // Cold config: 64 MB cache, compression off, path = base/tdg-cold
+        assert_eq!(cold.cache_size_mb, Some(64));
+        assert!(!cold.compression);
+        assert_eq!(cold.path, Some(PathBuf::from("/tmp/tdg/tdg-cold")));
+        assert!(matches!(cold.backend_type, StorageBackendType::Libsql));
+    }
+
+    #[test]
+    fn test_create_migration_configs_no_path() {
+        let (warm, cold) = create_migration_configs(StorageBackendType::InMemory, None);
+        // No path → both configs have None path
+        assert!(warm.path.is_none());
+        assert!(cold.path.is_none());
+        // Backend type propagates
+        assert!(matches!(warm.backend_type, StorageBackendType::InMemory));
+    }
+
+    #[test]
+    fn test_create_migration_configs_warm_vs_cold_differs() {
+        let (warm, cold) = create_migration_configs(StorageBackendType::Libsql, None);
+        // Warm and cold have different cache sizes + compression policies
+        assert_ne!(warm.cache_size_mb, cold.cache_size_mb);
+        assert_ne!(warm.compression, cold.compression);
+    }
+
+    // ── show_*_diagnostics (println side-effect — exercise without panic) ───
+
+    #[test]
+    fn test_show_plain_diagnostics_no_panic() {
+        show_plain_diagnostics(&populated_stats(), false);
+        show_plain_diagnostics(&populated_stats(), true);
+    }
+
+    #[test]
+    fn test_show_human_diagnostics_no_panic() {
+        show_human_diagnostics(&populated_stats(), false);
+        show_human_diagnostics(&populated_stats(), true);
+    }
+
+    #[test]
+    fn test_show_json_diagnostics_with_storage_includes_field() {
+        // The function prints — we can't intercept, but it returns Ok and
+        // the json! macro internally serializes. Just exercise both branches.
+        assert!(show_json_diagnostics(&populated_stats(), true).is_ok());
+        assert!(show_json_diagnostics(&populated_stats(), false).is_ok());
+    }
+
+    #[test]
+    fn test_show_yaml_diagnostics_no_panic_both_branches() {
+        assert!(show_yaml_diagnostics(&populated_stats(), true).is_ok());
+        assert!(show_yaml_diagnostics(&populated_stats(), false).is_ok());
+    }
+
+    #[test]
+    fn test_show_table_diagnostics_no_panic() {
+        show_table_diagnostics(&populated_stats());
+        show_table_diagnostics(&empty_stats());
+    }
+
+    // ── print_basic_storage_info / show_backend_details ─────────────────────
+
+    #[test]
+    fn test_print_basic_storage_info_no_panic() {
+        print_basic_storage_info(&populated_stats());
+        print_basic_storage_info(&empty_stats());
+    }
+
+    #[test]
+    fn test_show_backend_details_iterates_all_tiers() {
+        let mut backend = HashMap::new();
+        let mut warm = HashMap::new();
+        warm.insert("k".to_string(), "v".to_string());
+        let mut cold = HashMap::new();
+        cold.insert("k2".to_string(), "v2".to_string());
+        backend.insert("warm".to_string(), warm);
+        backend.insert("cold".to_string(), cold);
+        show_backend_details(&backend);
+    }
+
+    #[test]
+    fn test_show_backend_details_empty_no_panic() {
+        let backend = HashMap::new();
+        show_backend_details(&backend);
+    }
+
+    #[test]
+    fn test_show_human_backend_details_iterates_keys() {
+        let mut backend = HashMap::new();
+        let mut warm = HashMap::new();
+        warm.insert("a".to_string(), "1".to_string());
+        warm.insert("b".to_string(), "2".to_string());
+        backend.insert("warm".to_string(), warm);
+        show_human_backend_details(&backend);
+    }
+
+    #[test]
+    fn test_print_backend_statistics_no_panic() {
+        let mut backend = HashMap::new();
+        let mut tier = HashMap::new();
+        tier.insert("entries".to_string(), "42".to_string());
+        backend.insert("tier1".to_string(), tier);
+        print_backend_statistics(&backend);
+    }
+}
+
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
 mod property_tests {

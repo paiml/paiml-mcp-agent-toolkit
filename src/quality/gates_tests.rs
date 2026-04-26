@@ -323,4 +323,163 @@ mod tests {
             "nested file under the deleted dir must be gone too"
         );
     }
+
+    // ── R5 extracted helpers (wave 35 PR1) ──────────────────────────────────
+
+    #[test]
+    fn test_build_clippy_message_passed() {
+        let m = build_clippy_message(true, "");
+        assert_eq!(m, "✓ Clippy passed");
+    }
+
+    #[test]
+    fn test_build_clippy_message_failed_includes_stderr_first_10_lines() {
+        let stderr = (1..=15)
+            .map(|i| format!("err line {}", i))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let m = build_clippy_message(false, &stderr);
+        assert!(m.starts_with("✗ Clippy failed:"));
+        assert!(m.contains("err line 1"));
+        assert!(m.contains("err line 10"));
+        assert!(!m.contains("err line 11"), "must take only first 10 lines");
+    }
+
+    #[test]
+    fn test_build_clippy_message_failed_empty_stderr() {
+        let m = build_clippy_message(false, "");
+        // Empty stderr → just the header with empty body
+        assert_eq!(m, "✗ Clippy failed:\n");
+    }
+
+    #[test]
+    fn test_build_test_message_passed() {
+        assert_eq!(build_test_message(true, "any", "any"), "✓ Tests passed");
+    }
+
+    #[test]
+    fn test_build_test_message_failed_picks_failed_lines_from_stdout() {
+        let stdout = "running 5 tests\ntest a::b ... FAILED\ntest c ... ok";
+        let m = build_test_message(false, stdout, "");
+        assert!(m.contains("test a::b ... FAILED"));
+        assert!(!m.contains("running 5"));
+    }
+
+    #[test]
+    fn test_build_test_message_failed_picks_panicked_lines() {
+        let stdout = "thread 'foo' panicked at 'oops'";
+        let m = build_test_message(false, stdout, "");
+        assert!(m.contains("panicked"));
+    }
+
+    #[test]
+    fn test_build_test_message_failed_picks_compile_error_lines() {
+        let stdout = "error[E0308]: mismatched types";
+        let m = build_test_message(false, stdout, "");
+        assert!(m.contains("error[E0308]"));
+    }
+
+    #[test]
+    fn test_build_test_message_failed_picks_failures_summary() {
+        let stdout = "failures:\n    a::b";
+        let m = build_test_message(false, stdout, "");
+        assert!(m.contains("failures:"));
+        assert!(m.contains("    a::b"));
+    }
+
+    #[test]
+    fn test_build_test_message_failed_falls_back_to_stderr_when_stdout_clean() {
+        // Stdout has no failure lines; stderr has compile errors
+        let stdout = "compiling pkg\nfinished";
+        let stderr = "error: cannot find type";
+        let m = build_test_message(false, stdout, stderr);
+        assert!(m.contains("error: cannot find type"));
+    }
+
+    #[test]
+    fn test_build_test_message_failed_caps_stdout_at_15_lines() {
+        let stdout = (1..=20)
+            .map(|i| format!("test t_{} ... FAILED", i))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let m = build_test_message(false, &stdout, "");
+        assert!(m.contains("t_15"));
+        assert!(!m.contains("t_16"));
+    }
+
+    #[test]
+    fn test_build_test_message_failed_caps_stderr_fallback_at_10_lines() {
+        let stderr = (1..=15)
+            .map(|i| format!("err {}", i))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let m = build_test_message(false, "no failures here", &stderr);
+        assert!(m.contains("err 10"));
+        assert!(!m.contains("err 11"));
+    }
+
+    #[test]
+    fn test_build_coverage_decision_passes_at_threshold() {
+        // coverage >= min_coverage → passed
+        let (p, m) = build_coverage_decision(85.0, 85.0);
+        assert!(p);
+        assert!(m.contains("✓"));
+        assert!(m.contains("85.0%"));
+        assert!(m.contains(">="));
+    }
+
+    #[test]
+    fn test_build_coverage_decision_passes_above_threshold() {
+        let (p, m) = build_coverage_decision(95.5, 85.0);
+        assert!(p);
+        assert!(m.contains("95.5%"));
+    }
+
+    #[test]
+    fn test_build_coverage_decision_fails_below_threshold() {
+        let (p, m) = build_coverage_decision(84.9, 85.0);
+        assert!(!p);
+        assert!(m.contains("✗"));
+        assert!(m.contains("<"));
+        assert!(m.contains("84.9%"));
+    }
+
+    #[test]
+    fn test_build_coverage_decision_zero_below_threshold() {
+        let (p, m) = build_coverage_decision(0.0, 50.0);
+        assert!(!p);
+        assert!(m.contains("0.0%"));
+    }
+
+    // ── parse_coverage_from_output (was untested) ───────────────────────────
+
+    #[test]
+    fn test_parse_coverage_from_output_finds_total_pct() {
+        let output = "Filename ...\nfoo.rs   80.0%\nTOTAL    85.50%   12   3";
+        assert!((parse_coverage_from_output(output) - 85.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_parse_coverage_from_output_no_total_line() {
+        let output = "Filename ...\nfoo.rs   80.0%\nbar.rs   90.0%";
+        assert_eq!(parse_coverage_from_output(output), 0.0);
+    }
+
+    #[test]
+    fn test_parse_coverage_from_output_total_no_pct_returns_zero() {
+        let output = "TOTAL  no-percentages here";
+        assert_eq!(parse_coverage_from_output(output), 0.0);
+    }
+
+    #[test]
+    fn test_parse_coverage_from_output_empty_string() {
+        assert_eq!(parse_coverage_from_output(""), 0.0);
+    }
+
+    #[test]
+    fn test_parse_coverage_from_output_picks_first_pct_on_total_line() {
+        // First %-suffixed token on the TOTAL line is what's picked
+        let output = "TOTAL  77.7%   88.8%   99.9%";
+        assert!((parse_coverage_from_output(output) - 77.7).abs() < 1e-6);
+    }
 }

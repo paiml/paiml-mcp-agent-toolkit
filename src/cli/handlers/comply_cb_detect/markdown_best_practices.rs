@@ -485,3 +485,166 @@ pub fn detect_cb904_long_line(project_path: &Path) -> Vec<CbPatternViolation> {
 
     violations
 }
+
+#[cfg(test)]
+mod markdown_best_practices_tests {
+    //! Covers pure helpers in markdown_best_practices.rs (487 lines, 0
+    //! prior tests). Skips `walkdir_*` and the CB-9xx detect_* fns that
+    //! traverse the filesystem (those need tempdir fixtures + roadmap
+    //! integration; covered indirectly via cb_detect E2E).
+    use super::*;
+
+    // ── push_str_array ──
+
+    #[test]
+    fn test_push_str_array_appends_string_array_items() {
+        let mut out: Vec<String> = vec![];
+        let toml_val: toml::Value = "x = [\"a\", \"b\", \"c\"]"
+            .parse::<toml::Table>()
+            .unwrap()
+            .get("x")
+            .unwrap()
+            .clone();
+        push_str_array(&mut out, Some(&toml_val));
+        assert_eq!(out, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn test_push_str_array_dedupes_existing_entries() {
+        let mut out: Vec<String> = vec!["a".to_string()];
+        let toml_val: toml::Value = "x = [\"a\", \"b\"]"
+            .parse::<toml::Table>()
+            .unwrap()
+            .get("x")
+            .unwrap()
+            .clone();
+        push_str_array(&mut out, Some(&toml_val));
+        assert_eq!(out, vec!["a", "b"]);
+    }
+
+    #[test]
+    fn test_push_str_array_skips_non_array_or_none() {
+        let mut out: Vec<String> = vec![];
+        push_str_array(&mut out, None);
+        assert!(out.is_empty());
+        let scalar: toml::Value = "x = 42"
+            .parse::<toml::Table>()
+            .unwrap()
+            .get("x")
+            .unwrap()
+            .clone();
+        push_str_array(&mut out, Some(&scalar));
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_push_str_array_skips_non_string_array_items() {
+        let mut out: Vec<String> = vec![];
+        let mixed: toml::Value = "x = [\"a\", 42, true]"
+            .parse::<toml::Table>()
+            .unwrap()
+            .get("x")
+            .unwrap()
+            .clone();
+        push_str_array(&mut out, Some(&mixed));
+        // Only the string "a" is pushed.
+        assert_eq!(out, vec!["a"]);
+    }
+
+    // ── glob_like_match ──
+
+    #[test]
+    fn test_glob_like_match_double_star_prefix_with_double_star_suffix() {
+        // `**/foo/**` → contains "foo".
+        assert!(glob_like_match("a/foo/b", "b", "**/foo/**"));
+        assert!(!glob_like_match("a/bar/b", "b", "**/foo/**"));
+    }
+
+    #[test]
+    fn test_glob_like_match_double_star_prefix_glob_suffix() {
+        // `**/*.md` → match basename glob.
+        assert!(glob_like_match("docs/foo.md", "foo.md", "**/*.md"));
+        assert!(!glob_like_match("docs/foo.txt", "foo.txt", "**/*.md"));
+    }
+
+    #[test]
+    fn test_glob_like_match_double_star_prefix_literal_suffix() {
+        // `**/exact-name.md` → exact filename or substring.
+        assert!(glob_like_match(
+            "docs/sub/exact-name.md",
+            "exact-name.md",
+            "**/exact-name.md"
+        ));
+        assert!(!glob_like_match(
+            "docs/other.md",
+            "other.md",
+            "**/exact-name.md"
+        ));
+    }
+
+    #[test]
+    fn test_glob_like_match_double_star_suffix_only() {
+        // `prefix/**` → starts with "prefix" or path contains "/prefix/".
+        assert!(glob_like_match("prefix/foo.md", "foo.md", "prefix/**"));
+        assert!(glob_like_match(
+            "outer/prefix/foo.md",
+            "foo.md",
+            "prefix/**"
+        ));
+        assert!(!glob_like_match("other/foo.md", "foo.md", "prefix/**"));
+    }
+
+    #[test]
+    fn test_glob_like_match_path_with_slash_substring() {
+        // Pattern with '/' but no '**' wildcards → substring match.
+        assert!(glob_like_match("docs/foo/bar.md", "bar.md", "foo/bar"));
+        assert!(!glob_like_match("docs/qux.md", "qux.md", "foo/bar"));
+    }
+
+    #[test]
+    fn test_glob_like_match_basename_glob_pattern() {
+        // No '/', has '*' → glob match against file_name only.
+        assert!(glob_like_match("any/path/foo.md", "foo.md", "*.md"));
+        assert!(!glob_like_match("any/path/foo.rs", "foo.rs", "*.md"));
+    }
+
+    #[test]
+    fn test_glob_like_match_exact_filename() {
+        // Plain filename → exact match against file_name.
+        assert!(glob_like_match(
+            "a/CHANGELOG.md",
+            "CHANGELOG.md",
+            "CHANGELOG.md"
+        ));
+        assert!(!glob_like_match(
+            "a/CHANGES.md",
+            "CHANGES.md",
+            "CHANGELOG.md"
+        ));
+    }
+
+    // ── path_matches_any_exclude ──
+
+    #[test]
+    fn test_path_matches_any_exclude_empty_patterns_returns_false() {
+        let p = Path::new("/root/docs/foo.md");
+        let root = Path::new("/root");
+        assert!(!path_matches_any_exclude(p, root, &[]));
+    }
+
+    #[test]
+    fn test_path_matches_any_exclude_first_match_short_circuits() {
+        let p = Path::new("/root/docs/foo.md");
+        let root = Path::new("/root");
+        let patterns = vec!["**/*.md".to_string(), "never-matches".to_string()];
+        assert!(path_matches_any_exclude(p, root, &patterns));
+    }
+
+    #[test]
+    fn test_path_matches_any_exclude_no_match_returns_false() {
+        let p = Path::new("/root/docs/foo.md");
+        let root = Path::new("/root");
+        let patterns = vec!["**/*.txt".to_string(), "**/*.json".to_string()];
+        assert!(!path_matches_any_exclude(p, root, &patterns));
+    }
+}

@@ -400,3 +400,225 @@ pub fn apply_exclusions(
 
     (active, excluded)
 }
+
+#[cfg(test)]
+mod profile_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn clause(id: &str, kind: ClauseKind) -> ContractClause {
+        ContractClause {
+            id: id.to_string(),
+            description: format!("desc-{id}"),
+            kind,
+            falsification_method: FalsificationMethod::ManifestIntegrity,
+            threshold: None,
+            blocking: false,
+            source: ClauseSource::Default,
+        }
+    }
+
+    // ── ContractProfile::name ───────────────────────────────────────────────
+
+    #[test]
+    fn test_profile_name_universal() {
+        assert_eq!(ContractProfile::Universal.name(), "Universal");
+    }
+
+    #[test]
+    fn test_profile_name_rust() {
+        assert_eq!(ContractProfile::Rust.name(), "Rust");
+    }
+
+    #[test]
+    fn test_profile_name_pmat() {
+        assert_eq!(ContractProfile::Pmat.name(), "Pmat");
+    }
+
+    #[test]
+    fn test_profile_name_stack() {
+        let p = ContractProfile::Stack {
+            manifest_path: PathBuf::from(".dbc-stack.toml"),
+        };
+        assert_eq!(p.name(), "Stack");
+    }
+
+    #[test]
+    fn test_profile_name_custom() {
+        let p = ContractProfile::Custom {
+            claim_ids: vec!["x".to_string()],
+        };
+        assert_eq!(p.name(), "Custom");
+    }
+
+    // ── ContractProfile::required_tools ─────────────────────────────────────
+
+    #[test]
+    fn test_required_tools_universal() {
+        let tools = ContractProfile::Universal.required_tools();
+        assert_eq!(tools.len(), 1);
+        assert_eq!(tools[0].name, "git");
+    }
+
+    #[test]
+    fn test_required_tools_rust_includes_cargo_clippy_llvmcov_audit() {
+        let tools = ContractProfile::Rust.required_tools();
+        let names: Vec<_> = tools.iter().map(|t| t.name.as_str()).collect();
+        assert!(names.contains(&"cargo"));
+        assert!(names.contains(&"cargo-clippy"));
+        assert!(names.contains(&"cargo-llvm-cov"));
+        assert!(names.contains(&"cargo-audit"));
+    }
+
+    // ── ContractProfile::detect ─────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_returns_universal_when_dir_empty() {
+        let tmp = TempDir::new().unwrap();
+        // No git, no Cargo.toml, no .pmat → fallback Universal
+        let p = ContractProfile::detect(tmp.path());
+        assert!(matches!(p, ContractProfile::Universal));
+    }
+
+    #[test]
+    fn test_detect_returns_rust_when_cargo_toml_present() {
+        let tmp = TempDir::new().unwrap();
+        std::fs::write(tmp.path().join("Cargo.toml"), "[package]\nname=\"x\"").unwrap();
+        let p = ContractProfile::detect(tmp.path());
+        assert!(matches!(p, ContractProfile::Rust));
+    }
+
+    #[test]
+    fn test_detect_returns_universal_when_only_git_present() {
+        let tmp = TempDir::new().unwrap();
+        std::fs::create_dir(tmp.path().join(".git")).unwrap();
+        let p = ContractProfile::detect(tmp.path());
+        assert!(matches!(p, ContractProfile::Universal));
+    }
+
+    #[test]
+    fn test_detect_returns_pmat_when_context_db_present() {
+        let tmp = TempDir::new().unwrap();
+        let pmat_dir = tmp.path().join(".pmat");
+        std::fs::create_dir(&pmat_dir).unwrap();
+        std::fs::write(pmat_dir.join("context.db"), "").unwrap();
+        let p = ContractProfile::detect(tmp.path());
+        assert!(matches!(p, ContractProfile::Pmat));
+    }
+
+    #[test]
+    fn test_detect_returns_pmat_when_context_idx_present() {
+        let tmp = TempDir::new().unwrap();
+        let pmat_dir = tmp.path().join(".pmat");
+        std::fs::create_dir(&pmat_dir).unwrap();
+        std::fs::create_dir(pmat_dir.join("context.idx")).unwrap();
+        let p = ContractProfile::detect(tmp.path());
+        assert!(matches!(p, ContractProfile::Pmat));
+    }
+
+    #[test]
+    fn test_detect_returns_stack_when_dbc_stack_toml_present() {
+        let tmp = TempDir::new().unwrap();
+        std::fs::write(tmp.path().join(".dbc-stack.toml"), "extends=[]").unwrap();
+        let p = ContractProfile::detect(tmp.path());
+        assert!(matches!(p, ContractProfile::Stack { .. }));
+    }
+
+    // Priority: Stack > Pmat > Rust > Universal — verify that Pmat doesn't shadow Stack
+    #[test]
+    fn test_detect_stack_wins_over_pmat() {
+        let tmp = TempDir::new().unwrap();
+        let pmat_dir = tmp.path().join(".pmat");
+        std::fs::create_dir(&pmat_dir).unwrap();
+        std::fs::write(pmat_dir.join("context.db"), "").unwrap();
+        std::fs::write(tmp.path().join(".dbc-stack.toml"), "").unwrap();
+        let p = ContractProfile::detect(tmp.path());
+        assert!(matches!(p, ContractProfile::Stack { .. }));
+    }
+
+    #[test]
+    fn test_detect_pmat_wins_over_rust() {
+        let tmp = TempDir::new().unwrap();
+        std::fs::write(tmp.path().join("Cargo.toml"), "[package]\nname=\"x\"").unwrap();
+        let pmat_dir = tmp.path().join(".pmat");
+        std::fs::create_dir(&pmat_dir).unwrap();
+        std::fs::write(pmat_dir.join("context.db"), "").unwrap();
+        let p = ContractProfile::detect(tmp.path());
+        assert!(matches!(p, ContractProfile::Pmat));
+    }
+
+    // ── classify_claims ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_classify_claims_empty() {
+        let (req, ens, inv) = classify_claims(&[]);
+        assert!(req.is_empty());
+        assert!(ens.is_empty());
+        assert!(inv.is_empty());
+    }
+
+    #[test]
+    fn test_classify_claims_partitions_by_kind() {
+        let clauses = vec![
+            clause("r1", ClauseKind::Require),
+            clause("r2", ClauseKind::Require),
+            clause("e1", ClauseKind::Ensure),
+            clause("i1", ClauseKind::Invariant),
+            clause("i2", ClauseKind::Invariant),
+            clause("i3", ClauseKind::Invariant),
+        ];
+        let (req, ens, inv) = classify_claims(&clauses);
+        assert_eq!(req.len(), 2);
+        assert_eq!(ens.len(), 1);
+        assert_eq!(inv.len(), 3);
+        assert!(req.iter().all(|c| matches!(c.kind, ClauseKind::Require)));
+        assert!(ens.iter().all(|c| matches!(c.kind, ClauseKind::Ensure)));
+        assert!(inv.iter().all(|c| matches!(c.kind, ClauseKind::Invariant)));
+    }
+
+    // ── apply_exclusions ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_apply_exclusions_empty_without_keeps_all() {
+        let clauses = vec![
+            clause("a", ClauseKind::Require),
+            clause("b", ClauseKind::Ensure),
+        ];
+        let (active, excluded) = apply_exclusions(clauses, &[]);
+        assert_eq!(active.len(), 2);
+        assert_eq!(excluded.len(), 0);
+    }
+
+    #[test]
+    fn test_apply_exclusions_drops_matching_ids() {
+        let clauses = vec![
+            clause("a", ClauseKind::Require),
+            clause("b", ClauseKind::Ensure),
+            clause("c", ClauseKind::Invariant),
+        ];
+        let (active, excluded) =
+            apply_exclusions(clauses, &["a".to_string(), "c".to_string()]);
+        assert_eq!(active.len(), 1);
+        assert_eq!(active[0].id, "b");
+        assert_eq!(excluded.len(), 2);
+        assert!(excluded.iter().any(|e| e.id == "a"));
+        assert!(excluded.iter().any(|e| e.id == "c"));
+    }
+
+    #[test]
+    fn test_apply_exclusions_excluded_carries_flag_and_reason() {
+        let clauses = vec![clause("ensure.coverage", ClauseKind::Ensure)];
+        let (_, excluded) = apply_exclusions(clauses, &["ensure.coverage".to_string()]);
+        assert_eq!(excluded.len(), 1);
+        assert_eq!(excluded[0].flag, "--without ensure.coverage");
+        assert_eq!(excluded[0].reason, "developer_excluded");
+    }
+
+    #[test]
+    fn test_apply_exclusions_no_match_keeps_all() {
+        let clauses = vec![clause("a", ClauseKind::Require)];
+        let (active, excluded) = apply_exclusions(clauses, &["nonexistent".to_string()]);
+        assert_eq!(active.len(), 1);
+        assert_eq!(excluded.len(), 0);
+    }
+}

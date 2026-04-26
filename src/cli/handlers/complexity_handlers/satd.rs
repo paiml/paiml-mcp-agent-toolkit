@@ -164,3 +164,189 @@ fn filter_top_files(
         .items
         .retain(|item| top_file_paths.contains(&item.file));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::satd_detector::{
+        DebtCategory, SATDAnalysisResult, SATDSummary, Severity as DetectorSeverity, TechnicalDebt,
+    };
+    use chrono::Utc;
+    use std::collections::HashMap;
+
+    fn debt(file: &str, line: u32, severity: DetectorSeverity) -> TechnicalDebt {
+        TechnicalDebt {
+            category: DebtCategory::Requirement,
+            severity,
+            text: "TODO: thing".into(),
+            file: PathBuf::from(file),
+            line,
+            column: 0,
+            context_hash: [0u8; 16],
+        }
+    }
+
+    fn make_result(items: Vec<TechnicalDebt>) -> SATDAnalysisResult {
+        let files_with_debt = items
+            .iter()
+            .map(|i| &i.file)
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+        SATDAnalysisResult {
+            total_files_analyzed: 100,
+            files_with_debt,
+            analysis_timestamp: Utc::now(),
+            summary: SATDSummary {
+                total_items: items.len(),
+                by_severity: HashMap::new(),
+                by_category: HashMap::new(),
+                files_with_satd: files_with_debt,
+                avg_age_days: 0.0,
+            },
+            items,
+        }
+    }
+
+    // ── print_satd_analysis_info ────────────────────────────────────────────
+
+    #[test]
+    fn test_print_satd_analysis_info_strict_no_panic() {
+        // println side-effect — exercise both arms
+        print_satd_analysis_info(true, 30);
+        print_satd_analysis_info(false, 60);
+    }
+
+    // ── apply_satd_filters: severity ────────────────────────────────────────
+
+    #[test]
+    fn test_apply_satd_filters_severity_critical_keeps_only_critical() {
+        let mut r = make_result(vec![
+            debt("a.rs", 1, DetectorSeverity::Critical),
+            debt("a.rs", 2, DetectorSeverity::High),
+            debt("a.rs", 3, DetectorSeverity::Low),
+        ]);
+        apply_satd_filters(&mut r, Some(SatdSeverity::Critical), false, 0);
+        assert_eq!(r.items.len(), 1);
+        assert_eq!(r.items[0].severity, DetectorSeverity::Critical);
+    }
+
+    #[test]
+    fn test_apply_satd_filters_severity_high_keeps_high_and_critical() {
+        let mut r = make_result(vec![
+            debt("a.rs", 1, DetectorSeverity::Critical),
+            debt("a.rs", 2, DetectorSeverity::High),
+            debt("a.rs", 3, DetectorSeverity::Medium),
+        ]);
+        apply_satd_filters(&mut r, Some(SatdSeverity::High), false, 0);
+        assert_eq!(r.items.len(), 2);
+    }
+
+    #[test]
+    fn test_apply_satd_filters_severity_low_keeps_all() {
+        let mut r = make_result(vec![
+            debt("a.rs", 1, DetectorSeverity::Critical),
+            debt("a.rs", 2, DetectorSeverity::Medium),
+            debt("a.rs", 3, DetectorSeverity::Low),
+        ]);
+        apply_satd_filters(&mut r, Some(SatdSeverity::Low), false, 0);
+        assert_eq!(r.items.len(), 3);
+    }
+
+    #[test]
+    fn test_apply_satd_filters_severity_medium_keeps_med_high_critical() {
+        let mut r = make_result(vec![
+            debt("a.rs", 1, DetectorSeverity::Critical),
+            debt("a.rs", 2, DetectorSeverity::High),
+            debt("a.rs", 3, DetectorSeverity::Medium),
+            debt("a.rs", 4, DetectorSeverity::Low),
+        ]);
+        apply_satd_filters(&mut r, Some(SatdSeverity::Medium), false, 0);
+        assert_eq!(r.items.len(), 3);
+    }
+
+    // ── apply_satd_filters: critical_only ───────────────────────────────────
+
+    #[test]
+    fn test_apply_satd_filters_critical_only_drops_others() {
+        let mut r = make_result(vec![
+            debt("a.rs", 1, DetectorSeverity::Critical),
+            debt("a.rs", 2, DetectorSeverity::High),
+        ]);
+        apply_satd_filters(&mut r, None, true, 0);
+        assert_eq!(r.items.len(), 1);
+        assert_eq!(r.items[0].severity, DetectorSeverity::Critical);
+    }
+
+    // ── apply_satd_filters: top_files ───────────────────────────────────────
+
+    #[test]
+    fn test_apply_satd_filters_top_files_keeps_n_files() {
+        // 3 files: a.rs has 3 items, b.rs has 2, c.rs has 1. Top 2 → keep a.rs and b.rs.
+        let mut r = make_result(vec![
+            debt("a.rs", 1, DetectorSeverity::Low),
+            debt("a.rs", 2, DetectorSeverity::Low),
+            debt("a.rs", 3, DetectorSeverity::Low),
+            debt("b.rs", 1, DetectorSeverity::Low),
+            debt("b.rs", 2, DetectorSeverity::Low),
+            debt("c.rs", 1, DetectorSeverity::Low),
+        ]);
+        apply_satd_filters(&mut r, None, false, 2);
+        assert_eq!(r.items.len(), 5);
+        assert!(!r.items.iter().any(|i| i.file == Path::new("c.rs")));
+    }
+
+    #[test]
+    fn test_apply_satd_filters_top_files_zero_keeps_all() {
+        // top_files=0 → no filter applied
+        let mut r = make_result(vec![
+            debt("a.rs", 1, DetectorSeverity::Low),
+            debt("b.rs", 1, DetectorSeverity::Low),
+            debt("c.rs", 1, DetectorSeverity::Low),
+        ]);
+        apply_satd_filters(&mut r, None, false, 0);
+        assert_eq!(r.items.len(), 3);
+    }
+
+    // ── filter_top_files ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_filter_top_files_picks_highest_count() {
+        let mut r = make_result(vec![
+            debt("a.rs", 1, DetectorSeverity::Low),
+            debt("b.rs", 1, DetectorSeverity::Low),
+            debt("b.rs", 2, DetectorSeverity::Low),
+            debt("b.rs", 3, DetectorSeverity::Low),
+        ]);
+        filter_top_files(&mut r, 1);
+        // Only b.rs (3 items) survives
+        assert_eq!(r.items.len(), 3);
+        assert!(r.items.iter().all(|i| i.file == Path::new("b.rs")));
+    }
+
+    #[test]
+    fn test_filter_top_files_n_larger_than_files_keeps_all() {
+        let mut r = make_result(vec![
+            debt("a.rs", 1, DetectorSeverity::Low),
+            debt("b.rs", 1, DetectorSeverity::Low),
+        ]);
+        filter_top_files(&mut r, 100);
+        assert_eq!(r.items.len(), 2);
+    }
+
+    // ── check_satd_violations ───────────────────────────────────────────────
+    // (calls process::exit on failure — only test the non-failure paths)
+
+    #[test]
+    fn test_check_satd_violations_disabled_flag_returns_ok() {
+        // fail_on_violation = false → never exits, returns Ok regardless of items
+        let r = make_result(vec![debt("a.rs", 1, DetectorSeverity::High)]);
+        assert!(check_satd_violations(&r, false).is_ok());
+    }
+
+    #[test]
+    fn test_check_satd_violations_empty_items_returns_ok() {
+        // fail_on_violation = true but no items → returns Ok
+        let r = make_result(vec![]);
+        assert!(check_satd_violations(&r, true).is_ok());
+    }
+}

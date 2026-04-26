@@ -220,3 +220,220 @@ fn is_string_accumulator(line: &str) -> bool {
     }
     false
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── calls_nil_err_function ──────────────────────────────────────────────
+
+    #[test]
+    fn test_calls_nil_err_function_io_open_matches() {
+        // io.open is in NIL_ERR_FUNCTIONS
+        assert_eq!(calls_nil_err_function("io.open(\"f\")"), Some("io.open"));
+    }
+
+    #[test]
+    fn test_calls_nil_err_function_no_match_returns_none() {
+        assert!(calls_nil_err_function("local x = 1").is_none());
+        assert!(calls_nil_err_function("print(\"hi\")").is_none());
+    }
+
+    // ── captures_error_return ───────────────────────────────────────────────
+
+    #[test]
+    fn test_captures_error_return_local_two_captures_true() {
+        assert!(captures_error_return("local ok, err = io.open(\"f\")"));
+    }
+
+    #[test]
+    fn test_captures_error_return_plain_two_captures_true() {
+        assert!(captures_error_return("ok, err = io.open(\"f\")"));
+    }
+
+    #[test]
+    fn test_captures_error_return_single_capture_false() {
+        // No comma in lhs → not capturing the error
+        assert!(!captures_error_return("local fd = io.open(\"f\")"));
+    }
+
+    #[test]
+    fn test_captures_error_return_no_eq_false() {
+        assert!(!captures_error_return("io.open(\"f\")"));
+    }
+
+    // ── is_assert_call ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_is_assert_call_plain_assert_true() {
+        assert!(is_assert_call("assert(x > 0)"));
+        assert!(is_assert_call("  assert(cond, \"msg\")"));
+    }
+
+    #[test]
+    fn test_is_assert_call_dotted_assert_false() {
+        // assert.is_true(...) is a test framework method, not a plain assert
+        assert!(!is_assert_call("assert.is_true(x)"));
+        assert!(!is_assert_call("assert.equals(a, b)"));
+    }
+
+    #[test]
+    fn test_is_assert_call_no_assert_false() {
+        assert!(!is_assert_call("local x = 1"));
+        assert!(!is_assert_call("assertion(x)"));
+    }
+
+    // ── is_string_accumulator ───────────────────────────────────────────────
+
+    #[test]
+    fn test_is_string_accumulator_basic() {
+        assert!(is_string_accumulator("result = result .. x"));
+    }
+
+    #[test]
+    fn test_is_string_accumulator_with_extra_concats() {
+        assert!(is_string_accumulator("buf = buf .. \"hello\" .. y"));
+    }
+
+    #[test]
+    fn test_is_string_accumulator_eq_eq_skipped() {
+        // == is a comparison, not assignment
+        assert!(!is_string_accumulator("x == y"));
+    }
+
+    #[test]
+    fn test_is_string_accumulator_different_lhs_rhs_not_accumulator() {
+        // y = x .. z is not an accumulator (lhs != rhs prefix)
+        assert!(!is_string_accumulator("y = x .. z"));
+    }
+
+    #[test]
+    fn test_is_string_accumulator_no_concat_not_accumulator() {
+        // result = result is not an accumulator
+        assert!(!is_string_accumulator("result = result"));
+    }
+
+    #[test]
+    fn test_is_string_accumulator_no_eq_false() {
+        assert!(!is_string_accumulator("local x"));
+    }
+
+    // ── filesystem entrypoints ──────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_cb608_no_files_returns_empty() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb608_unchecked_nil_err(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb608_unchecked_io_open_flagged() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(tmp.path().join("a.lua"), "local fd = io.open(\"/tmp/x\")\n").unwrap();
+        let v = detect_cb608_unchecked_nil_err(tmp.path());
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].pattern_id, "CB-608");
+    }
+
+    #[test]
+    fn test_detect_cb608_captured_io_open_clean() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("a.lua"),
+            "local fd, err = io.open(\"/tmp/x\")\n",
+        )
+        .unwrap();
+        assert!(detect_cb608_unchecked_nil_err(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb609_no_files_returns_empty() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb609_assert_in_library(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb609_assert_after_skip_lines_flagged() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        // First 5 lines are the module-require guard zone — assert in line >=6 flagged
+        fs::write(
+            tmp.path().join("a.lua"),
+            "local M = {}\nlocal x = 1\nlocal y = 2\nlocal z = 3\nlocal q = 4\nfunction M.do_thing()\n  assert(x > 0)\nend\nreturn M\n",
+        )
+        .unwrap();
+        let v = detect_cb609_assert_in_library(tmp.path());
+        assert!(!v.is_empty());
+        assert_eq!(v[0].pattern_id, "CB-609");
+    }
+
+    #[test]
+    fn test_detect_cb609_assert_in_first_5_lines_skipped() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        // assert in line 1 — skipped (module require guard zone)
+        fs::write(
+            tmp.path().join("a.lua"),
+            "assert(1==1)\nlocal M = {}\nreturn M\n",
+        )
+        .unwrap();
+        assert!(detect_cb609_assert_in_library(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb610_no_files_returns_empty() {
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        assert!(detect_cb610_string_accumulator_in_loop(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb610_accumulator_in_for_loop_flagged() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("a.lua"),
+            "local result = \"\"\nfor i = 1, 10 do\n  result = result .. i\nend\n",
+        )
+        .unwrap();
+        let v = detect_cb610_string_accumulator_in_loop(tmp.path());
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].pattern_id, "CB-610");
+    }
+
+    #[test]
+    fn test_detect_cb610_accumulator_outside_loop_clean() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("a.lua"),
+            "local result = \"\"\nresult = result .. \"x\"\n",
+        )
+        .unwrap();
+        assert!(detect_cb610_string_accumulator_in_loop(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn test_detect_cb610_while_loop_also_flagged() {
+        use std::fs;
+        use tempfile::TempDir;
+        let tmp = TempDir::new().unwrap();
+        fs::write(
+            tmp.path().join("a.lua"),
+            "local r = \"\"\nlocal i = 0\nwhile i < 5 do\n  r = r .. i\n  i = i + 1\nend\n",
+        )
+        .unwrap();
+        let v = detect_cb610_string_accumulator_in_loop(tmp.path());
+        assert!(!v.is_empty());
+    }
+}

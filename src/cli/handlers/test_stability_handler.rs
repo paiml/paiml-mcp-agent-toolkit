@@ -440,4 +440,175 @@ mod tests {
         assert!(text.contains("test_flaky_one"));
         assert!(text.contains("Flaky"));
     }
+
+    // ── Wave 39 PR21: cover the timeout-sensitive + combined branches ──
+
+    fn make_timeout_sensitive_test(name: &str) -> TestResult {
+        TestResult {
+            name: name.to_string(),
+            pass_count: 3,
+            fail_count: 0,
+            pass_rate: 1.0,
+            durations_ms: vec![50.0, 200.0, 600.0],
+            mean_ms: 283.3,
+            p95_ms: 580.0,
+            max_ms: 600.0,
+            variance_ratio: 2.12,
+            classification: "Timeout-Sensitive".to_string(),
+            recommendation: "Recommend adaptive timeout: 1160ms (2x P95)".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_format_text_with_timeout_sensitive_only() {
+        // Exercises the timeout_sensitive_tests block (line 340-356).
+        let analysis = StabilityAnalysis {
+            total_tests: 100,
+            runs: 3,
+            stable_count: 99,
+            flaky_count: 0,
+            timeout_sensitive_count: 1,
+            flaky_tests: vec![],
+            timeout_sensitive_tests: vec![make_timeout_sensitive_test("slow_test")],
+            total_duration_secs: 30.0,
+        };
+        let text = format_text(&analysis);
+        assert!(text.contains("Timeout-Sensitive Tests"));
+        assert!(text.contains("slow_test"));
+        assert!(text.contains("Variance"));
+        // PIN: variance_ratio formatted with 1 decimal + "x" suffix.
+        assert!(text.contains("2.1x"));
+    }
+
+    #[test]
+    fn test_format_text_with_both_flaky_and_timeout_sensitive() {
+        // Hits both blocks (flaky_tests AND timeout_sensitive_tests).
+        let analysis = StabilityAnalysis {
+            total_tests: 100,
+            runs: 3,
+            stable_count: 98,
+            flaky_count: 1,
+            timeout_sensitive_count: 1,
+            flaky_tests: vec![TestResult {
+                name: "flaky_a".to_string(),
+                pass_count: 1,
+                fail_count: 2,
+                pass_rate: 0.33,
+                durations_ms: vec![100.0],
+                mean_ms: 100.0,
+                p95_ms: 100.0,
+                max_ms: 100.0,
+                variance_ratio: 1.0,
+                classification: "Flaky".to_string(),
+                recommendation: "retry".to_string(),
+            }],
+            timeout_sensitive_tests: vec![make_timeout_sensitive_test("slow_b")],
+            total_duration_secs: 60.0,
+        };
+        let text = format_text(&analysis);
+        assert!(text.contains("flaky_a"));
+        assert!(text.contains("slow_b"));
+        assert!(text.contains("Flaky Tests"));
+        assert!(text.contains("Timeout-Sensitive Tests"));
+        // "All tests are stable" should NOT appear when there are flaky/timeout tests.
+        assert!(!text.contains("All tests are stable"));
+    }
+
+    #[test]
+    fn test_format_text_summary_includes_run_counts_and_duration() {
+        let analysis = StabilityAnalysis {
+            total_tests: 250,
+            runs: 5,
+            stable_count: 250,
+            flaky_count: 0,
+            timeout_sensitive_count: 0,
+            flaky_tests: vec![],
+            timeout_sensitive_tests: vec![],
+            total_duration_secs: 47.3,
+        };
+        let text = format_text(&analysis);
+        assert!(text.contains("Total tests:"));
+        assert!(text.contains("250"));
+        assert!(text.contains("Stable:"));
+        // PIN: Duration uses `.1` decimal format with "s" suffix.
+        assert!(text.contains("47.3s"));
+        // PIN: stable percent computed as `stable / total.max(1) * 100`.
+        assert!(text.contains("100.0%"));
+    }
+
+    #[test]
+    fn test_format_text_handles_zero_total_tests_via_max_1() {
+        // PIN: total_tests.max(1) prevents div/0 when no tests run.
+        let analysis = StabilityAnalysis {
+            total_tests: 0,
+            runs: 1,
+            stable_count: 0,
+            flaky_count: 0,
+            timeout_sensitive_count: 0,
+            flaky_tests: vec![],
+            timeout_sensitive_tests: vec![],
+            total_duration_secs: 0.0,
+        };
+        let text = format_text(&analysis);
+        // Should not panic.
+        assert!(text.contains("Total tests:"));
+        assert!(text.contains("All tests are stable"));
+    }
+
+    // ── parse_text_test_output edge cases ───────────────────────────────────
+
+    #[test]
+    fn test_parse_text_test_output_empty_input() {
+        let mut results = Vec::new();
+        parse_text_test_output("", &mut results);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_parse_text_test_output_no_test_lines() {
+        let mut results = Vec::new();
+        parse_text_test_output(
+            "running 0 tests\ntest result: ok. 0 passed; 0 failed\n",
+            &mut results,
+        );
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_parse_text_test_output_ignored_test_not_collected() {
+        // PIN: the parser only matches `... ok` and `... FAILED`; ignored tests
+        // (`... ignored`) are NOT collected.
+        let mut results = Vec::new();
+        parse_text_test_output("test ignored_one ... ignored", &mut results);
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_parse_text_test_output_test_names_with_dots() {
+        // PIN: trim_end_matches strips " ... ok" / " ... FAILED" suffix from
+        // the entire string. Name with dots in module path survives.
+        let mut results = Vec::new();
+        parse_text_test_output("test foo::bar::test_baz ... ok", &mut results);
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].0, "foo::bar::test_baz");
+        assert!(results[0].1);
+    }
+
+    #[test]
+    fn test_parse_text_test_output_zero_duration_for_text_mode() {
+        // PIN: text mode has no timing info → duration always 0.0.
+        let mut results = Vec::new();
+        parse_text_test_output("test t ... ok", &mut results);
+        assert_eq!(results[0].2, 0.0);
+    }
+
+    #[test]
+    fn test_parse_text_test_output_appends_to_existing_results() {
+        // PIN: parse_text_test_output APPENDS to the &mut Vec (does not clear).
+        let mut results = vec![("preexisting".to_string(), true, 5.0)];
+        parse_text_test_output("test new_test ... ok", &mut results);
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].0, "preexisting");
+        assert_eq!(results[1].0, "new_test");
+    }
 }

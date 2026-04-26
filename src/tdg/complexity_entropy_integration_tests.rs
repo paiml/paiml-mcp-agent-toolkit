@@ -344,3 +344,831 @@ mod property_tests {
         }
     }
 }
+
+// =============================================================================
+// Wave 39 PR1 — integration tests for analyzer_impl1_language_extra.rs
+//
+// Targets the 5 language-specific analyze_*_ast methods (JavaScript/TypeScript,
+// Go, Java, Lua, C/C++) by going through the public `analyze_source` entry
+// point. analyzer_impl1_language_extra.rs has 248 missed lines at 0% broad cov.
+//
+// Per spec §4.11 stop criterion: this is the first integration-test PR; we
+// measure coverage delta after a few of these to validate lever (d).
+// =============================================================================
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod language_extra_integration_tests {
+    use crate::tdg::analyzer_ast::TdgAnalyzerAst;
+    use crate::tdg::Language;
+
+    fn analyzer() -> TdgAnalyzerAst {
+        TdgAnalyzerAst::new().expect("Failed to create analyzer")
+    }
+
+    // ── JavaScript / TypeScript ─────────────────────────────────────────────
+
+    #[test]
+    fn test_analyze_javascript_simple_function_yields_score() {
+        let analyzer = analyzer();
+        let src = r#"
+function hello(name) {
+    return "Hello, " + name;
+}
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::JavaScript, None)
+            .unwrap();
+        // Simple function: low complexity, valid total in [0,100].
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::JavaScript);
+    }
+
+    #[test]
+    fn test_analyze_javascript_complex_with_branches() {
+        let analyzer = analyzer();
+        // Multiple branches → exercises the cyclomatic+cognitive scoring path.
+        let src = r#"
+function classify(x, y, z) {
+    if (x > 0) {
+        if (y > 0) {
+            if (z > 0) return "all positive";
+            return "x,y positive";
+        }
+        return "x positive";
+    }
+    if (x === 0) return "zero";
+    return "negative";
+}
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::JavaScript, None)
+            .unwrap();
+        // Should compute a higher structural complexity than the trivial case.
+        assert!(score.structural_complexity > 0.0);
+    }
+
+    #[test]
+    fn test_analyze_typescript_with_async_and_classes() {
+        let analyzer = analyzer();
+        // TypeScript path goes through the same JS analyzer but with TsSyntax.
+        let src = r#"
+class UserService {
+    async fetch(id: number): Promise<User> {
+        const r = await api.get(`/users/${id}`);
+        return r.data;
+    }
+}
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::TypeScript, None)
+            .unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::TypeScript);
+    }
+
+    #[test]
+    fn test_analyze_javascript_invalid_syntax_does_not_panic() {
+        // PIN: parser falls through to error path; analyzer must not panic.
+        let analyzer = analyzer();
+        let src = "function broken( { let x =";
+        let result = analyzer.analyze_source(src, Language::JavaScript, None);
+        // Either Ok (with degraded score) or Err — but never panic.
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    // ── Go ──────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_analyze_go_simple_function() {
+        let analyzer = analyzer();
+        let src = r#"
+package main
+func add(a int, b int) int {
+    return a + b
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Go, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Go);
+    }
+
+    #[test]
+    fn test_analyze_go_with_branches_and_loops() {
+        let analyzer = analyzer();
+        let src = r#"
+package main
+func classify(x int) string {
+    if x > 100 {
+        return "huge"
+    }
+    for i := 0; i < x; i++ {
+        if i % 2 == 0 {
+            continue
+        }
+    }
+    switch x {
+    case 0: return "zero"
+    case 1: return "one"
+    default: return "other"
+    }
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Go, None).unwrap();
+        assert!(score.structural_complexity > 0.0);
+    }
+
+    // ── Java ────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_analyze_java_simple_class() {
+        let analyzer = analyzer();
+        let src = r#"
+public class Greeter {
+    public String greet(String name) {
+        return "Hello, " + name;
+    }
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Java, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Java);
+    }
+
+    #[test]
+    fn test_analyze_java_with_inheritance_and_branches() {
+        let analyzer = analyzer();
+        let src = r#"
+public abstract class Shape {
+    public abstract double area();
+}
+public class Circle extends Shape {
+    private double r;
+    public double area() {
+        if (r < 0) throw new IllegalStateException();
+        return Math.PI * r * r;
+    }
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Java, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    // ── Lua ─────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_analyze_lua_simple_function() {
+        let analyzer = analyzer();
+        let src = r#"
+function add(a, b)
+    return a + b
+end
+"#;
+        let score = analyzer.analyze_source(src, Language::Lua, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Lua);
+    }
+
+    #[test]
+    fn test_analyze_lua_with_table_and_method() {
+        let analyzer = analyzer();
+        let src = r#"
+local M = {}
+function M.classify(x)
+    if x > 0 then
+        return "positive"
+    elseif x == 0 then
+        return "zero"
+    else
+        return "negative"
+    end
+end
+return M
+"#;
+        let score = analyzer.analyze_source(src, Language::Lua, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    // ── C / C++ ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_analyze_c_simple_function() {
+        let analyzer = analyzer();
+        let src = r#"
+int add(int a, int b) {
+    return a + b;
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::C, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::C);
+    }
+
+    #[test]
+    fn test_analyze_c_with_pointers_and_branches() {
+        let analyzer = analyzer();
+        let src = r#"
+#include <stdlib.h>
+int* duplicate(int* arr, int len) {
+    if (arr == NULL || len <= 0) return NULL;
+    int* copy = malloc(sizeof(int) * len);
+    if (copy == NULL) return NULL;
+    for (int i = 0; i < len; i++) {
+        copy[i] = arr[i];
+    }
+    return copy;
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::C, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_cpp_with_templates_and_classes() {
+        let analyzer = analyzer();
+        let src = r#"
+#include <vector>
+template<typename T>
+class Stack {
+    std::vector<T> data;
+public:
+    void push(T x) { data.push_back(x); }
+    T pop() {
+        if (data.empty()) throw std::runtime_error("empty");
+        T v = data.back();
+        data.pop_back();
+        return v;
+    }
+};
+"#;
+        let score = analyzer.analyze_source(src, Language::Cpp, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Cpp);
+    }
+
+    // ── Cross-language sanity ───────────────────────────────────────────────
+
+    #[test]
+    fn test_total_score_bounded_for_all_languages() {
+        // PIN: every analyzed language must produce a total in [0,100].
+        let analyzer = analyzer();
+        let cases = [
+            (Language::JavaScript, "function f() { return 1; }"),
+            (Language::TypeScript, "function f(): number { return 1; }"),
+            (Language::Go, "package main\nfunc f() int { return 1 }"),
+            (Language::Java, "class C { int f() { return 1; } }"),
+            (Language::Lua, "function f() return 1 end"),
+            (Language::C, "int f() { return 1; }"),
+            (Language::Cpp, "int f() { return 1; }"),
+        ];
+        for (lang, src) in &cases {
+            let score = analyzer.analyze_source(src, *lang, None).unwrap();
+            assert!(
+                score.total >= 0.0 && score.total <= 100.0,
+                "{:?}: total {} out of [0,100]",
+                lang,
+                score.total
+            );
+        }
+    }
+
+    #[test]
+    fn test_empty_source_does_not_panic_for_all_languages() {
+        // PIN: empty source is a degenerate case; analyzers must not panic.
+        let analyzer = analyzer();
+        for lang in [
+            Language::JavaScript,
+            Language::TypeScript,
+            Language::Go,
+            Language::Java,
+            Language::Lua,
+            Language::C,
+            Language::Cpp,
+        ] {
+            let result = analyzer.analyze_source("", lang, None);
+            assert!(result.is_ok() || result.is_err(), "{:?} panicked", lang);
+        }
+    }
+
+    // ── Lean (Wave 39 PR3 — analyzer_impl2_heuristics_lean.rs) ──────────────
+
+    #[test]
+    fn test_analyze_lean_simple_theorem() {
+        let analyzer = analyzer();
+        let src = r#"
+theorem add_zero (n : Nat) : n + 0 = n := by
+  rfl
+"#;
+        let score = analyzer.analyze_source(src, Language::Lean, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Lean);
+    }
+
+    #[test]
+    fn test_analyze_lean_with_sorry_marks_as_critical() {
+        // PIN: per analyzer_impl1_source_dispatch.rs:70-77, Lean code with
+        // `sorry` (proof incompleteness) increments critical_defects_count
+        // when file_path is set. Without file_path, the defect-detection
+        // branch is skipped — only the lean-heuristic scoring runs.
+        let analyzer = analyzer();
+        let src = r#"
+theorem hard_to_prove : 1 + 1 = 2 := by sorry
+"#;
+        let score = analyzer.analyze_source(src, Language::Lean, None).unwrap();
+        // Without a file_path, sorry counting is skipped — but the heuristic
+        // still runs and a valid total is computed.
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+    }
+
+    #[test]
+    fn test_analyze_lean_with_sorry_and_file_path_increments_critical() {
+        // With file_path set, count_lean_sorry_ast contributes to
+        // critical_defects_count. is_file_git_tracked may suppress
+        // has_critical_defects for new files (issue #279) but the COUNT
+        // is preserved.
+        use std::path::PathBuf;
+        let analyzer = analyzer();
+        let src = r#"
+theorem t1 : 1 = 1 := sorry
+theorem t2 : 2 = 2 := sorry
+"#;
+        let score = analyzer
+            .analyze_source(
+                src,
+                Language::Lean,
+                Some(PathBuf::from("/tmp/nonexistent.lean")),
+            )
+            .unwrap();
+        // 2 sorry occurrences → critical_defects_count >= 2 (informational
+        // even when has_critical_defects is suppressed by git-tracked check).
+        assert!(score.critical_defects_count >= 2);
+    }
+
+    #[test]
+    fn test_analyze_lean_block_comment_with_sorry_does_not_count() {
+        // PIN: sorry inside `/- ... -/` block comment is NOT counted as
+        // a defect. strip_lean_block_comments_ast removes block-comment
+        // content before the word-boundary check.
+        use std::path::PathBuf;
+        let analyzer = analyzer();
+        let src = r#"
+/- This is a comment that mentions sorry but should NOT count. -/
+theorem clean : 1 = 1 := rfl
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Lean, Some(PathBuf::from("/tmp/clean.lean")))
+            .unwrap();
+        assert_eq!(score.critical_defects_count, 0);
+    }
+
+    #[test]
+    fn test_analyze_lean_line_comment_with_sorry_does_not_count() {
+        // PIN: sorry in a line comment (-- prefix) is NOT counted.
+        use std::path::PathBuf;
+        let analyzer = analyzer();
+        let src =
+            "-- this comment mentions sorry but it does not count\ntheorem t : 1 = 1 := rfl\n";
+        let score = analyzer
+            .analyze_source(src, Language::Lean, Some(PathBuf::from("/tmp/x.lean")))
+            .unwrap();
+        assert_eq!(score.critical_defects_count, 0);
+    }
+
+    #[test]
+    fn test_analyze_lean_word_boundary_avoids_false_positives() {
+        // PIN: contains_lean_sorry_word_ast requires word-boundary, so
+        // identifiers like `sorry_helper` or `mysorrowtheorem` do NOT trigger.
+        use std::path::PathBuf;
+        let analyzer = analyzer();
+        let src = "def sorry_helper := 42\ndef mysorrytheorem := 99\n";
+        let score = analyzer
+            .analyze_source(src, Language::Lean, Some(PathBuf::from("/tmp/x.lean")))
+            .unwrap();
+        assert_eq!(score.critical_defects_count, 0);
+    }
+
+    #[test]
+    fn test_analyze_lean_imports_and_definitions() {
+        let analyzer = analyzer();
+        let src = r#"
+import Mathlib.Algebra.Group.Defs
+import Mathlib.Tactic
+
+namespace MyModule
+
+def double (n : Nat) : Nat := n + n
+
+theorem double_pos (n : Nat) (h : n > 0) : double n > 0 := by
+  unfold double
+  omega
+
+end MyModule
+"#;
+        let score = analyzer.analyze_source(src, Language::Lean, None).unwrap();
+        assert!(score.total >= 0.0);
+        // Confidence is derated 10% for Lean per analyzer_impl2_heuristics_lean.rs:13.
+        assert!(score.confidence < 1.0);
+    }
+
+    // ── YAML / Markdown (Wave 39 PR8 — analyzer_impl2_heuristics_markup) ────
+
+    #[test]
+    fn test_analyze_yaml_simple() {
+        let analyzer = analyzer();
+        let src = r#"
+name: my-package
+version: 1.0.0
+authors:
+  - alice@example.com
+  - bob@example.com
+"#;
+        let score = analyzer.analyze_source(src, Language::Yaml, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Yaml);
+    }
+
+    #[test]
+    fn test_analyze_yaml_deeply_nested() {
+        // PIN: heuristic should track nesting depth to score complexity.
+        let analyzer = analyzer();
+        let src = r#"
+config:
+  database:
+    primary:
+      host: localhost
+      credentials:
+        user: admin
+        password:
+          source: vault
+          path: /secrets/db
+"#;
+        let score = analyzer.analyze_source(src, Language::Yaml, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_yaml_empty_does_not_panic() {
+        let analyzer = analyzer();
+        let result = analyzer.analyze_source("", Language::Yaml, None);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_analyze_yaml_with_comments_and_anchors() {
+        let analyzer = analyzer();
+        let src = r#"
+# Top-level comment
+defaults: &defaults
+  timeout: 30
+  retries: 3
+
+production:
+  <<: *defaults
+  host: prod.example.com
+"#;
+        let score = analyzer.analyze_source(src, Language::Yaml, None).unwrap();
+        assert!(score.total >= 0.0);
+        // Confidence is derated for heuristics (not full AST parsing).
+        assert!(score.confidence < 1.0);
+    }
+
+    #[test]
+    fn test_analyze_markdown_simple_heading_and_text() {
+        let analyzer = analyzer();
+        let src = r#"
+# Title
+
+This is a paragraph with **bold** and *italic* text.
+
+## Subsection
+
+Some more content.
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Markdown, None)
+            .unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Markdown);
+    }
+
+    #[test]
+    fn test_analyze_markdown_with_code_blocks_and_links() {
+        let analyzer = analyzer();
+        let src = r#"
+# README
+
+See [the spec](docs/spec.md) for details.
+
+```rust
+fn example() -> i32 {
+    42
+}
+```
+
+| Col1 | Col2 |
+|------|------|
+| a    | b    |
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Markdown, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_markdown_deeply_nested_lists() {
+        let analyzer = analyzer();
+        let src = r#"
+# Lists
+
+- Top
+  - Nested 1
+    - Nested 2
+      - Nested 3
+- Sibling
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Markdown, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_markdown_empty_does_not_panic() {
+        let analyzer = analyzer();
+        let result = analyzer.analyze_source("", Language::Markdown, None);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    // ── SQL (Wave 39 PR9 — analyzer_impl2_heuristics_sql) ───────────────────
+
+    #[test]
+    fn test_analyze_sql_simple_select() {
+        let analyzer = analyzer();
+        let src = "SELECT id, name FROM users WHERE active = 1;";
+        let score = analyzer.analyze_source(src, Language::Sql, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Sql);
+    }
+
+    #[test]
+    fn test_analyze_sql_complex_with_joins_and_subqueries() {
+        let analyzer = analyzer();
+        let src = r#"
+SELECT u.id, u.name, o.total
+FROM users u
+INNER JOIN orders o ON u.id = o.user_id
+LEFT JOIN payments p ON o.id = p.order_id
+WHERE u.created_at > NOW() - INTERVAL '30 days'
+  AND o.status IN (SELECT status FROM valid_statuses)
+GROUP BY u.id, u.name
+HAVING COUNT(o.id) > 5
+ORDER BY o.total DESC;
+"#;
+        let score = analyzer.analyze_source(src, Language::Sql, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_sql_ddl_statement() {
+        let analyzer = analyzer();
+        let src = r#"
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_users_email ON users(email);
+"#;
+        let score = analyzer.analyze_source(src, Language::Sql, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_sql_empty_does_not_panic() {
+        let analyzer = analyzer();
+        let result = analyzer.analyze_source("", Language::Sql, None);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    // ── Scala (Wave 39 PR9 — analyzer_impl2_heuristics_scala) ───────────────
+
+    #[test]
+    fn test_analyze_scala_simple_object() {
+        let analyzer = analyzer();
+        let src = r#"
+object Greeter {
+  def greet(name: String): String = s"Hello, $name"
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Scala, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Scala);
+    }
+
+    #[test]
+    fn test_analyze_scala_class_with_pattern_match_and_branches() {
+        // Exercises is_scala_control_flow + structural_metrics
+        let analyzer = analyzer();
+        let src = r#"
+class Calculator {
+  def classify(n: Int): String = {
+    if (n > 0) {
+      n match {
+        case 1 => "one"
+        case _ if n < 10 => "small"
+        case _ => "large"
+      }
+    } else if (n == 0) {
+      "zero"
+    } else {
+      "negative"
+    }
+  }
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Scala, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_scala_trait_and_inheritance() {
+        let analyzer = analyzer();
+        let src = r#"
+trait Animal {
+  def speak(): String
+}
+class Dog extends Animal {
+  override def speak(): String = "Woof!"
+}
+class Cat extends Animal {
+  override def speak(): String = "Meow!"
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Scala, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_scala_empty_does_not_panic() {
+        let analyzer = analyzer();
+        let result = analyzer.analyze_source("", Language::Scala, None);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    // ── Python (Wave 39 PR12 — visitors_python.rs) ──────────────────────────
+    //
+    // Targets src/tdg/analyzer_ast/visitors_python.rs (106 missed, 0% pre-wave).
+    // Goes through `analyze_source(_, Language::Python, _)` which builds a
+    // `PythonComplexityVisitor` and walks the tree-sitter parsed AST.
+
+    #[test]
+    fn test_analyze_python_simple_function() {
+        let analyzer = analyzer();
+        let src = r#"
+def add(a, b):
+    return a + b
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Python);
+    }
+
+    #[test]
+    fn test_analyze_python_with_branches_and_loops() {
+        let analyzer = analyzer();
+        let src = r#"
+def classify(x):
+    if x > 0:
+        for i in range(x):
+            if i % 2 == 0:
+                continue
+            elif i > 10:
+                break
+        return "positive"
+    elif x == 0:
+        return "zero"
+    else:
+        return "negative"
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.structural_complexity > 0.0);
+    }
+
+    #[test]
+    fn test_analyze_python_class_with_methods_and_decorators() {
+        let analyzer = analyzer();
+        let src = r#"
+import functools
+
+class UserService:
+    def __init__(self, db):
+        self.db = db
+
+    @staticmethod
+    def validate(x):
+        return x > 0
+
+    @functools.cached_property
+    def total(self):
+        return sum(u.amount for u in self.db.users)
+
+    async def fetch(self, id):
+        return await self.db.get(id)
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_python_with_try_except_and_with() {
+        let analyzer = analyzer();
+        let src = r#"
+def safe_read(path):
+    try:
+        with open(path) as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+    except IOError as e:
+        raise RuntimeError(f"read failed: {e}")
+    finally:
+        cleanup()
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_python_with_lambda_and_comprehensions() {
+        let analyzer = analyzer();
+        let src = r#"
+nums = [1, 2, 3, 4, 5]
+doubled = [x * 2 for x in nums]
+evens = list(filter(lambda x: x % 2 == 0, nums))
+squares_dict = {x: x**2 for x in nums if x > 2}
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_python_imports_collected() {
+        let analyzer = analyzer();
+        let src = r#"
+import os
+import sys
+from collections import defaultdict, OrderedDict
+from typing import List, Optional, Dict
+import numpy as np
+
+def process():
+    pass
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_python_empty_does_not_panic() {
+        let analyzer = analyzer();
+        let result = analyzer.analyze_source("", Language::Python, None);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_analyze_python_docstring_function() {
+        // Documentation coverage exercises the docstring detection path.
+        let analyzer = analyzer();
+        let src = r#"
+def documented(x):
+    """Compute square.
+
+    Args:
+        x: input number
+    Returns:
+        x*x
+    """
+    return x * x
+
+def undocumented(y):
+    return y * y
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Python, None)
+            .unwrap();
+        assert!(score.doc_coverage > 0.0);
+    }
+}

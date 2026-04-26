@@ -191,3 +191,254 @@ pub fn rule() -> String {
 pub fn separator() -> String {
     format!("{DIM}───────────────────────────────────────────────────{RESET}")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_header_wraps_with_bold_underline_and_reset() {
+        let s = header("Title");
+        assert!(s.starts_with(BOLD));
+        assert!(s.contains(UNDERLINE));
+        assert!(s.contains("Title"));
+        assert!(s.ends_with(RESET));
+    }
+
+    #[test]
+    fn test_subheader_wraps_with_bold_and_reset() {
+        let s = subheader("Sub");
+        assert!(s.starts_with(BOLD));
+        assert!(s.contains("Sub"));
+        assert!(s.ends_with(RESET));
+    }
+
+    #[test]
+    fn test_pass_starts_with_green_check() {
+        let s = pass("ok");
+        assert!(s.starts_with(GREEN));
+        assert!(s.contains('✓'));
+        assert!(s.contains("ok"));
+    }
+
+    #[test]
+    fn test_warn_starts_with_yellow_warning() {
+        let s = warn("hmm");
+        assert!(s.starts_with(YELLOW));
+        assert!(s.contains('⚠'));
+        assert!(s.contains("hmm"));
+    }
+
+    #[test]
+    fn test_fail_starts_with_red_cross() {
+        let s = fail("bad");
+        assert!(s.starts_with(RED));
+        assert!(s.contains('✗'));
+        assert!(s.contains("bad"));
+    }
+
+    #[test]
+    fn test_skip_uses_dim_double_wrap() {
+        let s = skip("later");
+        assert!(s.starts_with(DIM));
+        assert!(s.contains('⏭'));
+        assert!(s.contains("later"));
+    }
+
+    #[test]
+    fn test_dim_wraps_with_dim_and_reset() {
+        let s = dim("note");
+        assert_eq!(s, format!("{DIM}note{RESET}"));
+    }
+
+    #[test]
+    fn test_path_uses_cyan() {
+        let s = path("src/lib.rs");
+        assert!(s.starts_with(CYAN));
+        assert!(s.contains("src/lib.rs"));
+        assert!(s.ends_with(RESET));
+    }
+
+    #[test]
+    fn test_number_uses_bold_white() {
+        let s = number("42");
+        assert!(s.starts_with(BOLD_WHITE));
+        assert!(s.contains("42"));
+    }
+
+    #[test]
+    fn test_label_uses_bold() {
+        let s = label("Name:");
+        assert!(s.starts_with(BOLD));
+        assert!(s.contains("Name:"));
+    }
+
+    // ── grade arms ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_grade_a_is_green() {
+        let s = grade("A+");
+        assert!(s.starts_with(GREEN));
+        assert!(s.contains("A+"));
+    }
+
+    #[test]
+    fn test_grade_b_is_yellow() {
+        let s = grade("B");
+        assert!(s.starts_with(YELLOW));
+        assert!(s.contains('B'));
+    }
+
+    #[test]
+    fn test_grade_c_is_yellow() {
+        let s = grade("C-");
+        assert!(s.starts_with(YELLOW));
+        assert!(s.contains("C-"));
+    }
+
+    #[test]
+    fn test_grade_d_is_red() {
+        let s = grade("D+");
+        assert!(s.starts_with(RED));
+        assert!(s.contains("D+"));
+    }
+
+    #[test]
+    fn test_grade_f_is_bold_red() {
+        let s = grade("F");
+        assert!(s.starts_with(BOLD_RED));
+        assert!(s.contains('F'));
+    }
+
+    #[test]
+    fn test_grade_other_is_white() {
+        // Non-letter prefix and empty fall through to WHITE.
+        let s_q = grade("?");
+        assert!(s_q.starts_with(WHITE));
+        let s_empty = grade("");
+        assert!(s_empty.starts_with(WHITE));
+    }
+
+    // ── pct (higher is better) ──────────────────────────────────────────────
+
+    #[test]
+    fn test_pct_above_good_is_green() {
+        let s = pct(95.0, 90.0, 70.0);
+        assert!(s.starts_with(GREEN));
+        assert!(s.contains("95.0%"));
+    }
+
+    #[test]
+    fn test_pct_at_good_threshold_is_green() {
+        let s = pct(90.0, 90.0, 70.0);
+        assert!(s.starts_with(GREEN));
+    }
+
+    #[test]
+    fn test_pct_between_thresholds_is_yellow() {
+        let s = pct(80.0, 90.0, 70.0);
+        assert!(s.starts_with(YELLOW));
+        assert!(s.contains("80.0%"));
+    }
+
+    #[test]
+    fn test_pct_below_warn_is_red() {
+        let s = pct(50.0, 90.0, 70.0);
+        assert!(s.starts_with(RED));
+        assert!(s.contains("50.0%"));
+    }
+
+    // ── pct_inverse (lower is better) ───────────────────────────────────────
+
+    #[test]
+    fn test_pct_inverse_below_good_is_green() {
+        let s = pct_inverse(5.0, 10.0, 30.0);
+        assert!(s.starts_with(GREEN));
+        assert!(s.contains("5.0%"));
+    }
+
+    #[test]
+    fn test_pct_inverse_between_thresholds_is_yellow() {
+        let s = pct_inverse(20.0, 10.0, 30.0);
+        assert!(s.starts_with(YELLOW));
+    }
+
+    #[test]
+    fn test_pct_inverse_above_warn_is_red() {
+        let s = pct_inverse(50.0, 10.0, 30.0);
+        assert!(s.starts_with(RED));
+        assert!(s.contains("50.0%"));
+    }
+
+    // ── delta (signed) ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_delta_positive_is_green() {
+        let s = delta(2.5);
+        assert!(s.starts_with(GREEN));
+        assert!(s.contains("+2.5"));
+    }
+
+    #[test]
+    fn test_delta_negative_is_red() {
+        let s = delta(-3.0);
+        assert!(s.starts_with(RED));
+        assert!(s.contains("-3.0"));
+    }
+
+    #[test]
+    fn test_delta_zero_is_dim() {
+        let s = delta(0.0);
+        assert!(s.starts_with(DIM));
+        // sign prefix on zero is "+" per `:+.1`
+        assert!(s.contains("+0.0"));
+    }
+
+    // ── score ───────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_score_above_good_pct_is_green() {
+        let s = score(14.0, 15.0, 80.0, 60.0); // 93.3%
+        assert!(s.starts_with(GREEN));
+        assert!(s.contains("14.0"));
+        assert!(s.contains("15.0"));
+    }
+
+    #[test]
+    fn test_score_between_pct_thresholds_is_yellow() {
+        let s = score(10.5, 15.0, 80.0, 60.0); // 70%
+        assert!(s.starts_with(YELLOW));
+    }
+
+    #[test]
+    fn test_score_below_warn_pct_is_red() {
+        let s = score(6.0, 15.0, 80.0, 60.0); // 40%
+        assert!(s.starts_with(RED));
+    }
+
+    #[test]
+    fn test_score_max_zero_treats_as_red_zero_pct() {
+        // max == 0 short-circuits to 0% which is below any positive threshold → RED.
+        let s = score(0.0, 0.0, 80.0, 60.0);
+        assert!(s.starts_with(RED));
+        assert!(s.contains("0.0"));
+    }
+
+    // ── rule / separator ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_rule_returns_dim_horizontal_line() {
+        let s = rule();
+        assert!(s.starts_with(DIM));
+        assert!(s.contains('━'));
+        assert!(s.ends_with(RESET));
+    }
+
+    #[test]
+    fn test_separator_returns_dim_thin_line() {
+        let s = separator();
+        assert!(s.starts_with(DIM));
+        assert!(s.contains('─'));
+        assert!(s.ends_with(RESET));
+    }
+}

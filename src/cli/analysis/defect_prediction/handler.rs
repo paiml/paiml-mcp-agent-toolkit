@@ -155,3 +155,161 @@ pub(crate) fn filter_and_sort_predictions(
 
     predictions
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::defect_probability::RiskLevel;
+
+    fn score(p: f32, c: f32) -> DefectScore {
+        DefectScore {
+            probability: p,
+            confidence: c,
+            contributing_factors: vec![],
+            risk_level: if p > 0.7 {
+                RiskLevel::High
+            } else if p > 0.3 {
+                RiskLevel::Medium
+            } else {
+                RiskLevel::Low
+            },
+            recommendations: vec![],
+        }
+    }
+
+    fn pred(file: &str, p: f32, c: f32) -> (String, DefectScore) {
+        (file.to_string(), score(p, c))
+    }
+
+    // ── print_analysis_header ───────────────────────────────────────────────
+
+    #[test]
+    fn test_print_analysis_header_no_panic() {
+        // eprintln side-effect — exercise both flag combos
+        print_analysis_header(Path::new("."), 0.5, true);
+        print_analysis_header(Path::new("."), 0.8, false);
+    }
+
+    // ── create_defect_prediction_config ─────────────────────────────────────
+
+    #[test]
+    fn test_create_defect_prediction_config_propagates_fields() {
+        let cfg = create_defect_prediction_config(
+            0.75,
+            10,
+            true,
+            true,
+            false,
+            Some("*.rs".to_string()),
+            Some("tests/*".to_string()),
+        );
+        assert_eq!(cfg.confidence_threshold, 0.75);
+        assert_eq!(cfg.min_lines, 10);
+        assert!(cfg.include_low_confidence);
+        assert!(cfg.high_risk_only);
+        assert!(!cfg.include_recommendations);
+        assert_eq!(cfg.include, Some("*.rs".to_string()));
+        assert_eq!(cfg.exclude, Some("tests/*".to_string()));
+    }
+
+    #[test]
+    fn test_create_defect_prediction_config_no_filters() {
+        let cfg = create_defect_prediction_config(0.5, 0, false, false, true, None, None);
+        assert!(cfg.include.is_none());
+        assert!(cfg.exclude.is_none());
+        assert!(cfg.include_recommendations);
+    }
+
+    // ── filter_and_sort_predictions ─────────────────────────────────────────
+
+    #[test]
+    fn test_filter_and_sort_predictions_high_risk_only() {
+        let preds = vec![
+            pred("h.rs", 0.9, 0.8),
+            pred("m.rs", 0.5, 0.8),
+            pred("l.rs", 0.1, 0.8),
+        ];
+        let out = filter_and_sort_predictions(preds, true, true, 0.0, 0);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, "h.rs");
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_at_07_dropped_when_high_risk_only() {
+        // > 0.7 is high; == 0.7 falls through (filter is `> 0.7`, not `>= 0.7`)
+        let preds = vec![pred("a.rs", 0.7, 0.9)];
+        let out = filter_and_sort_predictions(preds, true, true, 0.0, 0);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_filters_low_confidence() {
+        let preds = vec![pred("h.rs", 0.9, 0.5), pred("m.rs", 0.5, 0.9)];
+        // include_low_confidence = false, threshold = 0.7 → drop confidence ≤ 0.7
+        let out = filter_and_sort_predictions(preds, false, false, 0.7, 0);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, "m.rs");
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_include_low_confidence_keeps_all() {
+        let preds = vec![pred("h.rs", 0.9, 0.5), pred("m.rs", 0.5, 0.9)];
+        let out = filter_and_sort_predictions(preds, false, true, 0.7, 0);
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_sorts_descending_by_probability() {
+        let preds = vec![
+            pred("low.rs", 0.1, 0.9),
+            pred("high.rs", 0.9, 0.9),
+            pred("mid.rs", 0.5, 0.9),
+        ];
+        let out = filter_and_sort_predictions(preds, false, true, 0.0, 0);
+        assert_eq!(out.len(), 3);
+        assert_eq!(out[0].0, "high.rs");
+        assert_eq!(out[1].0, "mid.rs");
+        assert_eq!(out[2].0, "low.rs");
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_truncates_to_top_files() {
+        let preds = vec![
+            pred("a.rs", 0.9, 0.9),
+            pred("b.rs", 0.8, 0.9),
+            pred("c.rs", 0.7, 0.9),
+            pred("d.rs", 0.6, 0.9),
+        ];
+        let out = filter_and_sort_predictions(preds, false, true, 0.0, 2);
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0].0, "a.rs");
+        assert_eq!(out[1].0, "b.rs");
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_top_zero_keeps_all() {
+        let preds = vec![pred("a.rs", 0.9, 0.9), pred("b.rs", 0.5, 0.9)];
+        let out = filter_and_sort_predictions(preds, false, true, 0.0, 0);
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_top_larger_than_len_keeps_all() {
+        let preds = vec![pred("a.rs", 0.9, 0.9), pred("b.rs", 0.5, 0.9)];
+        let out = filter_and_sort_predictions(preds, false, true, 0.0, 100);
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn test_filter_and_sort_predictions_combined_filters() {
+        let preds = vec![
+            pred("h_hc.rs", 0.95, 0.95), // high prob, high conf — kept
+            pred("h_lc.rs", 0.85, 0.5),  // high prob, low conf — dropped (low conf)
+            pred("m_hc.rs", 0.5, 0.9),   // medium — dropped (high_risk_only)
+            pred("l_hc.rs", 0.1, 0.9),   // low — dropped (high_risk_only)
+        ];
+        let out = filter_and_sort_predictions(preds, true, false, 0.7, 5);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, "h_hc.rs");
+    }
+}

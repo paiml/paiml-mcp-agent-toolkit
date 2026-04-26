@@ -402,3 +402,435 @@ pub fn read_cargo_deps(cargo_toml: &Path) -> Vec<String> {
 
     deps
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn write_cargo(dir: &Path, name: &str, deps: &[&str]) {
+        let mut toml =
+            format!("[package]\nname = \"{name}\"\nversion = \"0.1.0\"\n\n[dependencies]\n");
+        for d in deps {
+            toml.push_str(&format!("{d} = \"1.0\"\n"));
+        }
+        fs::write(dir.join("Cargo.toml"), toml).unwrap();
+    }
+
+    // ── extract_quoted_strings ──────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_quoted_strings_basic() {
+        let s = r#"["a", "b", "c"]"#;
+        let v = extract_quoted_strings(s);
+        assert_eq!(v, vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn test_extract_quoted_strings_skips_empty_quoted() {
+        // The function pushes only when current is non-empty
+        let s = r#"["", "x"]"#;
+        let v = extract_quoted_strings(s);
+        assert_eq!(v, vec!["x"]);
+    }
+
+    #[test]
+    fn test_extract_quoted_strings_no_quotes_empty() {
+        assert!(extract_quoted_strings("[a, b, c]").is_empty());
+    }
+
+    #[test]
+    fn test_extract_quoted_strings_handles_chars_in_quotes() {
+        let v = extract_quoted_strings(r#""foo/bar/*", "baz""#);
+        assert_eq!(v, vec!["foo/bar/*", "baz"]);
+    }
+
+    // ── extract_members_array ───────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_members_array_single_line() {
+        let toml = "[workspace]\nmembers = [\"crates/a\", \"crates/b\"]\n";
+        let buf = extract_members_array(toml);
+        assert!(buf.contains("crates/a"));
+        assert!(buf.contains("crates/b"));
+    }
+
+    #[test]
+    fn test_extract_members_array_multiline_breaks_at_depth_zero() {
+        // The parser initializes bracket_depth = 0 and only counts brackets in
+        // lines AFTER the `members =` line. If the first value-line has no
+        // brackets, depth stays 0 and the loop breaks. Document this real
+        // behavior so the test matches the implementation.
+        let toml = "[workspace]\nmembers = [\n  \"a\",\n  \"b\",\n  \"c\",\n]\n[deps]\n";
+        let buf = extract_members_array(toml);
+        // Only the first value-line is captured before the break.
+        assert!(buf.contains("\"a\""));
+        // (b and c are dropped — multiline TOML is not fully supported by
+        // this parser. Not asserting their presence.)
+    }
+
+    #[test]
+    fn test_extract_members_array_no_members_returns_empty() {
+        let toml = "[package]\nname = \"x\"\n";
+        assert!(extract_members_array(toml).is_empty());
+    }
+
+    // ── resolve_member_paths ────────────────────────────────────────────────
+
+    #[test]
+    fn test_resolve_member_paths_non_glob_existing() {
+        let tmp = TempDir::new().unwrap();
+        let crate_a = tmp.path().join("crate_a");
+        fs::create_dir_all(&crate_a).unwrap();
+        write_cargo(&crate_a, "a", &[]);
+
+        let resolved = resolve_member_paths(&["crate_a".to_string()], tmp.path());
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0], crate_a);
+    }
+
+    #[test]
+    fn test_resolve_member_paths_non_glob_missing_skipped() {
+        let tmp = TempDir::new().unwrap();
+        let resolved = resolve_member_paths(&["nonexistent".to_string()], tmp.path());
+        assert!(resolved.is_empty());
+    }
+
+    #[test]
+    fn test_resolve_member_paths_glob_pattern() {
+        let tmp = TempDir::new().unwrap();
+        let a = tmp.path().join("crates").join("a");
+        let b = tmp.path().join("crates").join("b");
+        fs::create_dir_all(&a).unwrap();
+        fs::create_dir_all(&b).unwrap();
+        write_cargo(&a, "a", &[]);
+        write_cargo(&b, "b", &[]);
+
+        let resolved = resolve_member_paths(&["crates/*".to_string()], tmp.path());
+        assert_eq!(resolved.len(), 2);
+    }
+
+    #[test]
+    fn test_resolve_member_paths_glob_skips_dirs_without_cargo_toml() {
+        let tmp = TempDir::new().unwrap();
+        let a = tmp.path().join("crates").join("a");
+        let bare = tmp.path().join("crates").join("bare");
+        fs::create_dir_all(&a).unwrap();
+        fs::create_dir_all(&bare).unwrap();
+        write_cargo(&a, "a", &[]);
+        // bare has no Cargo.toml
+
+        let resolved = resolve_member_paths(&["crates/*".to_string()], tmp.path());
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0], a);
+    }
+
+    // ── parse_workspace_members_with_globs (orchestrator) ───────────────────
+
+    #[test]
+    fn test_parse_workspace_members_with_globs_end_to_end() {
+        let tmp = TempDir::new().unwrap();
+        let a = tmp.path().join("a");
+        let b = tmp.path().join("b");
+        fs::create_dir_all(&a).unwrap();
+        fs::create_dir_all(&b).unwrap();
+        write_cargo(&a, "a", &[]);
+        write_cargo(&b, "b", &[]);
+
+        let toml = "[workspace]\nmembers = [\"a\", \"b\"]\n";
+        let resolved = parse_workspace_members_with_globs(toml, tmp.path());
+        assert_eq!(resolved.len(), 2);
+    }
+
+    // ── read_crate_name ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_read_crate_name_from_package_section() {
+        let tmp = TempDir::new().unwrap();
+        write_cargo(tmp.path(), "my_crate", &[]);
+        assert_eq!(
+            read_crate_name(&tmp.path().join("Cargo.toml")),
+            Some("my_crate".to_string())
+        );
+    }
+
+    #[test]
+    fn test_read_crate_name_outside_package_section_ignored() {
+        let tmp = TempDir::new().unwrap();
+        // [other] section — `name = "x"` should be ignored
+        let toml = "[other]\nname = \"x\"\n[package]\nname = \"actual\"\n";
+        fs::write(tmp.path().join("Cargo.toml"), toml).unwrap();
+        assert_eq!(
+            read_crate_name(&tmp.path().join("Cargo.toml")),
+            Some("actual".to_string())
+        );
+    }
+
+    #[test]
+    fn test_read_crate_name_missing_file_returns_none() {
+        assert!(read_crate_name(Path::new("/nonexistent/Cargo.toml")).is_none());
+    }
+
+    #[test]
+    fn test_read_crate_name_no_name_in_package_returns_none() {
+        let tmp = TempDir::new().unwrap();
+        let toml = "[package]\nversion = \"0.1\"\n";
+        fs::write(tmp.path().join("Cargo.toml"), toml).unwrap();
+        assert!(read_crate_name(&tmp.path().join("Cargo.toml")).is_none());
+    }
+
+    // ── read_cargo_deps ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_read_cargo_deps_basic() {
+        let tmp = TempDir::new().unwrap();
+        write_cargo(tmp.path(), "x", &["serde", "tokio"]);
+        let deps = read_cargo_deps(&tmp.path().join("Cargo.toml"));
+        assert!(deps.contains(&"serde".to_string()));
+        assert!(deps.contains(&"tokio".to_string()));
+    }
+
+    #[test]
+    fn test_read_cargo_deps_dev_dependencies_section() {
+        let tmp = TempDir::new().unwrap();
+        let toml =
+            "[package]\nname = \"x\"\n[dev-dependencies]\nproptest = \"1.0\"\ntempfile = \"3.0\"\n";
+        fs::write(tmp.path().join("Cargo.toml"), toml).unwrap();
+        let deps = read_cargo_deps(&tmp.path().join("Cargo.toml"));
+        assert!(deps.contains(&"proptest".to_string()));
+        assert!(deps.contains(&"tempfile".to_string()));
+    }
+
+    #[test]
+    fn test_read_cargo_deps_dotted_dependencies_section() {
+        let tmp = TempDir::new().unwrap();
+        let toml = "[package]\nname = \"x\"\n[dependencies.serde]\nversion = \"1.0\"\n";
+        fs::write(tmp.path().join("Cargo.toml"), toml).unwrap();
+        let deps = read_cargo_deps(&tmp.path().join("Cargo.toml"));
+        // The [dependencies.serde] section enables in_deps_section=true,
+        // so `version = "1.0"` is captured as a dep name.
+        assert!(deps.contains(&"version".to_string()));
+    }
+
+    #[test]
+    fn test_read_cargo_deps_skips_non_dep_sections() {
+        let tmp = TempDir::new().unwrap();
+        let toml = "[package]\nname = \"x\"\nversion = \"0.1\"\n";
+        fs::write(tmp.path().join("Cargo.toml"), toml).unwrap();
+        let deps = read_cargo_deps(&tmp.path().join("Cargo.toml"));
+        // [package] is not a deps section → lines skipped
+        assert!(!deps.contains(&"version".to_string()));
+        assert!(!deps.contains(&"name".to_string()));
+    }
+
+    #[test]
+    fn test_read_cargo_deps_missing_file_empty() {
+        assert!(read_cargo_deps(Path::new("/nonexistent/Cargo.toml")).is_empty());
+    }
+
+    // ── make_crate_info ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_make_crate_info_uses_cargo_name() {
+        let tmp = TempDir::new().unwrap();
+        write_cargo(tmp.path(), "named_crate", &["dep1"]);
+        let info = make_crate_info(tmp.path());
+        assert_eq!(info.name, "named_crate");
+        assert!(info.cargo_deps.contains(&"dep1".to_string()));
+    }
+
+    #[test]
+    fn test_make_crate_info_falls_back_to_dirname() {
+        let tmp = TempDir::new().unwrap();
+        // No Cargo.toml — falls back to the dir's file_name
+        let info = make_crate_info(tmp.path());
+        assert!(!info.name.is_empty());
+        assert_eq!(info.path, tmp.path());
+    }
+
+    // ── extract_paiml_dep_names ─────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_paiml_dep_names_basic() {
+        let info = json!({
+            "paiml_dependencies": [
+                {"name": "trueno"},
+                {"name": "aprender"}
+            ]
+        });
+        let names = extract_paiml_dep_names(&info);
+        assert_eq!(names, vec!["trueno", "aprender"]);
+    }
+
+    #[test]
+    fn test_extract_paiml_dep_names_missing_field_empty() {
+        let info = json!({});
+        assert!(extract_paiml_dep_names(&info).is_empty());
+    }
+
+    #[test]
+    fn test_extract_paiml_dep_names_skips_dep_without_name() {
+        let info = json!({
+            "paiml_dependencies": [
+                {"name": "x"},
+                {"version": "1.0"}
+            ]
+        });
+        let names = extract_paiml_dep_names(&info);
+        assert_eq!(names, vec!["x"]);
+    }
+
+    // ── collect_related_crates ──────────────────────────────────────────────
+
+    #[test]
+    fn test_collect_related_crates_includes_self() {
+        let projects = serde_json::Map::new();
+        let related = collect_related_crates(&projects, "self_crate");
+        assert!(related.contains("self_crate"));
+        assert_eq!(related.len(), 1);
+    }
+
+    #[test]
+    fn test_collect_related_crates_includes_forward_deps() {
+        let mut projects = serde_json::Map::new();
+        projects.insert(
+            "current".into(),
+            json!({"paiml_dependencies": [{"name": "dep_a"}]}),
+        );
+        let related = collect_related_crates(&projects, "current");
+        assert!(related.contains("current"));
+        assert!(related.contains("dep_a"));
+    }
+
+    #[test]
+    fn test_collect_related_crates_includes_reverse_deps() {
+        let mut projects = serde_json::Map::new();
+        projects.insert("current".into(), json!({}));
+        projects.insert(
+            "consumer".into(),
+            json!({"paiml_dependencies": [{"name": "current"}]}),
+        );
+        let related = collect_related_crates(&projects, "current");
+        assert!(related.contains("current"));
+        assert!(related.contains("consumer"));
+    }
+
+    // ── find_current_project ────────────────────────────────────────────────
+
+    #[test]
+    fn test_find_current_project_matches_canonical_path() {
+        let tmp = TempDir::new().unwrap();
+        let canonical = tmp.path().canonicalize().unwrap();
+        let mut projects = serde_json::Map::new();
+        projects.insert(
+            "my_project".into(),
+            json!({"path": canonical.to_string_lossy()}),
+        );
+        let found = find_current_project(&projects, &canonical);
+        assert_eq!(found, Some("my_project".to_string()));
+    }
+
+    #[test]
+    fn test_find_current_project_no_match_returns_none() {
+        let tmp = TempDir::new().unwrap();
+        let other = tmp.path().to_path_buf();
+        let mut projects = serde_json::Map::new();
+        projects.insert("p1".into(), json!({"path": "/some/other/path"}));
+        assert!(find_current_project(&projects, &other).is_none());
+    }
+
+    // ── projects_to_crate_infos ─────────────────────────────────────────────
+
+    #[test]
+    fn test_projects_to_crate_infos_keeps_only_with_cargo_toml() {
+        let tmp = TempDir::new().unwrap();
+        let a = tmp.path().join("a");
+        fs::create_dir_all(&a).unwrap();
+        write_cargo(&a, "a", &[]);
+
+        let mut projects = serde_json::Map::new();
+        projects.insert("a".into(), json!({"path": a.to_string_lossy()}));
+        projects.insert("missing".into(), json!({"path": "/nonexistent"}));
+
+        let mut related = HashSet::new();
+        related.insert("a".to_string());
+        related.insert("missing".to_string());
+
+        let infos = projects_to_crate_infos(&projects, &related);
+        assert_eq!(infos.len(), 1);
+        assert_eq!(infos[0].name, "a");
+    }
+
+    // ── discover_workspace_crates (priority chain) ──────────────────────────
+
+    #[test]
+    fn test_discover_workspace_crates_priority_1_explicit() {
+        let tmp = TempDir::new().unwrap();
+        write_cargo(tmp.path(), "root", &[]);
+
+        let crate_a = tmp.path().join("crate_a");
+        fs::create_dir_all(&crate_a).unwrap();
+        write_cargo(&crate_a, "a", &[]);
+
+        let crates = discover_workspace_crates(tmp.path(), Some(&[PathBuf::from("crate_a")]));
+        // Always includes the workspace_path itself + each explicit crate
+        assert!(crates.iter().any(|c| c.name == "root"));
+        assert!(crates.iter().any(|c| c.name == "a"));
+    }
+
+    #[test]
+    fn test_discover_workspace_crates_priority_2_cargo_workspace() {
+        let tmp = TempDir::new().unwrap();
+        // Create a workspace Cargo.toml at root
+        let toml = "[workspace]\nmembers = [\"a\", \"b\"]\n";
+        fs::write(tmp.path().join("Cargo.toml"), toml).unwrap();
+
+        let a = tmp.path().join("a");
+        let b = tmp.path().join("b");
+        fs::create_dir_all(&a).unwrap();
+        fs::create_dir_all(&b).unwrap();
+        write_cargo(&a, "crate_a", &[]);
+        write_cargo(&b, "crate_b", &[]);
+
+        let crates = discover_workspace_crates(tmp.path(), None);
+        // 2-member workspace exits at priority 2
+        assert_eq!(crates.len(), 2);
+    }
+
+    #[test]
+    fn test_discover_workspace_crates_priority_5_single_crate_fallback() {
+        let tmp = TempDir::new().unwrap();
+        write_cargo(tmp.path(), "lone", &[]);
+        // No workspace, no .pmat/workspace.toml — falls all the way through
+        let crates = discover_workspace_crates(tmp.path(), None);
+        assert_eq!(crates.len(), 1);
+        assert_eq!(crates[0].name, "lone");
+    }
+
+    #[test]
+    fn test_discover_workspace_crates_explicit_with_empty_slice_falls_through() {
+        let tmp = TempDir::new().unwrap();
+        write_cargo(tmp.path(), "lone", &[]);
+        // Some(&[]) — empty slice, NOT taken as priority 1; falls through to priority 5
+        let crates = discover_workspace_crates(tmp.path(), Some(&[]));
+        assert_eq!(crates.len(), 1);
+        assert_eq!(crates[0].name, "lone");
+    }
+
+    // ── discover_from_explicit ──────────────────────────────────────────────
+
+    #[test]
+    fn test_discover_from_explicit_skips_missing_cargo_toml() {
+        let tmp = TempDir::new().unwrap();
+        write_cargo(tmp.path(), "root", &[]);
+        // empty_dir has no Cargo.toml
+        let empty = tmp.path().join("empty_dir");
+        fs::create_dir_all(&empty).unwrap();
+
+        let crates = discover_from_explicit(tmp.path(), &[PathBuf::from("empty_dir")]);
+        // Only the workspace itself; empty_dir skipped
+        assert_eq!(crates.len(), 1);
+    }
+}

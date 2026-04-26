@@ -357,3 +357,180 @@ fn format_audit_markdown(artifact: &AuditArtifact) -> String {
     out.push_str(&format!("- Golden Traces: {}\n", artifact.golden_traces));
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item(category: &str, status: &str) -> ReviewItem {
+        ReviewItem {
+            category: category.into(),
+            question: format!("Q for {category}"),
+            evidence: format!("E for {category}"),
+            status: status.into(),
+        }
+    }
+
+    fn check(name: &str, status: CheckStatus) -> ComplianceCheck {
+        ComplianceCheck {
+            name: name.into(),
+            message: format!("msg for {name}"),
+            status,
+            severity: Severity::Info,
+        }
+    }
+
+    fn artifact_with(checks: Vec<ComplianceCheck>, items: Vec<ReviewItem>) -> AuditArtifact {
+        AuditArtifact {
+            version: "test-1.0".into(),
+            timestamp: Utc::now(),
+            git_sha: "abc1234".into(),
+            git_clean: true,
+            layer1_checks: checks,
+            layer2_review: items,
+            reproducibility_level: "Bronze".into(),
+            muda_score: 42.5,
+            golden_traces: "passing".into(),
+        }
+    }
+
+    // ── format_review_markdown ──────────────────────────────────────────────
+
+    #[test]
+    fn test_format_review_markdown_pass_uses_check_icon() {
+        let s = format_review_markdown(&[item("Cat", "PASS")]);
+        assert!(s.contains("[x] **Cat**"));
+        assert!(s.contains("Q for Cat"));
+        assert!(s.contains("E for Cat"));
+    }
+
+    #[test]
+    fn test_format_review_markdown_fail_emphasized() {
+        let s = format_review_markdown(&[item("Cat", "FAIL")]);
+        assert!(s.contains("[ ] **FAIL**"));
+        assert!(s.contains("**Cat**"));
+    }
+
+    #[test]
+    fn test_format_review_markdown_warn_uses_dash_icon() {
+        let s = format_review_markdown(&[item("Cat", "WARN")]);
+        assert!(s.contains("[-] **Cat**"));
+    }
+
+    #[test]
+    fn test_format_review_markdown_other_status_default_box() {
+        let s = format_review_markdown(&[item("Cat", "N/A")]);
+        // Non-PASS/FAIL/WARN status falls through to "[ ]"
+        assert!(s.contains("[ ] **Cat**"));
+    }
+
+    #[test]
+    fn test_format_review_markdown_empty_items_emits_only_header() {
+        let s = format_review_markdown(&[]);
+        assert!(s.contains("# PMAT Comply Review Checklist"));
+        assert!(s.contains("Layer 2"));
+        // No items → no `[x]` / `[ ]` markers
+        assert!(!s.contains("[x]"));
+        assert!(!s.contains("[-]"));
+    }
+
+    #[test]
+    fn test_format_review_markdown_multiple_items_all_present() {
+        let items = vec![item("R1", "PASS"), item("R2", "FAIL"), item("R3", "WARN")];
+        let s = format_review_markdown(&items);
+        assert!(s.contains("**R1**"));
+        assert!(s.contains("**R2**"));
+        assert!(s.contains("**R3**"));
+    }
+
+    // ── format_audit_markdown ───────────────────────────────────────────────
+
+    #[test]
+    fn test_format_audit_markdown_includes_metadata() {
+        let a = artifact_with(vec![], vec![]);
+        let s = format_audit_markdown(&a);
+        assert!(s.starts_with("# PMAT Compliance Audit"));
+        assert!(s.contains("**PMAT Version**: test-1.0"));
+        assert!(s.contains("**Git SHA**: abc1234"));
+        assert!(s.contains("**Git Clean**: true"));
+    }
+
+    #[test]
+    fn test_format_audit_markdown_check_status_arms() {
+        let a = artifact_with(
+            vec![
+                check("c_pass", CheckStatus::Pass),
+                check("c_warn", CheckStatus::Warn),
+                check("c_fail", CheckStatus::Fail),
+                check("c_skip", CheckStatus::Skip),
+            ],
+            vec![],
+        );
+        let s = format_audit_markdown(&a);
+        assert!(s.contains("[PASS] **c_pass**"));
+        assert!(s.contains("[WARN] **c_warn**"));
+        assert!(s.contains("[FAIL] **c_fail**"));
+        assert!(s.contains("[SKIP] **c_skip**"));
+    }
+
+    #[test]
+    fn test_format_audit_markdown_includes_layer2_items() {
+        let a = artifact_with(vec![], vec![item("R1", "PASS")]);
+        let s = format_audit_markdown(&a);
+        assert!(s.contains("Layer 2: Review Evidence"));
+        assert!(s.contains("**R1**"));
+        assert!(s.contains("E for R1"));
+    }
+
+    #[test]
+    fn test_format_audit_markdown_summary_lines() {
+        let a = artifact_with(vec![], vec![]);
+        let s = format_audit_markdown(&a);
+        assert!(s.contains("## Summary"));
+        assert!(s.contains("Reproducibility: Bronze"));
+        assert!(s.contains("Muda Score: 42.5/100"));
+        assert!(s.contains("Golden Traces: passing"));
+    }
+
+    // ── check_git_clean ─────────────────────────────────────────────────────
+
+    // Note: a "non-git dir" test (expecting check_git_clean → false) is
+    // environment-dependent. `git status` walks up the filesystem and may
+    // find a parent .git on developer machines. Removed in favor of the
+    // initialized-repo + untracked-files tests below, which are deterministic.
+
+    #[test]
+    fn test_check_git_clean_initialized_empty_repo() {
+        // git init in a tempdir → no untracked files → status --porcelain is empty → true
+        let tmp = tempfile::TempDir::new().unwrap();
+        let init_ok = std::process::Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(tmp.path())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if !init_ok {
+            // git not on PATH — skip rather than fail
+            return;
+        }
+        // Empty repo with no untracked files → clean
+        assert!(check_git_clean(tmp.path()));
+    }
+
+    #[test]
+    fn test_check_git_clean_with_untracked_files() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let init_ok = std::process::Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(tmp.path())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if !init_ok {
+            return;
+        }
+        // Add an untracked file → status --porcelain emits `?? newfile`
+        fs::write(tmp.path().join("newfile.txt"), "x").unwrap();
+        assert!(!check_git_clean(tmp.path()));
+    }
+}

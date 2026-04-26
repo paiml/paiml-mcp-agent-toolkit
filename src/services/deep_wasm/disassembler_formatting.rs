@@ -34,6 +34,18 @@ fn format_operator(op: &Operator) -> (String, Vec<String>) {
         Operator::I64Add => ("i64.add".to_string(), vec![]),
         Operator::I64Sub => ("i64.sub".to_string(), vec![]),
         Operator::I64Mul => ("i64.mul".to_string(), vec![]),
+        // Wave 39 release-prep: BUG #2 fix — F32/F64 arithmetic ops were
+        // falling to the `_ =>` default which produces "f64add" (no dot)
+        // via `format!("{:?}", op).to_lowercase()`. Now use the WASM-canonical
+        // dotted form, matching the I32/I64 family above.
+        Operator::F32Add => ("f32.add".to_string(), vec![]),
+        Operator::F32Sub => ("f32.sub".to_string(), vec![]),
+        Operator::F32Mul => ("f32.mul".to_string(), vec![]),
+        Operator::F32Div => ("f32.div".to_string(), vec![]),
+        Operator::F64Add => ("f64.add".to_string(), vec![]),
+        Operator::F64Sub => ("f64.sub".to_string(), vec![]),
+        Operator::F64Mul => ("f64.mul".to_string(), vec![]),
+        Operator::F64Div => ("f64.div".to_string(), vec![]),
         Operator::Block { .. } => ("block".to_string(), vec![]),
         Operator::Loop { .. } => ("loop".to_string(), vec![]),
         Operator::If { .. } => ("if".to_string(), vec![]),
