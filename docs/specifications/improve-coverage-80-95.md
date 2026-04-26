@@ -343,6 +343,12 @@ These behavior pins are exactly the §4.7 R5 sales-pitch ("testability + invaria
 
 **Wave 36 single-PR yield prediction:** 83 tests × ~10-15 lines/test (helpers are bigger than R5) ≈ 1,000+ lines hit. 1000/333k = ~0.3pp. **3-15× better per-PR yield than wave 35's R5 prototypes**. Final measurement pending.
 
+**Wave 36 PR3 (helpers_annotations.rs, 539 lines, 11+ pure helpers, 82 tests):** continued the fat-target sweep with PTX/CUDA fault detectors, git path matching, and source normalization. Pinned 2 more unexpected behaviors:
+1. `detect_ptx_early_exit`: trigger requires `trim().starts_with("return")`. Inline returns like `if (x) return;` are silently NOT flagged. A future contributor might "fix" this and break the existing detector contract.
+2. `detect_ptx_redundant_mov`: parsing uses `split_whitespace().nth(1)` so `mov.u32 %r1, %r1;` (with space after comma) is missed; only `mov.u32 %r1,%r1;` triggers. This is fragile but pinned by tests so it can't silently regress.
+
+**Cumulative wave 36 yield (PR2+PR3): 165 tests across 1,075 lines / 25+ helpers.** The size class — 400-600 line files with 10+ pure helpers — is now the established fat-target template. Per the §4.6 reframe (85% goal, 6.4pp gap), 30 more such PRs close it; current pace ≈ 1 PR per 5 minutes of session time when pre-pick screen rules out orphans.
+
 **Updated session strategy:** continue picking 400-600 line untested files with 5+ pure helpers each. Each such PR ≈ 50-100 tests, ~0.2-0.4pp. Reaching 85% needs ~30 such PRs ≈ 2-3 sessions of disciplined fat-target picking.
 
 **Updated R5 outlook for 85% target:** if remaining ~10-15 R5 candidates yield ~50-100 lines each (best case), total R5 contribution ≈ ~0.5pp. **R5 alone won't close the 6.46pp gap**; it must combine with drip-feed on bigger orchestrator functions (each test firing 50-100 lines).
