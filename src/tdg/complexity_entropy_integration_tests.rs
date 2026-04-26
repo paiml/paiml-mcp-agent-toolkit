@@ -898,4 +898,121 @@ fn example() -> i32 {
         let result = analyzer.analyze_source("", Language::Markdown, None);
         assert!(result.is_ok() || result.is_err());
     }
+
+    // ── SQL (Wave 39 PR9 — analyzer_impl2_heuristics_sql) ───────────────────
+
+    #[test]
+    fn test_analyze_sql_simple_select() {
+        let analyzer = analyzer();
+        let src = "SELECT id, name FROM users WHERE active = 1;";
+        let score = analyzer.analyze_source(src, Language::Sql, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Sql);
+    }
+
+    #[test]
+    fn test_analyze_sql_complex_with_joins_and_subqueries() {
+        let analyzer = analyzer();
+        let src = r#"
+SELECT u.id, u.name, o.total
+FROM users u
+INNER JOIN orders o ON u.id = o.user_id
+LEFT JOIN payments p ON o.id = p.order_id
+WHERE u.created_at > NOW() - INTERVAL '30 days'
+  AND o.status IN (SELECT status FROM valid_statuses)
+GROUP BY u.id, u.name
+HAVING COUNT(o.id) > 5
+ORDER BY o.total DESC;
+"#;
+        let score = analyzer.analyze_source(src, Language::Sql, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_sql_ddl_statement() {
+        let analyzer = analyzer();
+        let src = r#"
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_users_email ON users(email);
+"#;
+        let score = analyzer.analyze_source(src, Language::Sql, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_sql_empty_does_not_panic() {
+        let analyzer = analyzer();
+        let result = analyzer.analyze_source("", Language::Sql, None);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    // ── Scala (Wave 39 PR9 — analyzer_impl2_heuristics_scala) ───────────────
+
+    #[test]
+    fn test_analyze_scala_simple_object() {
+        let analyzer = analyzer();
+        let src = r#"
+object Greeter {
+  def greet(name: String): String = s"Hello, $name"
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Scala, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Scala);
+    }
+
+    #[test]
+    fn test_analyze_scala_class_with_pattern_match_and_branches() {
+        // Exercises is_scala_control_flow + structural_metrics
+        let analyzer = analyzer();
+        let src = r#"
+class Calculator {
+  def classify(n: Int): String = {
+    if (n > 0) {
+      n match {
+        case 1 => "one"
+        case _ if n < 10 => "small"
+        case _ => "large"
+      }
+    } else if (n == 0) {
+      "zero"
+    } else {
+      "negative"
+    }
+  }
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Scala, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_scala_trait_and_inheritance() {
+        let analyzer = analyzer();
+        let src = r#"
+trait Animal {
+  def speak(): String
+}
+class Dog extends Animal {
+  override def speak(): String = "Woof!"
+}
+class Cat extends Animal {
+  override def speak(): String = "Meow!"
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Scala, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_scala_empty_does_not_panic() {
+        let analyzer = analyzer();
+        let result = analyzer.analyze_source("", Language::Scala, None);
+        assert!(result.is_ok() || result.is_err());
+    }
 }
