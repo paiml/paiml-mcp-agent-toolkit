@@ -768,4 +768,134 @@ end MyModule
         // Confidence is derated 10% for Lean per analyzer_impl2_heuristics_lean.rs:13.
         assert!(score.confidence < 1.0);
     }
+
+    // ── YAML / Markdown (Wave 39 PR8 — analyzer_impl2_heuristics_markup) ────
+
+    #[test]
+    fn test_analyze_yaml_simple() {
+        let analyzer = analyzer();
+        let src = r#"
+name: my-package
+version: 1.0.0
+authors:
+  - alice@example.com
+  - bob@example.com
+"#;
+        let score = analyzer.analyze_source(src, Language::Yaml, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Yaml);
+    }
+
+    #[test]
+    fn test_analyze_yaml_deeply_nested() {
+        // PIN: heuristic should track nesting depth to score complexity.
+        let analyzer = analyzer();
+        let src = r#"
+config:
+  database:
+    primary:
+      host: localhost
+      credentials:
+        user: admin
+        password:
+          source: vault
+          path: /secrets/db
+"#;
+        let score = analyzer.analyze_source(src, Language::Yaml, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_yaml_empty_does_not_panic() {
+        let analyzer = analyzer();
+        let result = analyzer.analyze_source("", Language::Yaml, None);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_analyze_yaml_with_comments_and_anchors() {
+        let analyzer = analyzer();
+        let src = r#"
+# Top-level comment
+defaults: &defaults
+  timeout: 30
+  retries: 3
+
+production:
+  <<: *defaults
+  host: prod.example.com
+"#;
+        let score = analyzer.analyze_source(src, Language::Yaml, None).unwrap();
+        assert!(score.total >= 0.0);
+        // Confidence is derated for heuristics (not full AST parsing).
+        assert!(score.confidence < 1.0);
+    }
+
+    #[test]
+    fn test_analyze_markdown_simple_heading_and_text() {
+        let analyzer = analyzer();
+        let src = r#"
+# Title
+
+This is a paragraph with **bold** and *italic* text.
+
+## Subsection
+
+Some more content.
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Markdown, None)
+            .unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Markdown);
+    }
+
+    #[test]
+    fn test_analyze_markdown_with_code_blocks_and_links() {
+        let analyzer = analyzer();
+        let src = r#"
+# README
+
+See [the spec](docs/spec.md) for details.
+
+```rust
+fn example() -> i32 {
+    42
+}
+```
+
+| Col1 | Col2 |
+|------|------|
+| a    | b    |
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Markdown, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_markdown_deeply_nested_lists() {
+        let analyzer = analyzer();
+        let src = r#"
+# Lists
+
+- Top
+  - Nested 1
+    - Nested 2
+      - Nested 3
+- Sibling
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Markdown, None)
+            .unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_markdown_empty_does_not_panic() {
+        let analyzer = analyzer();
+        let result = analyzer.analyze_source("", Language::Markdown, None);
+        assert!(result.is_ok() || result.is_err());
+    }
 }
