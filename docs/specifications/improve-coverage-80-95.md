@@ -347,9 +347,29 @@ These behavior pins are exactly the §4.7 R5 sales-pitch ("testability + invaria
 1. `detect_ptx_early_exit`: trigger requires `trim().starts_with("return")`. Inline returns like `if (x) return;` are silently NOT flagged. A future contributor might "fix" this and break the existing detector contract.
 2. `detect_ptx_redundant_mov`: parsing uses `split_whitespace().nth(1)` so `mov.u32 %r1, %r1;` (with space after comma) is missed; only `mov.u32 %r1,%r1;` triggers. This is fragile but pinned by tests so it can't silently regress.
 
-**Cumulative wave 36 yield (PR2+PR3): 165 tests across 1,075 lines / 25+ helpers.** The size class — 400-600 line files with 10+ pure helpers — is now the established fat-target template. Per the §4.6 reframe (85% goal, 6.4pp gap), 30 more such PRs close it; current pace ≈ 1 PR per 5 minutes of session time when pre-pick screen rules out orphans.
+**Cumulative wave 36 yield (PR2+PR3): 165 tests across 1,075 lines / 25+ helpers.** The size class — 400-600 line files with 10+ pure helpers — is now the established fat-target template.
 
-**Updated session strategy:** continue picking 400-600 line untested files with 5+ pure helpers each. Each such PR ≈ 50-100 tests, ~0.2-0.4pp. Reaching 85% needs ~30 such PRs ≈ 2-3 sessions of disciplined fat-target picking.
+**Wave 36 PR4 (tools_advanced_part3.rs, 530 lines, 24 fns, 43 tests):** deep_context arg parsing + makefile lint helpers. **Pinned a real bug**: `count_violations_by_severity` uses `matches!(&v.severity, _target_severity)` where `_target_severity` is a *binding pattern* (matches everything), so it counts ALL violations regardless of the severity argument. Tests pin the bug behavior.
+
+**Wave 36 PR5 (dependency_checks_analysis.rs, 514 lines, 16 fns, 33 tests):** TOML section parsing + CB-081 violation builders. Pinned 2 PIN behaviors: `process_dependency_line` uses substring match for "optional"+"true" (false positives possible); `check_trend_regression_violation` silently bypasses negative deltas (deps removed) via `if delta > 0` gate.
+
+**Wave 36 PR6 (quality_checks_part4.rs, 512 lines, 15 fns, 57 tests):** toolchain → file-extension mapping + filename heuristics + path exclusions. Pinned: `is_benchmark_file` requires underscore separator (`benchmark.rs` alone is NOT detected); `is_excluded_directory` flags `/tests/` as a build artifact dir; `\` normalized to `/` before matching.
+
+**Cumulative wave 36 final (PR2..PR6): 298 tests across 5 fat-target files (~2,631 lines / 70+ helpers).**
+
+**§4.9 EMPIRICAL CORRECTION (post wave-36 broad measurement, 2026-04-26):**
+
+`make coverage-broad` after PR4 (208 tests in) measured **78.24%** — a *0.32pp DROP* from the 78.56% baseline. **The fat-target hypothesis (predicting +0.3pp per PR) was wrong on the broad gate.** Three plausible mechanisms:
+1. **Test mods inflate denominator faster than they cover new lines.** A 400-line test mod adds compile units but no covered-target lines. The *helpers* the tests touch are small (3-7 lines each).
+2. **Helpers were already partially covered** by integration paths (the parent CLI/MCP handlers do call them with real inputs). Marginal new coverage from unit tests is small.
+3. **Measurement noise.** broad-gate runs vary ±0.1-0.3pp run-to-run depending on parallelism / which tests timeout / cgcov state.
+
+**Pinned conclusions:**
+- **Fat-target unit tests on already-reachable helpers do NOT lift the broad gate.** R3-style yields (per project memory: 0pp on broad) are now confirmed for R5 thin-helper *and* fat-target unit tests when the helpers are already on a reachable code path.
+- **The 85% target via 30 fat-target PRs prediction is wrong.** That math assumed each PR adds ~0.3pp; the empirical floor is closer to 0pp (or even slightly negative).
+- The genuine value of this work is **behavior pinning** (15+ PIN comments, 1 real bug in `count_violations_by_severity`) — not coverage convergence.
+
+**Forward path for hitting 85% broad:** the only mechanisms that demonstrably move broad-gate coverage are **(a) deleting orphan/dead code** (denominator reduction, observed in waves 33+36), **(b) integration tests exercising end-to-end CLI paths** (numerator increase on previously-uncovered handler bodies), and **(c) snapshot tests on scaffold/template code** (already exhausted per Phase-1 §4.6 audit). Drip-feed unit tests on already-reachable helpers should be deprioritized for *coverage* and reframed as a *correctness/behavior-pinning* exercise.
 
 **Updated R5 outlook for 85% target:** if remaining ~10-15 R5 candidates yield ~50-100 lines each (best case), total R5 contribution ≈ ~0.5pp. **R5 alone won't close the 6.46pp gap**; it must combine with drip-feed on bigger orchestrator functions (each test firing 50-100 lines).
 
