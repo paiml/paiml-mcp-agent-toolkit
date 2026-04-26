@@ -317,19 +317,31 @@ fn extract_ptx_instruction_tags(source: &str, faults: &mut Vec<String>) {
 pub(super) fn classify_cpp_macros(source: &str, faults: &mut Vec<String>) {
     // Assertion macros — indicate boundary validation
     const ASSERT_MACROS: &[&str] = &[
-        "GGML_ASSERT", "GGML_ABORT", "TORCH_CHECK", "TORCH_INTERNAL_ASSERT",
-        "AT_ASSERT", "CUDA_CHECK", "CHECK_CUDA", "CUBLAS_CHECK",
+        "GGML_ASSERT",
+        "GGML_ABORT",
+        "TORCH_CHECK",
+        "TORCH_INTERNAL_ASSERT",
+        "AT_ASSERT",
+        "CUDA_CHECK",
+        "CHECK_CUDA",
+        "CUBLAS_CHECK",
     ];
     // Dispatch macros — indicate type-generic dispatch complexity
     const DISPATCH_MACROS: &[&str] = &[
-        "AT_DISPATCH_ALL_TYPES", "AT_DISPATCH_FLOATING_TYPES",
-        "AT_DISPATCH_INTEGRAL_TYPES", "AT_DISPATCH_COMPLEX_TYPES",
-        "GGML_DISPATCH_BOOL", "CUDA_DISPATCH",
+        "AT_DISPATCH_ALL_TYPES",
+        "AT_DISPATCH_FLOATING_TYPES",
+        "AT_DISPATCH_INTEGRAL_TYPES",
+        "AT_DISPATCH_COMPLEX_TYPES",
+        "GGML_DISPATCH_BOOL",
+        "CUDA_DISPATCH",
     ];
     // Logging macros
     const LOG_MACROS: &[&str] = &[
-        "GGML_LOG_INFO", "GGML_LOG_WARN", "GGML_LOG_ERROR",
-        "TORCH_WARN", "TORCH_LOG",
+        "GGML_LOG_INFO",
+        "GGML_LOG_WARN",
+        "GGML_LOG_ERROR",
+        "TORCH_WARN",
+        "TORCH_LOG",
     ];
 
     let has_assert = ASSERT_MACROS.iter().any(|m| source.contains(m));
@@ -430,7 +442,9 @@ fn detect_ptx_local_spills(source: &str, faults: &mut Vec<String>) {
 }
 
 fn detect_ptx_pred_overflow(source: &str, faults: &mut Vec<String>) {
-    let pred_count = (0..16).filter(|i| source.contains(&format!("%p{i}"))).count();
+    let pred_count = (0..16)
+        .filter(|i| source.contains(&format!("%p{i}")))
+        .count();
     if pred_count > 8 {
         faults.push("PTX_PRED_OVERFLOW".to_string());
     }
@@ -459,8 +473,12 @@ fn detect_ptx_empty_loop(source: &str, faults: &mut Vec<String>) {
 fn detect_ptx_redundant_mov(source: &str, faults: &mut Vec<String>) {
     for line in source.lines() {
         let t = line.trim();
-        if !t.contains("mov.") { continue; }
-        let Some(args) = t.split_whitespace().nth(1) else { continue };
+        if !t.contains("mov.") {
+            continue;
+        }
+        let Some(args) = t.split_whitespace().nth(1) else {
+            continue;
+        };
         let parts: Vec<&str> = args.split(',').map(str::trim).collect();
         if parts.len() == 2 {
             let dest = parts[0].trim_end_matches(';');
@@ -534,6 +552,434 @@ pub(crate) fn compute_name_frequency(
         result.insert(name.clone(), indices.len() as f32 / total as f32);
     }
     result
+}
+
+#[cfg(test)]
+mod annotations_tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    // ── match_git_path ──────────────────────────────────────────────────────
+
+    fn files_set<'a>(paths: &[&'a str]) -> HashSet<&'a str> {
+        paths.iter().copied().collect()
+    }
+
+    #[test]
+    fn test_match_git_path_exact_match() {
+        let files = files_set(&["src/lib.rs", "src/main.rs"]);
+        assert_eq!(match_git_path("src/lib.rs", &files), Some("src/lib.rs"));
+    }
+
+    #[test]
+    fn test_match_git_path_strips_server_prefix() {
+        let files = files_set(&["src/foo.rs"]);
+        // Path migration: server/src/foo.rs → src/foo.rs
+        assert_eq!(
+            match_git_path("server/src/foo.rs", &files),
+            Some("src/foo.rs")
+        );
+    }
+
+    #[test]
+    fn test_match_git_path_no_match_returns_none() {
+        let files = files_set(&["src/foo.rs"]);
+        assert!(match_git_path("docs/readme.md", &files).is_none());
+    }
+
+    #[test]
+    fn test_match_git_path_empty_line_returns_none() {
+        let files = files_set(&["src/foo.rs"]);
+        assert!(match_git_path("", &files).is_none());
+        assert!(match_git_path("   ", &files).is_none());
+    }
+
+    #[test]
+    fn test_match_git_path_trims_input() {
+        let files = files_set(&["src/lib.rs"]);
+        assert_eq!(match_git_path("  src/lib.rs  ", &files), Some("src/lib.rs"));
+    }
+
+    // ── extract_return_type ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_extract_return_type_with_arrow() {
+        assert_eq!(extract_return_type("fn foo() -> i32"), "i32");
+        assert_eq!(extract_return_type("fn bar() -> Result<()>"), "Result<()>");
+    }
+
+    #[test]
+    fn test_extract_return_type_no_arrow_returns_void() {
+        assert_eq!(extract_return_type("fn foo()"), "void");
+        assert_eq!(extract_return_type(""), "void");
+    }
+
+    #[test]
+    fn test_extract_return_type_trims_whitespace() {
+        assert_eq!(extract_return_type("fn f() ->   String   "), "String");
+    }
+
+    // ── count_params ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_count_params_empty_parens() {
+        assert_eq!(count_params("fn foo()"), 0);
+        assert_eq!(count_params("fn bar(  )"), 0);
+    }
+
+    #[test]
+    fn test_count_params_single_param() {
+        assert_eq!(count_params("fn foo(x: u32)"), 1);
+    }
+
+    #[test]
+    fn test_count_params_multiple() {
+        assert_eq!(count_params("fn foo(a: u32, b: u32, c: u32)"), 3);
+    }
+
+    #[test]
+    fn test_count_params_no_paren_returns_zero() {
+        assert_eq!(count_params("not a signature"), 0);
+    }
+
+    #[test]
+    fn test_count_params_handles_close_paren_in_comment() {
+        // Pinned: function finds `)` AFTER `(`, so a `// ...)` before `(` is OK
+        assert_eq!(count_params("// 1) note\nfn foo(x: u32, y: u32)"), 2);
+    }
+
+    // ── normalize_source_hash ───────────────────────────────────────────────
+
+    #[test]
+    fn test_normalize_source_hash_whitespace_invariant() {
+        let h1 = normalize_source_hash("fn foo() { bar(); }");
+        let h2 = normalize_source_hash("fn  foo()   {\n  bar();\n}");
+        assert_eq!(h1, h2, "whitespace differences should not affect hash");
+    }
+
+    #[test]
+    fn test_normalize_source_hash_case_invariant() {
+        let h1 = normalize_source_hash("FN FOO");
+        let h2 = normalize_source_hash("fn foo");
+        assert_eq!(h1, h2, "case differences should not affect hash");
+    }
+
+    #[test]
+    fn test_normalize_source_hash_different_content_differs() {
+        let h1 = normalize_source_hash("fn foo() {}");
+        let h2 = normalize_source_hash("fn bar() {}");
+        assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn test_normalize_source_hash_empty() {
+        // Empty input still produces a hash
+        let _h = normalize_source_hash("");
+    }
+
+    // ── extract_ptx_instruction_tags ────────────────────────────────────────
+
+    #[test]
+    fn test_extract_ptx_instruction_tags_finds_known_opcodes() {
+        let mut faults = Vec::new();
+        extract_ptx_instruction_tags("asm(\"mma.sync.aligned.m16n8k16 ...\")", &mut faults);
+        assert!(faults.contains(&"PTX:mma.sync".to_string()));
+    }
+
+    #[test]
+    fn test_extract_ptx_instruction_tags_multiple_opcodes() {
+        let mut faults = Vec::new();
+        let src = "asm volatile(\"cp.async ...\");\nasm(\"bar.sync 0\");";
+        extract_ptx_instruction_tags(src, &mut faults);
+        assert!(faults.contains(&"PTX:cp.async".to_string()));
+        assert!(faults.contains(&"PTX:bar.sync".to_string()));
+    }
+
+    #[test]
+    fn test_extract_ptx_instruction_tags_no_match_no_push() {
+        let mut faults = Vec::new();
+        extract_ptx_instruction_tags("regular C++ code", &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    // ── classify_cpp_macros ─────────────────────────────────────────────────
+
+    #[test]
+    fn test_classify_cpp_macros_assert_family() {
+        let mut faults = Vec::new();
+        classify_cpp_macros("GGML_ASSERT(x > 0);", &mut faults);
+        assert_eq!(faults, vec!["MACRO:ASSERT"]);
+    }
+
+    #[test]
+    fn test_classify_cpp_macros_dispatch_family() {
+        let mut faults = Vec::new();
+        classify_cpp_macros("AT_DISPATCH_ALL_TYPES(x, ...)", &mut faults);
+        assert_eq!(faults, vec!["MACRO:DISPATCH"]);
+    }
+
+    #[test]
+    fn test_classify_cpp_macros_log_family() {
+        let mut faults = Vec::new();
+        classify_cpp_macros("GGML_LOG_INFO(\"hello\")", &mut faults);
+        assert_eq!(faults, vec!["MACRO:LOG"]);
+    }
+
+    #[test]
+    fn test_classify_cpp_macros_torch_check_is_assert() {
+        let mut faults = Vec::new();
+        classify_cpp_macros("TORCH_CHECK(cond);", &mut faults);
+        assert!(faults.contains(&"MACRO:ASSERT".to_string()));
+    }
+
+    #[test]
+    fn test_classify_cpp_macros_combination() {
+        let mut faults = Vec::new();
+        classify_cpp_macros("GGML_ASSERT(x); GGML_LOG_WARN(\"y\");", &mut faults);
+        assert_eq!(faults.len(), 2);
+        assert!(faults.contains(&"MACRO:ASSERT".to_string()));
+        assert!(faults.contains(&"MACRO:LOG".to_string()));
+    }
+
+    #[test]
+    fn test_classify_cpp_macros_no_macros() {
+        let mut faults = Vec::new();
+        classify_cpp_macros("int x = 1;", &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    // ── detect_inline_ptx_defects (orchestrator) ────────────────────────────
+
+    #[test]
+    fn test_detect_inline_ptx_defects_no_asm_returns_immediately() {
+        let mut faults = Vec::new();
+        detect_inline_ptx_defects("regular C++", &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    #[test]
+    fn test_detect_inline_ptx_defects_shared_store_load_no_barrier() {
+        let mut faults = Vec::new();
+        let src = "asm(\"st.shared ...\"); asm(\"ld.shared ...\");";
+        detect_inline_ptx_defects(src, &mut faults);
+        assert!(faults.contains(&"PTX_MISSING_BARRIER".to_string()));
+    }
+
+    #[test]
+    fn test_detect_inline_ptx_defects_with_barrier_no_missing() {
+        let mut faults = Vec::new();
+        let src = "asm(\"st.shared ...\"); asm(\"ld.shared ...\"); asm(\"bar.sync 0\");";
+        detect_inline_ptx_defects(src, &mut faults);
+        assert!(!faults.contains(&"PTX_MISSING_BARRIER".to_string()));
+    }
+
+    // ── detect_ptx_barrier_divergence ───────────────────────────────────────
+
+    #[test]
+    fn test_detect_ptx_barrier_divergence_in_if_branch() {
+        let mut faults = Vec::new();
+        let src = "if (cond) {\nbar.sync 0;\n}\n";
+        detect_ptx_barrier_divergence(src, &mut faults);
+        assert!(faults.contains(&"PTX_BARRIER_DIV".to_string()));
+    }
+
+    #[test]
+    fn test_detect_ptx_barrier_divergence_outside_branch_clean() {
+        let mut faults = Vec::new();
+        let src = "bar.sync 0;\nif (cond) { foo; }\n";
+        detect_ptx_barrier_divergence(src, &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    #[test]
+    fn test_detect_ptx_barrier_divergence_predicate_branch() {
+        let mut faults = Vec::new();
+        let src = "@%p1 bar.sync 0;\n";
+        detect_ptx_barrier_divergence(src, &mut faults);
+        assert!(faults.contains(&"PTX_BARRIER_DIV".to_string()));
+    }
+
+    // ── detect_ptx_early_exit ───────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_ptx_early_exit_return_then_barrier() {
+        // PIN: trigger requires a *trimmed line that STARTS WITH* "return" (and contains ';').
+        // `if (x) return;` does NOT trigger because the line doesn't start with "return".
+        let mut faults = Vec::new();
+        let src = "return;\nbar.sync 0;\n";
+        detect_ptx_early_exit(src, &mut faults);
+        assert!(faults.contains(&"PTX_EARLY_EXIT".to_string()));
+    }
+
+    #[test]
+    fn test_detect_ptx_early_exit_inline_return_does_not_trigger() {
+        // PIN: starts_with check means inline returns (e.g. `if (x) return;`) are NOT flagged.
+        let mut faults = Vec::new();
+        let src = "if (x) return;\nbar.sync 0;\n";
+        detect_ptx_early_exit(src, &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    #[test]
+    fn test_detect_ptx_early_exit_no_return_clean() {
+        let mut faults = Vec::new();
+        let src = "bar.sync 0;\nfoo();\n";
+        detect_ptx_early_exit(src, &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    // ── detect_ptx_register_issues ──────────────────────────────────────────
+
+    #[test]
+    fn test_detect_ptx_register_issues_above_threshold() {
+        let mut faults = Vec::new();
+        // 9 register-output operands → > 8
+        let src = "\"=r\" \"=r\" \"=r\" \"=r\" \"=r\" \"=r\" \"=r\" \"=r\" \"=r\"";
+        detect_ptx_register_issues(src, &mut faults);
+        assert!(faults.contains(&"PTX_HIGH_REGS".to_string()));
+    }
+
+    #[test]
+    fn test_detect_ptx_register_issues_below_threshold_clean() {
+        let mut faults = Vec::new();
+        let src = "\"=r\" \"=r\" \"=r\""; // 3 < 8
+        detect_ptx_register_issues(src, &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    #[test]
+    fn test_detect_ptx_register_issues_includes_plus_r() {
+        let mut faults = Vec::new();
+        let src = "\"=r\" \"=r\" \"=r\" \"=r\" \"+r\" \"+r\" \"+r\" \"+r\" \"+r\"";
+        detect_ptx_register_issues(src, &mut faults);
+        assert!(faults.contains(&"PTX_HIGH_REGS".to_string()));
+    }
+
+    // ── detect_ptx_shared_u64 ───────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_ptx_shared_u64_with_cvta() {
+        let mut faults = Vec::new();
+        let src = "st.shared.u64 [...]; cvta.shared ...";
+        detect_ptx_shared_u64(src, &mut faults);
+        assert!(faults.contains(&"PTX_SHARED_U64".to_string()));
+    }
+
+    #[test]
+    fn test_detect_ptx_shared_u64_no_shared_clean() {
+        let mut faults = Vec::new();
+        detect_ptx_shared_u64("cvta.shared without st/ld", &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    // ── detect_ptx_local_spills ─────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_ptx_local_spills_with_st_local() {
+        let mut faults = Vec::new();
+        detect_ptx_local_spills(".local .u32 spill;\nst.local.u32 ...", &mut faults);
+        assert!(faults.contains(&"PTX_REG_SPILL".to_string()));
+    }
+
+    #[test]
+    fn test_detect_ptx_local_spills_no_local_clean() {
+        let mut faults = Vec::new();
+        detect_ptx_local_spills("just regular ptx", &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    // ── detect_ptx_pred_overflow ────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_ptx_pred_overflow_above_8() {
+        let mut faults = Vec::new();
+        let src = "%p0 %p1 %p2 %p3 %p4 %p5 %p6 %p7 %p8";
+        detect_ptx_pred_overflow(src, &mut faults);
+        assert!(faults.contains(&"PTX_PRED_OVERFLOW".to_string()));
+    }
+
+    #[test]
+    fn test_detect_ptx_pred_overflow_below_threshold_clean() {
+        let mut faults = Vec::new();
+        let src = "%p0 %p1 %p2";
+        detect_ptx_pred_overflow(src, &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    // ── detect_ptx_empty_loop ───────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_ptx_empty_loop_global_with_empty_for() {
+        let mut faults = Vec::new();
+        let src = "__global__ void k() {\nfor (...)\n{}\n}";
+        detect_ptx_empty_loop(src, &mut faults);
+        assert!(faults.contains(&"PTX_EMPTY_LOOP".to_string()));
+    }
+
+    #[test]
+    fn test_detect_ptx_empty_loop_no_global_clean() {
+        let mut faults = Vec::new();
+        let src = "void k() {\nfor (...)\n{}\n}"; // not __global__
+        detect_ptx_empty_loop(src, &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    #[test]
+    fn test_detect_ptx_empty_loop_with_body_clean() {
+        let mut faults = Vec::new();
+        let src = "__global__ void k() {\nfor (...)\nfoo();\n}";
+        detect_ptx_empty_loop(src, &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    // ── detect_ptx_redundant_mov ────────────────────────────────────────────
+
+    #[test]
+    fn test_detect_ptx_redundant_mov_same_reg() {
+        // PIN: parser uses `split_whitespace().nth(1)` so dest+src must be in ONE
+        // whitespace-token (no space after comma) — `"%r1,%r1"`. With a space after
+        // the comma, args = "%r1," and src parses as empty, so no detection.
+        let mut faults = Vec::new();
+        let src = "mov.u32 %r1,%r1;";
+        detect_ptx_redundant_mov(src, &mut faults);
+        assert!(faults.contains(&"PTX_REDUNDANT_MOV".to_string()));
+    }
+
+    #[test]
+    fn test_detect_ptx_redundant_mov_space_after_comma_does_not_trigger() {
+        // PIN: `"%r1, %r1"` (with space) is missed — split_whitespace tokenization
+        // grabs only `"%r1,"`, so the duplicate-register check never sees src.
+        let mut faults = Vec::new();
+        detect_ptx_redundant_mov("mov.u32 %r1, %r1;", &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    #[test]
+    fn test_detect_ptx_redundant_mov_different_reg_clean() {
+        let mut faults = Vec::new();
+        detect_ptx_redundant_mov("mov.u32 %r1,%r2;", &mut faults);
+        assert!(faults.is_empty());
+    }
+
+    // ── compute_name_frequency ──────────────────────────────────────────────
+
+    #[test]
+    fn test_compute_name_frequency_zero_total_returns_empty() {
+        let mut idx = HashMap::new();
+        idx.insert("foo".to_string(), vec![0usize, 1]);
+        let result = compute_name_frequency(&idx, 0);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_compute_name_frequency_basic() {
+        let mut idx = HashMap::new();
+        idx.insert("new".to_string(), vec![0, 1, 2]);
+        idx.insert("rare_name".to_string(), vec![3]);
+        let result = compute_name_frequency(&idx, 4);
+        assert!((result["new"] - 0.75).abs() < 1e-6);
+        assert!((result["rare_name"] - 0.25).abs() < 1e-6);
+    }
 }
 // #[requires(project_path.exists())]
 // #[ensures(result.is_ok())]
