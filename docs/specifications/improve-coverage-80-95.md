@@ -331,6 +331,20 @@ R5 pattern now validated on FOUR prototypes — pattern is portable:
 
 **Wave 35 measured: 78.54% → 78.56% = +0.02pp on 52 tests = ~2,600 tests/pp** — the worst rate of the session. **Why so bad?** R5 helpers are tiny (3-7 lines each); 13 helpers × ~5 lines ≈ 65 lines hit. 65 / 333k = 0.02pp. This pins the **R5 broad-gate yield model**: per-helper-line, not per-test, not per-helper. The pattern is still valuable (testability + invariant enforcement under PV) but **not a coverage convergence lever** unless extracted helpers are big.
 
+### 4.9 Wave 36 — fat-target drip-feed validation (2026-04-26)
+
+Following the §4.8 pivot, wave 36 PR2 targeted a 536-line file with 14 testable pure helpers (`helpers_quality_metrics.rs`) — the size class that the §4.8 model predicts will yield more broad-gate movement than R5 thin-helpers. Test density: 6 tests/helper, 83 tests across helpers ranging 5-70 lines.
+
+**Pinned 2 unexpected behaviors during testing** that the original code didn't document:
+1. `count_complexity`: the OR-chained predicate matches once per line; multiple operators (e.g. `if a && b || c`) on one line still yield +1, not +3. Test pinning this prevents future "fixes" that would inflate metric scores 3x.
+2. `cpp_complexity_penalty`: macro_call_count increments per LINE containing the pattern, not per occurrence. 6 macros on one line = 1 macro hit, below the 5-threshold = 0 penalty.
+
+These behavior pins are exactly the §4.7 R5 sales-pitch ("testability + invariant enforcement") delivered without R5 — just regular drip-feed tests on already-pure helpers.
+
+**Wave 36 single-PR yield prediction:** 83 tests × ~10-15 lines/test (helpers are bigger than R5) ≈ 1,000+ lines hit. 1000/333k = ~0.3pp. **3-15× better per-PR yield than wave 35's R5 prototypes**. Final measurement pending.
+
+**Updated session strategy:** continue picking 400-600 line untested files with 5+ pure helpers each. Each such PR ≈ 50-100 tests, ~0.2-0.4pp. Reaching 85% needs ~30 such PRs ≈ 2-3 sessions of disciplined fat-target picking.
+
 **Updated R5 outlook for 85% target:** if remaining ~10-15 R5 candidates yield ~50-100 lines each (best case), total R5 contribution ≈ ~0.5pp. **R5 alone won't close the 6.46pp gap**; it must combine with drip-feed on bigger orchestrator functions (each test firing 50-100 lines).
 
 The "right" R5 target is therefore not subprocess-bound files with thin helpers but **subprocess-bound files with FAT inner logic** (e.g., 50+ line parsers). Two such files were predicted but turned out to be already-pure (`git_history_parsing.rs`) or shallow (the four prototypes here). The spec's §4.5 R5 estimate (1-3pp per refactor) was correct for hypothetical fat-inner cases, not for what's actually present in PMAT.
