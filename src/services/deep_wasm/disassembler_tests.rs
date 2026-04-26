@@ -291,13 +291,31 @@ mod tests {
     }
 
     #[test]
-    fn test_format_operator_pin_f64_add_missing_dot() {
-        // PIN BUG: `format_operator(F64Add)` returns "f64add" (no dot)
-        // instead of the WASM-canonical "f64.add". The implementation has
-        // a missing `.` in the F64-family arms. Pinned so a future fix
-        // is intentional and other consumers update accordingly.
+    fn test_format_operator_f64_add_uses_wasm_canonical_dot() {
+        // BUG #2 FIXED in release-prep: previously fell to the `_ =>` default
+        // which produced "f64add" (no dot). Now explicit F64Add/F32Add/...
+        // arms produce WASM-canonical dotted form.
         let (m, _) = format_operator(&Operator::F64Add);
-        assert_eq!(m, "f64add", "PIN: f64 ops are missing the dot in mnemonic");
+        assert_eq!(m, "f64.add");
+    }
+
+    #[test]
+    fn test_format_operator_full_f32_f64_family_dotted() {
+        // Verify the entire F32/F64 arithmetic family follows the convention.
+        for (op, expected) in &[
+            (Operator::F32Add, "f32.add"),
+            (Operator::F32Sub, "f32.sub"),
+            (Operator::F32Mul, "f32.mul"),
+            (Operator::F32Div, "f32.div"),
+            (Operator::F64Add, "f64.add"),
+            (Operator::F64Sub, "f64.sub"),
+            (Operator::F64Mul, "f64.mul"),
+            (Operator::F64Div, "f64.div"),
+        ] {
+            let (m, ops) = format_operator(op);
+            assert_eq!(&m, expected);
+            assert!(ops.is_empty());
+        }
     }
 
     #[test]

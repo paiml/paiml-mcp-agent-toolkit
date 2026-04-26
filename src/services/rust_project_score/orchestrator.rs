@@ -342,10 +342,12 @@ fn discover_workspace_members(project_path: &Path) -> Vec<(String, std::path::Pa
             if trimmed.starts_with(']') {
                 break;
             }
-            let member = trimmed
-                .trim_matches('"')
-                .trim_matches('\'')
-                .trim_matches(',');
+            // Wave 39 release-prep: BUG #3 fix — was using sequential
+            // `.trim_matches('"').trim_matches('\'').trim_matches(',')` which
+            // left a trailing `"` for inputs like `"foo",` because the comma
+            // sat between the quote and the end. Use a char-set predicate to
+            // strip all three in one pass.
+            let member = trimmed.trim_matches(|c: char| c == '"' || c == '\'' || c == ',');
             if !member.is_empty() && !member.starts_with('#') {
                 expand_member(project_path, member, &mut members);
             }
@@ -585,19 +587,12 @@ mod tests {
     }
 
     #[test]
-    fn test_discover_workspace_members_multiline_pin_trim_order_bug() {
-        // PIN BUG: the multi-line parser does `.trim_matches('"').trim_matches('\'').trim_matches(',')`.
-        // For input `"foo",` (line trimmed), this strips the leading `"`, leaves
-        // `foo",`, then strips trailing `,`, ending with `foo"`. The trailing
-        // quote is NEVER removed because the trims happen left-to-right and the
-        // comma sits between the quote and the end. As a result, the resulting
-        // member name `foo"` does not match the on-disk directory `foo`, and 0
-        // members get registered.
-        //
-        // FIX (future): swap order to `.trim_matches(',').trim_matches('"')` OR
-        // wrap with a character set: `.trim_matches(|c| c == '"' || c == ',')`.
-        // Pinned for visibility — the inline form (`members = ["a", "b"]`) is
-        // unaffected because `.split(',')` removes commas before trim.
+    fn test_discover_workspace_members_multiline_with_trailing_commas() {
+        // BUG #3 FIXED in release-prep: previously sequential
+        // `.trim_matches('"').trim_matches('\'').trim_matches(',')` left a
+        // trailing `"` for inputs like `"foo",`. Now uses a char-set
+        // predicate `|c| c == '"' || c == '\'' || c == ','` to strip all
+        // three in one pass.
         let tmp = tempfile::tempdir().unwrap();
         std::fs::create_dir(tmp.path().join("foo")).unwrap();
         std::fs::write(tmp.path().join("foo/Cargo.toml"), "").unwrap();
@@ -609,8 +604,10 @@ mod tests {
         )
         .unwrap();
         let members = discover_workspace_members(tmp.path());
-        // Multi-line form drops members due to trim-order bug.
-        assert_eq!(members.len(), 0, "PIN: multi-line trim-order bug");
+        assert_eq!(members.len(), 2);
+        let names: Vec<&str> = members.iter().map(|(n, _)| n.as_str()).collect();
+        assert!(names.contains(&"foo"));
+        assert!(names.contains(&"bar"));
     }
 
     #[test]
@@ -650,19 +647,19 @@ mod tests {
     }
 
     #[test]
-    fn test_discover_workspace_members_comment_no_trailing_comma() {
-        // Comment lines are skipped (start with `#`); the member without a
-        // trailing comma works around the trim-order PIN bug.
+    fn test_discover_workspace_members_skips_comment_lines() {
+        // Comment lines starting with `#` are skipped inside members block.
         let tmp = tempfile::tempdir().unwrap();
         std::fs::create_dir(tmp.path().join("my_crate")).unwrap();
         std::fs::write(tmp.path().join("my_crate/Cargo.toml"), "").unwrap();
         std::fs::write(
             tmp.path().join("Cargo.toml"),
-            "[workspace]\nmembers = [\n  # comment\n  \"my_crate\"\n]\n",
+            "[workspace]\nmembers = [\n  # comment\n  \"my_crate\",\n]\n",
         )
         .unwrap();
         let members = discover_workspace_members(tmp.path());
         assert_eq!(members.len(), 1);
+        assert_eq!(members[0].0, "my_crate");
     }
 
     // ── expand_member ───────────────────────────────────────────────────────

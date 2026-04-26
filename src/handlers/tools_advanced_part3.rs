@@ -366,13 +366,17 @@ fn format_violation(violation: &crate::services::makefile_linter::Violation) -> 
     })
 }
 
+// Wave 39 release-prep: BUG #1 fix — was using `_target_severity` as a
+// binding pattern inside `matches!`, which matches every variant. Now does
+// proper equality comparison so the count actually filters by severity.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn count_violations_by_severity(
     violations: &[crate::services::makefile_linter::Violation],
-    _target_severity: crate::services::makefile_linter::Severity,
+    target_severity: crate::services::makefile_linter::Severity,
 ) -> usize {
     violations
         .iter()
-        .filter(|v| matches!(&v.severity, _target_severity))
+        .filter(|v| v.severity == target_severity)
         .count()
 }
 

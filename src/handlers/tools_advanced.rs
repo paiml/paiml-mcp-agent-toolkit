@@ -978,12 +978,12 @@ mod part3_pure_helpers_tests {
     // ── count_violations_by_severity ────────────────────────────────────────
 
     #[test]
-    fn test_count_violations_by_severity_pin_buggy_pattern_counts_all() {
-        // PIN BUG: the function uses `matches!(&v.severity, _target_severity)`
-        // where `_target_severity` is a *binding pattern*, not a value match.
-        // So this counts ALL violations regardless of severity passed in.
-        // Tests pin the current behavior so any future fix must update the
-        // tests intentionally rather than silently regressing the metric.
+    fn test_count_violations_by_severity_filters_correctly() {
+        // BUG #1 FIXED in release-prep: previously used `matches!(&v.severity,
+        // _target_severity)` which treated `_target_severity` as a binding
+        // pattern (matched everything). Now uses `==` comparison.
+        // Test verifies the FIXED behavior: count matches the requested
+        // severity only.
         use crate::services::makefile_linter::ast::SourceSpan;
         use crate::services::makefile_linter::Violation;
         let span = SourceSpan {
@@ -1014,12 +1014,19 @@ mod part3_pure_helpers_tests {
                 message: "".into(),
                 fix_hint: None,
             },
+            Violation {
+                rule: "d".into(),
+                severity: Severity::Warning,
+                span,
+                message: "".into(),
+                fix_hint: None,
+            },
         ];
-        // Whatever severity we pass, count == vs.len() because of the binding bug.
-        assert_eq!(count_violations_by_severity(&vs, Severity::Error), 3);
-        assert_eq!(count_violations_by_severity(&vs, Severity::Warning), 3);
-        assert_eq!(count_violations_by_severity(&vs, Severity::Info), 3);
-        assert_eq!(count_violations_by_severity(&vs, Severity::Performance), 3);
+        // Each severity bucket should be counted independently now.
+        assert_eq!(count_violations_by_severity(&vs, Severity::Error), 1);
+        assert_eq!(count_violations_by_severity(&vs, Severity::Warning), 2);
+        assert_eq!(count_violations_by_severity(&vs, Severity::Info), 1);
+        assert_eq!(count_violations_by_severity(&vs, Severity::Performance), 0);
     }
 
     #[test]
