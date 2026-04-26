@@ -283,29 +283,20 @@ mod parallel_tests {
 
     #[test]
     fn test_print_health_report_yaml_arm() {
-        let report = make_report(
-            vec![make_check("Build", CheckStatus::Pass, false)],
-            true,
-        );
+        let report = make_report(vec![make_check("Build", CheckStatus::Pass, false)], true);
         print_health_report(&report, &OutputFormat::Yaml).unwrap();
     }
 
     #[test]
     fn test_print_health_report_table_arm() {
-        let report = make_report(
-            vec![make_check("Build", CheckStatus::Pass, false)],
-            true,
-        );
+        let report = make_report(vec![make_check("Build", CheckStatus::Pass, false)], true);
         print_health_report(&report, &OutputFormat::Table).unwrap();
     }
 
     #[test]
     fn test_print_health_report_default_arm_for_unknown_format() {
         // Any other OutputFormat falls through to print_health_table.
-        let report = make_report(
-            vec![make_check("Build", CheckStatus::Pass, false)],
-            true,
-        );
+        let report = make_report(vec![make_check("Build", CheckStatus::Pass, false)], true);
         print_health_report(&report, &OutputFormat::Csv).unwrap();
     }
 
@@ -325,20 +316,14 @@ mod parallel_tests {
     #[test]
     fn test_print_health_table_healthy_arm() {
         // healthy = true → "Project is healthy!" branch.
-        let report = make_report(
-            vec![make_check("P", CheckStatus::Pass, false)],
-            true,
-        );
+        let report = make_report(vec![make_check("P", CheckStatus::Pass, false)], true);
         print_health_table(&report);
     }
 
     #[test]
     fn test_print_health_table_unhealthy_arm() {
         // healthy = false → "Project has N issue(s)" branch.
-        let report = make_report(
-            vec![make_check("F", CheckStatus::Fail, false)],
-            false,
-        );
+        let report = make_report(vec![make_check("F", CheckStatus::Fail, false)], false);
         print_health_table(&report);
     }
 
@@ -440,5 +425,115 @@ mod r5_classifier_tests {
         // Any high-severity (with total > 0) → Fail
         assert_eq!(classify_satd_status(1, 1), CheckStatus::Fail);
         assert_eq!(classify_satd_status(10, 3), CheckStatus::Fail);
+    }
+
+    // ── count_complexity_violations (Wave 39 PR6) ───────────────────────────
+
+    use crate::services::complexity::{
+        ComplexityMetrics, FileComplexityMetrics, FunctionComplexity,
+    };
+
+    fn make_function(name: &str, cyclomatic: u16) -> FunctionComplexity {
+        FunctionComplexity {
+            name: name.to_string(),
+            line_start: 1,
+            line_end: 10,
+            metrics: ComplexityMetrics {
+                cyclomatic,
+                cognitive: 0,
+                nesting_max: 0,
+                lines: 10,
+                halstead: None,
+            },
+        }
+    }
+
+    fn make_file_metrics(path: &str, functions: Vec<FunctionComplexity>) -> FileComplexityMetrics {
+        FileComplexityMetrics {
+            path: path.to_string(),
+            total_complexity: ComplexityMetrics {
+                cyclomatic: functions
+                    .iter()
+                    .map(|f| f.metrics.cyclomatic)
+                    .sum::<u16>()
+                    .max(1),
+                cognitive: 0,
+                nesting_max: 0,
+                lines: 10,
+                halstead: None,
+            },
+            functions,
+            classes: vec![],
+        }
+    }
+
+    #[test]
+    fn test_count_complexity_violations_empty_returns_zero() {
+        let (total, violations, max) = count_complexity_violations(&[]);
+        assert_eq!(total, 0);
+        assert_eq!(violations, 0);
+        assert_eq!(max, 0);
+    }
+
+    #[test]
+    fn test_count_complexity_violations_no_functions_in_file() {
+        let files = vec![make_file_metrics("a.rs", vec![])];
+        let (total, violations, max) = count_complexity_violations(&files);
+        assert_eq!(total, 0);
+        assert_eq!(violations, 0);
+        assert_eq!(max, 0);
+    }
+
+    #[test]
+    fn test_count_complexity_violations_threshold_at_20_inclusive_no_violation() {
+        // PIN: `cyclomatic > 20` is the violation rule (strict >, not >=).
+        // A function at exactly 20 is NOT a violation.
+        let files = vec![make_file_metrics("a.rs", vec![make_function("f", 20)])];
+        let (total, violations, max) = count_complexity_violations(&files);
+        assert_eq!(total, 1);
+        assert_eq!(violations, 0);
+        assert_eq!(max, 20);
+    }
+
+    #[test]
+    fn test_count_complexity_violations_threshold_above_20_is_violation() {
+        let files = vec![make_file_metrics("a.rs", vec![make_function("f", 21)])];
+        let (total, violations, max) = count_complexity_violations(&files);
+        assert_eq!(total, 1);
+        assert_eq!(violations, 1);
+        assert_eq!(max, 21);
+    }
+
+    #[test]
+    fn test_count_complexity_violations_max_tracks_highest_across_files() {
+        let files = vec![
+            make_file_metrics(
+                "a.rs",
+                vec![make_function("a1", 5), make_function("a2", 30)],
+            ),
+            make_file_metrics("b.rs", vec![make_function("b1", 25)]),
+        ];
+        let (total, violations, max) = count_complexity_violations(&files);
+        assert_eq!(total, 3);
+        assert_eq!(violations, 2); // 30 + 25 both > 20
+        assert_eq!(max, 30); // max across all functions in all files
+    }
+
+    #[test]
+    fn test_count_complexity_violations_mixed_violators_and_clean() {
+        let files = vec![make_file_metrics(
+            "a.rs",
+            vec![
+                make_function("clean1", 1),
+                make_function("clean2", 10),
+                make_function("clean3", 19),
+                make_function("violator1", 100),
+                make_function("violator2", 500),
+            ],
+        )];
+        let (total, violations, max) = count_complexity_violations(&files);
+        assert_eq!(total, 5);
+        assert_eq!(violations, 2);
+        assert_eq!(max, 500);
     }
 }
