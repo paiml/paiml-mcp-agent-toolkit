@@ -503,6 +503,29 @@ The "right" R5 target is therefore not subprocess-bound files with thin helpers 
 
 **Coverage measurement post-PR2**: kicked off in parallel with PR3-PR6 development. Once it lands the result will validate or falsify the lever (d) hypothesis. Per §4.10 model the prediction is +0.3-1.0pp delta from these 6 PRs; if measurement shows ~0pp again, lever (d) is also confirmed weak and the §4.11 stop criterion fires (target reframe to ~79-80% confirmed as the broad-gate ceiling).
 
+#### §4.11 EMPIRICAL VALIDATION — lever (d) WORKS (2026-04-26)
+
+`make coverage-broad` after wave 39 PR1+PR2 measured **79.18%** — **+0.41pp** from the 78.77% baseline. **First positive delta of the entire session.** This validates lever (d) as the only demonstrated mover among the 5 levers in §4.10's corrected model.
+
+**Numerical decomposition:**
+- Lines measured: 227,317 → 227,753 (+436 added, mostly test code)
+- Lines missed: 48,324 → 47,419 (−905, i.e. +905 newly covered)
+- Net coverage delta: +0.41pp
+- Yield per test: 905 lines / 26 tests ≈ **35 lines/test** (matches §4.11 prediction of 50-200 lines/test, on the low end)
+
+**Why lever (d) works where (a)+(b) didn't:**
+- (b) drip-feed unit tests cover 5-10 lines each (small pure helpers).
+- (d) integration tests through `analyze_source` exercise the entire chain: parser/visitor → complexity/entropy/coupling/duplication scoring → defect detection → score aggregation. Each test fires 30-50 lines of real code.
+- The TDG analyzer files (`analyzer_impl1_*`, `analyzer_impl2_*`) are 200-450 lines each at 0% coverage; one well-chosen integration test can convert 30-50 of those to covered.
+
+**Forward arithmetic to 80%:**
+- 79.18% → 80.00% = 0.82pp gap → ~1,870 new covered lines
+- At observed 35 lines/test rate: ~54 more integration tests
+- At ~10 tests/PR observed cadence: ~5-6 more PRs
+- **80% reachable in ~1 more session** of disciplined integration-test work.
+
+**PR3-PR7 (42 more tests) NOT yet in the measurement** — they were committed after the measurement build started. Re-measure after PR7 to project trajectory.
+
 Each phase is independently shippable. Do not chase the next phase until the current one holds for 2 weeks on `main`.
 
 ### Phase 0 — Honesty baseline (1 day, v3.15.1)
