@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.16.0] - 2026-04-26
+
+### Fixed
+- **`pmat analyze dead-code` on bin-only crates** (#bug-4): `cargo_dead_code_analyzer` was hard-coded to `cargo check --lib`, which fails on bin-only Rust projects with "no library targets found". Now detects library presence (via `src/lib.rs` or explicit `[lib]` section) and falls back to `--bins` when absent. Most CLI tool projects (e.g. `[[bin]]`-only) now work out of the box. (`services/cargo_dead_code_analyzer/analysis.rs`)
+- **MCP `analyze_makefile_lint` severity counts** (#bug-1): `count_violations_by_severity` was using `matches!(&v.severity, _target_severity)` where `_target_severity` is a binding pattern (matches every variant). Result: every severity bucket reported the total count instead of its own. Now uses proper `==` equality. Affects `error_count` / `warning_count` in MCP tool output. (`handlers/tools_advanced_part3.rs`)
+- **WASM disassembler F32/F64 mnemonics** (#bug-2): `format_operator(F64Add)` produced `"f64add"` (no dot) instead of WASM-canonical `"f64.add"` because F32/F64 arithmetic ops fell to the debug-string default arm. All eight ops (F32/F64 × Add/Sub/Mul/Div) now produce dotted form matching the I32/I64 family. (`services/deep_wasm/disassembler_formatting.rs`)
+- **`pmat score` workspace member parsing** (#bug-3): multi-line `members = [\n  "foo",\n  "bar",\n]` was silently dropping all members because sequential `.trim_matches('"').trim_matches(',')` left a trailing `"` (comma sat between quote and end). Now uses a char-set predicate that strips quote/comma in one pass. Affects per-crate workspace breakdown in `pmat score`. (`services/rust_project_score/orchestrator.rs`)
+
+### Added
+- **Provable contracts on 7 helpers**: `polyglot_analyzer::check_frameworks`, `polyglot_analyzer::assess_risk_level`, `polyglot_analyzer::is_skipped_dir`, `gpu_simd_scorer::file_has_gpu_simd_indicators`, `discover_workspace_members`, `extract_config_error_handler`, and the new `project_has_library` all decorated with `#[contract(check_compliance)]`.
+- **354 new tests across 27 files** (Wave 39 sprint): broad-coverage push from 78.74% → 80.02% via integration tests on 0%-coverage analyzer/handler files. Covers the TDG language analyzers (JS/TS/Go/Java/Lua/C/Python AST + Ruchy + Lean + YAML/Markdown + SQL/Scala heuristics), WASM disassembler, polyglot detection/architecture/dependencies, GPU/SIMD scorer, QA work handler (checklist gen, validation format, print, deserialize_bool_lenient, epic helpers, advanced_checks helpers), lint hotspot helpers, spec falsify helpers, platform routes models, test stability, file health classifiers, config error handlers, and workspace member discovery.
+- **Empirical coverage model documented in `docs/specifications/improve-coverage-80-95.md` §4.11**: 7-measurement validation of "lever (d) integration tests on multi-branch entry points" as the only mover; orphan deletion (28k lines) and drip-feed unit tests both confirmed 0pp; refined HIGH-yield (200-450 line files with public dispatch entry points) vs LOW-yield (small converters, no-panic tests) targeting heuristic.
+
+### Changed
+- **Coverage target reframed (§4.11 reframe)**: 80% near-term ✅ ACHIEVED 2026-04-26; 85% mid-term (2-3 sessions); 95% long-horizon (requires architectural denominator reduction, separate spec).
+- **Source tree shrunk by ~33,000 lines** (Wave 37 orphan-deletion sweep): 91 unreferenced files removed including the legacy `state/raft_consensus*` chain (parent commented out at `state/mod.rs:6`), `state/event_store_impl.rs` family superseded by `state/event_store/` directory, `contracts/mcp_impl*` superseded by `mcp_pmcp/`, `cli/stubs_tdg_enhanced.rs` (unwired despite full implementation), and 18 abandoned `*_tests_part*.rs` test files from CB-040 splits. Hygiene-only — these files were never compiled (no `mod` declaration), so the broad-gate denominator is unchanged.
+
+## [3.15.0] - 2026-04-20
+
+Released to crates.io 2026-04-20 via manual `cargo publish`. CHANGELOG entry was not added at the time of release; see git log between v3.14.0 and 7162e0d for the full diff. Highlights (per project memory `project_v3150_shipped.md`):
+- R22 dispatcher-tree parity fixes (D101/D102/D103) landing in `src/handlers/tools/`.
+- v3.15.0 tag points to commit `7162e0d` (cargo package fix), not the master HEAD at the time of release.
+
+## [3.14.0] - 2026-04-15
+
+Released to crates.io. CHANGELOG entry was not added; see git log between v3.13.0 and v3.14.0.
+
 ## [3.13.0] - 2026-04-08
 
 ### Added
