@@ -371,6 +371,33 @@ These behavior pins are exactly the §4.7 R5 sales-pitch ("testability + invaria
 
 **Forward path for hitting 85% broad:** the only mechanisms that demonstrably move broad-gate coverage are **(a) deleting orphan/dead code** (denominator reduction, observed in waves 33+36), **(b) integration tests exercising end-to-end CLI paths** (numerator increase on previously-uncovered handler bodies), and **(c) snapshot tests on scaffold/template code** (already exhausted per Phase-1 §4.6 audit). Drip-feed unit tests on already-reachable helpers should be deprioritized for *coverage* and reframed as a *correctness/behavior-pinning* exercise.
 
+### 4.10 Wave 37 — orphan deletion sweep (2026-04-26)
+
+Per the §4.9 falsification, pivoted entirely to lever (a) — orphan deletion. Built a screen detecting `.rs` files with NO inclusion via `include!()`, `mod foo;` / `pub mod foo;` / `pub(crate) mod foo;`, or `#[path = "..."]` (any prefix), excluding bin/ entrypoints and intentionally-included `_tests.rs` files.
+
+Deletions (5 PRs, all verified by `cargo test --lib --no-run` passing):
+
+| PR | Files | Lines | Note |
+|----|-------|-------|------|
+| PR1 | 2 | 842 | `cli/stubs_tdg_enhanced.rs` + `unified_quality/foundation_simple.rs` (production-named but unwired) |
+| PR2 | 19 | 8,154 | Orphan test files (`*_tests_part*.rs`, `*_tests_extended.rs`, etc.) — leftover from CB-040 splits |
+| PR3 | 26 | 10,442 | state/ legacy: `event_store_impl.rs` + 3 siblings + the entire `raft_consensus*` chain (parent commented out at state/mod.rs:6); `proof_annotation_formatter_core.rs`; many _tests.rs |
+| PR4 | 20 | 4,599 | medium-tier: `tdg/web_dashboard_routes.rs`, `contracts/mcp_impl.rs`, defect-prediction tests, cache tests, mcp_server_tests_* |
+| PR5 | 24 | 4,235 | long-tail: `mcp_impl_*` chain children, `deep_context_orchestrator.rs`, `old_cache.rs`, `legacy_analysis.rs`, `web_dashboard_state.rs`, `github_handlers.rs` |
+| **Σ** | **91** | **28,272** | |
+
+**Regex bug found mid-sweep:** initial screen missed directory-prefixed `include!("a/b.rs")`. Caught by `cargo test --no-run` after delete; restored `services/context_impl/persistent_analysis.rs` and broadened the regex to `"[^\"]*foo.rs"`. Lesson: defensive `cargo test --no-run` after every batch is mandatory because the screen's blast radius is large.
+
+**Cumulative orphan deletes (waves 33+36+37):** ~34,000 lines total — one of the biggest single-branch denominator reductions on record for this repo.
+
+**Broad-gate measurement pending** (kicked off post-PR3, will measure post-PR5 separately). The §4.9 model predicts orphan deletion is the strongest broad-gate lever; this sweep is the test of that prediction.
+
+**Notable orphan archeology:**
+- `state/raft_consensus*` (4 files, ~2,500 lines): `pub mod raft_consensus;` was commented out at `state/mod.rs:6` with the note "async_raft v0.6 requires breaking API changes" — the entire chain has been dead since the abandonment.
+- `state/event_store_impl.rs` + 3 siblings (~1,640 lines): the `event_store/` directory module replaced them but the legacy files were never deleted.
+- `contracts/mcp_impl*.rs` (4 files, ~1,140 lines): superseded by `src/mcp_pmcp/`-based MCP implementation; only the legacy chain remained.
+- `cli/stubs_tdg_enhanced.rs` (496 lines): "stubs" in the name but with a fully-implemented `handle_analyze_tdg_enhanced` async fn — never wired into the CLI dispatcher.
+
 **Updated R5 outlook for 85% target:** if remaining ~10-15 R5 candidates yield ~50-100 lines each (best case), total R5 contribution ≈ ~0.5pp. **R5 alone won't close the 6.46pp gap**; it must combine with drip-feed on bigger orchestrator functions (each test firing 50-100 lines).
 
 The "right" R5 target is therefore not subprocess-bound files with thin helpers but **subprocess-bound files with FAT inner logic** (e.g., 50+ line parsers). Two such files were predicted but turned out to be already-pure (`git_history_parsing.rs`) or shallow (the four prototypes here). The spec's §4.5 R5 estimate (1-3pp per refactor) was correct for hypothetical fat-inner cases, not for what's actually present in PMAT.
