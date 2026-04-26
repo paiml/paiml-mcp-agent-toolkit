@@ -1,9 +1,22 @@
-# Improve Coverage 80 → 95% (World-Class Quality Goal)
+# Improve Coverage — 80% Honest Near-Term, 85% Mid-Term, 95% Long-Horizon
 
-> **Status**: Draft — v3.15.0 post-ship initiative
+> **Status**: v3.15.0 post-ship initiative — **target reframed 2026-04-26 post wave-37 empirical data**
+> **Original Title**: Improve Coverage 80 → 95% (World-Class Quality Goal). Renamed because 95% is empirically a long-horizon goal requiring architectural change, not session-pace work.
 > **Related**: [Quality & Testing](components/quality-testing.md), [Provable Contracts](components/provable-contracts.md)
 > **Owners**: core maintainers
 > **Dogfood**: `pmat query --coverage-gaps --rank-by impact` is the canonical targeting tool
+
+## Target reframe (2026-04-26 — post wave-36/37 empirical data)
+
+| Tier | Target | Rationale | Est. effort |
+|------|-------:|-----------|-------------|
+| **Near-term** | **80% broad** | Reachable via 10-20 well-chosen integration-test PRs. Baseline 78.77%; 1.23pp gap. | ~1 focused week |
+| Mid-term | 85% broad | Requires sustained integration-test sweep across ~30-60 handlers. | 2-3 weeks |
+| Long-horizon | 95% broad | Cannot be reached by writing tests alone; requires architectural reduction of the broad denominator (delete entire dead command paths, reduce 333k LoC measured base). | weeks-to-months, separate spec |
+
+**Why the reframe.** Waves 36+37 empirically falsified three assumed levers (fat-target unit tests = 0pp; orphan deletion = 0pp; coverage(off) audit = 0pp per spec §4.5). The corrected 5-lever model in §4.10 leaves only **lever (d) — integration tests on full CLI/MCP handler bodies** — as a demonstrated mover. Rough math: 95% gap = ~54,000 covered lines on 333k denominator, vs. integration-test yield ~50-200 lines/test = 270-1,080 tests minimum — not session-pace.
+
+**Near-term execution path.** §4.11 below describes the integration-test sprint targeting 80% broad.
 
 ---
 
@@ -440,9 +453,41 @@ Top 12 files = ~3,239 missed lines / 333,742 broad denominator = ~0.97pp ceiling
 
 The "right" R5 target is therefore not subprocess-bound files with thin helpers but **subprocess-bound files with FAT inner logic** (e.g., 50+ line parsers). Two such files were predicted but turned out to be already-pure (`git_history_parsing.rs`) or shallow (the four prototypes here). The spec's §4.5 R5 estimate (1-3pp per refactor) was correct for hypothetical fat-inner cases, not for what's actually present in PMAT.
 
----
+### 4.11 Wave 39 — integration-test sprint to 80% broad (2026-04-26)
 
-## 5. Phased Milestones
+**Goal**: Move broad gate from **78.77% → 80%** via integration tests on 0%-coverage handler files. This is lever (d) from §4.10 — the only empirically untested mover.
+
+**Targeting heuristic** (in priority order):
+1. Reasonable line count (200-400 missed) — diminishing returns above this; below, ROI too low.
+2. Async or sync entry point with **simple argument types** (`&Path`, `&str`, primitive numeric, or `serde::Deserialize`-able args).
+3. **Does NOT shell out to cargo recursively** (`run_integration_tests`, `falsify_test_regression`, etc. are excluded — they invoke `cargo test` from inside cargo test).
+4. Does NOT require a real network/database/MCP server (these are mockable in principle but the harness work is multi-day before any coverage moves).
+5. Has observable side effects we can assert on (file writes to a tempdir; structured return value; structured error).
+
+**Disqualified candidates** (per heuristic):
+- `cli/handlers/test_handlers.rs` — runs cargo test from cargo test (recursion).
+- `cli/handlers/work_quality_handlers.rs` — shells out to cargo/clippy/git heavily.
+- `cli/handlers/work_handlers/core_handlers/contract.rs` — git rev-parse + contract serialization + complex falsification chain.
+- `services/deep_context/analyzer_formatting/analysis_sections.rs` — takes `&DeepContext` which is a deeply nested fixture-heavy type.
+- `cli/handlers/refactor_auto_handlers/output_handler_*.rs` — async on `IterationResult`/`ValidationResult`/`RefactorContext` complex types.
+
+**Qualified candidates** (initial picks):
+- `cli/handlers/qa_work_handler/handle_generate_checklist` (writes `.pmat-qa/<task>/checklist.yaml`, observable via filesystem) — already has unit tests for helpers; integration test exercises the writer + serializer path.
+- `cli/handlers/health_handler_checks.rs` (214 missed, 4.89% cov already) — synchronous status classifiers; exercise the dispatcher with a tempdir of fixture files.
+- `services/languages/ruchy/complexity_analysis.rs` (231 missed, 0% cov) — `RuchyComplexityAnalyzer.analyze_node(&RuchyAst)` is testable with hand-built AST.
+- `tdg/analyzer_ast/analyzer_impl1_language_extra.rs` (248 missed, 0% cov) — `analyze_javascript_ast(&str, &mut score, &mut tracker)` takes a source string + mutable score; testable with a JS source string.
+- `cli/handlers/analysis_handlers/advanced_routes.rs` (256 missed, 25.58% cov) — already partially covered; remaining branches likely follow same pattern.
+
+**PR shape**:
+1. tempdir setup via `tempfile::TempDir::new()`.
+2. Construct minimal valid arg struct.
+3. Invoke handler via `tokio::test` (or `#[test]` for sync ones).
+4. Assert on either: returned `Result`, written file path, or output content.
+5. Use `#[cfg(all(test, not(coverage_nightly)))]` if the file has `coverage(off)` at the top — broad gate disables the cfg, so tests still run.
+
+**Stop criterion**: when broad measurement reaches **80.00%** OR after 20 PRs with no movement (confirms lever (d) is also weaker than predicted).
+
+**Measurement cadence**: `make coverage-broad` after every 3-5 PRs. Each measurement is ~25 minutes; budget ~4 measurements per session.
 
 Each phase is independently shippable. Do not chase the next phase until the current one holds for 2 weeks on `main`.
 
