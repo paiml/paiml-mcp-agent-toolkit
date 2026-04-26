@@ -562,6 +562,27 @@ The "right" R5 target is therefore not subprocess-bound files with thin helpers 
 
 **80% reachable in ~5-6 well-chosen integration-test PRs** if each targets a 200+ line 0%-coverage file with a multi-branch public entry point.
 
+#### §4.11 SESSION RECORD — wave 39 PR1-PR15 (2026-04-26)
+
+15 PRs / 146 tests / 2 real bugs found / ~25 behavior PINs documented.
+
+**Real bugs surfaced via test-writing (not coverage drive):**
+1. **PR4** — `count_violations_by_severity` in `tools_advanced_part3.rs` uses `matches!(&v.severity, _target_severity)` where `_target_severity` is a *binding pattern* (matches everything), not a value-match. Function counts ALL violations regardless of severity argument.
+2. **PR15** — `format_operator(Operator::F64Add)` in `disassembler_formatting.rs` returns `"f64add"` (no dot) instead of WASM-canonical `"f64.add"`. Bug in the F64-family arm; consumer UIs see malformed mnemonics.
+
+**llvm-cov + include!() artifact discovered:** files included via `include!("foo.rs")` may report 0% even when their tests pass and the comprehensive test file is at 100%. Example: `tdg/alerts_manager.rs` (143 lines, 0%) with `alerts_tests_basic/comprehensive_part1` at 100%. Adding more tests to such files won't budge the file-level metric — coverage is being attributed to the *including* file, not the *included* file. **Lesson**: prefer files that use `mod foo;` (regular module declaration) over `include!()` when picking integration-test targets — they have honest per-file attribution.
+
+**Cumulative wave 39 numbers:**
+- Tests added: 146
+- 0%-coverage files targeted: 14
+- Per-PR yield (validated): 35 lines/test for HIGH-yield (analyzer dispatch chains), 5-10 lines/test for LOW-yield (tiny converters / no-panic tests)
+- Coverage measurements: 3 over the session (78.77% → 79.18% → 79.40% → ?)
+- Branch state: 110+ commits ahead of master, +15.5k / −35k LOC (net −19.5k)
+
+**Targeting heuristic now finalized in §4.11.** See above bullet list.
+
+---
+
 Each phase is independently shippable. Do not chase the next phase until the current one holds for 2 weeks on `main`.
 
 ### Phase 0 — Honesty baseline (1 day, v3.15.1)
