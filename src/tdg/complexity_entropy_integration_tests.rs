@@ -344,3 +344,308 @@ mod property_tests {
         }
     }
 }
+
+// =============================================================================
+// Wave 39 PR1 — integration tests for analyzer_impl1_language_extra.rs
+//
+// Targets the 5 language-specific analyze_*_ast methods (JavaScript/TypeScript,
+// Go, Java, Lua, C/C++) by going through the public `analyze_source` entry
+// point. analyzer_impl1_language_extra.rs has 248 missed lines at 0% broad cov.
+//
+// Per spec §4.11 stop criterion: this is the first integration-test PR; we
+// measure coverage delta after a few of these to validate lever (d).
+// =============================================================================
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod language_extra_integration_tests {
+    use crate::tdg::analyzer_ast::TdgAnalyzerAst;
+    use crate::tdg::Language;
+
+    fn analyzer() -> TdgAnalyzerAst {
+        TdgAnalyzerAst::new().expect("Failed to create analyzer")
+    }
+
+    // ── JavaScript / TypeScript ─────────────────────────────────────────────
+
+    #[test]
+    fn test_analyze_javascript_simple_function_yields_score() {
+        let analyzer = analyzer();
+        let src = r#"
+function hello(name) {
+    return "Hello, " + name;
+}
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::JavaScript, None)
+            .unwrap();
+        // Simple function: low complexity, valid total in [0,100].
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::JavaScript);
+    }
+
+    #[test]
+    fn test_analyze_javascript_complex_with_branches() {
+        let analyzer = analyzer();
+        // Multiple branches → exercises the cyclomatic+cognitive scoring path.
+        let src = r#"
+function classify(x, y, z) {
+    if (x > 0) {
+        if (y > 0) {
+            if (z > 0) return "all positive";
+            return "x,y positive";
+        }
+        return "x positive";
+    }
+    if (x === 0) return "zero";
+    return "negative";
+}
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::JavaScript, None)
+            .unwrap();
+        // Should compute a higher structural complexity than the trivial case.
+        assert!(score.structural_complexity > 0.0);
+    }
+
+    #[test]
+    fn test_analyze_typescript_with_async_and_classes() {
+        let analyzer = analyzer();
+        // TypeScript path goes through the same JS analyzer but with TsSyntax.
+        let src = r#"
+class UserService {
+    async fetch(id: number): Promise<User> {
+        const r = await api.get(`/users/${id}`);
+        return r.data;
+    }
+}
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::TypeScript, None)
+            .unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::TypeScript);
+    }
+
+    #[test]
+    fn test_analyze_javascript_invalid_syntax_does_not_panic() {
+        // PIN: parser falls through to error path; analyzer must not panic.
+        let analyzer = analyzer();
+        let src = "function broken( { let x =";
+        let result = analyzer.analyze_source(src, Language::JavaScript, None);
+        // Either Ok (with degraded score) or Err — but never panic.
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    // ── Go ──────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_analyze_go_simple_function() {
+        let analyzer = analyzer();
+        let src = r#"
+package main
+func add(a int, b int) int {
+    return a + b
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Go, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Go);
+    }
+
+    #[test]
+    fn test_analyze_go_with_branches_and_loops() {
+        let analyzer = analyzer();
+        let src = r#"
+package main
+func classify(x int) string {
+    if x > 100 {
+        return "huge"
+    }
+    for i := 0; i < x; i++ {
+        if i % 2 == 0 {
+            continue
+        }
+    }
+    switch x {
+    case 0: return "zero"
+    case 1: return "one"
+    default: return "other"
+    }
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Go, None).unwrap();
+        assert!(score.structural_complexity > 0.0);
+    }
+
+    // ── Java ────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_analyze_java_simple_class() {
+        let analyzer = analyzer();
+        let src = r#"
+public class Greeter {
+    public String greet(String name) {
+        return "Hello, " + name;
+    }
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Java, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Java);
+    }
+
+    #[test]
+    fn test_analyze_java_with_inheritance_and_branches() {
+        let analyzer = analyzer();
+        let src = r#"
+public abstract class Shape {
+    public abstract double area();
+}
+public class Circle extends Shape {
+    private double r;
+    public double area() {
+        if (r < 0) throw new IllegalStateException();
+        return Math.PI * r * r;
+    }
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::Java, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    // ── Lua ─────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_analyze_lua_simple_function() {
+        let analyzer = analyzer();
+        let src = r#"
+function add(a, b)
+    return a + b
+end
+"#;
+        let score = analyzer.analyze_source(src, Language::Lua, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Lua);
+    }
+
+    #[test]
+    fn test_analyze_lua_with_table_and_method() {
+        let analyzer = analyzer();
+        let src = r#"
+local M = {}
+function M.classify(x)
+    if x > 0 then
+        return "positive"
+    elseif x == 0 then
+        return "zero"
+    else
+        return "negative"
+    end
+end
+return M
+"#;
+        let score = analyzer.analyze_source(src, Language::Lua, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    // ── C / C++ ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_analyze_c_simple_function() {
+        let analyzer = analyzer();
+        let src = r#"
+int add(int a, int b) {
+    return a + b;
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::C, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::C);
+    }
+
+    #[test]
+    fn test_analyze_c_with_pointers_and_branches() {
+        let analyzer = analyzer();
+        let src = r#"
+#include <stdlib.h>
+int* duplicate(int* arr, int len) {
+    if (arr == NULL || len <= 0) return NULL;
+    int* copy = malloc(sizeof(int) * len);
+    if (copy == NULL) return NULL;
+    for (int i = 0; i < len; i++) {
+        copy[i] = arr[i];
+    }
+    return copy;
+}
+"#;
+        let score = analyzer.analyze_source(src, Language::C, None).unwrap();
+        assert!(score.total >= 0.0);
+    }
+
+    #[test]
+    fn test_analyze_cpp_with_templates_and_classes() {
+        let analyzer = analyzer();
+        let src = r#"
+#include <vector>
+template<typename T>
+class Stack {
+    std::vector<T> data;
+public:
+    void push(T x) { data.push_back(x); }
+    T pop() {
+        if (data.empty()) throw std::runtime_error("empty");
+        T v = data.back();
+        data.pop_back();
+        return v;
+    }
+};
+"#;
+        let score = analyzer.analyze_source(src, Language::Cpp, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Cpp);
+    }
+
+    // ── Cross-language sanity ───────────────────────────────────────────────
+
+    #[test]
+    fn test_total_score_bounded_for_all_languages() {
+        // PIN: every analyzed language must produce a total in [0,100].
+        let analyzer = analyzer();
+        let cases = [
+            (Language::JavaScript, "function f() { return 1; }"),
+            (Language::TypeScript, "function f(): number { return 1; }"),
+            (Language::Go, "package main\nfunc f() int { return 1 }"),
+            (Language::Java, "class C { int f() { return 1; } }"),
+            (Language::Lua, "function f() return 1 end"),
+            (Language::C, "int f() { return 1; }"),
+            (Language::Cpp, "int f() { return 1; }"),
+        ];
+        for (lang, src) in &cases {
+            let score = analyzer.analyze_source(src, *lang, None).unwrap();
+            assert!(
+                score.total >= 0.0 && score.total <= 100.0,
+                "{:?}: total {} out of [0,100]",
+                lang,
+                score.total
+            );
+        }
+    }
+
+    #[test]
+    fn test_empty_source_does_not_panic_for_all_languages() {
+        // PIN: empty source is a degenerate case; analyzers must not panic.
+        let analyzer = analyzer();
+        for lang in [
+            Language::JavaScript,
+            Language::TypeScript,
+            Language::Go,
+            Language::Java,
+            Language::Lua,
+            Language::C,
+            Language::Cpp,
+        ] {
+            let result = analyzer.analyze_source("", lang, None);
+            assert!(result.is_ok() || result.is_err(), "{:?} panicked", lang);
+        }
+    }
+}
