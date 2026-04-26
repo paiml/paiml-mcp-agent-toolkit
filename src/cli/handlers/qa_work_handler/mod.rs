@@ -344,6 +344,65 @@ mod validation_format_tests {
         assert!(!out.contains("[x]"));
         assert!(!out.contains("[ ]"));
     }
+
+    // ── deserialize_bool_lenient (via ChecklistItem serde) ──────────────────
+
+    #[test]
+    fn test_deserialize_bool_lenient_native_bool_true() {
+        let json =
+            r#"{"id":"X","description":"d","checked":true,"automated":false,"evidence":null}"#;
+        let item: ChecklistItem = serde_json::from_str(json).unwrap();
+        assert!(item.checked);
+        assert!(!item.automated);
+    }
+
+    #[test]
+    fn test_deserialize_bool_lenient_string_true() {
+        let json =
+            r#"{"id":"X","description":"d","checked":"true","automated":"false","evidence":null}"#;
+        let item: ChecklistItem = serde_json::from_str(json).unwrap();
+        assert!(item.checked);
+        assert!(!item.automated);
+    }
+
+    #[test]
+    fn test_deserialize_bool_lenient_string_yes_no_aliases() {
+        // PIN: "yes"/"no" alias to true/false (lenient form).
+        let json =
+            r#"{"id":"X","description":"d","checked":"yes","automated":"no","evidence":null}"#;
+        let item: ChecklistItem = serde_json::from_str(json).unwrap();
+        assert!(item.checked);
+        assert!(!item.automated);
+    }
+
+    #[test]
+    fn test_deserialize_bool_lenient_string_one_zero_aliases() {
+        // PIN: "1"/"0" alias to true/false.
+        let json = r#"{"id":"X","description":"d","checked":"1","automated":"0","evidence":null}"#;
+        let item: ChecklistItem = serde_json::from_str(json).unwrap();
+        assert!(item.checked);
+        assert!(!item.automated);
+    }
+
+    #[test]
+    fn test_deserialize_bool_lenient_case_insensitive() {
+        // PIN: to_lowercase() applied — "TRUE"/"True" both work.
+        let json =
+            r#"{"id":"X","description":"d","checked":"TRUE","automated":"True","evidence":null}"#;
+        let item: ChecklistItem = serde_json::from_str(json).unwrap();
+        assert!(item.checked);
+        assert!(item.automated);
+    }
+
+    #[test]
+    fn test_deserialize_bool_lenient_invalid_string_rejects() {
+        let json =
+            r#"{"id":"X","description":"d","checked":"maybe","automated":false,"evidence":null}"#;
+        let result: Result<ChecklistItem, _> = serde_json::from_str(json);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("invalid bool string: maybe"), "got: {err}");
+    }
 }
 
 #[cfg(test)]
