@@ -174,6 +174,10 @@ struct ConfigFixInfo {
 
 /// Extract configuration error handler (complexity ≤10)
 /// Returns fix information for known config errors, None for unknown errors
+//
+// Wave 39 PR28: contract added — output is one of 5 outcomes (4 known fixes
+// or None). Deterministic on input string.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn extract_config_error_handler(error_msg: &str) -> Option<ConfigFixInfo> {
     if error_msg.contains("max_complexity must be > 0") {
         return Some(ConfigFixInfo {
@@ -377,6 +381,168 @@ request_timeout_seconds = 30
         assert!(result.is_ok());
         let validation = result.unwrap();
         assert!(validation.is_valid);
+    }
+
+    // ── Wave 39 PR28: extract_config_error_handler + apply_single_fix ───────
+
+    #[test]
+    fn test_extract_config_error_handler_max_complexity() {
+        let info = extract_config_error_handler("max_complexity must be > 0").unwrap();
+        assert_eq!(info.field_name, "quality.max_complexity");
+        assert!(info.description.contains("max_complexity"));
+    }
+
+    #[test]
+    fn test_extract_config_error_handler_min_coverage() {
+        let info = extract_config_error_handler("min_coverage must be between 0 and 100").unwrap();
+        assert_eq!(info.field_name, "quality.min_coverage");
+    }
+
+    #[test]
+    fn test_extract_config_error_handler_project_name() {
+        let info = extract_config_error_handler("project_name cannot be empty").unwrap();
+        assert_eq!(info.field_name, "system.project_name");
+    }
+
+    #[test]
+    fn test_extract_config_error_handler_max_concurrent() {
+        let info = extract_config_error_handler("max_concurrent_operations must be > 0").unwrap();
+        assert_eq!(info.field_name, "system.max_concurrent_operations");
+    }
+
+    #[test]
+    fn test_extract_config_error_handler_unknown_returns_none() {
+        // PIN: matcher uses substring `contains` so unknown errors return None.
+        assert!(extract_config_error_handler("totally unknown error").is_none());
+        assert!(extract_config_error_handler("").is_none());
+    }
+
+    #[test]
+    fn test_extract_config_error_handler_first_match_wins() {
+        // PIN: error message containing two known patterns matches the FIRST
+        // one in the if-chain. With the current order, max_complexity is
+        // checked first so it wins.
+        let info = extract_config_error_handler(
+            "max_complexity must be > 0 AND project_name cannot be empty",
+        )
+        .unwrap();
+        assert_eq!(info.field_name, "quality.max_complexity");
+    }
+
+    // ── apply_single_fix ────────────────────────────────────────────────────
+
+    fn make_default_config() -> PmatConfig {
+        crate::services::configuration_service::ConfigurationService::default_config()
+    }
+
+    #[test]
+    fn test_apply_single_fix_max_complexity_sets_to_20() {
+        let mut config = make_default_config();
+        config.quality.max_complexity = 0; // invalid
+        let fix = ConfigFixInfo {
+            field_name: "quality.max_complexity".to_string(),
+            _new_value: "20".to_string(),
+            description: "fix".to_string(),
+        };
+        apply_single_fix(&fix, &mut config);
+        // PIN: hardcoded to 20 (not from _new_value field).
+        assert_eq!(config.quality.max_complexity, 20);
+    }
+
+    #[test]
+    fn test_apply_single_fix_min_coverage_clamps() {
+        let mut config = make_default_config();
+        config.quality.min_coverage = 150.0; // out of range
+        let fix = ConfigFixInfo {
+            field_name: "quality.min_coverage".to_string(),
+            _new_value: String::new(),
+            description: String::new(),
+        };
+        apply_single_fix(&fix, &mut config);
+        // PIN: clamped to [0.0, 100.0].
+        assert_eq!(config.quality.min_coverage, 100.0);
+    }
+
+    #[test]
+    fn test_apply_single_fix_min_coverage_negative_clamped_to_zero() {
+        let mut config = make_default_config();
+        config.quality.min_coverage = -10.0;
+        let fix = ConfigFixInfo {
+            field_name: "quality.min_coverage".to_string(),
+            _new_value: String::new(),
+            description: String::new(),
+        };
+        apply_single_fix(&fix, &mut config);
+        assert_eq!(config.quality.min_coverage, 0.0);
+    }
+
+    #[test]
+    fn test_apply_single_fix_project_name_only_when_empty() {
+        // PIN: guard clause `if config.system.project_name.is_empty()` means
+        // a non-empty name is NOT overwritten.
+        let mut config = make_default_config();
+        config.system.project_name = "my-real-project".to_string();
+        let fix = ConfigFixInfo {
+            field_name: "system.project_name".to_string(),
+            _new_value: String::new(),
+            description: String::new(),
+        };
+        apply_single_fix(&fix, &mut config);
+        assert_eq!(config.system.project_name, "my-real-project");
+    }
+
+    #[test]
+    fn test_apply_single_fix_project_name_set_when_empty() {
+        let mut config = make_default_config();
+        config.system.project_name = String::new();
+        let fix = ConfigFixInfo {
+            field_name: "system.project_name".to_string(),
+            _new_value: String::new(),
+            description: String::new(),
+        };
+        apply_single_fix(&fix, &mut config);
+        assert_eq!(config.system.project_name, "pmat-project");
+    }
+
+    #[test]
+    fn test_apply_single_fix_max_concurrent_only_when_zero() {
+        // PIN: guard clause `if == 0` means a non-zero value is NOT overwritten.
+        let mut config = make_default_config();
+        config.system.max_concurrent_operations = 16;
+        let fix = ConfigFixInfo {
+            field_name: "system.max_concurrent_operations".to_string(),
+            _new_value: String::new(),
+            description: String::new(),
+        };
+        apply_single_fix(&fix, &mut config);
+        assert_eq!(config.system.max_concurrent_operations, 16);
+    }
+
+    #[test]
+    fn test_apply_single_fix_max_concurrent_set_when_zero() {
+        let mut config = make_default_config();
+        config.system.max_concurrent_operations = 0;
+        let fix = ConfigFixInfo {
+            field_name: "system.max_concurrent_operations".to_string(),
+            _new_value: String::new(),
+            description: String::new(),
+        };
+        apply_single_fix(&fix, &mut config);
+        assert_eq!(config.system.max_concurrent_operations, 4);
+    }
+
+    #[test]
+    fn test_apply_single_fix_unknown_field_no_op() {
+        // PIN: unknown field_name falls through to `_ => {}` no-op.
+        let mut config = make_default_config();
+        let original_complexity = config.quality.max_complexity;
+        let fix = ConfigFixInfo {
+            field_name: "unknown.thing".to_string(),
+            _new_value: String::new(),
+            description: String::new(),
+        };
+        apply_single_fix(&fix, &mut config);
+        assert_eq!(config.quality.max_complexity, original_complexity);
     }
 }
 
