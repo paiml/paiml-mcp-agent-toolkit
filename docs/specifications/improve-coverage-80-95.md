@@ -572,15 +572,16 @@ The "right" R5 target is therefore not subprocess-bound files with thin helpers 
 
 **llvm-cov + include!() artifact discovered:** files included via `include!("foo.rs")` may report 0% even when their tests pass and the comprehensive test file is at 100%. Example: `tdg/alerts_manager.rs` (143 lines, 0%) with `alerts_tests_basic/comprehensive_part1` at 100%. Adding more tests to such files won't budge the file-level metric — coverage is being attributed to the *including* file, not the *included* file. **Lesson**: prefer files that use `mod foo;` (regular module declaration) over `include!()` when picking integration-test targets — they have honest per-file attribution.
 
-**Cumulative wave 39 numbers (post-PR16):**
-- Tests added: 159
-- 0%-coverage files targeted: 15
+**Cumulative wave 39 numbers (post-PR18):**
+- Tests added: 210
+- 0%-coverage files targeted: 17
 - Coverage trajectory:
   - Pre-session: 78.74%
   - Post-PR2: **79.18%** (+0.41pp, ~35 lines/test, lever (d) validated)
   - Post-PR9: **79.40%** (+0.22pp, ~7.9 lines/test, yield collapse exposed)
   - Post-PR13: **79.78%** (+0.38pp, ~28 lines/test, discipline payoff)
-- **0.22pp gap remaining to 80% target.** At HIGH-yield rate this is ~18 more tests.
+  - Post-PR17: **79.93%** (+0.15pp, ~5 lines/test from mostly-LOW-yield PR14-PR17)
+- **0.07pp gap remaining to 80% target** — likely 1-2 PRs away.
 - Per-PR yield (validated): 27-35 lines/test for HIGH-yield (analyzer dispatch chains, multi-branch parsers), 5-10 lines/test for LOW-yield (tiny converters / no-panic tests)
 - Branch state: 113+ commits ahead of master, +16k / −35k LOC (net −19k)
 
