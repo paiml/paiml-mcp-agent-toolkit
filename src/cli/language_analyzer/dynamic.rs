@@ -282,4 +282,109 @@ mod lua_tests {
         // if +1, elseif +1 → cyclomatic ≥ 3.
         assert!(m.cyclomatic >= 3, "got {}", m.cyclomatic);
     }
+
+    // ── SqlAnalyzer (Wave 39 PR13 — dynamic_sql.rs) ─────────────────────────
+    //
+    // Targets dynamic_sql.rs (122 missed, 0% pre-wave). SqlAnalyzer extracts
+    // CREATE FUNCTION / PROCEDURE / VIEW / etc., plus CTEs from WITH ... AS.
+
+    #[test]
+    fn test_sql_extract_create_function() {
+        let a = SqlAnalyzer;
+        let src = "CREATE FUNCTION add(a int, b int) RETURNS int AS $$\nBEGIN\n  RETURN a + b;\nEND;\n$$ LANGUAGE plpgsql;\n";
+        let fns = a.extract_functions(src);
+        assert!(!fns.is_empty(), "expected to find CREATE FUNCTION");
+        assert!(fns.iter().any(|f| f.name.to_lowercase().contains("add")));
+    }
+
+    #[test]
+    fn test_sql_extract_create_procedure() {
+        let a = SqlAnalyzer;
+        let src = "CREATE PROCEDURE update_users()\nLANGUAGE plpgsql\nAS $$\nBEGIN\n  UPDATE users SET active = true;\nEND;\n$$;\n";
+        let fns = a.extract_functions(src);
+        assert!(!fns.is_empty());
+    }
+
+    #[test]
+    fn test_sql_extract_create_view() {
+        let a = SqlAnalyzer;
+        let src = "CREATE VIEW active_users AS\nSELECT * FROM users WHERE active = true;\n";
+        let fns = a.extract_functions(src);
+        assert!(!fns.is_empty());
+    }
+
+    #[test]
+    fn test_sql_extract_create_trigger() {
+        let a = SqlAnalyzer;
+        let src = "CREATE TRIGGER audit_trigger BEFORE UPDATE ON users\nFOR EACH ROW EXECUTE FUNCTION audit_log();\n";
+        let fns = a.extract_functions(src);
+        assert!(!fns.is_empty());
+    }
+
+    #[test]
+    fn test_sql_extract_with_cte_simple() {
+        let a = SqlAnalyzer;
+        let src = "WITH active_users AS (\n  SELECT * FROM users WHERE active = true\n)\nSELECT * FROM active_users;\n";
+        let fns = a.extract_functions(src);
+        // PIN: WITH-clause CTE names are extracted as functions.
+        assert!(
+            fns.iter().any(|f| f.name.contains("active_users")),
+            "expected CTE 'active_users' in extracted functions, got: {:?}",
+            fns.iter().map(|f| &f.name).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_sql_extract_pure_select_no_function_definitions() {
+        let a = SqlAnalyzer;
+        let src = "SELECT id, name FROM users WHERE active = 1;\n";
+        let fns = a.extract_functions(src);
+        // PIN: a plain SELECT defines no function/procedure/view/trigger/CTE.
+        let names: Vec<&str> = fns.iter().map(|f| f.name.as_str()).collect();
+        assert!(
+            fns.is_empty(),
+            "plain SELECT should yield no functions, got names: {names:?}"
+        );
+    }
+
+    #[test]
+    fn test_sql_estimate_complexity_simple() {
+        let a = SqlAnalyzer;
+        let src = "CREATE FUNCTION simple() RETURNS int AS $$\nBEGIN\n  RETURN 1;\nEND;\n$$ LANGUAGE plpgsql;\n";
+        let fns = a.extract_functions(src);
+        if !fns.is_empty() {
+            let m = a.estimate_complexity(src, &fns[0]);
+            assert!(m.cyclomatic >= 1);
+        }
+    }
+
+    #[test]
+    fn test_sql_estimate_complexity_with_branches() {
+        let a = SqlAnalyzer;
+        let src = r#"
+CREATE FUNCTION branchy(x int) RETURNS int AS $$
+BEGIN
+  IF x > 0 THEN
+    RETURN 1;
+  ELSIF x = 0 THEN
+    RETURN 0;
+  ELSE
+    RETURN -1;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+"#;
+        let fns = a.extract_functions(src);
+        if !fns.is_empty() {
+            let m = a.estimate_complexity(src, &fns[0]);
+            assert!(m.cyclomatic > 1, "branchy SQL should have cyclomatic > 1");
+        }
+    }
+
+    #[test]
+    fn test_sql_extract_empty_source() {
+        let a = SqlAnalyzer;
+        let fns = a.extract_functions("");
+        assert!(fns.is_empty());
+    }
 }
