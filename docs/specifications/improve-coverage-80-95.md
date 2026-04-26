@@ -526,6 +526,42 @@ The "right" R5 target is therefore not subprocess-bound files with thin helpers 
 
 **PR3-PR7 (42 more tests) NOT yet in the measurement** — they were committed after the measurement build started. Re-measure after PR7 to project trajectory.
 
+#### §4.11 EMPIRICAL REFINEMENT — yield is heterogeneous (2026-04-26 measurement #2)
+
+`make coverage-broad` after wave 39 PR3-PR9 measured **79.40%** — **+0.22pp** from the 79.18% post-PR2 baseline. Tests added: 58. **Yield collapsed to 7.9 lines/test**, vs PR1+PR2's 35 lines/test. Lever (d) yield is NOT uniform.
+
+**Decomposition by PR:**
+
+| PR | Target | Pre-cov | Tests | Type | Likely yield |
+|----|--------|--------:|------:|------|-------------:|
+| PR1 | analyzer_impl1_language_extra | 0% | 15 | Big analyzer (5 langs) | ~30/test |
+| PR2 | ruchy/complexity_analysis | 0% | 11 | Big analyzer (8 match arms) | ~40/test |
+| PR3 | analyzer_impl2_heuristics_lean | 0% | 7 | Medium analyzer | ~20/test |
+| PR4 | advanced_routes converters | 0% | 7 | Tiny match (3-4 arms each) | ~2/test |
+| PR5 | generate_checklist + YAML | 0% | 12 | 6 enum variants + YAML round-trip | ~5/test |
+| PR6 | count_complexity_violations | 0% | 6 | Single fn, ~20 LoC | ~3/test |
+| PR7 | epic helpers + example scripts | 0% | 10 | Two pure fns | ~5/test |
+| PR8 | YAML/Markdown heuristic | 0% | 8 | Medium analyzer (2 langs) | ~15/test |
+| PR9 | SQL/Scala heuristic | 0% | 8 | Medium analyzer (2 langs) | ~10/test |
+
+**Refined heuristic for lever (d) targeting:**
+
+✓ **HIGH yield** (20-50 lines/test): Pick files with 200-450 missed lines AND a public entry point that dispatches across many internal branches (parser→visitor→scoring chains). Each test fires a different sub-path.
+
+✗ **LOW yield** (2-10 lines/test): Avoid:
+- Small enum→enum converters (each test = 1 match arm = 1-3 lines)
+- Single-fn PIN tests (each test = same fn body)
+- Files already 25%+ covered (marginal lines harder to find)
+- Tests that only assert "does not panic" (exercise no internal branching)
+
+**Updated forward arithmetic to 80%:**
+- 79.40% → 80.00% = 0.60pp gap → ~1,365 new covered lines
+- At HIGH-yield 30 lines/test rate = **~46 more tests** (target only big analyzers)
+- At observed mixed-yield 7.9 lines/test rate = ~173 more tests (3-4 sessions)
+- Difference: 4× faster if PR selection is disciplined.
+
+**80% reachable in ~5-6 well-chosen integration-test PRs** if each targets a 200+ line 0%-coverage file with a multi-branch public entry point.
+
 Each phase is independently shippable. Do not chase the next phase until the current one holds for 2 weeks on `main`.
 
 ### Phase 0 — Honesty baseline (1 day, v3.15.1)
