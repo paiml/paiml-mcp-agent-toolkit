@@ -234,6 +234,9 @@ impl PolyglotAnalyzer {
         }
     }
 
+    // Wave 39 PR24: contract added — output is one of 4 enum variants based
+    // on coupling_strength thresholds (always returns a valid RiskLevel).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn assess_risk_level(&self, coupling_strength: f64) -> RiskLevel {
         if coupling_strength >= 0.8 {
             RiskLevel::Critical
@@ -327,5 +330,209 @@ impl PolyglotAnalyzer {
         ));
 
         insights
+    }
+}
+
+#[cfg(test)]
+mod polyglot_architecture_tests {
+    //! Wave 39 PR24 — pure-helper coverage for polyglot_analyzer_architecture.rs
+    //! (192 missed at 16% pre-wave). Covers static + pure helpers; the
+    //! async filesystem methods (analyze_directory_structure / analyze_*) are
+    //! tempdir-testable.
+    use super::*;
+
+    fn make_analyzer() -> PolyglotAnalyzer {
+        PolyglotAnalyzer::new()
+    }
+
+    // ── has_directory_pattern (static, pure) ────────────────────────────────
+
+    #[test]
+    fn test_has_directory_pattern_finds_substring() {
+        let dirs = vec![
+            "src/main".to_string(),
+            "src/services/event_handler".to_string(),
+        ];
+        assert!(PolyglotAnalyzer::has_directory_pattern(&dirs, &["event"]));
+    }
+
+    #[test]
+    fn test_has_directory_pattern_empty_dirs_returns_false() {
+        assert!(!PolyglotAnalyzer::has_directory_pattern(&[], &["x"]));
+    }
+
+    #[test]
+    fn test_has_directory_pattern_empty_patterns_returns_false() {
+        let dirs = vec!["foo".to_string()];
+        assert!(!PolyglotAnalyzer::has_directory_pattern(&dirs, &[]));
+    }
+
+    #[test]
+    fn test_has_directory_pattern_substring_match() {
+        // PIN: pattern check uses `contains` (substring), not equality.
+        let dirs = vec!["src/event_dispatcher".to_string()];
+        assert!(PolyglotAnalyzer::has_directory_pattern(&dirs, &["event"]));
+    }
+
+    #[test]
+    fn test_has_directory_pattern_multiple_patterns_any_match() {
+        let dirs = vec!["src/api".to_string()];
+        assert!(PolyglotAnalyzer::has_directory_pattern(
+            &dirs,
+            &["nope", "api", "other"]
+        ));
+    }
+
+    // ── check_layered_architecture ──────────────────────────────────────────
+
+    #[test]
+    fn test_check_layered_architecture_classic_mvc() {
+        let a = make_analyzer();
+        // service + controller + repository + model = layered architecture.
+        let dirs = vec![
+            "src/controller/user_controller".to_string(),
+            "src/service/user_service".to_string(),
+            "src/repository/user_repo".to_string(),
+            "src/model/user".to_string(),
+        ];
+        assert!(a.check_layered_architecture(&dirs));
+    }
+
+    #[test]
+    fn test_check_layered_architecture_requires_service_plus_one() {
+        // PIN: service alone is NOT enough; needs service + (controller OR
+        // repository OR model).
+        let a = make_analyzer();
+        let just_service = vec!["src/service/foo".to_string()];
+        assert!(!a.check_layered_architecture(&just_service));
+        let service_plus_controller = vec![
+            "src/service/foo".to_string(),
+            "src/controller/bar".to_string(),
+        ];
+        assert!(a.check_layered_architecture(&service_plus_controller));
+    }
+
+    #[test]
+    fn test_check_layered_architecture_no_service_returns_false() {
+        // PIN: must have "service" — controller/repository/model alone don't qualify.
+        let a = make_analyzer();
+        let dirs = vec![
+            "src/controller/foo".to_string(),
+            "src/model/bar".to_string(),
+        ];
+        assert!(!a.check_layered_architecture(&dirs));
+    }
+
+    #[test]
+    fn test_check_layered_architecture_dao_aliases_repository() {
+        // PIN: "repository" OR "dao" both count as the repository layer.
+        let a = make_analyzer();
+        let dirs = vec!["src/service/foo".to_string(), "src/dao/foo_dao".to_string()];
+        assert!(a.check_layered_architecture(&dirs));
+    }
+
+    #[test]
+    fn test_check_layered_architecture_entity_aliases_model() {
+        // PIN: "model" OR "entity" both count.
+        let a = make_analyzer();
+        let dirs = vec![
+            "src/service/foo".to_string(),
+            "src/entity/foo_entity".to_string(),
+        ];
+        assert!(a.check_layered_architecture(&dirs));
+    }
+
+    // ── assess_risk_level ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_assess_risk_level_thresholds() {
+        let a = make_analyzer();
+        // PIN: thresholds are strict >= (not strict >).
+        assert!(matches!(a.assess_risk_level(0.9), RiskLevel::Critical));
+        assert!(matches!(a.assess_risk_level(0.8), RiskLevel::Critical)); // boundary
+        assert!(matches!(a.assess_risk_level(0.79), RiskLevel::High));
+        assert!(matches!(a.assess_risk_level(0.6), RiskLevel::High)); // boundary
+        assert!(matches!(a.assess_risk_level(0.59), RiskLevel::Medium));
+        assert!(matches!(a.assess_risk_level(0.4), RiskLevel::Medium)); // boundary
+        assert!(matches!(a.assess_risk_level(0.39), RiskLevel::Low));
+        assert!(matches!(a.assess_risk_level(0.0), RiskLevel::Low));
+    }
+
+    #[test]
+    fn test_assess_risk_level_negative_returns_low() {
+        // PIN: negative coupling (degenerate input) defaults to Low — no panic.
+        let a = make_analyzer();
+        assert!(matches!(a.assess_risk_level(-1.0), RiskLevel::Low));
+    }
+
+    #[test]
+    fn test_assess_risk_level_at_or_above_one() {
+        let a = make_analyzer();
+        assert!(matches!(a.assess_risk_level(1.0), RiskLevel::Critical));
+        assert!(matches!(a.assess_risk_level(2.5), RiskLevel::Critical));
+    }
+
+    // ── map_dependency_to_integration ───────────────────────────────────────
+
+    #[test]
+    fn test_map_dependency_to_integration_all_variants() {
+        let a = make_analyzer();
+        assert!(matches!(
+            a.map_dependency_to_integration(&DependencyType::FFI),
+            IntegrationType::Memory
+        ));
+        assert!(matches!(
+            a.map_dependency_to_integration(&DependencyType::ProcessCommunication),
+            IntegrationType::Network
+        ));
+        assert!(matches!(
+            a.map_dependency_to_integration(&DependencyType::SharedDataStructure),
+            IntegrationType::Memory
+        ));
+        assert!(matches!(
+            a.map_dependency_to_integration(&DependencyType::ConfigurationFile),
+            IntegrationType::Configuration
+        ));
+        assert!(matches!(
+            a.map_dependency_to_integration(&DependencyType::BuildSystem),
+            IntegrationType::FileSystem
+        ));
+        assert!(matches!(
+            a.map_dependency_to_integration(&DependencyType::Testing),
+            IntegrationType::API
+        ));
+    }
+
+    // ── generate_polyglot_insights ──────────────────────────────────────────
+
+    #[test]
+    fn test_generate_polyglot_insights_empty_analysis() {
+        let a = make_analyzer();
+        let analysis = PolyglotAnalysis {
+            languages: vec![],
+            cross_language_dependencies: vec![],
+            architecture_pattern: None,
+            integration_points: vec![],
+            recommendation_score: 0.5,
+        };
+        let insights = a.generate_polyglot_insights(&analysis);
+        // Always emits the recommendation-score line.
+        assert!(insights.iter().any(|i| i.contains("recommendation score")));
+    }
+
+    #[test]
+    fn test_generate_polyglot_insights_includes_recommendation_score() {
+        let a = make_analyzer();
+        let analysis = PolyglotAnalysis {
+            languages: vec![],
+            cross_language_dependencies: vec![],
+            architecture_pattern: Some(ArchitecturePattern::Microservices),
+            integration_points: vec![],
+            recommendation_score: 0.85,
+        };
+        let insights = a.generate_polyglot_insights(&analysis);
+        assert!(insights
+            .iter()
+            .any(|i| i.contains("0.85") || i.contains(".85")));
     }
 }
