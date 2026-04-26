@@ -325,3 +325,187 @@ fn log_enforcement_failure_if_needed(final_result: &LintHotspotResult, params: &
 #[cfg(all(test, feature = "broken-tests"))]
 #[path = "../lint_hotspot_handlers_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod pure_helper_tests {
+    //! Wave 39 PR18 — pure-helper coverage for lint_hotspot_handlers/mod.rs
+    //! (160 missed pre-wave). Async handlers + clippy invocation are
+    //! disqualified per spec §4.11 (shell out to cargo). The pure helpers
+    //! `apply_file_filters` + `filter_violations` + `recalculate_hotspot_metrics`
+    //! + `should_exit_with_error` are testable.
+    use super::*;
+    use crate::cli::LintHotspotOutputFormat;
+    use std::collections::HashMap;
+
+    fn make_violation(file: &str, line: u32, severity: &str) -> ViolationDetail {
+        ViolationDetail {
+            file: PathBuf::from(file),
+            line,
+            column: 0,
+            end_line: line,
+            end_column: 0,
+            lint_name: "test_lint".to_string(),
+            message: "test".to_string(),
+            severity: severity.to_string(),
+            suggestion: None,
+            machine_applicable: false,
+        }
+    }
+
+    fn make_hotspot(file: &str, sloc: usize, total: usize) -> LintHotspot {
+        LintHotspot {
+            file: PathBuf::from(file),
+            defect_density: total as f64 / sloc.max(1) as f64,
+            total_violations: total,
+            sloc,
+            severity_distribution: SeverityDistribution::default(),
+            top_lints: vec![],
+            detailed_violations: (0..total)
+                .map(|i| make_violation(file, i as u32, "warning"))
+                .collect(),
+        }
+    }
+
+    fn make_result(hotspot: LintHotspot, all: Vec<ViolationDetail>) -> LintHotspotResult {
+        LintHotspotResult {
+            hotspot,
+            all_violations: all,
+            summary_by_file: HashMap::new(),
+            total_project_violations: 0,
+            enforcement: None,
+            refactor_chain: None,
+            quality_gate: QualityGateStatus {
+                passed: true,
+                violations: vec![],
+                blocking: false,
+            },
+        }
+    }
+
+    fn make_params(include: Vec<String>, exclude: Vec<String>) -> LintHotspotParams {
+        LintHotspotParams {
+            project_path: PathBuf::from("/tmp"),
+            file: None,
+            format: LintHotspotOutputFormat::Json,
+            max_density: 0.1,
+            min_confidence: 0.5,
+            enforce: false,
+            dry_run: false,
+            enforcement_metadata: false,
+            output: None,
+            perf: false,
+            clippy_flags: String::new(),
+            top_files: 10,
+            include,
+            exclude,
+        }
+    }
+
+    // ── apply_file_filters ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_apply_file_filters_empty_include_exclude_short_circuit() {
+        // PIN: empty include AND empty exclude → early return Ok, no mutation.
+        let mut result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
+        let params = make_params(vec![], vec![]);
+        let result_ok = apply_file_filters(&mut result, &params);
+        assert!(result_ok.is_ok());
+        // Hotspot violations unchanged.
+        assert_eq!(result.hotspot.detailed_violations.len(), 5);
+    }
+
+    #[test]
+    fn test_apply_file_filters_invalid_pattern_returns_err() {
+        // FileFilter::new requires valid patterns; an unparseable glob errors.
+        let mut result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
+        let params = make_params(vec!["[invalid".to_string()], vec![]);
+        let r = apply_file_filters(&mut result, &params);
+        assert!(r.is_err());
+    }
+
+    // ── recalculate_hotspot_metrics ─────────────────────────────────────────
+
+    #[test]
+    fn test_recalculate_hotspot_metrics_recomputes_density() {
+        let mut result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
+        // Drop one violation directly.
+        result.hotspot.detailed_violations.pop();
+        recalculate_hotspot_metrics(&mut result);
+        assert_eq!(result.hotspot.total_violations, 4);
+        assert!((result.hotspot.defect_density - 0.04).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_recalculate_hotspot_metrics_zero_sloc_defect_density_unchanged() {
+        // PIN: when sloc == 0, defect_density is NOT updated (avoids div/0).
+        let mut result = make_result(make_hotspot("src/foo.rs", 0, 5), vec![]);
+        let original_density = result.hotspot.defect_density;
+        // Empty out violations.
+        result.hotspot.detailed_violations.clear();
+        recalculate_hotspot_metrics(&mut result);
+        assert_eq!(result.hotspot.total_violations, 0);
+        assert_eq!(result.hotspot.defect_density, original_density);
+    }
+
+    // ── should_exit_with_error ──────────────────────────────────────────────
+
+    #[test]
+    fn test_should_exit_quality_gate_failed() {
+        let mut result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
+        result.quality_gate.passed = false;
+        let params = make_params(vec![], vec![]);
+        assert!(should_exit_with_error(&result, &params));
+    }
+
+    #[test]
+    fn test_should_exit_quality_gate_passed_no_enforce() {
+        let result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
+        let params = make_params(vec![], vec![]);
+        assert!(!should_exit_with_error(&result, &params));
+    }
+
+    #[test]
+    fn test_should_exit_enforce_with_violations() {
+        // PIN: enforce=true AND total_project_violations > 0 forces exit
+        // even when quality_gate passes.
+        let mut result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
+        result.total_project_violations = 3;
+        let mut params = make_params(vec![], vec![]);
+        params.enforce = true;
+        assert!(should_exit_with_error(&result, &params));
+    }
+
+    #[test]
+    fn test_should_exit_enforce_with_no_violations_passes() {
+        let mut result = make_result(make_hotspot("src/foo.rs", 100, 5), vec![]);
+        result.total_project_violations = 0;
+        let mut params = make_params(vec![], vec![]);
+        params.enforce = true;
+        assert!(!should_exit_with_error(&result, &params));
+    }
+
+    // ── generate_enforcement_metadata_if_needed ─────────────────────────────
+
+    #[test]
+    fn test_generate_enforcement_metadata_none_when_neither_flag_set() {
+        let hotspot = make_hotspot("src/foo.rs", 100, 5);
+        let params = make_params(vec![], vec![]);
+        assert!(generate_enforcement_metadata_if_needed(&hotspot, &params).is_none());
+    }
+
+    #[test]
+    fn test_generate_enforcement_metadata_some_when_metadata_flag() {
+        let hotspot = make_hotspot("src/foo.rs", 100, 5);
+        let mut params = make_params(vec![], vec![]);
+        params.enforcement_metadata = true;
+        assert!(generate_enforcement_metadata_if_needed(&hotspot, &params).is_some());
+    }
+
+    #[test]
+    fn test_generate_enforcement_metadata_some_when_enforce_flag() {
+        let hotspot = make_hotspot("src/foo.rs", 100, 5);
+        let mut params = make_params(vec![], vec![]);
+        params.enforce = true;
+        assert!(generate_enforcement_metadata_if_needed(&hotspot, &params).is_some());
+    }
+}
