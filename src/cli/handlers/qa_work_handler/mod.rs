@@ -972,3 +972,126 @@ mod checklist_gen_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod epic_helpers_tests {
+    //! Wave 39 PR7 — coverage for impl_epic.rs pure helpers
+    //! (`calculate_epic_summary` + `generate_example_scripts`).
+    //! Existing tests for these in qa_work_tests_part1.rs are behind
+    //! `#[cfg(all(test, feature = "broken-tests"))]` (disabled per spec §4.5 R1).
+    use super::*;
+
+    // ── calculate_epic_summary ──────────────────────────────────────────────
+
+    #[test]
+    fn test_calculate_epic_summary_empty_tasks_pending() {
+        let summary = calculate_epic_summary("EPIC-1", &[]);
+        assert_eq!(summary.epic_id, "EPIC-1");
+        assert_eq!(summary.total_tasks, 0);
+        assert_eq!(summary.total_checks, 0);
+        assert_eq!(summary.passed_checks, 0);
+        assert_eq!(summary.overall_score, 0.0);
+        assert_eq!(summary.status, EpicStatus::Pending);
+        assert!(summary.task_scores.is_empty());
+    }
+
+    #[test]
+    fn test_calculate_epic_summary_all_complete_returns_complete() {
+        // PIN: EpicStatus::Complete fires only when ALL tasks have
+        // passed == total. Even one incomplete bumps to InProgress.
+        let tasks = vec![
+            ("T1".to_string(), 25u32, 25u32),
+            ("T2".to_string(), 20u32, 20u32),
+        ];
+        let summary = calculate_epic_summary("EPIC", &tasks);
+        assert_eq!(summary.status, EpicStatus::Complete);
+        assert_eq!(summary.total_checks, 45);
+        assert_eq!(summary.passed_checks, 45);
+        assert!((summary.overall_score - 100.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_calculate_epic_summary_partial_progress_returns_in_progress() {
+        let tasks = vec![
+            ("T1".to_string(), 10u32, 25u32),
+            ("T2".to_string(), 0u32, 25u32),
+        ];
+        let summary = calculate_epic_summary("EPIC", &tasks);
+        assert_eq!(summary.status, EpicStatus::InProgress);
+        assert_eq!(summary.passed_checks, 10);
+        assert_eq!(summary.total_checks, 50);
+        assert!((summary.overall_score - 20.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_calculate_epic_summary_all_zero_passed_pending() {
+        // PIN: tasks present but no checks passed → Pending (not InProgress).
+        // The InProgress branch requires `any(passed > 0)`.
+        let tasks = vec![
+            ("T1".to_string(), 0u32, 25u32),
+            ("T2".to_string(), 0u32, 25u32),
+        ];
+        let summary = calculate_epic_summary("EPIC", &tasks);
+        assert_eq!(summary.status, EpicStatus::Pending);
+        assert_eq!(summary.overall_score, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_epic_summary_zero_total_checks_score_zero() {
+        // PIN: division-by-zero guard — total_checks == 0 → score = 0.0.
+        let tasks = vec![("T1".to_string(), 0u32, 0u32)];
+        let summary = calculate_epic_summary("EPIC", &tasks);
+        assert_eq!(summary.overall_score, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_epic_summary_individual_task_scores_computed() {
+        let tasks = vec![
+            ("T1".to_string(), 10u32, 20u32),
+            ("T2".to_string(), 15u32, 30u32),
+            ("T3".to_string(), 0u32, 0u32), // zero-total → 0.0
+        ];
+        let summary = calculate_epic_summary("EPIC", &tasks);
+        assert_eq!(summary.task_scores.len(), 3);
+        assert_eq!(summary.task_scores[0].0, "T1");
+        assert!((summary.task_scores[0].1 - 50.0).abs() < 1e-9);
+        assert!((summary.task_scores[1].1 - 50.0).abs() < 1e-9);
+        assert_eq!(summary.task_scores[2].1, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_epic_summary_epic_id_passthrough() {
+        let summary = calculate_epic_summary("MyEpic-2026-Q2", &[]);
+        assert_eq!(summary.epic_id, "MyEpic-2026-Q2");
+    }
+
+    // ── generate_example_scripts ────────────────────────────────────────────
+
+    #[test]
+    fn test_generate_example_scripts_returns_at_least_one() {
+        let scripts = generate_example_scripts("TASK-1", "my_feature");
+        assert!(!scripts.is_empty());
+    }
+
+    #[test]
+    fn test_generate_example_scripts_includes_task_id_or_feature_name() {
+        // PIN: each script should carry context — name or content references
+        // the task_id and/or feature_name.
+        let scripts = generate_example_scripts("TASK-42", "feature_x");
+        let combined = scripts
+            .iter()
+            .map(|s| format!("{}\n{}\n{}", s.name, s.description, s.content))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(combined.contains("TASK-42") || combined.contains("feature_x"));
+    }
+
+    #[test]
+    fn test_generate_example_scripts_each_has_non_empty_name_and_content() {
+        let scripts = generate_example_scripts("T", "f");
+        for s in &scripts {
+            assert!(!s.name.is_empty(), "script name should not be empty");
+            assert!(!s.content.is_empty(), "script content should not be empty");
+        }
+    }
+}
