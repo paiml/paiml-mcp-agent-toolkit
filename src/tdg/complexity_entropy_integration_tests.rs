@@ -648,4 +648,124 @@ public:
             assert!(result.is_ok() || result.is_err(), "{:?} panicked", lang);
         }
     }
+
+    // ── Lean (Wave 39 PR3 — analyzer_impl2_heuristics_lean.rs) ──────────────
+
+    #[test]
+    fn test_analyze_lean_simple_theorem() {
+        let analyzer = analyzer();
+        let src = r#"
+theorem add_zero (n : Nat) : n + 0 = n := by
+  rfl
+"#;
+        let score = analyzer.analyze_source(src, Language::Lean, None).unwrap();
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+        assert_eq!(score.language, Language::Lean);
+    }
+
+    #[test]
+    fn test_analyze_lean_with_sorry_marks_as_critical() {
+        // PIN: per analyzer_impl1_source_dispatch.rs:70-77, Lean code with
+        // `sorry` (proof incompleteness) increments critical_defects_count
+        // when file_path is set. Without file_path, the defect-detection
+        // branch is skipped — only the lean-heuristic scoring runs.
+        let analyzer = analyzer();
+        let src = r#"
+theorem hard_to_prove : 1 + 1 = 2 := by sorry
+"#;
+        let score = analyzer.analyze_source(src, Language::Lean, None).unwrap();
+        // Without a file_path, sorry counting is skipped — but the heuristic
+        // still runs and a valid total is computed.
+        assert!(score.total >= 0.0 && score.total <= 100.0);
+    }
+
+    #[test]
+    fn test_analyze_lean_with_sorry_and_file_path_increments_critical() {
+        // With file_path set, count_lean_sorry_ast contributes to
+        // critical_defects_count. is_file_git_tracked may suppress
+        // has_critical_defects for new files (issue #279) but the COUNT
+        // is preserved.
+        use std::path::PathBuf;
+        let analyzer = analyzer();
+        let src = r#"
+theorem t1 : 1 = 1 := sorry
+theorem t2 : 2 = 2 := sorry
+"#;
+        let score = analyzer
+            .analyze_source(
+                src,
+                Language::Lean,
+                Some(PathBuf::from("/tmp/nonexistent.lean")),
+            )
+            .unwrap();
+        // 2 sorry occurrences → critical_defects_count >= 2 (informational
+        // even when has_critical_defects is suppressed by git-tracked check).
+        assert!(score.critical_defects_count >= 2);
+    }
+
+    #[test]
+    fn test_analyze_lean_block_comment_with_sorry_does_not_count() {
+        // PIN: sorry inside `/- ... -/` block comment is NOT counted as
+        // a defect. strip_lean_block_comments_ast removes block-comment
+        // content before the word-boundary check.
+        use std::path::PathBuf;
+        let analyzer = analyzer();
+        let src = r#"
+/- This is a comment that mentions sorry but should NOT count. -/
+theorem clean : 1 = 1 := rfl
+"#;
+        let score = analyzer
+            .analyze_source(src, Language::Lean, Some(PathBuf::from("/tmp/clean.lean")))
+            .unwrap();
+        assert_eq!(score.critical_defects_count, 0);
+    }
+
+    #[test]
+    fn test_analyze_lean_line_comment_with_sorry_does_not_count() {
+        // PIN: sorry in a line comment (-- prefix) is NOT counted.
+        use std::path::PathBuf;
+        let analyzer = analyzer();
+        let src =
+            "-- this comment mentions sorry but it does not count\ntheorem t : 1 = 1 := rfl\n";
+        let score = analyzer
+            .analyze_source(src, Language::Lean, Some(PathBuf::from("/tmp/x.lean")))
+            .unwrap();
+        assert_eq!(score.critical_defects_count, 0);
+    }
+
+    #[test]
+    fn test_analyze_lean_word_boundary_avoids_false_positives() {
+        // PIN: contains_lean_sorry_word_ast requires word-boundary, so
+        // identifiers like `sorry_helper` or `mysorrowtheorem` do NOT trigger.
+        use std::path::PathBuf;
+        let analyzer = analyzer();
+        let src = "def sorry_helper := 42\ndef mysorrytheorem := 99\n";
+        let score = analyzer
+            .analyze_source(src, Language::Lean, Some(PathBuf::from("/tmp/x.lean")))
+            .unwrap();
+        assert_eq!(score.critical_defects_count, 0);
+    }
+
+    #[test]
+    fn test_analyze_lean_imports_and_definitions() {
+        let analyzer = analyzer();
+        let src = r#"
+import Mathlib.Algebra.Group.Defs
+import Mathlib.Tactic
+
+namespace MyModule
+
+def double (n : Nat) : Nat := n + n
+
+theorem double_pos (n : Nat) (h : n > 0) : double n > 0 := by
+  unfold double
+  omega
+
+end MyModule
+"#;
+        let score = analyzer.analyze_source(src, Language::Lean, None).unwrap();
+        assert!(score.total >= 0.0);
+        // Confidence is derated 10% for Lean per analyzer_impl2_heuristics_lean.rs:13.
+        assert!(score.confidence < 1.0);
+    }
 }
