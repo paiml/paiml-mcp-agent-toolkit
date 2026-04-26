@@ -292,7 +292,7 @@ mod tests {
         ]);
         apply_satd_filters(&mut r, None, false, 2);
         assert_eq!(r.items.len(), 5);
-        assert!(!r.items.iter().any(|i| i.file == PathBuf::from("c.rs")));
+        assert!(!r.items.iter().any(|i| i.file == Path::new("c.rs")));
     }
 
     #[test]
@@ -320,7 +320,7 @@ mod tests {
         filter_top_files(&mut r, 1);
         // Only b.rs (3 items) survives
         assert_eq!(r.items.len(), 3);
-        assert!(r.items.iter().all(|i| i.file == PathBuf::from("b.rs")));
+        assert!(r.items.iter().all(|i| i.file == Path::new("b.rs")));
     }
 
     #[test]
