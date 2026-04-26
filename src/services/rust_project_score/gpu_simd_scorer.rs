@@ -79,6 +79,10 @@ impl GpuSimdScorer {
         false
     }
 
+    // Wave 39 PR26: contract added — output is bool determined by static
+    // pattern lists (CUDA_EXTENSIONS / SIMD_PATTERNS / WGPU_PATTERNS).
+    // Deterministic, no allocations.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn file_has_gpu_simd_indicators(path_str: &str, content: &str) -> bool {
         const CUDA_EXTENSIONS: &[&str] = &["cu", "cuh", "ptx"];
         // Use concat! to avoid self-matching during CB-021 compliance scanning
@@ -305,5 +309,151 @@ mod tests {
         let cloned = scorer.clone();
         assert_eq!(scorer.name(), cloned.name());
         assert_eq!(scorer.max_points(), cloned.max_points());
+    }
+
+    // ── Wave 39 PR26: file_has_gpu_simd_indicators + check_directory ────────
+
+    #[test]
+    fn test_file_has_gpu_simd_indicators_cuda_extensions() {
+        // PIN: .cu, .cuh, .ptx file extensions trigger GPU detection regardless of content.
+        assert!(GpuSimdScorer::file_has_gpu_simd_indicators("kernel.cu", ""));
+        assert!(GpuSimdScorer::file_has_gpu_simd_indicators(
+            "device.cuh",
+            ""
+        ));
+        assert!(GpuSimdScorer::file_has_gpu_simd_indicators(
+            "shader.ptx",
+            ""
+        ));
+    }
+
+    #[test]
+    fn test_file_has_gpu_simd_indicators_x86_simd_intrinsics() {
+        // PIN: SIMD intrinsics like _mm256_/_mm512_ in content trigger detection.
+        let content_avx2 = "let v = _mm256_add_ps(a, b);";
+        assert!(GpuSimdScorer::file_has_gpu_simd_indicators(
+            "src/foo.rs",
+            content_avx2
+        ));
+        let content_avx512 = "let v = _mm512_add_ps(a, b);";
+        assert!(GpuSimdScorer::file_has_gpu_simd_indicators(
+            "src/foo.rs",
+            content_avx512
+        ));
+    }
+
+    #[test]
+    fn test_file_has_gpu_simd_indicators_arch_modules() {
+        let content = "use std::arch::x86_64::*;";
+        assert!(GpuSimdScorer::file_has_gpu_simd_indicators(
+            "src/foo.rs",
+            content
+        ));
+        let content_core = "use core::arch::aarch64::*;";
+        assert!(GpuSimdScorer::file_has_gpu_simd_indicators(
+            "src/foo.rs",
+            content_core
+        ));
+    }
+
+    #[test]
+    fn test_file_has_gpu_simd_indicators_arm_neon() {
+        let content = "use std::arch::arm_neon::*;";
+        assert!(GpuSimdScorer::file_has_gpu_simd_indicators(
+            "src/foo.rs",
+            content
+        ));
+    }
+
+    #[test]
+    fn test_file_has_gpu_simd_indicators_wgpu_patterns() {
+        let content = "let device = wgpu::Device::new();";
+        assert!(GpuSimdScorer::file_has_gpu_simd_indicators(
+            "src/foo.rs",
+            content
+        ));
+    }
+
+    #[test]
+    fn test_file_has_gpu_simd_indicators_wgsl_pattern() {
+        let content = "let shader = include_wgsl!(\"shader.wgsl\");";
+        assert!(GpuSimdScorer::file_has_gpu_simd_indicators(
+            "src/foo.rs",
+            content
+        ));
+    }
+
+    #[test]
+    fn test_file_has_gpu_simd_indicators_no_match_returns_false() {
+        // PIN: regular Rust code with no GPU/SIMD patterns → false.
+        assert!(!GpuSimdScorer::file_has_gpu_simd_indicators(
+            "src/foo.rs",
+            "fn foo() -> i32 { 42 }"
+        ));
+    }
+
+    #[test]
+    fn test_file_has_gpu_simd_indicators_empty_content_no_extension() {
+        assert!(!GpuSimdScorer::file_has_gpu_simd_indicators("", ""));
+        assert!(!GpuSimdScorer::file_has_gpu_simd_indicators(
+            "Cargo.toml",
+            ""
+        ));
+    }
+
+    #[test]
+    fn test_file_has_gpu_simd_indicators_extension_check_path_string() {
+        // PIN: extension check uses ends_with on the full path string,
+        // not Path::extension. So "foo.cu.bak" would NOT match (.bak).
+        assert!(!GpuSimdScorer::file_has_gpu_simd_indicators(
+            "kernel.cu.bak",
+            ""
+        ));
+    }
+
+    // ── check_directory_for_gpu_files (tempdir-testable) ────────────────────
+
+    #[test]
+    fn test_check_directory_for_gpu_files_finds_cu_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("kernel.cu"), "// CUDA kernel").unwrap();
+        assert!(GpuSimdScorer::check_directory_for_gpu_files(tmp.path()));
+    }
+
+    #[test]
+    fn test_check_directory_for_gpu_files_finds_wgsl_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("shader.wgsl"),
+            "@vertex fn vs_main() -> vec4f",
+        )
+        .unwrap();
+        assert!(GpuSimdScorer::check_directory_for_gpu_files(tmp.path()));
+    }
+
+    #[test]
+    fn test_check_directory_for_gpu_files_no_gpu_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(tmp.path().join("main.rs"), "fn main() {}").unwrap();
+        assert!(!GpuSimdScorer::check_directory_for_gpu_files(tmp.path()));
+    }
+
+    #[test]
+    fn test_check_directory_for_gpu_files_unreadable_returns_false() {
+        // PIN: read_dir error (e.g., nonexistent path) → false (graceful).
+        let bogus = std::path::PathBuf::from("/nonexistent/path/that/should/not/exist");
+        assert!(!GpuSimdScorer::check_directory_for_gpu_files(&bogus));
+    }
+
+    #[test]
+    fn test_check_directory_for_gpu_files_top_level_only() {
+        // PIN: only the immediate dir is scanned (read_dir doesn't recurse).
+        // A .cu file in a subdir is NOT detected.
+        let tmp = tempfile::tempdir().unwrap();
+        let subdir = tmp.path().join("nested");
+        std::fs::create_dir(&subdir).unwrap();
+        std::fs::write(subdir.join("kernel.cu"), "// nested").unwrap();
+        // Top-level has no GPU files.
+        assert!(!GpuSimdScorer::check_directory_for_gpu_files(tmp.path()));
     }
 }
