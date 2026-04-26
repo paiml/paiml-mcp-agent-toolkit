@@ -6,13 +6,13 @@
 > **Owners**: core maintainers
 > **Dogfood**: `pmat query --coverage-gaps --rank-by impact` is the canonical targeting tool
 
-## Target reframe (2026-04-26 — post wave-36/37 empirical data)
+## Target reframe (2026-04-26 — post wave-36/37 empirical data, post wave-39 80% achievement)
 
-| Tier | Target | Rationale | Est. effort |
-|------|-------:|-----------|-------------|
-| **Near-term** | **80% broad** | Reachable via 10-20 well-chosen integration-test PRs. Baseline 78.77%; 1.23pp gap. | ~1 focused week |
-| Mid-term | 85% broad | Requires sustained integration-test sweep across ~30-60 handlers. | 2-3 weeks |
-| Long-horizon | 95% broad | Cannot be reached by writing tests alone; requires architectural reduction of the broad denominator (delete entire dead command paths, reduce 333k LoC measured base). | weeks-to-months, separate spec |
+| Tier | Target | Status | Rationale |
+|------|-------:|--------|-----------|
+| **Near-term** | **80% broad** | **✅ ACHIEVED 2026-04-26** at 80.02% (post wave-39 PR22, single-session sprint of 24 PRs / 289 tests) |
+| Mid-term | 85% broad | In progress (4.98pp gap from 80.02%) | Requires 30-40 more disciplined integration-test PRs at HIGH-yield rate, 2-3 sessions |
+| Long-horizon | 95% broad | Aspirational | Cannot be reached by writing tests alone; requires architectural reduction of the broad denominator (delete entire dead command paths, reduce 333k LoC base) |
 
 **Why the reframe.** Waves 36+37 empirically falsified three assumed levers (fat-target unit tests = 0pp; orphan deletion = 0pp; coverage(off) audit = 0pp per spec §4.5). The corrected 5-lever model in §4.10 leaves only **lever (d) — integration tests on full CLI/MCP handler bodies** — as a demonstrated mover. Rough math: 95% gap = ~54,000 covered lines on 333k denominator, vs. integration-test yield ~50-200 lines/test = 270-1,080 tests minimum — not session-pace.
 
@@ -572,19 +572,38 @@ The "right" R5 target is therefore not subprocess-bound files with thin helpers 
 
 **llvm-cov + include!() artifact discovered:** files included via `include!("foo.rs")` may report 0% even when their tests pass and the comprehensive test file is at 100%. Example: `tdg/alerts_manager.rs` (143 lines, 0%) with `alerts_tests_basic/comprehensive_part1` at 100%. Adding more tests to such files won't budge the file-level metric — coverage is being attributed to the *including* file, not the *included* file. **Lesson**: prefer files that use `mod foo;` (regular module declaration) over `include!()` when picking integration-test targets — they have honest per-file attribution.
 
-**Cumulative wave 39 numbers (post-PR23):**
-- Tests added: 273
-- 0%-coverage files targeted: 21
-- Coverage trajectory (6 measurements over the session):
+**Cumulative wave 39 numbers (post-PR24):**
+- Tests added: 289
+- 0%-coverage files targeted: 22
+- Provable-contract decorators added: 2 (`check_frameworks`, `assess_risk_level`)
+- Coverage trajectory (7 measurements over the session):
   - Pre-session: 78.74%
   - Post-PR2: **79.18%** (+0.41pp, ~35 lines/test, lever (d) validated)
   - Post-PR9: **79.40%** (+0.22pp, ~7.9 lines/test, yield collapse exposed)
   - Post-PR13: **79.78%** (+0.38pp, ~28 lines/test, discipline payoff)
-  - Post-PR17: **79.93%** (+0.15pp, ~5 lines/test from mostly-LOW-yield PR14-PR17)
-  - Post-PR20: **79.97%** (+0.04pp, ~1.5 lines/test from small-helper trio)
-  - Post-PR23: (in flight — expect ~80.05%-80.15% from PR21-PR23's mix of small helpers + 1 fat-target polyglot detection PR with new contract decorator)
+  - Post-PR17: **79.93%** (+0.15pp, ~5 lines/test, small-helper PRs)
+  - Post-PR20: **79.97%** (+0.04pp, ~1.5 lines/test, low-yield trio)
+  - Post-PR22: **80.02%** (+0.05pp) — **🎯 80% MILESTONE CROSSED**
+  - Post-PR23+PR24 (next measurement): (in flight; expected ~80.10-80.20% with 30 more tests including 2 PRs targeting partial-cov polyglot files)
 
-**Provable-contracts directive (added 2026-04-26 mid-session):** the user authorized "always improving provable contracts" alongside coverage drives. Wave 39 PR23 introduced this principle — it adds tests AND a `#[contract(check_compliance)]` decorator to `PolyglotAnalyzer::check_frameworks` simultaneously. Future PRs in this sprint will continue this pattern: every fat-target integration PR should also identify and decorate at least one previously-uncontracted public/static helper.
+### §4.11 80% MILESTONE ACHIEVED (2026-04-26)
+
+**Phase-1 near-term goal of 80% broad-gate coverage REACHED.**
+
+The empirical model derived this session is now production-tested:
+1. **Lever (d) (integration tests on full handler bodies / multi-branch entry points) is the dominant mover.** Confirmed across 7 measurements.
+2. **Yield is heterogeneous.** HIGH-yield PRs hit 27-35 lines/test (analyzer files via `analyze_source` / `analyze_program` chains). LOW-yield PRs hit 1-10 lines/test (small converters, no-panic tests, single-fn helpers).
+3. **Discipline matters 4× more than volume.** PR1+PR2+PR12+PR13+PR23+PR24 (HIGH-yield analyzer family) contributed disproportionately to the +1.28pp gain.
+4. **Other levers were 0pp:** orphan deletion (28k lines, 0pp), drip-feed unit tests on already-reachable helpers (208 tests, 0pp), `coverage(off)` audit (per project memory).
+5. **Provable-contracts directive** (mid-session): every fat-target PR also decorates 1 helper. Realized in PR23 + PR24.
+
+**Forward path to mid-term 85% target:**
+- 80.02% → 85% = 4.98pp gap = ~11,400 covered lines
+- At HIGH-yield 30 lines/test = ~380 disciplined tests = 30-40 PRs
+- Estimated: 2-3 more focused sessions
+- Constraint: HIGH-yield candidates remaining are limited; need to hunt creatively (subprocess refactor → fat helpers, tests/ harness expansion).
+
+**Provable-contracts directive (added 2026-04-26 mid-session):** the user authorized "always improving provable contracts" alongside coverage drives. Wave 39 PR23+PR24 introduced this principle — each PR adds tests AND a `#[contract(check_compliance)]` decorator on a public/static helper. Future PRs continue this pattern.
 - Per-PR yield (validated): 27-35 lines/test for HIGH-yield (analyzer dispatch chains, multi-branch parsers), 5-10 lines/test for LOW-yield (tiny converters / no-panic tests)
 - Branch state: 113+ commits ahead of master, +16k / −35k LOC (net −19k)
 
