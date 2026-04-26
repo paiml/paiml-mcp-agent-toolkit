@@ -180,12 +180,22 @@ impl CargoDeadCodeAnalyzer {
         // The compiler-level dead_code lint is only useful for catching
         // items the heuristic misses, but the cost (full recompile) is too high.
 
-        // Use targeted checks instead of --all-targets for faster execution
+        // Wave 39 release-prep: detect target shape before passing flags.
+        // Bin-only crates (no src/lib.rs and no `[lib]` section) fail
+        // `cargo check --lib` with "no library targets found". Match the
+        // cargo metadata: --lib only when a lib exists; otherwise --bins.
+        let has_lib = project_has_library(&self.project_path);
+
         if self.exclude_tests {
-            cmd.arg("--lib").arg("--bins");
-        } else {
-            // Check only the lib by default for faster execution
+            if has_lib {
+                cmd.arg("--lib").arg("--bins");
+            } else {
+                cmd.arg("--bins");
+            }
+        } else if has_lib {
             cmd.arg("--lib");
+        } else {
+            cmd.arg("--bins");
         }
 
         let output = cmd.output().context("Failed to run cargo check")?;
@@ -198,5 +208,88 @@ impl CargoDeadCodeAnalyzer {
         // Cargo outputs JSON messages to stdout
         let stdout = String::from_utf8_lossy(&output.stdout);
         Ok(stdout.to_string())
+    }
+}
+
+/// Return `true` when the project at `project_path` has a library target.
+///
+/// A library is present when *either* the conventional `src/lib.rs` file
+/// exists *or* `Cargo.toml` declares an explicit `[lib]` table. The check is
+/// cheap (one stat + one read) and runs once per analysis.
+//
+// Wave 39 release-prep: contract added — output is bool determined by a
+// stat + a substring check on Cargo.toml. Deterministic.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+fn project_has_library(project_path: &std::path::Path) -> bool {
+    if project_path.join("src/lib.rs").exists() {
+        return true;
+    }
+    let cargo_toml = project_path.join("Cargo.toml");
+    if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
+        // Look for an explicit `[lib]` section (with optional whitespace).
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("[lib]") || trimmed.starts_with("[lib.") {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(test)]
+mod project_has_library_tests {
+    use super::project_has_library;
+
+    #[test]
+    fn test_detects_src_lib_rs() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join("src")).unwrap();
+        std::fs::write(tmp.path().join("src/lib.rs"), "pub fn x() {}").unwrap();
+        assert!(project_has_library(tmp.path()));
+    }
+
+    #[test]
+    fn test_detects_explicit_lib_section() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[package]\nname = \"x\"\nversion = \"0.1.0\"\n[lib]\nname = \"x\"\npath = \"src/x.rs\"\n",
+        )
+        .unwrap();
+        assert!(project_has_library(tmp.path()));
+    }
+
+    #[test]
+    fn test_bin_only_returns_false() {
+        // PIN: bin-only crate with no src/lib.rs and no [lib] section → false.
+        // This is the bug-#4 case from release-prep bug hunt.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[package]\nname = \"bin-only\"\nversion = \"0.1.0\"\n[[bin]]\nname = \"bin-only\"\npath = \"src/main.rs\"\n",
+        )
+        .unwrap();
+        std::fs::create_dir(tmp.path().join("src")).unwrap();
+        std::fs::write(tmp.path().join("src/main.rs"), "fn main() {}").unwrap();
+        assert!(!project_has_library(tmp.path()));
+    }
+
+    #[test]
+    fn test_no_cargo_toml_returns_false() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert!(!project_has_library(tmp.path()));
+    }
+
+    #[test]
+    fn test_lib_section_with_dotted_target_detected() {
+        // PIN: `[lib.something]` (dotted form) is also recognized as a lib section.
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("Cargo.toml"),
+            "[package]\nname = \"x\"\nversion = \"0.1.0\"\n[lib.foo]\n",
+        )
+        .unwrap();
+        assert!(project_has_library(tmp.path()));
     }
 }
