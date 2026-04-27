@@ -107,18 +107,22 @@ jobs:
         run: |
           TARGET="${{ matrix.target }}"
           BIN_PATH="target/${TARGET}/release/pmat"
+          # Each cross image ships the matching ${triple}-strip; the
+          # gnu image does NOT carry the musl variant and vice-versa
+          # (regression: v3.16.0 first run failed aarch64-musl because
+          # this step called aarch64-linux-gnu-strip in the musl image).
           case "$TARGET" in
-            aarch64-*)
-              # Strip via the cross Docker image's GNU strip — handles
-              # both musl and gnu ELF binaries.
-              docker run --rm -v "$PWD/target:/target:Z" \
-                "ghcr.io/cross-rs/${TARGET}:main" \
-                aarch64-linux-gnu-strip "/$BIN_PATH"
-              ;;
-            *)
-              strip "$BIN_PATH"
-              ;;
+            aarch64-unknown-linux-musl) STRIP=aarch64-linux-musl-strip ;;
+            aarch64-unknown-linux-gnu)  STRIP=aarch64-linux-gnu-strip ;;
+            *)                          STRIP="" ;;
           esac
+          if [ -n "$STRIP" ]; then
+            docker run --rm -v "$PWD/target:/target:Z" \
+              "ghcr.io/cross-rs/${TARGET}:main" \
+              "$STRIP" "/$BIN_PATH"
+          else
+            strip "$BIN_PATH"
+          fi
           ls -la "$BIN_PATH"
 
       - name: Package archive
