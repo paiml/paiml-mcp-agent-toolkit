@@ -1,0 +1,175 @@
+name: Binary Release
+
+# Attaches cross-compiled `pmat` binaries to a GitHub Release as tar.gz +
+# sha256. Decoupled from `cargo publish` — the manual publish flow Noah
+# prefers (see commit da58ced9) stays intact, and downstream consumers
+# can `curl` the binary instead of `cargo install pmat` (which compiles
+# from source and takes ~5 minutes cold).
+#
+# Triggered by:
+#   - `release: published` — fires automatically when a release is published
+#   - `workflow_dispatch` — manual re-run / backfill, takes a tag input
+#
+# Targets: 4 Linux (x86_64/aarch64 × musl/gnu). musl variants are static
+# and ideal for Docker / scratch / Alpine; gnu variants are smaller and
+# match typical Linux distributions. aarch64 builds use `cross`.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach binaries to (e.g. v3.16.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # upload assets to the release
+
+concurrency:
+  group: binary-release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  CROSS_VERSION: v0.2.5
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            cross: false
+          - target: x86_64-unknown-linux-gnu
+            cross: false
+          - target: aarch64-unknown-linux-musl
+            cross: true
+          - target: aarch64-unknown-linux-gnu
+            cross: true
+    steps:
+      - name: Resolve release tag
+        id: tag
+        run: |
+          TAG="${{ github.event.release.tag_name || inputs.tag }}"
+          if [ -z "$TAG" ]; then
+            echo "::error::No tag resolved (release event missing tag_name and no dispatch input)"
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Building pmat for $TAG → ${{ matrix.target }}"
+
+      - name: Checkout at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install musl tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends musl-tools
+
+      # Cross is used for aarch64 targets — pinned to v0.2.5 (matches the
+      # legacy disabled release.yml; later cross releases have broken CI
+      # in the past, ripgrep lesson).
+      - name: Install cross
+        if: matrix.cross
+        run: |
+          dir="$RUNNER_TEMP/cross"
+          mkdir -p "$dir"
+          curl -sL "https://github.com/cross-rs/cross/releases/download/${CROSS_VERSION}/cross-x86_64-unknown-linux-musl.tar.gz" \
+            | tar xz -C "$dir"
+          echo "$dir" >> "$GITHUB_PATH"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: binary-${{ matrix.target }}
+
+      - name: Build pmat
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --bin pmat --target ${{ matrix.target }} --locked
+          else
+            cargo build --release --bin pmat --target ${{ matrix.target }} --locked
+          fi
+
+      - name: Strip binary
+        run: |
+          TARGET="${{ matrix.target }}"
+          BIN_PATH="target/${TARGET}/release/pmat"
+          case "$TARGET" in
+            aarch64-*)
+              # Strip via the cross Docker image's GNU strip — handles
+              # both musl and gnu ELF binaries.
+              docker run --rm -v "$PWD/target:/target:Z" \
+                "ghcr.io/cross-rs/${TARGET}:main" \
+                aarch64-linux-gnu-strip "/$BIN_PATH"
+              ;;
+            *)
+              strip "$BIN_PATH"
+              ;;
+          esac
+          ls -la "$BIN_PATH"
+
+      - name: Package archive
+        id: package
+        run: |
+          VERSION="${{ steps.tag.outputs.tag }}"
+          TARGET="${{ matrix.target }}"
+          ARCHIVE="pmat-${VERSION}-${TARGET}"
+          mkdir -p "$ARCHIVE"
+          cp "target/${TARGET}/release/pmat" "$ARCHIVE/"
+          for f in README.md LICENSE LICENSE-MIT LICENSE-APACHE; do
+            [ -f "$f" ] && cp "$f" "$ARCHIVE/"
+          done
+          tar czf "${ARCHIVE}.tar.gz" "$ARCHIVE"
+          shasum -a 256 "${ARCHIVE}.tar.gz" > "${ARCHIVE}.tar.gz.sha256"
+          echo "archive=${ARCHIVE}.tar.gz" >> "$GITHUB_OUTPUT"
+          echo "sha=${ARCHIVE}.tar.gz.sha256" >> "$GITHUB_OUTPUT"
+          du -h "${ARCHIVE}.tar.gz"
+
+      - name: Upload assets to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ steps.tag.outputs.tag }}" \
+            "${{ steps.package.outputs.archive }}" \
+            "${{ steps.package.outputs.sha }}" \
+            --clobber
+
+  summary:
+    name: Summary
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Write summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.release.tag_name || inputs.tag }}"
+          STATUS="${{ needs.build.result }}"
+          {
+            echo "### Binary Release: $TAG"
+            echo ""
+            if [ "$STATUS" = "success" ]; then
+              echo "- Build matrix: **4/4 targets succeeded**"
+            else
+              echo "- Build matrix: **partial** (status=$STATUS)"
+            fi
+            echo "- Targets:"
+            echo "  - x86_64-unknown-linux-musl"
+            echo "  - x86_64-unknown-linux-gnu"
+            echo "  - aarch64-unknown-linux-musl"
+            echo "  - aarch64-unknown-linux-gnu"
+          } >> "$GITHUB_STEP_SUMMARY"
