@@ -1,0 +1,97 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-05-06"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    Provable contract for the `pmat query --search-mode {semantic,lexical,hybrid}`
+    flag (issue #562). Captures the three teaching invariants that made the
+    flag necessary: (a) all three modes return results against a fresh
+    fixture corpus, (b) the lexical path requires NO embedding index (no
+    `pmat embed sync` gate), (c) the default `pmat query` (no flag) is
+    behaviour-identical to the v3.16.0 baseline.
+  contract: pmat-query-search-modes
+  status: enforced
+  references:
+    - https://github.com/paiml/paiml-mcp-agent-toolkit/issues/562
+    - src/cli/handlers/query_handler/query_execution.rs
+    - src/cli/commands/commands_enum/definition.rs
+
+equations:
+  all_three_modes_return_results:
+    formula: results = pmat_query(query, search_mode in {semantic, lexical, hybrid}, corpus)
+    domain: query is non-empty String, corpus has >= 1 indexed function matching query
+    codomain: results in Vec<QueryResult>, len >= 1
+    invariants:
+    - lexical mode returns >= 1 result for canonical "literal" query against fixture corpus
+    - semantic mode returns >= 1 result for canonical "literal" query against fixture corpus
+    - hybrid mode returns >= 1 result for canonical "literal" query against fixture corpus
+    preconditions:
+    - corpus has been indexed via `pmat query --rebuild-index`
+    lean_theorem: Theorems.Search_Modes_NonEmpty
+
+  lexical_does_not_require_embeddings:
+    formula: lexical_results = pmat_query(query, lexical, corpus_without_embeddings)
+    domain: corpus_without_embeddings has NO `.pmat/embeddings.idx` file
+    codomain: lexical_results in Vec<QueryResult>, no error
+    invariants:
+    - "`--search-mode lexical` works on a fresh repo with no embeddings index"
+    - "lexical engine path uses calculate_literal_scores against name+signature+source+path"
+    - "lexical path NEVER calls into the semantic/embedding subsystem"
+    preconditions:
+    - function index exists (built by pmat query --rebuild-index)
+    lean_theorem: Theorems.Lexical_No_Embedding_Dep
+
+  hybrid_top3_subset_of_lexical_or_semantic_top10:
+    formula: "hybrid_top3 is a subset of (lexical_top10 union semantic_top10)"
+    domain: same query against same corpus
+    codomain: "every key (file_path, function_name) in hybrid_top3 appears in lex top-10 or sem top-10"
+    invariants:
+    - RRF fusion never invents results
+    - "RRF score formula = 1 / (k + rank), k = 60, rank 1-indexed"
+    - "fused score = sum(rrf scores across both lists)"
+    preconditions:
+    - both lists non-empty
+    lean_theorem: Theorems.RRF_Closure_Subset
+
+  default_unchanged:
+    formula: "pmat_query(query, no_flag) == pmat_query(query, semantic)"
+    domain: any non-empty query against any corpus
+    codomain: same result set, same ranking
+    invariants:
+    - "No --search-mode flag preserves v3.16.0 behaviour exactly (zero breaking change)"
+    - "`--search-mode semantic` is a no-op alias of the historical default"
+    preconditions:
+    - none
+    lean_theorem: Theorems.Default_Behaviour_Stable
+
+preconditions:
+  - "pmat binary >= 3.17.0 with --search-mode flag wired through"
+  - "Workspace contains at least one .rs/.py/.ts file with parseable functions"
+
+postconditions:
+  - "`pmat query <q> --search-mode lexical` exits 0 against a fresh tempdir corpus"
+  - "`pmat query <q> --search-mode semantic` exits 0 (default behaviour)"
+  - "`pmat query <q> --search-mode hybrid` exits 0 with RRF-fused top-N results"
+  - "`pmat query <q>` without --search-mode is behaviour-identical to v3.16.0 output"
+
+falsification:
+  - condition: "--search-mode lexical errors when no embeddings index exists"
+    severity: P0
+    action: reject_push
+  - condition: "--search-mode hybrid returns a result not present in either lexical or semantic top-10"
+    severity: P0
+    action: reject_push
+  - condition: "Default `pmat query` output differs from `pmat query --search-mode semantic`"
+    severity: P0
+    action: reject_push
+  - condition: "Adding --search-mode breaks the existing --regex / --literal flags"
+    severity: P0
+    action: reject_push
+  - condition: "RRF k constant drifts from 60 (matches `pmat semantic search --search-mode hybrid`)"
+    severity: P1
+    action: review_change
+
+verification:
+  local: "cargo test -p pmat --lib query_handler::tests::test_search_mode"
+  ci: ".github/workflows/ci.yml (test job)"

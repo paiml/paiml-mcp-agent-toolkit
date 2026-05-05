@@ -1,5 +1,11 @@
 
 /// Main command enum
+//
+// Note: `Query` variant is the largest (50+ fields covering enrichment flags,
+// search modes, output formats). The clippy::large_enum_variant warning is
+// allowed because the alternative (boxing fields) would degrade ergonomics
+// across the entire dispatcher.
+#[allow(clippy::large_enum_variant)]
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 pub enum Commands {
@@ -235,6 +241,13 @@ pub enum Commands {
         /// Literal string match, no semantic ranking (like rg -F)
         #[arg(long, visible_alias = "fixed-strings")]
         literal: bool,
+
+        /// Search mode: semantic (default, auto-blended), lexical (case-insensitive
+        /// substring/regex over name+signature+source, no embeddings), or hybrid
+        /// (RRF k=60 over both). Issue #562: makes lexical-vs-semantic comparison
+        /// teachable in one command without the `pmat semantic` config gate.
+        #[arg(long, value_name = "MODE", value_parser = ["semantic", "lexical", "hybrid"])]
+        search_mode: Option<String>,
 
         /// Raw file search only, skip index (like rg, searches all file types)
         #[arg(long)]

@@ -53,6 +53,7 @@ pub async fn handle_query(
     git_history: bool,
     regex: bool,
     literal: bool,
+    search_mode: Option<String>,
     raw: bool,
     case_sensitive: bool,
     ignore_case: bool,
@@ -77,6 +78,30 @@ pub async fn handle_query(
 
     let quiet = matches!(format, QueryOutputFormat::Json);
     let mut profile = QueryProfile::new();
+
+    // -- Issue #562: --search-mode {semantic,lexical,hybrid} --
+    // `lexical` and `hybrid` desugar onto the existing engine paths so the
+    // RRF blend (`hybrid`) and the no-embedding path (`lexical`) are both
+    // teachable from one CLI without the `pmat semantic` config gate.
+    let search_mode_normalized = search_mode
+        .as_deref()
+        .map(|s| s.to_lowercase());
+    let is_search_mode_hybrid =
+        matches!(search_mode_normalized.as_deref(), Some("hybrid"));
+    let is_search_mode_lexical =
+        matches!(search_mode_normalized.as_deref(), Some("lexical"));
+    // Lexical mode reuses the existing `literal` engine path (smart-case
+    // substring/regex match against name+signature+source+path, no embedding
+    // lookup, structural-signal blend preserved). It is selectable via
+    // `--search-mode lexical` without conflicting with the legacy `--literal`
+    // flag. Hybrid runs both lexical and semantic and RRF-fuses the rankings
+    // (see below, after the index is loaded); the first pass is lexical so we
+    // bias `literal = true` here for the standard pipeline.
+    let (regex, literal) = if is_search_mode_lexical || is_search_mode_hybrid {
+        (false, true)
+    } else {
+        (regex, literal)
+    };
 
     // -- Raw search mode: skip index entirely --
     if raw {
@@ -206,9 +231,28 @@ pub async fn handle_query(
         exclude,
         exclude_file,
     );
-    let mut results = index
-        .query(&query, options)
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let mut results = if is_search_mode_hybrid {
+        // Hybrid mode (issue #562): run both lexical and semantic, RRF-fuse
+        // the two ranked lists at k=60 (matches `pmat semantic search
+        // --search-mode hybrid`). Lexical pass uses the options built above
+        // with literal=true; semantic pass uses a clone with the search mode
+        // forced to Semantic.
+        let lexical_options = options.clone();
+        let mut semantic_options = options;
+        semantic_options.search_mode =
+            crate::services::agent_context::SearchMode::Semantic;
+        let lexical_results = index
+            .query(&query, lexical_options)
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        let semantic_results = index
+            .query(&query, semantic_options)
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        rrf_fuse(lexical_results, semantic_results, limit)
+    } else {
+        index
+            .query(&query, options)
+            .map_err(|e| anyhow::anyhow!("{}", e))?
+    };
     profile.phase("query");
 
     apply_result_filters(&mut results, exclude_tests, &definition_type);
@@ -285,4 +329,57 @@ pub async fn handle_query(
 
     profile.emit(quiet);
     Ok(())
+}
+
+/// RRF (Reciprocal Rank Fusion) of two ranked QueryResult lists at k=60.
+///
+/// Issue #562: implements `--search-mode hybrid`. Each result is identified
+/// by `(file_path, function_name)`; ranks are 1-indexed; the fused score is
+/// the sum of `1 / (k + rank)` across the two lists. Returns the top `limit`
+/// fused results, with `relevance_score` overwritten to the fused score so
+/// downstream sorts surface the merged ranking. The original
+/// `QueryResult` payloads (source, signature, quality annotations, etc.)
+/// are preserved from whichever list saw the function first — typically the
+/// lexical pass since both lists hit the same index.
+fn rrf_fuse(
+    lexical: Vec<crate::services::agent_context::QueryResult>,
+    semantic: Vec<crate::services::agent_context::QueryResult>,
+    limit: usize,
+) -> Vec<crate::services::agent_context::QueryResult> {
+    use std::collections::HashMap;
+    const K: f32 = 60.0;
+
+    // Key on (file_path, function_name) — same pair the rest of the
+    // pipeline uses to dedupe.
+    let mut fused: HashMap<(String, String), (f32, crate::services::agent_context::QueryResult)> =
+        HashMap::new();
+
+    for (rank, result) in lexical.into_iter().enumerate() {
+        let key = (result.file_path.clone(), result.function_name.clone());
+        let rrf = 1.0_f32 / (K + (rank as f32 + 1.0));
+        fused
+            .entry(key)
+            .and_modify(|(score, _)| *score += rrf)
+            .or_insert((rrf, result));
+    }
+    for (rank, result) in semantic.into_iter().enumerate() {
+        let key = (result.file_path.clone(), result.function_name.clone());
+        let rrf = 1.0_f32 / (K + (rank as f32 + 1.0));
+        fused
+            .entry(key)
+            .and_modify(|(score, _)| *score += rrf)
+            .or_insert((rrf, result));
+    }
+
+    let mut merged: Vec<(f32, crate::services::agent_context::QueryResult)> =
+        fused.into_values().collect();
+    merged.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    merged
+        .into_iter()
+        .take(limit)
+        .map(|(score, mut r)| {
+            r.relevance_score = score;
+            r
+        })
+        .collect()
 }
