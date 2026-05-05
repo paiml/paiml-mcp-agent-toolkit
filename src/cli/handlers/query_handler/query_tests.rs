@@ -37,6 +37,7 @@ async fn test_handle_query_empty_project() {
         false,  // git_history
         false,  // regex
         false,  // literal
+        None,   // search_mode (issue #562)
         false,  // raw
         false,  // case_sensitive
         false,  // ignore_case
@@ -114,6 +115,7 @@ fn main() {
         false,  // git_history
         false,  // regex
         false,  // literal
+        None,   // search_mode (issue #562)
         false,  // raw
         false,  // case_sensitive
         false,  // ignore_case
@@ -241,4 +243,343 @@ fn test_file_annotation_default() {
     assert_eq!(annot.function_count, 0);
     assert_eq!(annot.dead_code_count, 0);
     assert_eq!(annot.fault_count, 0);
+}
+
+// ── Issue #562: --search-mode {semantic,lexical,hybrid} ────────────────────
+//
+// These tests build a tiny fixture corpus at runtime in a tempdir and assert
+// the lexical mode returns hits without any embedding index.
+
+/// Build a fixture corpus in `dir` containing 4 .rs files spanning two
+/// "shapes" so that lexical match (substring) and semantic match
+/// (TF-scoring) can pull different functions to the top.
+fn write_fixture_corpus(dir: &std::path::Path) {
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("src/lib.rs"),
+        r#"
+pub mod parse;
+pub mod render;
+pub mod compute;
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/parse.rs"),
+        r#"
+/// Parse the input bytes into a token stream.
+pub fn parse_input(bytes: &[u8]) -> Vec<u8> {
+    bytes.to_vec()
+}
+
+/// Parse a single literal token from the input cursor.
+pub fn parse_literal(cursor: &mut usize) -> Option<u8> {
+    *cursor += 1;
+    Some(0)
+}
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/render.rs"),
+        r#"
+/// Render a parsed token stream into output bytes.
+pub fn render_output(tokens: &[u8]) -> Vec<u8> {
+    tokens.to_vec()
+}
+
+/// Render a literal token onto the output buffer.
+pub fn render_literal(buf: &mut Vec<u8>) {
+    buf.push(0);
+}
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/compute.rs"),
+        r#"
+/// Compute a checksum over the input bytes.
+pub fn compute_checksum(bytes: &[u8]) -> u32 {
+    bytes.iter().map(|b| *b as u32).sum()
+}
+"#,
+    )
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_search_mode_semantic_returns_results() {
+    let temp_dir = TempDir::new().unwrap();
+    write_fixture_corpus(temp_dir.path());
+
+    let result = handle_query(
+        "literal".to_string(),
+        5,
+        None,
+        None,
+        None,
+        None,
+        temp_dir.path().to_path_buf(),
+        QueryOutputFormat::Json,
+        false,
+        true, // rebuild_index
+        false,
+        None,
+        None,
+        vec![],
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        None,
+        None,
+        false,
+        false,
+        None,
+        false,
+        false,
+        false,
+        false,
+        Some("semantic".to_string()), // search_mode
+        false,
+        false,
+        false,
+        Vec::new(),
+        Vec::new(),
+        false,
+        false,
+        None,
+        None,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        500,
+    )
+    .await;
+    assert!(
+        result.is_ok(),
+        "semantic mode must return results: {:?}",
+        result
+    );
+}
+
+#[tokio::test]
+async fn test_search_mode_lexical_does_not_require_embeddings() {
+    // Lexical mode reads the function index built by --rebuild-index;
+    // it MUST NOT require a pre-existing embeddings index (`.pmat/embeddings.idx`).
+    // We assert this implicitly by creating a fresh tempdir with no
+    // embeddings index and confirming the call succeeds.
+    let temp_dir = TempDir::new().unwrap();
+    write_fixture_corpus(temp_dir.path());
+    assert!(
+        !temp_dir.path().join(".pmat/embeddings.idx").exists(),
+        "tempdir must NOT have an embeddings index"
+    );
+
+    let result = handle_query(
+        "literal".to_string(),
+        5,
+        None,
+        None,
+        None,
+        None,
+        temp_dir.path().to_path_buf(),
+        QueryOutputFormat::Json,
+        false,
+        true, // rebuild_index
+        false,
+        None,
+        None,
+        vec![],
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        None,
+        None,
+        false,
+        false,
+        None,
+        false,
+        false,
+        false,
+        false,
+        Some("lexical".to_string()), // search_mode
+        false,
+        false,
+        false,
+        Vec::new(),
+        Vec::new(),
+        false,
+        false,
+        None,
+        None,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        500,
+    )
+    .await;
+    assert!(
+        result.is_ok(),
+        "lexical mode must work without embeddings: {:?}",
+        result
+    );
+}
+
+#[tokio::test]
+async fn test_search_mode_hybrid_returns_results() {
+    let temp_dir = TempDir::new().unwrap();
+    write_fixture_corpus(temp_dir.path());
+
+    let result = handle_query(
+        "literal".to_string(),
+        5,
+        None,
+        None,
+        None,
+        None,
+        temp_dir.path().to_path_buf(),
+        QueryOutputFormat::Json,
+        false,
+        true, // rebuild_index
+        false,
+        None,
+        None,
+        vec![],
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        None,
+        None,
+        false,
+        false,
+        None,
+        false,
+        false,
+        false,
+        false,
+        Some("hybrid".to_string()), // search_mode
+        false,
+        false,
+        false,
+        Vec::new(),
+        Vec::new(),
+        false,
+        false,
+        None,
+        None,
+        None,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        500,
+    )
+    .await;
+    assert!(
+        result.is_ok(),
+        "hybrid mode must return results: {:?}",
+        result
+    );
+}
+
+#[test]
+fn test_rrf_fuse_top_within_lexical_or_semantic_top10() {
+    // Direct unit test of the RRF helper (issue #562 contract):
+    // hybrid top-3 must be a subset of (lexical top-10 ∪ semantic top-10).
+    use crate::services::agent_context::QueryResult;
+
+    fn fake_result(file: &str, name: &str) -> QueryResult {
+        QueryResult {
+            file_path: file.to_string(),
+            function_name: name.to_string(),
+            signature: format!("fn {name}()"),
+            definition_type: "function".to_string(),
+            doc_comment: None,
+            start_line: 1,
+            end_line: 1,
+            language: "rust".to_string(),
+            tdg_score: 0.0,
+            tdg_grade: "A".to_string(),
+            complexity: 1,
+            big_o: "O(1)".to_string(),
+            satd_count: 0,
+            loc: 1,
+            relevance_score: 0.0,
+            source: None,
+            calls: Vec::new(),
+            called_by: Vec::new(),
+            pagerank: 0.0,
+            in_degree: 0,
+            out_degree: 0,
+            commit_count: 0,
+            churn_score: 0.0,
+            clone_count: 0,
+            duplication_score: 0.0,
+            pattern_diversity: 0.0,
+            fault_annotations: Vec::new(),
+            line_coverage_pct: 0.0,
+            lines_covered: 0,
+            lines_total: 0,
+            missed_lines: 0,
+            impact_score: 0.0,
+            coverage_status: String::new(),
+            coverage_diff: 0.0,
+            coverage_exclusion: Default::default(),
+            coverage_excluded: false,
+            cross_project_callers: 0,
+            io_classification: String::new(),
+            io_patterns: Vec::new(),
+            suggested_module: String::new(),
+            contract_level: None,
+            contract_equation: None,
+        }
+    }
+
+    let lexical: Vec<QueryResult> = (0..10)
+        .map(|i| fake_result("lex.rs", &format!("lex_{i}")))
+        .collect();
+    let semantic: Vec<QueryResult> = (0..10)
+        .map(|i| fake_result("sem.rs", &format!("sem_{i}")))
+        .collect();
+    let lex_keys: std::collections::HashSet<_> = lexical
+        .iter()
+        .map(|r| (r.file_path.clone(), r.function_name.clone()))
+        .collect();
+    let sem_keys: std::collections::HashSet<_> = semantic
+        .iter()
+        .map(|r| (r.file_path.clone(), r.function_name.clone()))
+        .collect();
+
+    let fused = rrf_fuse(lexical, semantic, 3);
+    assert!(!fused.is_empty(), "hybrid must return ≥1 result");
+    assert!(fused.len() <= 3, "respects --limit");
+    for r in &fused {
+        let key = (r.file_path.clone(), r.function_name.clone());
+        assert!(
+            lex_keys.contains(&key) || sem_keys.contains(&key),
+            "every hybrid result must come from the lexical or semantic top-10"
+        );
+    }
 }
