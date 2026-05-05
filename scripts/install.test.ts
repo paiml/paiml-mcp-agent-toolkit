@@ -13,6 +13,7 @@ import {
 // For now, we'll duplicate the detectPlatform function for testing
 
 // Detect platform (returns full Rust target triple)
+// Default to musl on Linux for glibc-independence (issue #561).
 function detectPlatform(): string {
   const os = Deno.build.os;
   const arch = Deno.build.arch;
@@ -20,9 +21,9 @@ function detectPlatform(): string {
   if (os === "linux") {
     switch (arch) {
       case "x86_64":
-        return "x86_64-unknown-linux-gnu";
+        return "x86_64-unknown-linux-musl";
       case "aarch64":
-        return "aarch64-unknown-linux-gnu";
+        return "aarch64-unknown-linux-musl";
       default:
         throw new Error(`Unsupported Linux architecture: ${arch}`);
     }
@@ -74,10 +75,12 @@ describe("detectPlatform", () => {
   });
 
   it("should return known Rust target triples", () => {
-    // Test that the function returns valid Rust target triples
+    // Test that the function returns valid Rust target triples.
+    // Linux defaults to musl (issue #561) for glibc-independence; the gnu
+    // variant is still published as an asset but not chosen by default.
     const validTargets = [
-      "x86_64-unknown-linux-gnu",
-      "aarch64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl",
+      "aarch64-unknown-linux-musl",
       "x86_64-apple-darwin",
       "aarch64-apple-darwin",
       "x86_64-pc-windows-msvc",
@@ -94,65 +97,82 @@ describe("detectPlatform", () => {
 
 describe("GitHub Release URL Construction", () => {
   it("should construct correct download URLs", () => {
+    // Issue #561: assets are published as `pmat-v<VERSION>-<PLATFORM>.tar.gz`
+    // (binary was renamed from paiml-mcp-agent-toolkit to pmat at v3.0).
     const REPO = "paiml/paiml-mcp-agent-toolkit";
-    const BINARY_NAME = "paiml-mcp-agent-toolkit";
-    const version = "0.1.15";
+    const BINARY_NAME = "pmat";
+    const version = "3.16.0";
     const platforms = [
       "x86_64-unknown-linux-gnu",
       "aarch64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl",
+      "aarch64-unknown-linux-musl",
       "x86_64-apple-darwin",
       "aarch64-apple-darwin",
       "x86_64-pc-windows-msvc",
     ];
 
     for (const platform of platforms) {
+      const assetBasename = `${BINARY_NAME}-v${version}-${platform}`;
       const downloadUrl =
-        `https://github.com/${REPO}/releases/download/v${version}/${BINARY_NAME}-${platform}.tar.gz`;
+        `https://github.com/${REPO}/releases/download/v${version}/${assetBasename}.tar.gz`;
 
       // URL should be properly formatted
       assertEquals(downloadUrl.startsWith("https://github.com/"), true);
       assertEquals(downloadUrl.includes("/releases/download/"), true);
       assertEquals(downloadUrl.endsWith(".tar.gz"), true);
       assertEquals(downloadUrl.includes(platform), true);
+      // Must use the new pmat-v<VERSION>- prefix (NOT the legacy paiml-...)
+      assertEquals(
+        downloadUrl.includes(`pmat-v${version}-`),
+        true,
+        `URL must contain 'pmat-v${version}-' prefix, got ${downloadUrl}`,
+      );
+      assertEquals(
+        downloadUrl.includes("paiml-mcp-agent-toolkit-"),
+        false,
+        `URL must NOT contain legacy 'paiml-mcp-agent-toolkit-' prefix`,
+      );
 
       // Check exact format
       const expectedUrl =
-        `https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.1.15/paiml-mcp-agent-toolkit-${platform}.tar.gz`;
+        `https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v3.16.0/pmat-v3.16.0-${platform}.tar.gz`;
       assertEquals(downloadUrl, expectedUrl);
     }
   });
 
   it("should handle version with and without 'v' prefix", () => {
     const REPO = "paiml/paiml-mcp-agent-toolkit";
-    const BINARY_NAME = "paiml-mcp-agent-toolkit";
-    const platform = "x86_64-unknown-linux-gnu";
+    const BINARY_NAME = "pmat";
+    const platform = "x86_64-unknown-linux-musl";
 
     // Test with 'v' prefix
-    let version = "v0.1.15";
+    let version = "v3.16.0";
     version = version.replace(/^v/, "");
-    assertEquals(version, "0.1.15");
+    assertEquals(version, "3.16.0");
 
     // Test without 'v' prefix
-    version = "0.1.15";
+    version = "3.16.0";
     version = version.replace(/^v/, "");
-    assertEquals(version, "0.1.15");
+    assertEquals(version, "3.16.0");
 
     // Construct URL
+    const assetBasename = `${BINARY_NAME}-v${version}-${platform}`;
     const downloadUrl =
-      `https://github.com/${REPO}/releases/download/v${version}/${BINARY_NAME}-${platform}.tar.gz`;
+      `https://github.com/${REPO}/releases/download/v${version}/${assetBasename}.tar.gz`;
     assertEquals(
       downloadUrl,
-      "https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v0.1.15/paiml-mcp-agent-toolkit-x86_64-unknown-linux-gnu.tar.gz",
+      "https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v3.16.0/pmat-v3.16.0-x86_64-unknown-linux-musl.tar.gz",
     );
   });
 });
 
 describe("Platform compatibility tests", () => {
   it("should support all major platforms", () => {
-    // Simulate different platforms
+    // Simulate different platforms (Linux defaults to musl per issue #561)
     const testCases = [
-      { os: "linux", arch: "x86_64", expected: "x86_64-unknown-linux-gnu" },
-      { os: "linux", arch: "aarch64", expected: "aarch64-unknown-linux-gnu" },
+      { os: "linux", arch: "x86_64", expected: "x86_64-unknown-linux-musl" },
+      { os: "linux", arch: "aarch64", expected: "aarch64-unknown-linux-musl" },
       { os: "darwin", arch: "x86_64", expected: "x86_64-apple-darwin" },
       { os: "darwin", arch: "aarch64", expected: "aarch64-apple-darwin" },
       { os: "windows", arch: "x86_64", expected: "x86_64-pc-windows-msvc" },
@@ -177,9 +197,9 @@ describe("Platform compatibility tests", () => {
       if (os === "linux") {
         switch (arch) {
           case "x86_64":
-            return "x86_64-unknown-linux-gnu";
+            return "x86_64-unknown-linux-musl";
           case "aarch64":
-            return "aarch64-unknown-linux-gnu";
+            return "aarch64-unknown-linux-musl";
           default:
             throw new Error(`Unsupported Linux architecture: ${arch}`);
         }

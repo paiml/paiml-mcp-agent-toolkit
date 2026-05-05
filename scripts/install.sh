@@ -3,19 +3,27 @@
 #
 # This is a standalone POSIX-compliant shell installer that works on Linux, macOS, and Windows (via WSL).
 # A TypeScript/Deno version is also available at scripts/install.ts for those who prefer it.
-# 
+#
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
-#   
+#
 # Or to install a specific version:
 #   curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh -s v0.1.0
+#
+# Notes on Linux platform default:
+#   The Linux build defaults to the *-unknown-linux-musl* target. The musl
+#   variant produces a static-pie binary that runs on every glibc version,
+#   while the gnu variant requires GLIBC >= 2.39 (which Ubuntu 22.04 / Debian
+#   bullseye / common CI base images do not ship). Choosing musl by default
+#   makes the one-liner install path work on every documented base image.
 
 set -euf
 
 # Configuration
 REPO="paiml/paiml-mcp-agent-toolkit"
 BINARY_NAME="pmat"
-INSTALL_DIR="${HOME}/.local/bin"
+# Honour pre-set INSTALL_DIR env var (documented in --help) — fall back to ~/.local/bin
+INSTALL_DIR="${INSTALL_DIR:-${HOME}/.local/bin}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -55,9 +63,10 @@ detect_platform() {
     
     case "$os" in
         Linux*)
+            # Default to musl (static-pie, glibc-independent — works on Ubuntu 22.04+)
             case "$arch" in
-                x86_64)  echo "x86_64-unknown-linux-gnu";;
-                aarch64) echo "aarch64-unknown-linux-gnu";;
+                x86_64)  echo "x86_64-unknown-linux-musl";;
+                aarch64) echo "aarch64-unknown-linux-musl";;
                 *)       error "Unsupported Linux architecture: $arch";;
             esac
             ;;
@@ -97,33 +106,37 @@ install() {
     
     info "Installing ${BINARY_NAME} v${VERSION} for ${PLATFORM}..."
     
-    # Construct download URL
-    # Note: Release artifacts use full repo name, not just binary name
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/paiml-mcp-agent-toolkit-${PLATFORM}.tar.gz"
-    
+    # Construct download URL.
+    # Release assets are published as `pmat-v<VERSION>-<PLATFORM>.tar.gz`
+    # (the binary was renamed from paiml-mcp-agent-toolkit to pmat at v3.0).
+    ASSET_BASENAME="pmat-v${VERSION}-${PLATFORM}"
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_BASENAME}.tar.gz"
+
     # Create temp directory
     TMP_DIR=$(mktemp -d)
     # Enhanced cleanup trap that also removes any stray tar.gz files in CWD
     trap 'rm -rf "$TMP_DIR"; cleanup_artifacts' EXIT
-    
+
     # Download binary
     info "Downloading from ${DOWNLOAD_URL}..."
     if ! curl -fsSL "$DOWNLOAD_URL" -o "$TMP_DIR/archive.tar.gz"; then
         error "Failed to download binary. Please check if version ${VERSION} exists for ${PLATFORM}."
     fi
-    
-    # Extract binary
-    tar -xzf "$TMP_DIR/archive.tar.gz" -C "$TMP_DIR"
-    
+
+    # Extract binary. The tarball contains a top-level directory
+    # `pmat-v<VERSION>-<PLATFORM>/` holding the binary; --strip-components=1
+    # flattens it so the binary lands at $TMP_DIR/pmat directly.
+    tar -xzf "$TMP_DIR/archive.tar.gz" -C "$TMP_DIR" --strip-components=1
+
     # Create install directory
     mkdir -p "$INSTALL_DIR"
-    
+
     # Install binary
     if [ -f "$TMP_DIR/${BINARY_NAME}" ]; then
         mv "$TMP_DIR/${BINARY_NAME}" "$INSTALL_DIR/"
         chmod +x "$INSTALL_DIR/${BINARY_NAME}"
     else
-        error "Binary not found in archive"
+        error "Binary not found in archive (expected $TMP_DIR/${BINARY_NAME} after stripping ${ASSET_BASENAME}/ prefix)"
     fi
     
     info "Successfully installed ${BINARY_NAME} to ${INSTALL_DIR}/${BINARY_NAME}"

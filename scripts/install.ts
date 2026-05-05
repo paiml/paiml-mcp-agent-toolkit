@@ -15,7 +15,9 @@
 // Configuration
 const REPO = "paiml/paiml-mcp-agent-toolkit";
 const BINARY_NAME = "pmat";
-const INSTALL_DIR = `${Deno.env.get("HOME")}/.local/bin`;
+// Honour pre-set INSTALL_DIR env var, fall back to ~/.local/bin
+const INSTALL_DIR = Deno.env.get("INSTALL_DIR") ??
+  `${Deno.env.get("HOME")}/.local/bin`;
 
 // Colors for output
 const RED = "\x1b[31m";
@@ -43,11 +45,12 @@ function detectPlatform(): string {
   const arch = Deno.build.arch;
 
   if (os === "linux") {
+    // Default to musl (static-pie, glibc-independent — works on Ubuntu 22.04+)
     switch (arch) {
       case "x86_64":
-        return "x86_64-unknown-linux-gnu";
+        return "x86_64-unknown-linux-musl";
       case "aarch64":
-        return "aarch64-unknown-linux-gnu";
+        return "aarch64-unknown-linux-musl";
       default:
         error(`Unsupported Linux architecture: ${arch}`);
     }
@@ -96,13 +99,15 @@ async function downloadFile(url: string, destination: string): Promise<void> {
   await Deno.writeFile(destination, new Uint8Array(data));
 }
 
-// Extract tar.gz file
+// Extract tar.gz file. The release tarball wraps the binary in a top-level
+// `pmat-v<VERSION>-<PLATFORM>/` directory; --strip-components=1 flattens it
+// so the binary lands at <destDir>/pmat directly.
 async function extractTarGz(
   archivePath: string,
   destDir: string,
 ): Promise<void> {
   const cmd = new Deno.Command("tar", {
-    args: ["-xzf", archivePath, "-C", destDir],
+    args: ["-xzf", archivePath, "-C", destDir, "--strip-components=1"],
   });
   const { code, stderr } = await cmd.output();
 
@@ -127,9 +132,12 @@ async function install(version?: string): Promise<void> {
 
   info(`Installing ${BINARY_NAME} v${version} for ${platform}...`);
 
-  // Construct download URL
+  // Construct download URL.
+  // Release assets are published as `pmat-v<VERSION>-<PLATFORM>.tar.gz`
+  // (the binary was renamed from paiml-mcp-agent-toolkit to pmat at v3.0).
+  const assetBasename = `${BINARY_NAME}-v${version}-${platform}`;
   const downloadUrl =
-    `https://github.com/${REPO}/releases/download/v${version}/${BINARY_NAME}-${platform}.tar.gz`;
+    `https://github.com/${REPO}/releases/download/v${version}/${assetBasename}.tar.gz`;
 
   // Create temp directory
   const tmpDir = await Deno.makeTempDir();

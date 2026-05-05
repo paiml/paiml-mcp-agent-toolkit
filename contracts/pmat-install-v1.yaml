@@ -1,0 +1,82 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-05-05"
+  author: PAIML Engineering
+  registry: true
+  description: >
+    Provable contract for scripts/install.sh — the documented one-liner
+    installer (curl ... | sh). Captures the URL pattern, tarball layout,
+    and Linux platform default that must hold for `curl ... | sh` to
+    succeed on every supported base image.
+  contract: pmat-install
+  status: enforced
+  references:
+    - scripts/install.sh
+    - https://github.com/paiml/paiml-mcp-agent-toolkit/issues/561
+
+equations:
+  url_pattern_matches_release_assets:
+    formula: download_url == "https://github.com/${REPO}/releases/download/v${VERSION}/pmat-v${VERSION}-${PLATFORM}.tar.gz"
+    domain: VERSION in semver, PLATFORM in supported_targets
+    codomain: download_url returns HTTP 302 (redirect to actual asset)
+    invariants:
+    - download_url contains "pmat-v${VERSION}-${PLATFORM}.tar.gz"
+    - download_url does NOT contain the legacy "paiml-mcp-agent-toolkit-" prefix
+    preconditions:
+    - Release v${VERSION} exists with the matching asset
+    lean_theorem: Theorems.Install_URL_Matches_Asset
+
+  tarball_extraction_handles_subdirectory:
+    formula: tar -xzf archive.tar.gz -C $TMP_DIR --strip-components=1
+    domain: archive.tar.gz contains "pmat-v${VERSION}-${PLATFORM}/pmat"
+    codomain: $TMP_DIR/pmat exists and is executable
+    invariants:
+    - Binary lands at $INSTALL_DIR/pmat (NOT nested under a subdirectory)
+    - $TMP_DIR/pmat is regular file after extraction
+    preconditions:
+    - download succeeded
+    - tar binary available
+    lean_theorem: Theorems.Install_Tarball_Flat
+
+  default_linux_platform_is_musl_for_glibc_independence:
+    formula: PLATFORM == "${arch}-unknown-linux-musl" when uname -s == "Linux"
+    domain: arch in {x86_64, aarch64}, os == Linux
+    codomain: PLATFORM ends with "-musl"
+    invariants:
+    - musl variant is static-pie (file output contains "static-pie linked")
+    - musl variant runs on Ubuntu 22.04 (GLIBC 2.35) without GLIBC_2.39 errors
+    preconditions:
+    - musl-target asset exists in the release
+    lean_theorem: Theorems.Install_Musl_Default
+
+preconditions:
+  - "GitHub release v${VERSION} exists"
+  - "Release contains pmat-v${VERSION}-x86_64-unknown-linux-musl.tar.gz asset"
+  - "Release contains pmat-v${VERSION}-aarch64-unknown-linux-musl.tar.gz asset"
+  - "curl, tar, sh available on the target machine"
+
+postconditions:
+  - "$INSTALL_DIR/pmat is an executable producing 'pmat ${VERSION}' on --version"
+  - "Binary is static-pie (no GLIBC dependency)"
+  - "INSTALL_DIR env var is honoured if set, falls back to ~/.local/bin"
+
+falsification:
+  - condition: "DOWNLOAD_URL still references 'paiml-mcp-agent-toolkit-' prefix"
+    severity: P0
+    action: reject_push
+  - condition: "Linux platform detection returns a -gnu target instead of -musl"
+    severity: P0
+    action: reject_push
+  - condition: "tar extraction fails to flatten subdirectory (binary not at $TMP_DIR/pmat)"
+    severity: P0
+    action: reject_push
+  - condition: "INSTALL_DIR env var is overwritten by unconditional assignment"
+    severity: P1
+    action: reject_push
+  - condition: "Smoke test `INSTALL_DIR=/tmp/x bash install.sh v${VERSION}` exits non-zero"
+    severity: P0
+    action: reject_push
+
+verification:
+  local: "INSTALL_DIR=/tmp/pmat-smoke bash scripts/install.sh v${VERSION} && /tmp/pmat-smoke/pmat --version"
+  ci: ".github/workflows/binary-release.yml"
