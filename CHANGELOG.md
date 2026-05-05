@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.17.0] - 2026-05-05
+
+### Fixed
+- **`scripts/install.sh` URL pattern, tarball layout, and Linux platform default** (#561): three sub-bugs in the documented one-liner installer. (1) URL was constructed as `paiml-mcp-agent-toolkit-${PLATFORM}.tar.gz` but actual release assets are named `pmat-v${VERSION}-${PLATFORM}.tar.gz` — every install since the v3.0 rename returned 404. (2) The release tarball extracts to a subdirectory (`pmat-v${V}-${P}/pmat`), not flat — the script's binary-locator looked at the wrong path. (3) Linux platform detection defaulted to the `gnu` variant, which requires GLIBC 2.39 and fails on Ubuntu 22.04 (GLIBC 2.35); now defaults to the static-pie `musl` variant for portability across glibc versions. Discovered while building a Coursera RAG-from-Zero lab. (#564)
+
+### Added
+- **`pmat query --search-mode {semantic,lexical,hybrid}`** (#562): explicit search-mode flag on `pmat query` for lexical-vs-semantic comparison without the config gate that `pmat semantic search` requires. `semantic` (default) preserves current behavior — auto-blended relevance + structural signals. `lexical` does case-insensitive smart-case match against function name + signature + source span, ranked by hit count plus existing structural-signal blend (works without an embeddings index). `hybrid` runs both pipelines and combines via reciprocal-rank fusion at `k=60`. Enables side-by-side teaching of "search by intent vs. search by name" without flipping `semantic.enabled = true`. (#565)
+- **Provable contracts** for both fixes: `contracts/pmat-install-v1.yaml` and `contracts/pmat-query-search-modes-v1.yaml`. `pv lint contracts/` passes.
+
 ## [3.16.0] - 2026-04-26
 
 ### Fixed
