@@ -7,6 +7,7 @@
 
 use crate::cli::RepoScoreOutputFormat;
 use crate::services::infra_score::aggregator::InfraScoreAggregator;
+use crate::services::infra_score::models::{InfraCheck, InfraScore, InfraSeverity};
 use anyhow::Result;
 use std::path::Path;
 
@@ -45,27 +46,59 @@ pub async fn handle_infra_score(
     Ok(())
 }
 
-fn format_text_output(
-    result: &crate::services::infra_score::models::InfraScore,
-    verbose: bool,
-    failures_only: bool,
-) -> String {
-    use std::fmt::Write;
-    let mut out = String::new();
-
-    let _ = writeln!(out, "\x1b[2m{}\x1b[0m", "━".repeat(48));
-    let _ = writeln!(out, "\x1b[1m\x1b[4mInfra Score v1.0\x1b[0m");
-    let _ = writeln!(out, "\x1b[2m{}\x1b[0m", "━".repeat(48));
-
-    // Summary
-    let _ = writeln!(out, "\n\x1b[1mSummary\x1b[0m");
-    let score_color = if result.total_score >= 90.0 {
+/// Score color: green ≥90, yellow ≥80, red otherwise.
+fn infra_score_color(score: f64) -> &'static str {
+    if score >= 90.0 {
         "\x1b[32m"
-    } else if result.total_score >= 80.0 {
+    } else if score >= 80.0 {
         "\x1b[33m"
     } else {
         "\x1b[31m"
-    };
+    }
+}
+
+/// Category percentage color: green ≥90, yellow ≥70, red otherwise.
+fn infra_pct_color(pct: f64) -> &'static str {
+    if pct >= 90.0 {
+        "\x1b[32m"
+    } else if pct >= 70.0 {
+        "\x1b[33m"
+    } else {
+        "\x1b[31m"
+    }
+}
+
+/// Category status icon: ✓ ≥90, ⚠ ≥70, ✗ otherwise.
+fn infra_pct_icon(pct: f64) -> &'static str {
+    if pct >= 90.0 {
+        "\x1b[32m✓\x1b[0m"
+    } else if pct >= 70.0 {
+        "\x1b[33m⚠\x1b[0m"
+    } else {
+        "\x1b[31m✗\x1b[0m"
+    }
+}
+
+/// Write a single check line, optionally followed by its evidence.
+fn write_infra_check(out: &mut String, check: &InfraCheck, verbose: bool, show_evidence: bool) {
+    use std::fmt::Write;
+    let check_icon = if check.passed { "  ✓" } else { "  ✗" };
+    let _ = writeln!(
+        out,
+        "    {} {} ({}): {:.0}/{:.0}",
+        check_icon, check.id, check.name, check.score, check.max_score
+    );
+    if show_evidence && (!check.passed || verbose) {
+        for ev in &check.evidence {
+            let _ = writeln!(out, "      {}", ev);
+        }
+    }
+}
+
+fn write_infra_summary(out: &mut String, result: &InfraScore) {
+    use std::fmt::Write;
+    let _ = writeln!(out, "\n\x1b[1mSummary\x1b[0m");
+    let score_color = infra_score_color(result.total_score);
     let _ = writeln!(
         out,
         "  Score: {}{:.1}\x1b[0m/\x1b[2m100.0\x1b[0m",
@@ -83,7 +116,6 @@ fn format_text_output(
         let _ = writeln!(out, "  Status: \x1b[32mPASS\x1b[0m");
     }
 
-    // Bonus
     let bonus = result.categories.provable_contracts.score;
     if bonus > 0.0 {
         let _ = writeln!(
@@ -98,8 +130,15 @@ fn format_text_output(
             result.categories.total_with_bonus()
         );
     }
+}
 
-    // Categories
+fn write_infra_categories(
+    out: &mut String,
+    result: &InfraScore,
+    verbose: bool,
+    failures_only: bool,
+) {
+    use std::fmt::Write;
     let _ = writeln!(out, "\n\x1b[1mCategories\x1b[0m");
     let categories = [
         (
@@ -116,24 +155,17 @@ fn format_text_output(
     ];
 
     for (name, cat) in &categories {
-        let icon = if cat.percentage >= 90.0 {
-            "\x1b[32m✓\x1b[0m"
-        } else if cat.percentage >= 70.0 {
-            "\x1b[33m⚠\x1b[0m"
-        } else {
-            "\x1b[31m✗\x1b[0m"
-        };
-        let pct_color = if cat.percentage >= 90.0 {
-            "\x1b[32m"
-        } else if cat.percentage >= 70.0 {
-            "\x1b[33m"
-        } else {
-            "\x1b[31m"
-        };
+        let pct_color = infra_pct_color(cat.percentage);
         let _ = writeln!(
             out,
             "  {} {}: {}{:.1}\x1b[0m/\x1b[2m{:.1}\x1b[0m ({}{:.1}%\x1b[0m)",
-            icon, name, pct_color, cat.score, cat.max_score, pct_color, cat.percentage
+            infra_pct_icon(cat.percentage),
+            name,
+            pct_color,
+            cat.score,
+            cat.max_score,
+            pct_color,
+            cat.percentage
         );
 
         if verbose && !cat.checks.is_empty() {
@@ -141,53 +173,48 @@ fn format_text_output(
                 if failures_only && check.passed {
                     continue;
                 }
-                let check_icon = if check.passed { "  ✓" } else { "  ✗" };
-                let _ = writeln!(
-                    out,
-                    "    {} {} ({}): {:.0}/{:.0}",
-                    check_icon, check.id, check.name, check.score, check.max_score
-                );
-                if !check.passed || verbose {
-                    for ev in &check.evidence {
-                        let _ = writeln!(out, "      {}", ev);
-                    }
-                }
+                write_infra_check(out, check, verbose, true);
             }
         }
     }
+}
 
-    // Provable Contracts bonus
+fn write_infra_provable_contracts(
+    out: &mut String,
+    result: &InfraScore,
+    verbose: bool,
+    failures_only: bool,
+) {
+    use std::fmt::Write;
     let pv = &result.categories.provable_contracts;
-    if pv.score > 0.0 || verbose {
-        let icon = if pv.percentage >= 80.0 {
-            "\x1b[36m★\x1b[0m"
-        } else if pv.score > 0.0 {
-            "\x1b[36m◆\x1b[0m"
-        } else {
-            "\x1b[2m-\x1b[0m"
-        };
-        let _ = writeln!(
-            out,
-            "  {} Provable Contracts (bonus): \x1b[36m{:.1}\x1b[0m/\x1b[2m{:.1}\x1b[0m ({:.1}%)",
-            icon, pv.score, pv.max_score, pv.percentage
-        );
+    if !(pv.score > 0.0 || verbose) {
+        return;
+    }
+    let icon = if pv.percentage >= 80.0 {
+        "\x1b[36m★\x1b[0m"
+    } else if pv.score > 0.0 {
+        "\x1b[36m◆\x1b[0m"
+    } else {
+        "\x1b[2m-\x1b[0m"
+    };
+    let _ = writeln!(
+        out,
+        "  {} Provable Contracts (bonus): \x1b[36m{:.1}\x1b[0m/\x1b[2m{:.1}\x1b[0m ({:.1}%)",
+        icon, pv.score, pv.max_score, pv.percentage
+    );
 
-        if verbose {
-            for check in &pv.checks {
-                if failures_only && check.passed {
-                    continue;
-                }
-                let check_icon = if check.passed { "  ✓" } else { "  ✗" };
-                let _ = writeln!(
-                    out,
-                    "    {} {} ({}): {:.0}/{:.0}",
-                    check_icon, check.id, check.name, check.score, check.max_score
-                );
+    if verbose {
+        for check in &pv.checks {
+            if failures_only && check.passed {
+                continue;
             }
+            write_infra_check(out, check, verbose, false);
         }
     }
+}
 
-    // Findings
+fn write_infra_findings(out: &mut String, result: &InfraScore, verbose: bool, failures_only: bool) {
+    use std::fmt::Write;
     let all_findings: Vec<_> = [
         &result.categories.workflow_architecture.findings,
         &result.categories.build_reliability.findings,
@@ -200,39 +227,58 @@ fn format_text_output(
     .flat_map(|f| f.iter())
     .collect();
 
-    if !all_findings.is_empty() && (verbose || !failures_only) {
-        let _ = writeln!(out, "\n\x1b[1mFindings\x1b[0m");
-        for finding in &all_findings {
-            let icon = match finding.severity {
-                crate::services::infra_score::models::InfraSeverity::Fail => "\x1b[31m✗\x1b[0m",
-                crate::services::infra_score::models::InfraSeverity::Warning => "\x1b[33m⚠\x1b[0m",
-                crate::services::infra_score::models::InfraSeverity::Info => "\x1b[36mℹ\x1b[0m",
-                crate::services::infra_score::models::InfraSeverity::Pass => "\x1b[32m✓\x1b[0m",
-            };
-            let loc = finding
-                .location
-                .as_deref()
-                .map(|l| format!(" ({})", l))
-                .unwrap_or_default();
-            let _ = writeln!(
-                out,
-                "  {} [{}]{}: {}",
-                icon, finding.check_id, loc, finding.message
-            );
-        }
+    if all_findings.is_empty() || (!verbose && failures_only) {
+        return;
     }
+    let _ = writeln!(out, "\n\x1b[1mFindings\x1b[0m");
+    for finding in &all_findings {
+        let icon = match finding.severity {
+            InfraSeverity::Fail => "\x1b[31m✗\x1b[0m",
+            InfraSeverity::Warning => "\x1b[33m⚠\x1b[0m",
+            InfraSeverity::Info => "\x1b[36mℹ\x1b[0m",
+            InfraSeverity::Pass => "\x1b[32m✓\x1b[0m",
+        };
+        let loc = finding
+            .location
+            .as_deref()
+            .map(|l| format!(" ({})", l))
+            .unwrap_or_default();
+        let _ = writeln!(
+            out,
+            "  {} [{}]{}: {}",
+            icon, finding.check_id, loc, finding.message
+        );
+    }
+}
 
-    // Recommendations
-    if !result.recommendations.is_empty() {
-        let _ = writeln!(out, "\n\x1b[1mRecommendations\x1b[0m");
-        for rec in &result.recommendations {
-            let _ = writeln!(
-                out,
-                "  \x1b[2;37m{}: {} (+{:.0} pts, ~{})\x1b[0m",
-                rec.check_id, rec.description, rec.impact_points, rec.estimated_effort
-            );
-        }
+fn write_infra_recommendations(out: &mut String, result: &InfraScore) {
+    use std::fmt::Write;
+    if result.recommendations.is_empty() {
+        return;
     }
+    let _ = writeln!(out, "\n\x1b[1mRecommendations\x1b[0m");
+    for rec in &result.recommendations {
+        let _ = writeln!(
+            out,
+            "  \x1b[2;37m{}: {} (+{:.0} pts, ~{})\x1b[0m",
+            rec.check_id, rec.description, rec.impact_points, rec.estimated_effort
+        );
+    }
+}
+
+fn format_text_output(result: &InfraScore, verbose: bool, failures_only: bool) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+
+    let _ = writeln!(out, "\x1b[2m{}\x1b[0m", "━".repeat(48));
+    let _ = writeln!(out, "\x1b[1m\x1b[4mInfra Score v1.0\x1b[0m");
+    let _ = writeln!(out, "\x1b[2m{}\x1b[0m", "━".repeat(48));
+
+    write_infra_summary(&mut out, result);
+    write_infra_categories(&mut out, result, verbose, failures_only);
+    write_infra_provable_contracts(&mut out, result, verbose, failures_only);
+    write_infra_findings(&mut out, result, verbose, failures_only);
+    write_infra_recommendations(&mut out, result);
 
     // Metadata
     let _ = writeln!(out, "\n\x1b[2m{}\x1b[0m", "━".repeat(48));
