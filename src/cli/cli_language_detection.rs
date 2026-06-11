@@ -17,18 +17,38 @@
 /// let lang = detect_primary_language(dir.path());
 /// assert_eq!(lang, Some("rust".to_string()));
 /// ```
-fn has_ruchy_files(path: &Path) -> bool {
+/// Returns `true` only when Ruchy is the *dominant* source language.
+///
+/// Ruchy transpiles to Rust, so a genuine Ruchy project can also carry a
+/// `Cargo.toml` and generated `.rs` files. We therefore let Ruchy win over the
+/// `Cargo.toml` marker — but ONLY when `.ruchy`/`.rh` sources are at least as
+/// numerous as `.rs` files. This stops a single test fixture (e.g.
+/// `tests/fixtures/foo.ruchy`) from misclassifying an entire Rust project as
+/// "ruchy" (which previously made `pmat analyze complexity` mislabel pmat's
+/// own repo).
+fn ruchy_is_primary_language(path: &Path) -> bool {
     use walkdir::WalkDir;
-    WalkDir::new(path)
-        .max_depth(3)
+    let mut ruchy = 0usize;
+    let mut rust = 0usize;
+    for entry in WalkDir::new(path)
+        .max_depth(5)
         .into_iter()
-        .filter_map(std::result::Result::ok)
-        .any(|e| {
-            e.path()
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .is_some_and(|ext| ext == "ruchy" || ext == "rh")
+        .filter_entry(|e| {
+            // Never exclude the root, even if it starts with a dot.
+            e.depth() == 0 || !should_exclude_dir(e.file_name().to_str().unwrap_or(""))
         })
+        .flatten()
+    {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        match entry.path().extension().and_then(|ext| ext.to_str()) {
+            Some("ruchy" | "rh") => ruchy += 1,
+            Some("rs") => rust += 1,
+            _ => {}
+        }
+    }
+    ruchy > 0 && ruchy >= rust
 }
 
 fn detect_by_project_files(path: &Path) -> Option<String> {
@@ -116,8 +136,10 @@ fn detect_by_file_extensions(path: &Path) -> Option<String> {
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 /// Detect primary language.
 pub fn detect_primary_language(path: &Path) -> Option<String> {
-    // Check for Ruchy files first
-    if has_ruchy_files(path) {
+    // Ruchy transpiles to Rust and can ship alongside a Cargo.toml, so it must
+    // be able to win over the Rust marker — but ONLY when Ruchy actually
+    // dominates the source tree (see `ruchy_is_primary_language`).
+    if ruchy_is_primary_language(path) {
         return Some("ruchy".to_string());
     }
 
@@ -224,4 +246,58 @@ pub fn detect_primary_language_with_confidence(path: &Path) -> Option<(String, f
 
     // Fall back to file counting
     count_files_by_extension(path)
+}
+
+#[cfg(test)]
+mod ruchy_detection_tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    /// Regression: a single `.ruchy` test fixture must NOT reclassify a Rust
+    /// project as "ruchy". Previously `has_ruchy_files` returned `true` on any
+    /// stray fixture, so `pmat analyze complexity` mislabeled its own repo.
+    #[test]
+    fn lone_ruchy_fixture_does_not_override_cargo() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("Cargo.toml"), "[package]\nname=\"x\"").unwrap();
+        fs::write(dir.path().join("main.rs"), "fn main() {}").unwrap();
+        fs::write(dir.path().join("lib.rs"), "pub fn a() {}").unwrap();
+        let fixtures = dir.path().join("tests").join("fixtures");
+        fs::create_dir_all(&fixtures).unwrap();
+        fs::write(fixtures.join("sample.ruchy"), "let x = 1").unwrap();
+
+        assert_eq!(
+            detect_primary_language(dir.path()),
+            Some("rust".to_string())
+        );
+    }
+
+    /// A genuinely Ruchy-dominant tree (more `.ruchy` than `.rs`) still wins,
+    /// even when a `Cargo.toml` is present (Ruchy transpiles to Rust).
+    #[test]
+    fn ruchy_dominant_tree_wins_over_cargo() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("Cargo.toml"), "[package]\nname=\"x\"").unwrap();
+        fs::write(dir.path().join("generated.rs"), "fn main() {}").unwrap();
+        for i in 0..5 {
+            fs::write(dir.path().join(format!("m{i}.ruchy")), "let x = 1").unwrap();
+        }
+
+        assert_eq!(
+            detect_primary_language(dir.path()),
+            Some("ruchy".to_string())
+        );
+    }
+
+    /// No Ruchy at all → marker detection drives the result.
+    #[test]
+    fn no_ruchy_uses_marker() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("Cargo.toml"), "[package]\nname=\"x\"").unwrap();
+        assert_eq!(
+            detect_primary_language(dir.path()),
+            Some("rust".to_string())
+        );
+    }
 }
