@@ -375,105 +375,147 @@ fn extract_item_name(rest: &str) -> &str {
 }
 
 /// Detect split points: top-level items with their line ranges.
-fn find_split_points(content: &str) -> Vec<TopLevelItem> {
-    let lines: Vec<&str> = content.lines().collect();
-    let mut items = Vec::new();
-    let mut brace_depth: i32 = 0;
-    let mut current_item: Option<(String, String, usize)> = None; // (kind, name, start_line)
-    let mut in_string = false;
-    let mut in_block_comment_depth: i32 = 0;
+/// One step of the brace scanner: where to move the cursor, or stop the line.
+enum ScanStep {
+    /// Jump the cursor to this index and keep scanning.
+    Jump(usize),
+    /// A line comment started — stop scanning this line.
+    StopLine,
+}
 
-    for (i, line) in lines.iter().enumerate() {
-        let line_num = i + 1; // 1-based
-        let depth_before_line = brace_depth;
+/// String/comment/char-literal-aware brace-depth scanner. `in_string` and
+/// `in_block_comment_depth` persist across lines so multi-line strings and block
+/// comments are tracked correctly. Extracted from `find_split_points` to keep
+/// each piece under the complexity gate; behavior is byte-for-byte preserved
+/// (see the `test_find_split_points_*` characterization tests).
+struct BraceScanner {
+    brace_depth: i32,
+    in_string: bool,
+    in_block_comment_depth: i32,
+}
 
-        // Process character by character for accurate brace counting
+impl BraceScanner {
+    fn new() -> Self {
+        Self {
+            brace_depth: 0,
+            in_string: false,
+            in_block_comment_depth: 0,
+        }
+    }
+
+    /// Scan one source line, updating brace/string/comment state.
+    fn scan_line(&mut self, line: &str) {
         let chars: Vec<char> = line.chars().collect();
         let mut j = 0;
         while j < chars.len() {
-            let ch = chars[j];
-
-            // Handle block comments
-            if in_block_comment_depth > 0 {
-                if ch == '*' && j + 1 < chars.len() && chars[j + 1] == '/' {
-                    in_block_comment_depth -= 1;
-                    j += 2;
-                    continue;
-                }
-                if ch == '/' && j + 1 < chars.len() && chars[j + 1] == '*' {
-                    in_block_comment_depth += 1;
-                    j += 2;
-                    continue;
-                }
-                j += 1;
-                continue;
+            match self.step(&chars, j) {
+                ScanStep::Jump(next) => j = next,
+                ScanStep::StopLine => break,
             }
-
-            // Detect start of comments
-            if ch == '/' && j + 1 < chars.len() {
-                if chars[j + 1] == '/' {
-                    // Line comment — skip rest of line
-                    break;
-                }
-                if chars[j + 1] == '*' {
-                    in_block_comment_depth += 1;
-                    j += 2;
-                    continue;
-                }
-            }
-
-            // Handle strings
-            if ch == '"' && !in_string {
-                // Check for raw string
-                if j > 0 && chars[j - 1] == 'r' {
-                    // Skip raw string — consume until closing "
-                    j += 1;
-                    while j < chars.len() && chars[j] != '"' {
-                        j += 1;
-                    }
-                    j += 1;
-                    continue;
-                }
-                in_string = true;
-                j += 1;
-                continue;
-            }
-            if ch == '"' && in_string {
-                in_string = false;
-                j += 1;
-                continue;
-            }
-            if in_string {
-                if ch == '\\' {
-                    j += 2; // skip escaped char
-                    continue;
-                }
-                j += 1;
-                continue;
-            }
-
-            // Handle char literals
-            if ch == '\'' {
-                // Skip char literal
-                if j + 2 < chars.len() && chars[j + 2] == '\'' {
-                    j += 3;
-                    continue;
-                }
-                if j + 3 < chars.len() && chars[j + 1] == '\\' && chars[j + 3] == '\'' {
-                    j += 4;
-                    continue;
-                }
-            }
-
-            // Count braces
-            if ch == '{' {
-                brace_depth += 1;
-            } else if ch == '}' {
-                brace_depth -= 1;
-            }
-
-            j += 1;
         }
+    }
+
+    /// Process the character at `j`, mutating state, returning the next cursor.
+    /// Dispatch order matches the original inline loop exactly.
+    fn step(&mut self, chars: &[char], j: usize) -> ScanStep {
+        if self.in_block_comment_depth > 0 {
+            return self.advance_block_comment(chars, j);
+        }
+        if let Some(step) = self.try_comment_start(chars, j) {
+            return step;
+        }
+        if let Some(step) = self.advance_string(chars, j) {
+            return step;
+        }
+        if let Some(next) = Self::skip_char_literal(chars, j) {
+            return ScanStep::Jump(next);
+        }
+        match chars[j] {
+            '{' => self.brace_depth += 1,
+            '}' => self.brace_depth -= 1,
+            _ => {}
+        }
+        ScanStep::Jump(j + 1)
+    }
+
+    fn advance_block_comment(&mut self, chars: &[char], j: usize) -> ScanStep {
+        let ch = chars[j];
+        if ch == '*' && j + 1 < chars.len() && chars[j + 1] == '/' {
+            self.in_block_comment_depth -= 1;
+            return ScanStep::Jump(j + 2);
+        }
+        if ch == '/' && j + 1 < chars.len() && chars[j + 1] == '*' {
+            self.in_block_comment_depth += 1;
+            return ScanStep::Jump(j + 2);
+        }
+        ScanStep::Jump(j + 1)
+    }
+
+    fn try_comment_start(&mut self, chars: &[char], j: usize) -> Option<ScanStep> {
+        if chars[j] == '/' && j + 1 < chars.len() {
+            if chars[j + 1] == '/' {
+                return Some(ScanStep::StopLine);
+            }
+            if chars[j + 1] == '*' {
+                self.in_block_comment_depth += 1;
+                return Some(ScanStep::Jump(j + 2));
+            }
+        }
+        None
+    }
+
+    fn advance_string(&mut self, chars: &[char], j: usize) -> Option<ScanStep> {
+        let ch = chars[j];
+        if ch == '"' && !self.in_string {
+            // Raw string: consume until the closing `"` (no escape processing).
+            if j > 0 && chars[j - 1] == 'r' {
+                let mut k = j + 1;
+                while k < chars.len() && chars[k] != '"' {
+                    k += 1;
+                }
+                return Some(ScanStep::Jump(k + 1));
+            }
+            self.in_string = true;
+            return Some(ScanStep::Jump(j + 1));
+        }
+        if ch == '"' && self.in_string {
+            self.in_string = false;
+            return Some(ScanStep::Jump(j + 1));
+        }
+        if self.in_string {
+            let next = if ch == '\\' { j + 2 } else { j + 1 };
+            return Some(ScanStep::Jump(next));
+        }
+        None
+    }
+
+    fn skip_char_literal(chars: &[char], j: usize) -> Option<usize> {
+        if chars[j] != '\'' {
+            return None;
+        }
+        if j + 2 < chars.len() && chars[j + 2] == '\'' {
+            return Some(j + 3);
+        }
+        if j + 3 < chars.len() && chars[j + 1] == '\\' && chars[j + 3] == '\'' {
+            return Some(j + 4);
+        }
+        None
+    }
+}
+
+fn find_split_points(content: &str) -> Vec<TopLevelItem> {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut items = Vec::new();
+    let mut current_item: Option<(String, String, usize)> = None; // (kind, name, start_line)
+    let mut scanner = BraceScanner::new();
+
+    for (i, line) in lines.iter().enumerate() {
+        let line_num = i + 1; // 1-based
+        let depth_before_line = scanner.brace_depth;
+
+        // String/comment-aware brace counting for this line.
+        scanner.scan_line(line);
+        let brace_depth = scanner.brace_depth;
 
         // Close current item when brace depth returns to the item's start depth.
         // Top-level items close at depth 0, impl-internal methods close at depth 1.
@@ -1092,6 +1134,110 @@ struct Gamma {
         assert_eq!(items[1].kind, "fn");
         assert_eq!(items[2].name, "Gamma");
         assert_eq!(items[2].kind, "struct");
+    }
+
+    // --- Characterization tests for find_split_points's string/comment/char-aware
+    // brace scanner (locked before the BraceScanner extraction). ---
+
+    #[test]
+    fn test_find_split_points_brace_inside_string_ignored() {
+        // A `}` inside a string literal must not close the item early.
+        let content = "\
+fn alpha() {
+    let s = \"}\";
+    let _ = s;
+}
+fn beta() {
+}
+";
+        let items = find_split_points(content);
+        assert_eq!(items.len(), 2, "string braces must not split");
+        assert_eq!(items[0].name, "alpha");
+        assert_eq!(items[1].name, "beta");
+        assert_eq!(items[0].end_line, 4);
+    }
+
+    #[test]
+    fn test_find_split_points_brace_inside_char_literal_ignored() {
+        let content = "\
+fn alpha() {
+    let c = '}';
+    let _ = c;
+}
+fn beta() {
+}
+";
+        let items = find_split_points(content);
+        assert_eq!(items.len(), 2, "char-literal braces must not split");
+        assert_eq!(items[0].name, "alpha");
+        assert_eq!(items[1].name, "beta");
+    }
+
+    #[test]
+    fn test_find_split_points_brace_in_line_comment_ignored() {
+        let content = "\
+fn alpha() {
+    // }
+    let x = 1;
+}
+fn beta() {
+}
+";
+        let items = find_split_points(content);
+        assert_eq!(items.len(), 2, "line-comment braces must not split");
+        assert_eq!(items[0].name, "alpha");
+    }
+
+    #[test]
+    fn test_find_split_points_brace_in_block_comment_ignored() {
+        let content = "\
+fn alpha() {
+    /* } */
+    let x = 1;
+}
+fn beta() {
+}
+";
+        let items = find_split_points(content);
+        assert_eq!(items.len(), 2, "block-comment braces must not split");
+        assert_eq!(items[0].name, "alpha");
+    }
+
+    #[test]
+    fn test_find_split_points_raw_string_with_braces() {
+        // A `}` inside a raw string must not close the item early.
+        let content = "\
+fn alpha() {
+    let s = r\"a}b\";
+    let _ = s;
+}
+fn beta() {
+}
+";
+        let items = find_split_points(content);
+        assert_eq!(items.len(), 2, "raw-string braces must not split");
+        assert_eq!(items[0].name, "alpha");
+        assert_eq!(items[1].name, "beta");
+    }
+
+    #[test]
+    fn test_find_split_points_impl_methods() {
+        // Characterization of the CURRENT splitter: an `impl` item closes at the
+        // first depth-1 `}` (the first method's closing brace), so it captures
+        // the impl + the trailing method and the first method is subsumed. This
+        // quirk is locked here so the BraceScanner extraction preserves it.
+        let content = "\
+impl Foo {
+    pub fn bar() {
+    }
+    pub fn baz() {
+    }
+}
+";
+        let items = find_split_points(content);
+        let names: Vec<&str> = items.iter().map(|i| i.name.as_str()).collect();
+        assert_eq!(names, vec!["Foo", "baz"]);
+        assert!(items.iter().all(|i| i.kind == "impl"));
     }
 
     #[test]
