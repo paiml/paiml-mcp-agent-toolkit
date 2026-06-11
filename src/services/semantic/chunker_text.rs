@@ -24,8 +24,8 @@ pub fn chunk_text_with_overlap(text: &str, chunk_size: usize, overlap: usize) ->
     }
 
     // Use trueno-rag's RecursiveChunker internally
-    use trueno_rag::chunk::{Chunker, RecursiveChunker};
-    use trueno_rag::Document;
+    use aprender_rag::chunk::{Chunker, RecursiveChunker};
+    use aprender_rag::Document;
 
     let chunker = RecursiveChunker::new(chunk_size, overlap);
     let doc = Document::new(text);
@@ -33,7 +33,7 @@ pub fn chunk_text_with_overlap(text: &str, chunk_size: usize, overlap: usize) ->
     match chunker.chunk(&doc) {
         Ok(chunks) => chunks
             .into_iter()
-            .map(|c: trueno_rag::Chunk| c.content)
+            .map(|c: aprender_rag::Chunk| c.content)
             .collect(),
         Err(_) => {
             // Fallback to simple fixed-size chunking
@@ -65,8 +65,8 @@ pub fn chunk_text_recursive(text: &str, chunk_size: usize, overlap: usize) -> Ve
     }
 
     // Use trueno-rag's RecursiveChunker with custom separators
-    use trueno_rag::chunk::{Chunker, RecursiveChunker};
-    use trueno_rag::Document;
+    use aprender_rag::chunk::{Chunker, RecursiveChunker};
+    use aprender_rag::Document;
 
     let chunker = RecursiveChunker::new(chunk_size, overlap).with_separators(vec![
         "\n\n".to_string(), // Paragraph boundary
@@ -81,7 +81,7 @@ pub fn chunk_text_recursive(text: &str, chunk_size: usize, overlap: usize) -> Ve
     match chunker.chunk(&doc) {
         Ok(chunks) => chunks
             .into_iter()
-            .map(|c: trueno_rag::Chunk| c.content)
+            .map(|c: aprender_rag::Chunk| c.content)
             .collect(),
         Err(_) => {
             // Fallback to overlap chunking

@@ -731,9 +731,9 @@ dependencies = [
 
 [[package]]
 name = "aprender-rag"
-version = "0.30.0"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9c3873da61c11b9a94e529cc8d05b092d21f4e4471c5b4574d4e53a85f7c474"
+checksum = "4d02c8d1e73c6fdad1d34f87cc5547a7ea3f07f7fccf07496e68b0106a676d91"
 dependencies = [
  "async-trait",
  "batuta-common",
@@ -8288,7 +8288,7 @@ version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1c97747dbf44bb1ca44a561ece23508e99cb592e862f22222dcf42f51d1e451"
 dependencies = [
- "heck 0.4.1",
+ "heck 0.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
