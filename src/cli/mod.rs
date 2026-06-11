@@ -37,6 +37,7 @@ pub mod semantic_commands;
 pub mod symbol_table_helpers;
 pub mod tdg_helpers;
 pub mod unified_help;
+pub mod verify;
 
 // Re-export commonly used types from submodules
 pub use commands::{

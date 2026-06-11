@@ -34,6 +34,7 @@
 use crate::cli::diagnose::DiagnoseArgs;
 use crate::cli::handlers::cache::CacheCommand;
 use crate::cli::handlers::memory::MemoryCommand;
+use crate::cli::verify::VerifyArgs;
 use crate::cli::{
     AnalysisType, ContextFormat, DebugOutputFormat, DemoProtocol, OutputFormat, QualityCheckType,
     QualityGateOutputFormat, QueryOutputFormat, RepoScoreOutputFormat, ReportOutputFormat,

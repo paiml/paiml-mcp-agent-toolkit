@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.18.0] - 2026-06-11
+
+### Added
+- **`pmat verify`** — CI-faithful pre-flight verification for autonomous agents
+  (e.g. Fable 5 in autonomous mode). Runs the gate set CI actually enforces —
+  **format, complexity, satd, clippy, tests** — fail-fast (cheapest stage first),
+  with machine-readable output (`--format json`: per-stage `ok` + clippy
+  `violations[]` with `file:line:rule`). Closes the gap where both the pre-commit
+  hook and `pmat quality-gate` miss **clippy and tests**, so an agent could pass
+  local gates and still fail CI. The canonical agent loop becomes
+  `edit → pmat verify --format json → self-fix on red → commit on green`, giving
+  a "green here ⇒ green in CI" guarantee. Aliases: `preflight`, `vfy`.
+  - The complexity stage is incrementally scoped (files changed vs `HEAD`),
+    matching the pre-commit gate; clippy/tests are whole-crate.
+  - `--fix` auto-applies `cargo fmt` / `cargo clippy --fix`; `--skip`/`--stage`
+    select stages; `--no-fail-fast` produces a full report.
+  - Spec: `docs/specifications/pmat-verify-autonomous-preflight.md`.
+
+### Changed
+- `pmat quality-gate` no longer accepts `verify` as an alias (that name is now
+  the dedicated `pmat verify` command); `check`, `c`, and `gate` remain.
+
 ## [3.17.0] - 2026-05-05
 
 ### Fixed

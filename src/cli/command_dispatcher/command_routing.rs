@@ -218,6 +218,7 @@ impl CommandDispatcher {
                 .await
             }
             Commands::Diagnose(args) => crate::cli::diagnose::handle_diagnose(args).await,
+            Commands::Verify(args) => crate::cli::verify::handle_verify(args).await,
             Commands::Enforce(enforce_cmd) => handlers::route_enforce_command(enforce_cmd).await,
             Commands::Refactor(refactor_cmd) => Self::execute_refactor_command(refactor_cmd).await,
             Commands::Roadmap(roadmap_cmd) => Self::execute_roadmap_command(roadmap_cmd).await,
