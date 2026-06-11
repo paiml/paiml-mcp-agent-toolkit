@@ -381,26 +381,8 @@ pub(crate) fn check_differential_obligations(project_path: &Path) -> ComplianceC
         }
     };
 
-    let mut affected_bindings: Vec<String> = Vec::new();
-    let mut total_bindings = 0usize;
-
-    for (file_key, bindings) in bindings_obj {
-        if let Some(arr) = bindings.as_array() {
-            total_bindings += arr.len();
-            // Check if any staged file matches this binding's source
-            if staged_files.iter().any(|sf| file_key.contains(sf) || sf.contains(file_key)) {
-                for b in arr {
-                    if let Some(name) = b.as_str() {
-                        affected_bindings.push(name.to_string());
-                    } else if let Some(obj) = b.as_object() {
-                        if let Some(name) = obj.get("name").and_then(|n| n.as_str()) {
-                            affected_bindings.push(name.to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
+    let (affected_bindings, total_bindings) =
+        cb1350_collect_affected_bindings(bindings_obj, &staged_files);
 
     if total_bindings == 0 {
         return ComplianceCheck {
@@ -425,17 +407,11 @@ pub(crate) fn check_differential_obligations(project_path: &Path) -> ComplianceC
     } else {
         // Check if there's a cached verdict for affected bindings
         let verdict_path = project_path.join(".pmat/obligation-verdicts.json");
-        let verified = if let Ok(verdicts_str) = fs::read_to_string(&verdict_path) {
-            if let Ok(verdicts) = serde_json::from_str::<serde_json::Value>(&verdicts_str) {
-                affected_bindings.iter().filter(|b| {
-                    verdicts.get(b.as_str()).and_then(|v| v.as_str()) == Some("pass")
-                }).count()
-            } else {
-                0
-            }
-        } else {
-            0
-        };
+        let verified = fs::read_to_string(&verdict_path)
+            .ok()
+            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+            .map(|verdicts| cb1350_count_verified(&affected_bindings, &verdicts))
+            .unwrap_or(0);
 
         let unverified = affected_bindings.len() - verified;
         if unverified == 0 {
@@ -464,4 +440,47 @@ pub(crate) fn check_differential_obligations(project_path: &Path) -> ComplianceC
             }
         }
     }
+}
+
+/// Collect binding names whose source file matches a staged file, plus the total
+/// binding count. Pure (no I/O) — extracted from `check_differential_obligations`
+/// to keep it under the complexity gate (see `cb1350_*` unit tests).
+fn cb1350_collect_affected_bindings(
+    bindings_obj: &serde_json::Map<String, serde_json::Value>,
+    staged_files: &[String],
+) -> (Vec<String>, usize) {
+    let mut affected = Vec::new();
+    let mut total = 0usize;
+    for (file_key, bindings) in bindings_obj {
+        let Some(arr) = bindings.as_array() else {
+            continue;
+        };
+        total += arr.len();
+        if !staged_files
+            .iter()
+            .any(|sf| file_key.contains(sf) || sf.contains(file_key))
+        {
+            continue;
+        }
+        for b in arr {
+            if let Some(name) = b.as_str() {
+                affected.push(name.to_string());
+            } else if let Some(name) = b
+                .as_object()
+                .and_then(|o| o.get("name"))
+                .and_then(|n| n.as_str())
+            {
+                affected.push(name.to_string());
+            }
+        }
+    }
+    (affected, total)
+}
+
+/// Count how many affected bindings have a cached "pass" verdict. Pure.
+fn cb1350_count_verified(affected_bindings: &[String], verdicts: &serde_json::Value) -> usize {
+    affected_bindings
+        .iter()
+        .filter(|b| verdicts.get(b.as_str()).and_then(|v| v.as_str()) == Some("pass"))
+        .count()
 }

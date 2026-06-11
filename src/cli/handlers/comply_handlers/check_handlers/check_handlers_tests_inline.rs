@@ -113,4 +113,107 @@ pub fn my_fn(x: i32) -> i32 { x }
             check.message
         );
     }
+
+    // --- CB-1350 pure-helper characterization (extracted from
+    // check_differential_obligations, which is git/filesystem-bound). ---
+
+    #[test]
+    fn test_cb1350_collect_affected_bindings_matches_staged() {
+        let index = serde_json::json!({
+            "src/foo.rs": ["bind_a", "bind_b"],
+            "src/bar.rs": ["bind_c"],
+        });
+        let obj = index.as_object().unwrap();
+        let staged = vec!["src/foo.rs".to_string()];
+        let (affected, total) = cb1350_collect_affected_bindings(obj, &staged);
+        assert_eq!(total, 3, "total counts all bindings regardless of staging");
+        assert_eq!(affected, vec!["bind_a".to_string(), "bind_b".to_string()]);
+    }
+
+    #[test]
+    fn test_cb1350_collect_affected_bindings_object_form_and_no_match() {
+        let index = serde_json::json!({
+            "src/foo.rs": [{"name": "bind_obj"}, "bind_str"],
+        });
+        let obj = index.as_object().unwrap();
+        // No staged file matches -> nothing affected, but total still counted.
+        let (affected, total) =
+            cb1350_collect_affected_bindings(obj, &["src/other.rs".to_string()]);
+        assert!(affected.is_empty());
+        assert_eq!(total, 2);
+        // Substring match -> extracts both object-form and string-form names.
+        let (affected2, _) = cb1350_collect_affected_bindings(obj, &["foo.rs".to_string()]);
+        assert_eq!(
+            affected2,
+            vec!["bind_obj".to_string(), "bind_str".to_string()]
+        );
+    }
+
+    #[test]
+    fn test_cb1350_count_verified() {
+        let verdicts = serde_json::json!({
+            "bind_a": "pass",
+            "bind_b": "fail",
+            "bind_c": "pass",
+        });
+        let affected = vec![
+            "bind_a".to_string(),
+            "bind_b".to_string(),
+            "bind_c".to_string(),
+        ];
+        assert_eq!(cb1350_count_verified(&affected, &verdicts), 2);
+        // Empty verdicts -> nothing verified.
+        assert_eq!(cb1350_count_verified(&affected, &serde_json::json!({})), 0);
+    }
+
+    // --- refresh-bindings pure-parser characterization (extracted from
+    // handle_refresh_bindings, which is filesystem-bound). ---
+
+    #[test]
+    fn test_refresh_parse_binding_lines_name_and_source() {
+        let content = "\
+- name: my_func
+  source_file: src/foo.rs
+- name: other_func
+  source_file: src/bar.rs
+";
+        let pairs = refresh_parse_binding_lines(content);
+        assert_eq!(
+            pairs,
+            vec![
+                ("src/foo.rs".to_string(), "my_func".to_string()),
+                ("src/bar.rs".to_string(), "other_func".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_refresh_parse_binding_lines_function_format_and_quotes() {
+        // `function:` is the binding name (pv format); quotes are stripped.
+        let content = "\
+function: \"pv_func\"
+source_file: 'src/pv.rs'
+";
+        let pairs = refresh_parse_binding_lines(content);
+        assert_eq!(pairs, vec![("src/pv.rs".to_string(), "pv_func".to_string())]);
+    }
+
+    #[test]
+    fn test_refresh_parse_contract_source_files() {
+        let content = "\
+source_file: src/contract.rs
+file: src/other.rs
+- src/listed.rs
+ignored: value
+";
+        let pairs = refresh_parse_contract_source_files(content, "mycontract");
+        assert_eq!(
+            pairs,
+            vec![
+                ("src/contract.rs".to_string(), "mycontract".to_string()),
+                ("src/other.rs".to_string(), "mycontract".to_string()),
+                ("src/listed.rs".to_string(), "mycontract".to_string()),
+            ]
+        );
+    }
 }

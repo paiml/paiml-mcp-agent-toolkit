@@ -232,96 +232,11 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
     let mut index: std::collections::BTreeMap<String, Vec<String>> = std::collections::BTreeMap::new();
     let mut binding_count = 0usize;
 
-    // 1. Parse binding.yaml for file→binding mappings
-    let binding_paths = [
-        project_path.join("binding.yaml"),
-        project_path.join("contracts/binding.yaml"),
-    ];
-    for binding_path in &binding_paths {
-        if !binding_path.exists() {
-            continue;
-        }
-        if let Ok(content) = fs::read_to_string(binding_path) {
-            let mut current_name: Option<String> = None;
-            let mut current_file: Option<String> = None;
-
-            for line in content.lines() {
-                let trimmed = line.trim();
-                // Entry boundary markers for various binding formats
-                let is_entry_start = trimmed.starts_with("- name:")
-                    || trimmed.starts_with("- module_path:")
-                    || trimmed.starts_with("- contract:");
-                if is_entry_start {
-                    // Flush previous entry
-                    if let (Some(file), Some(name)) = (current_file.take(), current_name.take()) {
-                        index.entry(file).or_default().push(name);
-                        binding_count += 1;
-                    }
-                    // Extract name from - name: or - module_path: (skip - contract:)
-                    if !trimmed.starts_with("- contract:") {
-                        if let Some(val) = trimmed.split(':').nth(1) {
-                            current_name = Some(val.trim().trim_matches('"').trim_matches('\'').to_string());
-                        }
-                    }
-                }
-                // Capture function: as the binding name (for pv binding format)
-                if trimmed.starts_with("function:") && current_name.is_none() {
-                    if let Some(val) = trimmed.split(':').nth(1) {
-                        current_name = Some(val.trim().trim_matches('"').trim_matches('\'').to_string());
-                    }
-                }
-                if trimmed.starts_with("source_file:") || trimmed.starts_with("file:") {
-                    if let Some(val) = trimmed.split(':').nth(1) {
-                        current_file = Some(val.trim().trim_matches('"').trim_matches('\'').to_string());
-                    }
-                }
-            }
-            // Flush last entry
-            if let (Some(file), Some(name)) = (current_file, current_name) {
-                index.entry(file).or_default().push(name);
-                binding_count += 1;
-            }
-        }
-    }
-
-    // 2. Parse contracts/*.yaml for function→file bindings
+    // 1. binding.yaml file→binding mappings. 2. contracts/*.yaml function→file.
+    refresh_index_binding_files(project_path, &mut index, &mut binding_count);
     let contracts_dir = project_path.join("contracts");
     if contracts_dir.exists() {
-        for entry in walkdir::WalkDir::new(&contracts_dir)
-            .max_depth(3)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
-            if !path.is_file() || path.extension().map_or(true, |e| e != "yaml" && e != "yml") {
-                continue;
-            }
-            // Skip binding.yaml itself (already parsed above)
-            if path.file_name().is_some_and(|n| n == "binding.yaml") {
-                continue;
-            }
-            if let Ok(content) = fs::read_to_string(path) {
-                let contract_name = path
-                    .file_stem()
-                    .map(|s| s.to_string_lossy().to_string())
-                    .unwrap_or_default();
-                // Look for source_file references
-                for line in content.lines() {
-                    let trimmed = line.trim();
-                    if trimmed.starts_with("source_file:") || trimmed.starts_with("file:") || trimmed.starts_with("- src/") {
-                        let val = if trimmed.starts_with("- ") {
-                            trimmed.trim_start_matches("- ").trim_matches('"').trim_matches('\'')
-                        } else {
-                            trimmed.split(':').nth(1).unwrap_or("").trim().trim_matches('"').trim_matches('\'')
-                        };
-                        if !val.is_empty() {
-                            index.entry(val.to_string()).or_default().push(contract_name.clone());
-                            binding_count += 1;
-                        }
-                    }
-                }
-            }
-        }
+        refresh_index_contract_dir(&contracts_dir, &mut index, &mut binding_count);
     }
 
     // 3. Write binding-index.json
@@ -336,68 +251,12 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
     let mut cache_count = 0u8;
 
     // contract-cache.json: summarize active work contracts
-    let work_dir = project_path.join(".pmat-work");
-    if work_dir.exists() {
-        let mut contracts_summary = std::collections::BTreeMap::new();
-        if let Ok(entries) = fs::read_dir(&work_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if !path.is_dir() { continue; }
-                let contract = path.join("contract.json");
-                if contract.exists() {
-                    if let Ok(c) = fs::read_to_string(&contract) {
-                        if let Ok(v) = serde_json::from_str::<serde_json::Value>(&c) {
-                            let id = v.get("work_item_id").and_then(|w| w.as_str())
-                                .unwrap_or("unknown").to_string();
-                            let level = v.get("verification_level").and_then(|l| l.as_str())
-                                .unwrap_or("L0").to_string();
-                            let has_claims = v.get("falsifiable_claims").is_some()
-                                || v.get("claims").is_some();
-                            contracts_summary.insert(id, serde_json::json!({
-                                "level": level,
-                                "has_claims": has_claims,
-                            }));
-                        }
-                    }
-                }
-            }
-        }
-        let cache = serde_json::json!({
-            "generated_at": chrono_free_timestamp(),
-            "contract_count": contracts_summary.len(),
-            "contracts": contracts_summary,
-        });
-        fs::write(pmat_dir.join("contract-cache.json"), serde_json::to_string_pretty(&cache)?)?;
+    if refresh_write_contract_cache(project_path, &pmat_dir)? {
         cache_count += 1;
     }
 
     // verification-levels.json: extract L-levels from contracts/ YAML
-    let contracts_dir = project_path.join("contracts");
-    if contracts_dir.exists() {
-        let mut levels = std::collections::BTreeMap::new();
-        for entry in walkdir::WalkDir::new(&contracts_dir).max_depth(3).into_iter().filter_map(|e| e.ok()) {
-            let path = entry.path();
-            if !path.is_file() || path.extension().map_or(true, |e| e != "yaml" && e != "yml") {
-                continue;
-            }
-            if let Ok(content) = fs::read_to_string(path) {
-                if content.contains("verification_summary") {
-                    let target = extract_level(&content, "target_level");
-                    let current = extract_level(&content, "current_level");
-                    let name = path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-                    levels.insert(name, serde_json::json!({
-                        "target": target.map(|l| format!("L{}", l)),
-                        "current": current.map(|l| format!("L{}", l)),
-                    }));
-                }
-            }
-        }
-        let cache = serde_json::json!({
-            "generated_at": chrono_free_timestamp(),
-            "level_count": levels.len(),
-            "levels": levels,
-        });
-        fs::write(pmat_dir.join("verification-levels.json"), serde_json::to_string_pretty(&cache)?)?;
+    if refresh_write_verification_levels(project_path, &pmat_dir)? {
         cache_count += 1;
     }
 
@@ -424,4 +283,254 @@ pub(crate) fn handle_refresh_bindings(project_path: &Path) -> anyhow::Result<()>
     println!("   CB-1350 differential obligations now enabled");
 
     Ok(())
+}
+
+/// Parse a `binding.yaml` document into `(source_file, binding_name)` pairs.
+/// Pure — extracted from `handle_refresh_bindings` to keep it under the
+/// complexity gate (see `refresh_parse_*` unit tests).
+/// Index `binding.yaml` (root and `contracts/`) into `index`, counting bindings.
+fn refresh_index_binding_files(
+    project_path: &Path,
+    index: &mut std::collections::BTreeMap<String, Vec<String>>,
+    binding_count: &mut usize,
+) {
+    let binding_paths = [
+        project_path.join("binding.yaml"),
+        project_path.join("contracts/binding.yaml"),
+    ];
+    for binding_path in &binding_paths {
+        if !binding_path.exists() {
+            continue;
+        }
+        if let Ok(content) = fs::read_to_string(binding_path) {
+            for (file, name) in refresh_parse_binding_lines(&content) {
+                index.entry(file).or_default().push(name);
+                *binding_count += 1;
+            }
+        }
+    }
+}
+
+/// Index `contracts/*.yaml` (excluding `binding.yaml`) into `index`.
+fn refresh_index_contract_dir(
+    contracts_dir: &Path,
+    index: &mut std::collections::BTreeMap<String, Vec<String>>,
+    binding_count: &mut usize,
+) {
+    for entry in walkdir::WalkDir::new(contracts_dir)
+        .max_depth(3)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if !path.is_file() || path.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+            continue;
+        }
+        // Skip binding.yaml itself (already parsed).
+        if path.file_name().is_some_and(|n| n == "binding.yaml") {
+            continue;
+        }
+        let Ok(content) = fs::read_to_string(path) else {
+            continue;
+        };
+        let contract_name = path
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        for (file, name) in refresh_parse_contract_source_files(&content, &contract_name) {
+            index.entry(file).or_default().push(name);
+            *binding_count += 1;
+        }
+    }
+}
+
+/// Extract the `value` from a `key: value` YAML line, trimming quotes.
+fn refresh_yaml_value(trimmed: &str) -> Option<String> {
+    trimmed
+        .split(':')
+        .nth(1)
+        .map(|v| v.trim().trim_matches('"').trim_matches('\'').to_string())
+}
+
+/// Apply one trimmed `binding.yaml` line to the running parse state, flushing a
+/// completed `(file, name)` pair into `out` at each entry boundary. The three
+/// arms are mutually exclusive by prefix.
+fn refresh_apply_binding_line(
+    trimmed: &str,
+    current_name: &mut Option<String>,
+    current_file: &mut Option<String>,
+    out: &mut Vec<(String, String)>,
+) {
+    let is_entry_start = trimmed.starts_with("- name:")
+        || trimmed.starts_with("- module_path:")
+        || trimmed.starts_with("- contract:");
+    if is_entry_start {
+        // Flush the previous entry at each entry boundary.
+        if let (Some(file), Some(name)) = (current_file.take(), current_name.take()) {
+            out.push((file, name));
+        }
+        // `- name:` / `- module_path:` carry the name; `- contract:` does not.
+        if !trimmed.starts_with("- contract:") {
+            if let Some(v) = refresh_yaml_value(trimmed) {
+                *current_name = Some(v);
+            }
+        }
+    } else if trimmed.starts_with("function:") && current_name.is_none() {
+        // `function:` is the binding name for the pv binding format.
+        if let Some(v) = refresh_yaml_value(trimmed) {
+            *current_name = Some(v);
+        }
+    } else if trimmed.starts_with("source_file:") || trimmed.starts_with("file:") {
+        if let Some(v) = refresh_yaml_value(trimmed) {
+            *current_file = Some(v);
+        }
+    }
+}
+
+/// Parse a `binding.yaml` document into `(source_file, binding_name)` pairs.
+/// Pure — extracted from `handle_refresh_bindings` to keep it under the
+/// complexity gate (see `refresh_parse_*` unit tests).
+fn refresh_parse_binding_lines(content: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    let mut current_name: Option<String> = None;
+    let mut current_file: Option<String> = None;
+    for line in content.lines() {
+        refresh_apply_binding_line(line.trim(), &mut current_name, &mut current_file, &mut out);
+    }
+    if let (Some(file), Some(name)) = (current_file, current_name) {
+        out.push((file, name));
+    }
+    out
+}
+
+/// Parse `source_file:` / `file:` / `- src/...` references out of a contract YAML,
+/// each bound to `contract_name`. Pure.
+fn refresh_parse_contract_source_files(content: &str, contract_name: &str) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if !(trimmed.starts_with("source_file:")
+            || trimmed.starts_with("file:")
+            || trimmed.starts_with("- src/"))
+        {
+            continue;
+        }
+        let val = if trimmed.starts_with("- ") {
+            trimmed
+                .trim_start_matches("- ")
+                .trim_matches('"')
+                .trim_matches('\'')
+        } else {
+            trimmed
+                .split(':')
+                .nth(1)
+                .unwrap_or("")
+                .trim()
+                .trim_matches('"')
+                .trim_matches('\'')
+        };
+        if !val.is_empty() {
+            out.push((val.to_string(), contract_name.to_string()));
+        }
+    }
+    out
+}
+
+/// Write `.pmat/contract-cache.json` summarizing active `.pmat-work/` contracts.
+/// Returns `true` if the cache was written (i.e. `.pmat-work/` exists).
+fn refresh_write_contract_cache(project_path: &Path, pmat_dir: &Path) -> anyhow::Result<bool> {
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        return Ok(false);
+    }
+    let mut contracts_summary = std::collections::BTreeMap::new();
+    if let Ok(entries) = fs::read_dir(&work_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let Ok(c) = fs::read_to_string(path.join("contract.json")) else {
+                continue;
+            };
+            let Ok(v) = serde_json::from_str::<serde_json::Value>(&c) else {
+                continue;
+            };
+            let id = v
+                .get("work_item_id")
+                .and_then(|w| w.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let level = v
+                .get("verification_level")
+                .and_then(|l| l.as_str())
+                .unwrap_or("L0")
+                .to_string();
+            let has_claims =
+                v.get("falsifiable_claims").is_some() || v.get("claims").is_some();
+            contracts_summary.insert(
+                id,
+                serde_json::json!({ "level": level, "has_claims": has_claims }),
+            );
+        }
+    }
+    let cache = serde_json::json!({
+        "generated_at": chrono_free_timestamp(),
+        "contract_count": contracts_summary.len(),
+        "contracts": contracts_summary,
+    });
+    fs::write(
+        pmat_dir.join("contract-cache.json"),
+        serde_json::to_string_pretty(&cache)?,
+    )?;
+    Ok(true)
+}
+
+/// Write `.pmat/verification-levels.json` from `contracts/*.yaml` L-levels.
+/// Returns `true` if the cache was written (i.e. `contracts/` exists).
+fn refresh_write_verification_levels(project_path: &Path, pmat_dir: &Path) -> anyhow::Result<bool> {
+    let contracts_dir = project_path.join("contracts");
+    if !contracts_dir.exists() {
+        return Ok(false);
+    }
+    let mut levels = std::collections::BTreeMap::new();
+    for entry in walkdir::WalkDir::new(&contracts_dir)
+        .max_depth(3)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if !path.is_file() || path.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+            continue;
+        }
+        let Ok(content) = fs::read_to_string(path) else {
+            continue;
+        };
+        if !content.contains("verification_summary") {
+            continue;
+        }
+        let target = extract_level(&content, "target_level");
+        let current = extract_level(&content, "current_level");
+        let name = path
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        levels.insert(
+            name,
+            serde_json::json!({
+                "target": target.map(|l| format!("L{}", l)),
+                "current": current.map(|l| format!("L{}", l)),
+            }),
+        );
+    }
+    let cache = serde_json::json!({
+        "generated_at": chrono_free_timestamp(),
+        "level_count": levels.len(),
+        "levels": levels,
+    });
+    fs::write(
+        pmat_dir.join("verification-levels.json"),
+        serde_json::to_string_pretty(&cache)?,
+    )?;
+    Ok(true)
 }
