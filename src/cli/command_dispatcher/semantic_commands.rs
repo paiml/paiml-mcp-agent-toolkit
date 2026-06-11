@@ -23,14 +23,12 @@ impl CommandDispatcher {
         let config_service = ConfigurationService::new(None);
         let semantic_config = config_service.get_semantic_config_with_env_fallback()?;
 
-        // Check if semantic search is enabled
-        if !semantic_config.enabled {
-            anyhow::bail!(
-                "Semantic search is not enabled.\n\
-                 To enable, set semantic.enabled = true in config file.\n\
-                 No API keys required - uses local embeddings."
-            );
-        }
+        // Issue #563: an explicit `pmat embed …` / `pmat semantic …` invocation
+        // IS the opt-in. The local-embedding stack (aprender/trueno-rag) ships
+        // in-binary and needs no API key or network, so these commands run out of
+        // the box instead of bailing on a `semantic.enabled` flag that isn't
+        // surfaced in --help. The toggle still gates passive/auto behavior
+        // (auto-sync, MCP tool registration) elsewhere.
 
         // Get database path
         let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {
@@ -111,14 +109,12 @@ impl CommandDispatcher {
         let config_service = ConfigurationService::new(None);
         let semantic_config = config_service.get_semantic_config_with_env_fallback()?;
 
-        // Check if semantic search is enabled
-        if !semantic_config.enabled {
-            anyhow::bail!(
-                "Semantic search is not enabled.\n\
-                 To enable, set semantic.enabled = true in config file.\n\
-                 No API keys required - uses local embeddings."
-            );
-        }
+        // Issue #563: an explicit `pmat embed …` / `pmat semantic …` invocation
+        // IS the opt-in. The local-embedding stack (aprender/trueno-rag) ships
+        // in-binary and needs no API key or network, so these commands run out of
+        // the box instead of bailing on a `semantic.enabled` flag that isn't
+        // surfaced in --help. The toggle still gates passive/auto behavior
+        // (auto-sync, MCP tool registration) elsewhere.
 
         // Get database path
         let db_path = semantic_config.vector_db_path.unwrap_or_else(|| {

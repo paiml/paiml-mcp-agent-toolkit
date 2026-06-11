@@ -8,10 +8,14 @@ impl TursoVectorDB {
     /// Database instance
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub async fn new_local<P: AsRef<Path>>(_path: P) -> Result<Self, String> {
-        // Default to 1536 dimensions (OpenAI text-embedding-3-small)
-        // The dimension will be auto-adjusted on first insert
+        // Default to 256 dimensions to match the in-binary local embedder
+        // (`LocalEmbedder`, search_engine_embedder.rs). pmat uses local TF-IDF
+        // embeddings only (no OpenAI/API keys), so a fresh store searched before
+        // any insert must not assume the old 1536-dim OpenAI default — that
+        // produced `dimension mismatch: expected 1536, got 256` on first search.
+        // `insert` still auto-adjusts if a different dimension is ever used.
         let config = VectorStoreConfig {
-            dimension: 1536,
+            dimension: 256,
             ..Default::default()
         };
 
