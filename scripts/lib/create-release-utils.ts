@@ -98,17 +98,9 @@ export function generateReleaseNotes(version: string): string {
 
 ### Installation
 
-Install using curl:
 \`\`\`bash
-curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.ts | deno run --allow-net --allow-read --allow-write --allow-env --allow-run -
+cargo install pmat
 \`\`\`
-
-Or with the shell wrapper:
-\`\`\`bash
-curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
-\`\`\`
-
-Or download the binary directly from the assets below.
 
 ### What's New
 - Template generation for Makefiles, README files, and .gitignore files

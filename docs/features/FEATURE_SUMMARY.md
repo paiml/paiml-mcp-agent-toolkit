@@ -280,7 +280,7 @@ This document provides a comprehensive summary of all features implemented in PM
 ### Quick Start
 ```bash
 # Install
-curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+cargo install pmat
 
 # Basic analysis
 pmat context                          # Auto-detect and analyze
@@ -306,7 +306,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install PMAT
-        run: curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+        run: cargo install pmat
       - name: Run Analysis
         run: |
           pmat analyze complexity --format sarif > complexity.sarif

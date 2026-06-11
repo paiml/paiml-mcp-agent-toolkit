@@ -33,7 +33,7 @@ stage first), with machine-readable output, scoped to the diff where possible.
 ### Stages (in order; stop at first failure unless `--no-fail-fast`)
 
 1. **format** — `cargo fmt --all -- --check` (sub-second once built)
-2. **complexity** — pmat's in-process analyzer, gate: cyclomatic ≤ 30, cognitive ≤ 25 (changed files only with `--changed`)
+2. **complexity** — pmat's analyzer, gate: cyclomatic ≤ 30, cognitive ≤ 25 (always scoped to files changed vs `HEAD`)
 3. **satd** — pmat's in-process SATD detector, strict mode
 4. **clippy** — `cargo clippy --lib --bins -- -D warnings` (CI-faithful — the Makefile `lint` target; **not** `--all-features`, which builds optional batuta-stack feature combos CI never compiles)
 5. **tests** — `cargo test --lib` (or, with `--changed`, only the test modules reachable from changed files via the call graph)
@@ -95,7 +95,7 @@ the complexity/satd analyzers already run in-process for the pre-commit hook.
 
 ## Autonomous-mode contract
 
-The canonical agent loop becomes: **edit → `pmat verify --changed --format json` →
+The canonical agent loop becomes: **edit → `pmat verify --format json` →
 (self-fix on red) → repeat → commit only on green.** This is the pmat-paradigm
 primitive for autonomous operation: one command, CI-faithful, machine-readable,
 fail-fast. It is documented in `docs/agent-instructions/` as the required
@@ -104,6 +104,6 @@ pre-commit step for agents.
 ## Dogfooding
 
 CI fidelity is verified by keeping the stage set in sync with `.github/workflows`
-(the `ci/gate` job). `make verify` wraps `pmat verify` for humans; the
-pre-commit hook may call `pmat verify --stage format --stage complexity` for the
-fast subset it already runs.
+(the `ci/gate` job). For a fast inner loop, `pmat verify --skip clippy,tests`
+runs only the sub-second stages (format, complexity, satd); run the full
+`pmat verify` once before pushing.

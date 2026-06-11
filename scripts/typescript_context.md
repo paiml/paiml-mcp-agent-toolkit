@@ -74,16 +74,12 @@
 ### ./generate-fuzz-corpus.ts
 
 
-### ./install.integration.test.ts
 
 
-### ./install.sh
 
 
-### ./install.test.ts
 
 
-### ./install.ts
 
 
 ### ./kubuntu-swap.ts

@@ -284,7 +284,7 @@ jobs:
       
       - name: Install PMAT
         run: |
-          curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+          cargo install pmat
       
       - name: Check SATD
         id: satd

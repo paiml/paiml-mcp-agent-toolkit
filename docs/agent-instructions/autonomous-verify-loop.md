@@ -44,8 +44,8 @@ edit → pmat verify --format json → (red? read violations, fix) → repeat �
 2. **complexity** — pmat's analyzer on *changed* files (cyclomatic ≤ 30,
    cognitive ≤ 25), matching the incremental pre-commit gate.
 3. **satd** — `pmat analyze satd --strict` (no self-admitted technical debt).
-4. **clippy** — `cargo clippy --all-targets --all-features -- -D warnings`
-   (whole-crate; the dominant cost — but you only pay it once stages 1–3 pass).
+4. **clippy** — `cargo clippy --lib --bins -- -D warnings` (CI-faithful;
+   whole-crate; the dominant cost — but you only pay it once stages 1–3 pass).
 5. **tests** — `cargo test --lib`.
 
 ## Why this is the pmat paradigm for autonomy

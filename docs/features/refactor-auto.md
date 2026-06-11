@@ -273,7 +273,7 @@ jobs:
       
       - name: Install pmat
         run: |
-          curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+          cargo install pmat
           
       - name: Run quality gate
         run: |

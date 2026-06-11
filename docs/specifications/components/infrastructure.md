@@ -27,7 +27,7 @@ Hooks validate:
 ### Shell/Makefile Quality
 
 ```bash
-bashrs lint scripts/install.sh
+bashrs lint Makefile
 bashrs lint Makefile
 ```
 

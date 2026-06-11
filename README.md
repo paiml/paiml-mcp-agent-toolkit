@@ -86,12 +86,19 @@ pmat analyze tdg
 # Score repository health
 pmat repo-score .
 
+# Pre-flight verify before committing (CI-faithful: fmt + complexity + satd + clippy + tests)
+pmat verify --format json
+
 # Run mutation testing
 pmat mutate --target src/
 
 # Start MCP server for Claude Code, Cline, etc.
 pmat mcp
 ```
+
+### Autonomous-agent pre-flight (`pmat verify`)
+
+`pmat verify` runs the exact gate set CI enforces — **format, complexity, satd, clippy, tests** — fail-fast, with machine-readable output, so an agent gets *"green here ⇒ green in CI"* before committing. The canonical loop: `edit → pmat verify --format json → fix on red → commit on green`. See [`docs/agent-instructions/autonomous-verify-loop.md`](docs/agent-instructions/autonomous-verify-loop.md).
 
 ## Features
 

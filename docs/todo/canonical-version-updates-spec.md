@@ -243,7 +243,7 @@ quality_requirements:
         "validation_commands": [
           "cargo install pmat --force",
           "pmat --version | grep -q NEW_VERSION",
-          "curl -sSfL install.sh | bash && pmat --version"
+          "cargo install pmat"
         ],
         "success_criteria": "All installation methods work",
         "estimated_time": "10m",
