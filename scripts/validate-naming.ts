@@ -44,7 +44,7 @@ async function runCommand(
 
 async function checkCargoToml(): Promise<ValidationResult> {
   try {
-    const cargoToml = await Deno.readTextFile("server/Cargo.toml");
+    const cargoToml = await Deno.readTextFile("Cargo.toml");
     const lines = cargoToml.split("\n");
 
     let packageName = "";
@@ -120,7 +120,7 @@ async function checkSourceCode(): Promise<ValidationResult> {
       "-r",
       "-w", // Match whole words only
       oldName,
-      "server/src/",
+      "src/",
       "--include=*.rs",
       "--exclude=build_naming_validation.rs",
       "--exclude=claude_code_e2e.rs",
@@ -259,7 +259,7 @@ async function checkDocumentation(): Promise<ValidationResult> {
 
 async function checkMakefiles(): Promise<ValidationResult> {
   const issues: string[] = [];
-  const makefiles = ["Makefile", "server/Makefile"];
+  const makefiles = ["Makefile"];
 
   for (const makefile of makefiles) {
     try {
@@ -323,7 +323,7 @@ async function runValidation() {
   if (hasFailures) {
     console.log("\n❌ Naming validation failed!");
     console.log("\n💡 To fix:");
-    console.log("  1. Update all references to use 'paiml-mcp-agent-toolkit'");
+    console.log(`  1. Update the crate name to '${CORRECT_PACKAGE_NAME}'`);
     console.log(
       "  2. Update repository URLs to 'paiml/paiml-mcp-agent-toolkit'",
     );

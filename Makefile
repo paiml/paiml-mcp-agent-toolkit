@@ -27,7 +27,7 @@
 # Delete partially-built files on error for safety (bashrs lint compliance)
 .DELETE_ON_ERROR:
 
-.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-summary coverage-open coverage-clean clean-coverage build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all test-stratified coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples examples example clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify coverage-fast coverage-invalidate coverage-full coverage-broad check-install
+.PHONY: all validate format lint lint-main check test test-doc test-fast coverage coverage-ci coverage-summary coverage-open coverage-clean clean-coverage clean-profraw build release clean clean-tmp install install-latest reinstall status check-rebuild uninstall help format-scripts lint-scripts check-scripts test-scripts lint-makefile fix validate-docs ci-status validate-naming validate-book context setup audit docs run-mcp run-mcp-test test-actions install-act check-act deps-validate dogfood dogfood-ci update-rust-docs size-report size-track size-check size-compare test-all-interfaces test-feature-all-interfaces test-interface-consistency benchmark-all-interfaces load-test-interfaces context-json context-sarif context-llm context-legacy context-benchmark analyze-top-files analyze-composite analyze-health-dashboard profile-binary-performance profile-deep-context analyze-memory-usage analyze-scaling kaizen test-slow-integration test-safe test-dogfood test-critical-scripts coverage-scripts test-workflow-dag test-workflow-dag-verbose context-root context-simple context-json-root context-benchmark-legacy local-install server-build-binary server-build-docker server-run-mcp server-run-mcp-test server-benchmark server-test server-test-all server-outdated server-tokei build-target cargo-doc cargo-geiger update-deps update-deps-aggressive update-deps-security upgrade-deps audit-fix benchmark coverage-report outdated test-all-features clippy-strict server-build-release create-release test-curl-install cargo-rustdoc install-dev-tools tokei quickstart context-fast clear-swap config-swap overnight-improve overnight-monitor overnight-swap-cron test-unit test-services test-protocols test-e2e test-performance test-property test-property-slow test-all test-stratified coverage-stratified crate-release crate-docs dev commit sprint-close setup-quality quality-gate-full help-toyota-way test-examples examples example clean-quick clean-deep validate-doc-links validate-contracts release-dry release-verify coverage-fast coverage-invalidate coverage-full coverage-broad check-install
 
 # Define sub-projects
 # NOTE: client project will be added when implemented
@@ -549,7 +549,16 @@ coverage-open: ## Open HTML coverage report in browser
 		echo "❌ Run 'make coverage' first"; \
 	fi
 
-coverage-clean: ## Clean coverage artifacts
+clean-profraw: ## Remove stale root-level *.profraw/*.profdata + generated defect reports
+	@echo "🧹 Removing stale root coverage scratch + generated reports..."
+	@# cargo llvm-cov writes *.profraw to CWD; left unchecked these reach hundreds
+	@# of MB and slow every directory walk (pmat indexing, walkdir). Plain rm only —
+	@# this does NOT run `cargo llvm-cov clean` (forbidden: it kills build caching).
+	@rm -f ./*.profraw ./*.profdata
+	@rm -f ./defect-report-*.csv ./defect-report-*.json ./defect-report-*.md ./defect-report-*.txt
+	@echo "✓ Root coverage scratch + stale defect-reports removed"
+
+coverage-clean: clean-profraw ## Clean coverage artifacts
 	@rm -f lcov.info target/coverage/lcov.info
 	@rm -rf target/coverage
 	@echo "✓ Coverage artifacts cleaned"
@@ -688,7 +697,7 @@ build: validate-docs validate-naming validate-book
 	@echo "   To build Docker: make server-build-docker"
 
 # Clean all projects
-clean:
+clean: clean-profraw
 	@echo "🧹 Cleaning build artifacts..."
 	@cargo clean --manifest-path Cargo.toml
 	@rm -rf coverage/ artifacts/ target/
@@ -1440,13 +1449,13 @@ pre-release-checks:
 	@./target/debug/pmat analyze satd --strict 2>/dev/null || cargo run --bin pmat -- analyze satd --strict || echo "⚠️  SATD check skipped (pmat not built)"
 	@echo ""
 	@echo "4️⃣ Security audit..."
-	@if [ -d "server" ]; then cargo audit || echo "⚠️  Some vulnerabilities found (review before release)"; else cd .. && cargo audit || echo "⚠️  Some vulnerabilities found (review before release)"; fi
+	@cargo audit || echo "⚠️  Some vulnerabilities found (review before release)"
 	@echo ""
 	@echo "5️⃣ Checking outdated dependencies..."
-	@if [ -d "server" ]; then cargo outdated --root-deps-only || true; else cd .. && cargo outdated --root-deps-only || true; fi
+	@cargo outdated --root-deps-only || true
 	@echo ""
 	@echo "6️⃣ SemVer compatibility check..."
-	@if [ -d "server" ]; then cargo semver-checks check-release || echo "⚠️  SemVer check completed (review any warnings)"; else cd .. && cargo semver-checks check-release || echo "⚠️  SemVer check completed (review any warnings)"; fi
+	@cargo semver-checks check-release || echo "⚠️  SemVer check completed (review any warnings)"
 	@echo ""
 	@echo "✅ All pre-release checks completed!"
 
@@ -1468,8 +1477,7 @@ release-major: install-release-tools pre-release-checks
 # Auto-determine version bump based on changes
 release-auto: install-release-tools pre-release-checks
 	@echo "🤖 Auto-determining version bump type..."
-	@if [ -d "server" ]; then SEMVER_CMD="cargo semver-checks check-release"; else SEMVER_CMD="cd .. && cargo semver-checks check-release"; fi; \
-	if $$SEMVER_CMD 2>&1 | grep -q "MAJOR"; then \
+	@if cargo semver-checks check-release 2>&1 | grep -q "MAJOR"; then \
 		echo "💥 Breaking changes detected - MAJOR release required"; \
 		$(MAKE) release-major; \
 	elif git log --oneline $(shell git describe --tags --abbrev=0 2>/dev/null || echo HEAD~10)..HEAD | grep -qE '^[a-f0-9]+ feat:'; then \

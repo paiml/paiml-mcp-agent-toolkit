@@ -144,7 +144,7 @@ async function main(): Promise<void> {
     console.log("\nTo test locally, you can:");
     console.log("1. Build the binary: make server-build-binary");
     console.log(
-      "2. Create a test tarball: tar -czf paiml-mcp-agent-toolkit-linux-x86_64.tar.gz -C server/target/release paiml-mcp-agent-toolkit",
+      "2. Create a test tarball: tar -czf pmat-x86_64-unknown-linux-musl.tar.gz -C target/release pmat",
     );
     console.log("3. Upload as a GitHub release asset");
   } else {

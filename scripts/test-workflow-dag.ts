@@ -98,7 +98,6 @@ class WorkflowSimulator {
     // Copy essential files to temp dir
     const filesToCopy = [
       "Cargo.toml",
-      "server/Cargo.toml",
       "installer-macro/Cargo.toml",
       "assets/project-state.json",
       "scripts/update-version.ts",
@@ -297,7 +296,7 @@ class WorkflowSimulator {
 
   private async updateVersionFiles(version: string): Promise<void> {
     // Simulate version update
-    const files = ["Cargo.toml", "server/Cargo.toml"];
+    const files = ["Cargo.toml"];
 
     for (const file of files) {
       try {
