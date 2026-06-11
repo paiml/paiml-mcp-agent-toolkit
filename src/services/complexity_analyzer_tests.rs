@@ -306,7 +306,9 @@ mod accurate_complexity_tests {
         );
     }
 
-    /// Test ? operator adds to complexity
+    /// Test the `?` operator does NOT add to cyclomatic complexity (GH-573).
+    /// `?` is error propagation, not a McCabe decision point; standard
+    /// cyclomatic and the per-file gate analyzer don't count it.
     #[tokio::test]
     async fn test_question_mark_operator() {
         let temp_dir = TempDir::new().unwrap();
@@ -316,15 +318,15 @@ mod accurate_complexity_tests {
             &test_file,
             r#"
             fn try_function() -> Result<i32, String> {
-                let x = some_operation()?;  // +1
-                let y = another_op()?;       // +1
+                let x = some_operation()?;
+                let y = another_op()?;
                 Ok(x + y)
             }
-            
+
             fn some_operation() -> Result<i32, String> {
                 Ok(42)
             }
-            
+
             fn another_op() -> Result<i32, String> {
                 Ok(10)
             }
@@ -341,8 +343,8 @@ mod accurate_complexity_tests {
             .find(|f| f.name.contains("try_function"))
             .unwrap();
         assert_eq!(
-            try_fn.cyclomatic_complexity, 3,
-            "? operator should add 1 to complexity per use"
+            try_fn.cyclomatic_complexity, 1,
+            "? operator must not add to cyclomatic complexity (base 1, no branches)"
         );
     }
 

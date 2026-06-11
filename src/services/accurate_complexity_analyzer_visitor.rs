@@ -127,11 +127,12 @@ impl<'ast> Visit<'ast> for ComplexityVisitor {
                 }
                 syn::visit::visit_expr(self, expr);
             }
-            Expr::Try(_) => {
-                self.add_cyclomatic(1);
-                self.add_cognitive(1);
-                syn::visit::visit_expr(self, expr);
-            }
+            // GH-573: `?` is error propagation, not a McCabe decision point.
+            // Counting it inflated cyclomatic for idiomatic Rust (e.g.
+            // `format_as_text`: 46 here vs 19 from the per-file gate analyzer)
+            // and diverged from the analyzer the pre-commit gate enforces.
+            // Standard cyclomatic/cognitive definitions don't count `?`.
+            Expr::Try(_) => syn::visit::visit_expr(self, expr),
             Expr::Break(_) | Expr::Continue(_) => {
                 self.add_cognitive(1);
                 syn::visit::visit_expr(self, expr);
