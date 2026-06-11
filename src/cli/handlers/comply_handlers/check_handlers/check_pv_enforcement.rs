@@ -82,91 +82,20 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
         b_blis.cmp(&a_blis)
     });
 
-    // Also collect contract YAML stems for #[contract("stem", equation = "eq")] matching
-    let mut yaml_stems: std::collections::HashMap<String, String> =
-        std::collections::HashMap::new();
-    if let Ok(entries) = std::fs::read_dir(&contracts_dir) {
-        for entry in entries.flatten() {
-            if entry.path().extension().map_or(true, |e| e != "yaml") {
-                continue;
-            }
-            if let Some(stem) = entry.path().file_stem().and_then(|s| s.to_str()) {
-                if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                    yaml_stems.insert(stem.to_string(), content);
-                }
-            }
-        }
-    }
-
-    // Preload source lines that are #[contract] attributes (not string literals)
-    // Matches both `#[contract(` and `#[provable_contracts_macros::contract(`
-    let mut contract_attr_lines = Vec::new();
-    for entry in &src_files {
-        if let Ok(content) = std::fs::read_to_string(entry.path()) {
-            for line in content.lines() {
-                let t = line.trim();
-                if t.starts_with("#[contract(") || t.contains("::contract(") {
-                    contract_attr_lines.push(t.to_string());
-                }
-            }
-        }
-    }
+    let contract_attr_lines = cb1203_collect_contract_attr_lines(&src_files);
 
     for eq in &eq_names {
-        // Strategy 1: Check if any #[contract] attribute references this equation
-        let attr_pattern = format!("equation = \"{eq}\"");
-        if contract_attr_lines
-            .iter()
-            .any(|line| line.contains(&attr_pattern))
-        {
-            bound_fns += 1;
-            with_macro += 1;
-            continue; // Covered by #[contract] macro — assertions come from YAML
-        }
-
-        // Strategy 2: Find pub fn <eq_name>( and check for macros in preceding lines.
-        // GH-271: Window expanded from 10 → 25 lines to accommodate functions with
-        // long doc comments. Doc-comment blocks that push the `#[contract(...)]`
-        // beyond the window were the main source of CB-1203 false positives.
-        let pattern = format!("pub fn {eq}(");
-        let mut found = false;
-        for entry in &src_files {
-            if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                if let Some(pos) = content.find(&pattern) {
-                    bound_fns += 1;
-                    found = true;
-                    let prefix = &content[..pos];
-                    let preceding_lines: Vec<&str> = prefix.lines().rev().take(25).collect();
-                    let has_macro = preceding_lines.iter().any(|line| {
-                        let t = line.trim();
-                        t.starts_with("#[contract(")
-                            || t.contains("::contract(")
-                            || t.starts_with("#[requires(")
-                            || t.starts_with("#[ensures(")
-                            || t.starts_with("#[invariant(")
-                    });
-                    // Also check function body for contract_pre_*/debug_assert! with contract comment
-                    let body_start = &content[pos..];
-                    let body_snippet: String = body_start.lines().take(20).collect::<Vec<_>>().join("\n");
-                    let has_body_contract = body_snippet.contains("contract_pre_")
-                        || body_snippet.contains("contract_post_")
-                        || body_snippet.contains("// Contract:");
-                    if has_macro || has_body_contract {
-                        with_macro += 1;
-                    } else {
-                        let rel = entry
-                            .path()
-                            .strip_prefix(project_path)
-                            .unwrap_or(entry.path());
-                        missing.push(format!("{eq} in {}", rel.display()));
-                    }
-                    break;
-                }
+        match cb1203_classify_equation(eq, &contract_attr_lines, &src_files, project_path) {
+            Cb1203EqOutcome::BoundWithMacro => {
+                bound_fns += 1;
+                with_macro += 1;
             }
-        }
-        // Equation has no matching pub fn — not a failure (might be test-only or delegated)
-        if !found {
-            // silently skip
+            Cb1203EqOutcome::BoundMissing(msg) => {
+                bound_fns += 1;
+                missing.push(msg);
+            }
+            // No matching pub fn — not bound (might be test-only or delegated).
+            Cb1203EqOutcome::NotFound => {}
         }
     }
 
@@ -206,6 +135,89 @@ pub(crate) fn check_annotation_coverage(project_path: &Path) -> ComplianceCheck 
             severity: Severity::Info,
         }
     }
+}
+
+/// Collect every source line that is a `#[contract(...)]` attribute (matches both
+/// `#[contract(` and `#[provable_contracts_macros::contract(`). Extracted from
+/// `check_annotation_coverage` to keep it under the complexity gate.
+fn cb1203_collect_contract_attr_lines(src_files: &[walkdir::DirEntry]) -> Vec<String> {
+    let mut lines = Vec::new();
+    for entry in src_files {
+        let Ok(content) = std::fs::read_to_string(entry.path()) else {
+            continue;
+        };
+        for line in content.lines() {
+            let t = line.trim();
+            if t.starts_with("#[contract(") || t.contains("::contract(") {
+                lines.push(t.to_string());
+            }
+        }
+    }
+    lines
+}
+
+/// Outcome of classifying one contract equation against the source tree.
+enum Cb1203EqOutcome {
+    /// Covered by a `#[contract(... equation = "eq")]` attribute, or a `pub fn`
+    /// was found that carries a contract macro / body contract.
+    BoundWithMacro,
+    /// A `pub fn eq(` was found but it has no contract annotation.
+    BoundMissing(String),
+    /// No matching `pub fn` — not bound (might be test-only or delegated).
+    NotFound,
+}
+
+/// Classify a single contract equation. Extracted from `check_annotation_coverage`
+/// to keep that function under the complexity gate; logic is preserved
+/// (see the `test_cb1203_*` characterization tests).
+fn cb1203_classify_equation(
+    eq: &str,
+    contract_attr_lines: &[String],
+    src_files: &[walkdir::DirEntry],
+    project_path: &Path,
+) -> Cb1203EqOutcome {
+    // Strategy 1: a #[contract] attribute references this equation.
+    let attr_pattern = format!("equation = \"{eq}\"");
+    if contract_attr_lines
+        .iter()
+        .any(|line| line.contains(&attr_pattern))
+    {
+        return Cb1203EqOutcome::BoundWithMacro;
+    }
+
+    // Strategy 2: find `pub fn <eq>(` and check for a contract macro in the 25
+    // preceding lines (GH-271) or a body contract. First match wins.
+    let pattern = format!("pub fn {eq}(");
+    for entry in src_files {
+        let Ok(content) = std::fs::read_to_string(entry.path()) else {
+            continue;
+        };
+        let Some(pos) = content.find(&pattern) else {
+            continue;
+        };
+        let preceding_lines: Vec<&str> = content[..pos].lines().rev().take(25).collect();
+        let has_macro = preceding_lines.iter().any(|line| {
+            let t = line.trim();
+            t.starts_with("#[contract(")
+                || t.contains("::contract(")
+                || t.starts_with("#[requires(")
+                || t.starts_with("#[ensures(")
+                || t.starts_with("#[invariant(")
+        });
+        let body_snippet: String = content[pos..].lines().take(20).collect::<Vec<_>>().join("\n");
+        let has_body_contract = body_snippet.contains("contract_pre_")
+            || body_snippet.contains("contract_post_")
+            || body_snippet.contains("// Contract:");
+        if has_macro || has_body_contract {
+            return Cb1203EqOutcome::BoundWithMacro;
+        }
+        let rel = entry
+            .path()
+            .strip_prefix(project_path)
+            .unwrap_or(entry.path());
+        return Cb1203EqOutcome::BoundMissing(format!("{eq} in {}", rel.display()));
+    }
+    Cb1203EqOutcome::NotFound
 }
 
 
