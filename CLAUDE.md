@@ -218,7 +218,7 @@ Installation: `pmat hooks install --tdg-enforcement`. Bug reports: https://githu
 
 ## Test Coverage
 
-**Total: ~94 tests ignored** (82 in server/src, remainder in server/tests). Tests marked `#[ignore]` for stable coverage metrics.
+**Total: ~94 tests ignored** (82 in src/, remainder in tests/). Tests marked `#[ignore]` for stable coverage metrics.
 
 | Category | Count | Status |
 |----------|-------|--------|
@@ -277,7 +277,7 @@ pmat rust-project-score --failures-only    # Show only failures
 
 **Categories**: Rust Tooling & CI/CD (130pts), Code Quality (26pts), Testing (20pts), Known Defects (20pts), Formal Verification (16pts), Documentation (15pts), Reproducibility (15pts), Build Performance (15pts), Dependency Health (12pts), Performance & Benchmarking (10pts), GPU/SIMD Quality (10pts).
 
-Spec: `docs/specifications/components/repo-health.md` | Location: `server/src/services/rust_project_score/`
+Spec: `docs/specifications/components/repo-health.md` | Location: `src/services/rust_project_score/`
 
 ---
 

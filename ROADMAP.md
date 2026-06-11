@@ -1,6 +1,20 @@
 # PMAT Agent System Roadmap
 
-## 🎉 CURRENT STATUS: v2.192.0 - Sprint 81 Feature Complete + Maintenance ✅
+> ⚠️ **HISTORICAL — SUPERSEDED (do not treat as current).**
+> This file is frozen at **v2.192.0 (Nov 2025)** and is no longer the source of truth
+> (the project is on **3.17.0+**). It also references the old `server/src/` layout
+> (source now lives in `src/`).
+>
+> **For the live roadmap / status, use:**
+> - `CHANGELOG.md` — actively maintained, current release trajectory
+> - `gh issue list` — the open backlog
+> - `docs/specifications/components/*.md` — component-level plans
+>
+> Kept for historical reference only.
+
+---
+
+## 🎉 HISTORICAL STATUS: v2.192.0 - Sprint 81 Feature Complete + Maintenance ✅
 
 **Current Version**: v2.192.0 (Released November 1, 2025)
 **Latest Sprint**: Sprint 81 - Issue #53 Complete: MCP Tool Placeholder Elimination (COMPLETE ✅)

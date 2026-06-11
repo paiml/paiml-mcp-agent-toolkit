@@ -1,5 +1,13 @@
 # PMAT Implementation Roadmap
 # Extreme TDD with Zero Tolerance Quality Gates
+#
+# ============================================================================
+# ⚠️ HISTORICAL — SUPERSEDED (do not treat as current).
+# Frozen at v2.180.x (Oct 2025); the project is on 3.17.0+. Contains only
+# `completed_sprints` with no pending section, so it is not a live plan.
+# Live roadmap/status lives in: CHANGELOG.md, `gh issue list`, and
+# docs/specifications/components/*.md. Kept for historical reference only.
+# ============================================================================
 
 meta:
   project: PMAT - Pragmatic AI Labs Multi-language Agent Toolkit

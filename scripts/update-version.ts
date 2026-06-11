@@ -14,12 +14,10 @@ interface VersionUpdate {
 // Files that need version updates
 const VERSION_UPDATES: VersionUpdate[] = [
   {
+    // Root crate manifest (the `pmat` package lives at the repo root; the old
+    // `server/Cargo.toml` was removed in the layout flattening — listing it here
+    // aborted the whole bump with "File not found").
     file: "Cargo.toml",
-    pattern: /^version = ".*"$/m,
-    replacement: (v) => `version = "${v}"`,
-  },
-  {
-    file: "server/Cargo.toml",
     pattern: /^version = ".*"$/m,
     replacement: (v) => `version = "${v}"`,
   },
@@ -132,11 +130,13 @@ async function updateAllVersions(newVersion: string): Promise<void> {
   const successCount = results.filter((r) => r).length;
   console.log(`\n✅ Updated ${successCount}/${VERSION_UPDATES.length} files`);
 
-  // Update Cargo.lock
+  // Update Cargo.lock so its `pmat` pin matches the new Cargo.toml version.
+  // (Package is `pmat` and the manifest is at the repo root — the old
+  // `-p paiml-mcp-agent-toolkit` / `cwd: "server"` silently failed every
+  // release, which is why the lock pin had to be bumped in a follow-up commit.)
   console.log("\n🔄 Updating Cargo.lock...");
   const cargoUpdate = new Deno.Command("cargo", {
-    args: ["update", "-p", "paiml-mcp-agent-toolkit"],
-    cwd: "server",
+    args: ["update", "-p", "pmat"],
   });
 
   const { success } = await cargoUpdate.output();

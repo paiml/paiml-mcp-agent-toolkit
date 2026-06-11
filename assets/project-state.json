@@ -6,10 +6,10 @@
     "version": "0.18.0"
   },
   "package": {
-    "name": "paiml-mcp-agent-toolkit",
+    "name": "pmat",
     "binary": {
       "main": "pmat",
-      "allowed_additional": ["generate-installer"]
+      "allowed_additional": ["pmat-agent"]
     }
   },
   "organization": {
@@ -29,9 +29,7 @@
     "binaryNames": [
       "mcp_server_stateless",
       "mcp-template-server",
-      "mcp_template_server",
-      "mcp-server",
-      "mcp_server"
+      "mcp_template_server"
     ],
     "repositoryUrls": [
       "paiml/mcp-agent-toolkit",

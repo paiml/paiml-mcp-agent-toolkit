@@ -225,12 +225,12 @@ async function generateCoverage(fuzzerName: string) {
     const htmlDir = "fuzz/coverage/html";
     await ensureDir(htmlDir);
 
-    // Extract coverage for server sources
+    // Extract coverage for crate sources
     const lcovResult = await new Deno.Command("lcov", {
       args: [
         "--extract",
         `${coverageDir}/coverage.profdata`,
-        "*/server/src/*",
+        "*/src/*",
         "-o",
         "fuzz/coverage/filtered.lcov",
       ],
