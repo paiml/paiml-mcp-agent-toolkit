@@ -193,8 +193,8 @@ mod tests {
 
     /// Test trueno-rag TfIdfEmbedder can produce embeddings
     #[test]
-    fn test_trueno_rag_tfidf_embedder_basic() {
-        use trueno_rag::embed::{Embedder, TfIdfEmbedder};
+    fn test_aprender_rag_tfidf_embedder_basic() {
+        use aprender_rag::embed::{Embedder, TfIdfEmbedder};
 
         let documents = ["fn main() { println!(\"hello world\"); }",
             "fn add(a: i32, b: i32) -> i32 { a + b }",
@@ -219,8 +219,8 @@ mod tests {
 
     /// Test TfIdfEmbedder produces normalized vectors
     #[test]
-    fn test_trueno_rag_tfidf_normalization() {
-        use trueno_rag::embed::{Embedder, TfIdfEmbedder};
+    fn test_aprender_rag_tfidf_normalization() {
+        use aprender_rag::embed::{Embedder, TfIdfEmbedder};
 
         let documents = vec![
             "rust code function implementation",
@@ -250,8 +250,8 @@ mod tests {
 
     /// Test TfIdfEmbedder similarity correlates with document similarity
     #[test]
-    fn test_trueno_rag_tfidf_similarity() {
-        use trueno_rag::embed::{Embedder, TfIdfEmbedder};
+    fn test_aprender_rag_tfidf_similarity() {
+        use aprender_rag::embed::{Embedder, TfIdfEmbedder};
 
         let documents = [
             "fn main() { println!(\"hello\"); }",
@@ -281,8 +281,8 @@ mod tests {
 
     /// Test batch embedding
     #[test]
-    fn test_trueno_rag_tfidf_batch() {
-        use trueno_rag::embed::{Embedder, TfIdfEmbedder};
+    fn test_aprender_rag_tfidf_batch() {
+        use aprender_rag::embed::{Embedder, TfIdfEmbedder};
 
         let documents = ["function first() { return 1; }",
             "function second() { return 2; }",
@@ -303,8 +303,8 @@ mod tests {
 
     /// Test memory efficiency: trueno-rag uses f32 instead of f64
     #[test]
-    fn test_trueno_rag_tfidf_memory_efficiency() {
-        use trueno_rag::embed::{Embedder, TfIdfEmbedder};
+    fn test_aprender_rag_tfidf_memory_efficiency() {
+        use aprender_rag::embed::{Embedder, TfIdfEmbedder};
 
         // trueno-rag uses f32 (4 bytes) vs aprender uses f64 (8 bytes)
         // This means 50% memory savings for large document collections
@@ -330,8 +330,8 @@ mod tests {
 
     /// Test sparse embedding (most values should be zero for short docs)
     #[test]
-    fn test_trueno_rag_tfidf_sparsity() {
-        use trueno_rag::embed::{Embedder, TfIdfEmbedder};
+    fn test_aprender_rag_tfidf_sparsity() {
+        use aprender_rag::embed::{Embedder, TfIdfEmbedder};
 
         let documents = ["fn main() {}", "def test(): pass", "function x() {}"];
 
@@ -354,8 +354,8 @@ mod tests {
 
     /// Test IDF computation correctness
     #[test]
-    fn test_trueno_rag_tfidf_idf_correctness() {
-        use trueno_rag::embed::{Embedder, TfIdfEmbedder};
+    fn test_aprender_rag_tfidf_idf_correctness() {
+        use aprender_rag::embed::{Embedder, TfIdfEmbedder};
 
         // Document frequency test:
         // "common" appears in all docs (high DF -> low IDF)

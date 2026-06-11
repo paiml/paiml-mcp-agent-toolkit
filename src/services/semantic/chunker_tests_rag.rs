@@ -225,9 +225,9 @@ fn another_function() {
 
     /// Test that trueno-rag Chunker trait can be used
     #[test]
-    fn test_trueno_rag_chunker_integration() {
-        use trueno_rag::chunk::{Chunker, RecursiveChunker};
-        use trueno_rag::Document;
+    fn test_aprender_rag_chunker_integration() {
+        use aprender_rag::chunk::{Chunker, RecursiveChunker};
+        use aprender_rag::Document;
 
         let chunker = RecursiveChunker::new(50, 10);
         let doc = Document::new(

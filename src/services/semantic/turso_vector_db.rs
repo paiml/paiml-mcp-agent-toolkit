@@ -6,11 +6,11 @@
 // GREEN Phase: Full implementation with cosine similarity search
 // Sprint 76: Migrated from rusqlite to trueno-rag VectorStore for SIMD acceleration
 
+use aprender_rag::index::{VectorStore, VectorStoreConfig};
+use aprender_rag::{Chunk, ChunkId, DocumentId};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::RwLock;
-use trueno_rag::index::{VectorStore, VectorStoreConfig};
-use trueno_rag::{Chunk, ChunkId, DocumentId};
 
 // Type definitions: TursoVectorDB, EmbeddingMetadata, EmbeddingEntry, SearchResult, DbStats
 include!("turso_vector_db_types.rs");

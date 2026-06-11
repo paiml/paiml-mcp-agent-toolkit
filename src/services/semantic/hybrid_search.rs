@@ -15,8 +15,8 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 
-use trueno_rag::index::BM25Index;
-use trueno_rag::{Chunk, ChunkId, DocumentId, SparseIndex};
+use aprender_rag::index::BM25Index;
+use aprender_rag::{Chunk, ChunkId, DocumentId, SparseIndex};
 
 /// Search mode for hybrid engine
 #[derive(Debug, Clone, PartialEq, Eq)]
