@@ -216,4 +216,32 @@ ignored: value
             ]
         );
     }
+
+    // --- CB-1307 pure WASM-export scanner characterization (extracted from
+    // check_wasm_ffi_contracts). The heuristic exits a #[wasm_bindgen] block at
+    // the first non-pub/non-comment/non-let line, so only the first method of
+    // an impl is counted — this quirk is locked here. ---
+    #[test]
+    fn test_scan_wasm_exports() {
+        let src = "\
+#[wasm_bindgen]
+pub struct Widget {
+    val: i32,
+}
+
+#[wasm_bindgen]
+impl Widget {
+    /// Documented constructor.
+    pub fn new(v: i32) -> Widget {
+        Widget { val: v }
+    }
+}
+";
+        let c = scan_wasm_exports(src);
+        // struct Widget (undocumented) + fn new (documented, no Result return).
+        assert_eq!(c.total_exports, 2);
+        assert_eq!(c.undocumented, 1, "the struct has no doc comment");
+        assert_eq!(c.unwrap_in_export, 0);
+        assert_eq!(c.no_result_return, 1, "new() returns Widget, not Result");
+    }
 }
