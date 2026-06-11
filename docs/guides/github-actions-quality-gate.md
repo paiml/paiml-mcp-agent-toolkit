@@ -29,7 +29,7 @@ jobs:
       
       - name: Install pmat
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Run Quality Gate
@@ -57,7 +57,7 @@ jobs:
       
       - name: Install pmat
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Check pmat version
@@ -111,7 +111,7 @@ jobs:
       - name: Install pmat
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Check each modified file
@@ -167,7 +167,7 @@ jobs:
       
       - name: Install pmat
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Analyze file
@@ -242,7 +242,7 @@ jobs:
       
       - name: Install pmat
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Get changed files
@@ -384,7 +384,7 @@ jobs:
       
       - name: Install pmat
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Set file extension
@@ -438,7 +438,7 @@ jobs:
       
       - name: Install pmat
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Create quality config
@@ -543,7 +543,7 @@ jobs:
       
       - name: Install pmat
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Run comprehensive analysis
@@ -606,7 +606,7 @@ jobs:
       - name: Install pmat
         if: steps.cache-pmat.outputs.cache-hit != 'true'
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Cache analysis results
@@ -697,7 +697,7 @@ jobs:
       
       - name: Install pmat
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Quick quality check
@@ -728,9 +728,9 @@ jobs:
       - name: Install pmat
         run: |
           if [ "${{ env.PMAT_VERSION }}" = "latest" ]; then
-            curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+            cargo install pmat
           else
-            curl -fsSL "https://github.com/paiml/paiml-mcp-agent-toolkit/releases/download/v${{ env.PMAT_VERSION }}/install.sh" | bash
+            cargo install pmat
           fi
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
@@ -801,7 +801,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          curl -fsSL https://github.com/paiml/paiml-mcp-agent-toolkit/releases/latest/download/install.sh | bash
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           pip install matplotlib pandas
       

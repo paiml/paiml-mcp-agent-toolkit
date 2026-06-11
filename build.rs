@@ -7,7 +7,6 @@ use std::path::Path;
 
 fn main() {
     // Only watch files that actually exist - missing files cause constant rebuilds
-    println!("cargo:rerun-if-changed=../scripts/install.sh");
     println!("cargo:rerun-if-changed=assets/vendor/");
     println!("cargo:rerun-if-changed=assets/demo/");
     println!("cargo:rerun-if-changed=../assets/demo/");

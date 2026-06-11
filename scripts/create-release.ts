@@ -60,7 +60,7 @@ async function main(): Promise<void> {
 
     console.log(`${GREEN}Done! Users can now install with:${NC}`);
     console.log(
-      "curl -fsSL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh",
+      "cargo install pmat",
     );
   } catch (e) {
     console.error(

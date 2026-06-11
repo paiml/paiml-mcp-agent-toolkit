@@ -160,6 +160,26 @@ make validate-book
 
 ---
 
+## CRITICAL: Pre-Commit Verification (`pmat verify`)
+
+**MANDATORY for agents: run `pmat verify` before every commit.** It runs the gate
+set CI actually enforces — **format, complexity, satd, clippy, tests** — fail-fast,
+with machine-readable output, giving a "green here ⇒ green in CI" guarantee. The
+pre-commit hook and `pmat quality-gate` both miss clippy + tests; `pmat verify`
+does not.
+
+```bash
+pmat verify --format json          # canonical agent check; ok:true ⇒ safe to commit
+pmat verify --fix                  # auto-apply cargo fmt / clippy --fix first
+pmat verify --skip clippy,tests    # fast inner loop (format+complexity+satd)
+```
+
+Canonical loop: `edit → pmat verify --format json → fix on red → commit on green`.
+Spec: `docs/specifications/pmat-verify-autonomous-preflight.md`. Loop doc:
+`docs/agent-instructions/autonomous-verify-loop.md`.
+
+---
+
 ## CRITICAL: O(1) Quality Gates (Phase 2 - Active)
 
 **AUTOMATIC ENFORCEMENT: Pre-commit hooks validate metrics in <30ms**
@@ -202,7 +222,7 @@ Enforced by pre-commit hook, CI/CD pipeline, and `pmat quality-gate --checks doc
 bashrs (PAIML) lints for SC2086/SC2046/SC2116, DET003 (non-determinism), IDEM002 (idempotency), SEC008 (security).
 
 ```bash
-bashrs lint scripts/install.sh
+bashrs lint Makefile
 bashrs lint Makefile
 ```
 

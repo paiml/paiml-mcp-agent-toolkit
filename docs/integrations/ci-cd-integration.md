@@ -42,7 +42,7 @@ jobs:
         run: |
           cargo install pmat
           # Or use quick install:
-          # curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+          # cargo install pmat
           # echo "$HOME/.local/bin" >> $GITHUB_PATH
           
       - name: Check Code Complexity
@@ -191,7 +191,7 @@ pipeline {
         stage('Install Tools') {
             steps {
                 sh '''
-                    curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+                    cargo install pmat
                     export PATH="$HOME/.local/bin:$PATH"
                 '''
             }
@@ -375,7 +375,7 @@ jobs:
           
       - name: Install pmat
         run: |
-          curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
           
       - name: Run automated refactoring
@@ -441,7 +441,7 @@ quality-gate:
   stage: quality-check
   image: rust:latest
   before_script:
-    - curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+    - cargo install pmat
     - export PATH="$HOME/.local/bin:$PATH"
   script:
     - pmat refactor auto --ci-mode --format json
@@ -459,7 +459,7 @@ automated-refactor:
   stage: refactor
   image: rust:latest
   before_script:
-    - curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+    - cargo install pmat
     - export PATH="$HOME/.local/bin:$PATH"
   script:
     - pmat refactor auto --max-iterations 3 --format detailed
@@ -493,7 +493,7 @@ pipeline {
         stage('Setup') {
             steps {
                 sh '''
-                    curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+                    cargo install pmat
                     export PATH="$PMAT_HOME:$PATH"
                     pmat --version
                 '''
@@ -589,7 +589,7 @@ stages:
         displayName: 'Run Quality Gate'
         steps:
           - script: |
-              curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+              cargo install pmat
               echo "##vso[task.prependpath]$HOME/.local/bin"
             displayName: 'Install pmat'
             
@@ -611,7 +611,7 @@ stages:
         displayName: 'Auto Refactor'
         steps:
           - script: |
-              curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+              cargo install pmat
               echo "##vso[task.prependpath]$HOME/.local/bin"
             displayName: 'Install pmat'
             
@@ -641,7 +641,7 @@ stages:
 FROM rust:1.75-slim
 
 # Install pmat
-RUN curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+RUN cargo install pmat
 ENV PATH="/root/.local/bin:${PATH}"
 
 # Set working directory
@@ -720,7 +720,7 @@ echo "🤖 Running AI-powered quality check..."
 # Check if pmat is installed
 if ! command -v pmat &> /dev/null; then
     echo "❌ pmat not found. Installing..."
-    curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+    cargo install pmat
     export PATH="$HOME/.local/bin:$PATH"
 fi
 

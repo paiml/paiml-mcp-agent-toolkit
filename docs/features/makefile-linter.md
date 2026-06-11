@@ -223,7 +223,7 @@ jobs:
       
       - name: Install PMAT
         run: |
-          curl -sSfL https://raw.githubusercontent.com/paiml/paiml-mcp-agent-toolkit/master/scripts/install.sh | sh
+          cargo install pmat
           echo "$HOME/.local/bin" >> $GITHUB_PATH
       
       - name: Lint Makefile

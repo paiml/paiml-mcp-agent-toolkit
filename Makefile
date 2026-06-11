@@ -889,11 +889,7 @@ test-dogfood: release
 # Test critical Deno scripts with coverage
 test-critical-scripts:
 	@echo "🧪 Testing critical Deno scripts with coverage..."
-	@echo "These scripts are P0 - if they fail, installation/releases break!"
-	@echo ""
-	@echo "Testing install.sh wrapper..."
-	@bash -n $(SCRIPTS_DIR)/install.sh || (echo "❌ install.sh has syntax errors!" && exit 1)
-	@echo "✅ install.sh syntax check passed"
+	@echo "These scripts are P0 - if they fail, releases break!"
 	@echo ""
 	@echo "Testing TypeScript utility modules..."
 	@rm -rf .coverage
