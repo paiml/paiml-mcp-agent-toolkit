@@ -17,6 +17,8 @@ pub struct SemanticCli {
     hybrid_engine: Arc<HybridSearchEngine>,
     clustering_engine: Arc<ClusteringEngine>,
     topic_engine: Arc<TopicEngine>,
+    /// Vector DB path — used by `embed status` / `embed clear` (#568).
+    db_path: String,
 }
 
 impl SemanticCli {
@@ -41,6 +43,7 @@ impl SemanticCli {
             hybrid_engine,
             clustering_engine,
             topic_engine,
+            db_path: db_path.to_string(),
         })
     }
 
@@ -52,6 +55,9 @@ impl SemanticCli {
         language: Option<String>,
     ) -> Result<String, String> {
         let stats = self.search_engine.index_directory(directory).await?;
+        // #568: persist the freshly-indexed embeddings so a later
+        // `semantic search` / `embed status` process can load them.
+        self.search_engine.save().await?;
 
         let msg = format!(
             "Synced {} chunks ({} created, {} updated)",
@@ -68,8 +74,9 @@ impl SemanticCli {
     /// Get embedding status
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub async fn embed_status(&self) -> Result<String, String> {
-        // Query database for statistics
-        Ok("Embedding database status: 0 chunks indexed".to_string())
+        // #568: report the real count from the (loaded) persisted store.
+        let count = self.search_engine.entry_count().await?;
+        Ok(format!("Embedding database status: {count} chunks indexed"))
     }
 
     /// Clear all embeddings
@@ -79,7 +86,12 @@ impl SemanticCli {
             return Err("Clear operation requires --confirm flag".to_string());
         }
 
-        // Clear database
+        // #568: remove the persisted vector DB; the next process loads empty.
+        let path = std::path::Path::new(&self.db_path);
+        if path.exists() {
+            std::fs::remove_file(path)
+                .map_err(|e| format!("Failed to remove {}: {e}", self.db_path))?;
+        }
         Ok("All embeddings cleared".to_string())
     }
 
