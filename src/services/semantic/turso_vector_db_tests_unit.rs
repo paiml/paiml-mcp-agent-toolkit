@@ -207,6 +207,42 @@
     }
 
     #[tokio::test]
+    async fn test_persistence_round_trip() {
+        // #568: entries saved by one TursoVectorDB load into a fresh one opened
+        // on the same path (this is what makes `embed sync` -> `semantic search`
+        // work across separate CLI processes).
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("embeddings.db");
+        let path_str = db_path.to_string_lossy().to_string();
+
+        let make = |name: &str, file: &str| EmbeddingEntry {
+            file_path: file.to_string(),
+            chunk_name: name.to_string(),
+            chunk_type: "function".to_string(),
+            language: "rust".to_string(),
+            start_line: 1,
+            end_line: 10,
+            content_checksum: format!("sum_{name}"),
+            embedding: vec![0.1, 0.2, 0.3, 0.4],
+            model: "aprender-tfidf-local".to_string(),
+        };
+
+        {
+            let db = TursoVectorDB::new_local(path_str.as_str()).await.unwrap();
+            db.insert(&make("alpha", "src/a.rs")).await.unwrap();
+            db.insert(&make("beta", "src/b.rs")).await.unwrap();
+            db.save().await.unwrap();
+        }
+        assert!(db_path.exists(), "save() must write the db file");
+
+        // A fresh instance rebuilds the store from the persisted entries.
+        let reloaded = TursoVectorDB::new_local(path_str.as_str()).await.unwrap();
+        let stats = reloaded.get_stats().await.unwrap();
+        assert_eq!(stats.total_entries, 2, "reloaded store must have both entries");
+        assert_eq!(stats.unique_files, 2);
+    }
+
+    #[tokio::test]
     async fn test_get_entry() {
         let db = TursoVectorDB::new_local(":memory:").await.unwrap();
 

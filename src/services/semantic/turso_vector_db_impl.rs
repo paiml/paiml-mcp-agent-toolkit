@@ -1,13 +1,12 @@
 impl TursoVectorDB {
-    /// Create new local in-memory database
+    /// Open a local vector database, loading persisted entries from `path` if it
+    /// exists (#568). Pass `":memory:"` for a non-persistent store.
     ///
-    /// # Arguments
-    /// * `_path` - Path parameter (kept for API compatibility, now ignored)
-    ///
-    /// # Returns
-    /// Database instance
+    /// The SIMD `VectorStore` (aprender-rag) is in-memory only, so persistence is
+    /// implemented by serializing entries on [`save`](Self::save) and rebuilding
+    /// the store here via re-insert.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-    pub async fn new_local<P: AsRef<Path>>(_path: P) -> Result<Self, String> {
+    pub async fn new_local<P: AsRef<Path>>(path: P) -> Result<Self, String> {
         // Default to 256 dimensions to match the in-binary local embedder
         // (`LocalEmbedder`, search_engine_embedder.rs). pmat uses local TF-IDF
         // embeddings only (no OpenAI/API keys), so a fresh store searched before
@@ -19,12 +18,85 @@ impl TursoVectorDB {
             ..Default::default()
         };
 
-        Ok(Self {
+        let path_ref = path.as_ref();
+        let db_path = if path_ref.as_os_str() == ":memory:" || path_ref.as_os_str().is_empty() {
+            None
+        } else {
+            Some(path_ref.to_path_buf())
+        };
+
+        let db = Self {
             store: RwLock::new(VectorStore::new(config)),
             file_index: RwLock::new(HashMap::new()),
             metadata: RwLock::new(HashMap::new()),
             next_id: RwLock::new(1),
-        })
+            db_path,
+        };
+
+        // Rebuild the in-memory store from the persisted entries, if any.
+        // A corrupt or stale db file must not break startup — start empty.
+        if let Some(p) = db.db_path.as_ref() {
+            if p.exists() {
+                if let Err(e) = db.load_persisted(p).await {
+                    eprintln!("⚠️  ignoring unreadable vector db {}: {e}", p.display());
+                }
+            }
+        }
+
+        Ok(db)
+    }
+
+    /// Reconstruct every stored entry (metadata + its embedding) for persistence.
+    fn collect_entries(&self) -> Result<Vec<EmbeddingEntry>, String> {
+        let metadata = self.metadata.read().map_err(|e| format!("Lock error: {e}"))?;
+        let store = self.store.read().map_err(|e| format!("Lock error: {e}"))?;
+        let mut entries = Vec::with_capacity(metadata.len());
+        for (chunk_id, meta) in metadata.iter() {
+            let embedding = store
+                .get(*chunk_id)
+                .and_then(|c| c.embedding.clone())
+                .unwrap_or_default();
+            entries.push(EmbeddingEntry {
+                file_path: meta.file_path.clone(),
+                chunk_name: meta.chunk_name.clone(),
+                chunk_type: meta.chunk_type.clone(),
+                language: meta.language.clone(),
+                start_line: meta.start_line,
+                end_line: meta.end_line,
+                content_checksum: meta.content_checksum.clone(),
+                embedding,
+                model: meta.model.clone(),
+            });
+        }
+        Ok(entries)
+    }
+
+    /// Persist all entries to `db_path` (no-op for in-memory stores). #568.
+    pub async fn save(&self) -> Result<(), String> {
+        let Some(path) = self.db_path.as_ref() else {
+            return Ok(());
+        };
+        let entries = self.collect_entries()?;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| format!("create db dir: {e}"))?;
+        }
+        let json = serde_json::to_string(&entries).map_err(|e| format!("serialize db: {e}"))?;
+        std::fs::write(path, json).map_err(|e| format!("write db: {e}"))?;
+        Ok(())
+    }
+
+    /// Load persisted entries from `path` and re-insert them into the store.
+    async fn load_persisted(&self, path: &Path) -> Result<(), String> {
+        let content = std::fs::read_to_string(path).map_err(|e| format!("read db: {e}"))?;
+        if content.trim().is_empty() {
+            return Ok(());
+        }
+        let entries: Vec<EmbeddingEntry> =
+            serde_json::from_str(&content).map_err(|e| format!("parse db: {e}"))?;
+        for entry in &entries {
+            self.insert(entry).await?;
+        }
+        Ok(())
     }
 
     /// Insert or update embedding entry

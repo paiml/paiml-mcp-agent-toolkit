@@ -8,6 +8,10 @@ pub struct TursoVectorDB {
     metadata: RwLock<HashMap<ChunkId, EmbeddingMetadata>>,
     /// Auto-increment ID counter
     next_id: RwLock<i64>,
+    /// On-disk persistence path (`None` for in-memory / `:memory:`).
+    /// #568: the SIMD `VectorStore` is in-memory only, so entries are serialized
+    /// here on `save()` and rebuilt on `new_local()`.
+    db_path: Option<std::path::PathBuf>,
 }
 
 /// Internal metadata for each embedding
@@ -24,8 +28,9 @@ struct EmbeddingMetadata {
     model: String,
 }
 
-/// Embedding entry to insert into database
-#[derive(Debug, Clone)]
+/// Embedding entry to insert into database. Also the #568 persistence unit
+/// (serialized to `db_path` on save, re-inserted on load).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct EmbeddingEntry {
     pub file_path: String,
     pub chunk_name: String,

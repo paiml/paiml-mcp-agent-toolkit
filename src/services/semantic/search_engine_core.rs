@@ -27,6 +27,16 @@ impl SemanticSearchEngine {
         Self::new(db_path).await
     }
 
+    /// Persist the indexed embeddings to disk (#568). No-op for in-memory stores.
+    pub async fn save(&self) -> Result<(), String> {
+        self.vector_db.save().await
+    }
+
+    /// Number of indexed chunks currently in the store.
+    pub async fn entry_count(&self) -> Result<usize, String> {
+        Ok(self.vector_db.get_stats().await?.total_entries)
+    }
+
     /// Search code by natural language query
     ///
     /// # Arguments
