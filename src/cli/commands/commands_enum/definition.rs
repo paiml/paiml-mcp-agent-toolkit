@@ -449,7 +449,8 @@ pub enum Commands {
 
     // ── Scoring commands ───────────────────────────────────────────
     /// Run quality gate checks on the codebase
-    #[command(visible_aliases = &["check", "c", "verify", "gate"])]
+    // `verify` is now the dedicated CI-faithful pre-flight command (see `Verify`).
+    #[command(visible_aliases = &["check", "c", "gate"])]
     QualityGate {
         /// Project path to analyze (defaults to current directory)
         #[arg(short = 'p', long, default_value = ".")]
@@ -820,6 +821,11 @@ pub enum Commands {
     /// Run self-diagnostics to verify all features are working
     #[command(visible_aliases = &["diag", "doctor"])]
     Diagnose(DiagnoseArgs),
+
+    /// Pre-flight verification for autonomous agents: run the CI-faithful gate
+    /// set (format, complexity, satd, clippy, tests) fail-fast before committing
+    #[command(visible_aliases = &["preflight", "vfy"])]
+    Verify(VerifyArgs),
 
     /// Enforce extreme quality standards using state machine
     #[command(subcommand, visible_aliases = &["enf"])]
