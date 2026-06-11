@@ -676,64 +676,11 @@ pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
                 continue;
             }
 
-            let lines: Vec<&str> = content.lines().collect();
-            let mut in_wasm_block = false;
-
-            for (i, line) in lines.iter().enumerate() {
-                let trimmed = line.trim();
-                if trimmed.contains("#[wasm_bindgen") {
-                    in_wasm_block = true;
-                    continue;
-                }
-                if in_wasm_block {
-                    // Allow impl blocks and derive/cfg attributes to pass through
-                    if trimmed.starts_with("impl ")
-                        || trimmed.starts_with("pub struct ")
-                        || trimmed.starts_with("#[")
-                        || trimmed.is_empty()
-                    {
-                        // struct counts as export
-                        if trimmed.starts_with("pub struct ") {
-                            total_exports += 1;
-                            let has_doc = i > 0 && lines[i - 1].trim().starts_with("///")
-                                || (i > 1 && lines.get(i.wrapping_sub(2)).is_some_and(|l| l.trim().starts_with("///")));
-                            if !has_doc { undocumented += 1; }
-                        }
-                        continue; // stay in wasm block
-                    }
-                    if trimmed.starts_with("pub fn ") || trimmed.contains("fn new(") {
-                        total_exports += 1;
-
-                        // Check for doc comment (look back past attributes)
-                        let has_doc = (0..4).any(|back| {
-                            i.checked_sub(back + 1).is_some_and(|j|
-                                lines.get(j).is_some_and(|l| l.trim().starts_with("///"))
-                            )
-                        });
-                        if !has_doc { undocumented += 1; }
-
-                        // Check for unwrap in the function body
-                        let end = (i + 30).min(lines.len());
-                        let fn_has_unwrap = lines[i..end].iter()
-                            .take_while(|l| {
-                                let t = l.trim();
-                                !(t.starts_with("pub fn ") && t != trimmed)
-                            })
-                            .any(|l| l.contains(".unwrap()"));
-                        if fn_has_unwrap { unwrap_in_export += 1; }
-
-                        // Check if constructor returns Result
-                        if trimmed.contains("fn new(") && !trimmed.contains("Result") {
-                            no_result_return += 1;
-                        }
-                        continue; // stay in wasm block for more methods
-                    }
-                    // closing brace or non-pub line — exit block
-                    if trimmed == "}" || (!trimmed.starts_with("//") && !trimmed.starts_with("let ")) {
-                        in_wasm_block = false;
-                    }
-                }
-            }
+            let c = scan_wasm_exports(&content);
+            total_exports += c.total_exports;
+            undocumented += c.undocumented;
+            unwrap_in_export += c.unwrap_in_export;
+            no_result_return += c.no_result_return;
         }
     }
 
@@ -772,6 +719,93 @@ pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
             severity: Severity::Info,
         }
     }
+}
+
+/// Tally of `#[wasm_bindgen]` export issues found in one source file.
+#[derive(Default)]
+struct WasmExportCounts {
+    total_exports: usize,
+    undocumented: usize,
+    unwrap_in_export: usize,
+    no_result_return: usize,
+}
+
+/// Scan one file's `#[wasm_bindgen]` blocks for export-contract issues. Pure —
+/// extracted from `check_wasm_ffi_contracts` to keep it under the complexity gate
+/// (see `test_scan_wasm_exports`).
+fn scan_wasm_exports(content: &str) -> WasmExportCounts {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut counts = WasmExportCounts::default();
+    let mut in_wasm_block = false;
+    for i in 0..lines.len() {
+        let trimmed = lines[i].trim();
+        if trimmed.contains("#[wasm_bindgen") {
+            in_wasm_block = true;
+            continue;
+        }
+        if in_wasm_block {
+            in_wasm_block = apply_wasm_block_line(&lines, i, &mut counts);
+        }
+    }
+    counts
+}
+
+/// Process one line inside a `#[wasm_bindgen]` block; update `counts` and return
+/// whether the block is still open. Attribute/impl/struct/blank lines stay in
+/// the block; a `}` or other non-pub line ends it.
+fn apply_wasm_block_line(lines: &[&str], i: usize, counts: &mut WasmExportCounts) -> bool {
+    let trimmed = lines[i].trim();
+    if trimmed.starts_with("impl ")
+        || trimmed.starts_with("pub struct ")
+        || trimmed.starts_with("#[")
+        || trimmed.is_empty()
+    {
+        if trimmed.starts_with("pub struct ") {
+            counts.total_exports += 1;
+            if !wasm_line_has_doc_above(lines, i, 2) {
+                counts.undocumented += 1;
+            }
+        }
+        return true;
+    }
+    if trimmed.starts_with("pub fn ") || trimmed.contains("fn new(") {
+        count_wasm_export_fn(lines, i, trimmed, counts);
+        return true;
+    }
+    trimmed != "}" && (trimmed.starts_with("//") || trimmed.starts_with("let "))
+}
+
+/// Count doc/unwrap/Result issues for one exported `pub fn` / constructor.
+fn count_wasm_export_fn(lines: &[&str], i: usize, trimmed: &str, counts: &mut WasmExportCounts) {
+    counts.total_exports += 1;
+    if !wasm_line_has_doc_above(lines, i, 4) {
+        counts.undocumented += 1;
+    }
+    // `.unwrap()` anywhere in the (heuristic) function body panics across FFI.
+    let end = (i + 30).min(lines.len());
+    let fn_has_unwrap = lines[i..end]
+        .iter()
+        .take_while(|l| {
+            let t = l.trim();
+            !(t.starts_with("pub fn ") && t != trimmed)
+        })
+        .any(|l| l.contains(".unwrap()"));
+    if fn_has_unwrap {
+        counts.unwrap_in_export += 1;
+    }
+    // Constructors should return `Result<_, JsValue>`.
+    if trimmed.contains("fn new(") && !trimmed.contains("Result") {
+        counts.no_result_return += 1;
+    }
+}
+
+/// True if any of the `back` lines immediately above `i` is a `///` doc comment.
+fn wasm_line_has_doc_above(lines: &[&str], i: usize, back: usize) -> bool {
+    (1..=back).any(|b| {
+        i.checked_sub(b)
+            .and_then(|j| lines.get(j))
+            .is_some_and(|l| l.trim().starts_with("///"))
+    })
 }
 
 /// GH-292: Read min verification level from `.pmat-gates.toml [verification_ladder]`
