@@ -45,7 +45,7 @@
 - **Compliance Governance** - 30+ checks across code quality, best practices, and reproducibility
 - **Design by Contract** - Toyota Way contract profiles with checkpoint validation and rescue protocols
 - **Autonomous Kaizen** - Toyota Way continuous improvement with auto-fix and commit
-- **MCP Integration** - 19 tools for Claude Code, Cline, and AI agents
+- **MCP Integration** - 20 tools for Claude Code, Cline, and AI agents, validated end-to-end for concurrent multi-agent (ultracode) workflows
 - **Quality Gates** - Pre-commit hooks, CI/CD integration, `.pmat-gates.toml` config
 - **20+ Languages** - Rust, TypeScript, Python, Go, Java, C/C++, Lua, Lean, and more
 
@@ -92,13 +92,34 @@ pmat verify --format json
 # Run mutation testing
 pmat mutate --target src/
 
-# Start MCP server for Claude Code, Cline, etc.
-pmat mcp
+# Start MCP server (stdio) for Claude Code, Cline, etc.
+MCP_VERSION=2024-11-05 pmat
 ```
 
 ### Autonomous-agent pre-flight (`pmat verify`)
 
 `pmat verify` runs the exact gate set CI enforces — **format, complexity, satd, clippy, tests** — fail-fast, with machine-readable output, so an agent gets *"green here ⇒ green in CI"* before committing. The canonical loop: `edit → pmat verify --format json → fix on red → commit on green`. See [`docs/agent-instructions/autonomous-verify-loop.md`](docs/agent-instructions/autonomous-verify-loop.md).
+
+### Ultracode validated
+
+PMAT releases are dogfooded with **ultracode** — Claude Code's multi-agent
+dynamic-workflow orchestration — as both the test harness and the target
+workload:
+
+- **Full CLI sweep**: 111 commands exercised by parallel agent fleets per release
+- **MCP surface**: all 20 tools validated over stdio JSON-RPC — per-tool calls
+  with schema-derived arguments, 8-way concurrent server sessions against one
+  working tree (zero lock errors, zero scratch leftovers), and byte-level
+  framing checks (stdout is exclusively JSON-RPC)
+- **Determinism**: TDG baselines and penalty attributions serialize
+  byte-identically across runs, so independent agents converge instead of
+  diverging on ordering noise
+- **Concurrency-safe caches**: PID-unique scratch files with atomic
+  rename-into-place and stale-orphan sweeping; advisory-locked metric recording
+
+Findings from each sweep are adversarially re-verified by skeptic agents
+before they drive fixes — see the release case studies in the
+[pmat book](https://paiml.github.io/pmat-book/).
 
 ## Features
 
