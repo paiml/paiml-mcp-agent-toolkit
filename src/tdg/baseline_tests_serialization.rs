@@ -28,6 +28,78 @@
     }
 
     #[test]
+    fn test_baseline_serialization_deterministic_across_insert_order() {
+        // Regression: `files`, `grade_distribution`, and `languages` were
+        // HashMaps, so two identical baselines could serialize with
+        // different key orders, breaking byte-level comparison across runs.
+        let mut a = TdgBaseline::new(None);
+        let mut b = TdgBaseline::new(None);
+        let entries = [
+            ("zeta.rs", 95.0, Grade::APLus),
+            ("alpha.rs", 85.0, Grade::AMinus),
+            ("mid.rs", 75.0, Grade::B),
+        ];
+        for (p, s, g) in &entries {
+            a.add_entry(PathBuf::from(p), create_test_entry(*s, *g));
+        }
+        for (p, s, g) in entries.iter().rev() {
+            b.add_entry(PathBuf::from(p), create_test_entry(*s, *g));
+        }
+        b.created_at = a.created_at;
+
+        let ja = serde_json::to_string_pretty(&a).expect("serialize a");
+        let jb = serde_json::to_string_pretty(&b).expect("serialize b");
+        assert_eq!(
+            ja, jb,
+            "serialized baseline must not depend on insertion order"
+        );
+
+        // Equality alone would pass ~3% of the time under HashMap iteration;
+        // sorted key order fails a HashMap revert deterministically
+        let ia = ja.find("alpha.rs").expect("alpha.rs present");
+        let im = ja.find("mid.rs").expect("mid.rs present");
+        let iz = ja.find("zeta.rs").expect("zeta.rs present");
+        assert!(
+            ia < im && im < iz,
+            "files keys must serialize in sorted order"
+        );
+    }
+
+    #[test]
+    fn test_baseline_name_roundtrip_and_legacy_load() {
+        let mut baseline = TdgBaseline::new(None);
+        baseline.name = Some("pre-refactor".to_string());
+        let temp_file = std::env::temp_dir().join(format!(
+            "test_baseline_name_{}.json",
+            std::process::id()
+        ));
+        baseline.save(&temp_file).expect("save named baseline");
+        let loaded = TdgBaseline::load(&temp_file).expect("load named baseline");
+        assert_eq!(loaded.name.as_deref(), Some("pre-refactor"));
+        std::fs::remove_file(&temp_file).ok();
+
+        // Baselines written before the `name` field existed must still load:
+        // a populated baseline serialized without a name key is exactly the
+        // shape 3.18.0 produced (modulo map key order, which serde accepts
+        // in any order)
+        let mut populated = TdgBaseline::new(None);
+        populated.add_entry(
+            PathBuf::from("a.rs"),
+            create_test_entry(95.0, Grade::APLus),
+        );
+        populated.add_entry(PathBuf::from("b.rs"), create_test_entry(70.0, Grade::B));
+        let json = serde_json::to_string(&populated).expect("serialize");
+        assert!(
+            !json.contains("\"name\""),
+            "None name must not be serialized"
+        );
+        let legacy: TdgBaseline = serde_json::from_str(&json).expect("legacy load");
+        assert!(legacy.name.is_none());
+        assert_eq!(legacy.files.len(), 2);
+        assert_eq!(legacy.summary.total_files, 2);
+    }
+
+    #[test]
     fn test_baseline_load_invalid_path() {
         let result = TdgBaseline::load("/nonexistent/path/baseline.json");
         assert!(result.is_err());
