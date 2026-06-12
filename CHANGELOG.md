@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.18.1] - 2026-06-12
+
+Concurrency and determinism fixes for multi-agent / parallel-invocation use.
+All were found by an adversarially-verified audit of pmat 3.18.0 and each fix
+ships with a regression test.
+
+### Fixed
+- **`pmat record-metric` no longer loses history**: `MetricTrendStore::record()`
+  overwrote `.pmat-metrics/trends/<metric>.json` with only its own observation
+  because a fresh store instance (one per CLI invocation) never loaded existing
+  observations before persisting. `record()` now reloads from disk before
+  appending, holds an exclusive advisory lock (fs2) on `<metric>.lock` for the
+  read-modify-write (bounded 5s wait — a stuck holder can't hang recording),
+  and persists via write-scratch-then-rename so readers never see a torn file.
+  A torn/corrupt history file left behind by pre-3.18.1 writes is moved aside
+  to `<metric>.json.corrupt` and recording continues, instead of failing every
+  future record. `metrics()` now lists only `.json` observation files,
+  ignoring lock/scratch files.
+- **Fixed machine-global temp paths in TDG comparison commands**:
+  `tdg check-regression`, `tdg baseline compare`, and `tdg check-quality` wrote
+  their ephemeral "current state" baseline to fixed paths
+  (`/tmp/pmat-regression-check.json`, `/tmp/pmat-current-baseline.json`,
+  `/tmp/pmat-quality-check.json`) — two concurrent pmat invocations would
+  overwrite each other's scratch baseline mid-comparison. Ephemeral paths now
+  embed the PID plus a per-process counter.
+- **Deterministic baseline serialization**: `TdgBaseline.files`,
+  `BaselineSummary.grade_distribution`, and `BaselineSummary.languages` were
+  HashMaps, so baseline JSON key order was nondeterministic across runs (and
+  across machines). All three are now BTreeMaps — same JSON shape, stable
+  sorted ordering; existing baseline files load unchanged.
+- **`TdgBaseline::save()` is now atomic** (write to a process-unique scratch
+  file, then rename) so concurrent readers never observe a partial baseline.
+- **SQLite index save scratch path is process-unique**: `save_to_sqlite()`
+  built every save into a fixed shared `<db>.db.tmp`, letting two concurrent
+  savers rename each other's half-built database into place. The scratch path
+  now embeds the PID; the write remains atomic-rename. Scratch files orphaned
+  by crashed/killed saves (these can be hundreds of MB) are swept on the next
+  save once they are over an hour old — the age guard protects concurrent
+  live savers. The same scratch+sweep helper (`utils::scratch`) backs the
+  metric-trends and baseline writes.
+- **`pmat tdg baseline create --name` is honored**: the flag was accepted by
+  clap but silently discarded. Baselines now carry an optional `name` label
+  (round-trips through save/load, shown in `tdg baseline list --format json`,
+  preserved by `tdg baseline update`; pre-3.18.1 baselines without the field
+  still load).
+- **Spec/code drift in `pmat verify`**: the spec's example JSON showed a
+  `fixable` field on clippy violations that the shipped `Violation` struct
+  does not have; the spec now matches the code.
+
 ## [3.18.0] - 2026-06-11
 
 ### Added

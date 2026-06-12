@@ -34,8 +34,63 @@ impl MetricTrendStore {
     }
 
     /// Record new metric observation
+    ///
+    /// Holds an exclusive advisory lock on `<metric>.lock` and reloads the
+    /// metric's observations from disk before appending, so a fresh store
+    /// instance (each `pmat record-metric` invocation creates one) appends
+    /// to history instead of overwriting it, and concurrent recorders
+    /// cannot lose each other's updates.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn record(&mut self, metric: &str, value: f64, timestamp: i64) -> Result<()> {
+        use fs2::FileExt;
+
+        let lock_path = self.storage_path.join(format!("{metric}.lock"));
+        let lock_file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .write(true)
+            .open(&lock_path)
+            .context("Failed to open metric lock file")?;
+
+        // Bounded wait: a stuck holder must not hang recording forever
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            match lock_file.try_lock_exclusive() {
+                Ok(()) => break,
+                Err(_) if std::time::Instant::now() < deadline => {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                Err(e) => {
+                    anyhow::bail!(
+                        "Timed out waiting for metric lock {}: {e}",
+                        lock_path.display()
+                    );
+                }
+            }
+        }
+
+        let result = self.record_locked(metric, value, timestamp);
+        let _ = FileExt::unlock(&lock_file);
+        result
+    }
+
+    /// Append one observation while the metric lock is held
+    fn record_locked(&mut self, metric: &str, value: f64, timestamp: i64) -> Result<()> {
+        // Merge observations persisted by other invocations since this
+        // store instance was created. Pre-3.18.1 record() wrote without a
+        // lock or atomic rename and could leave a torn/corrupt history file;
+        // preserve such a file aside and continue with what we have, rather
+        // than failing every future record for this metric.
+        if let Err(e) = self.load(metric) {
+            let path = self.storage_path.join(format!("{metric}.json"));
+            let corrupt_path = self.storage_path.join(format!("{metric}.json.corrupt"));
+            let _ = std::fs::rename(&path, &corrupt_path);
+            eprintln!(
+                "warning: unreadable metric history for '{metric}' ({e}); moved aside to {}",
+                corrupt_path.display()
+            );
+        }
+
         let obs = MetricObservation {
             metric: metric.to_string(),
             value,

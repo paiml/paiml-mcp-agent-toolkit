@@ -23,8 +23,8 @@ pub(super) async fn handle_baseline_command(
             path,
             output,
             with_git_context,
-            name: _name,
-        } => create_baseline(_analyzer, &path, &output, with_git_context).await,
+            name,
+        } => create_baseline(_analyzer, &path, &output, with_git_context, name).await,
 
         BaselineCommand::Compare {
             baseline,
@@ -71,12 +71,26 @@ fn extract_git_context(
     }
 }
 
+/// Build a process-unique scratch path for an ephemeral baseline file.
+///
+/// Fixed names like `/tmp/pmat-current-baseline.json` are machine-global:
+/// two concurrent pmat invocations would overwrite each other's scratch
+/// baseline mid-comparison. PID plus a per-process counter makes the path
+/// unique across processes and across sequential calls within one process.
+pub(super) fn ephemeral_temp_json(prefix: &str) -> PathBuf {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir().join(format!("{prefix}-{}-{n}.json", std::process::id()))
+}
+
 /// Create a new TDG baseline for the project (Sprint 66 Phase 1)
 pub(super) async fn create_baseline(
     analyzer: &TdgAnalyzer,
     path: &Path,
     output: &Path,
     with_git_context: bool,
+    name: Option<String>,
 ) -> Result<()> {
     use crate::tdg::TdgBaseline;
 
@@ -99,6 +113,10 @@ pub(super) async fn create_baseline(
 
     let git_context = extract_git_context(path, with_git_context);
     let mut baseline = TdgBaseline::new(git_context);
+    if let Some(label) = name {
+        println!("   {} {}", c::label("Name:"), c::path(&label));
+        baseline.name = Some(label);
+    }
     let (files_analyzed, files_skipped) =
         analyze_baseline_files(analyzer, path, &mut baseline).await?;
 
@@ -243,8 +261,8 @@ pub(super) async fn compare_baseline(
 
     // Create new baseline for current state
     println!("\n{}", c::dim("Analyzing current state..."));
-    let temp_output = std::env::temp_dir().join("pmat-current-baseline.json");
-    create_baseline(analyzer, current_path, &temp_output, false).await?;
+    let temp_output = ephemeral_temp_json("pmat-current-baseline");
+    create_baseline(analyzer, current_path, &temp_output, false, None).await?;
     let new_baseline = TdgBaseline::load(&temp_output)?;
 
     // Clean up ephemeral baseline file
@@ -277,6 +295,13 @@ pub(super) async fn compare_baseline(
     }
 
     Ok(())
+}
+
+/// Read the name label of an existing baseline file, if any
+fn existing_baseline_name(path: &Path) -> Option<String> {
+    crate::tdg::TdgBaseline::load(path)
+        .ok()
+        .and_then(|b| b.name)
 }
 
 /// Find all baseline files in a directory
@@ -337,6 +362,7 @@ async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Res
                     serde_json::json!({
                         "path": path.display().to_string(),
                         "version": baseline.version,
+                        "name": baseline.name,
                         "created_at": baseline.created_at,
                         "total_files": baseline.summary.total_files,
                         "avg_score": baseline.summary.avg_score,
@@ -382,8 +408,16 @@ async fn update_baseline(
         c::path(&project_path.display().to_string())
     );
 
-    // Simply re-create the baseline (overwrites the file)
-    create_baseline(analyzer, project_path, baseline_path, with_git_context).await?;
+    // Simply re-create the baseline (overwrites the file), preserving any
+    // existing name label
+    create_baseline(
+        analyzer,
+        project_path,
+        baseline_path,
+        with_git_context,
+        existing_baseline_name(baseline_path),
+    )
+    .await?;
 
     println!("\n{}", c::pass("Baseline updated successfully"));
 
@@ -395,6 +429,44 @@ async fn update_baseline(
 mod baseline_tests {
     use super::*;
     use crate::tdg::TdgBaseline;
+
+    /// Ephemeral scratch paths must be unique per call and per process so
+    /// concurrent pmat invocations can't clobber each other's scratch files
+    /// (regression for fixed /tmp/pmat-*-baseline.json names).
+    #[test]
+    fn test_ephemeral_temp_json_unique_per_call() {
+        let a = ephemeral_temp_json("pmat-test-scratch");
+        let b = ephemeral_temp_json("pmat-test-scratch");
+        assert_ne!(a, b, "two calls must yield distinct paths");
+
+        let pid = std::process::id().to_string();
+        let name = a.file_name().unwrap().to_string_lossy().to_string();
+        assert!(name.contains(&pid), "path must embed the PID: {name}");
+        assert_eq!(a.extension().unwrap(), "json");
+    }
+
+    /// existing_baseline_name reads the name label back from a saved
+    /// baseline, returns None for unnamed baselines and missing files —
+    /// this is what lets `tdg baseline update` preserve the label.
+    #[test]
+    fn test_existing_baseline_name() {
+        let tmp = tempfile::tempdir().unwrap();
+
+        let mut named = TdgBaseline::new(None);
+        named.name = Some("sprint-66".to_string());
+        let named_path = tmp.path().join("named-baseline.json");
+        named.save(&named_path).unwrap();
+        assert_eq!(
+            existing_baseline_name(&named_path).as_deref(),
+            Some("sprint-66")
+        );
+
+        let unnamed_path = tmp.path().join("unnamed-baseline.json");
+        TdgBaseline::new(None).save(&unnamed_path).unwrap();
+        assert!(existing_baseline_name(&unnamed_path).is_none());
+
+        assert!(existing_baseline_name(&tmp.path().join("missing.json")).is_none());
+    }
 
     /// extract_git_context returns None immediately when with_git_context=false,
     /// skipping the GitContext::try_from_current_dir path.

@@ -3,7 +3,7 @@
 //!
 //! Sprint 66 Phase 2: Quality gate enforcement for CI/CD pipelines.
 
-use super::baseline::create_baseline;
+use super::baseline::{create_baseline, ephemeral_temp_json};
 use super::display::{display_gate_result, display_gate_result_table};
 use super::parse_grade;
 use super::TdgCommandConfig;
@@ -67,8 +67,8 @@ pub(super) async fn handle_check_regression(
     );
 
     // Create current baseline
-    let temp_output = std::env::temp_dir().join("pmat-regression-check.json");
-    create_baseline(analyzer, current_path, &temp_output, false).await?;
+    let temp_output = ephemeral_temp_json("pmat-regression-check");
+    create_baseline(analyzer, current_path, &temp_output, false, None).await?;
     let current = TdgBaseline::load(&temp_output)?;
     std::fs::remove_file(&temp_output).ok();
 
@@ -147,8 +147,8 @@ pub(super) async fn handle_check_quality(
 
     println!("🔍 Checking quality thresholds...");
 
-    let temp_output = std::env::temp_dir().join("pmat-quality-check.json");
-    create_baseline(analyzer, path, &temp_output, false).await?;
+    let temp_output = ephemeral_temp_json("pmat-quality-check");
+    create_baseline(analyzer, path, &temp_output, false, None).await?;
     let current = TdgBaseline::load(&temp_output)?;
     std::fs::remove_file(&temp_output).ok();
 

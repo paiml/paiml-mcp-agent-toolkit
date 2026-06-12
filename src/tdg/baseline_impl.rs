@@ -4,14 +4,15 @@ impl TdgBaseline {
     pub fn new(git_context: Option<GitContext>) -> Self {
         Self {
             version: env!("CARGO_PKG_VERSION").to_string(),
+            name: None,
             created_at: Utc::now(),
             git_context,
-            files: HashMap::new(),
+            files: BTreeMap::new(),
             summary: BaselineSummary {
                 total_files: 0,
                 avg_score: 0.0,
-                grade_distribution: HashMap::new(),
-                languages: HashMap::new(),
+                grade_distribution: BTreeMap::new(),
+                languages: BTreeMap::new(),
             },
         }
     }
@@ -117,10 +118,20 @@ impl TdgBaseline {
     }
 
     /// Save baseline to JSON file
+    ///
+    /// Writes to a process-unique scratch file in the same directory, then
+    /// renames into place so concurrent readers never observe a partial file.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: impl AsRef<Path>) -> Result<()> {
+        let path = path.as_ref();
         let json = serde_json::to_string_pretty(self)?;
-        std::fs::write(path, json)?;
+        let tmp_path = crate::utils::scratch::scratch_path(path);
+        crate::utils::scratch::sweep_stale_scratch(path, std::time::Duration::from_secs(3600));
+        std::fs::write(&tmp_path, json)?;
+        if let Err(e) = std::fs::rename(&tmp_path, path) {
+            let _ = std::fs::remove_file(&tmp_path);
+            return Err(e.into());
+        }
         Ok(())
     }
 

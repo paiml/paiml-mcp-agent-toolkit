@@ -63,7 +63,8 @@ mod tests {
 
     #[test]
     fn test_record_and_trend() {
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-trends").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
 
         let now = chrono::Utc::now().timestamp();
 
@@ -82,7 +83,8 @@ mod tests {
 
     #[test]
     fn test_trend_regressing() {
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-trends-2").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
 
         let now = chrono::Utc::now().timestamp();
 
@@ -101,7 +103,8 @@ mod tests {
     #[test]
     fn test_csr_graph_storage() {
         // Phase 3.2: Verify CSR graph is populated
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-csr").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
 
         let now = chrono::Utc::now().timestamp();
 
@@ -134,7 +137,8 @@ mod tests {
     #[test]
     fn test_pagerank_hotness() {
         // Phase 3.2: Verify PageRank computation
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-pagerank").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
 
         let now = chrono::Utc::now().timestamp();
 
@@ -186,7 +190,8 @@ mod tests {
     #[test]
     fn test_dual_write_consistency() {
         // Phase 3.2: Verify JSON and CSR storage are consistent
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-dual-write").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
 
         let now = chrono::Utc::now().timestamp();
 
@@ -220,7 +225,8 @@ mod tests {
     #[test]
     fn test_linear_model_training() {
         // Phase 4: Test linear regression training
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-linear-model").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
         let now = chrono::Utc::now().timestamp();
 
         // Record observations with linear trend (increasing by 100ms/day)
@@ -252,7 +258,8 @@ mod tests {
     #[test]
     fn test_threshold_breach_prediction() {
         // Phase 4: Test breach prediction
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-breach-pred").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
         let now = chrono::Utc::now().timestamp();
 
         // Current: ~25000ms, increasing 200ms/day
@@ -295,7 +302,8 @@ mod tests {
     #[test]
     fn test_no_breach_prediction() {
         // Phase 4: Test no-breach case (improving trend)
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-no-breach-pred").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
         let now = chrono::Utc::now().timestamp();
 
         // Decreasing trend (improving) - should never breach
@@ -327,7 +335,8 @@ mod tests {
     #[test]
     fn test_forecast_generation() {
         // Phase 4: Test forecast generation with confidence intervals
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-forecast").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
         let now = chrono::Utc::now().timestamp();
 
         // Record steady upward trend
@@ -371,7 +380,8 @@ mod tests {
     #[test]
     fn test_recommendations_urgency() {
         // Phase 4: Test urgency-based recommendations
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-urgency").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
         let now = chrono::Utc::now().timestamp();
 
         // Fast-increasing trend (breach in ~5 days)
@@ -408,7 +418,8 @@ mod tests {
     /// Tests guard at line 440-442
     #[test]
     fn test_predict_breach_insufficient_observations() {
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-insufficient").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
 
         // Record only 5 observations (< 7 minimum)
         let now = chrono::Utc::now().timestamp();
@@ -432,7 +443,8 @@ mod tests {
     /// Tests guard at line 454-456 (last 90 days)
     #[test]
     fn test_predict_breach_insufficient_recent_observations() {
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-insufficient-recent").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
 
         // Record 10 observations, but all > 90 days old
         let now = chrono::Utc::now().timestamp();
@@ -457,7 +469,8 @@ mod tests {
     /// Tests boundary condition for guards at lines 440-442 and 454-456
     #[test]
     fn test_predict_breach_exactly_7_observations() {
-        let mut store = MetricTrendStore::from_path("/tmp/pmat-test-exactly-7").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let mut store = MetricTrendStore::from_path(temp_dir.path().join("trends")).unwrap();
 
         // Record exactly 7 observations (minimum required)
         let now = chrono::Utc::now().timestamp();
@@ -478,6 +491,107 @@ mod tests {
         assert!(
             prediction.current_value > 0.0,
             "Should have valid current value"
+        );
+    }
+
+    #[test]
+    fn test_record_appends_across_store_instances() {
+        // Regression: record() used to overwrite <metric>.json with only its
+        // own observation because a fresh store instance (one per
+        // `pmat record-metric` invocation) never loaded existing history
+        // before persisting.
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let trends = temp_dir.path().join("trends");
+        let now = chrono::Utc::now().timestamp();
+
+        MetricTrendStore::from_path(&trends)
+            .unwrap()
+            .record("lint", 1.0, now - 10)
+            .unwrap();
+        MetricTrendStore::from_path(&trends)
+            .unwrap()
+            .record("lint", 2.0, now - 5)
+            .unwrap();
+        MetricTrendStore::from_path(&trends)
+            .unwrap()
+            .record("lint", 3.0, now)
+            .unwrap();
+
+        let json = std::fs::read_to_string(trends.join("lint.json")).unwrap();
+        let obs: Vec<MetricObservation> = serde_json::from_str(&json).unwrap();
+        assert_eq!(obs.len(), 3, "each invocation must append, not overwrite");
+    }
+
+    #[test]
+    fn test_record_concurrent_stores_lose_no_observations() {
+        // Concurrent recorders (separate store instances on one trends dir)
+        // must serialize their read-modify-write via the per-metric advisory
+        // lock.
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let trends = temp_dir.path().join("trends");
+        std::fs::create_dir_all(&trends).unwrap();
+        let base = chrono::Utc::now().timestamp();
+
+        let handles: Vec<_> = (0..8i64)
+            .map(|i| {
+                let trends = trends.clone();
+                std::thread::spawn(move || {
+                    let mut store = MetricTrendStore::from_path(&trends).unwrap();
+                    store.record("lint", i as f64, base + i).unwrap();
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+
+        let json = std::fs::read_to_string(trends.join("lint.json")).unwrap();
+        let obs: Vec<MetricObservation> = serde_json::from_str(&json).unwrap();
+        assert_eq!(obs.len(), 8, "advisory lock must prevent lost updates");
+    }
+
+    #[test]
+    fn test_metrics_listing_ignores_lock_and_scratch_files() {
+        // The trends dir now contains <metric>.lock files; metrics() must
+        // list only observation JSON files.
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let trends = temp_dir.path().join("trends");
+        let mut store = MetricTrendStore::from_path(&trends).unwrap();
+        store
+            .record("lint", 1.0, chrono::Utc::now().timestamp())
+            .unwrap();
+
+        // Plant the other file kinds that can live in the trends dir:
+        // a crash-orphaned scratch file and unrelated junk
+        std::fs::write(trends.join("lint.json.tmp.12345"), "[]").unwrap();
+        std::fs::write(trends.join("README.txt"), "junk").unwrap();
+        assert!(trends.join("lint.lock").exists(), "record() creates a lock");
+
+        let metrics = store.metrics().unwrap();
+        assert_eq!(metrics, vec!["lint".to_string()]);
+    }
+
+    #[test]
+    fn test_record_self_heals_corrupt_history() {
+        // Pre-3.18.1 record() wrote without a lock or atomic rename, so a
+        // killed process could leave torn JSON. record() must move such a
+        // file aside and keep recording, not fail forever.
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let trends = temp_dir.path().join("trends");
+        std::fs::create_dir_all(&trends).unwrap();
+        std::fs::write(trends.join("lint.json"), "{ torn mid-write").unwrap();
+
+        let mut store = MetricTrendStore::from_path(&trends).unwrap();
+        store
+            .record("lint", 1.0, chrono::Utc::now().timestamp())
+            .unwrap();
+
+        let json = std::fs::read_to_string(trends.join("lint.json")).unwrap();
+        let obs: Vec<MetricObservation> = serde_json::from_str(&json).unwrap();
+        assert_eq!(obs.len(), 1, "recording must succeed after self-heal");
+        assert!(
+            trends.join("lint.json.corrupt").exists(),
+            "corrupt history must be preserved aside, not destroyed"
         );
     }
 }

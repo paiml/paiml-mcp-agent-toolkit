@@ -7,14 +7,18 @@ pub struct TdgBaseline {
     /// PMAT version that created this baseline
     pub version: String,
 
+    /// Optional user-supplied label for this baseline
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+
     /// When this baseline was created
     pub created_at: DateTime<Utc>,
 
     /// Git context (commit, branch, author) when baseline was created
     pub git_context: Option<GitContext>,
 
-    /// Per-file TDG scores indexed by file path
-    pub files: HashMap<PathBuf, BaselineEntry>,
+    /// Per-file TDG scores indexed by file path (sorted for deterministic serialization)
+    pub files: BTreeMap<PathBuf, BaselineEntry>,
 
     /// Aggregate statistics across all files
     pub summary: BaselineSummary,
@@ -46,10 +50,10 @@ pub struct BaselineSummary {
     pub avg_score: f32,
 
     /// Distribution of grades (A+, A, B+, etc.)
-    pub grade_distribution: HashMap<Grade, usize>,
+    pub grade_distribution: BTreeMap<Grade, usize>,
 
     /// Count by programming language
-    pub languages: HashMap<String, usize>,
+    pub languages: BTreeMap<String, usize>,
 }
 
 /// Comparison result between two baselines

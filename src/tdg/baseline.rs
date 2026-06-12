@@ -9,7 +9,7 @@ use anyhow::Result;
 use blake3::Hash as Blake3Hash;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 include!("baseline_types.rs");

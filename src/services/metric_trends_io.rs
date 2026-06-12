@@ -64,11 +64,23 @@ impl MetricTrendStore {
     }
 
     /// Persist cache to disk (JSON for simplicity, trueno-graph in Phase 3.1)
+    ///
+    /// Writes to a process-unique scratch file then renames into place so
+    /// concurrent readers never observe a torn write.
     fn persist(&self, metric: &str) -> Result<()> {
         if let Some(observations) = self.cache.get(metric) {
             let path = self.storage_path.join(format!("{}.json", metric));
+            let tmp_path = crate::utils::scratch::scratch_path(&path);
+            crate::utils::scratch::sweep_stale_scratch(
+                &path,
+                std::time::Duration::from_secs(3600),
+            );
             let json = serde_json::to_string_pretty(observations)?;
-            std::fs::write(&path, json).context("Failed to write metric observations")?;
+            std::fs::write(&tmp_path, json).context("Failed to write metric observations")?;
+            if let Err(e) = std::fs::rename(&tmp_path, &path) {
+                let _ = std::fs::remove_file(&tmp_path);
+                return Err(e).context("Failed to rename metric observations into place");
+            }
         }
         Ok(())
     }
@@ -117,7 +129,12 @@ impl MetricTrendStore {
         let mut metrics = Vec::new();
         for entry in std::fs::read_dir(&self.storage_path)? {
             let entry = entry?;
-            if let Some(name) = entry.path().file_stem() {
+            let path = entry.path();
+            // Only observation files count; skip .lock and scratch files
+            if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                continue;
+            }
+            if let Some(name) = path.file_stem() {
                 metrics.push(name.to_string_lossy().to_string());
             }
         }

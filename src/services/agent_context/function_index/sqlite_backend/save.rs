@@ -27,9 +27,14 @@ pub(crate) fn save_to_sqlite(
     manifest: &IndexManifest,
     coverage_off_files: &HashSet<String>,
 ) -> Result<(), String> {
-    let tmp_path = db_path.with_extension("db.tmp");
+    // Process-unique scratch path: a fixed shared name (`.db.tmp`) lets two
+    // concurrent savers build into the same scratch file and rename each
+    // other's half-built DB into place.
+    let tmp_path = crate::utils::scratch::scratch_path(db_path);
 
-    // Remove stale scratch file from a previous interrupted save
+    // Reclaim scratch DBs orphaned by crashed/killed saves (they can be
+    // hundreds of MB); the 1h age guard protects concurrent live savers
+    crate::utils::scratch::sweep_stale_scratch(db_path, std::time::Duration::from_secs(3600));
     let _ = std::fs::remove_file(&tmp_path);
 
     let conn = open_db(&tmp_path)?;

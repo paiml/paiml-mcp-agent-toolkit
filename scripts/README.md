@@ -11,7 +11,7 @@ pmat is installed from crates.io — this is the single supported install method
 cargo install pmat
 
 # Specific version
-cargo install pmat --version 3.18.0
+cargo install pmat --version 3.18.1
 ```
 
 ## Testing

@@ -74,7 +74,7 @@ agent's signal to fix before committing.
     {"name": "clippy",     "ok": false, "duration_ms": 49000,
      "violations": [
        {"file": "src/x.rs", "line": 230, "rule": "clippy::nonminimal_bool",
-        "message": "...", "fixable": true}
+        "message": "..."}
      ]},
     {"name": "tests",      "ok": null, "skipped": "fail-fast"}
   ]
