@@ -155,7 +155,7 @@
             let temp_dir = create_test_project();
             let profile = make_test_profile();
 
-            let violations = run_complexity_analysis(temp_dir.path(), &profile)
+            let violations = run_complexity_analysis(temp_dir.path(), &profile, None)
                 .await
                 .unwrap();
 

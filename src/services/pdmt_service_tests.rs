@@ -33,9 +33,88 @@ mod tests {
             )
             .unwrap();
 
-        // Verify deterministic generation (same seed produces similar structure)
+        // Verify deterministic generation: byte-identical serialized output
+        let json1 = serde_json::to_string(&result1).unwrap();
+        let json2 = serde_json::to_string(&result2).unwrap();
+        assert_eq!(
+            json1, json2,
+            "identical inputs must produce byte-identical output"
+        );
+
+        // Ids must be stable across calls (no Uuid::new_v4 randomness)
+        let ids1: Vec<&str> = result1.todos.iter().map(|t| t.id.as_str()).collect();
+        let ids2: Vec<&str> = result2.todos.iter().map(|t| t.id.as_str()).collect();
+        assert_eq!(ids1, ids2);
         assert_eq!(result1.todos.len(), result2.todos.len());
         assert_eq!(result1.deterministic_seed, result2.deterministic_seed);
+    }
+
+    #[test]
+    fn test_todo_ids_stable_across_service_instances() {
+        let requirements = vec!["implement user authentication".to_string()];
+        let make = || {
+            PdmtService::new()
+                .generate_todos(
+                    requirements.clone(),
+                    Some("test".to_string()),
+                    "high",
+                    PdmtQualityConfig::default(),
+                )
+                .unwrap()
+        };
+
+        let first = make();
+        let second = make();
+        assert_eq!(
+            serde_json::to_string(&first).unwrap(),
+            serde_json::to_string(&second).unwrap(),
+            "fresh service instances must produce byte-identical output"
+        );
+    }
+
+    #[test]
+    fn test_todo_ids_are_valid_uuids_and_unique() {
+        let service = PdmtService::new();
+        // Duplicate requirement text: index must disambiguate ids
+        let requirements = vec![
+            "implement caching".to_string(),
+            "implement caching".to_string(),
+        ];
+        let result = service
+            .generate_todos(requirements, None, "high", PdmtQualityConfig::default())
+            .unwrap();
+
+        let mut seen = std::collections::HashSet::new();
+        for todo in &result.todos {
+            let parsed = Uuid::parse_str(&todo.id).expect("todo id must be uuid-formatted");
+            assert_eq!(parsed.get_version_num(), 8, "deterministic ids use UUIDv8");
+            assert!(seen.insert(todo.id.clone()), "todo ids must be unique");
+        }
+    }
+
+    #[test]
+    fn test_generated_at_is_deterministic() {
+        let service = PdmtService::new();
+        let result = service
+            .generate_todos(
+                vec!["add logging".to_string()],
+                None,
+                "medium",
+                PdmtQualityConfig::default(),
+            )
+            .unwrap();
+
+        // Wall-clock time is excluded from the output by contract
+        assert_eq!(result.generated_at, DETERMINISTIC_GENERATED_AT);
+    }
+
+    #[test]
+    fn test_fnv1a_128_stable_known_values() {
+        // Empty input hashes to the offset basis by definition
+        assert_eq!(fnv1a_128(b""), FNV128_OFFSET_BASIS);
+        // Stable across calls, sensitive to input
+        assert_eq!(fnv1a_128(b"pdmt"), fnv1a_128(b"pdmt"));
+        assert_ne!(fnv1a_128(b"pdmt"), fnv1a_128(b"pdmt2"));
     }
 
     #[test]

@@ -101,6 +101,7 @@ async fn handle_enforce_extreme(
         &profile,
         format,
         ci_mode,
+        specific_file.as_ref(),
     )
     .await?
     {

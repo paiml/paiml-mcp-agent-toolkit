@@ -10,6 +10,32 @@ use crate::tdg::TdgAnalyzer;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
+/// True when the format owns stdout exclusively: JSON output must stay
+/// jq-parseable, so decorative/progress lines are diverted to stderr.
+pub(super) fn json_exclusive_stdout(format: &crate::cli::TdgOutputFormat) -> bool {
+    matches!(format, crate::cli::TdgOutputFormat::Json)
+}
+
+/// Print a decorative/progress line: stdout for human formats, stderr when
+/// `quiet` (JSON mode) so the JSON payload on stdout stays jq-parseable.
+macro_rules! decor {
+    ($quiet:expr) => {
+        if $quiet {
+            eprintln!();
+        } else {
+            println!();
+        }
+    };
+    ($quiet:expr, $($arg:tt)*) => {
+        if $quiet {
+            eprintln!($($arg)*);
+        } else {
+            println!($($arg)*);
+        }
+    };
+}
+pub(super) use decor;
+
 /// Handle TDG baseline subcommand (Sprint 66 Phase 1)
 pub(super) async fn handle_baseline_command(
     command: crate::cli::commands::BaselineCommand,
@@ -24,7 +50,10 @@ pub(super) async fn handle_baseline_command(
             output,
             with_git_context,
             name,
-        } => create_baseline(_analyzer, &path, &output, with_git_context, name).await,
+        } => {
+            // Create has no --format flag; always human-mode output
+            create_baseline(_analyzer, &path, &output, with_git_context, name, false).await
+        }
 
         BaselineCommand::Compare {
             baseline,
@@ -47,13 +76,15 @@ pub(super) async fn handle_baseline_command(
 fn extract_git_context(
     path: &Path,
     with_git_context: bool,
+    quiet: bool,
 ) -> Option<crate::models::git_context::GitContext> {
     if !with_git_context {
         return None;
     }
     match crate::models::git_context::GitContext::try_from_current_dir(path) {
         Some(ctx) => {
-            println!(
+            decor!(
+                quiet,
                 "   {} {} on {}",
                 c::label("Git:"),
                 c::number(&ctx.commit_sha_short),
@@ -62,7 +93,8 @@ fn extract_git_context(
             Some(ctx)
         }
         None => {
-            println!(
+            decor!(
+                quiet,
                 "   {}",
                 c::warn("Not in a git repository, git context unavailable")
             );
@@ -85,63 +117,76 @@ pub(super) fn ephemeral_temp_json(prefix: &str) -> PathBuf {
 }
 
 /// Create a new TDG baseline for the project (Sprint 66 Phase 1)
+///
+/// `quiet` diverts all progress output to stderr so JSON-mode callers
+/// (compare/check-regression/check-quality) keep stdout jq-parseable.
 pub(super) async fn create_baseline(
     analyzer: &TdgAnalyzer,
     path: &Path,
     output: &Path,
     with_git_context: bool,
     name: Option<String>,
+    quiet: bool,
 ) -> Result<()> {
     use crate::tdg::TdgBaseline;
 
-    println!("{}", c::header("Creating TDG baseline..."));
-    println!(
+    decor!(quiet, "{}", c::header("Creating TDG baseline..."));
+    decor!(
+        quiet,
         "   {} {}",
         c::label("Path:"),
         c::path(&path.display().to_string())
     );
-    println!(
+    decor!(
+        quiet,
         "   {} {}",
         c::label("Output:"),
         c::path(&output.display().to_string())
     );
-    println!(
+    decor!(
+        quiet,
         "   {} {}",
         c::label("Git context:"),
         if with_git_context { "yes" } else { "no" }
     );
 
-    let git_context = extract_git_context(path, with_git_context);
+    let git_context = extract_git_context(path, with_git_context, quiet);
     let mut baseline = TdgBaseline::new(git_context);
     if let Some(label) = name {
-        println!("   {} {}", c::label("Name:"), c::path(&label));
+        decor!(quiet, "   {} {}", c::label("Name:"), c::path(&label));
         baseline.name = Some(label);
     }
     let (files_analyzed, files_skipped) =
-        analyze_baseline_files(analyzer, path, &mut baseline).await?;
+        analyze_baseline_files(analyzer, path, &mut baseline, quiet).await?;
 
-    println!();
-    println!("\n{}", c::pass("Analysis complete:"));
-    println!(
+    decor!(quiet);
+    decor!(quiet, "\n{}", c::pass("Analysis complete:"));
+    decor!(
+        quiet,
         "   {} {}",
         c::label("Files analyzed:"),
         c::number(&format!("{}", files_analyzed))
     );
-    println!(
+    decor!(
+        quiet,
         "   {} {}",
         c::label("Files skipped:"),
         c::number(&format!("{}", files_skipped))
     );
-    println!(
+    decor!(
+        quiet,
         "   {} {}",
         c::label("Average score:"),
         c::number(&format!("{:.1}", baseline.summary.avg_score))
     );
 
-    display_grade_distribution(&baseline);
+    if !quiet {
+        display_grade_distribution(&baseline);
+    }
 
     baseline.save(output)?;
-    println!(
+    decor!(
+        quiet,
         "\n{}",
         c::pass(&format!(
             "Baseline saved to: {}",
@@ -157,6 +202,7 @@ async fn analyze_baseline_files(
     analyzer: &TdgAnalyzer,
     path: &Path,
     baseline: &mut crate::tdg::TdgBaseline,
+    quiet: bool,
 ) -> Result<(usize, usize)> {
     use crate::tdg::BaselineEntry;
     use std::fs;
@@ -165,7 +211,7 @@ async fn analyze_baseline_files(
     let mut files_analyzed = 0;
     let mut files_skipped = 0;
 
-    println!("\n{}", c::dim("Analyzing files..."));
+    decor!(quiet, "\n{}", c::dim("Analyzing files..."));
 
     for entry in WalkDir::new(path)
         .follow_links(false)
@@ -204,28 +250,45 @@ async fn analyze_baseline_files(
                 baseline.add_entry(file_path.to_path_buf(), entry);
                 files_analyzed += 1;
                 if files_analyzed % 10 == 0 {
-                    print!(".");
-                    use std::io::Write;
-                    std::io::stdout().flush().ok();
+                    print_progress_dot(quiet);
                 }
             }
             Err(e) => {
                 files_skipped += 1;
                 if files_skipped <= 5 {
-                    println!(
-                        "   {}",
-                        c::warn(&format!(
-                            "Skipped {}: {}",
-                            c::path(&file_path.display().to_string()),
-                            e
-                        ))
-                    );
+                    print_skipped_file(quiet, file_path, &e);
                 }
             }
         }
     }
 
     Ok((files_analyzed, files_skipped))
+}
+
+/// Emit one progress dot — to stderr in quiet (JSON) mode so it never lands
+/// on a JSON stdout
+fn print_progress_dot(quiet: bool) {
+    use std::io::Write;
+    if quiet {
+        eprint!(".");
+        std::io::stderr().flush().ok();
+    } else {
+        print!(".");
+        std::io::stdout().flush().ok();
+    }
+}
+
+/// Report a file the analyzer skipped (human formats only)
+fn print_skipped_file(quiet: bool, file_path: &Path, e: &anyhow::Error) {
+    decor!(
+        quiet,
+        "   {}",
+        c::warn(&format!(
+            "Skipped {}: {}",
+            c::path(&file_path.display().to_string()),
+            e
+        ))
+    );
 }
 
 /// Compare current state against a baseline (Sprint 66 Phase 1)
@@ -238,13 +301,17 @@ pub(super) async fn compare_baseline(
 ) -> Result<()> {
     use crate::tdg::TdgBaseline;
 
-    println!("{}", c::header("Comparing against baseline..."));
-    println!(
+    let quiet = json_exclusive_stdout(&format);
+
+    decor!(quiet, "{}", c::header("Comparing against baseline..."));
+    decor!(
+        quiet,
         "   {} {}",
         c::label("Baseline:"),
         c::path(&baseline_path.display().to_string())
     );
-    println!(
+    decor!(
+        quiet,
         "   {} {}",
         c::label("Current path:"),
         c::path(&current_path.display().to_string())
@@ -252,7 +319,8 @@ pub(super) async fn compare_baseline(
 
     // Load baseline
     let old_baseline = TdgBaseline::load(baseline_path)?;
-    println!(
+    decor!(
+        quiet,
         "   {} {} files, avg score {}",
         c::label("Loaded baseline:"),
         c::number(&format!("{}", old_baseline.summary.total_files)),
@@ -260,16 +328,16 @@ pub(super) async fn compare_baseline(
     );
 
     // Create new baseline for current state
-    println!("\n{}", c::dim("Analyzing current state..."));
+    decor!(quiet, "\n{}", c::dim("Analyzing current state..."));
     let temp_output = ephemeral_temp_json("pmat-current-baseline");
-    create_baseline(analyzer, current_path, &temp_output, false, None).await?;
+    create_baseline(analyzer, current_path, &temp_output, false, None, quiet).await?;
     let new_baseline = TdgBaseline::load(&temp_output)?;
 
     // Clean up ephemeral baseline file
     std::fs::remove_file(&temp_output).ok();
 
     // Compare
-    println!("\n{}", c::dim("Computing comparison..."));
+    decor!(quiet, "\n{}", c::dim("Computing comparison..."));
     let comparison = old_baseline.compare(&new_baseline);
 
     // Format output
@@ -284,7 +352,12 @@ pub(super) async fn compare_baseline(
         }
     };
 
-    println!("\n{}", output_str);
+    if quiet {
+        // JSON mode: payload only, no leading blank line
+        println!("{output_str}");
+    } else {
+        println!("\n{}", output_str);
+    }
 
     // Check for regressions
     if fail_on_regression && comparison.has_regressions() {
@@ -330,7 +403,10 @@ fn find_baseline_files(path: &Path) -> Vec<(PathBuf, crate::tdg::TdgBaseline)> {
 
 /// List all baselines in a directory (Sprint 66 Phase 1)
 async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Result<()> {
-    println!(
+    let quiet = json_exclusive_stdout(&format);
+
+    decor!(
+        quiet,
         "{} {}",
         c::header("Listing baselines in:"),
         c::path(&path.display().to_string())
@@ -339,11 +415,16 @@ async fn list_baselines(path: &Path, format: crate::cli::TdgOutputFormat) -> Res
     let baselines = find_baseline_files(path);
 
     if baselines.is_empty() {
-        println!("   {}", c::dim("No baselines found"));
+        decor!(quiet, "   {}", c::dim("No baselines found"));
+        if quiet {
+            // JSON consumers always get a parseable payload on stdout
+            println!("[]");
+        }
         return Ok(());
     }
 
-    println!(
+    decor!(
+        quiet,
         "\n{} {}:\n",
         c::label("Found"),
         c::number(&format!("{} baseline(s)", baselines.len()))
@@ -416,6 +497,7 @@ async fn update_baseline(
         baseline_path,
         with_git_context,
         existing_baseline_name(baseline_path),
+        false,
     )
     .await?;
 
@@ -473,7 +555,7 @@ mod baseline_tests {
     #[test]
     fn test_extract_git_context_disabled_returns_none() {
         let tmp = tempfile::tempdir().unwrap();
-        let result = extract_git_context(tmp.path(), false);
+        let result = extract_git_context(tmp.path(), false, false);
         assert!(result.is_none());
     }
 
@@ -484,8 +566,20 @@ mod baseline_tests {
         let tmp = tempfile::tempdir().unwrap();
         // Tempdir is not a git repo → try_from_current_dir returns None →
         // the warning-log arm fires and returns None.
-        let result = extract_git_context(tmp.path(), true);
+        let result = extract_git_context(tmp.path(), true, false);
         assert!(result.is_none());
+    }
+
+    /// Only JSON owns stdout exclusively: decorative output must be diverted
+    /// to stderr for Json so stdout stays jq-parseable, while human formats
+    /// (Table/Markdown) and Sarif keep their current stdout output.
+    #[test]
+    fn test_json_exclusive_stdout_predicate() {
+        use crate::cli::TdgOutputFormat;
+        assert!(json_exclusive_stdout(&TdgOutputFormat::Json));
+        assert!(!json_exclusive_stdout(&TdgOutputFormat::Table));
+        assert!(!json_exclusive_stdout(&TdgOutputFormat::Markdown));
+        assert!(!json_exclusive_stdout(&TdgOutputFormat::Sarif));
     }
 
     /// find_baseline_files returns empty for a dir with no baseline files.

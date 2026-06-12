@@ -142,6 +142,102 @@ fn test_incremental_build_with_change() {
 }
 
 #[test]
+fn test_incremental_build_propagates_db_path() {
+    // Regression: build_incremental used to reset db_path to None, so
+    // deferred-source backfill was skipped and every query after an
+    // incremental update returned empty source (Bug B of the source wipe).
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let project_path = temp_dir.path();
+
+    std::fs::create_dir_all(project_path.join("src")).unwrap();
+    std::fs::write(
+        project_path.join("src/lib.rs"),
+        "fn alpha() { let a = 1; }\n",
+    )
+    .unwrap();
+
+    let index = AgentContextIndex::build(project_path).unwrap();
+    let index_path = project_path.join("idx");
+    index.save(&index_path).unwrap();
+
+    let loaded = AgentContextIndex::load(&index_path).unwrap();
+    let db_path = loaded.db_path.clone().expect("SQLite load sets db_path");
+
+    let updated = AgentContextIndex::build_incremental(project_path, &loaded).unwrap();
+    assert_eq!(
+        updated.db_path.as_deref(),
+        Some(db_path.as_path()),
+        "incremental index must keep the db_path it loaded from"
+    );
+
+    // Deferred source must remain retrievable through the incremental index
+    let (file_path, start_line) = {
+        let entry = &updated.functions[0];
+        (entry.file_path.clone(), entry.start_line)
+    };
+    let src = updated.load_source_for(&file_path, start_line);
+    assert!(
+        src.contains("alpha"),
+        "expected source via DB backfill, got {src:?}"
+    );
+}
+
+#[test]
+fn test_incremental_save_preserves_source_for_reused_entries() {
+    // Regression (source wipe, Bug A): lightweight SQLite loads defer source
+    // (entries carry ""). build_incremental clones those entries for
+    // checksum-reused files, and saving used to rewrite the full DB with
+    // source='' for every reused row — repeated incremental saves converged
+    // the index to all-empty source, breaking --include-source,
+    // pmat_query_code, and pmat_get_function.
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    let project_path = temp_dir.path();
+
+    std::fs::create_dir_all(project_path.join("src")).unwrap();
+    std::fs::write(project_path.join("src/a.rs"), "fn alpha() { let a = 1; }\n").unwrap();
+    std::fs::write(project_path.join("src/b.rs"), "fn beta() { let b = 2; }\n").unwrap();
+    std::fs::write(project_path.join("src/c.rs"), "fn gamma() { let c = 3; }\n").unwrap();
+
+    let index = AgentContextIndex::build(project_path).unwrap();
+    let index_path = project_path.join("idx");
+    index.save(&index_path).unwrap();
+
+    // Lightweight SQLite load: source is deferred (empty) for every entry
+    let loaded = AgentContextIndex::load(&index_path).unwrap();
+    assert!(loaded.functions.iter().all(|f| f.source.is_empty()));
+
+    // Change one of three files; a.rs and b.rs entries are checksum-reused
+    std::fs::write(
+        project_path.join("src/c.rs"),
+        "fn gamma() { let c = 30; }\nfn delta() { let d = 4; }\n",
+    )
+    .unwrap();
+
+    let mut updated = AgentContextIndex::build_incremental(project_path, &loaded).unwrap();
+    assert_eq!(updated.functions.len(), 4);
+
+    // The save path backfills deferred source before rewriting the DB
+    updated.load_all_source();
+    assert!(
+        updated.functions.iter().all(|f| !f.source.is_empty()),
+        "backfill must restore source for reused entries"
+    );
+    updated.save(&index_path).unwrap();
+
+    // Reload raw rows: EVERY row must still have non-empty source
+    let conn = super::sqlite_backend::open_db(&index_path.with_extension("db")).unwrap();
+    let rows = super::sqlite_backend::load_functions(&conn).unwrap();
+    assert_eq!(rows.len(), 4);
+    for row in &rows {
+        assert!(
+            !row.source.is_empty(),
+            "row '{}' persisted with empty source after incremental save",
+            row.function_name
+        );
+    }
+}
+
+#[test]
 fn test_parse_workspace_siblings() {
     let toml = r#"siblings = ["../aprender", "../trueno", "../realizar"]"#;
     let result = parse_workspace_siblings(toml);

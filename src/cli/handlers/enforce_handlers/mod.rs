@@ -18,7 +18,7 @@ mod tests;
 // Re-export public API
 pub use analysis::{
     run_complexity_analysis, run_coverage_analysis, run_dead_code_analysis,
-    run_duplication_analysis, run_satd_analysis, run_tdg_analysis,
+    run_duplication_analysis, run_satd_analysis, run_tdg_analysis, AnalysisScope,
 };
 pub use config::{
     clear_enforcement_cache, initialize_enforcement_environment, load_quality_profile,

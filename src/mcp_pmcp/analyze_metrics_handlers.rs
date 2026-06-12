@@ -47,10 +47,11 @@ impl ToolHandler for LintHotspotTool {
         let extra = json!({
             "top_files": { "type": "integer", "description": "Return only the top N files with the most lint violations" }
         });
-        // Registered as `analyze_dag` in server.rs; keep the registered name for consistency.
+        // R17-1: this tool was formerly (mis)registered as `analyze_dag`. It is
+        // no longer registered in any live server; advertise its real identity.
         Some(build_tool_info(
-            "analyze_dag",
-            "Generate a dependency graph (DAG) / lint hotspot report highlighting files with the most violations.",
+            "analyze_lint_hotspot",
+            "Lint hotspot report highlighting the files with the most lint violations.",
             paths_object_schema(extra, vec!["paths"]),
         ))
     }
@@ -108,10 +109,11 @@ impl ToolHandler for ChurnTool {
             "days":      { "type": "integer", "description": "Git history window in days (default: 90)" },
             "top_files": { "type": "integer", "description": "Return only the top N files by churn" }
         });
-        // Registered as `analyze_deep_context` in server.rs.
+        // R17-1: this tool was formerly (mis)registered as `analyze_deep_context`.
+        // It is no longer registered in any live server; advertise its real identity.
         Some(build_tool_info(
-            "analyze_deep_context",
-            "Comprehensive code analysis combining git churn history with code metrics.",
+            "analyze_churn",
+            "Git churn analysis: file change frequency over a configurable history window.",
             paths_object_schema(extra, vec!["paths"]),
         ))
     }
@@ -166,10 +168,11 @@ impl ToolHandler for CouplingTool {
         let extra = json!({
             "threshold": { "type": "number", "description": "Minimum similarity threshold for reporting coupled modules (0.0-1.0)" }
         });
-        // Registered as `analyze_big_o` in server.rs.
+        // R17-1: this tool was formerly (mis)registered as `analyze_big_o`. It is
+        // no longer registered in any live server; advertise its real identity.
         Some(build_tool_info(
-            "analyze_big_o",
-            "Big-O complexity / module coupling analysis.",
+            "analyze_coupling",
+            "Module coupling analysis based on cross-module similarity.",
             paths_object_schema(extra, vec!["paths"]),
         ))
     }
@@ -227,6 +230,21 @@ impl ToolHandler for AnalyzeDagTool {
 
         Ok(results)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "dag_type": {
+                "type": "string",
+                "enum": ["call-graph", "import-graph", "inheritance", "full-dependency"],
+                "description": "Dependency graph type to generate (default: full-dependency)"
+            }
+        });
+        Some(build_tool_info(
+            "analyze_dag",
+            "Generate a project dependency graph (call graph, import graph, inheritance, or full dependency DAG).",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
+    }
 }
 
 // --- Big-O analysis tool ---
@@ -273,6 +291,17 @@ impl ToolHandler for AnalyzeBigOTool {
 
         Ok(results)
     }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "top_files": { "type": "integer", "description": "Return only the top N files by algorithmic complexity" }
+        });
+        Some(build_tool_info(
+            "analyze_big_o",
+            "Classify the Big-O time complexity of functions in the given paths.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
+    }
 }
 
 // --- Deep context analysis tool ---
@@ -318,5 +347,20 @@ impl ToolHandler for AnalyzeDeepContextTool {
             .map_err(|e| Error::internal(format!("Deep context analysis failed: {e}")))?;
 
         Ok(results)
+    }
+
+    fn metadata(&self) -> Option<ToolInfo> {
+        let extra = json!({
+            "include_patterns": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Optional file glob patterns (accepted but not yet applied as a filter)"
+            }
+        });
+        Some(build_tool_info(
+            "analyze_deep_context",
+            "Run the full deep-context analysis pipeline (AST, complexity, churn, dead code) over the given paths.",
+            paths_object_schema(extra, vec!["paths"]),
+        ))
     }
 }

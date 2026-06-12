@@ -153,15 +153,16 @@ impl CommandDispatcher {
                     SearchMode::Hybrid => "hybrid",
                 };
 
-                let result = semantic_cli
-                    .semantic_search(&query, mode_str, limit, language)
+                let output = semantic_cli
+                    .semantic_search_results(&query, mode_str, limit, language)
                     .await
                     .map_err(|e| anyhow::anyhow!(e))?;
                 match format {
+                    // JSON purity: stdout carries only the payload
                     OutputFormat::Json => {
-                        println!("{}", result); // Result is already JSON
+                        println!("{}", serde_json::to_string_pretty(&output.to_json())?)
                     }
-                    _ => println!("{}", result),
+                    _ => println!("{}", output.render_text()),
                 }
                 Ok(())
             }

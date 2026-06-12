@@ -7,7 +7,7 @@ use crate::cli::commands::{QddCodeType, QddCommands, QddOutputFormat, QddQuality
 use crate::qdd::{
     CodeType, CreateSpec, Parameter, QddOperation, QddResult, QddTool, QualityProfile, RefactorSpec,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
 /// Handle QDD CLI commands
@@ -395,9 +395,92 @@ async fn handle_qdd_validate(
         QddQualityProfile::Standard => QualityProfile::standard(),
         QddQualityProfile::Relaxed => QualityProfile::relaxed(),
     };
+    let is_json = matches!(format, QddOutputFormat::Json);
 
-    // For now, implement as a simple quality check
-    // In a full implementation, this would use the QDD validation engine
+    // JSON mode must keep stdout pure (jq-parseable): header goes to humans only
+    if !is_json {
+        print_validation_header(&path, profile, &quality_profile);
+    }
+
+    // Simple validation placeholder
+    let validation_passed = true; // Would implement actual validation
+
+    match format {
+        QddOutputFormat::Summary => {
+            println!("\n{}", c::subheader("Validation Summary:"));
+            println!(
+                "{}",
+                if validation_passed {
+                    c::pass("PASSED")
+                } else {
+                    c::fail("FAILED")
+                }
+            );
+        }
+        QddOutputFormat::Detailed => {
+            println!("\n{}", c::subheader("Detailed Validation Results:"));
+            println!("{}", c::pass("Quality checks: PASSED"));
+            println!("{}", c::pass("Complexity check: PASSED"));
+            println!("{}", c::pass("Coverage check: PASSED"));
+            println!("{}", c::pass("Technical debt: PASSED"));
+        }
+        QddOutputFormat::Json => {
+            let json_result = build_validation_json(validation_passed, profile, &path);
+            println!("{}", serde_json::to_string_pretty(&json_result)?);
+        }
+        QddOutputFormat::Markdown => {
+            println!("# QDD Validation Report");
+            println!();
+            println!(
+                "**Status:** {}",
+                if validation_passed {
+                    "✅ PASSED"
+                } else {
+                    "❌ FAILED"
+                }
+            );
+            println!("**Profile:** {profile:?}");
+            println!("**Path:** {}", path.display());
+            println!(
+                "**Date:** {}",
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+            );
+        }
+    }
+
+    if let Some(output_path) = output {
+        // Write the report before claiming it was written
+        let report = serde_json::to_string_pretty(&build_validation_json(
+            validation_passed,
+            profile,
+            &path,
+        ))?;
+        std::fs::write(&output_path, report)
+            .with_context(|| format!("Failed to write report: {}", output_path.display()))?;
+        let message = c::pass(&format!(
+            "Validation report written to: {}",
+            c::path(&output_path.display().to_string())
+        ));
+        if is_json {
+            eprintln!("{message}");
+        } else {
+            println!("\n{message}");
+        }
+    }
+
+    if strict && !validation_passed {
+        return Err(anyhow::anyhow!("Quality validation failed (strict mode)"));
+    }
+
+    Ok(())
+}
+
+/// Print the validation header and thresholds (human formats only)
+fn print_validation_header(
+    path: &Path,
+    profile: QddQualityProfile,
+    quality_profile: &QualityProfile,
+) {
     println!("{}", c::header("QDD Quality Validation"));
     println!(
         "  {} {}",
@@ -426,73 +509,20 @@ async fn handle_qdd_validate(
         c::label("Zero SATD:"),
         c::number(&format!("{}", quality_profile.thresholds.zero_satd))
     );
+}
 
-    // Simple validation placeholder
-    let validation_passed = true; // Would implement actual validation
-
-    match format {
-        QddOutputFormat::Summary => {
-            println!("\n{}", c::subheader("Validation Summary:"));
-            println!(
-                "{}",
-                if validation_passed {
-                    c::pass("PASSED")
-                } else {
-                    c::fail("FAILED")
-                }
-            );
-        }
-        QddOutputFormat::Detailed => {
-            println!("\n{}", c::subheader("Detailed Validation Results:"));
-            println!("{}", c::pass("Quality checks: PASSED"));
-            println!("{}", c::pass("Complexity check: PASSED"));
-            println!("{}", c::pass("Coverage check: PASSED"));
-            println!("{}", c::pass("Technical debt: PASSED"));
-        }
-        QddOutputFormat::Json => {
-            let json_result = serde_json::json!({
-                "status": if validation_passed { "passed" } else { "failed" },
-                "profile": format!("{profile:?}").to_lowercase(),
-                "path": path.display().to_string(),
-                "validation_time": chrono::Utc::now().to_rfc3339()
-            });
-            println!("{}", serde_json::to_string_pretty(&json_result)?);
-        }
-        QddOutputFormat::Markdown => {
-            println!("# QDD Validation Report");
-            println!();
-            println!(
-                "**Status:** {}",
-                if validation_passed {
-                    "✅ PASSED"
-                } else {
-                    "❌ FAILED"
-                }
-            );
-            println!("**Profile:** {profile:?}");
-            println!("**Path:** {}", path.display());
-            println!(
-                "**Date:** {}",
-                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
-            );
-        }
-    }
-
-    if let Some(output_path) = output {
-        println!(
-            "\n{}",
-            c::pass(&format!(
-                "Validation report written to: {}",
-                c::path(&output_path.display().to_string())
-            ))
-        );
-    }
-
-    if strict && !validation_passed {
-        return Err(anyhow::anyhow!("Quality validation failed (strict mode)"));
-    }
-
-    Ok(())
+/// Build the JSON payload for validation results (stdout in JSON mode is this payload only)
+fn build_validation_json(
+    validation_passed: bool,
+    profile: QddQualityProfile,
+    path: &Path,
+) -> serde_json::Value {
+    serde_json::json!({
+        "status": if validation_passed { "passed" } else { "failed" },
+        "profile": format!("{profile:?}").to_lowercase(),
+        "path": path.display().to_string(),
+        "validation_time": chrono::Utc::now().to_rfc3339()
+    })
 }
 
 // Tests extracted to qdd_handlers_tests.rs for file health (CB-040).

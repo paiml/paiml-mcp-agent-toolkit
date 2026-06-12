@@ -7,6 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.18.2] - 2026-06-12
+
+Kaizen sweep: fixes for all 8 pre-existing issues catalogued by the v3.18.1
+full-CLI dogfood (111 commands). None were regressions; all predate 3.18.1.
+
+### Fixed
+- **`pmat perfection-score` math**: the Rust Project Quality category divided
+  RPS raw points by a stale hardcoded scale (134.0, the v1 maximum), so raw
+  246.6/289 became a "184%" score and the total clamped to 200/200 A+
+  regardless of actual quality. Normalization now uses the
+  orchestrator-reported `total_possible`, and `CategoryScore::new` clamps
+  earned points to `[0, max]` so no category can ever exceed its maximum.
+- **`pmat semantic search` ghost results**: with an empty embeddings store the
+  command printed "Found 3 results" (the pre-filter keyword-candidate count)
+  while rendering zero rows. Count and rows now derive from the same result
+  set; an empty store in vector/hybrid mode yields explicit guidance to run
+  `pmat embed sync` instead of a nonzero count with no output. JSON mode now
+  emits a structured `{query, mode, count, results[]}` document instead of a
+  plain string.
+- **JSON stdout purity** (`--format json` stdout is now exactly one
+  jq-parseable document, with decoration suppressed or routed to stderr):
+  - `pmat tdg baseline list` / `baseline compare` / `check-regression` /
+    `check-quality` — including all progress output from the ephemeral
+    baseline creation those commands run internally
+  - `pmat oracle status` / `fix` / `single`
+  - `pmat qdd validate`
+- **`pmat falsify --format json` implemented**: the flag was accepted and
+  silently ignored. Dry runs emit one `{dry_run, total_claims, specs[]}`
+  document; full runs emit a single report document (array for multi-spec,
+  which previously concatenated N documents); `--failures-only` is honored.
+- **TDG penalty ordering was nondeterministic**: `PenaltyTracker` stored
+  attributions in a HashMap, so `penalties_applied` in serialized TDG scores
+  (and therefore baselines) could reorder between identical runs — found by
+  the v3.18.2 re-dogfood when a byte-identical baseline check flaked. Now a
+  BTreeMap keyed by issue id; verified byte-identical across 4 consecutive
+  baseline creations.
+- **`pmat enforce extreme --file` is actually file-scoped**: single-file mode
+  previously ran every phase project-wide (2,717 files analyzed for a
+  one-file dry run). A new `AnalysisScope` threads the target file through
+  the complexity/TDG/SATD/dead-code/duplicate phases.
+
+### Fixed (MCP)
+All 20 live MCP tools were validated end-to-end over stdio JSON-RPC for
+multi-agent use (per-tool calls, 8-way concurrent sessions, framing purity);
+five confirmed defects fixed:
+- **Index source-wipe**: incremental index saves persisted empty `source` for
+  every checksum-reused function (lightweight loads omit the source column;
+  `maybe_save_incremental` rewrote the full DB from them), converging the
+  index to all-empty and killing `pmat_get_function` / `pmat_query_code
+  include_source` / `pmat query --include-source`. Additionally
+  `finalize_incremental_index` dropped `db_path`, disabling source backfill
+  even on healthy DBs. Incremental saves now bulk-restore source before
+  rewriting (empty-only fill, location-keyed); `db_path` propagates; wiped
+  DBs self-heal on the next save. Regression tests pin every row non-empty
+  across an incremental save.
+- **`quality_gate` MCP tool returned an inverted `passed` verdict** (three
+  sites compared `Grade` with the wrong direction — the derived Ord makes
+  better grades smaller). New `Grade::meets_threshold()` is the single
+  semantic comparison; the same inversion in CLI `pmat tdg --min-grade`
+  (rejected grades better than the minimum) is fixed too.
+- **`analyze_dag`, `analyze_big_o`, `analyze_deep_context` advertised no
+  description and an empty input schema** while requiring a `paths` field —
+  schema-conforming calls could never succeed. All three now publish accurate
+  descriptions and schemas; a test pins all 20 tools to non-empty metadata.
+- **`pdmt_deterministic_todos` was nondeterministic** (`Uuid::new_v4` ids):
+  ids are now deterministic UUIDv8s derived from seed/index/requirement;
+  byte-identical output for identical input is pinned by tests.
+- **MCP stdio server never exited on stdin EOF**, leaking one process per
+  scripted session; it now shuts down cleanly when the client closes stdin.
+- `refactor.*` tool descriptions now disclose the analysis engine is
+  currently simulated (violations synthesized from filename patterns).
+
+### Changed
+- **MCP SDK updated**: `pmcp` 2.3.0 → 2.9.0 (latest), pulling jsonschema
+  0.45 → 0.46.5 and fancy-regex 0.17 → 0.18. MCP stdio protocol re-validated
+  end-to-end against the updated SDK (initialize, tools/list, all 20 tool
+  calls, 8-way concurrent sessions, framing purity).
+- `tdg baseline list --format json` with zero baselines now prints `[]`
+  (previously human text only, no JSON document).
+- Two `pub` enforce-handler signatures gained a `specific_file` parameter
+  (`run_complexity_analysis`, `handle_special_modes`); all in-repo callers
+  updated.
+
 ## [3.18.1] - 2026-06-12
 
 Concurrency and determinism fixes for multi-agent / parallel-invocation use.

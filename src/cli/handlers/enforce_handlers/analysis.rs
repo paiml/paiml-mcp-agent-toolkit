@@ -3,13 +3,82 @@
 
 use super::types::{QualityProfile, QualityViolation};
 use anyhow::Result;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// Per-phase analysis scope for enforcement.
+///
+/// When `--file` is given, phases with native single-file support
+/// (complexity, TDG) analyze exactly that file, while phases that must walk
+/// a directory tree (SATD, dead code, duplication) fall back to the file's
+/// parent module directory instead of scanning the whole project.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AnalysisScope {
+    /// Analyze the whole project rooted at this path
+    Project { root: PathBuf },
+    /// Analyze a single file; `module_dir` is the containing directory used
+    /// by phases that cannot operate on a lone file
+    SingleFile { file: PathBuf, module_dir: PathBuf },
+}
+
+impl AnalysisScope {
+    /// Resolve scope from the project root and the optional `--file` argument.
+    /// Relative file paths are resolved against the project root.
+    #[must_use]
+    pub fn resolve(project_path: &Path, specific_file: Option<&Path>) -> Self {
+        match specific_file {
+            None => Self::Project {
+                root: project_path.to_path_buf(),
+            },
+            Some(f) => {
+                let file = if f.is_absolute() {
+                    f.to_path_buf()
+                } else {
+                    project_path.join(f)
+                };
+                let module_dir = file
+                    .parent()
+                    .filter(|p| !p.as_os_str().is_empty())
+                    .map_or_else(|| project_path.to_path_buf(), Path::to_path_buf);
+                Self::SingleFile { file, module_dir }
+            }
+        }
+    }
+
+    /// Exact file under analysis, when scoped to a single file
+    #[must_use]
+    pub fn single_file(&self) -> Option<&Path> {
+        match self {
+            Self::Project { .. } => None,
+            Self::SingleFile { file, .. } => Some(file),
+        }
+    }
+
+    /// Root for phases that must walk a directory (SATD, dead code,
+    /// duplication): the project root, or the file's parent module dir
+    #[must_use]
+    pub fn walk_root(&self) -> &Path {
+        match self {
+            Self::Project { root } => root,
+            Self::SingleFile { module_dir, .. } => module_dir,
+        }
+    }
+
+    /// Path for phases that accept either a file or a directory (TDG)
+    #[must_use]
+    pub fn file_or_root(&self) -> &Path {
+        match self {
+            Self::Project { root } => root,
+            Self::SingleFile { file, .. } => file,
+        }
+    }
+}
 
 /// Run complexity analysis - extracted from `list_all_violations` (complexity: ≤10)
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub async fn run_complexity_analysis(
     project_path: &Path,
     profile: &QualityProfile,
+    specific_file: Option<&Path>,
 ) -> Result<Vec<QualityViolation>> {
     use crate::cli::handlers::complexity_handlers::handle_analyze_complexity;
     use crate::cli::ComplexityOutputFormat;
@@ -18,9 +87,9 @@ pub async fn run_complexity_analysis(
 
     match handle_analyze_complexity(
         project_path.to_path_buf(),
-        None,   // file
-        vec![], // files
-        None,   // toolchain
+        specific_file.map(Path::to_path_buf), // file: restricts analysis to one file
+        vec![],                               // files
+        None,                                 // toolchain
         ComplexityOutputFormat::Json,
         None,                         // output
         Some(profile.complexity_max), // max_cyclomatic
@@ -253,4 +322,62 @@ pub async fn run_coverage_analysis(
     }
 
     Ok(violations)
+}
+
+#[cfg(test)]
+mod scope_tests {
+    use super::AnalysisScope;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn test_resolve_without_file_is_project_scope() {
+        let scope = AnalysisScope::resolve(Path::new("/proj"), None);
+        assert_eq!(
+            scope,
+            AnalysisScope::Project {
+                root: PathBuf::from("/proj")
+            }
+        );
+        assert_eq!(scope.single_file(), None);
+        assert_eq!(scope.walk_root(), Path::new("/proj"));
+        assert_eq!(scope.file_or_root(), Path::new("/proj"));
+    }
+
+    #[test]
+    fn test_resolve_relative_file_joins_project_root() {
+        let scope =
+            AnalysisScope::resolve(Path::new("/proj"), Some(Path::new("src/utils/scratch.rs")));
+        assert_eq!(
+            scope.single_file(),
+            Some(Path::new("/proj/src/utils/scratch.rs"))
+        );
+        // Directory-walk phases are scoped to the parent module, not the project root
+        assert_eq!(scope.walk_root(), Path::new("/proj/src/utils"));
+        assert_eq!(
+            scope.file_or_root(),
+            Path::new("/proj/src/utils/scratch.rs")
+        );
+    }
+
+    #[test]
+    fn test_resolve_absolute_file_kept_as_is() {
+        let scope = AnalysisScope::resolve(Path::new("/proj"), Some(Path::new("/other/lib.rs")));
+        assert_eq!(scope.single_file(), Some(Path::new("/other/lib.rs")));
+        assert_eq!(scope.walk_root(), Path::new("/other"));
+    }
+
+    #[test]
+    fn test_resolve_bare_filename_uses_project_root_as_module_dir() {
+        let scope = AnalysisScope::resolve(Path::new("/proj"), Some(Path::new("main.rs")));
+        assert_eq!(scope.single_file(), Some(Path::new("/proj/main.rs")));
+        assert_eq!(scope.walk_root(), Path::new("/proj"));
+    }
+
+    #[test]
+    fn test_resolve_empty_parent_falls_back_to_project_root() {
+        // Empty project root + bare filename → joined path has an empty parent
+        let scope = AnalysisScope::resolve(Path::new(""), Some(Path::new("scratch.rs")));
+        assert_eq!(scope.walk_root(), Path::new(""));
+        assert_eq!(scope.single_file(), Some(Path::new("scratch.rs")));
+    }
 }

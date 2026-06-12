@@ -3,7 +3,7 @@
 
 use super::analysis::{
     run_complexity_analysis, run_coverage_analysis, run_dead_code_analysis,
-    run_duplication_analysis, run_satd_analysis, run_tdg_analysis,
+    run_duplication_analysis, run_satd_analysis, run_tdg_analysis, AnalysisScope,
 };
 use super::config::EnforcementConfig;
 use super::output::{
@@ -32,16 +32,17 @@ pub async fn handle_special_modes(
     profile: &QualityProfile,
     format: EnforceOutputFormat,
     ci_mode: bool,
+    specific_file: Option<&PathBuf>,
 ) -> Result<Option<Result<()>>> {
     if list_violations {
         return Ok(Some(
-            list_all_violations(project_path, profile, format).await,
+            list_all_violations(project_path, profile, format, specific_file).await,
         ));
     }
 
     if validate_only {
         return Ok(Some(
-            validate_current_state(project_path, profile, format, ci_mode).await,
+            validate_current_state(project_path, profile, format, ci_mode, specific_file).await,
         ));
     }
 
@@ -288,36 +289,46 @@ async fn list_all_violations(
     project_path: &Path,
     profile: &QualityProfile,
     format: EnforceOutputFormat,
+    specific_file: Option<&PathBuf>,
 ) -> Result<()> {
     eprintln!("{}", c::header("Listing all quality violations..."));
 
-    let project_path_buf = project_path.to_path_buf();
+    let scope = AnalysisScope::resolve(project_path, specific_file.map(PathBuf::as_path));
+    if let AnalysisScope::SingleFile { module_dir, .. } = &scope {
+        // Directory-walk phases cannot target a lone file
+        eprintln!(
+            "  {} Single-file mode: SATD/dead-code/duplication scoped to parent module {}",
+            c::dim(">>"),
+            module_dir.display()
+        );
+    }
+
     let mut all_violations: Vec<QualityViolation> = Vec::new();
 
     // Run all analyses using extracted functions - COMPLEXITY REDUCED FROM 48 TO ≤10
     eprintln!("  {} Analyzing complexity...", c::dim(">>"));
-    let complexity_violations = run_complexity_analysis(&project_path_buf, profile).await?;
+    let complexity_violations =
+        run_complexity_analysis(scope.walk_root(), profile, scope.single_file()).await?;
     all_violations.extend(complexity_violations);
 
     eprintln!("  {} Analyzing technical debt (SATD)...", c::dim(">>"));
-    let satd_violations = run_satd_analysis(&project_path_buf, profile).await?;
+    let satd_violations = run_satd_analysis(scope.walk_root(), profile).await?;
     all_violations.extend(satd_violations);
 
     eprintln!("  {} Analyzing technical debt gradient...", c::dim(">>"));
-    let tdg_violations = run_tdg_analysis(project_path_buf.as_path(), profile).await?;
+    let tdg_violations = run_tdg_analysis(scope.file_or_root(), profile).await?;
     all_violations.extend(tdg_violations);
 
     eprintln!("  {} Analyzing dead code...", c::dim(">>"));
-    let dead_code_violations = run_dead_code_analysis(project_path_buf.as_path(), profile).await?;
+    let dead_code_violations = run_dead_code_analysis(scope.walk_root(), profile).await?;
     all_violations.extend(dead_code_violations);
 
     eprintln!("  {} Analyzing code duplication...", c::dim(">>"));
-    let duplication_violations =
-        run_duplication_analysis(project_path_buf.as_path(), profile).await?;
+    let duplication_violations = run_duplication_analysis(scope.walk_root(), profile).await?;
     all_violations.extend(duplication_violations);
 
     eprintln!("  {} Checking test coverage...", c::dim(">>"));
-    let coverage_violations = run_coverage_analysis(project_path_buf.as_path(), profile).await?;
+    let coverage_violations = run_coverage_analysis(scope.walk_root(), profile).await?;
     all_violations.extend(coverage_violations);
 
     eprintln!(
@@ -339,6 +350,7 @@ async fn validate_current_state(
     profile: &QualityProfile,
     format: EnforceOutputFormat,
     ci_mode: bool,
+    specific_file: Option<&PathBuf>,
 ) -> Result<()> {
     eprintln!("{}", c::label("Validating current quality state..."));
 
@@ -347,12 +359,12 @@ async fn validate_current_state(
         project_path,
         profile,
         EnforcementState::Analyzing,
-        false, // single_file_mode
-        true,  // dry_run
-        false, // apply_suggestions
-        None,  // specific_file
-        None,  // include_pattern
-        None,  // exclude_pattern
+        specific_file.is_some(), // single_file_mode
+        true,                    // dry_run
+        false,                   // apply_suggestions
+        specific_file,
+        None, // include_pattern
+        None, // exclude_pattern
     )
     .await?;
 

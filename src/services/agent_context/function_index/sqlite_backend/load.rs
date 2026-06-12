@@ -88,7 +88,7 @@ pub(crate) fn load_functions(conn: &Connection) -> Result<Vec<FunctionEntry>, St
 /// Load all functions from SQLite without the `source` column (lightweight).
 ///
 /// Saves ~200ms by skipping deserialization of 70K source strings (~35MB).
-/// Source is loaded on-demand via `load_source_by_location()` or `load_source_into()`.
+/// Source is loaded on-demand via `load_source_by_location()` or `load_source_map()`.
 #[allow(clippy::cast_possible_truncation)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn load_functions_lightweight(conn: &Connection) -> Result<Vec<FunctionEntry>, String> {
@@ -148,36 +148,45 @@ pub(crate) fn load_functions_lightweight(conn: &Connection) -> Result<Vec<Functi
         .map_err(|e| format!("Failed to collect functions (lightweight): {e}"))
 }
 
-/// Bulk-load source code into an existing functions slice.
+/// Bulk-load all non-empty sources keyed by location.
 ///
-/// Reads `(id, source)` from SQLite and updates `functions[id-1].source`.
-/// Used when regex/literal mode needs full source for pattern matching.
+/// Returns `file_path -> start_line -> source`. Location-keyed (not row-id
+/// keyed) because an incremental rebuild can reorder functions relative to
+/// the persisted database, so positional matching would attach the wrong
+/// source. Empty rows are skipped so callers only fill what the DB can
+/// actually supply. Used when regex/literal mode needs full source and to
+/// backfill checksum-reused entries before an incremental save.
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::type_complexity
+)]
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-pub(crate) fn load_source_into(
+pub(crate) fn load_source_map(
     conn: &Connection,
-    functions: &mut [FunctionEntry],
-) -> Result<(), String> {
+) -> Result<HashMap<String, HashMap<usize, String>>, String> {
     let mut stmt = conn
-        .prepare("SELECT id, source FROM functions ORDER BY id")
-        .map_err(|e| format!("Failed to prepare source load: {e}"))?;
+        .prepare("SELECT file_path, start_line, source FROM functions WHERE source != ''")
+        .map_err(|e| format!("Failed to prepare source map load: {e}"))?;
 
     let rows = stmt
         .query_map([], |row| {
-            let id: i64 = row.get(0)?;
-            let source: String = row.get(1)?;
-            Ok((id, source))
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)? as usize,
+                row.get::<_, String>(2)?,
+            ))
         })
-        .map_err(|e| format!("Failed to query source: {e}"))?;
+        .map_err(|e| format!("Failed to query source map: {e}"))?;
 
+    let mut map: HashMap<String, HashMap<usize, String>> = HashMap::new();
     for row in rows {
-        let (id, source) = row.map_err(|e| format!("Bad source row: {e}"))?;
-        let idx = (id - 1) as usize;
-        if idx < functions.len() {
-            functions[idx].source = source;
-        }
+        let (file_path, start_line, source) =
+            row.map_err(|e| format!("Bad source map row: {e}"))?;
+        map.entry(file_path).or_default().insert(start_line, source);
     }
 
-    Ok(())
+    Ok(map)
 }
 
 /// Load source code for a single function by file path and start line.

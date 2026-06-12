@@ -1173,6 +1173,46 @@ mod coverage_tests {
         }
     }
 
+    // ===============================================================
+    // Tests for build_validation_json (JSON purity)
+    // ===============================================================
+
+    #[test]
+    fn test_build_validation_json_passed() {
+        let path = PathBuf::from("src/utils/scratch.rs");
+        let json = build_validation_json(true, QddQualityProfile::Standard, &path);
+
+        assert_eq!(json["status"], "passed");
+        assert_eq!(json["profile"], "standard");
+        assert_eq!(json["path"], "src/utils/scratch.rs");
+        assert!(json["validation_time"].is_string());
+    }
+
+    #[test]
+    fn test_build_validation_json_failed() {
+        let path = PathBuf::from("/some/dir");
+        let json = build_validation_json(false, QddQualityProfile::Extreme, &path);
+
+        assert_eq!(json["status"], "failed");
+        assert_eq!(json["profile"], "extreme");
+        assert_eq!(json["path"], "/some/dir");
+    }
+
+    #[test]
+    fn test_build_validation_json_pretty_output_is_pure_json() {
+        // Stdout in JSON mode is exactly this pretty-printed payload: it must
+        // start with '{' (no ANSI header) and round-trip through a JSON parser.
+        let path = PathBuf::from(".");
+        let json = build_validation_json(true, QddQualityProfile::Relaxed, &path);
+        let pretty = serde_json::to_string_pretty(&json).unwrap();
+
+        assert!(pretty.starts_with('{'));
+        assert!(!pretty.contains('\x1b'));
+        let reparsed: serde_json::Value = serde_json::from_str(&pretty).unwrap();
+        assert_eq!(reparsed["profile"], "relaxed");
+    }
+
+
     #[tokio::test]
     async fn test_handle_qdd_validate_all_formats() {
         let temp_dir = TempDir::new().unwrap();

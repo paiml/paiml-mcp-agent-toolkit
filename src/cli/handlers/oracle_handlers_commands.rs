@@ -1,3 +1,21 @@
+/// Whether decorative banners/progress lines may be printed to stdout.
+///
+/// In JSON mode stdout must contain ONLY the JSON payload (jq-parseable),
+/// so banners are suppressed.
+fn banner_enabled(format: OracleOutputFormat) -> bool {
+    format != OracleOutputFormat::Json
+}
+
+/// Print the "results written" confirmation; stderr in JSON mode to keep
+/// stdout reserved for the payload.
+fn notify_results_written(output_path: &Path, format: OracleOutputFormat) {
+    if banner_enabled(format) {
+        println!("✅ Results written to: {}", output_path.display());
+    } else {
+        eprintln!("✅ Results written to: {}", output_path.display());
+    }
+}
+
 /// Handle `pmat oracle fix` - Run PDCA fix loop
 async fn handle_oracle_fix(
     path: &Path,
@@ -8,17 +26,19 @@ async fn handle_oracle_fix(
     format: OracleOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    println!("🔮 PMAT Oracle - PDCA Quality Improvement Loop");
-    println!("   Path: {}", path.display());
-    println!("   Max iterations: {}", max_iterations);
-    println!(
-        "   Thresholds: auto={:.2}, review={:.2}",
-        auto_apply_threshold, review_threshold
-    );
-    if dry_run {
-        println!("   Mode: DRY RUN (no changes will be applied)");
+    if banner_enabled(format) {
+        println!("🔮 PMAT Oracle - PDCA Quality Improvement Loop");
+        println!("   Path: {}", path.display());
+        println!("   Max iterations: {}", max_iterations);
+        println!(
+            "   Thresholds: auto={:.2}, review={:.2}",
+            auto_apply_threshold, review_threshold
+        );
+        if dry_run {
+            println!("   Mode: DRY RUN (no changes will be applied)");
+        }
+        println!();
     }
-    println!();
 
     // Validate path
     if !path.exists() {
@@ -38,14 +58,18 @@ async fn handle_oracle_fix(
     let pdca = PdcaLoop::with_config(config, targets.clone());
 
     if dry_run {
-        println!("🔍 Dry run: Collecting signals only...\n");
+        if banner_enabled(format) {
+            println!("🔍 Dry run: Collecting signals only...\n");
+        }
         // Just run one iteration without applying fixes
         let results = pdca.run_iterations(path, 1).await?;
         if let Some(result) = results.first() {
             format_iteration_result(result, &format, output)?;
         }
     } else {
-        println!("🚀 Starting PDCA loop...\n");
+        if banner_enabled(format) {
+            println!("🚀 Starting PDCA loop...\n");
+        }
         let results = pdca.run(path).await?;
 
         // Format and output results
@@ -53,7 +77,7 @@ async fn handle_oracle_fix(
 
         if let Some(output_path) = output {
             std::fs::write(output_path, &formatted)?;
-            println!("✅ Results written to: {}", output_path.display());
+            notify_results_written(output_path, format);
         } else {
             println!("{}", formatted);
         }
@@ -64,9 +88,11 @@ async fn handle_oracle_fix(
 
 /// Handle `pmat oracle status` - Show current quality status
 async fn handle_oracle_status(path: &Path, format: OracleOutputFormat) -> Result<()> {
-    println!("📊 PMAT Oracle - Project Quality Status");
-    println!("   Path: {}", path.display());
-    println!();
+    if banner_enabled(format) {
+        println!("📊 PMAT Oracle - Project Quality Status");
+        println!("   Path: {}", path.display());
+        println!();
+    }
 
     // Validate path
     if !path.exists() {
@@ -91,9 +117,11 @@ async fn handle_oracle_single(
     format: OracleOutputFormat,
     output: Option<&Path>,
 ) -> Result<()> {
-    println!("⚡ PMAT Oracle - Single PDCA Iteration");
-    println!("   Path: {}", path.display());
-    println!();
+    if banner_enabled(format) {
+        println!("⚡ PMAT Oracle - Single PDCA Iteration");
+        println!("   Path: {}", path.display());
+        println!();
+    }
 
     // Validate path
     if !path.exists() {
@@ -107,7 +135,7 @@ async fn handle_oracle_single(
 
     if let Some(output_path) = output {
         std::fs::write(output_path, &formatted)?;
-        println!("✅ Results written to: {}", output_path.display());
+        notify_results_written(output_path, format);
     } else {
         println!("{}", formatted);
     }

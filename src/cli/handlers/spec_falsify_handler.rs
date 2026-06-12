@@ -63,6 +63,7 @@ async fn handle_spec_falsification(
     failures_only: bool,
     dry_run: bool,
 ) -> Result<()> {
+    let json_output = matches!(format, Some("json"));
     let engine = crate::services::spec_falsification::FalsificationEngine::new(project_path);
 
     // Collect spec files
@@ -79,32 +80,11 @@ async fn handle_spec_falsification(
     let mut total_claims = 0usize;
     let mut total_falsified = 0usize;
     let mut all_reports = Vec::new();
+    let mut dry_run_claims = Vec::new();
 
     for spec_file in &spec_files {
         if dry_run {
-            // Dry run: extract claims only
-            let extractor = crate::services::spec_falsification::SpecClaimExtractor::new();
-            let content = std::fs::read_to_string(spec_file)
-                .with_context(|| format!("Failed to read: {}", spec_file.display()))?;
-            let claims = extractor.extract(&content, spec_file);
-            println!(
-                "{} {} -- {} claims extracted {}",
-                c::label("Spec:"),
-                c::path(&spec_file.display().to_string()),
-                c::number(&claims.len().to_string()),
-                c::dim("(dry run)")
-            );
-            for claim in &claims {
-                println!(
-                    "  [{}] {} {} (line {}): {}",
-                    c::label(&claim.id),
-                    claim.priority,
-                    claim.category,
-                    c::number(&claim.source_line.to_string()),
-                    c::dim(&truncate(&claim.original_text, 80)),
-                );
-            }
-            total_claims += claims.len();
+            total_claims += process_dry_run_spec(spec_file, json_output, &mut dry_run_claims)?;
             continue;
         }
 
@@ -112,63 +92,32 @@ async fn handle_spec_falsification(
         total_claims += report.summary.total_claims;
         total_falsified += report.summary.falsified;
 
-        match format {
-            Some("json") => {
-                let json = report.to_json()?;
-                println!("{}", json);
-            }
-            _ => {
-                if failures_only {
-                    print_failures_only(&report);
-                } else {
-                    report.display();
-                }
+        if !json_output {
+            if failures_only {
+                print_failures_only(&report);
+            } else {
+                report.display();
             }
         }
 
         all_reports.push(report);
     }
 
-    // Multi-spec summary
-    if spec_files.len() > 1 && !dry_run {
-        println!();
-        println!("{}", c::header("Multi-Spec Summary"));
-        println!(
-            "  {} {}",
-            c::label("Specs analyzed:"),
-            c::number(&spec_files.len().to_string())
-        );
-        println!(
-            "  {} {}",
-            c::label("Total claims:  "),
-            c::number(&total_claims.to_string())
-        );
-        println!(
-            "  {} {}",
-            c::label("Falsified:     "),
-            c::number(&total_falsified.to_string())
-        );
-        let health = if total_claims > 0 {
-            (total_claims - total_falsified) as f64 / total_claims as f64
+    // JSON mode: stdout carries exactly one jq-parseable document, no decoration
+    if json_output {
+        let doc = if dry_run {
+            dry_run_claims_to_json(&dry_run_claims)?
         } else {
-            1.0
+            reports_to_json(&all_reports, failures_only)?
         };
-        println!(
-            "  {} {}",
-            c::label("Health:        "),
-            c::pct(health * 100.0, 90.0, 70.0)
-        );
-    }
-
-    if dry_run {
-        println!();
-        println!(
-            "{} {} claims extracted across {} specs",
-            c::dim("Dry run complete:"),
-            c::number(&total_claims.to_string()),
-            c::number(&spec_files.len().to_string())
-        );
-        println!("Run without --dry-run to falsify claims against the codebase.");
+        println!("{doc}");
+    } else {
+        if spec_files.len() > 1 && !dry_run {
+            print_multi_spec_summary(spec_files.len(), total_claims, total_falsified);
+        }
+        if dry_run {
+            print_dry_run_footer(total_claims, spec_files.len());
+        }
     }
 
     // Exit with non-zero if any claims were falsified
@@ -181,6 +130,87 @@ async fn handle_spec_falsification(
     }
 
     Ok(())
+}
+
+/// Extract claims from one spec in dry-run mode; print them in human mode,
+/// collect them for the single JSON document otherwise. Returns claim count.
+fn process_dry_run_spec(
+    spec_file: &Path,
+    json_output: bool,
+    dry_run_claims: &mut Vec<(PathBuf, Vec<crate::services::spec_falsification::SpecClaim>)>,
+) -> Result<usize> {
+    let extractor = crate::services::spec_falsification::SpecClaimExtractor::new();
+    let content = std::fs::read_to_string(spec_file)
+        .with_context(|| format!("Failed to read: {}", spec_file.display()))?;
+    let claims = extractor.extract(&content, spec_file);
+    let count = claims.len();
+
+    if json_output {
+        dry_run_claims.push((spec_file.to_path_buf(), claims));
+        return Ok(count);
+    }
+
+    println!(
+        "{} {} -- {} claims extracted {}",
+        c::label("Spec:"),
+        c::path(&spec_file.display().to_string()),
+        c::number(&count.to_string()),
+        c::dim("(dry run)")
+    );
+    for claim in &claims {
+        println!(
+            "  [{}] {} {} (line {}): {}",
+            c::label(&claim.id),
+            claim.priority,
+            claim.category,
+            c::number(&claim.source_line.to_string()),
+            c::dim(&truncate(&claim.original_text, 80)),
+        );
+    }
+    Ok(count)
+}
+
+/// Human-format summary block for multi-spec full runs
+fn print_multi_spec_summary(spec_count: usize, total_claims: usize, total_falsified: usize) {
+    println!();
+    println!("{}", c::header("Multi-Spec Summary"));
+    println!(
+        "  {} {}",
+        c::label("Specs analyzed:"),
+        c::number(&spec_count.to_string())
+    );
+    println!(
+        "  {} {}",
+        c::label("Total claims:  "),
+        c::number(&total_claims.to_string())
+    );
+    println!(
+        "  {} {}",
+        c::label("Falsified:     "),
+        c::number(&total_falsified.to_string())
+    );
+    let health = if total_claims > 0 {
+        (total_claims - total_falsified) as f64 / total_claims as f64
+    } else {
+        1.0
+    };
+    println!(
+        "  {} {}",
+        c::label("Health:        "),
+        c::pct(health * 100.0, 90.0, 70.0)
+    );
+}
+
+/// Human-format trailer for dry runs
+fn print_dry_run_footer(total_claims: usize, spec_count: usize) {
+    println!();
+    println!(
+        "{} {} claims extracted across {} specs",
+        c::dim("Dry run complete:"),
+        c::number(&total_claims.to_string()),
+        c::number(&spec_count.to_string())
+    );
+    println!("Run without --dry-run to falsify claims against the codebase.");
 }
 
 /// Collect markdown spec files from a directory
@@ -239,6 +269,66 @@ fn print_failures_only(report: &crate::services::spec_falsification::SpecFalsifi
             if ev.contradiction_score >= 0.8 {
                 println!("    {} {} -> {}", c::fail(&ev.check), c::DIM, ev.finding);
             }
+        }
+    }
+}
+
+/// Serialize dry-run claim extraction to a single pretty-JSON document
+fn dry_run_claims_to_json(
+    specs: &[(PathBuf, Vec<crate::services::spec_falsification::SpecClaim>)],
+) -> Result<String> {
+    #[derive(serde::Serialize)]
+    struct SpecClaims<'a> {
+        spec: &'a Path,
+        claims: &'a [crate::services::spec_falsification::SpecClaim],
+    }
+    #[derive(serde::Serialize)]
+    struct DryRunOutput<'a> {
+        dry_run: bool,
+        total_claims: usize,
+        specs: Vec<SpecClaims<'a>>,
+    }
+    let output = DryRunOutput {
+        dry_run: true,
+        total_claims: specs.iter().map(|(_, claims)| claims.len()).sum(),
+        specs: specs
+            .iter()
+            .map(|(spec, claims)| SpecClaims { spec, claims })
+            .collect(),
+    };
+    serde_json::to_string_pretty(&output).context("Failed to serialize dry-run claims")
+}
+
+/// Serialize falsification reports to a single pretty-JSON document.
+///
+/// Single spec emits one report object (back-compat with prior JSON output);
+/// multiple specs emit an array. With `failures_only`, only Falsified verdicts
+/// are retained — summary counts still reflect the full run.
+fn reports_to_json(
+    reports: &[crate::services::spec_falsification::SpecFalsificationReport],
+    failures_only: bool,
+) -> Result<String> {
+    use crate::services::spec_falsification::VerdictStatus;
+
+    let filtered: Vec<_> = reports
+        .iter()
+        .map(|report| {
+            let mut report = report.clone();
+            if failures_only {
+                report
+                    .verdicts
+                    .retain(|v| v.status == VerdictStatus::Falsified);
+            }
+            report
+        })
+        .collect();
+
+    match filtered.as_slice() {
+        // Delegate so the single-report shape has exactly one serialization
+        // path (SpecFalsificationReport::to_json)
+        [single] => single.to_json(),
+        many => {
+            serde_json::to_string_pretty(many).context("Failed to serialize falsification reports")
         }
     }
 }
@@ -356,5 +446,111 @@ mod spec_falsify_helper_tests {
         let nonexistent = std::path::PathBuf::from("/nonexistent/path/that/should/not/exist");
         let result = collect_spec_files(&nonexistent);
         assert!(result.is_err());
+    }
+
+    // ── JSON output (--format json) ─────────────────────────────────────────
+
+    use crate::services::spec_falsification::{
+        ClaimPriority, SpecClaim, SpecClaimCategory, SpecFalsificationReport,
+        SpecFalsificationSummary, SpecVerdict, VerdictStatus,
+    };
+
+    fn sample_claim(id: &str) -> SpecClaim {
+        SpecClaim {
+            id: id.to_string(),
+            original_text: "The parser MUST handle UTF-8".to_string(),
+            source_line: 10,
+            category: SpecClaimCategory::CodeEntity,
+            priority: ClaimPriority::P0Critical,
+            is_absolute: false,
+            path_refs: vec![],
+            entity_refs: vec![],
+            numeric_value: None,
+            numeric_comparator: None,
+        }
+    }
+
+    fn sample_report() -> SpecFalsificationReport {
+        SpecFalsificationReport {
+            target_file: PathBuf::from("spec.md"),
+            timestamp: "2026-06-12T00:00:00Z".to_string(),
+            verdicts: vec![
+                SpecVerdict {
+                    claim: sample_claim("SPEC-001"),
+                    status: VerdictStatus::Survived,
+                    evidence: vec![],
+                    contradiction_score: 0.0,
+                },
+                SpecVerdict {
+                    claim: sample_claim("SPEC-002"),
+                    status: VerdictStatus::Falsified,
+                    evidence: vec![],
+                    contradiction_score: 1.0,
+                },
+            ],
+            summary: SpecFalsificationSummary {
+                total_claims: 2,
+                survived: 1,
+                falsified: 1,
+                unfalsifiable: 0,
+                inconclusive: 0,
+                health_score: 0.5,
+            },
+        }
+    }
+
+    #[test]
+    fn test_dry_run_claims_to_json_is_parseable_with_totals() {
+        let specs = vec![
+            (PathBuf::from("a.md"), vec![sample_claim("SPEC-001")]),
+            (
+                PathBuf::from("b.md"),
+                vec![sample_claim("SPEC-002"), sample_claim("SPEC-003")],
+            ),
+        ];
+        let json = dry_run_claims_to_json(&specs).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["dry_run"], true);
+        assert_eq!(parsed["total_claims"], 3);
+        assert_eq!(parsed["specs"].as_array().unwrap().len(), 2);
+        assert_eq!(parsed["specs"][1]["claims"][0]["id"], "SPEC-002");
+        assert_eq!(parsed["specs"][1]["claims"][0]["source_line"], 10);
+    }
+
+    #[test]
+    fn test_dry_run_claims_to_json_empty_specs() {
+        let json = dry_run_claims_to_json(&[]).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["total_claims"], 0);
+        assert!(parsed["specs"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_reports_to_json_single_report_emits_object() {
+        // PIN: single spec emits one report object, not a 1-element array (back-compat).
+        let json = reports_to_json(&[sample_report()], false).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed.is_object());
+        assert_eq!(parsed["summary"]["total_claims"], 2);
+        assert_eq!(parsed["verdicts"].as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_reports_to_json_multiple_reports_emit_array() {
+        let json = reports_to_json(&[sample_report(), sample_report()], false).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(parsed.is_array());
+        assert_eq!(parsed.as_array().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_reports_to_json_failures_only_filters_verdicts() {
+        let json = reports_to_json(&[sample_report()], true).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let verdicts = parsed["verdicts"].as_array().unwrap();
+        assert_eq!(verdicts.len(), 1);
+        assert_eq!(verdicts[0]["status"], "Falsified");
+        // PIN: summary still reflects the full run, not the filtered view.
+        assert_eq!(parsed["summary"]["total_claims"], 2);
     }
 }

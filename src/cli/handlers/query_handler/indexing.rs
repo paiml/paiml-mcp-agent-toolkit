@@ -19,23 +19,59 @@ pub(super) fn load_query_index(
     // Fast path: if no --include-project, check if workspace cache is fresh
     // and load it, otherwise load local-only (skip expensive sibling discovery)
     if include_project.is_empty() && !rebuild_index {
-        // Try cached workspace first (O(1) mtime check)
         let siblings = AgentContextIndex::discover_sibling_indexes(project_path);
-        if !siblings.is_empty() && is_workspace_cache_fresh(&workspace_idx, &siblings, &index_path)
+        if let Some(cached) =
+            try_load_fresh_workspace_cache(&workspace_idx, &siblings, &index_path, quiet)
         {
-            if !quiet {
-                eprintln!("Loading cached workspace index...");
-            }
-            if let Ok(cached) = AgentContextIndex::load(&workspace_idx) {
-                return Ok(cached);
-            }
+            return Ok(cached);
         }
         // No fresh cache — load local only for speed, merge lazily
         return load_or_build_index(project_path, &index_path, false, quiet);
     }
 
     let mut siblings = AgentContextIndex::discover_sibling_indexes(project_path);
+    extend_siblings_with_includes(&mut siblings, include_project, quiet);
 
+    if !rebuild_index {
+        if let Some(cached) =
+            try_load_fresh_workspace_cache(&workspace_idx, &siblings, &index_path, quiet)
+        {
+            return Ok(cached);
+        }
+    }
+
+    load_and_merge_index(
+        project_path,
+        &index_path,
+        &workspace_idx,
+        &siblings,
+        rebuild_index,
+        quiet,
+    )
+}
+
+/// Load the cached workspace index if it exists and is fresh (O(1) mtime check)
+fn try_load_fresh_workspace_cache(
+    workspace_idx: &std::path::Path,
+    siblings: &[(PathBuf, String)],
+    index_path: &std::path::Path,
+    quiet: bool,
+) -> Option<AgentContextIndex> {
+    if siblings.is_empty() || !is_workspace_cache_fresh(workspace_idx, siblings, index_path) {
+        return None;
+    }
+    if !quiet {
+        eprintln!("Loading cached workspace index...");
+    }
+    AgentContextIndex::load(workspace_idx).ok()
+}
+
+/// Add explicitly-included projects to the sibling list (deduplicated)
+fn extend_siblings_with_includes(
+    siblings: &mut Vec<(PathBuf, String)>,
+    include_project: &[PathBuf],
+    quiet: bool,
+) {
     for project in include_project {
         let idx_path = project.join(".pmat/context.idx");
         if idx_path.exists() {
@@ -53,27 +89,6 @@ pub(super) fn load_query_index(
             );
         }
     }
-
-    if !siblings.is_empty()
-        && !rebuild_index
-        && is_workspace_cache_fresh(&workspace_idx, &siblings, &index_path)
-    {
-        if !quiet {
-            eprintln!("Loading cached workspace index...");
-        }
-        if let Ok(cached) = AgentContextIndex::load(&workspace_idx) {
-            return Ok(cached);
-        }
-    }
-
-    load_and_merge_index(
-        project_path,
-        &index_path,
-        &workspace_idx,
-        &siblings,
-        rebuild_index,
-        quiet,
-    )
 }
 
 /// Pre-load source and call graph into the index based on the query mode.
@@ -130,13 +145,15 @@ pub(super) fn collect_siblings(
 /// In deferred-source mode, `QueryResult.source` is `Some("")` (empty) for
 /// semantic queries. This fetches source on-demand for the top N results
 /// that need it for display (--include-source, --code, context lines).
+///
+/// No db_path guard here: `load_source_for()` already falls back from
+/// in-memory to SQLite to filesystem, and an early return on a missing
+/// db_path silently broke `--include-source` after incremental updates
+/// (which used to drop the db_path).
 pub(super) fn backfill_results_source(
     results: &mut [crate::services::agent_context::QueryResult],
     index: &AgentContextIndex,
 ) {
-    if index.db_path().is_none() {
-        return; // Blob-loaded index already has source
-    }
     for r in results.iter_mut() {
         // Skip results that already have non-empty source
         if r.source.as_ref().is_some_and(|s| !s.is_empty()) {
@@ -173,8 +190,8 @@ fn try_incremental_update(
         eprintln!("Checking for incremental updates...");
     }
     match AgentContextIndex::build_incremental(project_path, &existing) {
-        Ok(updated) => {
-            maybe_save_incremental(&updated, index_path, quiet);
+        Ok(mut updated) => {
+            maybe_save_incremental(&mut updated, index_path, quiet);
             updated
         }
         Err(_) => existing,
@@ -183,7 +200,14 @@ fn try_incremental_update(
 
 /// Save the index only when changes exceed 50 files or 5% of index size.
 /// Avoids rewriting 660MB SQLite for a handful of changes (#212).
-fn maybe_save_incremental(index: &AgentContextIndex, index_path: &PathBuf, quiet: bool) {
+///
+/// Before saving, backfills deferred (empty) source for checksum-reused
+/// entries: they were cloned from a lightweight SQLite load, and rewriting
+/// the DB without their source would persist `source=''` for every reused
+/// row, converging the index to all-empty source (the source-wipe bug).
+/// The backfill is guarded by the save threshold so pure-read queries keep
+/// their lazy-load performance.
+fn maybe_save_incremental(index: &mut AgentContextIndex, index_path: &PathBuf, quiet: bool) {
     let changes = index.manifest().last_incremental_changes;
     if changes == 0 {
         return;
@@ -198,6 +222,8 @@ fn maybe_save_incremental(index: &AgentContextIndex, index_path: &PathBuf, quiet
         if !quiet {
             eprintln!("Saving index ({} changes)...", changes);
         }
+        // Must run before save(): it reads the old DB this save overwrites.
+        index.load_all_source();
         let _ = index.save(index_path);
     } else if !quiet {
         eprintln!("Skipping save ({} minor changes)", changes);
@@ -370,4 +396,100 @@ fn build_and_save_index(
     }
 
     Ok(index)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::agent_context::function_index::sqlite_backend;
+
+    fn write_file(root: &std::path::Path, rel: &str, content: &str) {
+        let path = root.join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, content).unwrap();
+    }
+
+    fn build_and_save(project: &std::path::Path) -> PathBuf {
+        let index_path = project.join(".pmat/context.idx");
+        std::fs::create_dir_all(index_path.parent().unwrap()).unwrap();
+        let built = AgentContextIndex::build(project).unwrap();
+        built.save(&index_path).unwrap();
+        index_path
+    }
+
+    /// Regression (source wipe): an incremental update that crosses the save
+    /// threshold must not rewrite the database with empty source for
+    /// checksum-reused entries. Before the fix, every reused row persisted
+    /// with source='' and repeated saves converged the DB to all-empty.
+    #[test]
+    fn test_incremental_save_keeps_source_in_db() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let project = temp.path().to_path_buf();
+        write_file(&project, "src/a.rs", "fn alpha() { let a = 1; }\n");
+        write_file(&project, "src/b.rs", "fn beta() { let b = 2; }\n");
+        write_file(&project, "src/c.rs", "fn gamma() { let c = 3; }\n");
+        let index_path = build_and_save(&project);
+
+        let loaded = AgentContextIndex::load(&index_path).unwrap();
+
+        // Change 1/3 files: 1 reparse out of 4 functions (25% > 5% threshold)
+        write_file(
+            &project,
+            "src/c.rs",
+            "fn gamma() { let c = 30; }\nfn delta() { let d = 4; }\n",
+        );
+
+        let updated = try_incremental_update(&project, &index_path, loaded, true);
+        assert!(
+            updated.db_path().is_some(),
+            "incremental index must keep the db_path it loaded from"
+        );
+
+        let conn = sqlite_backend::open_db(&index_path.with_extension("db")).unwrap();
+        let rows = sqlite_backend::load_functions(&conn).unwrap();
+        assert_eq!(rows.len(), 4);
+        for row in &rows {
+            assert!(
+                !row.source.is_empty(),
+                "incremental save wiped source for '{}'",
+                row.function_name
+            );
+        }
+    }
+
+    /// Regression (Bug B): queries served right after an incremental update
+    /// must return non-empty source. The incremental build used to reset
+    /// db_path to None, so backfill_results_source early-returned and
+    /// --include-source / pmat_get_function returned source:"" even with a
+    /// healthy database on disk.
+    #[test]
+    fn test_backfill_results_source_after_incremental_update() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let project = temp.path().to_path_buf();
+        write_file(&project, "src/a.rs", "fn alpha() { let a = 1; }\n");
+        let index_path = build_and_save(&project);
+
+        let loaded = AgentContextIndex::load(&index_path).unwrap();
+
+        // No file changes: pure reuse pass, below save threshold, so the
+        // in-memory entries keep deferred (empty) source.
+        let updated = try_incremental_update(&project, &index_path, loaded, true);
+
+        let result = updated
+            .get_function("src/a.rs", "alpha")
+            .expect("alpha should be indexed");
+        let mut results = [result];
+        assert_eq!(
+            results[0].source.as_deref(),
+            Some(""),
+            "precondition: source is deferred after incremental update"
+        );
+
+        backfill_results_source(&mut results, &updated);
+        let source = results[0].source.as_deref().unwrap_or("");
+        assert!(
+            source.contains("alpha"),
+            "expected backfilled source, got {source:?}"
+        );
+    }
 }

@@ -51,8 +51,12 @@ impl CategoryScore {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Create a new instance.
     pub fn new(name: &str, raw_score: f64, max_points: u16) -> Self {
-        let earned_points = (raw_score / 100.0) * f64::from(max_points);
-        let grade = Self::calculate_grade(raw_score);
+        let max = f64::from(max_points);
+        // raw_score is a 0-100 percentage; clamp so a mis-scaled upstream
+        // score (e.g. raw points instead of a percentage) can never earn
+        // more than the category max or go negative.
+        let earned_points = ((raw_score / 100.0) * max).clamp(0.0, max);
+        let grade = Self::calculate_grade(raw_score.clamp(0.0, 100.0));
         Self {
             name: name.to_string(),
             raw_score,

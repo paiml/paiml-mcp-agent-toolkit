@@ -70,6 +70,7 @@ fn finalize_incremental_index(
     mut languages_seen: HashMap<String, usize>,
     file_checksums: HashMap<String, String>,
     coverage_off_files: HashSet<String>,
+    db_path: Option<PathBuf>,
 ) -> AgentContextIndex {
     let indices = build_indices(&functions);
     let (calls, called_by) = build_call_graph(&functions, &indices.name_index);
@@ -111,7 +112,11 @@ fn finalize_incremental_index(
         graph_metrics,
         project_root,
         manifest,
-        db_path: None,
+        // Keep the db_path the existing index loaded from: reused entries have
+        // deferred (empty) source that is backfilled on-demand from this DB.
+        // Dropping it here broke source retrieval after every incremental
+        // update (backfill assumed a blob-loaded index already had source).
+        db_path,
         coverage_off_files,
     }
 }
@@ -208,6 +213,7 @@ impl AgentContextIndex {
         Ok(finalize_incremental_index(
             functions, project_root, file_count, files_reparsed,
             languages_seen, file_checksums, coverage_off_files,
+            existing.db_path.clone(),
         ))
     }
 }
