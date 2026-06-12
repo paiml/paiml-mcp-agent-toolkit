@@ -4,7 +4,9 @@
 //! Contains the handlers for each enforcement state:
 //! Analyzing, Violating, Refactoring, Validating, Complete
 
-use super::analysis::{run_complexity_analysis, run_satd_analysis, run_tdg_analysis};
+use super::analysis::{
+    run_complexity_analysis, run_satd_analysis, run_tdg_analysis, AnalysisScope,
+};
 use super::types::{
     EnforcementProgress, EnforcementResult, EnforcementState, QualityProfile, QualityViolation,
 };
@@ -19,15 +21,29 @@ pub async fn handle_analyzing_state(
     project_path: &Path,
     profile: &QualityProfile,
     single_file_mode: bool,
-    _dry_run: bool,
+    dry_run: bool,
     specific_file: Option<&PathBuf>,
 ) -> Result<EnforcementResult> {
+    let scope = AnalysisScope::resolve(project_path, specific_file.map(PathBuf::as_path));
+
+    // SATD walks a directory tree and cannot target a lone file; surface the
+    // parent-module fallback so --dry-run output is honest about scope
+    if dry_run {
+        if let AnalysisScope::SingleFile { module_dir, .. } = &scope {
+            eprintln!(
+                "📍 Single-file mode: SATD scoped to parent module {}",
+                module_dir.display()
+            );
+        }
+    }
+
     let mut violations = Vec::new();
 
-    // Run all analyses in sequence
-    let complexity_violations = run_complexity_analysis(project_path, profile).await?;
-    let satd_violations = run_satd_analysis(project_path, profile).await?;
-    let tdg_violations = run_tdg_analysis(project_path, profile).await?;
+    // Run all analyses in sequence, each scoped per-phase when --file is given
+    let complexity_violations =
+        run_complexity_analysis(scope.walk_root(), profile, scope.single_file()).await?;
+    let satd_violations = run_satd_analysis(scope.walk_root(), profile).await?;
+    let tdg_violations = run_tdg_analysis(scope.file_or_root(), profile).await?;
 
     violations.extend(complexity_violations);
     violations.extend(satd_violations);

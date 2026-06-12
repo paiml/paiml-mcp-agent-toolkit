@@ -35,7 +35,7 @@ pub(crate) use query::{fts5_search, query_callees, query_callers};
 // From load (used by build.rs and query engine)
 pub(crate) use load::{
     load_call_graph, load_functions_lightweight, load_graph_metrics, load_metadata,
-    load_source_by_location, load_source_into,
+    load_source_by_location, load_source_map,
 };
 
 // From persist (used by quality gate handlers)

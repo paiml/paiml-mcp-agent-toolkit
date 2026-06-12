@@ -25,6 +25,19 @@ mod tests {
         assert!(result.is_err());
     }
 
+    // ── banner_enabled: JSON mode must keep stdout jq-parseable ──
+
+    #[test]
+    fn test_banner_enabled_suppressed_for_json() {
+        assert!(!banner_enabled(OracleOutputFormat::Json));
+    }
+
+    #[test]
+    fn test_banner_enabled_for_human_formats() {
+        assert!(banner_enabled(OracleOutputFormat::Text));
+        assert!(banner_enabled(OracleOutputFormat::Markdown));
+    }
+
     #[test]
     fn test_format_pdca_json() {
         let results = vec![];

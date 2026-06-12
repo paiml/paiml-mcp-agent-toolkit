@@ -2,13 +2,35 @@
 // Included by pdmt_service.rs — shares parent module scope (no `use` imports here)
 
 impl PdmtService {
+    /// Derive a stable, uuid-formatted todo id from the deterministic seed,
+    /// the requirement text, its index, and the todo role (base/test/doc).
+    ///
+    /// Identical inputs always produce the same id (RFC 9562 UUIDv8 over an
+    /// FNV-1a 128-bit hash), which keeps `pdmt_deterministic_todos` honest:
+    /// no `Uuid::new_v4()` randomness in the output.
+    fn deterministic_todo_id(
+        &self,
+        requirement: &str,
+        requirement_idx: usize,
+        role: &str,
+    ) -> String {
+        let input = format!(
+            "pdmt:{seed}:{requirement_idx}:{role}:{requirement}",
+            seed = self.deterministic_seed
+        );
+        let mut bytes = fnv1a_128(input.as_bytes()).to_be_bytes();
+        bytes[6] = (bytes[6] & 0x0f) | 0x80; // version 8 (custom, RFC 9562)
+        bytes[8] = (bytes[8] & 0x3f) | 0x80; // RFC 4122 variant
+        Uuid::from_bytes(bytes).to_string()
+    }
+
     /// Convert a single requirement into detailed todos
     fn requirement_to_todos(
         &self,
         requirement: &str,
         granularity: &str,
         quality_config: &PdmtQualityConfig,
-        _requirement_idx: usize,
+        requirement_idx: usize,
         dependency_map: &mut HashMap<String, Vec<String>>,
     ) -> Result<Vec<PdmtTodo>> {
         let mut todos = Vec::new();
@@ -33,7 +55,7 @@ impl PdmtService {
         let needs_tests = !requirement_lower.contains("test");
 
         // Create base implementation task
-        let base_id = Uuid::new_v4().to_string();
+        let base_id = self.deterministic_todo_id(requirement, requirement_idx, "base");
         let base_todo = PdmtTodo {
             id: base_id.clone(),
             content: self.generate_action_content(requirement, is_feature, is_fix, is_refactor),
@@ -58,7 +80,7 @@ impl PdmtService {
 
         // Include test task when granularity permits
         if needs_tests && task_count >= 2 {
-            let test_id = Uuid::new_v4().to_string();
+            let test_id = self.deterministic_todo_id(requirement, requirement_idx, "test");
             dependency_map
                 .entry(test_id.clone())
                 .or_default()
@@ -103,7 +125,7 @@ impl PdmtService {
 
         // Include documentation task for detailed granularity
         if task_count >= 3 {
-            let doc_id = Uuid::new_v4().to_string();
+            let doc_id = self.deterministic_todo_id(requirement, requirement_idx, "doc");
             dependency_map
                 .entry(doc_id.clone())
                 .or_default()

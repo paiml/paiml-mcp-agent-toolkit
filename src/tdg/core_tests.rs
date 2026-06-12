@@ -882,6 +882,50 @@ fn test_penalty_tracker_default() {
     assert!(tracker.get_attributions().is_empty());
 }
 
+/// Penalties land in serialized TDG scores and baselines; their order must
+/// not depend on insertion order or hash seeds (regression: two duplication
+/// penalties swapped positions between identical runs, breaking the
+/// byte-identical-baseline guarantee).
+#[test]
+fn test_penalty_tracker_attribution_order_deterministic() {
+    let issues = [
+        ("dup_ratio_0.11", "Code duplication: 10.6%", 2.11),
+        ("dup_lines_16", "Found 16 duplicate code patterns", 5.0),
+        ("complexity_a", "High cyclomatic complexity", 3.0),
+    ];
+
+    let mut forward = PenaltyTracker::new();
+    for (id, issue, amt) in &issues {
+        forward.apply(
+            (*id).to_string(),
+            MetricCategory::Duplication,
+            *amt,
+            (*issue).to_string(),
+        );
+    }
+    let mut reverse = PenaltyTracker::new();
+    for (id, issue, amt) in issues.iter().rev() {
+        reverse.apply(
+            (*id).to_string(),
+            MetricCategory::Duplication,
+            *amt,
+            (*issue).to_string(),
+        );
+    }
+
+    let f: Vec<_> = forward
+        .get_attributions()
+        .into_iter()
+        .map(|a| a.issue)
+        .collect();
+    let r: Vec<_> = reverse
+        .get_attributions()
+        .into_iter()
+        .map(|a| a.issue)
+        .collect();
+    assert_eq!(f, r, "attribution order must not depend on insertion order");
+}
+
 #[test]
 fn test_penalty_tracker_multiple_issues() {
     let mut tracker = PenaltyTracker::new();

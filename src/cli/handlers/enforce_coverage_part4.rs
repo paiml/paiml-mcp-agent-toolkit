@@ -152,6 +152,7 @@
                 &profile,
                 EnforceOutputFormat::Summary,
                 false, // ci_mode
+                None,  // specific_file
             )
             .await
             .unwrap();

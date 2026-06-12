@@ -214,6 +214,132 @@ mod coverage_tests {
         assert!(result.unwrap_err().to_string().contains("does not exist"));
     }
 
+    // ============ QUALITY GATE VERDICT DIRECTION TESTS (v3.18.2) ============
+    // Regression tests for the inverted `passed` verdict: Grade's derived Ord
+    // makes BETTER grades compare as SMALLER (APLus < ... < F), so the old
+    // `grade >= threshold_grade` was true only for grades AT OR WORSE than
+    // the threshold. Reproduced as: paths=[src/utils] -> passed:false despite
+    // score 88.99 / grade AMinus and zero violations.
+
+    #[test]
+    fn test_quality_gate_grade_threshold_direction() {
+        use crate::tdg::Grade;
+        // An A- grade must pass a B+ threshold (better than required)
+        assert!(Grade::AMinus.meets_threshold(Grade::BPlus));
+        // A C grade must fail a B+ threshold (worse than required)
+        assert!(!Grade::C.meets_threshold(Grade::BPlus));
+        // Equal grade meets the threshold
+        assert!(Grade::BPlus.meets_threshold(Grade::BPlus));
+        // The thresholds actually used by the quality gate tools:
+        // strict = B, standard = D
+        assert!(Grade::AMinus.meets_threshold(Grade::B));
+        assert!(!Grade::C.meets_threshold(Grade::B));
+        assert!(Grade::C.meets_threshold(Grade::D));
+        assert!(!Grade::F.meets_threshold(Grade::D));
+    }
+
+    /// Helper: a clean, documented Rust source that grades well.
+    fn write_clean_rust_file(dir: &Path) -> PathBuf {
+        let file_path = dir.join("clean.rs");
+        fs::write(
+            &file_path,
+            "/// Adds two numbers.\n\
+             pub fn add(a: i32, b: i32) -> i32 {\n    a + b\n}\n\n\
+             /// Subtracts two numbers.\n\
+             pub fn sub(a: i32, b: i32) -> i32 {\n    a - b\n}\n",
+        )
+        .unwrap();
+        file_path
+    }
+
+    #[tokio::test]
+    async fn test_check_quality_gate_file_verdict_not_inverted() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = write_clean_rust_file(temp_dir.path());
+
+        // Standard mode: threshold is score >= 50 and grade at least D.
+        let result = check_quality_gate_file(&file_path, false).await.unwrap();
+        let passed = result["passed"].as_bool().unwrap();
+        let score = result["score"].as_f64().unwrap();
+        let grade = result["grade"].as_str().unwrap();
+
+        // Only an F grade fails the grade leg in standard mode, so the
+        // verdict must satisfy this invariant regardless of exact score.
+        assert_eq!(
+            passed,
+            score >= 50.0 && grade != "F",
+            "inverted verdict: score={score} grade={grade} passed={passed}"
+        );
+        // A clean documented file must pass the standard gate outright.
+        assert!(
+            passed,
+            "clean file should pass standard quality gate (score={score}, grade={grade})"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_check_quality_gate_file_strict_verdict_not_inverted() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = write_clean_rust_file(temp_dir.path());
+
+        // Strict mode: threshold is score >= 70 and grade at least B.
+        let result = check_quality_gate_file(&file_path, true).await.unwrap();
+        let passed = result["passed"].as_bool().unwrap();
+        let score = result["score"].as_f64().unwrap();
+        let grade = result["grade"].as_str().unwrap();
+
+        let grade_meets_b = matches!(grade, "APLus" | "A" | "AMinus" | "BPlus" | "B");
+        assert_eq!(
+            passed,
+            score >= 70.0 && grade_meets_b,
+            "inverted strict verdict: score={score} grade={grade} passed={passed}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_check_quality_gates_project_verdict_not_inverted() {
+        let temp_dir = TempDir::new().unwrap();
+        write_clean_rust_file(temp_dir.path());
+
+        let paths = vec![temp_dir.path().to_path_buf()];
+        let result = check_quality_gates(&paths, false).await.unwrap();
+        let passed = result["passed"].as_bool().unwrap();
+        let score = result["score"].as_f64().unwrap();
+        let grade = result["grade"].as_str().unwrap();
+
+        assert_eq!(
+            passed,
+            score >= 50.0 && grade != "F",
+            "inverted project verdict: score={score} grade={grade} passed={passed}"
+        );
+        assert!(
+            passed,
+            "clean project should pass standard quality gate (score={score}, grade={grade})"
+        );
+        // The original repro: passing grade reported with zero violations
+        // yet passed:false. Pin that violations stay consistent too.
+        assert!(result["violations"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_quality_gate_summary_counts_passing_files() {
+        let temp_dir = TempDir::new().unwrap();
+        write_clean_rust_file(temp_dir.path());
+
+        let paths = vec![temp_dir.path().to_path_buf()];
+        let result = quality_gate_summary(&paths).await.unwrap();
+        let summary = &result["summary"];
+
+        assert_eq!(summary["total_files"].as_u64().unwrap(), 1);
+        // With the inverted comparison a passing file was counted as failed.
+        assert_eq!(
+            summary["passed_files"].as_u64().unwrap(),
+            1,
+            "clean file must count as passed: {summary}"
+        );
+        assert_eq!(summary["failed_files"].as_u64().unwrap(), 0);
+    }
+
     #[tokio::test]
     async fn test_generate_context_empty_paths() {
         let result = generate_context(&[], None, false).await;

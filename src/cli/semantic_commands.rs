@@ -6,10 +6,82 @@
 
 use crate::services::semantic::{
     ClusterFilters, ClusteringEngine, ClusteringMethod, HybridSearchEngine, HybridSearchMode,
-    HybridSearchQuery, Linkage, SemanticSearchEngine, TopicEngine, TopicFilters, TursoVectorDB,
+    HybridSearchQuery, HybridSearchResult, Linkage, SemanticSearchEngine, TopicEngine,
+    TopicFilters, TursoVectorDB,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
+
+/// Guidance shown when vector/hybrid search runs against an empty embeddings store.
+const EMPTY_STORE_HINT: &str =
+    "No embeddings indexed — run `pmat embed sync <path>` to build the embeddings database first";
+
+/// Assembled semantic search output.
+///
+/// The reported count and the rendered rows are both derived from the same
+/// `results` vec, so they can never disagree (ghost-results fix: the old code
+/// printed `Found N results` from the engine's candidate count but rendered
+/// zero rows).
+pub struct SemanticSearchOutput {
+    pub query: String,
+    pub mode: String,
+    pub results: Vec<HybridSearchResult>,
+    /// Set when the embeddings store is empty and the mode needs vectors.
+    pub empty_store_hint: Option<String>,
+}
+
+impl SemanticSearchOutput {
+    /// Render human-readable output. One numbered row per result.
+    pub fn render_text(&self) -> String {
+        if let Some(hint) = &self.empty_store_hint {
+            return hint.clone();
+        }
+        if self.results.is_empty() {
+            return format!("No results found for query: {}", self.query);
+        }
+
+        let mut output = format!(
+            "Found {} results for query: {}\n",
+            self.results.len(),
+            self.query
+        );
+        for (i, r) in self.results.iter().enumerate() {
+            output.push_str(&format!(
+                "\n{}. {}:{}-{} [{}] (score: {:.4})\n   {}\n",
+                i + 1,
+                r.file_path,
+                r.start_line,
+                r.end_line,
+                r.language,
+                r.hybrid_score,
+                r.snippet
+            ));
+        }
+        output
+    }
+
+    /// Render JSON output. `count` always equals `results.len()`.
+    pub fn to_json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "query": self.query,
+            "mode": self.mode,
+            "count": self.results.len(),
+            "results": self.results.iter().map(|r| serde_json::json!({
+                "file_path": r.file_path,
+                "chunk_name": r.chunk_name,
+                "chunk_type": r.chunk_type,
+                "language": r.language,
+                "start_line": r.start_line,
+                "end_line": r.end_line,
+                "keyword_score": r.keyword_score,
+                "vector_score": r.vector_score,
+                "hybrid_score": r.hybrid_score,
+                "snippet": r.snippet,
+            })).collect::<Vec<_>>(),
+            "message": self.empty_store_hint,
+        })
+    }
+}
 
 /// Semantic search CLI handler
 pub struct SemanticCli {
@@ -95,15 +167,19 @@ impl SemanticCli {
         Ok("All embeddings cleared".to_string())
     }
 
-    /// Semantic search
+    /// Semantic search returning structured results
+    ///
+    /// Vector/hybrid modes are guarded against an empty embeddings store:
+    /// previously the keyword (ripgrep) side could report `Found N results`
+    /// while zero rows rendered, which misrepresented unindexed workspaces.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
-    pub async fn semantic_search(
+    pub async fn semantic_search_results(
         &self,
         query: &str,
         mode: &str,
         limit: usize,
         language: Option<String>,
-    ) -> Result<String, String> {
+    ) -> Result<SemanticSearchOutput, String> {
         if query.trim().is_empty() {
             return Err("Query cannot be empty".to_string());
         }
@@ -114,6 +190,18 @@ impl SemanticCli {
             "hybrid" => HybridSearchMode::Hybrid,
             _ => return Err(format!("Invalid mode: {}", mode)),
         };
+
+        // Keyword mode greps the workspace directly; vector/hybrid need embeddings.
+        if search_mode != HybridSearchMode::KeywordOnly
+            && self.search_engine.entry_count().await? == 0
+        {
+            return Ok(SemanticSearchOutput {
+                query: query.to_string(),
+                mode: mode.to_string(),
+                results: Vec::new(),
+                empty_store_hint: Some(EMPTY_STORE_HINT.to_string()),
+            });
+        }
 
         let search_query = HybridSearchQuery {
             query: query.to_string(),
@@ -127,11 +215,27 @@ impl SemanticCli {
 
         let results = self.hybrid_engine.search(&search_query).await?;
 
-        Ok(format!(
-            "Found {} results for query: {}",
-            results.len(),
-            query
-        ))
+        Ok(SemanticSearchOutput {
+            query: query.to_string(),
+            mode: mode.to_string(),
+            results,
+            empty_store_hint: None,
+        })
+    }
+
+    /// Semantic search (human-readable rendering)
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+    pub async fn semantic_search(
+        &self,
+        query: &str,
+        mode: &str,
+        limit: usize,
+        language: Option<String>,
+    ) -> Result<String, String> {
+        let output = self
+            .semantic_search_results(query, mode, limit, language)
+            .await?;
+        Ok(output.render_text())
     }
 
     /// Find similar code
@@ -310,6 +414,136 @@ mod tests {
 
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Invalid mode"));
+    }
+
+    #[tokio::test]
+    async fn test_semantic_search_empty_store_reports_hint_not_ghost_count() {
+        let (cli, _temp) = setup_cli().await;
+
+        // Empty embeddings DB: vector/hybrid must show guidance, never `Found N`.
+        for mode in ["hybrid", "vector"] {
+            let result = cli
+                .semantic_search("advisory lock", mode, 10, None)
+                .await
+                .unwrap();
+            assert!(
+                result.contains("No embeddings indexed"),
+                "mode {mode}: {result}"
+            );
+            assert!(result.contains("pmat embed sync"), "mode {mode}: {result}");
+            assert!(!result.contains("Found"), "mode {mode}: {result}");
+        }
+    }
+
+    // Render/count consistency tests (ghost-results fix)
+
+    fn sample_result(n: usize) -> crate::services::semantic::HybridSearchResult {
+        crate::services::semantic::HybridSearchResult {
+            file_path: format!("src/file{n}.rs"),
+            chunk_name: format!("chunk{n}"),
+            chunk_type: "function".to_string(),
+            language: "rust".to_string(),
+            start_line: n * 10,
+            end_line: n * 10 + 5,
+            keyword_score: 0.1,
+            vector_score: 0.2,
+            hybrid_score: 0.3,
+            snippet: format!("fn chunk{n}()"),
+        }
+    }
+
+    fn count_rendered_rows(text: &str) -> usize {
+        text.lines()
+            .filter(|l| {
+                l.split_once(". ")
+                    .is_some_and(|(n, _)| n.parse::<usize>().is_ok())
+            })
+            .count()
+    }
+
+    #[test]
+    fn test_render_text_count_matches_rendered_rows() {
+        let output = SemanticSearchOutput {
+            query: "advisory lock".to_string(),
+            mode: "hybrid".to_string(),
+            results: (1..=3).map(sample_result).collect(),
+            empty_store_hint: None,
+        };
+
+        let text = output.render_text();
+
+        assert!(text.contains("Found 3 results for query: advisory lock"));
+        assert_eq!(
+            count_rendered_rows(&text),
+            3,
+            "rendered rows must match reported count: {text}"
+        );
+    }
+
+    #[test]
+    fn test_render_text_empty_results_no_found_line() {
+        let output = SemanticSearchOutput {
+            query: "advisory lock".to_string(),
+            mode: "hybrid".to_string(),
+            results: Vec::new(),
+            empty_store_hint: None,
+        };
+
+        let text = output.render_text();
+
+        assert!(text.contains("No results found for query: advisory lock"));
+        assert!(!text.contains("Found"));
+    }
+
+    #[test]
+    fn test_render_text_empty_store_hint() {
+        let output = SemanticSearchOutput {
+            query: "advisory lock".to_string(),
+            mode: "hybrid".to_string(),
+            results: Vec::new(),
+            empty_store_hint: Some(EMPTY_STORE_HINT.to_string()),
+        };
+
+        let text = output.render_text();
+
+        assert!(text.contains("No embeddings indexed"));
+        assert!(text.contains("pmat embed sync"));
+        assert!(!text.contains("Found"));
+    }
+
+    #[test]
+    fn test_to_json_count_matches_results_len() {
+        let output = SemanticSearchOutput {
+            query: "advisory lock".to_string(),
+            mode: "hybrid".to_string(),
+            results: (1..=3).map(sample_result).collect(),
+            empty_store_hint: None,
+        };
+
+        let json = output.to_json();
+
+        assert_eq!(json["count"], 3);
+        assert_eq!(json["results"].as_array().unwrap().len(), 3);
+        assert!(json["message"].is_null());
+    }
+
+    #[test]
+    fn test_to_json_empty_store() {
+        let output = SemanticSearchOutput {
+            query: "advisory lock".to_string(),
+            mode: "vector".to_string(),
+            results: Vec::new(),
+            empty_store_hint: Some(EMPTY_STORE_HINT.to_string()),
+        };
+
+        let json = output.to_json();
+
+        assert_eq!(json["count"], 0);
+        assert!(json["results"].as_array().unwrap().is_empty());
+        assert!(json["message"]
+            .as_str()
+            .unwrap()
+            .contains("pmat embed sync"));
     }
 
     #[tokio::test]

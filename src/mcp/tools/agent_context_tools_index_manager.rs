@@ -29,7 +29,11 @@ impl IndexManager {
             // Try incremental update if checksums are available
             if !existing.manifest().file_checksums.is_empty() {
                 match AgentContextIndex::build_incremental(&self.project_path, &existing) {
-                    Ok(updated) => {
+                    Ok(mut updated) => {
+                        // Backfill deferred (empty) source for reused entries
+                        // before save() rewrites the DB, or every reused row
+                        // would persist with source='' (source-wipe bug).
+                        updated.load_all_source();
                         let _ = updated.save(&index_path);
                         updated
                     }

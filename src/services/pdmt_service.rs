@@ -4,10 +4,29 @@ use crate::models::pdmt::{
     TodoStatus, ValidationCommands,
 };
 use anyhow::Result;
-use chrono::Utc;
 use std::collections::HashMap;
 use tracing::{debug, info};
 use uuid::Uuid;
+
+/// Fixed RFC 3339 timestamp used instead of wall-clock time.
+///
+/// `pdmt_deterministic_todos` guarantees byte-identical output for identical
+/// input, so `generated_at` must not depend on when the tool runs.
+const DETERMINISTIC_GENERATED_AT: &str = "1970-01-01T00:00:00+00:00";
+
+/// FNV-1a 128-bit offset basis.
+const FNV128_OFFSET_BASIS: u128 = 0x6c62_272e_07bb_0142_62b8_2175_6295_c58d;
+/// FNV-1a 128-bit prime.
+const FNV128_PRIME: u128 = 0x0000_0000_0100_0000_0000_0000_0000_013b;
+
+/// Hash `bytes` with FNV-1a (128-bit). Used to derive deterministic todo ids;
+/// unlike `DefaultHasher`, the result is stable across platforms and Rust
+/// versions, so identical inputs always yield identical ids.
+fn fnv1a_128(bytes: &[u8]) -> u128 {
+    bytes.iter().fold(FNV128_OFFSET_BASIS, |hash, &byte| {
+        (hash ^ u128::from(byte)).wrapping_mul(FNV128_PRIME)
+    })
+}
 
 /// Service for generating deterministic, quality-enforced todo lists
 pub struct PdmtService {
@@ -61,7 +80,7 @@ impl PdmtService {
             project_name,
             todos,
             quality_config,
-            generated_at: Utc::now().to_rfc3339(),
+            generated_at: DETERMINISTIC_GENERATED_AT.to_string(),
             deterministic_seed: self.deterministic_seed,
         };
 

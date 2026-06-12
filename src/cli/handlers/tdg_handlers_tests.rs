@@ -513,6 +513,32 @@ mod unit_tests {
             let result = validate_minimum_grade(&score, &config);
             assert!(result.is_ok());
         }
+
+        /// Direction pins — the old `score.grade < min_grade` comparison was
+        /// inverted (Grade ordering is APLus < ... < F, smaller = better):
+        /// it rejected grades better than the minimum and accepted worse
+        /// ones. Equal-grade tests alone cannot catch that.
+        #[test]
+        fn test_grade_better_than_minimum_passes() {
+            let mut config = make_test_config(PathBuf::from("."));
+            config.min_grade = Some("B".to_string());
+            let score = make_test_score(95.0, Grade::APLus);
+            assert!(
+                validate_minimum_grade(&score, &config).is_ok(),
+                "A+ must satisfy a B minimum"
+            );
+        }
+
+        #[test]
+        fn test_grade_worse_than_minimum_fails() {
+            let mut config = make_test_config(PathBuf::from("."));
+            config.min_grade = Some("B".to_string());
+            let score = make_test_score(40.0, Grade::D);
+            assert!(
+                validate_minimum_grade(&score, &config).is_err(),
+                "D must NOT satisfy a B minimum"
+            );
+        }
     }
 
     // ========== format_tdg_output tests ==========
@@ -921,6 +947,48 @@ mod unit_tests {
     mod display_gate_result_tests {
         use super::*;
         use crate::tdg::{GateResult, Severity, Violation, ViolationType};
+
+        /// check-quality JSON mode must emit ONE combined document even when
+        /// the F-grade gate has violations — previously two concatenated
+        /// JSON docs landed on stdout on exactly that path.
+        #[test]
+        fn test_check_quality_json_single_document_with_f_grades() {
+            let primary = GateResult {
+                passed: true,
+                gate_name: "MinimumGradeGate".to_string(),
+                violations: vec![],
+                message: "ok".to_string(),
+            };
+            let f_grade = GateResult {
+                passed: false,
+                gate_name: "FGradeGate".to_string(),
+                violations: vec![Violation {
+                    path: PathBuf::from("bad.rs"),
+                    violation_type: ViolationType::BelowMinimum,
+                    severity: Severity::Error,
+                    message: "F grade".to_string(),
+                    old_score: None,
+                    new_score: 35.0,
+                    old_grade: None,
+                    new_grade: crate::tdg::Grade::F,
+                }],
+                message: "1 F-grade file".to_string(),
+            };
+
+            let doc = crate::cli::handlers::tdg_handlers::quality_gates::check_quality_json(
+                &primary, &f_grade,
+            )
+            .unwrap();
+
+            // Exactly one parseable document carrying both gate verdicts
+            let parsed: serde_json::Value = serde_json::from_str(&doc).unwrap();
+            assert_eq!(parsed["gate"]["gate_name"], "MinimumGradeGate");
+            assert_eq!(parsed["f_grade_gate"]["gate_name"], "FGradeGate");
+            assert_eq!(
+                parsed["passed"], false,
+                "combined verdict must AND both gates"
+            );
+        }
 
         #[test]
         fn test_display_passed_result() {

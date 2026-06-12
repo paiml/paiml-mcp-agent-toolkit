@@ -50,7 +50,9 @@ impl ToolHandler for RefactorStartTool {
         });
         Some(build_tool_info(
             "refactor.start",
-            "Start a new refactoring session against the given target paths.",
+            "Start a new refactoring session against the given target paths \
+             (experimental: simulated analysis engine — violations are synthesized \
+             from filename patterns, not real analysis).",
             schema,
         ))
     }
@@ -77,7 +79,8 @@ impl ToolHandler for RefactorNextIterationTool {
     fn metadata(&self) -> Option<ToolInfo> {
         Some(build_tool_info(
             "refactor.nextIteration",
-            "Advance the active refactoring session by one iteration.",
+            "Advance the active refactoring session by one iteration \
+             (experimental: simulated analysis engine).",
             json!({ "type": "object", "properties": {}, "additionalProperties": false }),
         ))
     }
@@ -100,7 +103,8 @@ impl ToolHandler for RefactorGetStateTool {
     fn metadata(&self) -> Option<ToolInfo> {
         Some(build_tool_info(
             "refactor.getState",
-            "Return the current state of the active refactoring session.",
+            "Return the current state of the active refactoring session \
+             (experimental: simulated analysis engine).",
             json!({ "type": "object", "properties": {}, "additionalProperties": false }),
         ))
     }
@@ -125,7 +129,8 @@ impl ToolHandler for RefactorStopTool {
     fn metadata(&self) -> Option<ToolInfo> {
         Some(build_tool_info(
             "refactor.stop",
-            "Stop the active refactoring session and release resources.",
+            "Stop the active refactoring session and release resources \
+             (experimental: simulated analysis engine).",
             json!({ "type": "object", "properties": {}, "additionalProperties": false }),
         ))
     }

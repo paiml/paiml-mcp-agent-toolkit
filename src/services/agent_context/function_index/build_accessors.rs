@@ -117,12 +117,24 @@ impl AgentContextIndex {
         0
     }
 
-    /// Load all source code from SQLite into the functions vec.
+    /// Load source code for all entries that are missing it (deferred-source mode).
     ///
-    /// Used when regex/literal search mode needs full source for pattern matching.
-    /// No-op if db_path is not set (blob-loaded indexes already have source).
+    /// Fills from SQLite first (matched by `(file_path, start_line)`, not row
+    /// id — incremental rebuilds reorder functions relative to the persisted
+    /// DB), then falls back to reading project files. Only entries with empty
+    /// source are filled: re-parsed entries already carry fresh source and
+    /// must never be overwritten with stale DB rows.
+    ///
+    /// Used when regex/literal search mode needs full source for pattern
+    /// matching, and by the incremental save path: checksum-reused entries
+    /// are cloned from a lightweight SQLite load with `source == ""`, and
+    /// saving them unfilled would rewrite every reused row with empty source
+    /// (the source-wipe bug breaking `--include-source` / `pmat_get_function`).
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn load_all_source(&mut self) {
+        if !self.functions.iter().any(|f| f.source.is_empty()) {
+            return; // Nothing deferred — keep pure-read paths cheap
+        }
         self.load_source_from_db();
         self.load_source_from_filesystem();
     }
@@ -136,7 +148,21 @@ impl AgentContextIndex {
             Ok(c) => c,
             Err(_) => return,
         };
-        let _ = super::sqlite_backend::load_source_into(&conn, &mut self.functions);
+        let source_map = match super::sqlite_backend::load_source_map(&conn) {
+            Ok(m) => m,
+            Err(_) => return,
+        };
+        for func in &mut self.functions {
+            if !func.source.is_empty() {
+                continue;
+            }
+            if let Some(src) = source_map
+                .get(&func.file_path)
+                .and_then(|by_line| by_line.get(&func.start_line))
+            {
+                func.source = src.clone();
+            }
+        }
     }
 
     fn load_source_from_filesystem(&mut self) {
@@ -147,7 +173,11 @@ impl AgentContextIndex {
             }
         }
         for (file_path, indices) in &files_to_read {
-            let content = match std::fs::read_to_string(file_path) {
+            // Prefer the project_root-anchored path (correct regardless of
+            // cwd); fall back to cwd-relative for workspace-prefixed paths.
+            let content = match std::fs::read_to_string(self.project_root.join(file_path))
+                .or_else(|_| std::fs::read_to_string(file_path))
+            {
                 Ok(c) => c,
                 Err(_) => continue,
             };

@@ -185,7 +185,9 @@ impl PerfectionScoreCalculator {
     }
 
     pub(super) async fn get_rust_project_score(&self, project_path: &Path) -> f64 {
-        // Rust Project Score: 0-134 scale, normalize to 0-100
+        // Rust Project Score: raw points, normalize to 0-100 using the
+        // orchestrator-reported max (289 in v3.0). Never hardcode the scale —
+        // it grows as scorers are added (was 134, now 289).
         let orchestrator = RustProjectScoreOrchestrator::new();
         let mode = if self.fast_mode {
             ScoringMode::Quick
@@ -194,10 +196,7 @@ impl PerfectionScoreCalculator {
         };
 
         match orchestrator.score_with_mode(project_path, mode) {
-            Ok(score) => {
-                // Normalize 134-point scale to 100-point scale
-                (score.total_earned / 134.0) * 100.0
-            }
+            Ok(score) => normalize_rps_percentage(score.total_earned, score.total_possible),
             Err(e) => {
                 eprintln!("⚠️  Rust project score failed: {}", e);
                 50.0 // Default on error
@@ -359,5 +358,19 @@ impl PerfectionScoreCalculator {
         }
 
         score.min(100.0)
+    }
+}
+
+/// Convert raw rust-project-score points to a 0-100 percentage.
+///
+/// `total_earned` is raw points out of `total_possible` (289 in RPS v3.0).
+/// Feeding raw points directly into `CategoryScore::new` (which expects a
+/// 0-100 percentage) inflated the category past its max — e.g. raw 184
+/// scaled to 55.2/30 and clamped the total at 200/200 A+.
+pub(super) fn normalize_rps_percentage(total_earned: f64, total_possible: f64) -> f64 {
+    if total_possible > 0.0 {
+        ((total_earned / total_possible) * 100.0).clamp(0.0, 100.0)
+    } else {
+        0.0
     }
 }

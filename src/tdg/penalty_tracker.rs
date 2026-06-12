@@ -1,12 +1,16 @@
 #![cfg_attr(coverage_nightly, coverage(off))]
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use super::grade::{MetricCategory, PenaltyAttribution};
 
 /// Penalty tracker.
+///
+/// Keyed by issue id in a BTreeMap so `get_attributions()` returns a
+/// deterministic order — penalties land in serialized TDG scores (and
+/// baselines), where HashMap iteration order made output byte-unstable.
 pub struct PenaltyTracker {
-    applied: HashMap<String, PenaltyAttribution>,
+    applied: BTreeMap<String, PenaltyAttribution>,
 }
 
 impl Default for PenaltyTracker {
@@ -21,7 +25,7 @@ impl PenaltyTracker {
     /// Create a new instance.
     pub fn new() -> Self {
         Self {
-            applied: HashMap::new(),
+            applied: BTreeMap::new(),
         }
     }
 

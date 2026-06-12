@@ -29,8 +29,10 @@ pub async fn check_quality_gates(paths: &[PathBuf], strict: bool) -> Result<Valu
         crate::tdg::Grade::D
     };
 
+    // Grade's derived Ord is inverted (better grades compare as smaller),
+    // so use the semantic helper instead of a raw `>=` comparison.
     let passed = project_score.average_score >= threshold_score
-        && project_score.average_grade >= threshold_grade;
+        && project_score.average_grade.meets_threshold(threshold_grade);
 
     // Collect violations (files below threshold)
     let violations: Vec<Value> = project_score
@@ -87,7 +89,10 @@ pub async fn check_quality_gate_file(file_path: &Path, strict: bool) -> Result<V
         crate::tdg::Grade::D
     };
 
-    let passed = file_score.total >= threshold_score && file_score.grade >= threshold_grade;
+    // Grade's derived Ord is inverted (better grades compare as smaller),
+    // so use the semantic helper instead of a raw `>=` comparison.
+    let passed =
+        file_score.total >= threshold_score && file_score.grade.meets_threshold(threshold_grade);
 
     // Collect violations (penalty details)
     let violations: Vec<Value> = file_score
@@ -156,7 +161,7 @@ pub async fn quality_gate_summary(paths: &[PathBuf]) -> Result<Value> {
     let passed_files = project_score
         .files
         .iter()
-        .filter(|s| s.total >= threshold_score && s.grade >= threshold_grade)
+        .filter(|s| s.total >= threshold_score && s.grade.meets_threshold(threshold_grade))
         .count();
     let failed_files = project_score.total_files - passed_files;
 

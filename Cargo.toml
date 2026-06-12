@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.18.1"
+version = "3.18.2"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -97,7 +97,7 @@ minijinja = { version = "2.16", default-features = false, optional = true }
 
 # MCP SDK - now core dependency for MCP server functionality
 # Sprint 46 Phase 4: Switched from "full" to explicit features (saves 150-250 KB)
-pmcp = { version = "2.3", features = ["websocket", "http", "sse", "validation"] }
+pmcp = { version = "2.9", features = ["websocket", "http", "sse", "validation"] }
 
 # Caching
 lru = { version = "0.16", features = ["hashbrown"], optional = true }
