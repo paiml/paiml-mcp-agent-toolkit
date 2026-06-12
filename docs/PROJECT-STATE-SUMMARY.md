@@ -229,7 +229,7 @@ pmat tdg check-regression \
 - **Git-Commit Correlation**: Track TDG scores at specific commits for quality archaeology
 - **Quality Enforcement**: Baseline tracking, regression detection, quality gates
 - **Semantic Code Search**: Natural language code discovery with hybrid search
-- **MCP Integration**: 19 tools for Claude Code, Cline, and other MCP clients
+- **MCP Integration**: 20 tools for Claude Code, Cline, and other MCP clients
 - **Mutation Testing**: Evaluate test suite quality across 6 languages
 
 ### Key Differentiators
