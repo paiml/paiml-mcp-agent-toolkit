@@ -3,6 +3,13 @@
 **Protocol Version**: MCP v2024-11-05
 **Last Updated**: October 19, 2025
 
+> ⚠️ **Legacy document.** This guide describes an older **HTTP**-based MCP server
+> surface. The current PMAT MCP server is the unified **stdio** server launched with
+> `pmat agent mcp-server`, exposing 20 tools (16 core + 4 agent-context) over
+> JSON-RPC on stdio. For accurate, up-to-date integration and the tool list, see
+> **[README.md](README.md)** and **[TOOLS.md](TOOLS.md)**. The HTTP/`--bind` content
+> below is retained for historical reference and may not match the current server.
+
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
@@ -20,11 +27,9 @@
 ### Start the PMAT MCP Server
 
 ```bash
-# Start the server (default: localhost:3000)
-pmat mcp-server
-
-# Start with custom configuration
-pmat mcp-server --bind 127.0.0.1:8080
+# Start the current unified MCP server (stdio JSON-RPC; no network port).
+# MCP clients launch this as a child process and speak over stdin/stdout.
+pmat agent mcp-server
 ```
 
 ### Connect a Client

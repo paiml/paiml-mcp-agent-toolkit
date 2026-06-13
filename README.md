@@ -356,7 +356,7 @@ pmat/
 | Coverage | 99.66% |
 | Mutation Score | >80% |
 | Languages | 20 supported + MLOps model formats |
-| MCP Tools | 19 available |
+| MCP Tools | 20 available |
 
 ### Falsifiable Quality Commitments
 
@@ -439,14 +439,16 @@ PMAT is built on the PAIML Sovereign Stack - pure-Rust, SIMD-accelerated librari
 
 | Library | Purpose | Version |
 |---------|---------|---------|
-| [aprender](https://crates.io/crates/aprender) | ML library (text similarity, clustering, topic modeling) | 0.27.1 |
-| [trueno](https://crates.io/crates/trueno) | SIMD compute library for matrix operations | 0.16.1 |
-| [trueno-graph](https://crates.io/crates/trueno-graph) | GPU-first graph database (PageRank, Louvain, CSR) | 0.1.17 |
-| [trueno-rag](https://crates.io/crates/trueno-rag) | RAG pipeline with VectorStore | 0.2.2 |
-| [trueno-db](https://crates.io/crates/trueno-db) | Embedded analytics database | 0.3.15 |
-| [trueno-viz](https://crates.io/crates/trueno-viz) | Terminal graph visualization | 0.2.1 |
-| [trueno-zram-core](https://crates.io/crates/trueno-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.3.0 |
-| **pmat** | Code analysis toolkit | 3.7.0 |
+| [aprender](https://crates.io/crates/aprender) | ML library (text similarity, clustering, topic modeling) | 0.41 |
+| [aprender-graph](https://crates.io/crates/aprender-graph) | CSR graph database (PageRank, Louvain) | 0.41 |
+| [aprender-db](https://crates.io/crates/aprender-db) | Columnar analytics database (lib `trueno_db`) | 0.41 |
+| [aprender-rag](https://crates.io/crates/aprender-rag) | RAG pipeline with VectorStore | 0.41 |
+| [aprender-viz](https://crates.io/crates/aprender-viz) | Terminal graph visualization | 0.41 |
+| [aprender-compute](https://crates.io/crates/aprender-compute) | SIMD/GPU compute for matrix operations (lib `trueno`) | 0.41 |
+| [aprender-zram-core](https://crates.io/crates/aprender-zram-core) | SIMD LZ4/ZSTD compression (optional) | 0.41 |
+| [aprender-contracts](https://crates.io/crates/aprender-contracts) | Provable contracts (with `aprender-contracts-macros`) | 0.49 |
+| [pmcp](https://crates.io/crates/pmcp) | MCP protocol SDK | 2.9 |
+| **pmat** | Code analysis toolkit | 3.19.2 |
 
 **Key Benefits:**
 - Pure Rust (no C dependencies, no FFI)
