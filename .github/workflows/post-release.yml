@@ -25,16 +25,25 @@ jobs:
   msrv-check:
     name: MSRV verification
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [1.80.0]
     steps:
       - uses: actions/checkout@v4
+      # Derive the MSRV from Cargo.toml's declared `rust-version` instead of
+      # hardcoding it here. A hardcoded `1.80.0` went stale when v3.19.1 raised
+      # the declared MSRV to 1.95.0 (to match modernized deps), so this job
+      # checked a 1.95-requiring crate against 1.80 and always failed. Reading
+      # the value at runtime keeps the verified toolchain in lockstep with the
+      # crate's actual MSRV — no future drift.
+      - name: Read declared MSRV from Cargo.toml
+        id: msrv
+        run: |
+          MSRV=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].rust_version')
+          echo "Declared MSRV: $MSRV"
+          echo "version=$MSRV" >> "$GITHUB_OUTPUT"
       - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ matrix.rust }}
+          toolchain: ${{ steps.msrv.outputs.version }}
           components: clippy
-      - name: Check MSRV ${{ matrix.rust }} compilation
+      - name: Check MSRV ${{ steps.msrv.outputs.version }} compilation
         run: cargo check --all-features
       - name: Clippy on MSRV
         run: cargo clippy -- -D warnings
