@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.18.3] - 2026-06-13
+
+Dependency maintenance release. Refreshes `Cargo.lock` to the latest
+semver-compatible versions of all transitive dependencies; no source or
+API changes. Validated by `cargo install --path .` + a full self-dogfood
+of the rebuilt binary (`pmat verify`, analysis, query, and MCP surfaces).
+
+### Changed
+- **Dependencies**: `cargo update` refreshed the lockfile (63 packages
+  added, 16 removed). Notable bumps include `wasm-bindgen` 0.2.117 →
+  0.2.125, `zerocopy` 0.8.48 → 0.8.52, `zeroize` 1.8.2 → 1.9.0, and
+  `winnow` 1.0.1 → 1.0.3. Core batuta-stack pins are unchanged
+  (`aprender 0.30`, `pmcp 2.9`, in-tree `trueno`).
+
 ## [3.18.2] - 2026-06-12
 
 Kaizen sweep: fixes for all 8 pre-existing issues catalogued by the v3.18.1
