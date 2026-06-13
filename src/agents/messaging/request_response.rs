@@ -20,7 +20,9 @@ pub enum RequestError {
     #[error("Request cancelled")]
     Cancelled,
     #[error("Serialization error: {0}")]
-    Serialization(#[from] bincode::Error),
+    Serialization(#[from] rmp_serde::decode::Error),
+    #[error("Encode error: {0}")]
+    Encode(#[from] rmp_serde::encode::Error),
     #[error("Router error: {0}")]
     Router(#[from] RouterError),
 }

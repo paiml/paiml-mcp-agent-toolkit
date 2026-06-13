@@ -425,7 +425,7 @@ impl SurvivabilityPredictor {
     /// For consistent ML predictions, retrain the model after loading.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: &Path) -> Result<()> {
-        let serialized = bincode::serialize(self)?;
+        let serialized = rmp_serde::to_vec(self)?;
         std::fs::write(path, serialized)?;
         Ok(())
     }
@@ -434,7 +434,7 @@ impl SurvivabilityPredictor {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(path: &Path) -> Result<Self> {
         let data = std::fs::read(path)?;
-        let predictor = bincode::deserialize(&data)?;
+        let predictor = rmp_serde::from_slice(&data)?;
         Ok(predictor)
     }
 }

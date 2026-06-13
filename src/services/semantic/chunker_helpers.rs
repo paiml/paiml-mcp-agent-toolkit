@@ -104,5 +104,5 @@ fn push_chunk(
 fn compute_checksum(content: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(content.as_bytes());
-    format!("{:x}", hasher.finalize())
+    hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>()
 }

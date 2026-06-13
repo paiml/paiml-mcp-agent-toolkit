@@ -243,7 +243,7 @@ impl EquivalentMutantDetector {
     /// Save detector to file
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn save(&self, path: &Path) -> Result<()> {
-        let serialized = bincode::serialize(self)?;
+        let serialized = rmp_serde::to_vec(self)?;
         std::fs::write(path, serialized)?;
         Ok(())
     }
@@ -252,7 +252,7 @@ impl EquivalentMutantDetector {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
     pub fn load(path: &Path) -> Result<Self> {
         let data = std::fs::read(path)?;
-        let detector = bincode::deserialize(&data)?;
+        let detector = rmp_serde::from_slice(&data)?;
         Ok(detector)
     }
 }

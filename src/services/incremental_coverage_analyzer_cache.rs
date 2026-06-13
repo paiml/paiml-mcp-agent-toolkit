@@ -4,7 +4,7 @@ impl IncrementalCoverageAnalyzer {
 
         match self.coverage_cache.get(&key) {
             Some(data) => {
-                let coverage: FileCoverage = bincode::deserialize(&data)?;
+                let coverage: FileCoverage = rmp_serde::from_slice(&data)?;
                 Ok(Some(coverage))
             }
             None => Ok(None),
@@ -13,7 +13,7 @@ impl IncrementalCoverageAnalyzer {
 
     fn store_coverage(&self, file_id: &FileId, coverage: &FileCoverage) -> Result<()> {
         let key = self.coverage_key(file_id);
-        let data = bincode::serialize(coverage)?;
+        let data = rmp_serde::to_vec(coverage)?;
         self.coverage_cache.insert(key, data);
         Ok(())
     }

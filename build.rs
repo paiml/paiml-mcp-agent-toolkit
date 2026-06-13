@@ -370,7 +370,15 @@ fn calculate_templates_hash(templates_dir: &Path) -> Option<String> {
         return None;
     }
 
-    Some(format!("{:x}", hasher.finalize()))
+    // sha2 0.11's finalize() returns an Array<u8> that no longer impls LowerHex;
+    // encode the digest bytes to lowercase hex explicitly.
+    Some(
+        hasher
+            .finalize()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect(),
+    )
 }
 
 #[cfg(not(feature = "standard-deps"))]
@@ -733,7 +741,15 @@ fn calculate_file_hash(path: &Path) -> Option<String> {
     let content = fs::read(path).ok()?;
     let mut hasher = Sha256::new();
     hasher.update(&content);
-    Some(format!("{:x}", hasher.finalize()))
+    // sha2 0.11's finalize() returns an Array<u8> that no longer impls LowerHex;
+    // encode the digest bytes to lowercase hex explicitly.
+    Some(
+        hasher
+            .finalize()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect(),
+    )
 }
 
 #[cfg(not(feature = "standard-deps"))]

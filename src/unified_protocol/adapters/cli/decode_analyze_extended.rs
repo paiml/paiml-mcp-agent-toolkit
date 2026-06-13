@@ -480,6 +480,12 @@ impl CliAdapter {
             OutputFormat::Json => "json",
             OutputFormat::Table => "table",
             OutputFormat::Yaml => "yaml",
+            OutputFormat::Markdown => "md",
+            OutputFormat::Csv => "csv",
+            OutputFormat::Summary => "txt",
+            OutputFormat::Text => "txt",
+            OutputFormat::Plain => "txt",
+            OutputFormat::Junit => "xml",
         }
     }
 }

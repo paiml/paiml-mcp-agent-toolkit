@@ -230,5 +230,8 @@ fn build_tdg_score_from_row(cols: &ArrowColumns<'_>, i: usize) -> TdgScore {
         penalties_applied: Vec::new(),
         critical_defects_count: 0,
         has_critical_defects: false,
+        // Not persisted in the OLAP arrow schema; default to false (matches
+        // TdgScore::default() and other non-test initializers).
+        has_contract_coverage: false,
     }
 }

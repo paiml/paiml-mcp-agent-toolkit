@@ -240,7 +240,7 @@ impl TdgAnalyzerAst {
     ) -> Result<()> {
         #[cfg(feature = "c-ast")]
         {
-            use tree_sitter::{Parser, Query, QueryCursor};
+            use tree_sitter::{Parser, Query, QueryCursor, StreamingIterator};
 
             let mut parser = Parser::new();
             let language = if score.language == Language::Cpp {

@@ -4,7 +4,7 @@ impl BytecodeAnalyzer {
     /// Convert ExternalKind to string
     fn external_kind_str(kind: wasmparser::ExternalKind) -> &'static str {
         match kind {
-            wasmparser::ExternalKind::Func => "function",
+            wasmparser::ExternalKind::Func | wasmparser::ExternalKind::FuncExact => "function",
             wasmparser::ExternalKind::Memory => "memory",
             wasmparser::ExternalKind::Table => "table",
             wasmparser::ExternalKind::Global => "global",
@@ -15,7 +15,7 @@ impl BytecodeAnalyzer {
     /// Convert TypeRef to kind string
     fn type_ref_kind_str(ty: &TypeRef) -> &'static str {
         match ty {
-            TypeRef::Func(_) => "function",
+            TypeRef::Func(_) | TypeRef::FuncExact(_) => "function",
             TypeRef::Memory(_) => "memory",
             TypeRef::Table(_) => "table",
             TypeRef::Global(_) => "global",
@@ -26,7 +26,7 @@ impl BytecodeAnalyzer {
     /// Parse a single import into ImportAnalysis
     fn parse_import(import: wasmparser::Import, type_section: &[FuncType]) -> ImportAnalysis {
         let kind = Self::type_ref_kind_str(&import.ty);
-        let signature = if let TypeRef::Func(type_idx) = import.ty {
+        let signature = if let TypeRef::Func(type_idx) | TypeRef::FuncExact(type_idx) = import.ty {
             type_section
                 .get(type_idx as usize)
                 .map(|func_type| FunctionSignature {
@@ -144,7 +144,7 @@ impl BytecodeAnalyzer {
                     }
                 }
                 Ok(Payload::ImportSection(reader)) => {
-                    for import in reader.into_iter().flatten() {
+                    for import in reader.into_imports().flatten() {
                         sections
                             .import_section
                             .push(Self::parse_import(import, &sections.type_section));

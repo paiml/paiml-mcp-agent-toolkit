@@ -146,7 +146,7 @@ impl AgentContextIndex {
             .map_err(|e| format!("Failed to decompress functions: {e}"))?;
 
         // Deserialize payload (v1.3.0+ has cached indices)
-        let payload: IndexPayload = bincode::deserialize(&decompressed)
+        let payload: IndexPayload = rmp_serde::from_slice(&decompressed)
             .map_err(|e| format!("Failed to parse payload: {e}"))?;
 
         let functions = payload.functions;

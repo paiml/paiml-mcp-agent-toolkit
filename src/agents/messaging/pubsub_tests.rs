@@ -189,7 +189,7 @@ mod coverage_tests {
         // Create a serialization error by serializing a known-bad value
         // Use a size hint that will trigger a bincode error during deserialization
         let bad_data = vec![0xFFu8; 16]; // Invalid serialized data
-        let result: Result<String, _> = bincode::deserialize(&bad_data);
+        let result: Result<String, _> = rmp_serde::from_slice(&bad_data);
         if let Err(e) = result {
             let pubsub_err = PubSubError::Serialization(e);
             let display_str = format!("{}", pubsub_err);

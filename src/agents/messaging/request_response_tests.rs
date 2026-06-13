@@ -337,7 +337,7 @@ mod coverage_tests {
     fn test_request_error_serialization() {
         // Create a bincode deserialization error with invalid data
         let bad_data = vec![0xFFu8; 16]; // Invalid serialized data
-        let bincode_result: Result<String, _> = bincode::deserialize(&bad_data);
+        let bincode_result: Result<String, _> = rmp_serde::from_slice(&bad_data);
 
         if let Err(e) = bincode_result {
             let request_err = RequestError::Serialization(e);

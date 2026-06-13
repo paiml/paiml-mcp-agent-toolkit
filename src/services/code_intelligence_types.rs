@@ -67,7 +67,7 @@ impl AnalysisRequest {
         for t in &self.analysis_types {
             hasher.update(format!("{t:?}").as_bytes());
         }
-        format!("{:x}", hasher.finalize())
+        hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>()
     }
 }
 

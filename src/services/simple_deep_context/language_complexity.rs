@@ -69,7 +69,7 @@ impl SimpleDeepContext {
         use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax};
 
         let source_map = Arc::new(SourceMap::default());
-        let _source_file = source_map.new_source_file(
+        let source_file = source_map.new_source_file(
             FileName::Custom(file_path.display().to_string()).into(),
             content.to_owned(),
         );
@@ -99,7 +99,7 @@ impl SimpleDeepContext {
         let lexer = Lexer::new(
             syntax,
             Default::default(),
-            StringInput::new(content, Default::default(), Default::default()),
+            StringInput::from(&*source_file),
             None,
         );
 

@@ -12,29 +12,17 @@ use crate::cli::colors as c;
 use crate::cli::commands::OrgCommands;
 #[cfg(feature = "org-intelligence")]
 use anyhow::{Context, Result};
-#[cfg(feature = "org-intelligence")]
-use chrono::{Duration, Utc};
-// NOTE: indicatif removed - using local progress types
-#[cfg(feature = "org-intelligence")]
-use crate::services::progress::{ProgressBar, ProgressStyle};
-#[cfg(feature = "org-intelligence")]
-use organizational_intelligence_plugin::analyzer::OrgAnalyzer;
-#[cfg(feature = "org-intelligence")]
-use organizational_intelligence_plugin::github::GitHubMiner;
-#[cfg(feature = "org-intelligence")]
-use organizational_intelligence_plugin::report::{
-    AnalysisMetadata, AnalysisReport, ReportGenerator,
-};
-#[cfg(feature = "org-intelligence")]
-use organizational_intelligence_plugin::summarizer::{ReportSummarizer, SummaryConfig};
-#[cfg(feature = "org-intelligence")]
-use std::env;
+// NOTE: The organizational-intelligence-plugin (aprender-orchestrate) crate was
+// repurposed in 0.41: the OIP API consumed by `handle_org_analyze`
+// (analyzer::OrgAnalyzer, github::GitHubMiner, report::{AnalysisMetadata,
+// AnalysisReport, ReportGenerator}, summarizer::{ReportSummarizer, SummaryConfig})
+// was removed upstream with no replacement. The `org analyze` path is therefore
+// no longer available; `org localize` (fault localization) is PMAT-native and
+// unaffected.
 #[cfg(feature = "org-intelligence")]
 use std::path::{Path, PathBuf};
 #[cfg(feature = "org-intelligence")]
-use tempfile::TempDir;
-#[cfg(feature = "org-intelligence")]
-use tracing::{info, warn};
+use tracing::info;
 
 /// Handle organizational intelligence commands
 #[cfg(feature = "org-intelligence")]
@@ -100,223 +88,36 @@ async fn handle_org_analyze(
     org: &str,
     output: &PathBuf,
     _max_concurrent: usize,
-    summarize: bool,
-    strip_pii: bool,
-    top_n: usize,
-    min_frequency: usize,
+    _summarize: bool,
+    _strip_pii: bool,
+    _top_n: usize,
+    _min_frequency: usize,
 ) -> Result<()> {
+    // The organizational-intelligence-plugin (aprender-orchestrate) crate was
+    // repurposed in 0.41 and the organizational-analysis API that powered this
+    // command (GitHub repo mining via GitHubMiner, OrgAnalyzer defect-pattern
+    // analysis, and the AnalysisReport/ReportSummarizer report pipeline) was
+    // removed upstream with no replacement. There is no longer any backing
+    // implementation for `pmat org analyze`, so surface a clear, actionable
+    // error instead of silently doing nothing.
     println!(
         "\n{}",
         c::header(&format!("Analyzing GitHub Organization: {}", org))
     );
     println!("   {} {:?}", c::label("Output:"), output);
 
-    // Initialize GitHub client
-    let github_token = env::var("GITHUB_TOKEN").ok();
-    if github_token.is_none() {
-        println!(
-            "{}",
-            c::warn("GITHUB_TOKEN not set - using unauthenticated requests (lower rate limits)")
-        );
-        println!("   Set GITHUB_TOKEN environment variable for higher rate limits");
-    }
-
-    let miner = GitHubMiner::new(github_token);
-
-    // Fetch organization repositories
-    info!("Fetching repositories for organization: {}", org);
-    let all_repos = miner
-        .fetch_organization_repos(org)
-        .await
-        .context("Failed to fetch organization repositories")?;
-
-    info!("✅ Successfully fetched {} repositories", all_repos.len());
-
-    // Filter repos updated in last 2 years
-    let two_years_ago = Utc::now() - Duration::days(730);
-    let repos = GitHubMiner::filter_by_date(all_repos.clone(), two_years_ago);
-
-    println!("\n{}", c::subheader("Organization Statistics:"));
-    println!(
-        "   {} {}",
-        c::label("Total repositories:"),
-        c::number(&all_repos.len().to_string())
-    );
-    println!(
-        "   {} {}",
-        c::label("Active (last 2 years):"),
-        c::number(&repos.len().to_string())
+    info!(
+        "org analyze requested for {} but the upstream OIP analysis API was removed in aprender-orchestrate 0.41",
+        org
     );
 
-    // Display top 5 repositories by stars
-    let mut sorted_repos = repos.clone();
-    sorted_repos.sort_by(|a, b| b.stars.cmp(&a.stars));
-
-    println!("\n{}", c::subheader("Top Repositories:"));
-    for (i, repo) in sorted_repos.iter().take(5).enumerate() {
-        println!(
-            "   {}. {} ({}) - {}",
-            c::number(&(i + 1).to_string()),
-            c::label(&repo.name),
-            c::number(&format!("{} stars", repo.stars)),
-            c::dim(repo.language.as_deref().unwrap_or("Unknown"))
-        );
-    }
-
-    // Analyze repositories
-    println!(
-        "\n{} Analyzing defect patterns in {} repositories...",
-        c::label(">>"),
-        c::number(&sorted_repos.len().to_string())
-    );
-
-    let temp_dir = TempDir::new()?;
-    let analyzer = OrgAnalyzer::new(temp_dir.path());
-
-    let mut all_patterns = vec![];
-    let mut total_commits = 0;
-    let mut repos_analyzed = 0;
-
-    // Create progress bar
-    let pb = ProgressBar::new(sorted_repos.len() as u64);
-    pb.set_style(
-        ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} {msg}")
-            .expect("Failed to set progress bar template")
-            .progress_chars("#>-"),
-    );
-
-    for (i, repo) in sorted_repos.iter().enumerate() {
-        pb.set_message(format!("Analyzing: {}", repo.name));
-
-        let repo_url = format!("https://github.com/{}/{}", org, repo.name);
-
-        match analyzer
-            .analyze_repository(&repo_url, &repo.name, 100)
-            .await
-        {
-            Ok(patterns) => {
-                total_commits += 100;
-                let pattern_count = patterns.len();
-                all_patterns.extend(patterns);
-                repos_analyzed += 1;
-                pb.println(format!(
-                    "   ✅ [{}/{}] {} - {} patterns found",
-                    i + 1,
-                    sorted_repos.len(),
-                    repo.name,
-                    pattern_count
-                ));
-                info!("✅ Analyzed {}", repo.name);
-            }
-            Err(e) => {
-                warn!("Failed to analyze {}: {}", repo.name, e);
-                pb.println(format!(
-                    "   ⚠️  [{}/{}] {} - SKIPPED: {}",
-                    i + 1,
-                    sorted_repos.len(),
-                    repo.name,
-                    e
-                ));
-            }
-        }
-        pb.inc(1);
-    }
-
-    pb.finish_with_message("Analysis complete!");
-    println!();
-
-    // Generate YAML report
-    info!("Generating YAML report");
-    let report_generator = ReportGenerator::new();
-
-    let metadata = AnalysisMetadata {
-        organization: org.to_string(),
-        analysis_date: Utc::now().to_rfc3339(),
-        repositories_analyzed: repos_analyzed,
-        commits_analyzed: total_commits,
-        analyzer_version: env!("CARGO_PKG_VERSION").to_string(),
-    };
-
-    let report = AnalysisReport {
-        version: "1.0".to_string(),
-        metadata,
-        defect_patterns: all_patterns,
-    };
-
-    // Write report to file
-    report_generator.write_to_file(&report, output).await?;
-
-    println!("\n{}", c::subheader("Analysis Report:"));
-    println!(
-        "   {} {}",
-        c::label("Repositories:"),
-        c::number(&repos_analyzed.to_string())
-    );
-    println!(
-        "   {} {}",
-        c::label("Commits:"),
-        c::number(&total_commits.to_string())
-    );
-    println!("   {} {:?}", c::label("Output:"), output);
-
-    // Phase 2: Optionally summarize results
-    if summarize {
-        let summary_path = output.with_extension("summary.yaml");
-
-        println!("\n{}", c::subheader("Generating Summary..."));
-        println!("   {} {}", c::label("Strip PII:"), strip_pii);
-        println!(
-            "   {} {}",
-            c::label("Top N categories:"),
-            c::number(&top_n.to_string())
-        );
-        println!(
-            "   {} {}",
-            c::label("Min frequency:"),
-            c::number(&min_frequency.to_string())
-        );
-
-        let config = SummaryConfig {
-            strip_pii,
-            top_n_categories: top_n,
-            min_frequency,
-            include_examples: false, // No examples for PMAT prompts
-        };
-
-        let summary =
-            ReportSummarizer::summarize(output, config).context("Failed to generate summary")?;
-
-        ReportSummarizer::save_to_file(&summary, &summary_path)?;
-
-        println!("\n{}", c::pass("Summary Complete:"));
-        println!(
-            "   {} {}",
-            c::label("Defect patterns:"),
-            c::number(
-                &summary
-                    .organizational_insights
-                    .top_defect_categories
-                    .len()
-                    .to_string()
-            )
-        );
-        println!("   {} {:?}", c::label("Output:"), summary_path);
-        println!(
-            "\n{} Use with: pmat prompt generate --task \"<task>\" --context \"<context>\" --summary {:?}",
-            c::dim("Tip:"),
-            summary_path
-        );
-    } else {
-        println!(
-            "\n{} To generate summary: pmat org analyze --org {} --output {:?} --summarize --strip-pii",
-            c::dim("Tip:"),
-            org,
-            output
-        );
-    }
-
-    Ok(())
+    anyhow::bail!(
+        "`pmat org analyze` is no longer available: the upstream \
+organizational-intelligence-plugin (aprender-orchestrate) crate removed its \
+organizational-analysis API (GitHub mining, defect-pattern analysis, and report \
+generation) in 0.41 with no replacement. Use `pmat org localize` for native \
+Tarantula fault localization, which is unaffected."
+    )
 }
 
 /// Handle fault localization using native Tarantula implementation (Issue #103)

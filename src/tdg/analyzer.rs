@@ -218,7 +218,7 @@ impl TdgAnalyzer {
         hasher.update(&modified.to_le_bytes());
         hasher.update(&size.to_le_bytes());
         
-        Ok(format!("{:x}", hasher.finalize()))
+        Ok(hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>())
     }
 }
 

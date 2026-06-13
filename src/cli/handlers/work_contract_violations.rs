@@ -293,7 +293,7 @@ impl TrustChainEntry {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn new(manifest_path: &str, content_hash: &str, prev_hash: &str) -> Self {
         let chain_input = format!("{}{}", content_hash, prev_hash);
-        let chain_hash = format!("{:x}", Sha256::digest(chain_input.as_bytes()));
+        let chain_hash = Sha256::digest(chain_input.as_bytes()).iter().map(|b| format!("{b:02x}")).collect::<String>();
         Self {
             manifest_path: manifest_path.to_string(),
             content_hash: content_hash.to_string(),
@@ -307,7 +307,7 @@ impl TrustChainEntry {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn verify(&self) -> bool {
         let chain_input = format!("{}{}", self.content_hash, self.prev_hash);
-        let expected = format!("{:x}", Sha256::digest(chain_input.as_bytes()));
+        let expected = Sha256::digest(chain_input.as_bytes()).iter().map(|b| format!("{b:02x}")).collect::<String>();
         self.chain_hash == expected
     }
 }

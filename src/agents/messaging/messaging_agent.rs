@@ -3,8 +3,8 @@
 impl AgentMessage {
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Create a new instance.
-    pub fn new(from: Uuid, to: Uuid, payload: impl Serialize) -> Result<Self, bincode::Error> {
-        let payload_bytes = bincode::serialize(&payload)?;
+    pub fn new(from: Uuid, to: Uuid, payload: impl Serialize) -> Result<Self, rmp_serde::encode::Error> {
+        let payload_bytes = rmp_serde::to_vec(&payload)?;
 
         Ok(Self {
             header: MessageHeader {
@@ -58,7 +58,7 @@ impl AgentMessage {
 
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     /// Deserialize payload.
-    pub fn deserialize_payload<T: for<'de> Deserialize<'de>>(&self) -> Result<T, bincode::Error> {
-        bincode::deserialize(&self.payload)
+    pub fn deserialize_payload<T: for<'de> Deserialize<'de>>(&self) -> Result<T, rmp_serde::decode::Error> {
+        rmp_serde::from_slice(&self.payload)
     }
 }

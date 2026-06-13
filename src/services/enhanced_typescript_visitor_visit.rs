@@ -71,7 +71,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     fn visit_method_prop(&mut self, method: &MethodProp) {
         let method_name = match &method.key {
             PropName::Ident(ident) => ident.sym.to_string(),
-            PropName::Str(s) => s.value.to_string(),
+            PropName::Str(s) => s.value.to_string_lossy().into_owned(),
             PropName::Num(n) => n.value.to_string(),
             PropName::Computed(_) => "computed".to_string(),
             PropName::BigInt(b) => b.value.to_string(),
@@ -108,7 +108,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     fn visit_class_method(&mut self, method: &ClassMethod) {
         let method_name = match &method.key {
             PropName::Ident(ident) => ident.sym.to_string(),
-            PropName::Str(s) => s.value.to_string(),
+            PropName::Str(s) => s.value.to_string_lossy().into_owned(),
             PropName::Num(n) => n.value.to_string(),
             PropName::Computed(_) => "computed".to_string(),
             PropName::BigInt(b) => b.value.to_string(),
@@ -158,7 +158,7 @@ impl Visit for EnhancedTypeScriptVisitor {
     }
 
     fn visit_import_decl(&mut self, import: &ImportDecl) {
-        let path = import.src.value.to_string();
+        let path = import.src.value.to_string_lossy().into_owned();
         let line = self.get_line(import.span());
 
         self.items.push(AstItem::Use { path, line });
@@ -168,7 +168,7 @@ impl Visit for EnhancedTypeScriptVisitor {
 
     fn visit_named_export(&mut self, export: &NamedExport) {
         if let Some(src) = &export.src {
-            let path = format!("export from {}", src.value);
+            let path = format!("export from {}", src.value.to_string_lossy());
             let line = self.get_line(export.span());
 
             self.items.push(AstItem::Use { path, line });
@@ -182,7 +182,7 @@ impl Visit for EnhancedTypeScriptVisitor {
             ModuleDecl::Import(import) => self.visit_import_decl(import),
             ModuleDecl::ExportNamed(export) => self.visit_named_export(export),
             ModuleDecl::ExportAll(export) => {
-                let path = format!("export * from {}", export.src.value);
+                let path = format!("export * from {}", export.src.value.to_string_lossy());
                 let line = self.get_line(export.span());
                 self.items.push(AstItem::Use { path, line });
             }

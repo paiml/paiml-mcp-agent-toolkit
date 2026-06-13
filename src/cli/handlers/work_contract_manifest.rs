@@ -58,7 +58,7 @@ impl FileManifest {
                 hasher.update(entry.content_hash.as_bytes());
             }
         }
-        let manifest_hash = format!("{:x}", hasher.finalize());
+        let manifest_hash = hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
 
         Ok(Self {
             files,
@@ -138,7 +138,7 @@ impl FileEntry {
         // Compute content hash
         let mut hasher = Sha256::new();
         hasher.update(content.as_bytes());
-        let content_hash = format!("{:x}", hasher.finalize());
+        let content_hash = hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
 
         // Approximate function count (simple heuristic)
         let functions = Self::count_functions(&content, &category);

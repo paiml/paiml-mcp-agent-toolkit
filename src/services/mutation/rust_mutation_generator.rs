@@ -74,7 +74,11 @@ impl RustMutationGenerator {
                     // Generate hash for deduplication
                     let mut hasher = Sha256::new();
                     hasher.update(mutation.source.as_bytes());
-                    let hash = format!("{:x}", hasher.finalize());
+                    let hash = hasher
+                        .finalize()
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<String>();
 
                     let mutant = Mutant {
                         id: format!(

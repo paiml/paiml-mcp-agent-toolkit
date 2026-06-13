@@ -283,7 +283,7 @@ impl AgentsMdDiscovery {
             return;
         };
         for entry in entries.flatten() {
-            if entry.file_type().is_some_and(|ft| ft.is_dir()) {
+            if entry.file_type().is_ok_and(|ft| ft.is_dir()) {
                 self.discover_recursive(&entry.path(), depth + 1, files);
             }
         }

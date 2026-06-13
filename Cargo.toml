@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.18.4"
+version = "3.19.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Pragmatic AI Labs"]
@@ -31,7 +31,7 @@ required-features = ["mcp-integration"]
 batuta-common = "0.1"
 
 # Organizational Intelligence Plugin - Phase 4 integration
-organizational-intelligence-plugin = { package = "aprender-orchestrate", version = "0.30", optional = true }
+organizational-intelligence-plugin = { package = "aprender-orchestrate", version = "0.41", optional = true }  # 0.41 removed the OIP analyzer/report/summarizer API; `pmat org analyze` is stubbed (see org_handlers.rs)
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
@@ -54,7 +54,7 @@ async-raft = { version = "0.6", optional = true }
 crossbeam = { version = "0.8", optional = true }
 
 # Resource management (only used by mcp-integration feature: resources/)
-sysinfo = { version = "0.37", optional = true }  # Updated for reduced duplicates
+sysinfo = { version = "0.39", optional = true }  # Updated for reduced duplicates
 libc = { version = "0.2", optional = true }
 
 # Text similarity - Now using aprender::text::similarity (edit_distance_similarity)
@@ -64,28 +64,28 @@ libc = { version = "0.2", optional = true }
 # Migration to aprender complete (Sprint 45)
 # Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
 # See: docs/specifications/aprender-ml-integration.md
-aprender = "0.30"  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
+aprender = "0.41"  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
 
 # High-Performance Compute (SIMD/GPU)
-aprender-compute = { version = "0.30", optional = true }
-aprender-db = { version = "0.30", optional = true, default-features = false }
+aprender-compute = { version = "0.41", optional = true }
+aprender-db = { version = "0.41", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
-aprender-graph = { version = "0.30", default-features = false }  # CSR graph, PageRank, Louvain
+aprender-graph = { version = "0.41", default-features = false }  # CSR graph, PageRank, Louvain
 aprender-rag = { version = "0.41", optional = true }  # RAG pipeline
-aprender-viz = { version = "0.30", optional = true, features = ["terminal", "graph"] }
+aprender-viz = { version = "0.41", optional = true, features = ["terminal", "graph"] }
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
-wgpu = { version = "24.0", optional = true, features = ["wgsl"] }
-pollster = { version = "0.3", optional = true }  # Async runtime for wgpu
+wgpu = { version = "29.0", optional = true, features = ["wgsl"] }
+pollster = { version = "0.4", optional = true }  # Async runtime for wgpu
 bytemuck = { version = "1.14", optional = true }  # Safe cast for GPU buffers
-arrow = { version = "54", optional = true }  # Arrow columnar format (required for direct arrow API usage)
+arrow = { version = "57", optional = true }  # Arrow columnar format. MUST match aprender-db's arrow (57) — pmat passes RecordBatch/arrays across the aprender-db (lib `trueno_db`) boundary, so arrow type identity is required.
 # Note: parquet is managed by trueno-db dependency
 
 # Document indexing (PDF text extraction for `pmat query --docs`)
-pdf-extract = { version = "0.7", optional = true }
+pdf-extract = { version = "0.10", optional = true }
 
 # Serialization (pinned to avoid swc_common issue with serde::__private)
 serde = { version = "1.0", default-features = false, features = ["derive", "std"] }
@@ -100,7 +100,7 @@ minijinja = { version = "2.16", default-features = false, optional = true }
 pmcp = { version = "2.9", features = ["websocket", "http", "sse", "validation"] }
 
 # Caching
-lru = { version = "0.16", features = ["hashbrown"], optional = true }
+lru = { version = "0.18", features = ["hashbrown"], optional = true }
 
 # Error handling
 thiserror = "2.0"
@@ -112,7 +112,7 @@ tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "std"], optional = true }
 
 # Utilities
-sha2 = { version = "0.10", optional = true }
+sha2 = { version = "0.11", optional = true }
 # once_cell removed: migrated to std::sync::LazyLock/OnceLock (Rust 1.80+)
 lazy_static = { version = "1.5", optional = true }
 semver = { version = "1.0", features = ["serde"], optional = true }
@@ -124,11 +124,11 @@ csv = { version = "1.3", optional = true }
 uuid = { version = "1.17", features = ["v4", "v7", "serde"], optional = true }
 parking_lot = { version = "0.12", optional = true }
 dirs = { version = "6.0", optional = true }
-roaring = { version = "0.10", optional = true }
+roaring = { version = "0.11", optional = true }
 rand = { version = "0.9", optional = true }
 rayon = { version = "1.10", optional = true }
 # Optional: saves 67 transitive deps when disabled - falls back to shell `git` commands
-git2 = { version = "0.20", default-features = false, features = ["https"], optional = true }
+git2 = { version = "0.21", default-features = false, features = ["https"], optional = true }
 
 # CLI utilities - REMOVED to save transitive deps
 # dialoguer = "0.12"  # REMOVED: Replaced with simple stdin (saves 14 transitive deps)
@@ -141,19 +141,20 @@ syntect = { version = "5.2", default-features = false, features = ["default-fanc
 
 # Storage
 # libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
-lz4_flex = { version = "0.11", optional = true }  # Legacy index format
-aprender-zram-core = { version = "0.30", optional = true }
+lz4_flex = { version = "0.13", optional = true }  # Legacy index format
+aprender-zram-core = { version = "0.41", optional = true }
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }  # SQLite with bundled library
 # sled = REMOVED (unmaintained, migrated to libsql/trueno-db)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
-bincode = { version = "1.3", optional = true }
+# bincode REMOVED: 3.0.0 is a non-functional placeholder release (compile_error),
+# 2.x is a breaking rewrite. Replaced by rmp-serde (MessagePack), already in-tree.
 
 # Async utilities
 futures = { version = "0.3", optional = true }
 
 # GitHub API client (Issue #75: Unified GitHub/YAML workflow)
 # Optional: saves 255 transitive deps when disabled - falls back to `gh` CLI
-octocrab = { version = "0.48", optional = true }
+octocrab = { version = "0.53", optional = true }
 
 # File watching for configuration hot-reload (feature-gated: watch)
 notify = { version = "8.0", optional = true }
@@ -170,27 +171,27 @@ proc-macro2 = { version = "1.0", optional = true }
 walkdir = { version = "2.5", optional = true }
 ignore = { version = "0.4", optional = true }
 glob = { version = "0.3", optional = true }
-toml = { version = "0.8.23", optional = true }
+toml = { version = "1.1", optional = true }
 crossbeam-channel = { version = "0.5", optional = true }
-which = { version = "6.0", optional = true }  # Sprint 70: Find cargo-mutants in PATH
+which = { version = "8.0", optional = true }  # Sprint 70: Find cargo-mutants in PATH
 # For TypeScript/JavaScript parsing (conditional) - use compatible versions
-swc_ecma_parser = { version = "24.0", optional = true }
-swc_common = { version = "14.0", optional = true }
-swc_ecma_ast = { version = "15.0", optional = true }
-swc_ecma_visit = { version = "15.0", optional = true }
+swc_ecma_parser = { version = "41.0", optional = true }
+swc_common = { version = "23.0", optional = true }
+swc_ecma_ast = { version = "25.0", optional = true }
+swc_ecma_visit = { version = "25.0", optional = true }
 # For Python parsing (conditional) - REMOVED: Migrated to tree-sitter-python
 # rustpython-parser = { version = "0.4.0", optional = true }
 # For C/C++ parsing (conditional)
-tree-sitter = { version = "0.23", optional = true }
-tree-sitter-c = { version = "0.23", optional = true }
+tree-sitter = { version = "0.26", optional = true }
+tree-sitter-c = { version = "0.24", optional = true }
 tree-sitter-cpp = { version = "0.23", optional = true }
-tree-sitter-go = { version = "0.23", optional = true }
-tree-sitter-javascript = { version = "0.23", optional = true }
+tree-sitter-go = { version = "0.25", optional = true }
+tree-sitter-javascript = { version = "0.25", optional = true }
 tree-sitter-typescript = { version = "0.23", optional = true }
-tree-sitter-python = { version = "0.23", optional = true }
-tree-sitter-lua = { version = "0.2.0", optional = true }
+tree-sitter-python = { version = "0.25", optional = true }
+tree-sitter-lua = { version = "0.5", optional = true }
 tree-sitter-kotlin-ng = { version = "1.1", optional = true }
-tree-sitter-rust = { version = "0.23", optional = true }
+tree-sitter-rust = { version = "0.24", optional = true }
 # Sprint 46 Phase 6: Removed unused tree-sitter parsers (0 references - cargo-machete verified)
 # tree-sitter-c-sharp = { version = "0.23", optional = true }  # 0 references
 # tree-sitter-java = { version = "0.23", optional = true }      # 0 references
@@ -209,8 +210,8 @@ ruchy = { version = "4.2.1", optional = true }
 # tree-sitter-kotlin = { version = "0.3.8", optional = true }
 
 # Language-specific analysis
-cpp_demangle = { version = "0.4", optional = true }
-gimli = { version = "0.32", optional = true }
+cpp_demangle = { version = "0.5", optional = true }
+gimli = { version = "0.33", optional = true }
 goblin = { version = "0.10", optional = true }
 # Analysis infrastructure for C/C++
 fixedbitset = { version = "0.5", optional = true }
@@ -249,11 +250,11 @@ http-body-util = { version = "0.1", optional = true }
 pulldown-cmark = { version = "0.13", optional = true }
 
 # HTTP client for GitHub API (optional - feature-gated behind http-client)
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"], optional = true }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "rustls-native-certs"], optional = true }
 
 # Prometheus metrics (optional - rarely used)
 prometheus = { version = "0.14", optional = true }
-warp = { version = "0.3", optional = true }
+warp = { version = "0.4", optional = true, features = ["server"] }  # 0.4 gates serve()/Server behind the `server` feature
 
 # Table formatting - REMOVED: Using simple println formatting (saves 16 transitive deps)
 # prettytable-rs = "0.10"
@@ -262,13 +263,13 @@ warp = { version = "0.3", optional = true }
 # presentar-terminal provides: TuiApp, DiffRenderer, BrailleGraph, Meter, Table
 # Benefits: Jidoka verification gates, zero-allocation rendering, 95% coverage
 # presentar-terminal = { version = "0.3.0", path = "../../presentar/crates/presentar-terminal", optional = true }  # Not yet on crates.io
-aprender-present-core = { version = "0.30", optional = true }
+aprender-present-core = { version = "0.41", optional = true }
 # crossterm 0.28 matches presentar-terminal's version (ratatui REMOVED)
-crossterm = { version = "0.28", optional = true }
+crossterm = { version = "0.29", optional = true }
 sys-info = { version = "0.9.1", optional = true }
 
 # Storage backends (sled/rocksdb REMOVED - migrated to libsql/trueno-db)
-wasmparser = { version = "0.239.0", optional = true }
+wasmparser = { version = "0.252", optional = true }
 shell-words = { version = "1.1.0", optional = true }
 crc32fast = { version = "1.5.0", optional = true }
 # pest = "2.8.2"  # REMOVED: WorkflowParser never instantiated, DslCompiler uses serde
@@ -282,14 +283,14 @@ sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm so
 # ahash = "0.8"  # REMOVED: cargo-machete verified unused
 prettyplease = { version = "0.2.37", optional = true }
 fs2 = { version = "0.4.3", optional = true }
-aprender-contracts-macros = "0.30"
+aprender-contracts-macros = "0.49"
 
 
 [dev-dependencies]
-aprender-contracts = "0.30"
+aprender-contracts = "0.49"
 dhat = "0.3"
 tokio-test = "0.4"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "rustls-native-certs"] }
 pretty_assertions = "1.4"
 tempfile = "3.20"
 assert_cmd = "2.0"      # CLI testing for PMAT-7001
@@ -308,7 +309,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml_ng = { version = "0.10", optional = true }
 # hex removed: generated code now uses inline hex_decode_templates() (CB-081)
-sha2 = { version = "0.10", optional = true }  # For O(1) build artifact hash caching
+sha2 = { version = "0.11", optional = true }  # For O(1) build artifact hash caching
 # capnpc = "0.20" # REMOVED: Unused Cap'n Proto compiler
 
 [features]
@@ -322,7 +323,7 @@ default = ["core-languages", "viz", "http-client", "standard-deps"]
 # Standard deps bundle — feature-gated for dep count reduction but enabled by default
 standard-deps = [
     "minijinja", "tracing-subscriber", "semver", "globset",
-    "roaring", "rand", "url", "lz4_flex", "bincode", "crossbeam-channel",
+    "roaring", "rand", "url", "lz4_flex", "rmp-serde", "crossbeam-channel",
     "lru", "lazy_static", "dirs", "ignore", "xxhash-rust",
     "flate2", "crc32fast", "fs2", "pulldown-cmark", "aprender-rag", "num_cpus",
     "sha2", "uuid", "futures", "serde_yaml_ng", "blake3", "dashmap",
@@ -478,7 +479,7 @@ sovereign-compression = ["aprender-zram-core"]
 
 # Analytics features (Issue #79: Feature-gated architecture)
 # Default: SIMD-only (7.8 MB, 18s compile, ≤30 transitive deps)
-analytics-simd = ["aprender-compute", "aprender-db", "aprender-db/simd", "arrow"]
+analytics-simd = ["aprender-compute", "aprender-db", "aprender-db/simd", "aprender-db/parquet-io", "arrow"]
 # GPU-enabled: +wgpu (11.6 MB, 63s compile, ≤95 transitive deps)
 analytics-gpu = ["analytics-simd", "aprender-db/gpu", "wgpu", "pollster", "bytemuck"]
 
@@ -724,8 +725,14 @@ required-features = ["lua-ast"]
 # Profile configuration moved to workspace root
 
 [package.metadata.docs.rs]
-# Use default features for documentation (which excludes python-ast due to malachite-bigint build issues)
-features = ["default"]
+# Lean doc build: the full default feature set (swc/typescript-ast, c/cpp-ast via
+# gimli+goblin, every tree-sitter grammar) pushes the docs.rs build past its
+# 15-minute / memory limit for this large crate, which is why the docs.rs badge
+# was failing. Document the core public API with the lightest parser (rust-ast)
+# plus the always-on core (standard-deps), viz, and http-client. The heavy
+# language-parser modules are feature-gated, so this still compiles cleanly.
+no-default-features = true
+features = ["standard-deps", "rust-ast", "viz", "http-client"]
 # Set DOCS_RS environment variable to skip network operations
 rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
 rustc-args = ["--cfg", "docsrs"]
