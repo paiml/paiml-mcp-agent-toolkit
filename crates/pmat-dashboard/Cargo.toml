@@ -16,7 +16,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 # Presentar - Pure WASM UI framework (now aprender monorepo)
 aprender-present-core = "0.30"
-aprender-present-widgets = "0.29"
+aprender-present-widgets = "0.41"
 aprender-present-layout = "0.30"
 
 # Serialization

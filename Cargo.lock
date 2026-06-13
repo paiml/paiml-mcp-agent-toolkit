@@ -341,26 +341,6 @@ dependencies = [
 
 [[package]]
 name = "aprender-compute"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09cb16ec181ffdcc36886a190bdab18037e386e84da802f96bb91b59c748c5ab"
-dependencies = [
- "anyhow",
- "aprender-gemm-codegen 0.29.0",
- "aprender-quant 0.29.0",
- "chrono",
- "hostname",
- "num_cpus",
- "provable-contracts-macros 0.3.1",
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "thiserror 2.0.18",
- "toml 0.8.23",
-]
-
-[[package]]
-name = "aprender-compute"
 version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "025aee23d021ea7afa081e0ebd3cd36a44d9743916e276f06856acd08bfaf145"
@@ -518,17 +498,6 @@ dependencies = [
 
 [[package]]
 name = "aprender-gemm-codegen"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "174706b56a3d9de01a0664f02e1f608048222b1b34720a7b9007c1693cad55d3"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
-name = "aprender-gemm-codegen"
 version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "656c86140767c47405916906c9628a700cee24f1b573abf0c2f60d872a5e9f1e"
@@ -620,19 +589,6 @@ dependencies = [
 
 [[package]]
 name = "aprender-present-core"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab63ed104e914fd26409ae03d6a03138ec8eec38ba9ebdfb1f403595597f4e48"
-dependencies = [
- "aprender-compute 0.29.0",
- "provable-contracts-macros 0.3.1",
- "serde",
- "serde_json",
- "serde_yaml_ng",
-]
-
-[[package]]
-name = "aprender-present-core"
 version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b31bf9ecfc82d5aff31eb01caf57e58b9ed8e012bf27e930d8f7ea241dc040e0"
@@ -684,22 +640,22 @@ dependencies = [
 
 [[package]]
 name = "aprender-present-widgets"
-version = "0.29.0"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca2ffc6e7e0cc611211c503f89ec63b217e291d5e1684ea7918706390c93e8b6"
+checksum = "fa66989a344732ad54384d4c008af58078a0f305dfb858bc52d7ad437f47a1c6"
 dependencies = [
- "aprender-present-core 0.29.0",
+ "aprender-present-core 0.41.0",
  "aprender-present-yaml",
  "serde",
 ]
 
 [[package]]
 name = "aprender-present-yaml"
-version = "0.29.0"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b732a3bd95b519ed40b40165d78cf790ed1cc023f5263dc4c16f59766dc7048"
+checksum = "65eac33e4e332a79666827e351d646986098d176fde73aa9d79f460c12f3c4fb"
 dependencies = [
- "aprender-present-core 0.29.0",
+ "aprender-present-core 0.41.0",
  "serde",
  "serde_yaml_ng",
 ]
@@ -745,15 +701,6 @@ dependencies = [
  "trueno 0.17.5",
  "trueno-db",
  "trueno-viz 0.2.4",
-]
-
-[[package]]
-name = "aprender-quant"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6868bcb952b396908748594b538c801779bb217c239f148a9315867988f70180"
-dependencies = [
- "half",
 ]
 
 [[package]]
