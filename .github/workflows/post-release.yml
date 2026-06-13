@@ -33,17 +33,30 @@ jobs:
       # checked a 1.95-requiring crate against 1.80 and always failed. Reading
       # the value at runtime keeps the verified toolchain in lockstep with the
       # crate's actual MSRV — no future drift.
+      #
+      # Select the `pmat` package by NAME, not `.packages[0]`: this is a 2-member
+      # workspace (pmat + pmat-dashboard) and `cargo metadata` does not guarantee
+      # ordering, so `.packages[0]` was pmat-dashboard (no rust-version → "null",
+      # which then failed `rustup toolchain install null`). Guard against an empty
+      # read so a future selector break fails loudly here instead of downstream.
       - name: Read declared MSRV from Cargo.toml
         id: msrv
         run: |
-          MSRV=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].rust_version')
+          MSRV=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[] | select(.name=="pmat") | .rust_version')
           echo "Declared MSRV: $MSRV"
+          if [ -z "$MSRV" ] || [ "$MSRV" = "null" ]; then
+            echo "::error::Could not read rust-version for package 'pmat' from Cargo.toml"
+            exit 1
+          fi
           echo "version=$MSRV" >> "$GITHUB_OUTPUT"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ steps.msrv.outputs.version }}
           components: clippy
+      # Scope to `-p pmat`: it is pmat's MSRV we derived and are verifying.
+      # pmat-dashboard declares no rust-version and must not gate this check.
       - name: Check MSRV ${{ steps.msrv.outputs.version }} compilation
-        run: cargo check --all-features
+        run: cargo check -p pmat --all-features
       - name: Clippy on MSRV
-        run: cargo clippy -- -D warnings
+        run: cargo clippy -p pmat -- -D warnings
