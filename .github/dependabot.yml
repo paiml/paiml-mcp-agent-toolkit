@@ -1,7 +1,9 @@
 version: 2
 updates:
   - package-ecosystem: "cargo"
-    directory: "/server"
+    # Root workspace manifest. server/ was flattened to the repo root, so the
+    # old "/server" path no longer existed and cargo updates were silent no-ops.
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -47,4 +49,16 @@ updates:
       - "github-actions"
     reviewers:
       - "pragmaticlabs/maintainers"
-    
+
+  # Test fixtures under fixtures/ are static analysis inputs — their JS deps
+  # (e.g. vitest -> esbuild) are never installed, executed, or shipped in the
+  # pmat binary. Disable version-update PRs so they don't generate noise.
+  # Note: this controls update PRs only; pre-existing security alerts on these
+  # never-run lockfiles are dismissed as "not used" in the Dependabot UI.
+  - package-ecosystem: "npm"
+    directory: "/fixtures/typescript"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"

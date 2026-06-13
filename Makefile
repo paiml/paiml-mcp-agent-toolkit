@@ -637,7 +637,7 @@ dogfood: release
 	@mkdir -p artifacts/dogfooding
 	@./target/release/pmat analyze complexity --top-files 10 --format json > artifacts/dogfooding/complexity-$(shell date +%Y-%m-%d).json
 	@./target/release/pmat analyze churn --days 30 --top-files 10 --format json > artifacts/dogfooding/churn-$(shell date +%Y-%m-%d).json
-	@./target/release/pmat analyze dag --enhanced --top-files 15 -o artifacts/dogfooding/dag-$(shell date +%Y-%m-%d).mmd
+	@./target/release/pmat analyze dag --enhanced --target-nodes 15 -o artifacts/dogfooding/dag-$(shell date +%Y-%m-%d).mmd
 	@./target/release/pmat context --format markdown --output artifacts/dogfooding/deep-context-$(shell date +%Y-%m-%d).md
 	@echo "📝 Phase 2: Updating documentation with binary-generated metrics..."
 	@deno run --allow-all scripts/dogfood-readme.ts
@@ -654,10 +654,10 @@ dogfood-ci: release
 	@echo "📊 Generating comprehensive analysis using built binary..."
 	@./target/release/pmat analyze complexity --top-files 10 --format json > artifacts/dogfooding/complexity-latest.json
 	@./target/release/pmat analyze churn --days 7 --top-files 10 --format json > artifacts/dogfooding/churn-latest.json
-	@./target/release/pmat analyze dag --enhanced --top-files 15 -o artifacts/dogfooding/dag-latest.mmd
+	@./target/release/pmat analyze dag --enhanced --target-nodes 15 -o artifacts/dogfooding/dag-latest.mmd
 	@./target/release/pmat context --format json --output artifacts/dogfooding/deep-context-latest.json
 	@echo "🧪 Testing binary performance and interface consistency..."
-	@time ./target/release/pmat analyze complexity --top-files 5 --format table
+	@time ./target/release/pmat analyze complexity --top-files 5 --format full
 	@echo "✅ CI dogfooding complete! All metrics generated using our own binary."
 	@echo "📁 Comprehensive reports saved to artifacts/dogfooding/"
 	@echo "⚡ Binary performance validated"
@@ -1775,7 +1775,7 @@ test-feature-all-interfaces: release
 	case "$(FEATURE)" in \
 		complexity) \
 			echo "CLI: ./target/release/pmat analyze complexity --top-files 5"; \
-			./target/release/pmat analyze complexity --top-files 5 --format table; \
+			./target/release/pmat analyze complexity --top-files 5 --format full; \
 			echo "MCP: analyze_complexity method"; \
 			echo '{"jsonrpc":"2.0","method":"analyze_complexity","params":{"top_files":5},"id":1}' | ./target/release/pmat --mode mcp; \
 			echo "HTTP: GET /api/v1/analyze/complexity"; \
@@ -1783,7 +1783,7 @@ test-feature-all-interfaces: release
 			;; \
 		churn) \
 			echo "CLI: ./target/release/pmat analyze churn --days 7"; \
-			./target/release/pmat analyze churn --days 7 --top-files 5 --format table; \
+			./target/release/pmat analyze churn --days 7 --top-files 5 --format summary; \
 			echo "MCP: analyze_churn method"; \
 			echo '{"jsonrpc":"2.0","method":"analyze_churn","params":{"days":7,"top_files":5},"id":1}' | ./target/release/pmat --mode mcp; \
 			echo "HTTP: GET /api/v1/analyze/churn"; \
@@ -1880,10 +1880,10 @@ analyze-top-files: release
 	@echo "🔝 Top Files Analysis across multiple metrics using built binary..."
 	@mkdir -p artifacts/analysis
 	@echo "🧮 Complexity Top Files (Top 10):"
-	@./target/release/pmat analyze complexity --top-files 10 --format table
+	@./target/release/pmat analyze complexity --top-files 10 --format full
 	@echo ""
 	@echo "🔥 Churn Top Files (Top 10, last 30 days):"
-	@./target/release/pmat analyze churn --days 30 --top-files 10 --format table
+	@./target/release/pmat analyze churn --days 30 --top-files 10 --format summary
 	@echo ""
 	@echo "💾 Saving detailed JSON reports..."
 	@./target/release/pmat analyze complexity --top-files 15 --format json > artifacts/analysis/top-complexity.json
@@ -1923,13 +1923,13 @@ analyze-health-dashboard: release
 	@echo "Context analysis complete ✓"
 	@echo ""
 	@echo "=== Risk Assessment ==="
-	@./target/release/pmat analyze complexity --top-files 5 --format table
+	@./target/release/pmat analyze complexity --top-files 5 --format full
 	@echo ""
 	@echo "=== Recent Activity ==="
-	@./target/release/pmat analyze churn --days 7 --top-files 5 --format table
+	@./target/release/pmat analyze churn --days 7 --top-files 5 --format summary
 	@echo ""
 	@echo "=== Dependency Graph ==="
-	@./target/release/pmat analyze dag --enhanced --top-files 10 -o artifacts/dashboard/dependency-graph.mmd
+	@./target/release/pmat analyze dag --enhanced --target-nodes 10 -o artifacts/dashboard/dependency-graph.mmd
 	@echo "Dependency graph saved to artifacts/dashboard/dependency-graph.mmd ✓"
 	@echo ""
 	@echo "💾 Health dashboard artifacts saved to artifacts/dashboard/"

@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.18.4] - 2026-06-13
+
+Tooling and CI-hygiene patch. **No changes to the shipped binary or library** —
+the compiled output is identical to 3.18.3.
+
+### Fixed
+- **`make dogfood` and analysis recipes**: 10 invocations across 6 Makefile
+  targets used flags removed in earlier releases and exited 2
+  ("unrecognized"). Corrected `analyze dag --top-files` → `--target-nodes`
+  and `analyze {complexity,churn} --format table` → `full` / `summary`.
+
+### Changed
+- **Dependabot config** (`.github/dependabot.yml`): point the cargo ecosystem
+  at the repo root (`/`) instead of the stale `/server` path left over from
+  the server→root flattening (so cargo update PRs run again), and exclude the
+  `fixtures/typescript` npm test fixture from version updates.
+
+### Security
+- Triaged and dismissed all 4 open Dependabot alerts with documented rationale:
+  2× `esbuild` (transitive in a never-installed/executed TypeScript test
+  fixture), `thrift` (no upstream patch; deep transitive via `parquet`), and
+  `rand` 0.7.3 (behind the disabled, non-shipped `raft-consensus` feature; see
+  `.cargo/audit.toml` RUSTSEC-2026-0097). The shipped binary's `rand` paths are
+  already on patched 0.8.6 / 0.9.4.
+
 ## [3.18.3] - 2026-06-13
 
 Dependency maintenance release. Refreshes `Cargo.lock` to the latest
