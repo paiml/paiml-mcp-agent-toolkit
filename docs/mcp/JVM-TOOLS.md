@@ -4,6 +4,13 @@
 **Last Updated**: October 24, 2025
 **Sprint**: 51
 
+> ⚠️ **Legacy document.** These per-language MCP tools belong to an older
+> `mcp_integration` server surface and are **not** part of the current unified
+> server (`pmat agent mcp-server`), whose 20 tools are listed in
+> **[TOOLS.md](TOOLS.md)**. PMAT still analyzes JVM languages via its CLI; this
+> file is retained for historical reference and may not match the current MCP
+> surface.
+
 ## Table of Contents
 
 1. [Overview](#overview)

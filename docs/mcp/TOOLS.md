@@ -1,582 +1,140 @@
 # PMAT MCP Tools Catalog
 
 **Protocol Version**: MCP v2024-11-05
-**Last Updated**: October 19, 2025
-**Total Tools**: 19
+**Transport**: stdio (JSON-RPC 2.0)
+**Server**: `pmat agent mcp-server` (`src/mcp_pmcp/simple_unified_server.rs`)
+**Total Tools**: 20 (16 core + 4 agent-context)
+**Last Updated**: 2026-06-13 (v3.19.2)
+
+> Exact, authoritative input schemas for every tool are published by the server
+> itself — call `tools/list` after `initialize`. This catalog gives the tool name,
+> category, and purpose. The 20-tool set is pinned by tests and was validated
+> end-to-end (per-tool calls + 8-way concurrent sessions + framing purity) in v3.18.2.
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Documentation Quality Tools](#documentation-quality-tools)
-3. [Code Quality Tools](#code-quality-tools)
-4. [Agent-Based Analysis Tools](#agent-based-analysis-tools)
-5. [Deep WASM Analysis Tools](#deep-wasm-analysis-tools)
-6. [Semantic Search Tools](#semantic-search-tools)
-7. [Testing Tools](#testing-tools)
+1. [Core Analysis Tools (6)](#core-analysis-tools-6)
+2. [Refactoring Tools (4)](#refactoring-tools-4)
+3. [Quality Tools (3)](#quality-tools-3)
+4. [Git & Context Tools (3)](#git--context-tools-3)
+5. [Agent-Context Tools (4)](#agent-context-tools-4)
+6. [Error Handling](#error-handling)
+7. [Tool Discovery](#tool-discovery)
 
 ---
 
-## Overview
+## Core Analysis Tools (6)
 
-PMAT (Polyglot Multi-Language Analysis Toolkit) exposes its code analysis capabilities via MCP (Model Context Protocol), enabling AI agents to:
+### 1. `analyze_complexity`
+Computes cyclomatic and cognitive complexity per function/file and flags functions
+over configured thresholds. Typical args: `path`, `top_files`, `format`.
 
-- Validate documentation accuracy against actual codebase
-- Analyze code quality and technical debt
-- Perform deep WebAssembly analysis
-- Search code semantically
-- Run mutation tests
-- Orchestrate complex analysis workflows
+### 2. `analyze_satd`
+Detects self-admitted technical debt — `TODO` / `FIXME` / `HACK` / `XXX` style
+comments — and classifies them. Typical args: `path`, `format`.
 
-**Protocol Compliance**: All tools follow MCP v2024-11-05 specification.
+### 3. `analyze_dead_code`
+Detects dead / unreachable code. For Rust this is cargo/rustc-backed for accuracy;
+the walk is `.gitignore`/hidden-dir aware (it does not descend into hidden git
+worktrees). Typical args: `path`, `top_files`, `format`.
 
----
+### 4. `analyze_dag`
+Builds the project dependency / call-graph (DAG). Typical args: `path`,
+`target_nodes`, `enhanced`, `format` (Mermaid or JSON). Advertises a non-empty
+schema requiring `paths` (fixed in v3.18.2).
 
-## Documentation Quality Tools
+### 5. `analyze_deep_context`
+Generates full AST-based deep context for a project (the data behind
+`pmat context`). Typical args: `paths`, `format` (`markdown` / `json` /
+`llm-optimized`). Advertises a non-empty schema requiring `paths` (fixed in v3.18.2).
 
-### 1. `validate_documentation`
-
-**Category**: Documentation Quality (Sprint 40a)
-**Source**: `server/src/mcp_integration/hallucination_detection_tools.rs:21`
-
-Validates documentation files against the actual codebase to detect hallucinations, contradictions, and broken references.
-
-**Scientific Foundation**:
-- Semantic Entropy (Farquhar et al., Nature 2024)
-- MIND framework (IJCAI 2025)
-- Unified Detection Framework (Complex & Intelligent Systems 2025)
-
-**Input Schema**:
-```json
-{
-  "type": "object",
-  "properties": {
-    "documentation_path": {
-      "type": "string",
-      "description": "Path to documentation file (README.md, CLAUDE.md, etc.)"
-    },
-    "deep_context_path": {
-      "type": "string",
-      "description": "Path to deep context file (generated via `pmat context`)"
-    },
-    "similarity_threshold": {
-      "type": "number",
-      "default": 0.7,
-      "description": "Similarity threshold for claim validation (0.0-1.0)"
-    },
-    "fail_on_error": {
-      "type": "boolean",
-      "default": false,
-      "description": "Whether to fail on unverified/contradicted claims"
-    }
-  },
-  "required": ["documentation_path", "deep_context_path"]
-}
-```
-
-**Output Format**:
-```json
-{
-  "status": "completed",
-  "summary": {
-    "total_claims": 42,
-    "verified": 38,
-    "unverified": 2,
-    "contradictions": 1,
-    "not_found": 1,
-    "pass": true
-  },
-  "results": [
-    {
-      "claim": "PMAT can analyze TypeScript complexity",
-      "status": "Verified",
-      "confidence": 0.94,
-      "evidence": ["server/src/cli/language_analyzer.rs:150"]
-    }
-  ]
-}
-```
-
-**Example Usage**:
-```javascript
-const result = await mcpClient.callTool("validate_documentation", {
-  documentation_path: "README.md",
-  deep_context_path: "deep_context.md",
-  similarity_threshold: 0.7,
-  fail_on_error: true
-});
-```
-
-**Use Cases**:
-- Pre-commit hooks to verify documentation accuracy
-- CI/CD validation gates
-- Documentation quality audits
-- Preventing documentation drift
+### 6. `analyze_big_o`
+Estimates Big-O algorithmic complexity of functions. Typical args: `paths`.
+Advertises a non-empty schema requiring `paths` (fixed in v3.18.2).
 
 ---
 
-### 2. `check_claim`
+## Refactoring Tools (4)
 
-**Category**: Documentation Quality (Sprint 40a)
-**Source**: `server/src/mcp_integration/hallucination_detection_tools.rs:197`
+These drive a single **stateful, resumable refactoring session** (state held by the
+server's state manager).
 
-Validates a single claim against the codebase to determine if it's accurate, unverified, or a contradiction.
+### 7. `refactor.start`
+Begins an interactive refactoring session for a target.
 
-**Input Schema**:
-```json
-{
-  "type": "object",
-  "properties": {
-    "claim": {
-      "type": "string",
-      "description": "The claim to validate"
-    },
-    "deep_context_path": {
-      "type": "string",
-      "description": "Path to deep context file"
-    },
-    "similarity_threshold": {
-      "type": "number",
-      "default": 0.7
-    }
-  },
-  "required": ["claim", "deep_context_path"]
-}
-```
+### 8. `refactor.nextIteration`
+Advances the refactoring state machine by one step.
 
-**Output Format**:
-```json
-{
-  "status": "Verified",
-  "confidence": 0.94,
-  "evidence": ["server/src/cli/language_analyzer.rs:150"],
-  "claim": "PMAT can analyze TypeScript complexity"
-}
-```
+### 9. `refactor.getState`
+Returns the current refactoring session state.
 
-**Example Usage**:
-```javascript
-const result = await mcpClient.callTool("check_claim", {
-  claim: "PMAT can analyze TypeScript complexity",
-  deep_context_path: "deep_context.md",
-  similarity_threshold: 0.7
-});
-```
+### 10. `refactor.stop`
+Ends the refactoring session.
 
-**Use Cases**:
-- Interactive documentation writing
-- Real-time claim verification
-- Documentation review workflows
+> Note: the `refactor.*` analysis engine is currently **simulated** — violations are
+> synthesized from filename patterns rather than real AST analysis. The tool
+> descriptions disclose this (v3.18.2) so agents don't act on the output as if it
+> were a real refactoring engine.
 
 ---
 
-## Code Quality Tools
+## Quality Tools (3)
 
-### 3. `analyze_technical_debt`
+### 11. `quality_gate`
+Runs the quality gate (complexity / SATD / lint / etc.) and returns a **pass/fail
+verdict**. The verdict comparison was fixed in v3.18.2 (`Grade`'s derived `Ord` is
+reversed; a single `Grade::meets_threshold()` now drives the decision) — earlier
+versions could return an inverted `passed`.
 
-**Category**: Code Quality (Sprint 40c)
-**Source**: `server/src/mcp_integration/tdg_tools.rs:14`
+### 12. `quality_proxy`
+Quality-proxy metrics for fast gating.
 
-Analyzes technical debt gradient (TDG) for files or projects, providing comprehensive quality metrics and grades (A+ to F).
-
-**Input Schema**:
-```json
-{
-  "type": "object",
-  "properties": {
-    "path": {
-      "type": "string",
-      "description": "Path to file or directory to analyze"
-    },
-    "analysis_type": {
-      "type": "string",
-      "enum": ["file", "project", "auto"],
-      "default": "auto",
-      "description": "Type of analysis (auto-detects by default)"
-    },
-    "include_penalties": {
-      "type": "boolean",
-      "default": true,
-      "description": "Include detailed penalty breakdown"
-    }
-  },
-  "required": ["path"]
-}
-```
-
-**Output Format (File Analysis)**:
-```json
-{
-  "status": "completed",
-  "analysis_type": "file",
-  "path": "src/main.rs",
-  "score": {
-    "total": 78.5,
-    "grade": "B",
-    "confidence": 0.92,
-    "language": "Rust",
-    "structural_complexity": 45.2,
-    "semantic_complexity": 32.1,
-    "duplication_ratio": 0.05,
-    "coupling_score": 0.15,
-    "doc_coverage": 0.85,
-    "consistency_score": 0.91,
-    "entropy_score": 0.12
-  },
-  "penalties": [
-    {
-      "source_metric": "CyclomaticComplexity",
-      "amount": 5.2,
-      "issue": "Function has high cyclomatic complexity (15)"
-    }
-  ]
-}
-```
-
-**Output Format (Project Analysis)**:
-```json
-{
-  "status": "completed",
-  "analysis_type": "project",
-  "path": "src/",
-  "total_files": 142,
-  "average_score": 82.3,
-  "average_grade": "B+",
-  "file_scores": [
-    {
-      "file": "src/main.rs",
-      "total": 78.5,
-      "grade": "B"
-    }
-  ]
-}
-```
-
-**Example Usage**:
-```javascript
-// Analyze a single file
-const fileResult = await mcpClient.callTool("analyze_technical_debt", {
-  path: "src/main.rs",
-  include_penalties: true
-});
-
-// Analyze an entire project
-const projectResult = await mcpClient.callTool("analyze_technical_debt", {
-  path: "src/",
-  analysis_type: "project"
-});
-```
-
-**Use Cases**:
-- Pre-commit quality checks
-- Code review automation
-- Technical debt tracking
-- Quality trend analysis
+### 13. `pdmt_deterministic_todos`
+Deterministic todo / task generation (PDMT). IDs are deterministic UUIDv8s derived
+from seed/index/requirement (v3.18.2) — byte-identical output for identical input,
+so results can be cached, diffed, and reproduced across agents.
 
 ---
 
-### 4. `get_quality_recommendations`
+## Git & Context Tools (3)
 
-**Category**: Code Quality (Sprint 40c)
-**Source**: `server/src/mcp_integration/tdg_tools.rs:165`
+### 14. `git_operation`
+Git context operations (history, churn, blame) used to enrich analysis.
 
-Generates actionable, contextual refactoring recommendations based on quality analysis.
+### 15. `generate_context`
+Generates AI-ready project context — the MCP equivalent of `pmat context`. Typical
+args: `path`, `format` (`markdown` / `json` / `llm-optimized`).
 
-**Input Schema**:
-```json
-{
-  "type": "object",
-  "properties": {
-    "path": {
-      "type": "string",
-      "description": "Path to file to analyze"
-    },
-    "max_recommendations": {
-      "type": "number",
-      "default": 10,
-      "description": "Maximum number of recommendations to return"
-    },
-    "min_severity": {
-      "type": "string",
-      "enum": ["low", "medium", "high", "critical"],
-      "default": "low",
-      "description": "Minimum severity level to include"
-    }
-  },
-  "required": ["path"]
-}
-```
-
-**Output Format**:
-```json
-{
-  "status": "completed",
-  "path": "src/main.rs",
-  "recommendations": [
-    {
-      "severity": "high",
-      "category": "CyclomaticComplexity",
-      "issue": "Function has high cyclomatic complexity (15)",
-      "suggestion": "Consider breaking down complex functions into smaller, single-responsibility functions. Extract conditional logic into separate helper functions. Use early returns to reduce nesting depth.",
-      "impact": 8.5
-    },
-    {
-      "severity": "medium",
-      "category": "NestingDepth",
-      "issue": "Deep nesting detected (level 6)",
-      "suggestion": "Reduce nesting depth by using early returns, guard clauses, or extracting nested blocks into separate functions. Consider using pattern matching or polymorphism to flatten control flow.",
-      "impact": 4.2
-    }
-  ],
-  "total_score": 78.5,
-  "grade": "B"
-}
-```
-
-**Example Usage**:
-```javascript
-const recommendations = await mcpClient.callTool("get_quality_recommendations", {
-  path: "src/complex_module.rs",
-  max_recommendations: 5,
-  min_severity: "medium"
-});
-
-// Focus on critical issues only
-const criticalIssues = await mcpClient.callTool("get_quality_recommendations", {
-  path: "src/main.rs",
-  min_severity: "critical"
-});
-```
-
-**Contextual Suggestions by Category**:
-- **Cyclomatic Complexity**: Break down functions, extract logic
-- **Nesting Depth**: Use early returns, guard clauses
-- **Duplication**: Extract common logic into shared functions
-- **Coupling**: Introduce interfaces, reduce dependencies
-- **Documentation**: Add docstrings, explain complex logic
-- **Consistency**: Follow naming conventions, formatting rules
-
-**Use Cases**:
-- AI-assisted code review
-- Automated refactoring suggestions
-- Developer education
-- Quality improvement roadmaps
+### 16. `scaffold_project`
+Scaffolds a new project or files from PMAT templates.
 
 ---
 
-## Agent-Based Analysis Tools
+## Agent-Context Tools (4)
 
-### 5. `analyze`
+Added in **KAIZEN-0165**. Backed by the SQLite + FTS5 code index, these are the
+primary code-intelligence surface for autonomous agents.
 
-**Category**: Agent-Based Analysis
-**Source**: `server/src/mcp_integration/tools.rs:13`
+### 17. `pmat_query_code`
+Semantic code search by intent. Returns quality-annotated functions (TDG grade,
+complexity, fault patterns). The MCP analogue of `pmat query`.
 
-Invokes the analyzer agent to analyze code for quality metrics and issues.
+### 18. `pmat_get_function`
+Fetches a function's full source plus its quality metrics. (Source retrieval was
+restored in v3.18.2 after an incremental-save bug that wiped the `source` column.)
 
-**Input Schema**:
-```json
-{
-  "type": "object",
-  "properties": {
-    "code": {
-      "type": "string",
-      "description": "Source code to analyze"
-    },
-    "language": {
-      "type": "string",
-      "description": "Programming language (rust, python, typescript, etc.)"
-    },
-    "metrics": {
-      "type": "array",
-      "items": {"type": "string"},
-      "description": "Metrics to calculate (complexity, duplication, etc.)"
-    },
-    "priority": {
-      "type": "string",
-      "enum": ["low", "normal", "high", "critical"],
-      "default": "normal"
-    }
-  },
-  "required": ["code", "language"]
-}
-```
+### 19. `pmat_find_similar`
+Finds functions similar to a given one — useful for refactoring and de-duplication.
 
-**Example Usage**:
-```javascript
-const analysis = await mcpClient.callTool("analyze", {
-  code: "fn main() { println!(\"Hello\"); }",
-  language: "rust",
-  metrics: ["complexity", "style"],
-  priority: "normal"
-});
-```
-
----
-
-### 6. `transform`
-
-**Category**: Agent-Based Analysis
-**Source**: `server/src/mcp_integration/tools.rs:135`
-
-Invokes the transformer agent to transform code (refactor, optimize, modernize).
-
-**Input Schema**:
-```json
-{
-  "type": "object",
-  "properties": {
-    "code": {
-      "type": "string",
-      "description": "Source code to transform"
-    },
-    "transformation": {
-      "type": "string",
-      "description": "Type of transformation (refactor, optimize, modernize)"
-    },
-    "language": {
-      "type": "string"
-    }
-  },
-  "required": ["code", "transformation", "language"]
-}
-```
-
----
-
-### 7. `validate`
-
-**Category**: Agent-Based Analysis
-**Source**: `server/src/mcp_integration/tools.rs:270`
-
-Invokes the validator agent to validate code against rules and standards.
-
----
-
-### 8. `orchestrate`
-
-**Category**: Agent-Based Analysis
-**Source**: `server/src/mcp_integration/tools.rs:425`
-
-Orchestrates complex multi-agent workflows (analyze → transform → validate).
-
----
-
-## Deep WASM Analysis Tools
-
-### 9. `deep_wasm_analyze`
-
-**Category**: WebAssembly Analysis
-**Source**: `server/src/mcp_integration/deep_wasm_tools.rs:16`
-
-Performs deep WebAssembly bytecode analysis.
-
----
-
-### 10. `deep_wasm_query_mapping`
-
-**Category**: WebAssembly Analysis
-**Source**: `server/src/mcp_integration/deep_wasm_tools.rs:170`
-
-Queries WASM-to-source mappings.
-
----
-
-### 11. `deep_wasm_trace_execution`
-
-**Category**: WebAssembly Analysis
-**Source**: `server/src/mcp_integration/deep_wasm_tools.rs:375`
-
-Traces WebAssembly execution paths.
-
----
-
-### 12. `deep_wasm_compare_optimizations`
-
-**Category**: WebAssembly Analysis
-**Source**: `server/src/mcp_integration/deep_wasm_tools.rs:424`
-
-Compares WebAssembly optimization strategies.
-
----
-
-### 13. `deep_wasm_detect_issues`
-
-**Category**: WebAssembly Analysis
-**Source**: `server/src/mcp_integration/deep_wasm_tools.rs:474`
-
-Detects common WebAssembly issues and anti-patterns.
-
----
-
-## Semantic Search Tools
-
-### 14. `semantic_search`
-
-**Category**: Semantic Search
-**Source**: `server/src/mcp_integration/tools.rs:679`
-
-Searches code semantically using embeddings (requires OpenAI API key).
-
----
-
-### 15. `find_similar_code`
-
-**Category**: Semantic Search
-**Source**: `server/src/mcp_integration/tools.rs:729`
-
-Finds similar code patterns across the codebase.
-
----
-
-### 16. `cluster_code`
-
-**Category**: Semantic Search
-**Source**: `server/src/mcp_integration/tools.rs:777`
-
-Clusters code by semantic similarity.
-
----
-
-### 17. `analyze_topics`
-
-**Category**: Semantic Search
-**Source**: `server/src/mcp_integration/tools.rs:825`
-
-Analyzes code topics and themes.
-
----
-
-## Testing Tools
-
-### 18. `mutation_test`
-
-**Category**: Testing
-**Source**: `server/src/mcp_integration/mutation_tools.rs:11`
-
-Runs mutation testing to verify test suite quality.
-
----
-
-### 19. `quality_gate`
-
-**Category**: Testing
-**Source**: `server/src/mcp_integration/tools.rs:569`
-
-Runs comprehensive quality gate checks.
+### 20. `pmat_index_stats`
+Reports code-index health and statistics (function count, index freshness, etc.).
 
 ---
 
 ## Error Handling
 
-All tools follow consistent error patterns:
+All tools follow consistent JSON-RPC error patterns:
 
-**Error Codes**:
-- `-32700`: Parse error
-- `-32600`: Invalid request
-- `-32601`: Method not found
-- `-32602`: Invalid parameters
-- `-32603`: Internal error
-
-**Error Response Format**:
 ```json
 {
   "code": -32602,
@@ -588,32 +146,33 @@ All tools follow consistent error patterns:
 }
 ```
 
-**Best Practices**:
-- Always check `status` field in responses
-- Handle errors gracefully with fallback logic
-- Use `data.suggestion` for actionable error recovery
+**Error codes**:
+- `-32700`: Parse error
+- `-32600`: Invalid request
+- `-32601`: Method not found
+- `-32602`: Invalid parameters
+- `-32603`: Internal error
+
+**Best practices**:
+- Always check the `status` field in responses.
+- Use `data.suggestion` for actionable error recovery.
 
 ---
 
 ## Tool Discovery
 
-To discover available tools at runtime:
+Discover the tools (with full, authoritative schemas) at runtime:
 
-```javascript
-const tools = await mcpClient.listTools();
-console.log(tools.tools.map(t => t.name));
+```jsonc
+// after `initialize`
+{ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }
 ```
 
----
-
-## Next Steps
-
-- [Integration Guide](INTEGRATION.md) - How to connect to the MCP server
-- [JVM Language Tools](JVM-TOOLS.md) - Java and Scala language analysis tools (New in Sprint 51)
-- [Examples](../../examples/) - Complete usage examples
-- [Architecture](../architecture/) - System architecture documentation
+The response lists all 20 tools with their names, descriptions, and input schemas
+(every tool advertises non-empty metadata — pinned by tests since v3.18.2).
 
 ---
 
-**Maintained by**: PMAT Development Team
-**Last Updated**: Sprint 51 (October 24, 2025)
+**Maintained by**: PAIML
+**Server source**: `src/mcp_pmcp/simple_unified_server.rs`
+**Last Updated**: 2026-06-13 (v3.19.2)

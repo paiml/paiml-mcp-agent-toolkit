@@ -1,211 +1,118 @@
 # PMAT MCP Documentation
 
-**Model Context Protocol** (MCP) integration for PMAT - Polyglot Multi-Language Analysis Toolkit
+**Model Context Protocol** (MCP) integration for PMAT — the PAIML MCP Agent Toolkit.
 
 ## Quick Links
 
-- **[Tools Catalog](TOOLS.md)** - Complete list of 19 MCP tools with schemas and examples
-- **[Integration Guide](INTEGRATION.md)** - How to connect clients and build workflows
-- **[Examples](../../examples/mcp/)** - Working code examples
+- **[Tools Catalog](TOOLS.md)** - Complete list of 20 MCP tools with purposes and inputs
+- **[Examples](../../examples/)** - Working code examples
 
 ## What is MCP?
 
-Model Context Protocol (MCP) is a standardized protocol for AI agents to interact with tools and services. PMAT exposes its code analysis capabilities via MCP, enabling:
+Model Context Protocol (MCP) is a standardized protocol for AI agents to interact
+with tools and services. PMAT exposes its code-analysis capabilities over MCP so
+agents (Claude Code, Cline, and any MCP client) can analyze code, grade technical
+debt, search a semantic index, and drive refactoring sessions — all over a single
+stdio JSON-RPC connection.
 
-- AI-powered code review
-- Automated documentation validation
-- Quality gate integration
-- Technical debt analysis
-- WebAssembly deep analysis
+## Available Tools (20 total)
 
-## Available Tools (19 total)
+The unified server (`pmat agent mcp-server`) registers **20 tools — 16 core + 4
+agent-context** (the exact set validated end-to-end over stdio JSON-RPC, including
+8-way concurrent sessions, in v3.18.2):
 
-### Documentation Quality (2 tools)
-- `validate_documentation` - Validate docs against codebase
-- `check_claim` - Verify individual claims
+### Core Analysis (6 tools)
+- `analyze_complexity` - Cyclomatic & cognitive complexity per function/file
+- `analyze_satd` - Self-admitted technical debt (TODO/FIXME/HACK) detection
+- `analyze_dead_code` - Dead / unreachable code detection (cargo-backed for Rust)
+- `analyze_dag` - Dependency / call-graph (DAG) generation
+- `analyze_deep_context` - Full AST-based deep-context generation for a project
+- `analyze_big_o` - Big-O algorithmic-complexity estimation
 
-### Code Quality (2 tools)
-- `analyze_technical_debt` - TDG quality analysis
-- `get_quality_recommendations` - Actionable refactoring suggestions
+### Refactoring (4 tools) — stateful session
+- `refactor.start` - Begin an interactive refactoring session
+- `refactor.nextIteration` - Advance the refactoring state machine one step
+- `refactor.getState` - Inspect the current refactoring session state
+- `refactor.stop` - End the refactoring session
 
-### Agent-Based Analysis (5 tools)
-- `analyze` - Code analysis
-- `transform` - Code transformation
-- `validate` - Code validation
-- `orchestrate` - Multi-agent workflows
-- `quality_gate` - Comprehensive quality checks
+### Quality (3 tools)
+- `quality_gate` - Run the quality gate and return a pass/fail verdict
+- `quality_proxy` - Quality-proxy metrics
+- `pdmt_deterministic_todos` - Deterministic todo/task generation (reproducible IDs)
 
-### Deep WASM Analysis (5 tools)
-- `deep_wasm_analyze` - Bytecode analysis
-- `deep_wasm_query_mapping` - Source mappings
-- `deep_wasm_trace_execution` - Execution tracing
-- `deep_wasm_compare_optimizations` - Optimization comparison
-- `deep_wasm_detect_issues` - Issue detection
+### Git & Context (3 tools)
+- `git_operation` - Git context operations (history, churn, blame)
+- `generate_context` - Generate AI-ready project context (markdown/json/llm-optimized)
+- `scaffold_project` - Scaffold a new project / files from templates
 
-### Semantic Search (4 tools)
-- `semantic_search` - Semantic code search
-- `find_similar_code` - Find similar patterns
-- `cluster_code` - Cluster by similarity
-- `analyze_topics` - Topic analysis
-
-### Testing (1 tool)
-- `mutation_test` - Mutation testing
+### Agent Context (4 tools) — KAIZEN-0165
+- `pmat_query_code` - Semantic code search by intent (quality-annotated results)
+- `pmat_get_function` - Fetch a function's source with quality metrics
+- `pmat_find_similar` - Find functions similar to a given one (refactoring/dedup)
+- `pmat_index_stats` - Code-index health and statistics
 
 ## Quick Start
 
-### 1. Start the Server
+### 1. Start the Server (stdio)
 
 ```bash
-pmat mcp-server
+pmat agent mcp-server
 ```
 
-### 2. Connect a Client
+The server speaks JSON-RPC 2.0 over **stdio** and shuts down cleanly on stdin EOF.
+MCP clients launch it as a child process rather than connecting to a network port.
 
-```javascript
-import { McpClient } from '@modelcontextprotocol/sdk';
+### 2. Register with an MCP client
 
-const client = new McpClient({
-  endpoint: 'http://localhost:3000'
-});
+For **Claude Code**, add it as an MCP server (stdio command `pmat agent mcp-server`).
+For other clients, configure the same command. On `initialize` the server advertises
+the 20 tools above with full schemas via `tools/list`.
 
-await client.connect();
+### 3. Call a tool
+
+```jsonc
+// tools/call request
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_complexity",
+    "arguments": { "path": "src/", "top_files": 5 }
+  }
+}
 ```
 
-### 3. Call a Tool
-
-```javascript
-// Validate documentation
-const result = await client.callTool('validate_documentation', {
-  documentation_path: 'README.md',
-  deep_context_path: 'deep_context.md'
-});
-
-// Analyze code quality
-const analysis = await client.callTool('analyze_technical_debt', {
-  path: 'src/main.rs'
-});
-
-// Get refactoring recommendations
-const recommendations = await client.callTool('get_quality_recommendations', {
-  path: 'src/complex_module.rs',
-  min_severity: 'high'
-});
+```jsonc
+// Semantic code search
+{ "name": "pmat_query_code", "arguments": { "query": "error handling", "limit": 5 } }
 ```
 
 ## Common Use Cases
 
-### Pre-Commit Hook: Validate Documentation
+### Agent-driven code intelligence
+An agent calls `pmat_query_code` to find functions by intent, `pmat_get_function`
+to pull the full source + metrics, and `analyze_complexity` / `analyze_dead_code`
+to triage quality — all without leaving the MCP session.
 
-```bash
-#!/bin/bash
-# .git/hooks/pre-commit
+### CI quality gating
+Call `quality_gate` from an agent or script and branch on the pass/fail verdict.
 
-# Generate deep context
-pmat context --output deep_context.md
-
-# Validate documentation via MCP
-node scripts/validate-docs.js || exit 1
-```
-
-### CI/CD: Quality Gate
-
-```yaml
-# .github/workflows/quality.yml
-- name: Quality Gate
-  run: |
-    pmat mcp-server &
-    sleep 2
-    node scripts/quality-gate.js
-```
-
-### AI Code Review Bot
-
-```javascript
-// Automatically review pull requests
-const files = await getChangedFiles(pr);
-const reviews = await aiCodeReview(client, files);
-await postReviewComments(pr, reviews);
-```
-
-## Architecture
-
-```
-┌─────────────┐
-│  AI Agent   │
-└──────┬──────┘
-       │ MCP Protocol
-       │ (JSON-RPC over HTTP)
-       ▼
-┌─────────────┐
-│ MCP Server  │ ← server/src/mcp_integration/server.rs
-├─────────────┤
-│   Tools     │
-├─────────────┤
-│ - validate_ │ ← hallucination_detection_tools.rs
-│   documenta │
-│   tion      │
-│ - check_    │
-│   claim     │
-├─────────────┤
-│ - analyze_  │ ← tdg_tools.rs
-│   technical │
-│   _debt     │
-│ - get_      │
-│   quality_  │
-│   recommend │
-│   ations    │
-├─────────────┤
-│ - analyze   │ ← tools.rs
-│ - transform │
-│ - validate  │
-│ - orchestr  │
-│   ate       │
-├─────────────┤
-│ - deep_wasm │ ← deep_wasm_tools.rs
-│   _*        │
-├─────────────┤
-│ - semantic_ │ ← tools.rs (adapters)
-│   search    │
-├─────────────┤
-│ - mutation_ │ ← mutation_tools.rs
-│   test      │
-└─────────────┘
-       │
-       ▼
-┌─────────────┐
-│  Services   │
-├─────────────┤
-│ - Hallucin  │
-│   ation     │
-│   Detector  │
-│ - TDG       │
-│   Analyzer  │
-│ - Agent     │
-│   Registry  │
-│ - Deep WASM │
-│ - Semantic  │
-│   Search    │
-└─────────────┘
-```
+### Refactoring loop
+Drive `refactor.start` → `refactor.nextIteration` (repeat) → `refactor.getState`
+→ `refactor.stop` as a stateful, resumable refactoring session.
 
 ## Protocol Compliance
 
 - **Version**: MCP v2024-11-05
-- **Transport**: HTTP/1.1 (JSON-RPC 2.0)
-- **Capabilities**:
-  - ✅ Tools
-  - ✅ Resources (planned)
-  - ✅ Prompts (planned)
-  - ✅ Logging
-  - ❌ Sampling (not applicable)
-
-## Configuration
-
-See [Integration Guide](INTEGRATION.md#server-configuration) for detailed configuration options.
+- **Transport**: stdio (JSON-RPC 2.0)
+- **Capabilities**: Tools (the server is `tools_only`)
+- **Concurrency**: validated for multi-agent use (per-tool calls + 8-way concurrent
+  sessions + framing purity), v3.18.2
 
 ## Error Handling
 
-All tools follow consistent error patterns:
+All tools follow consistent JSON-RPC error patterns:
 
 ```json
 {
@@ -225,31 +132,20 @@ Error codes:
 - `-32602`: Invalid parameters
 - `-32603`: Internal error
 
-## Development History
+## Implementation
 
-- **Sprint 40a** (Oct 19, 2025): Hallucination Detection MCP Tools
-- **Sprint 40c** (Oct 19, 2025): TDG Analysis MCP Tools
-- **Sprint 40d** (Oct 19, 2025): MCP Documentation Enhancement
-
-## Contributing
-
-When adding new MCP tools:
-
-1. Create tool in `server/src/mcp_integration/`
-2. Implement `McpTool` trait
-3. Register in `server.rs::register_defaults()`
-4. Add tests (8+ tests following EXTREME TDD)
-5. Document in `TOOLS.md`
-6. Add usage examples
+The unified server lives in `src/mcp_pmcp/simple_unified_server.rs` and is built on
+the [`pmcp`](https://crates.io/crates/pmcp) MCP SDK (2.9). The CLI entry point that
+launches it is `pmat agent mcp-server` (see `src/cli/mod.rs`).
 
 ## Support
 
-- **Issues**: https://github.com/pmat/pmat/issues
-- **Documentation**: https://docs.pmat.dev
-- **Slack**: #pmat-mcp channel
+- **Issues**: https://github.com/paiml/paiml-mcp-agent-toolkit/issues
+- **API docs**: https://docs.rs/pmat
+- **Book**: https://paiml.github.io/pmat-book/
 
 ---
 
-**Maintained by**: PMAT Development Team
+**Maintained by**: PAIML
 **Protocol Version**: MCP v2024-11-05
-**Last Updated**: Sprint 40d (October 19, 2025)
+**Last Updated**: 2026-06-13 (v3.19.2)
