@@ -66,7 +66,10 @@ impl PythonMutationGenerator {
             if operator.can_mutate(node, source) {
                 let mutations = operator.mutate(node, source);
                 for mutation in mutations {
-                    let hash = format!("{:x}", Sha256::digest(&mutation.source));
+                    let hash = Sha256::digest(&mutation.source)
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<String>();
                     mutants.push(Mutant {
                         id: format!(
                             "{}_{}_{}:{}",

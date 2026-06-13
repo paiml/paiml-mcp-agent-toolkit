@@ -110,7 +110,7 @@ impl DwarfParser {
 
         // Iterate through all DIEs in this unit
         // Handle errors gracefully for malformed/synthetic data
-        while let Some((_, entry)) = entries_cursor.next_dfs().ok().flatten() {
+        while let Some(entry) = entries_cursor.next_dfs().ok().flatten() {
             // Get offset - convert unit-relative offset to debug_info offset
             let die_offset = entry
                 .offset()
@@ -146,10 +146,7 @@ impl DwarfParser {
         entry: &gimli::DebuggingInformationEntry<R>,
         debug_str: &DebugStr<R>,
     ) -> DeepWasmResult<Option<String>> {
-        if let Some(attr) = entry
-            .attr(gimli::DW_AT_name)
-            .map_err(|e| DeepWasmError::Analysis(format!("Failed to read DW_AT_name: {}", e)))?
-        {
+        if let Some(attr) = entry.attr(gimli::DW_AT_name) {
             if let gimli::AttributeValue::DebugStrRef(offset) = attr.value() {
                 let name_slice = debug_str.get_str(offset).map_err(|e| {
                     DeepWasmError::Analysis(format!("Failed to resolve string: {}", e))

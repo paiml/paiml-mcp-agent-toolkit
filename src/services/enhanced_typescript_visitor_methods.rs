@@ -93,7 +93,7 @@ impl EnhancedTypeScriptVisitor {
                     Prop::KeyValue(KeyValueProp { key, value }) => {
                         let method_name = match key {
                             PropName::Ident(ident) => ident.sym.to_string(),
-                            PropName::Str(s) => s.value.to_string(),
+                            PropName::Str(s) => s.value.to_string_lossy().into_owned(),
                             _ => continue,
                         };
 
@@ -117,7 +117,7 @@ impl EnhancedTypeScriptVisitor {
                     Prop::Method(method_prop) => {
                         let method_name = match &method_prop.key {
                             PropName::Ident(ident) => ident.sym.to_string(),
-                            PropName::Str(s) => s.value.to_string(),
+                            PropName::Str(s) => s.value.to_string_lossy().into_owned(),
                             _ => continue,
                         };
 

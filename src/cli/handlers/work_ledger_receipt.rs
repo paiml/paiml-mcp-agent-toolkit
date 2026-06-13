@@ -122,7 +122,7 @@ impl FalsificationReceipt {
             hasher.update(o.ticket.as_bytes());
         }
         hasher.update(format!("{}", self.summary.allows_completion).as_bytes());
-        format!("{:x}", hasher.finalize())
+        hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>()
     }
 
     /// Verify content hash integrity

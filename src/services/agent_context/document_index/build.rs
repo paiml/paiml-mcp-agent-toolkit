@@ -74,57 +74,7 @@ pub(crate) fn build_document_index(
         if !path.is_file() || !is_document_file(path) {
             continue;
         }
-
-        result.files_scanned += 1;
-
-        let relative_path = match path.strip_prefix(&project_root) {
-            Ok(rel) => rel.to_string_lossy().to_string(),
-            Err(_) => continue,
-        };
-
-        seen_files.insert(relative_path.clone());
-
-        // Compute checksum for incremental update detection
-        let checksum = match compute_document_checksum(path) {
-            Ok(cs) => cs,
-            Err(e) => {
-                result.errors.push(format!("{relative_path}: {e}"));
-                continue;
-            }
-        };
-
-        // Skip if file hasn't changed
-        if file_is_current(conn, &relative_path, &checksum) {
-            result.files_skipped += 1;
-            continue;
-        }
-
-        // Remove old chunks for this file (if any)
-        let _ = remove_file_documents(conn, &relative_path);
-
-        // Extract and insert
-        match extract_document(path, &relative_path, &checksum) {
-            Ok(chunks) => {
-                if !chunks.is_empty() {
-                    match insert_document_chunks(conn, &chunks) {
-                        Ok(count) => {
-                            result.chunks_inserted += count;
-                            result.files_indexed += 1;
-                        }
-                        Err(e) => {
-                            result
-                                .errors
-                                .push(format!("{relative_path}: insert failed: {e}"));
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                result
-                    .errors
-                    .push(format!("{relative_path}: extraction failed: {e}"));
-            }
-        }
+        index_one_document(conn, path, &project_root, &mut result, &mut seen_files);
     }
 
     // Remove stale entries (files that no longer exist on disk)
@@ -133,6 +83,69 @@ pub(crate) fn build_document_index(
     }
 
     Ok(result)
+}
+
+/// Index a single document file: checksum, staleness check, extract, insert.
+///
+/// Extracted from `build_document_index`'s walk loop so the per-file logic uses
+/// early returns instead of deep match/if nesting (keeps cognitive complexity low).
+fn index_one_document(
+    conn: &Connection,
+    path: &Path,
+    project_root: &Path,
+    result: &mut DocumentBuildResult,
+    seen_files: &mut HashSet<String>,
+) {
+    result.files_scanned += 1;
+
+    let relative_path = match path.strip_prefix(project_root) {
+        Ok(rel) => rel.to_string_lossy().to_string(),
+        Err(_) => return,
+    };
+    seen_files.insert(relative_path.clone());
+
+    // Compute checksum for incremental update detection
+    let checksum = match compute_document_checksum(path) {
+        Ok(cs) => cs,
+        Err(e) => {
+            result.errors.push(format!("{relative_path}: {e}"));
+            return;
+        }
+    };
+
+    // Skip if file hasn't changed
+    if file_is_current(conn, &relative_path, &checksum) {
+        result.files_skipped += 1;
+        return;
+    }
+
+    // Remove old chunks for this file (if any), then extract + insert
+    let _ = remove_file_documents(conn, &relative_path);
+
+    let chunks = match extract_document(path, &relative_path, &checksum) {
+        Ok(chunks) => chunks,
+        Err(e) => {
+            result
+                .errors
+                .push(format!("{relative_path}: extraction failed: {e}"));
+            return;
+        }
+    };
+    if chunks.is_empty() {
+        return;
+    }
+
+    match insert_document_chunks(conn, &chunks) {
+        Ok(count) => {
+            result.chunks_inserted += count;
+            result.files_indexed += 1;
+        }
+        Err(e) => {
+            result
+                .errors
+                .push(format!("{relative_path}: insert failed: {e}"));
+        }
+    }
 }
 
 /// Check if a directory should be skipped during document indexing.
@@ -171,7 +184,11 @@ fn compute_document_checksum(path: &Path) -> Result<String, String> {
         std::fs::read(path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
     let mut hasher = Sha256::new();
     hasher.update(&bytes);
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<String>())
 }
 
 #[cfg(test)]

@@ -354,10 +354,15 @@ impl GitContext {
     #[cfg(feature = "git-lib")]
     fn get_remote_url_git2(repo: &git2::Repository) -> Result<String, GitContextError> {
         let remote = repo.find_remote("origin")?;
-        remote
-            .url()
-            .ok_or_else(|| GitContextError::GitCommandFailed("Remote URL not found".to_string()))
-            .map(String::from)
+        // git2 0.21 changed `Remote::url` from `Option<&str>` to `Result<&str, Error>`.
+        // A missing URL now surfaces either as an `Err` or as an empty string, so treat
+        // both as "not found" to preserve the original behavior.
+        match remote.url() {
+            Ok(url) if !url.is_empty() => Ok(url.to_string()),
+            _ => Err(GitContextError::GitCommandFailed(
+                "Remote URL not found".to_string(),
+            )),
+        }
     }
 
     #[cfg(feature = "git-lib")]

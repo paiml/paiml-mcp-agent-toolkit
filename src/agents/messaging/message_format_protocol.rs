@@ -33,7 +33,7 @@ impl BinaryProtocol {
         buf.put_u8(1);
 
         // Header
-        let header_bytes = bincode::serialize(&msg.header)
+        let header_bytes = rmp_serde::to_vec(&msg.header)
             .map_err(|e| ProtocolError::EncodingError(e.to_string()))?;
         buf.put_u32(header_bytes.len() as u32);
         buf.put_slice(&header_bytes);
@@ -84,7 +84,7 @@ impl BinaryProtocol {
         // Decode header
         let header_len = data.get_u32() as usize;
         let header_bytes = data.copy_to_bytes(header_len);
-        let header: MessageHeader = bincode::deserialize(&header_bytes)
+        let header: MessageHeader = rmp_serde::from_slice(&header_bytes)
             .map_err(|e| ProtocolError::DecodingError(e.to_string()))?;
 
         // Decode payload

@@ -38,7 +38,7 @@ impl SnapshotStore {
         // Calculate checksum
         let mut hasher = Sha256::new();
         hasher.update(&serialized);
-        let checksum = format!("{:x}", hasher.finalize());
+        let checksum = hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
 
         // Compress data
         let mut encoder =
@@ -145,7 +145,7 @@ impl SnapshotStore {
         if self.config.verify_on_read {
             let mut hasher = Sha256::new();
             hasher.update(&decompressed);
-            let checksum = format!("{:x}", hasher.finalize());
+            let checksum = hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
 
             if checksum != metadata.checksum {
                 return Err(SnapshotError::ChecksumMismatch {

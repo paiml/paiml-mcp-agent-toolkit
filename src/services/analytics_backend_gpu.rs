@@ -35,9 +35,9 @@ impl GpuDevice {
     /// Initialize GPU device with PCIe calibration
     fn new() -> Result<Self> {
         // Create wgpu instance
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
-            ..Default::default()
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
 
         // Request adapter (GPU device)
@@ -57,16 +57,16 @@ impl GpuDevice {
         );
 
         // Request device and queue
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some("PMAT Analytics GPU"),
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::default(),
                 memory_hints: Default::default(),
-            },
-            None,
-        ))
-        .context("Failed to create GPU device")?;
+                experimental_features: Default::default(),
+                trace: Default::default(),
+            }))
+            .context("Failed to create GPU device")?;
 
         // Calibrate PCIe bandwidth
         let pcie_bandwidth_gbps = Self::calibrate_pcie_bandwidth(&device, &queue)?;
@@ -126,7 +126,9 @@ impl GpuDevice {
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             tx.send(result).ok();
         });
-        device.poll(wgpu::Maintain::Wait);
+        device
+            .poll(wgpu::PollType::wait_indefinitely())
+            .context("Failed to poll GPU device")?;
         rx.recv()
             .context("Failed to map buffer")?
             .context("Buffer mapping failed")?;

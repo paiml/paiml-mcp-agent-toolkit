@@ -277,7 +277,11 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
                     let mut hasher = Sha256::new();
                     let stmt_str = quote::quote!(# stmt).to_string();
                     hasher.update(&stmt_str);
-                    let hash = format!("{:x}", hasher.finalize());
+                    let hash = hasher
+                        .finalize()
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<String>();
                     let location = SourceLocation {
                         line: 0,
                         column: 0,
@@ -318,7 +322,11 @@ impl<'a> Visit<'_> for MutationVisitor<'a> {
                         let mut hasher = Sha256::new();
                         let expr_str = quote::quote!(# mutated_expr).to_string();
                         hasher.update(&expr_str);
-                        let hash = format!("{:x}", hasher.finalize());
+                        let hash = hasher
+                            .finalize()
+                            .iter()
+                            .map(|b| format!("{b:02x}"))
+                            .collect::<String>();
                         let mutant = Mutant {
                             id: format!("{}_{}", operator.name(), hash.get(..8).unwrap_or(&hash)),
                             original_file: self.file_path.clone(),

@@ -123,6 +123,13 @@ impl CliAdapter {
             | Commands::Extract { .. } // Extract refactoring (CLI-only)
             | Commands::Split { .. } // File splitting (CLI-only)
             | Commands::Sql { .. } // SQL analytics (CLI-only)
+            | Commands::Score { .. } // Unified quality score (CLI-only)
+            | Commands::InfraScore { .. } // Infrastructure CI/CD quality score (CLI-only)
+            | Commands::Verify(_) // CI-faithful pre-flight gate (CLI-only)
+            | Commands::Explain { .. } // Check/metric explanation lookup (CLI-only)
+            | Commands::CiLocal { .. } // Local CI simulation (CLI-only)
+            | Commands::TestStability { .. } // Flaky/timeout test detection (CLI-only)
+            | Commands::Stack { .. } // Cross-repo dependency coordination (CLI-only)
             => Self::cli_only_command_error(),
 
             #[cfg(feature = "mutation-testing")]
@@ -189,7 +196,7 @@ impl CliAdapter {
             Method::GET,
             format!("/api/v1/templates{query_string}"),
             json!({}),
-            Some(format.clone()),
+            Some(*format),
         ))
     }
 

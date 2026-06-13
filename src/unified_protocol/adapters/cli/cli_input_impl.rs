@@ -218,6 +218,27 @@ impl CliInput {
             Commands::Sql { .. } => {
                 CommandCategory::Analysis // SQL analytics
             }
+            Commands::Score { .. } => {
+                CommandCategory::Analysis // Unified quality score (sibling of RepoScore)
+            }
+            Commands::InfraScore { .. } => {
+                CommandCategory::Analysis // Infrastructure CI/CD quality score (sibling of RepoScore)
+            }
+            Commands::Verify(_) => {
+                CommandCategory::Analysis // CI-faithful pre-flight gate (sibling of QualityGate)
+            }
+            Commands::Explain { .. } => {
+                CommandCategory::System // Informational lookup of check/metric meaning
+            }
+            Commands::CiLocal { .. } => {
+                CommandCategory::Workflow // Local CI simulation (sibling of Test/Validate)
+            }
+            Commands::TestStability { .. } => {
+                CommandCategory::Workflow // Flaky/timeout test detection (sibling of Test)
+            }
+            Commands::Stack { .. } => {
+                CommandCategory::Workflow // Cross-repo dependency coordination (sibling of Maintain)
+            }
         }
     }
 
@@ -296,7 +317,8 @@ impl CliAdapter {
     fn get_analyze_command_category(analyze_cmd: &AnalyzeCommands) -> AnalyzeCommandCategory {
         match analyze_cmd {
             // Core analysis commands (basic metrics)
-            AnalyzeCommands::Churn { .. }
+            AnalyzeCommands::Bottleneck { .. }
+            | AnalyzeCommands::Churn { .. }
             | AnalyzeCommands::Complexity { .. }
             | AnalyzeCommands::DeadCode { .. }
             | AnalyzeCommands::Defects { .. }

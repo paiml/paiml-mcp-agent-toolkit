@@ -84,7 +84,10 @@ impl TypeScriptMutationGenerator {
                     let mutated_source = mutation.source.clone();
                     // Simple hash using SHA256 (already in deps)
                     use sha2::{Digest, Sha256};
-                    let hash = format!("{:x}", Sha256::digest(&mutated_source));
+                    let hash = Sha256::digest(&mutated_source)
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<String>();
 
                     mutants.push(Mutant {
                         id: format!(

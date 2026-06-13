@@ -41,7 +41,9 @@ pub struct TopicStats {
 /// Error variants for pub sub operations.
 pub enum PubSubError {
     #[error("Serialization error: {0}")]
-    Serialization(#[from] bincode::Error),
+    Serialization(#[from] rmp_serde::decode::Error),
+    #[error("Encode error: {0}")]
+    Encode(#[from] rmp_serde::encode::Error),
     #[error("No subscribers for topic")]
     NoSubscribers,
 }

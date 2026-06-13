@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.0] - 2026-06-13
+
+Major dependency modernization — the whole tree upgraded to latest
+semver-incompatible versions, with the API breakage fixed and the full CI gate
+green. No change to pmat's own CLI/MCP surface.
+
+### Changed
+- **Dependencies → latest** (breaking-version bumps): `aprender` and the
+  sovereign stack 0.30 → **0.41** (aprender, aprender-graph, aprender-viz,
+  aprender-rag, aprender-compute, aprender-db, aprender-zram-core,
+  aprender-orchestrate); `swc_ecma_*` 24/15 → **41/25**; `tree-sitter`
+  0.23 → **0.26** (+ grammars); `wgpu` 24 → **29**; `warp` 0.3 → **0.4**;
+  `gimli` 0.32 → **0.33**; `wasmparser` 0.239 → **0.252**; `git2` 0.20 →
+  **0.21**; `rusqlite`, `roaring`, `lru`, `sha2`, `toml`, `octocrab`, `which`,
+  and ~30 more. `pmcp` was already latest (2.9).
+- **`bincode` removed → `rmp-serde`**: `bincode` 3.0.0 is a non-functional
+  placeholder release and 2.x is a breaking rewrite, so all binary
+  serialization (messaging payloads, coverage/mutation caches, function-index
+  persistence) now uses `rmp-serde` (MessagePack), which pmat already shipped.
+  **Note**: this changes the on-disk format of regenerable caches and the
+  `.pmat` function index — they rebuild automatically on next run.
+- **Pinned by the sovereign stack** (cannot move without upstream): `arrow`
+  held at **57** to match `aprender-db` (lib `trueno_db`); `rusqlite` held at
+  **0.32** (aprender-rag links the native `sqlite3`).
+
+### Fixed
+- **swc 41 parser setup** (`simple_deep_context`): the JS/TS analyzer passed
+  `StringInput::new(content, default, default)`, leaving the lexer's byte span
+  at `BytePos(0)` while the `SourceMap` based the file at 1. swc 41's lexer now
+  asserts span bounds, panicking on every JS/TS file. Switched to
+  `StringInput::from(&*source_file)` (matching every other swc call site).
+- **`build.rs` / SHA digests**: `sha2` 0.11's `finalize()` returns an `Array`
+  that no longer implements `LowerHex`; replaced `format!("{:x}", …)` with an
+  explicit lowercase-hex encode across build.rs and ~12 source files.
+- API migrations for the new majors: swc atoms (`Wtf8Atom`), tree-sitter
+  `QueryMatches` streaming iteration, `wasmparser` new enum variants, `wgpu` 29
+  device/poll API, `gimli` 0.33, and several Option↔Result return-type changes.
+- **`docs.rs` badge**: the docs build exceeded docs.rs's build limit on the full
+  feature set; `[package.metadata.docs.rs]` now documents a lean feature set
+  (core + `rust-ast`), which compiles and fits the limit. pmat's own docs were
+  already clean.
+
+### Removed
+- **`pmat org analyze`** (organizational intelligence): the upstream
+  `aprender-orchestrate` 0.41 dropped the OIP analyzer/report/summarizer API
+  with no replacement, and 0.30 is incompatible with `aprender` 0.41, so the
+  command now returns a clear "feature unavailable" error pending an upstream
+  port.
+
+### Added
+- **`dogfood` Claude Code skill** (`.claude/skills/dogfood/`): rebuild, install,
+  and exercise pmat's full CLI surface against its own repo, with output-integrity
+  protocols and a GO/WARN/FAIL verdict.
+
 ## [3.18.4] - 2026-06-13
 
 Tooling and CI-hygiene patch. **No changes to the shipped binary or library** —

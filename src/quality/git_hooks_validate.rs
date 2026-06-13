@@ -89,7 +89,7 @@ impl IncrementalChecker {
         use sha2::{Digest, Sha256};
 
         let content = fs::read_to_string(file_path)?;
-        let hash = format!("{:x}", Sha256::digest(content.as_bytes()));
+        let hash = Sha256::digest(content.as_bytes()).iter().map(|b| format!("{b:02x}")).collect::<String>();
 
         self.cache.insert(
             file_path.to_str().unwrap_or("").to_string(),

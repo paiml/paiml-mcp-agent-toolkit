@@ -85,7 +85,7 @@ impl SnapshotStore {
         // Calculate checksum
         let mut hasher = Sha256::new();
         hasher.update(&decompressed);
-        let checksum = format!("{:x}", hasher.finalize());
+        let checksum = hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>();
 
         if checksum != expected_checksum {
             return Err(SnapshotError::ChecksumMismatch {
