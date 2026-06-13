@@ -302,7 +302,7 @@ version = "0.25.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7053416de79df742f9da17a53dea7087830b83761a80f69bc2a91b708aab781c"
 dependencies = [
- "bincode",
+ "bincode 1.3.3",
  "ed25519-dalek",
  "getrandom 0.2.17",
  "half",
@@ -324,7 +324,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1df954f1095e9717ef2e19bdcc3f6ffa1975eba2a93d0f6a5a6ae0a2231e414b"
 dependencies = [
  "batuta-common",
- "bincode",
+ "bincode 1.3.3",
  "getrandom 0.2.17",
  "memmap2",
  "minijinja",
@@ -427,7 +427,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c509dd37bf29b0c0b07d38318d0b9149c50cd69b7c9276235d9c0cdc7f20ea"
 dependencies = [
  "batuta-common",
- "bincode",
+ "bincode 1.3.3",
  "getrandom 0.2.17",
  "memmap2",
  "minijinja",
@@ -451,7 +451,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "831fb398548a3e5db753e98d142d1fd2477cfd8502a8e9dfd4b0cab5dc09a1ed"
 dependencies = [
  "batuta-common",
- "bincode",
+ "bincode 1.3.3",
  "dirs 6.0.0",
  "getrandom 0.2.17",
  "half",
@@ -483,7 +483,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c7db3a6cb63d5394a06b5774bff5ce0c0b50c36feb0de1bfa1486ba135b7419"
 dependencies = [
  "batuta-common",
- "bincode",
+ "bincode 1.3.3",
  "getrandom 0.2.17",
  "memmap2",
  "minijinja",
@@ -1675,6 +1675,12 @@ checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "bincode"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd6a120d2e16b3e1b4a24bd70f23b12d3e16b81f113364a26935f8db7245452d"
 
 [[package]]
 name = "bit-set"
@@ -6679,7 +6685,7 @@ dependencies = [
  "async-trait",
  "axum 0.8.9",
  "batuta-common",
- "bincode",
+ "bincode 3.0.0",
  "blake3",
  "bytemuck",
  "bytes",
@@ -9096,7 +9102,7 @@ version = "5.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "656b45c05d95a5704399aeef6bd0ddec7b2b3531b7c9e900abbf7c4d2190c925"
 dependencies = [
- "bincode",
+ "bincode 1.3.3",
  "fancy-regex 0.16.2",
  "flate2",
  "fnv",
