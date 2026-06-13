@@ -47,6 +47,9 @@ pub struct AccurateDeadCodeReport {
     pub dead_code_percentage: f64,
     /// Total lines analyzed
     pub total_lines: usize,
+    /// Total source files analyzed (`.rs` files walked, excluding ignored/hidden dirs)
+    #[serde(default)]
+    pub total_files: usize,
     /// Dead lines count
     pub dead_lines: usize,
     /// Summary by type

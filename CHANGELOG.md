@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.2] - 2026-06-13
+
+Fixes two defects surfaced by the v3.19.0 self-dogfood.
+
+### Fixed
+- **`analyze dead-code` file count**: the analyzer walked files with a raw
+  `walkdir` that only skipped `target/`, so it descended into the hidden
+  `.claude/worktrees/` git-worktree copies — inflating `total_files_analyzed`
+  ~60× (263,890 vs the real ~4,224) and surfacing worktree duplicates as dead
+  code. Both walks (`scan_for_suppression_attributes`, the line counter) now use
+  `ignore::WalkBuilder` (hidden + .gitignore aware), matching the
+  complexity/function-index analyzers. Also: `total_files_analyzed` is now the
+  actual count of `.rs` files walked, not the previous `total_lines / 100`
+  estimate, so it reads **4224** for this repo.
+- **`pmat query --exclude-tests`**: test code was leaking into results. Test
+  detection (`is_test_chunk` at index build, `is_test_function`/`is_test_path`
+  at query time) now also matches mid-filename variants like
+  `*_tests_basic.rs` / `*_test_helpers.rs` (commonly `include!()`-ed into a
+  `#[cfg(test)]` module, so they have no standalone test attribute),
+  `setup_test*`/`create_test*` helper names, and `*fixtures*` support files.
+  The raw (`--literal`/`--regex`) and coverage-gaps paths now apply this filter
+  too (previously only a file-glob that couldn't express nested test paths).
+  **Known limitation**: functions inside `#[cfg(test)] mod` blocks within
+  otherwise-production `.rs` files, with non-test-prefixed names, are not yet
+  excluded — reliably detecting those requires AST-level `#[cfg(test)]`/`#[test]`
+  attribute tracking in the index (tracked follow-up).
+
 ## [3.19.1] - 2026-06-13
 
 MSRV correction following the v3.19.0 dependency modernization.

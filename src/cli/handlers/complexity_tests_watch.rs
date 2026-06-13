@@ -116,6 +116,7 @@ mod dead_code_conversion_tests {
             total_dead_items: 12,
             dead_code_percentage: 10.5,
             total_lines: 1000,
+            total_files: 10,
             dead_lines: 105,
             dead_by_type,
         }

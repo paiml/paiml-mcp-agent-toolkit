@@ -237,7 +237,7 @@ fn create_dead_code_summary(
     use crate::models::dead_code::DeadCodeSummary;
 
     DeadCodeSummary {
-        total_files_analyzed: accurate_report.total_lines / 100, // Rough estimate
+        total_files_analyzed: accurate_report.total_files, // actual .rs files walked
         files_with_dead_code: files_with_dead_code_count,
         total_dead_lines: accurate_report.dead_lines,
         dead_percentage: accurate_report.dead_code_percentage as f32,

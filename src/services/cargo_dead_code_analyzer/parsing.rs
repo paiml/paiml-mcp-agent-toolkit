@@ -156,26 +156,36 @@ impl CargoDeadCodeAnalyzer {
     }
 
     /// Calculate overall metrics
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     async fn calculate_metrics(&self, files: Vec<FileDeadCode>) -> Result<AccurateDeadCodeReport> {
         let mut total_lines = 0;
+        let mut total_files = 0;
         let mut dead_lines = 0;
         let mut dead_by_type = HashMap::new();
         let total_dead_items = files.iter().map(|f| f.dead_items.len()).sum();
 
-        // Count lines in all Rust files (with max depth limit to prevent hanging)
-        for entry in walkdir::WalkDir::new(&self.project_path)
-            .max_depth(self.max_depth) // Critical fix: limit traversal depth
-            .into_iter()
+        // Count lines in all Rust files. Use ignore::WalkBuilder so the walk
+        // respects .gitignore and skips hidden dirs (e.g. `.claude/worktrees/`
+        // git-worktree copies) — a raw walkdir here counted ~26M lines across
+        // worktree duplicates, so the `total_files_analyzed` estimate
+        // (total_lines / 100) ballooned to ~263k instead of ~4.2k.
+        for entry in ignore::WalkBuilder::new(&self.project_path)
+            .max_depth(Some(self.max_depth)) // limit traversal depth
+            .hidden(true)
+            .git_ignore(true)
+            .git_global(true)
+            .build()
             .filter_map(std::result::Result::ok)
         {
             let path = entry.path();
 
-            // Skip target directory and non-Rust files
+            // Belt-and-suspenders: also skip target/ explicitly.
             if path.starts_with(self.project_path.join("target")) {
                 continue;
             }
 
             if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                total_files += 1;
                 if let Ok(content) = std::fs::read_to_string(path) {
                     total_lines += content.lines().count();
                 }
@@ -209,6 +219,7 @@ impl CargoDeadCodeAnalyzer {
             total_dead_items,
             dead_code_percentage,
             total_lines,
+            total_files,
             dead_lines,
             dead_by_type,
         })
