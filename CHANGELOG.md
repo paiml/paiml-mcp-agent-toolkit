@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.1] - 2026-06-13
+
+MSRV correction following the v3.19.0 dependency modernization.
+
+### Changed
+- **MSRV 1.80 → 1.95**: v3.19.0 upgraded dependencies whose own `rust-version`
+  requirements now exceed the previously-declared 1.80 — the binding constraint
+  is `sysinfo` 0.39 (`rust-version = 1.95`); several `arrow` 57+ crates also moved
+  to edition 2024 (≥1.85). `rust-version` in `Cargo.toml` and the README MSRV
+  badge now state **1.95.0**, matching what the upgraded tree actually requires.
+  No code change; this only corrects published metadata (v3.19.0 declared 1.80
+  but could not build on it). To get a lower MSRV, pin `sysinfo` to a release with
+  an older `rust-version`.
+
 ## [3.19.0] - 2026-06-13
 
 Major dependency modernization — the whole tree upgraded to latest
