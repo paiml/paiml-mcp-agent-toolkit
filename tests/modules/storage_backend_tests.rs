@@ -61,11 +61,11 @@ fn test_bincode_blake3hash_serialization() {
     let content = b"test data";
     let hash = blake3::hash(content);
 
-    let serialized = bincode::serialize(&hash).expect("Failed to serialize Blake3Hash");
+    let serialized = rmp_serde::to_vec(&hash).expect("Failed to serialize Blake3Hash");
     println!("DEBUG: Blake3Hash serialized to {} bytes", serialized.len());
 
     let deserialized: blake3::Hash =
-        bincode::deserialize(&serialized).expect("Failed to deserialize Blake3Hash");
+        rmp_serde::from_slice(&serialized).expect("Failed to deserialize Blake3Hash");
     assert_eq!(hash, deserialized);
 }
 
@@ -75,11 +75,11 @@ fn test_bincode_systemtime_serialization() {
     use std::time::SystemTime;
 
     let now = SystemTime::now();
-    let serialized = bincode::serialize(&now).expect("Failed to serialize SystemTime");
+    let serialized = rmp_serde::to_vec(&now).expect("Failed to serialize SystemTime");
     println!("DEBUG: SystemTime serialized to {} bytes", serialized.len());
 
     let deserialized: SystemTime =
-        bincode::deserialize(&serialized).expect("Failed to deserialize SystemTime");
+        rmp_serde::from_slice(&serialized).expect("Failed to deserialize SystemTime");
     // SystemTime may not implement Eq, so just check it doesn't panic
     println!(
         "DEBUG: SystemTime deserialized successfully: {:?}",
@@ -112,11 +112,11 @@ fn test_bincode_tdgscore_serialization() {
         has_contract_coverage: false,
     };
 
-    let serialized = bincode::serialize(&score).expect("Failed to serialize TdgScore");
+    let serialized = rmp_serde::to_vec(&score).expect("Failed to serialize TdgScore");
     println!("DEBUG: TdgScore serialized to {} bytes", serialized.len());
 
     let deserialized: TdgScore =
-        bincode::deserialize(&serialized).expect("Failed to deserialize TdgScore");
+        rmp_serde::from_slice(&serialized).expect("Failed to deserialize TdgScore");
     assert_eq!(deserialized.total, score.total);
     println!("DEBUG: TdgScore deserialized successfully");
 }
@@ -138,14 +138,14 @@ fn test_bincode_fileidentity_serialization() {
         modified_time: SystemTime::now(),
     };
 
-    let serialized = bincode::serialize(&identity).expect("Failed to serialize FileIdentity");
+    let serialized = rmp_serde::to_vec(&identity).expect("Failed to serialize FileIdentity");
     println!(
         "DEBUG: FileIdentity serialized to {} bytes",
         serialized.len()
     );
 
     let deserialized: FileIdentity =
-        bincode::deserialize(&serialized).expect("Failed to deserialize FileIdentity");
+        rmp_serde::from_slice(&serialized).expect("Failed to deserialize FileIdentity");
     assert_eq!(deserialized.size_bytes, identity.size_bytes);
     println!("DEBUG: FileIdentity deserialized successfully");
 }
