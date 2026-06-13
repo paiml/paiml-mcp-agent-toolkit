@@ -133,7 +133,7 @@ pub(crate) fn process_diagnostic(
         }
 
         // Skip non-Rust files (config files, etc.)
-        if !file_path.extension().is_some_and(|ext| ext == "rs") {
+        if file_path.extension().is_none_or(|ext| ext != "rs") {
             return;
         }
 

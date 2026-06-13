@@ -28,7 +28,7 @@ pub fn detect_cb148_spec_work_gaps(project_path: &Path) -> Vec<CbPatternViolatio
 
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.extension().map_or(true, |e| e != "md") {
+        if path.extension().is_none_or(|e| e != "md") {
             continue;
         }
         let content = match std::fs::read_to_string(&path) {

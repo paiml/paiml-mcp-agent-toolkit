@@ -458,11 +458,11 @@ mod property_tests {
             code.push_str(&format!("fn function_{}() {{}}\n", i));
         }
 
-        if seed % 3 == 0 {
+        if seed.is_multiple_of(3) {
             code.push_str("pub struct TestStruct { field: u32 }\n");
         }
 
-        if seed % 5 == 0 {
+        if seed.is_multiple_of(5) {
             code.push_str("enum TestEnum { Variant1, Variant2 }\n");
         }
 

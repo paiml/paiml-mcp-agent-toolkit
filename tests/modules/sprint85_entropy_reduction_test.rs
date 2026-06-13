@@ -323,7 +323,7 @@ fn should_exclude_path(path_str: &str, exclude_pattern: &Option<String>) -> bool
 fn should_include_path(path_str: &str, include_pattern: &Option<String>) -> bool {
     include_pattern
         .as_ref()
-        .map_or(true, |pattern| path_str.contains(pattern))
+        .is_none_or(|pattern| path_str.contains(pattern))
 }
 
 /// Test helper: Check if directory should be traversed

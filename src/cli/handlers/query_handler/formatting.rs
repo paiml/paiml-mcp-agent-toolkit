@@ -31,7 +31,7 @@ pub(super) fn emit_query_output(
 ) -> anyhow::Result<()> {
     if results.is_empty()
         && raw_results.is_empty()
-        && git_data.as_ref().map_or(true, |(hits, _)| hits.is_empty())
+        && git_data.as_ref().is_none_or(|(hits, _)| hits.is_empty())
     {
         eprintln!("No matching functions found for: {}", query);
         return Ok(());

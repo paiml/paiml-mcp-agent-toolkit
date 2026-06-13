@@ -75,7 +75,7 @@ fn check_ci_workflows(project_path: &Path, violations: &mut Vec<CbPatternViolati
 
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.extension().map_or(true, |e| e != "yml" && e != "yaml") {
+        if path.extension().is_none_or(|e| e != "yml" && e != "yaml") {
             continue;
         }
         let content = match std::fs::read_to_string(&path) {

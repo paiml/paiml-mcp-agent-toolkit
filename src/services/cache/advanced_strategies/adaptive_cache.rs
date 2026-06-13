@@ -410,19 +410,19 @@ where
         // Clean L1
         {
             let mut cache = self.l1_cache.write();
-            cache.retain(|_, entry| entry.expires_at.map_or(true, |exp| exp > now));
+            cache.retain(|_, entry| entry.expires_at.is_none_or(|exp| exp > now));
         }
 
         // Clean L2
         {
             let mut cache = self.l2_cache.write();
-            cache.retain(|_, entry| entry.expires_at.map_or(true, |exp| exp > now));
+            cache.retain(|_, entry| entry.expires_at.is_none_or(|exp| exp > now));
         }
 
         // Clean L3
         {
             let mut cache = self.l3_cache.write();
-            cache.retain(|_, entry| entry.expires_at.map_or(true, |exp| exp > now));
+            cache.retain(|_, entry| entry.expires_at.is_none_or(|exp| exp > now));
         }
 
         Ok(())

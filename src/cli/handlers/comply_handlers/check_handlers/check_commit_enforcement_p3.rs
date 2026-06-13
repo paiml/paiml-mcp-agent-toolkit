@@ -119,7 +119,7 @@ pub(crate) fn check_svg_contract(project_path: &Path) -> ComplianceCheck {
         };
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().map_or(true, |e| e != "svg") || !path.is_file() {
+            if path.extension().is_none_or(|e| e != "svg") || !path.is_file() {
                 continue;
             }
             svg_count += 1;
@@ -258,7 +258,7 @@ pub(crate) fn check_verification_ratchet(project_path: &Path) -> ComplianceCheck
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        if !path.is_file() || path.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+        if !path.is_file() || path.extension().is_none_or(|e| e != "yaml" && e != "yml") {
             continue;
         }
         if let Ok(content) = fs::read_to_string(path) {

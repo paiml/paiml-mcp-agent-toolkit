@@ -98,7 +98,7 @@ impl SimpleGraph {
                 let neighbor = NodeIndex(neighbor_idx);
                 let new_dist = dist + 1;
 
-                let is_better = distances.get(&neighbor).map_or(true, |&d| new_dist < d);
+                let is_better = distances.get(&neighbor).is_none_or(|&d| new_dist < d);
 
                 if is_better {
                     distances.insert(neighbor, new_dist);

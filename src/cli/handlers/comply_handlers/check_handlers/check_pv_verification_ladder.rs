@@ -156,7 +156,7 @@ pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceChec
     if let Ok(entries) = std::fs::read_dir(&contracts_dir) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.extension().map_or(true, |e| e != "yaml") {
+            if p.extension().is_none_or(|e| e != "yaml") {
                 continue;
             }
             if p.file_name()
@@ -402,7 +402,7 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
         if !p.is_file() {
             continue;
         }
-        if p.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+        if p.extension().is_none_or(|e| e != "yaml" && e != "yml") {
             continue;
         }
         if p.file_name()

@@ -318,7 +318,7 @@ fn create_test_record(path: &str, score: f32, grade: Grade) -> FullTdgRecord {
             analysis_duration_ms: 5 + (hash.as_bytes()[0] % 20) as u64,
             language_confidence: 0.95 + (hash.as_bytes()[1] % 5) as f32 * 0.01,
             analysis_timestamp: SystemTime::now(),
-            cache_hit: hash.as_bytes()[2] % 3 == 0,
+            cache_hit: hash.as_bytes()[2].is_multiple_of(3),
         },
         git_context: None,
     }

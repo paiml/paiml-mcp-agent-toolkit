@@ -60,7 +60,7 @@ impl PolyglotDetector {
     fn should_skip_directory(&self, path: &Path) -> bool {
         path.file_name()
             .and_then(|n| n.to_str())
-            .map_or(true, |name| {
+            .is_none_or(|name| {
                 matches!(
                     name,
                     ".git" | "node_modules" | "target" | "__pycache__" | ".idea" | ".vscode"
