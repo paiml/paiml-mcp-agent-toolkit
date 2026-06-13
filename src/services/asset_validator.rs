@@ -206,7 +206,7 @@ fn validate_svg(project_path: &Path) -> AssetValidationResult {
         if let Ok(entries) = std::fs::read_dir(&dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.extension().map_or(true, |e| e != "svg") || !path.is_file() {
+                if path.extension().is_none_or(|e| e != "svg") || !path.is_file() {
                     continue;
                 }
                 count += 1;

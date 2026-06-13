@@ -254,7 +254,7 @@ fn extract_local_cache_name(line: &str) -> Option<&str> {
                 && rhs[g.len()..]
                     .chars()
                     .next()
-                    .map_or(true, |c| c == ' ' || c == '\n'))
+                    .is_none_or(|c| c == ' ' || c == '\n'))
         {
             return Some(*g);
         }

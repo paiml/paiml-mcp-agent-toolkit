@@ -1,8 +1,8 @@
 [package]
 name = "pmat"
-version = "3.19.0"
+version = "3.19.1"
 edition = "2021"
-rust-version = "1.80.0"
+rust-version = "1.95.0"
 authors = ["Pragmatic AI Labs"]
 description = "PMAT - Zero-config AI context generation and code quality toolkit (CLI, MCP, HTTP)"
 homepage = "https://paiml.com"

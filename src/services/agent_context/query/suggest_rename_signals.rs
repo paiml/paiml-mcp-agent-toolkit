@@ -166,7 +166,7 @@ pub(crate) fn try_function_theme(entries: &[&FunctionEntry]) -> Option<(String, 
     let total = fn_entries.len();
     let mut best: Option<(&str, usize)> = None;
     for (keyword, count) in &keyword_counts {
-        if best.map_or(true, |(_, bc)| *count > bc) {
+        if best.is_none_or(|(_, bc)| *count > bc) {
             best = Some((keyword, *count));
         }
     }
@@ -258,7 +258,7 @@ pub(crate) fn try_doc_comment_consensus(
     let total = docs.len();
     let mut best: Option<(String, usize)> = None;
     for (word, count) in &word_counts {
-        if best.as_ref().map_or(true, |(_, bc)| count > bc) {
+        if best.as_ref().is_none_or(|(_, bc)| count > bc) {
             best = Some((word.clone(), *count));
         }
     }

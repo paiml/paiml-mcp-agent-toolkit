@@ -203,7 +203,7 @@ impl<P: EventPersistence> EventStore<P> {
         if let Some(event_ids) = partitions.get(partition_key) {
             event_ids
                 .iter()
-                .filter(|&&id| since.map_or(true, |s| id > s))
+                .filter(|&&id| since.is_none_or(|s| id > s))
                 .filter_map(|id| events.get(id).cloned())
                 .collect()
         } else {

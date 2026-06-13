@@ -172,7 +172,7 @@ fn pagerank_iteration(
 
     // Dangling nodes: distribute their rank evenly to all nodes
     let dangling_sum: f32 = (0..num_functions)
-        .filter(|idx| calls.get(idx).map_or(true, |c| c.is_empty()))
+        .filter(|idx| calls.get(idx).is_none_or(|c| c.is_empty()))
         .map(|idx| pagerank[idx])
         .sum();
     let dangling_contrib = damping * dangling_sum / num_functions as f32;

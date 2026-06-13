@@ -204,7 +204,7 @@ pub(crate) fn check_cli_arg_contracts(project_path: &Path) -> ComplianceCheck {
         if !path.is_file() {
             continue;
         }
-        if !path.extension().is_some_and(|e| e == "rs") {
+        if path.extension().is_none_or(|e| e != "rs") {
             continue;
         }
         // Skip test files
@@ -448,7 +448,7 @@ pub(crate) fn check_mcp_schema_contracts(project_path: &Path) -> ComplianceCheck
         if !path.is_file() {
             continue;
         }
-        if !path.extension().is_some_and(|e| e == "rs") {
+        if path.extension().is_none_or(|e| e != "rs") {
             continue;
         }
         let filename = path
@@ -663,7 +663,7 @@ pub(crate) fn check_wasm_ffi_contracts(project_path: &Path) -> ComplianceCheck {
             .filter_map(|e| e.ok())
         {
             let path = entry.path();
-            if !path.is_file() || !path.extension().is_some_and(|e| e == "rs") {
+            if !path.is_file() || path.extension().is_none_or(|e| e != "rs") {
                 continue;
             }
             if path.to_string_lossy().contains("test") {

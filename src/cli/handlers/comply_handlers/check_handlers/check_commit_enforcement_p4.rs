@@ -215,7 +215,7 @@ pub(crate) fn check_no_placeholder_preconditions(project_path: &Path) -> Complia
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        if !path.is_file() || path.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+        if !path.is_file() || path.extension().is_none_or(|e| e != "yaml" && e != "yml") {
             continue;
         }
         if let Ok(content) = fs::read_to_string(path) {

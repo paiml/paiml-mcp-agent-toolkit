@@ -24,7 +24,7 @@ fn collect_contract_equation_names(contracts_dir: &Path) -> Vec<String> {
         return eq_names;
     };
     for entry in entries.flatten() {
-        if entry.path().extension().map_or(true, |e| e != "yaml") {
+        if entry.path().extension().is_none_or(|e| e != "yaml") {
             continue;
         }
         let Ok(content) = std::fs::read_to_string(entry.path()) else {
@@ -259,7 +259,7 @@ fn collect_known_fn_names(
             .into_iter()
             .filter_map(|e| e.ok())
         {
-            if !entry.path().extension().is_some_and(|e| e == "rs") {
+            if entry.path().extension().is_none_or(|e| e != "rs") {
                 continue;
             }
             if let Ok(content) = std::fs::read_to_string(entry.path()) {
@@ -403,7 +403,7 @@ fn count_contract_test_refs(project_path: &Path) -> (usize, usize, usize) {
     if let Ok(entries) = std::fs::read_dir(&contracts_dir) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+            if p.extension().is_none_or(|e| e != "yaml" && e != "yml") {
                 continue;
             }
             if let Ok(content) = std::fs::read_to_string(&p) {
@@ -450,7 +450,7 @@ fn count_contract_test_refs(project_path: &Path) -> (usize, usize, usize) {
             continue;
         }
         for entry in walkdir::WalkDir::new(dir).into_iter().flatten() {
-            if entry.path().extension().map_or(true, |e| e != "rs") {
+            if entry.path().extension().is_none_or(|e| e != "rs") {
                 continue;
             }
             if let Ok(content) = std::fs::read_to_string(entry.path()) {

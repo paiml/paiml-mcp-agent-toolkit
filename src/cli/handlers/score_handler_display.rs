@@ -56,7 +56,7 @@ fn read_latest_composite(metrics_dir: &Path) -> Option<CompositeScore> {
                 if let Ok(content) = std::fs::read_to_string(entry.path()) {
                     if let Ok(score) = serde_json::from_str::<CompositeScore>(&content) {
                         if score.composite > 0.0
-                            && latest.as_ref().map_or(true, |l| score.timestamp > l.timestamp) {
+                            && latest.as_ref().is_none_or(|l| score.timestamp > l.timestamp) {
                                 latest = Some(score);
                             }
                     }

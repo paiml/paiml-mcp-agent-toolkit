@@ -217,7 +217,7 @@ fn find_oversized_files(project_path: &Path, max_lines: usize) -> Result<Vec<Ove
         }
         let path = entry.path();
 
-        if path.extension().map_or(true, |ext| ext != "rs") {
+        if path.extension().is_none_or(|ext| ext != "rs") {
             continue;
         }
 

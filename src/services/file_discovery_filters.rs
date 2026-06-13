@@ -10,7 +10,7 @@ impl ProjectFileDiscovery {
         _classifier: &FileClassifier,
     ) -> bool {
         // Skip directories
-        if entry.file_type().map_or(true, |ft| !ft.is_file()) {
+        if entry.file_type().is_none_or(|ft| !ft.is_file()) {
             return false;
         }
 

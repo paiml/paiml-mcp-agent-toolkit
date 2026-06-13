@@ -271,7 +271,7 @@ fn compute_contract_drift(path: &Path) -> (usize, usize, f64) {
 
     for entry in entries.flatten() {
         let p = entry.path();
-        if p.extension().map_or(true, |e| e != "yaml") { continue; }
+        if p.extension().is_none_or(|e| e != "yaml") { continue; }
         if p.file_name().is_some_and(|n| n.to_string_lossy().contains("binding")) { continue; }
 
         let Ok(yaml_meta) = std::fs::metadata(&p) else { continue };
@@ -297,12 +297,12 @@ fn compute_contract_drift(path: &Path) -> (usize, usize, f64) {
 
         for sdir in &src_dirs {
             for e in walkdir::WalkDir::new(sdir).into_iter().flatten() {
-                if !e.path().extension().is_some_and(|ext| ext == "rs") { continue; }
+                if e.path().extension().is_none_or(|ext| ext != "rs") { continue; }
                 if let Ok(content) = std::fs::read_to_string(e.path()) {
                     if content.contains(&search_pattern) {
                         if let Ok(meta) = std::fs::metadata(e.path()) {
                             if let Ok(mtime) = meta.modified() {
-                                if newest_src.map_or(true, |n| mtime > n) {
+                                if newest_src.is_none_or(|n| mtime > n) {
                                     newest_src = Some(mtime);
                                 }
                             }
@@ -338,7 +338,7 @@ fn compute_file_health(path: &Path) -> f64 {
     let mut over_1000 = 0usize;
 
     for entry in walkdir::WalkDir::new(&src_dir).into_iter().flatten() {
-        if entry.path().extension().map_or(true, |e| e != "rs") {
+        if entry.path().extension().is_none_or(|e| e != "rs") {
             continue;
         }
         total += 1;

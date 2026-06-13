@@ -159,7 +159,7 @@ async fn analyze_single_file_for_context(
     if let Ok(file_context) = analysis_functions::analyze_single_file(file_path).await {
         let ast_time = file_start.elapsed();
 
-        if *file_count % 10 == 0 {
+        if (*file_count).is_multiple_of(10) {
             info!(
                 "Progress: {} files processed. Last file - AST: {:?}",
                 file_count, ast_time

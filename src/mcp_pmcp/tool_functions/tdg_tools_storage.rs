@@ -25,9 +25,18 @@ fn create_storage_backend(
             Ok(Box::new(InMemoryBackend::new()))
         }
         Some("libsql") | None => {
-            // Default to libsql (modern SQLite-compatible database)
+            // Default to libsql (modern SQLite-compatible database).
+            // Use a per-call unique path: a single fixed path made parallel
+            // callers race on the same SQLite file (concurrent MCP requests, and
+            // the libsql/default tests under coverage) → intermittent open
+            // failures. Storage here is per-invocation/ephemeral, so a unique
+            // file per call is correct and removes the contention.
             use crate::tdg::storage_backend::LibsqlBackend;
-            let temp_path = std::env::temp_dir().join("tdg-mcp-libsql.db");
+            use std::sync::atomic::{AtomicU64, Ordering};
+            static DB_SEQ: AtomicU64 = AtomicU64::new(0);
+            let seq = DB_SEQ.fetch_add(1, Ordering::Relaxed);
+            let temp_path = std::env::temp_dir()
+                .join(format!("tdg-mcp-libsql-{}-{seq}.db", std::process::id()));
             Ok(Box::new(LibsqlBackend::new(&temp_path)?))
         }
         Some(backend) => Err(anyhow::anyhow!(

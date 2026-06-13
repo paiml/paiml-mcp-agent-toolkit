@@ -251,7 +251,7 @@ pub(crate) fn check_spec_number_accuracy(project_path: &Path) -> ComplianceCheck
         if let Ok(entries) = fs::read_dir(&components_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.extension().map_or(true, |e| e != "md") {
+                if path.extension().is_none_or(|e| e != "md") {
                     continue;
                 }
                 total_specs += 1;

@@ -176,7 +176,7 @@ pub(crate) fn check_codegen_compiles(project_path: &Path) -> ComplianceCheck {
         if let Ok(entries) = fs::read_dir(&contracts_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
-                if path.extension().map_or(true, |e| e != "rs") {
+                if path.extension().is_none_or(|e| e != "rs") {
                     continue;
                 }
                 if let Ok(content) = fs::read_to_string(&path) {
@@ -323,7 +323,7 @@ fn refresh_index_contract_dir(
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        if !path.is_file() || path.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+        if !path.is_file() || path.extension().is_none_or(|e| e != "yaml" && e != "yml") {
             continue;
         }
         // Skip binding.yaml itself (already parsed).
@@ -500,7 +500,7 @@ fn refresh_write_verification_levels(project_path: &Path, pmat_dir: &Path) -> an
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        if !path.is_file() || path.extension().map_or(true, |e| e != "yaml" && e != "yml") {
+        if !path.is_file() || path.extension().is_none_or(|e| e != "yaml" && e != "yml") {
             continue;
         }
         let Ok(content) = fs::read_to_string(path) else {

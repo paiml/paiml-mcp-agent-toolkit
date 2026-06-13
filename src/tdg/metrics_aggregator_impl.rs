@@ -115,7 +115,7 @@ impl MetricsAggregator {
         // Calculate median
         let mut sorted = values.to_vec();
         sorted.sort_by(|a, b| a.total_cmp(b));
-        let median = if count % 2 == 0 {
+        let median = if count.is_multiple_of(2) {
             (sorted[count / 2 - 1] + sorted[count / 2]) / 2.0
         } else {
             sorted[count / 2]
