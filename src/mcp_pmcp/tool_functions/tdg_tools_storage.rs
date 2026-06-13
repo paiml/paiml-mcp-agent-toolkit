@@ -16,6 +16,7 @@ pub async fn tdg_analyze_with_storage(
 }
 
 /// Create storage backend based on the provided backend type
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 fn create_storage_backend(
     backend_type: Option<&str>,
 ) -> Result<Box<dyn crate::tdg::storage_backend::StorageBackend>> {

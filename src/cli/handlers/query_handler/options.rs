@@ -266,13 +266,34 @@ pub(super) fn build_query_options(
 
 // ── Filters ─────────────────────────────────────────────────────────────────
 
-/// Check if a result looks like a test function
+/// Check if a result looks like a test function.
+///
+/// Mirrors `is_test_chunk` (the index-build filter): besides `test_`-prefixed
+/// names and `tests/` dirs, it catches mid-filename variants like
+/// `*_tests_basic.rs` (commonly `include!()`-ed into a #[cfg(test)] module, so
+/// they lack a standalone test attribute) and test-helper prefixes.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(super) fn is_test_function(r: &QueryResult) -> bool {
     r.function_name.starts_with("test_")
-        || r.file_path.starts_with("tests/")
-        || r.file_path.contains("/tests/")
-        || r.file_path.contains("_tests.")
-        || r.file_path.contains("_test.")
+        || r.function_name.starts_with("setup_test")
+        || r.function_name.starts_with("create_test")
+        || is_test_path(&r.file_path)
+}
+
+/// Path-based test-file heuristic, shared by `is_test_function` and the raw
+/// (literal/regex) search post-filter. Catches `tests/` dirs, `_test.rs`, and
+/// mid-filename `_tests_basic.rs` / `_test_helpers.rs` (`include!()`-ed into a
+/// #[cfg(test)] module, so they have no standalone test attribute).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+pub(super) fn is_test_path(file_path: &str) -> bool {
+    file_path.starts_with("tests/")
+        || file_path.starts_with("test/")
+        || file_path.contains("/tests/")
+        || file_path.contains("/test/")
+        || file_path.contains("_tests") // _tests.rs, _tests_basic.rs, …
+        || file_path.contains("_test.")
+        || file_path.contains("_test_")
+        || file_path.contains("fixtures") // test-support fixtures (e.g. *_coverage_fixtures.rs)
 }
 
 /// Normalize a definition type filter string to the canonical form
@@ -353,5 +374,45 @@ pub(super) fn apply_post_enrichment_sort(results: &mut [QueryResult], rank_by: &
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod is_test_path_tests {
+    use super::is_test_path;
+
+    #[test]
+    fn excludes_standard_test_paths() {
+        assert!(is_test_path("tests/foo.rs"));
+        assert!(is_test_path("src/services/foo/tests/bar.rs"));
+        assert!(is_test_path("src/foo_test.rs"));
+        assert!(is_test_path("src/foo_tests.rs"));
+    }
+
+    #[test]
+    fn excludes_include_macro_test_fragments() {
+        // The original --exclude-tests leak: include!()-ed test fragments whose
+        // name has `_tests_` mid-filename (no standalone #[cfg(test)]).
+        assert!(is_test_path(
+            "src/ast/polyglot/language_mapper_tests_basic.rs"
+        ));
+        assert!(is_test_path("src/foo/bar_test_helpers.rs"));
+    }
+
+    #[test]
+    fn excludes_fixture_support_files() {
+        assert!(is_test_path(
+            "src/services/context_graph_coverage_fixtures.rs"
+        ));
+        assert!(is_test_path("fixtures/typescript/calculator.ts"));
+    }
+
+    #[test]
+    fn keeps_production_source() {
+        assert!(!is_test_path("src/lib.rs"));
+        assert!(!is_test_path("src/services/agent_context/query/options.rs"));
+        assert!(!is_test_path("src/cli/handlers/query_handler.rs"));
+        // `latest.rs` must not trip the `_test`/`_tests` checks.
+        assert!(!is_test_path("src/services/latest.rs"));
     }
 }

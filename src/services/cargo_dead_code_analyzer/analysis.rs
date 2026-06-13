@@ -48,6 +48,7 @@ impl CargoDeadCodeAnalyzer {
     /// These attributes are explicit admissions that code is unused.
     /// Detecting them is fast (~10ms for large projects) and catches
     /// code that developers knowingly left as dead.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     fn scan_for_suppression_attributes(&self) -> Result<Vec<(PathBuf, DeadItem)>> {
         use regex::Regex;
         use std::fs;
@@ -64,15 +65,24 @@ impl CargoDeadCodeAnalyzer {
             r#"^\s*(?:pub\s+)?(?:async\s+)?(?:const\s+)?(?:static\s+)?(?:unsafe\s+)?(fn|struct|enum|type|trait|mod|const|static)\s+(\w+)"#
         ).expect("Invalid regex");
 
-        // Walk through all Rust files
-        for entry in walkdir::WalkDir::new(&self.project_path)
-            .max_depth(self.max_depth)
-            .into_iter()
+        // Walk through all Rust files. Use ignore::WalkBuilder (not raw walkdir)
+        // so the walk respects .gitignore and skips hidden directories — matching
+        // the complexity/function-index analyzers. The raw walkdir only skipped
+        // `target/`, so it descended into hidden trees like `.claude/worktrees/`
+        // (git-worktree copies), inflating the analyzed file count ~60x and
+        // surfacing worktree duplicates as dead code.
+        for entry in ignore::WalkBuilder::new(&self.project_path)
+            .max_depth(Some(self.max_depth))
+            .hidden(true)
+            .git_ignore(true)
+            .git_global(true)
+            .build()
             .filter_map(std::result::Result::ok)
         {
             let path = entry.path();
 
-            // Skip target directory and non-Rust files
+            // Belt-and-suspenders: also skip target/ explicitly (covered by
+            // git_ignore inside a repo, but harmless otherwise).
             if path.starts_with(self.project_path.join("target")) {
                 continue;
             }

@@ -177,6 +177,51 @@ count, same top entries).
 J=$(pmat analyze complexity --top-files 3 --format json 2>/dev/null | jq '.files? // .summary?'); echo "json summary: $J"
 ```
 
+### P7. Dead-code file-count sanity (v3.19.2 regression class)
+`analyze dead-code`'s `total_files_analyzed` must roughly match the real source
+file count (what `analyze complexity` reports) — NOT a multiple of it — and must
+NOT include hidden/ignored trees like `.claude/worktrees/`. (A raw `walkdir` once
+descended into git-worktree copies, inflating the count ~60×.) Clear the cache
+first so this measures live behavior.
+```bash
+rm -f .pmat/dead-code-cache.json
+DC=$(pmat analyze dead-code --format json 2>/dev/null | jq '.summary.total_files_analyzed // .total_files'); \
+CX=$(pmat analyze complexity --format json 2>/dev/null | jq '.summary.total_files // .total_files_analyzed // empty'); \
+echo "dead-code files=$DC vs complexity files=$CX (must be same order of magnitude; FAIL if DC ≫ CX or any result path contains .claude/worktrees)"
+pmat analyze dead-code --top-files 5 --format json 2>/dev/null | jq -r '.files[].path' | grep -q '.claude/worktrees' && echo "P7 FAIL (worktree paths in results)" || echo "P7 PASS"
+```
+
+### P8. `--exclude-tests` actually excludes test code (v3.19.2 regression class)
+With `--exclude-tests`, no result may come from a test file or test helper —
+including `include!()`-ed `*_tests_basic.rs` fragments, `setup_test*`/`create_test*`
+helpers, and `*fixtures*` support files — across semantic, `--literal`, and
+`--coverage-gaps` modes.
+```bash
+for q in "pmat query --literal unwrap() --limit 12 --exclude-tests" "pmat query --coverage-gaps --limit 15 --exclude-tests"; do
+  BAD=$($q 2>/dev/null | grep -ioE 'create_test[a-z_]*|setup_test[a-z_]*|_tests_[a-z]+\.rs|coverage_fixtures\.rs|/tests/' | sort -u)
+  [ -z "$BAD" ] && echo "P8 PASS ($q)" || echo "P8 FAIL ($q leaked: $BAD)"
+done
+```
+(Known limitation, not a P8 FAIL: functions inside `#[cfg(test)] mod` blocks in
+otherwise-production files with non-test-prefixed names still leak — needs
+AST-level attribute detection in the index.)
+
+## Gate 6: Provable-contract coverage (policy)
+
+**Every fix in this repo must carry a provable contract** —
+`#[provable_contracts_macros::contract("pmat-core.yaml", equation = "...")]` on
+the changed/added functions (`check_compliance` for the never-panics/valid-result
+invariant; `path_exists`, `score_range`, `non_empty_index`, etc. where apter).
+Spot-check that functions touched by the work-in-progress diff carry one:
+```bash
+# Functions changed on the branch that lack a contract attribute on the line above:
+git diff --name-only origin/master... | grep '\.rs$' | while read f; do
+  grep -nE '^\s*(pub(\([^)]*\))?\s+)?(async\s+)?fn ' "$f" 2>/dev/null
+done | head   # review: each fix fn should have a #[...contract(...)] directly above
+```
+PASS if the functions implementing the fixes are annotated; the CI gate
+(`pmat verify` / `pv`) validates the contracts themselves.
+
 ## Gate 5: Find Next Work
 
 ```bash
@@ -193,12 +238,12 @@ them in this read-only audit).
 
 After all gates, provide:
 
-1. **Summary table**: Gate 1–5 | PASS/FAIL/SKIP | evidence
+1. **Summary table**: Gate 1–6 | PASS/FAIL/SKIP | evidence
 2. **Command grid**: N commands | PASS / SKIP / FAIL counts
-3. **Protocols**: P1–P6 | PASS/FAIL
-4. **GO** iff Gate 1 (build), Gate 3 (`pmat verify` ok:true), and all protocols pass, and the command grid has zero FAIL.
+3. **Protocols**: P1–P8 | PASS/FAIL
+4. **GO** iff Gate 1 (build), Gate 3 (`pmat verify` ok:true), and all protocols pass, the command grid has zero FAIL, and fix functions carry provable contracts (Gate 6).
 5. **WARN** for soft issues only (SKIPs, cosmetic output, pre-existing latent findings) — no panics, no integrity violations.
-6. **FAIL** on: build/install failure, `pmat verify` red, any command panic, JSON-impurity (P1), count/rows contradiction (P2), out-of-range score (P3), phantom-subcommand silent success (P5), or exit-code lies.
+6. **FAIL** on: build/install failure, `pmat verify` red, any command panic, JSON-impurity (P1), count/rows contradiction (P2), out-of-range score (P3), phantom-subcommand silent success (P5), dead-code worktree inflation (P7), `--exclude-tests` leaking test files (P8), or exit-code lies.
 
 If bugs found, file them:
 ```bash

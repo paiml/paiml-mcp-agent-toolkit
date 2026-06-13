@@ -48,6 +48,11 @@ pub(crate) fn is_test_chunk(chunk_name: &str, file_path: &str) -> bool {
         || file_path.starts_with("test/")
         || file_path.ends_with("_test.rs")
         || file_path.ends_with("_tests.rs")
+        // Mid-filename variants (`*_tests_basic.rs`, `*_test_helpers.rs`): these
+        // are commonly `include!()`-ed into a #[cfg(test)] module, so the file
+        // has no standalone test attribute and the `ends_with` checks miss it.
+        || file_path.contains("_tests_")
+        || file_path.contains("_test_")
         || file_path.ends_with("_test.cpp")
         || file_path.ends_with("_test.cc")
         || file_path.ends_with("_test.c")
@@ -62,8 +67,11 @@ pub(crate) fn is_test_chunk(chunk_name: &str, file_path: &str) -> bool {
     {
         return true;
     }
-    // Function-level: skip test_ prefixed and TEST_F/TEST/TEST_P (gtest)
+    // Function-level: skip test_ prefixed, common test-helper prefixes, and
+    // gtest TEST_F/TEST_P/TEST(.
     if chunk_name.starts_with("test_")
+        || chunk_name.starts_with("setup_test")
+        || chunk_name.starts_with("create_test")
         || chunk_name.starts_with("TEST_F")
         || chunk_name.starts_with("TEST_P")
         || (chunk_name.starts_with("TEST") && chunk_name.len() > 4 && chunk_name.as_bytes()[4] == b'(')

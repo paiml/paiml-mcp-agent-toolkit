@@ -56,11 +56,7 @@ pub(super) fn handle_raw_search_mode(
 ) -> anyhow::Result<()> {
     let ctx_after = context_lines.or(after_context).unwrap_or(0);
     let ctx_before = context_lines.or(before_context).unwrap_or(0);
-    // When --exclude-tests is set in raw mode, filter test file paths
-    let mut excl_files: Vec<&str> = exclude_file.iter().map(|s| s.as_str()).collect();
-    if exclude_tests && excl_files.is_empty() {
-        excl_files.push("test");
-    }
+    let excl_files: Vec<&str> = exclude_file.iter().map(|s| s.as_str()).collect();
     let raw_opts = RawSearchOptions {
         pattern: query,
         literal,
@@ -75,7 +71,38 @@ pub(super) fn handle_raw_search_mode(
         count_mode: count,
     };
     let output = raw_search(project_path, &raw_opts).map_err(|e| anyhow::anyhow!("{}", e))?;
+    // --exclude-tests in raw mode: filter results from test files by path
+    // heuristic. The glob exclude can't reliably express nested test paths
+    // (e.g. src/**/foo_tests_basic.rs), so filter the output directly.
+    let output = if exclude_tests {
+        drop_test_file_results(output)
+    } else {
+        output
+    };
     print_raw_search_output(&output, format, quiet)
+}
+
+/// Drop raw-search results originating from test files (for `--exclude-tests`).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+fn drop_test_file_results(output: RawSearchOutput) -> RawSearchOutput {
+    use super::options::is_test_path;
+    match output {
+        RawSearchOutput::Files(files) => {
+            RawSearchOutput::Files(files.into_iter().filter(|f| !is_test_path(f)).collect())
+        }
+        RawSearchOutput::Counts(counts) => RawSearchOutput::Counts(
+            counts
+                .into_iter()
+                .filter(|c| !is_test_path(&c.file_path))
+                .collect(),
+        ),
+        RawSearchOutput::Lines(lines) => RawSearchOutput::Lines(
+            lines
+                .into_iter()
+                .filter(|l| !is_test_path(&l.file_path))
+                .collect(),
+        ),
+    }
 }
 
 fn print_raw_search_output(
