@@ -15,7 +15,6 @@
 //! - Ware (2013): "Information Visualization: Perception for Design"
 
 use anyhow::{Context as _, Result};
-use batuta_common::display::WithDimensions;
 use trueno_viz::color::Rgba;
 use trueno_viz::output::{TerminalEncoder, TerminalMode};
 use trueno_viz::plots::{ForceGraph, GraphEdge, GraphNode};

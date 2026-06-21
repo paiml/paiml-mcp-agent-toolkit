@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.19.2"
+version = "3.20.0"
 edition = "2021"
 rust-version = "1.95.0"
 authors = ["Pragmatic AI Labs"]
@@ -31,7 +31,7 @@ required-features = ["mcp-integration"]
 batuta-common = "0.1"
 
 # Organizational Intelligence Plugin - Phase 4 integration
-organizational-intelligence-plugin = { package = "aprender-orchestrate", version = "0.41", optional = true }  # 0.41 removed the OIP analyzer/report/summarizer API; `pmat org analyze` is stubbed (see org_handlers.rs)
+organizational-intelligence-plugin = { package = "aprender-orchestrate", version = "0.50", optional = true }  # 0.41 removed the OIP analyzer/report/summarizer API; `pmat org analyze` is stubbed (see org_handlers.rs)
 
 # Async runtime
 # Sprint 46 Phase 4: Removed "io-std", "signal", "process" features (saves 180-280 KB)
@@ -64,17 +64,17 @@ libc = { version = "0.2", optional = true }
 # Migration to aprender complete (Sprint 45)
 # Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
 # See: docs/specifications/aprender-ml-integration.md
-aprender = "0.41"  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
+aprender = "0.50"  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
 
 # High-Performance Compute (SIMD/GPU)
-aprender-compute = { version = "0.41", optional = true }
-aprender-db = { version = "0.41", optional = true, default-features = false }
+aprender-compute = { version = "0.50", optional = true }
+aprender-db = { version = "0.50", optional = true, default-features = false }
 
 # Semantic Search Stack (Pure Rust - Zero API Keys)
 # See: docs/specifications/semantic-search-feature.md
-aprender-graph = { version = "0.41", default-features = false }  # CSR graph, PageRank, Louvain
-aprender-rag = { version = "0.41", optional = true }  # RAG pipeline
-aprender-viz = { version = "0.41", optional = true, features = ["terminal", "graph"] }
+aprender-graph = { version = "0.50", default-features = false }  # CSR graph, PageRank, Louvain
+aprender-rag = { version = "0.50", optional = true }  # RAG pipeline
+aprender-viz = { version = "0.50", optional = true, features = ["terminal", "graph"] }
 
 # Analytics GPU dependencies (optional, gated by analytics-gpu feature)
 # Issue #79: Feature-gated architecture to prevent +3.8 MB binary bloat
@@ -142,7 +142,7 @@ syntect = { version = "5.2", default-features = false, features = ["default-fanc
 # Storage
 # libsql = "0.9.24"  # REMOVED: Not used directly (migration to rusqlite complete)
 lz4_flex = { version = "0.13", optional = true }  # Legacy index format
-aprender-zram-core = { version = "0.41", optional = true }
+aprender-zram-core = { version = "0.50", optional = true }
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }  # SQLite with bundled library
 # sled = REMOVED (unmaintained, migrated to libsql/trueno-db)
 # rocksdb = { version = "0.22", default-features = false, features = ["zstd"] }
@@ -263,7 +263,7 @@ warp = { version = "0.4", optional = true, features = ["server"] }  # 0.4 gates 
 # presentar-terminal provides: TuiApp, DiffRenderer, BrailleGraph, Meter, Table
 # Benefits: Jidoka verification gates, zero-allocation rendering, 95% coverage
 # presentar-terminal = { version = "0.3.0", path = "../../presentar/crates/presentar-terminal", optional = true }  # Not yet on crates.io
-aprender-present-core = { version = "0.41", optional = true }
+aprender-present-core = { version = "0.50", optional = true }
 # crossterm 0.28 matches presentar-terminal's version (ratatui REMOVED)
 crossterm = { version = "0.29", optional = true }
 sys-info = { version = "0.9.1", optional = true }
@@ -283,11 +283,11 @@ sourcemap = { version = "9.0", optional = true }  # Only needed for deep-wasm so
 # ahash = "0.8"  # REMOVED: cargo-machete verified unused
 prettyplease = { version = "0.2.37", optional = true }
 fs2 = { version = "0.4.3", optional = true }
-aprender-contracts-macros = "0.49"
+aprender-contracts-macros = "0.50"
 
 
 [dev-dependencies]
-aprender-contracts = "0.49"
+aprender-contracts = "0.50"
 rmp-serde = "1.3"  # MessagePack codec for integration tests (replaces bincode after its removal)
 dhat = "0.3"
 tokio-test = "0.4"
