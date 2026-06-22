@@ -71,6 +71,20 @@ git clone https://github.com/paiml/paiml-mcp-agent-toolkit
 cd paiml-mcp-agent-toolkit && cargo install --path .
 ```
 
+If you get an error like 
+
+```bash
+% cargo install pmat
+    Updating crates.io index
+error: cannot install package `pmat 3.20.0`, it requires rustc 1.95.0 or newer, while the currently active rustc version is 1.94.1
+`pmat 3.19.0` supports rustc 1.80.0
+```
+Then just update rust with 
+
+```bash
+rustup update stable
+```
+
 ## Usage
 
 ```bash
