@@ -23,9 +23,12 @@ impl Visualizable for VisGraph {
             .map(|(i, _)| *i)
             .collect();
 
-        // Build force graph
+        // Build force graph.
+        // aprender-viz 0.50 removed ForceGraph's `dimensions()` setter; the
+        // layout now uses the default 600x400 framebuffer, which the
+        // TerminalEncoder below downsamples to the terminal grid
+        // (config.width x config.height), so the rendered output is unchanged.
         let mut fg = ForceGraph::new()
-            .dimensions(config.width * 8, config.height * 16) // Scale for pixel rendering
             .iterations(config.iterations)
             .background(config.theme.background_color());
 
