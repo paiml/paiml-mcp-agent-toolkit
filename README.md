@@ -79,7 +79,14 @@ If you get an error like
 error: cannot install package `pmat 3.20.0`, it requires rustc 1.95.0 or newer, while the currently active rustc version is 1.94.1
 `pmat 3.19.0` supports rustc 1.80.0
 ```
-Then just update rust with 
+
+If you are using homebrew on a mac then update with 
+
+```bash
+brew update && brew upgrade rust
+```
+
+If not then just update directly with rustup
 
 ```bash
 rustup update stable
