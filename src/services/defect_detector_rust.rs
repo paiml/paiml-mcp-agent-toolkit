@@ -104,11 +104,24 @@ impl RustDefectDetector {
 
     fn detect_unwraps(&self, content: &str, file_path: &Path) -> Vec<DefectInstance> {
         let mut instances = Vec::new();
+
+        // Honor a file-level (inner) suppression attribute. A developer who has
+        // written `#![allow(clippy::unwrap_used)]` (or the broader
+        // `#![allow(clippy::restriction)]`, the lint group that contains
+        // `unwrap_used`) has explicitly opted these unwraps out of the lint that
+        // owns this policy. Auto-failing such a file would be a false positive,
+        // so mirror clippy's suppression semantics and skip the whole file.
+        if file_allows_unwrap(content) {
+            return instances;
+        }
+
         // Track #[cfg(...)] blocks via brace depth so we can skip .unwrap()
-        // inside conditional compilation code (issue #279).
+        // inside conditional compilation code (issue #279). The same
+        // brace-depth machinery is reused to honor item-level (outer)
+        // `#[allow(clippy::unwrap_used)]` attributes.
         let mut brace_depth: i32 = 0;
-        let mut cfg_entry_depth: Option<i32> = None; // depth when #[cfg] was seen
-        let mut pending_cfg = false;
+        let mut suppress_entry_depth: Option<i32> = None; // depth when #[cfg]/#[allow] was seen
+        let mut pending_suppress = false;
         let mut in_block_comment = false;
 
         for (line_num, line) in content.lines().enumerate() {
@@ -134,33 +147,37 @@ impl RustDefectDetector {
                 continue;
             }
 
-            // Detect #[cfg(...)] attributes — marks the next braced item as cfg-gated
-            if trimmed.starts_with("#[cfg(") || trimmed.starts_with("#[cfg_attr(") {
-                pending_cfg = true;
+            // Detect #[cfg(...)] attributes — marks the next braced item as cfg-gated.
+            // Also honor item-level (outer) #[allow(clippy::unwrap_used)] / clippy::restriction.
+            if trimmed.starts_with("#[cfg(")
+                || trimmed.starts_with("#[cfg_attr(")
+                || attr_line_allows_unwrap(trimmed)
+            {
+                pending_suppress = true;
             }
 
-            // Track brace depth and cfg block boundaries
+            // Track brace depth and suppressed-block boundaries
             for ch in line.chars() {
                 if ch == '{' {
-                    if pending_cfg && cfg_entry_depth.is_none() {
-                        cfg_entry_depth = Some(brace_depth);
-                        pending_cfg = false;
+                    if pending_suppress && suppress_entry_depth.is_none() {
+                        suppress_entry_depth = Some(brace_depth);
+                        pending_suppress = false;
                     }
                     brace_depth += 1;
                 } else if ch == '}' {
                     brace_depth -= 1;
-                    if let Some(entry) = cfg_entry_depth {
+                    if let Some(entry) = suppress_entry_depth {
                         if brace_depth <= entry {
-                            cfg_entry_depth = None;
+                            suppress_entry_depth = None;
                         }
                     }
                 }
             }
 
-            // Skip .unwrap() detection inside #[cfg] blocks — conditional
-            // compilation code may use .unwrap() in feature-gated contexts
-            // where it's acceptable (e.g., GPU init, platform-specific code).
-            if cfg_entry_depth.is_some() {
+            // Skip .unwrap() detection inside #[cfg] blocks (conditional
+            // compilation, e.g. GPU init / platform-specific code) or inside
+            // an item explicitly annotated with #[allow(clippy::unwrap_used)].
+            if suppress_entry_depth.is_some() {
                 continue;
             }
 
@@ -203,6 +220,54 @@ impl Default for RustDefectDetector {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// True if `attrs` (a clippy lint list, e.g. `clippy::unwrap_used, clippy::all`)
+/// suppresses the `unwrap_used` lint. Honors both the specific lint and the
+/// `clippy::restriction` group that contains it. Note: `clippy::all` does NOT
+/// include `unwrap_used` (it lives in the `restriction` group), so it is
+/// intentionally not treated as a suppression here.
+fn allow_list_suppresses_unwrap(attrs: &str) -> bool {
+    attrs.contains("clippy::unwrap_used") || attrs.contains("clippy::restriction")
+}
+
+/// True if the file carries a module/crate-level (inner) attribute
+/// `#![allow(clippy::unwrap_used)]` / `#![allow(clippy::restriction)]`,
+/// which suppresses the unwrap lint for the entire file.
+fn file_allows_unwrap(content: &str) -> bool {
+    for line in content.lines() {
+        let trimmed = line.trim();
+        // Stop scanning once we reach real code: inner attributes must appear
+        // before the first item. Bail out on the first non-attribute,
+        // non-comment, non-blank line for a cheap early exit.
+        if trimmed.is_empty()
+            || trimmed.starts_with("//")
+            || trimmed.starts_with("/*")
+            || trimmed.starts_with('*')
+        {
+            continue;
+        }
+        if trimmed.starts_with("#![allow(") {
+            if allow_list_suppresses_unwrap(trimmed) {
+                return true;
+            }
+            continue;
+        }
+        if trimmed.starts_with("#!") || trimmed.starts_with("#[") {
+            // Other inner/outer attributes (e.g. #![feature], #![deny]) — keep scanning.
+            continue;
+        }
+        // First line of real code reached without finding the allow — done.
+        break;
+    }
+    false
+}
+
+/// True if a single trimmed line is an item-level (outer) attribute
+/// `#[allow(clippy::unwrap_used)]` / `#[allow(clippy::restriction)]` that
+/// suppresses the unwrap lint for the item it precedes.
+fn attr_line_allows_unwrap(trimmed: &str) -> bool {
+    trimmed.starts_with("#[allow(") && allow_list_suppresses_unwrap(trimmed)
 }
 
 /// Strip contents of string literals to prevent false-positive defect detection.
