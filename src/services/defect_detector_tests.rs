@@ -204,6 +204,141 @@ mod tests {
         );
     }
 
+    // Issue: .unwrap() in a file with a module-level #![allow(clippy::unwrap_used)]
+    // suppression must not be auto-failed. The developer has explicitly opted
+    // these unwraps out of the lint that owns this policy (mirrors clippy).
+    #[test]
+    fn test_skips_unwrap_with_file_level_allow() {
+        let detector = RustDefectDetector::new();
+        let code = r#"#![allow(clippy::unwrap_used)]
+
+            fn compute(runs: &[i32]) -> i32 {
+                let last = runs.last().unwrap();
+                let first = runs.first().unwrap();
+                last + first
+            }
+        "#;
+
+        let path = PathBuf::from("src/cli/profile/run.rs");
+        let defects = detector.detect(code, &path);
+
+        assert_eq!(
+            defects.len(),
+            0,
+            "file-level #![allow(clippy::unwrap_used)] must suppress unwrap auto-fail"
+        );
+    }
+
+    // The clippy::restriction group contains unwrap_used, so allowing the group
+    // (#![allow(clippy::restriction)]) also suppresses the lint.
+    #[test]
+    fn test_skips_unwrap_with_file_level_allow_restriction_group() {
+        let detector = RustDefectDetector::new();
+        let code = r#"#![allow(clippy::restriction)]
+
+            fn f(x: Option<i32>) -> i32 {
+                x.unwrap()
+            }
+        "#;
+
+        let path = PathBuf::from("src/lib.rs");
+        let defects = detector.detect(code, &path);
+
+        assert_eq!(
+            defects.len(),
+            0,
+            "#![allow(clippy::restriction)] (group containing unwrap_used) must suppress"
+        );
+    }
+
+    // Item-level (outer) #[allow(clippy::unwrap_used)] suppresses unwrap detection
+    // within the annotated item only.
+    #[test]
+    fn test_skips_unwrap_with_item_level_allow() {
+        let detector = RustDefectDetector::new();
+        let code = r#"
+            #[allow(clippy::unwrap_used)]
+            fn allowed(x: Option<i32>) -> i32 {
+                x.unwrap()
+            }
+
+            fn not_allowed(y: Option<i32>) -> i32 {
+                y.unwrap()
+            }
+        "#;
+
+        let path = PathBuf::from("src/lib.rs");
+        let defects = detector.detect(code, &path);
+
+        // The unwrap in `allowed` is suppressed; the unwrap in `not_allowed` is not.
+        assert_eq!(
+            defects.len(),
+            1,
+            "only the unwrap outside the #[allow] item should be detected"
+        );
+        assert_eq!(defects[0].instances.len(), 1);
+        assert!(
+            defects[0].instances[0].code_snippet.contains("y.unwrap()"),
+            "the detected unwrap should be the one not covered by #[allow]"
+        );
+    }
+
+    // Guard: clippy::all does NOT contain unwrap_used (it is in the restriction
+    // group), so #![allow(clippy::all)] must NOT suppress the unwrap auto-fail.
+    #[test]
+    fn test_clippy_all_does_not_suppress_unwrap() {
+        let detector = RustDefectDetector::new();
+        let code = r#"#![allow(clippy::all, clippy::pedantic)]
+
+            fn f(x: Option<i32>) -> i32 {
+                x.unwrap()
+            }
+        "#;
+
+        let path = PathBuf::from("src/lib.rs");
+        let defects = detector.detect(code, &path);
+
+        assert_eq!(
+            defects.len(),
+            1,
+            "#![allow(clippy::all)] must NOT suppress unwrap_used (different lint group)"
+        );
+    }
+
+    // Regression for the whisper.apr profile/run.rs false positive: a file that
+    // opens with #![allow(clippy::unwrap_used)] then later #![allow(clippy::all)]
+    // and contains real unwraps in non-cfg production code must NOT auto-fail.
+    #[test]
+    fn test_whisper_apr_profile_run_shape_not_failed() {
+        let detector = RustDefectDetector::new();
+        let code = r#"#![allow(clippy::unwrap_used)]
+            #![allow(dead_code)]
+            #![allow(clippy::all, clippy::pedantic)]
+
+            //! module docs
+
+            fn compute_avg(runs: &[i32]) -> Option<i32> {
+                if runs.is_empty() {
+                    return None;
+                }
+                let avg = |f: fn(&i32) -> i32| -> i32 {
+                    runs.iter().map(|r| f(r)).sum::<i32>()
+                };
+                let last = runs.last().unwrap();
+                Some(avg(|r| *r) + last)
+            }
+        "#;
+
+        let path = PathBuf::from("src/cli/apr_commands/phase3/profile/run.rs");
+        let defects = detector.detect(code, &path);
+
+        assert_eq!(
+            defects.len(),
+            0,
+            "file with #![allow(clippy::unwrap_used)] must not be auto-failed (whisper.apr regression)"
+        );
+    }
+
     #[test]
     fn test_excludes_fuzz_directory() {
         let detector = RustDefectDetector::new();
