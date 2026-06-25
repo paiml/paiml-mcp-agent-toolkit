@@ -11,6 +11,10 @@ mod tests {
     use crate::cli::handlers::work_falsification::churn_checks::{
         detect_fix_chains, extract_large_match_variants, extract_test_section,
     };
+    use crate::cli::handlers::work_falsification::pmat_owned_state::is_pmat_owned_state;
+    use crate::cli::handlers::work_falsification::supply_chain_checks::{
+        is_rust_project, test_supply_chain_integrity,
+    };
     use crate::cli::handlers::work_falsification::types::{
         CachedMetric, ClaimResult, FalsificationReport, CACHE_BLOCK_HOURS, CACHE_WARN_HOURS,
     };
@@ -97,6 +101,110 @@ mod tests {
             .filter(|l| !l.is_empty() && !l.starts_with("??"))
             .count();
         assert_eq!(dirty_count, 2, "Modified and staged files should count");
+    }
+
+    // PMAT-154: pmat's own post-commit hook regenerates .pmat/baseline.json,
+    // .pmat/context.db and .pmat/*.cache during `work complete`. These are
+    // self-generated artifacts and MUST NOT be counted as unpushed dirty work,
+    // or the github-sync falsifier hits the self-dirty loop on retries.
+    #[test]
+    fn test_github_sync_ignores_self_generated_pmat_artifacts() {
+        // Exactly the files the post-commit hook regenerates.
+        assert!(
+            is_pmat_owned_state(" M .pmat/baseline.json"),
+            ".pmat/baseline.json is a pmat-owned artifact"
+        );
+        assert!(
+            is_pmat_owned_state(" M .pmat/context.db"),
+            ".pmat/context.db is a pmat-owned artifact"
+        );
+        assert!(
+            is_pmat_owned_state(" M .pmat/tdg.cache"),
+            ".pmat/*.cache is a pmat-owned artifact"
+        );
+        assert!(
+            is_pmat_owned_state(" M .pmat/context.idx/manifest.cache"),
+            "nested .pmat/*.cache is a pmat-owned artifact"
+        );
+
+        // Look-alike user-owned files must still count as real dirty work.
+        assert!(
+            !is_pmat_owned_state(" M .pmat-baseline.json"),
+            ".pmat-baseline.json (user-owned look-alike) must NOT be ignored"
+        );
+        assert!(
+            !is_pmat_owned_state(" M src/baseline.json"),
+            "user source files must NOT be ignored"
+        );
+
+        // Full self-dirty scenario: HEAD == origin, only pmat artifacts dirty.
+        let status = concat!(
+            "## master...origin/master\n",
+            " M .pmat/baseline.json\n",
+            " M .pmat/context.db\n",
+            " M .pmat/tdg.cache\n"
+        );
+        let dirty_count = status
+            .lines()
+            .skip(1)
+            .filter(|l| !l.is_empty() && !l.starts_with("??"))
+            .filter(|l| !is_pmat_owned_state(l))
+            .count();
+        assert_eq!(
+            dirty_count, 0,
+            "pmat-self-generated artifacts must not trip the github-sync dirty check"
+        );
+    }
+
+    // PMAT-058: Rust-only supply-chain gates must be skipped (not failed) on a
+    // repo with no Cargo.toml (e.g. the infra fleet repo).
+    #[test]
+    fn test_is_rust_project_detection() {
+        use tempfile::TempDir;
+        let non_rust = TempDir::new().unwrap();
+        assert!(
+            !is_rust_project(non_rust.path()),
+            "dir without Cargo.toml is not a Rust project"
+        );
+
+        let rust = TempDir::new().unwrap();
+        std::fs::write(rust.path().join("Cargo.toml"), "[package]\nname = \"x\"\n").unwrap();
+        assert!(
+            is_rust_project(rust.path()),
+            "dir with Cargo.toml is a Rust project"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_supply_chain_skips_non_rust_repo() {
+        use tempfile::TempDir;
+        // No Cargo.toml and no deny cache. Without the PMAT-058 guard this would
+        // hard-fail with "No deny cache. Run 'cargo deny check' first".
+        let temp = TempDir::new().unwrap();
+        let result = test_supply_chain_integrity(temp.path()).await.unwrap();
+        assert!(
+            !result.falsified,
+            "supply-chain gate must not fail on a non-Rust repo"
+        );
+        assert!(
+            result.explanation.contains("N/A (non-Rust repo"),
+            "non-Rust skip must be clearly labeled, got: {}",
+            result.explanation
+        );
+    }
+
+    #[tokio::test]
+    async fn test_supply_chain_still_fails_rust_repo_without_cache() {
+        use tempfile::TempDir;
+        // A Rust repo (Cargo.toml present) with no deny cache must STILL fail —
+        // PMAT-058 must not weaken the gate for real Rust projects.
+        let temp = TempDir::new().unwrap();
+        std::fs::write(temp.path().join("Cargo.toml"), "[package]\nname = \"x\"\n").unwrap();
+        let result = test_supply_chain_integrity(temp.path()).await.unwrap();
+        assert!(
+            result.falsified,
+            "Rust repo with no deny cache must still fail the supply-chain gate"
+        );
     }
 
     #[test]
