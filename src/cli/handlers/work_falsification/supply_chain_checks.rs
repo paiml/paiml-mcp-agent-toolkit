@@ -7,12 +7,31 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// True if the project is a Rust crate/workspace (has a `Cargo.toml`).
+///
+/// PMAT-058: Rust-only supply-chain gates (`cargo deny` / `cargo audit`) are
+/// inapplicable to repos without a `Cargo.toml` (e.g. the infra fleet repo,
+/// pure-YAML/Makefile repos). Detect this and skip rather than hard-fail on a
+/// missing deny cache.
+pub(crate) fn is_rust_project(project_path: &Path) -> bool {
+    project_path.join("Cargo.toml").exists()
+}
+
 /// Test supply chain integrity: O(1) - reads from cached cargo deny status
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) async fn test_supply_chain_integrity(
     project_path: &Path,
 ) -> Result<FalsificationResult> {
     print!("Reading deny cache... ");
+
+    // PMAT-058: cargo deny / audit only apply to Rust projects. A repo with no
+    // Cargo.toml has no supply chain to vet, so skip instead of failing on a
+    // missing (and unobtainable) deny cache.
+    if !is_rust_project(project_path) {
+        return Ok(FalsificationResult::passed(
+            "N/A (non-Rust repo: no Cargo.toml)".to_string(),
+        ));
+    }
 
     // O(1): Read from cache instead of running cargo deny
     // Try primary cache location, then fallback to work-item and .pmat directories
