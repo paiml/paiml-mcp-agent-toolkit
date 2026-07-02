@@ -51,3 +51,25 @@ falsification:
   - condition: "Concurrency N<=8 produces lock errors or scratch leftovers"
     severity: P0
     action: reject_push
+
+falsification_tests:
+  - id: sweep_args_derived_from_schema
+    rule: Minimal valid args derived from each tool inputSchema
+    prediction: every required property gets a type-appropriate placeholder; path fields get the target
+    test: cargo test --lib args_derived_from_every_tool_schema
+    if_fails: schema-derivable args need an LLM, defeating the LLM-free premise
+  - id: sweep_framing_pure
+    rule: stdout carries only JSON-RPC frames
+    prediction: framing_stray_lines flags any non-JSON stdout line
+    test: cargo test --lib framing_stdout_pure_jsonrpc_golden
+    if_fails: stray bytes corrupt the JSON-RPC stream (D82 class)
+  - id: sweep_deterministic
+    rule: two runs byte-identical modulo timestamp/duration
+    prediction: identical tool data serializes identically (report carries no wall-clock)
+    test: cargo test --lib two_runs_byte_identical_modulo_time
+    if_fails: the sweep is not replayable, breaking green-here-green-in-CI
+  - id: sweep_no_llm
+    rule: the sweep path links no model/API client
+    prediction: qa_mcp_sweep.rs references no LLM client symbols
+    test: cargo test --lib no_llm_symbols_linked
+    if_fails: stochastic tokens leak into a deterministic gate (E6)

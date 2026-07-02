@@ -203,6 +203,24 @@ pub async fn handle_qa_work_command(command: QaWorkCommands) -> Result<()> {
             )
             .await
         }
+
+        QaWorkCommands::McpSweep {
+            concurrency,
+            format,
+            path,
+        } => {
+            use crate::cli::handlers::qa_mcp_sweep::{SweepFormat, SweepOpts};
+            let sweep_format = match format {
+                crate::cli::commands::QaOutputFormat::Json => SweepFormat::Json,
+                _ => SweepFormat::Text,
+            };
+            crate::cli::handlers::qa_mcp_sweep::handle_mcp_sweep(SweepOpts {
+                concurrency,
+                format: sweep_format,
+                path,
+            })
+            .await
+        }
     }
 }
 
