@@ -9,6 +9,23 @@ use std::path::PathBuf;
 #[derive(Subcommand)]
 #[cfg_attr(test, derive(Debug))]
 pub enum RoadmapCommands {
+    /// Render a canonical ROADMAP.yaml from the work store + ledger states
+    /// (MACS F6 / Component 32). Deterministic: ids sorted, generation
+    /// timestamp excluded from the content hash, source snapshot ids included.
+    Sync {
+        /// Optional pinned GitHub export sha to fold into the content hash
+        #[arg(long)]
+        gh_snapshot: Option<String>,
+
+        /// Print the render to stdout instead of writing ROADMAP.yaml
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+    },
+
     /// Initialize a new sprint in the roadmap
     Init {
         /// Sprint version (e.g., v2.6.0)
