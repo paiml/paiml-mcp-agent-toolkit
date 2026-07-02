@@ -1,0 +1,35 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-07-02"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/components/modern-agentic-coding-support.md (MACS v1.0.0)"
+    - "arXiv:2602.22302 Bruni et al. (2026) Agent Behavioral Contracts"
+    - "Popper (1959) The Logic of Scientific Discovery"
+    - "Meyer (1997) Object-Oriented Software Construction 2e (Design by Contract)"
+  registry: true
+  description: >
+    Per-skill effort pinning: every repo skill pins a model-level effort in
+    frontmatter so behavior and cost are reproducible across sessions.
+    MACS F4 (docs/specifications/components/modern-agentic-coding-support.md).
+  contract: macs-skill-effort
+  status: draft
+
+equations:
+  skill_effort_pinned:
+    formula: forall f in skills -> effort(f) in {low, medium, high, xhigh}
+    domain: f in .claude/skills/**/{SKILL,skill}.md
+    codomain: bool
+    invariants:
+      - session-only values (max, ultracode) are rejected
+      - mechanical skills pin low/medium; adversarial skills pin high/xhigh
+    preconditions:
+      - frontmatter effort is honored by the harness (spec E4)
+
+falsification:
+  - condition: "A skill file lacks `effort:` frontmatter yet CB-1650 passes"
+    severity: P0
+    action: reject_push
+  - condition: "A skill pins `max` or `ultracode` and CB-1650 stays green"
+    severity: P0
+    action: reject_push

@@ -1,0 +1,56 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-07-02"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/components/modern-agentic-coding-support.md (MACS v1.0.0)"
+    - "arXiv:2602.22302 Bruni et al. (2026) Agent Behavioral Contracts"
+    - "Popper (1959) The Logic of Scientific Discovery"
+    - "Meyer (1997) Object-Oriented Software Construction 2e (Design by Contract)"
+  registry: true
+  description: >
+    Canonical planning artifacts: ROADMAP.yaml rendered from the work store,
+    mcp.json regenerated from tool defs, and doc model-id drift linted.
+    MACS F6 (docs/specifications/components/modern-agentic-coding-support.md).
+  contract: macs-artifacts
+  status: draft
+
+equations:
+  roadmap_canonical:
+    formula: render(state) is byte-stable and hash covers sources not wall-clock
+    domain: state in .pmat-work store + optional pinned GitHub snapshot
+    codomain: ROADMAP.yaml bytes
+    invariants:
+      - BTreeMap ordering, ids sorted
+      - generation timestamp excluded from content hash
+      - source snapshot ids included in content hash
+    preconditions:
+      - work store readable
+
+  manifest_faithful:
+    formula: tools(mcp.json) = tools(mcp_server_tool_defs)
+    domain: mcp.json at repo root
+    codomain: bool
+    invariants:
+      - manifest generation is pure (defs -> bytes)
+      - hand-edits are drift (CB-1656 red)
+    preconditions: []
+
+  docs_current:
+    formula: denylist_hits(docs) = 0 outside allow-list
+    domain: docs/** with deny-list {claude-3-*, claude-2*, gpt-4-turbo}
+    codomain: bool
+    invariants:
+      - allow-listed only inside docs/agent-models.md history table
+    preconditions: []
+
+falsification:
+  - condition: "ROADMAP.yaml drifts from the work store with green comply"
+    severity: P0
+    action: reject_push
+  - condition: "mcp.json drifts from tool defs with green comply"
+    severity: P0
+    action: reject_push
+  - condition: "A deny-listed model id appears outside docs/agent-models.md"
+    severity: P1
+    action: block_release

@@ -1,0 +1,46 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-07-02"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/components/modern-agentic-coding-support.md (MACS v1.0.0)"
+    - "arXiv:2602.22302 Bruni et al. (2026) Agent Behavioral Contracts"
+    - "Popper (1959) The Logic of Scientific Discovery"
+    - "Meyer (1997) Object-Oriented Software Construction 2e (Design by Contract)"
+  registry: true
+  description: >
+    Typed L0-L5 verification ladder with evidence-gated completion (C28).
+    MACS F2 (docs/specifications/components/modern-agentic-coding-support.md).
+  contract: macs-ladder
+  status: draft
+
+equations:
+  parse_total_strict:
+    formula: parse(s) = Ok(l) <-> s in {"L0".."L5"}
+    domain: s in String (proptest-generated incl. corruptions)
+    codomain: Result<VerificationLevel>
+    invariants:
+      - Ord matches numeric order
+      - Display then parse = id on valid set
+    preconditions: []
+    lean_theorem: Theorems.Macs.Ladder_Parse_Total
+
+  gate_monotone:
+    formula: complete(t)=Ok -> achieved_level(t) >= t.claimed_level
+    domain: t in .pmat-work/*
+    codomain: bool
+    invariants:
+      - achieved_level is computed from evidence, never stored
+    preconditions:
+      - binding.yaml well-formed (CB-1250 family)
+
+falsification:
+  - condition: "\"l4\" or \"L3 \" parses successfully"
+    severity: P0
+    action: reject_push
+  - condition: "A ticket claiming L4 closes while a kani harness fails"
+    severity: P0
+    action: reject_push
+  - condition: "A ticket claiming L5 closes with any `sorry` in its Lean proof"
+    severity: P0
+    action: reject_push

@@ -1,0 +1,61 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-07-02"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/components/modern-agentic-coding-support.md (MACS v1.0.0)"
+    - "arXiv:2602.22302 Bruni et al. (2026) Agent Behavioral Contracts"
+    - "Popper (1959) The Logic of Scientific Discovery"
+    - "Meyer (1997) Object-Oriented Software Construction 2e (Design by Contract)"
+  registry: true
+  description: >
+    Agent provenance and interruption events on falsification receipts.
+    Declared-first; detection advisory; hash-versioned for old receipts.
+    MACS F1 (docs/specifications/components/modern-agentic-coding-support.md).
+  contract: macs-provenance
+  status: draft
+
+equations:
+  provenance_roundtrip:
+    formula: deserialize(serialize(r)) = r
+    domain: r in FalsificationReceipt{schema_version=2}
+    codomain: bool
+    invariants:
+      - serialization uses canonical JSON (sorted keys, no NaN/Inf)
+      - unknown future fields are rejected (deny_unknown_fields)
+    preconditions:
+      - proptest deterministic mode enabled (MACS-000)
+    lean_theorem: Theorems.Macs.Provenance_Roundtrip
+
+  hash_stability:
+    formula: content_hash(r) = golden(r)
+    domain: r in fixtures/receipts/v2/*.json
+    codomain: hex64
+    invariants:
+      - byte-identical across OS/arch (CI matrix)
+      - v1 receipts verify under v1 rules keyed by schema_version
+    preconditions:
+      - fixtures committed at MACS-001
+
+  refusal_gates_completion:
+    formula: has_unacked(Refusal) -> complete(ticket) = Err(Blocked)
+    domain: ticket in .pmat-work/*
+    codomain: Result
+    invariants:
+      - Refusal never auto-acks; ack requires --ack-event with reason
+    preconditions:
+      - MACS-003 landed
+
+falsification:
+  - condition: "A receipt with schema_version=2 lacks `agent` yet CB-1651 passes"
+    severity: P0
+    action: reject_push
+  - condition: "Two serializations of the same receipt differ in bytes"
+    severity: P0
+    action: reject_push
+  - condition: "`pmat work complete` succeeds while an unacked Refusal event exists"
+    severity: P0
+    action: reject_push
+  - condition: "A v1 (pre-MACS) receipt fails ledger verify after upgrade"
+    severity: P1
+    action: block_release

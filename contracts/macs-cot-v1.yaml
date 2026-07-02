@@ -1,0 +1,48 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-07-02"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/components/modern-agentic-coding-support.md (MACS v1.0.0)"
+    - "arXiv:2602.22302 Bruni et al. (2026) Agent Behavioral Contracts"
+    - "Popper (1959) The Logic of Scientific Discovery"
+    - "Meyer (1997) Object-Oriented Software Construction 2e (Design by Contract)"
+  registry: true
+  description: >
+    Structured chain-of-thought with mandatory discharge + auto-derivation (C31).
+    MACS F3 (docs/specifications/components/modern-agentic-coding-support.md).
+  contract: macs-cot
+  status: draft
+
+equations:
+  chain_integrity:
+    formula: forall s in steps -> discharged(s.assumption)
+    domain: steps in Vec<ChainOfThoughtStep>
+    codomain: bool
+    invariants:
+      - discharge graph is acyclic
+      - roots are equations or E-facts only
+    preconditions:
+      - ticket has >=1 CoT step when kind in {feature,bugfix,refactor}
+    lean_theorem: Theorems.Macs.CoT_Discharge_DAG
+
+  derivation_complete:
+    formula: count(claims_from(steps)) = count(steps) and count(obligations_from(steps)) = count(steps)
+    domain: steps in Vec<ChainOfThoughtStep>
+    codomain: bool
+    invariants:
+      - claim.hypothesis = step.implication verbatim
+      - claim.method = step.evidence_method verbatim
+    preconditions:
+      - MACS-007 schema active
+
+falsification:
+  - condition: "A step's assumption has no discharge and CB-1640 stays green"
+    severity: P0
+    action: reject_push
+  - condition: "A ticket closes with fewer FalsifiableClaims than CoT steps"
+    severity: P0
+    action: reject_push
+  - condition: "Legacy prose steps crash the parser instead of migrating to v2-with-L0 annotation"
+    severity: P1
+    action: block_release
