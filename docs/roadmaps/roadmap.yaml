@@ -3266,11 +3266,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: 'MACS-002 Provenance capture: --agent-* flags + PMAT_AGENT_* env into receipts/ledger'
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T13:02:31.120652717+00:00
+  updated: 2026-07-02T13:52:06.217588661+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
