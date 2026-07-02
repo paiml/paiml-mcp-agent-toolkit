@@ -179,17 +179,27 @@ pub enum AgentHarness {
 }
 
 impl AgentHarness {
-    /// Parse a declared harness token (kebab-case CLI/env form).
-    /// Unknown tokens are preserved verbatim as `Other`.
+    /// Known harness tokens in canonical kebab-case (underscores normalize).
+    const KNOWN_TOKENS: [(&'static str, AgentHarness); 8] = [
+        ("claude-code", AgentHarness::ClaudeCode),
+        ("claudecode", AgentHarness::ClaudeCode),
+        ("claude-agent-sdk", AgentHarness::ClaudeAgentSdk),
+        ("ultracode-workflow", AgentHarness::UltracodeWorkflow),
+        ("ultracode", AgentHarness::UltracodeWorkflow),
+        ("ci-pipeline", AgentHarness::CiPipeline),
+        ("ci", AgentHarness::CiPipeline),
+        ("human", AgentHarness::Human),
+    ];
+
+    /// Parse a declared harness token (kebab-case CLI/env form; underscores
+    /// normalize to hyphens). Unknown tokens are preserved verbatim as `Other`.
     pub fn parse_token(s: &str) -> Self {
-        match s.trim().to_lowercase().as_str() {
-            "claude-code" | "claude_code" | "claudecode" => Self::ClaudeCode,
-            "claude-agent-sdk" | "claude_agent_sdk" => Self::ClaudeAgentSdk,
-            "ultracode-workflow" | "ultracode_workflow" | "ultracode" => Self::UltracodeWorkflow,
-            "ci-pipeline" | "ci_pipeline" | "ci" => Self::CiPipeline,
-            "human" => Self::Human,
-            _ => Self::Other(s.trim().to_string()),
-        }
+        let canonical = s.trim().to_lowercase().replace('_', "-");
+        Self::KNOWN_TOKENS
+            .iter()
+            .find(|(token, _)| *token == canonical)
+            .map(|(_, harness)| harness.clone())
+            .unwrap_or_else(|| Self::Other(s.trim().to_string()))
     }
 }
 
@@ -261,4 +271,38 @@ pub enum AgentEvent {
         /// Number of subagents spawned
         subagents: u32,
     },
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod agent_harness_token_tests {
+    use super::*;
+
+    #[test]
+    fn agent_harness_parse_token_covers_all_variants() {
+        // VariantCoverage: every arm of AgentHarness::parse_token
+        for (token, want) in [
+            ("claude-code", AgentHarness::ClaudeCode),
+            ("claude_code", AgentHarness::ClaudeCode),
+            ("claudecode", AgentHarness::ClaudeCode),
+            ("Claude-Code", AgentHarness::ClaudeCode),
+            ("claude-agent-sdk", AgentHarness::ClaudeAgentSdk),
+            ("claude_agent_sdk", AgentHarness::ClaudeAgentSdk),
+            ("ultracode-workflow", AgentHarness::UltracodeWorkflow),
+            ("ultracode_workflow", AgentHarness::UltracodeWorkflow),
+            ("ultracode", AgentHarness::UltracodeWorkflow),
+            ("ci-pipeline", AgentHarness::CiPipeline),
+            ("ci_pipeline", AgentHarness::CiPipeline),
+            ("ci", AgentHarness::CiPipeline),
+            ("human", AgentHarness::Human),
+            ("HUMAN", AgentHarness::Human),
+        ] {
+            assert_eq!(AgentHarness::parse_token(token), want, "token {token}");
+        }
+        assert_eq!(
+            AgentHarness::parse_token(" my-runner "),
+            AgentHarness::Other("my-runner".to_string()),
+            "unknown tokens preserved verbatim (trimmed)"
+        );
+    }
 }
