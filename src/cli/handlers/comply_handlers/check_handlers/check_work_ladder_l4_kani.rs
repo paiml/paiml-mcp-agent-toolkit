@@ -107,12 +107,7 @@ pub(crate) fn check_ladder_l4_kani(project_path: &Path) -> ComplianceCheck {
 /// Same whitespace-token shape as `is_l3_or_higher` — handles annotated
 /// levels like `"L4 (kani_proof)"`.
 fn is_l4_or_higher(contract: &WorkContract) -> bool {
-    let token = contract
-        .verification_level
-        .split_whitespace()
-        .next()
-        .unwrap_or("");
-    VerificationLevel::parse_lenient(token)
-        .map(|lvl| lvl >= VerificationLevel::L4)
-        .unwrap_or(false)
+    // Typed since MACS-004: annotated legacy variants ("L4 (kani_proof)")
+    // are recovered by the migrating deserializer.
+    contract.verification_level >= VerificationLevel::L4
 }

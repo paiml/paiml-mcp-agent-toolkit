@@ -4,9 +4,12 @@
 
 // ─── CB-1610: verification_level parses ──────────────────────────────────────
 
-/// CB-1610 (L1): the `verification_level` string on every ticket must parse
-/// strictly to a known ladder variant. Catches typos like `"L3 "`, `"l4"`,
-/// or free-form strings like `"strong"` that silently downgrade enforcement.
+/// CB-1610 (L1): the stored `verification_level` string on every ticket must
+/// parse strictly to a known ladder variant. Catches typos like `"L3 "`,
+/// `"l4"`, or free-form strings like `"strong"` that silently downgrade
+/// enforcement. Scans the RAW contract.json — since MACS-004 the typed field
+/// migrates leniently on read, so only the raw file still shows the typo
+/// (`pmat work migrate --levels` rewrites it).
 pub(crate) fn check_ladder_parses(project_path: &Path) -> ComplianceCheck {
     let name = "CB-1610: Verification Level Parses";
     let contracts = load_active_contracts(project_path);
@@ -16,10 +19,23 @@ pub(crate) fn check_ladder_parses(project_path: &Path) -> ComplianceCheck {
 
     let mut bad: Vec<String> = Vec::new();
     for c in &contracts {
-        if VerificationLevel::parse_strict(&c.verification_level).is_none() {
+        let raw_path = project_path
+            .join(".pmat-work")
+            .join(&c.work_item_id)
+            .join("contract.json");
+        let Ok(text) = std::fs::read_to_string(&raw_path) else {
+            continue;
+        };
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(&text) else {
+            continue;
+        };
+        let Some(raw_level) = value.get("verification_level").and_then(|v| v.as_str()) else {
+            continue; // absent = serde default (L3), nothing stored to lint
+        };
+        if VerificationLevel::parse_strict(raw_level).is_none() {
             bad.push(format!(
                 "  {} -> verification_level='{}'",
-                c.work_item_id, c.verification_level
+                c.work_item_id, raw_level
             ));
         }
     }
@@ -61,9 +77,7 @@ pub(crate) fn check_ladder_bound_by_yaml(project_path: &Path) -> ComplianceCheck
     let mut over: Vec<String> = Vec::new();
     let mut checked = 0usize;
     for c in &contracts {
-        let Some(claimed) = VerificationLevel::parse_strict(&c.verification_level) else {
-            continue; // CB-1610 owns the parse failure
-        };
+        let claimed = c.verification_level; // typed since MACS-004; CB-1610 scans raw JSON
         if c.implements.is_empty() {
             // Unbound tickets are bounded to L1 per spec; warn but do not hard-fail here
             // (CB-1610 handles invalid strings; this check only concerns bound tickets).

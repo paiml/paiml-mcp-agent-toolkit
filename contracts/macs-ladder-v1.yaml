@@ -44,3 +44,25 @@ falsification:
   - condition: "A ticket claiming L5 closes with any `sorry` in its Lean proof"
     severity: P0
     action: reject_push
+
+falsification_tests:
+- id: ladder_parse_strict_rejects_typos
+  rule: Strict parse rejects case/whitespace corruptions
+  prediction: parse("l4"), parse("L3 "), parse("strong") all fail strict parse
+  test: cargo test --lib parse_total_strict_prop
+  if_fails: misspelled levels silently downgrade tickets (C28)
+- id: ladder_ord_matches_numeric
+  rule: Ord matches numeric order
+  prediction: L0 < L1 < L2 < L3 < L4 < L5 under derived Ord
+  test: cargo test --lib ord_matches_numeric
+  if_fails: gate comparisons invert and over-claims pass the completion gate
+- id: ladder_serde_string_repr
+  rule: Wire format stays the display string (no wire break)
+  prediction: serde serializes L4 as "L4"; legacy contract.json still parses
+  test: cargo test --lib serde_string_repr
+  if_fails: every existing .pmat-work contract breaks on read
+- id: ladder_gate_monotone
+  rule: complete implies achieved_level >= claimed level
+  prediction: a ticket claiming L4 without kani evidence blocks with LadderShortfall
+  test: cargo test --lib claim_l4_without_kani_blocks
+  if_fails: tickets close above their evidenced level (C28 completion gates are hard)

@@ -135,9 +135,20 @@ pub async fn handle_work_validate(path: Option<PathBuf>, verbose: bool, fix: boo
 ///
 /// Auto-fixes common roadmap.yaml issues.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub async fn handle_work_migrate(path: Option<PathBuf>, dry_run: bool, backup: bool) -> Result<()> {
+pub async fn handle_work_migrate(
+    path: Option<PathBuf>,
+    dry_run: bool,
+    backup: bool,
+    levels: bool,
+) -> Result<()> {
     use crate::cli::colors as c;
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+
+    // MACS-004: --levels migrates .pmat-work contract verification levels
+    // and is independent of the roadmap.yaml migration below.
+    if levels {
+        return migrate_verification_levels(&project_path, dry_run);
+    }
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
 
     println!("{}", c::label(&format!("🔄 Migrating roadmap: {}", c::path(&roadmap_path.display().to_string()))));
@@ -281,4 +292,189 @@ pub async fn handle_work_list_statuses() -> Result<()> {
     println!("   {}", c::dim("Example: 'In-Progress', 'in_progress', 'InProgress', 'WIP' all work."));
 
     Ok(())
+}
+
+/// MACS-004: rewrite legacy `verification_level` strings in every
+/// `.pmat-work/<TICKET>/contract.json`. Lenient-parseable values ("l4",
+/// "L3 ", "L4 (kani_proof)") are canonicalized to recover intent; values
+/// outside the ladder become "L0" plus an audit note in
+/// `references.spec_sections` (no silent rewrite).
+fn migrate_verification_levels(project_path: &std::path::Path, dry_run: bool) -> Result<()> {
+    use crate::cli::colors as c;
+    use crate::cli::handlers::work_verification_level::VerificationLevel;
+
+    let work_dir = project_path.join(".pmat-work");
+    if !work_dir.exists() {
+        println!("{}", c::warn("No .pmat-work directory — nothing to migrate"));
+        return Ok(());
+    }
+
+    let mut migrated = 0usize;
+    let mut invalid = 0usize;
+    let mut scanned = 0usize;
+
+    for entry in std::fs::read_dir(&work_dir).context("read .pmat-work")?.flatten() {
+        let contract_path = entry.path().join("contract.json");
+        if !contract_path.exists() {
+            continue;
+        }
+        let text = match std::fs::read_to_string(&contract_path) {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        let mut value: serde_json::Value = match serde_json::from_str(&text) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let Some(raw) = value.get("verification_level").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        scanned += 1;
+        if VerificationLevel::parse_strict(raw).is_some() {
+            continue; // already canonical
+        }
+        let raw_owned = raw.to_string();
+        let first_token = raw_owned.split_whitespace().next().unwrap_or("");
+        let (new_level, note) = match VerificationLevel::parse_lenient(&raw_owned)
+            .or_else(|| VerificationLevel::parse_lenient(first_token))
+        {
+            Some(level) => (level, "canonicalized"),
+            None => {
+                invalid += 1;
+                (VerificationLevel::L0, "invalid; downgraded")
+            }
+        };
+        let audit = format!(
+            "MIGRATION(MACS-004): verification_level '{}' -> {} ({})",
+            raw_owned, new_level, note
+        );
+        println!(
+            "  {} {}: '{}' -> {}",
+            if dry_run { c::dim("[dry-run]") } else { c::pass("") },
+            entry.file_name().to_string_lossy(),
+            raw_owned,
+            new_level
+        );
+        if dry_run {
+            migrated += 1;
+            continue;
+        }
+        value["verification_level"] = serde_json::Value::String(new_level.to_string());
+        if let Some(sections) = value
+            .get_mut("references")
+            .and_then(|r| r.get_mut("spec_sections"))
+            .and_then(|s| s.as_array_mut())
+        {
+            sections.push(serde_json::Value::String(audit));
+        } else {
+            value["references"] = serde_json::json!({
+                "arxiv": [], "spec_sections": [audit],
+                "five_whys_id": null, "oracle_context": null
+            });
+        }
+        let pretty = serde_json::to_string_pretty(&value).context("serialize contract")?;
+        std::fs::write(&contract_path, pretty).context("write contract")?;
+        migrated += 1;
+    }
+
+    println!();
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Level migration: {scanned} contract(s) scanned, {migrated} rewritten, {invalid} invalid -> L0"
+        ))
+    );
+    Ok(())
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+#[cfg(test)]
+mod level_migration_tests {
+    use super::*;
+
+    fn write_contract_with_level(project: &std::path::Path, ticket: &str, level: &str) {
+        let dir = project.join(".pmat-work").join(ticket);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("contract.json"),
+            serde_json::to_string_pretty(&serde_json::json!({
+                "work_item_id": ticket,
+                "verification_level": level,
+                "references": {"arxiv": [], "spec_sections": []}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    fn read_level(project: &std::path::Path, ticket: &str) -> (String, Vec<String>) {
+        let text = std::fs::read_to_string(
+            project.join(".pmat-work").join(ticket).join("contract.json"),
+        )
+        .unwrap();
+        let v: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let level = v["verification_level"].as_str().unwrap().to_string();
+        let notes = v["references"]["spec_sections"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|s| s.as_str().map(String::from)).collect())
+            .unwrap_or_default();
+        (level, notes)
+    }
+
+    #[test]
+    fn legacy_strings_interactive_to_typed() {
+        let project = tempfile::tempdir().unwrap();
+        write_contract_with_level(project.path(), "T-CASE", "l4");
+        write_contract_with_level(project.path(), "T-ANNOT", "L4 (kani_proof)");
+        write_contract_with_level(project.path(), "T-BAD", "strong");
+        write_contract_with_level(project.path(), "T-OK", "L3");
+
+        migrate_verification_levels(project.path(), false).unwrap();
+
+        let (level, notes) = read_level(project.path(), "T-CASE");
+        assert_eq!(level, "L4", "case corruption recovers intent");
+        assert!(notes.iter().any(|n| n.contains("MIGRATION(MACS-004)")));
+
+        let (level, _) = read_level(project.path(), "T-ANNOT");
+        assert_eq!(level, "L4", "annotated variant recovers first token");
+
+        let (level, notes) = read_level(project.path(), "T-BAD");
+        assert_eq!(level, "L0", "invalid value downgrades to L0");
+        assert!(
+            notes.iter().any(|n| n.contains("'strong'") && n.contains("invalid")),
+            "audit note records the original value: {notes:?}"
+        );
+
+        let (level, notes) = read_level(project.path(), "T-OK");
+        assert_eq!(level, "L3", "canonical values untouched");
+        assert!(notes.is_empty(), "no audit note for untouched contracts");
+    }
+
+    #[test]
+    fn dry_run_leaves_files_untouched() {
+        let project = tempfile::tempdir().unwrap();
+        write_contract_with_level(project.path(), "T-DRY", "l5");
+        migrate_verification_levels(project.path(), true).unwrap();
+        let (level, notes) = read_level(project.path(), "T-DRY");
+        assert_eq!(level, "l5");
+        assert!(notes.is_empty());
+    }
+
+    #[test]
+    fn contract_deserializes_typed_with_migration() {
+        use crate::cli::handlers::work_contract::WorkContract;
+        use crate::cli::handlers::work_verification_level::VerificationLevel;
+        let parse = |raw: &str| -> VerificationLevel {
+            let base = WorkContract::new("T".to_string(), "abc".to_string());
+            let mut value = serde_json::to_value(&base).expect("to_value");
+            value["verification_level"] = serde_json::Value::String(raw.to_string());
+            let contract: WorkContract =
+                serde_json::from_value(value).expect("contract parses");
+            contract.verification_level
+        };
+        assert_eq!(parse("L4"), VerificationLevel::L4);
+        assert_eq!(parse("l4"), VerificationLevel::L4, "lenient read migration");
+        assert_eq!(parse("L4 (kani_proof)"), VerificationLevel::L4, "annotated");
+        assert_eq!(parse("strong"), VerificationLevel::L0, "invalid -> L0");
+    }
 }

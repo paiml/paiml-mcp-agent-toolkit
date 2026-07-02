@@ -148,7 +148,7 @@ mod tests_work_ladder_levels {
             ("strong", false),
         ] {
             let mut c = WorkContract::new("T".into(), "deadbeef".into());
-            c.verification_level = s.to_string();
+            c.verification_level = VerificationLevel::parse_migrating(s);
             assert_eq!(is_l3_or_higher(&c), want, "for '{}'", s);
         }
     }
@@ -264,7 +264,7 @@ mod tests_work_ladder_levels {
             ("bogus", false),
         ] {
             let mut c = WorkContract::new("T".into(), "deadbeef".into());
-            c.verification_level = s.to_string();
+            c.verification_level = VerificationLevel::parse_migrating(s);
             assert_eq!(is_l4_or_higher(&c), want, "for '{}'", s);
         }
     }
@@ -379,7 +379,7 @@ mod tests_work_ladder_levels {
             ("bogus", false),
         ] {
             let mut c = WorkContract::new("T".into(), "deadbeef".into());
-            c.verification_level = s.to_string();
+            c.verification_level = VerificationLevel::parse_migrating(s);
             assert_eq!(is_l5(&c), want, "for '{}'", s);
         }
     }

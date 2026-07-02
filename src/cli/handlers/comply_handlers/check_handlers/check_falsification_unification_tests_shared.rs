@@ -37,7 +37,7 @@ fn write_yaml_at(project: &Path, rel: &str, body: &str) {
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn contract_at_level(ticket: &str, level: &str) -> WorkContract {
     let mut c = WorkContract::new(ticket.into(), "deadbeef".into());
-    c.verification_level = level.into();
+    c.verification_level = VerificationLevel::parse_migrating(level);
     c
 }
 

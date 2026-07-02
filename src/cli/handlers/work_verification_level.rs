@@ -65,6 +65,19 @@ impl VerificationLevel {
         Self::parse_strict(&canonical)
     }
 
+    /// Total migrating parse (MACS-004): strict, then lenient, then lenient
+    /// on the first whitespace token (annotated legacy variants like
+    /// `"L4 (kani_proof)"`), else `L0`. This is the read-path semantics of
+    /// `WorkContract::verification_level`; `pmat work migrate --levels`
+    /// rewrites stored values through the same function.
+    pub fn parse_migrating(s: &str) -> Self {
+        let first_token = s.split_whitespace().next().unwrap_or("");
+        Self::parse_strict(s)
+            .or_else(|| Self::parse_lenient(s))
+            .or_else(|| Self::parse_lenient(first_token))
+            .unwrap_or(Self::L0)
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::L0 => "L0",
@@ -341,5 +354,70 @@ mod tests {
         assert!(!yaml_lean_theorem_proved(
             "lean_theorem:\n  status: pending\n"
         ));
+    }
+
+    #[test]
+    fn ord_matches_numeric() {
+        // Ord agrees with the numeric ladder index (fieldless enum cast).
+        for pair in VerificationLevel::ALL.windows(2) {
+            assert!(pair[0] < pair[1]);
+            assert!((pair[0] as u8) < (pair[1] as u8));
+        }
+        assert_eq!(VerificationLevel::L0 as u8, 0);
+        assert_eq!(VerificationLevel::L5 as u8, 5);
+    }
+
+    #[test]
+    fn serde_string_repr() {
+        // Wire format is the display string — no wire break vs legacy files.
+        for v in VerificationLevel::ALL {
+            let json = serde_json::to_string(&v).expect("serialize");
+            assert_eq!(json, format!("\"{}\"", v.as_str()));
+            let back: VerificationLevel = serde_json::from_str(&json).expect("parse");
+            assert_eq!(back, v);
+        }
+    }
+
+    #[test]
+    fn display_parse_id() {
+        for v in VerificationLevel::ALL {
+            assert_eq!(v.as_str().parse::<VerificationLevel>().ok(), Some(v));
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
+
+        /// parse is total (never panics) and strict: accepts exactly "L0".."L5".
+        #[test]
+        fn parse_total_strict_prop(s in "\\PC{0,8}") {
+            let expected = matches!(s.as_str(), "L0" | "L1" | "L2" | "L3" | "L4" | "L5");
+            proptest::prop_assert_eq!(VerificationLevel::parse_strict(&s).is_some(), expected);
+            proptest::prop_assert_eq!(s.parse::<VerificationLevel>().is_ok(), expected);
+        }
+
+        /// Generated corruptions of valid levels (case, padding, suffix words)
+        /// must be rejected by the strict parse.
+        #[test]
+        fn parse_strict_rejects_generated_corruptions(
+            base in 0usize..6,
+            mode in 0usize..4,
+            pad in "[ \\t]{1,3}",
+            word in "[a-z]{3,8}",
+        ) {
+            let valid = VerificationLevel::ALL[base].as_str().to_string();
+            let corrupted = match mode {
+                0 => valid.to_lowercase(),
+                1 => format!("{valid}{pad}"),
+                2 => format!("{pad}{valid}"),
+                _ => word.clone(),
+            };
+            if corrupted != valid {
+                proptest::prop_assert!(
+                    VerificationLevel::parse_strict(&corrupted).is_none(),
+                    "corruption '{}' must be rejected", corrupted
+                );
+            }
+        }
     }
 }

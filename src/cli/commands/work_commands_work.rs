@@ -362,6 +362,12 @@ pub enum WorkCommands {
         /// Create backup before migration
         #[arg(long, default_value = "true")]
         backup: bool,
+
+        /// Rewrite legacy verification_level strings in .pmat-work contracts
+        /// to typed canonical form; invalid values become L0 + audit note
+        /// (MACS-004)
+        #[arg(long)]
+        levels: bool,
     },
 
     /// List all valid status values with descriptions

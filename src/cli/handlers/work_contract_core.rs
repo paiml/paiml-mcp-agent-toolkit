@@ -80,9 +80,17 @@ pub struct WorkContract {
 
     // === PROVABLE-CONTRACTS INTEGRATION (work-management spec §2) ===
 
-    /// Verification level target: L0 (review) through L5 (Lean proof)
-    #[serde(default = "default_verification_level")]
-    pub verification_level: String,
+    /// Verification level target: L0 (review) through L5 (Lean proof).
+    /// Typed since MACS-004 (Component 32): the wire format stays the display
+    /// string ("L3"), so legacy contracts parse unchanged; reads migrate
+    /// leniently ("l4" -> L4, recovering intent) and values outside the
+    /// ladder deserialize as L0 (`pmat work migrate --levels` rewrites the
+    /// file with an audit note). Storing an unparsed level is unrepresentable.
+    #[serde(
+        default = "default_verification_level",
+        deserialize_with = "deserialize_verification_level"
+    )]
+    pub verification_level: crate::cli::handlers::work_verification_level::VerificationLevel,
 
     /// Research and specification references
     #[serde(default)]
@@ -147,8 +155,23 @@ impl ContractBinding {
     }
 }
 
-fn default_verification_level() -> String {
-    "L3".to_string()
+fn default_verification_level() -> crate::cli::handlers::work_verification_level::VerificationLevel {
+    crate::cli::handlers::work_verification_level::VerificationLevel::L3
+}
+
+/// Migrating deserializer for `WorkContract::verification_level` (MACS-004).
+/// Strict parse first; lenient recovers case/whitespace corruption ("l4" ->
+/// L4); anything else becomes L0 so legacy contracts keep loading — the
+/// migrate tool rewrites the stored value with an audit note.
+fn deserialize_verification_level<'de, D>(
+    deserializer: D,
+) -> Result<crate::cli::handlers::work_verification_level::VerificationLevel, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use crate::cli::handlers::work_verification_level::VerificationLevel;
+    let raw = String::deserialize(deserializer)?;
+    Ok(VerificationLevel::parse_migrating(&raw))
 }
 
 /// Research references linking work item to papers and specs

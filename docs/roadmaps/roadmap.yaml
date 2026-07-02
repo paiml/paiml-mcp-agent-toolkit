@@ -3298,11 +3298,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: MACS-004 VerificationLevel typed enum + strict parse + ticket migration
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T14:01:26.610146215+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []

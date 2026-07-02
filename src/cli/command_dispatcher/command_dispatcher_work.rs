@@ -131,7 +131,8 @@ impl CommandDispatcher {
                 path,
                 dry_run,
                 backup,
-            } => work_handlers::handle_work_migrate(path.clone(), *dry_run, *backup).await,
+                levels,
+            } => work_handlers::handle_work_migrate(path.clone(), *dry_run, *backup, *levels).await,
             WorkCommands::ListStatuses => work_handlers::handle_work_list_statuses().await,
             WorkCommands::Add {
                 title,

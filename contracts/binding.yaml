@@ -141,3 +141,8 @@ bindings:
   source_file: src/cli/handlers/work_handlers/core_handlers/handlers.rs
   function: check_unacked_refusals
   status: planned
+- contract: macs-ladder-v1.yaml
+  equation: parse_total_strict
+  source_file: src/cli/handlers/work_verification_level.rs
+  function: VerificationLevel::parse_strict
+  status: planned

@@ -112,10 +112,6 @@ pub(crate) fn check_ladder_l5_lean(project_path: &Path) -> ComplianceCheck {
 
 /// L5 is a single point on the ladder — exact match, not `>= L5`.
 fn is_l5(contract: &WorkContract) -> bool {
-    let token = contract
-        .verification_level
-        .split_whitespace()
-        .next()
-        .unwrap_or("");
-    VerificationLevel::parse_lenient(token) == Some(VerificationLevel::L5)
+    // Typed since MACS-004 (annotated variants handled at deserialization).
+    contract.verification_level >= VerificationLevel::L5
 }

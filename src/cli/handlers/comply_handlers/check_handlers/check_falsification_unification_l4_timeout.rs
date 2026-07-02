@@ -12,14 +12,9 @@
 /// Ticket strings are typed like `"L3"` or `"L4 (kani_proof)"` — we take
 /// the first whitespace-separated token so annotated variants parse too.
 fn is_l4_or_higher(contract: &WorkContract) -> bool {
-    let token = contract
-        .verification_level
-        .split_whitespace()
-        .next()
-        .unwrap_or("");
-    VerificationLevel::parse_lenient(token)
-        .map(|lvl| lvl >= VerificationLevel::L4)
-        .unwrap_or(false)
+    // Typed since MACS-004: annotated legacy variants ("L4 (kani_proof)")
+    // are recovered by the migrating deserializer.
+    contract.verification_level >= VerificationLevel::L4
 }
 
 /// CB-1629 (L4): an L4+ ticket's `falsification.log` must not record any
