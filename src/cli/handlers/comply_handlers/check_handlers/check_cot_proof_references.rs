@@ -92,6 +92,24 @@ pub(crate) fn check_assumption_references_resolve(project_path: &Path) -> Compli
             }
         }
     }
+    // MACS-008: the typed chain checker adds what Value introspection cannot
+    // see — discharge cycles and duplicate step ids (the graph must be a
+    // DAG). unresolved-ref and undischarged stay owned by the reference loop
+    // above / `pmat work cot check`, whose resolution semantics are broader
+    // (implication predicates and exprs also discharge).
+    for (ticket, contract) in &contracts {
+        let steps = crate::models::work_cot::parse_steps(contract);
+        if !steps.iter().any(|s| s.structured) {
+            continue;
+        }
+        for violation in crate::models::work_cot::check_chain(&steps) {
+            if matches!(violation.kind.as_str(), "cycle" | "duplicate-id") {
+                checked += 1;
+                unmatched.push(format!("{ticket}: {violation}"));
+            }
+        }
+    }
+
     if checked == 0 {
         return ComplianceCheck {
             name: name.into(),
@@ -105,7 +123,7 @@ pub(crate) fn check_assumption_references_resolve(project_path: &Path) -> Compli
             name: name.into(),
             status: CheckStatus::Pass,
             message: format!(
-                "{} assumption reference(s) resolve via exact-match fallback",
+                "{} assumption reference(s) resolve; discharge graph is a DAG",
                 checked
             ),
             severity: Severity::Info,
