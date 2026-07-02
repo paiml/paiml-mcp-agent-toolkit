@@ -1074,3 +1074,126 @@ fn resolve_event_ticket(project_path: &std::path::Path, id: Option<String>) -> R
         ),
     }
 }
+
+/// `pmat work cot check` (MACS-008): run the CB-1640 chain-integrity
+/// checker on a ticket's chain_of_thought. Exits non-zero on violations.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn handle_work_cot_check(id: String, path: Option<PathBuf>) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let contract_path = project_path
+        .join(".pmat-work")
+        .join(&id)
+        .join("contract.json");
+    let text = std::fs::read_to_string(&contract_path)
+        .with_context(|| format!("no contract for '{}' — run pmat work start first", id))?;
+    let value: serde_json::Value = serde_json::from_str(&text).context("contract.json parses")?;
+    let steps = crate::models::work_cot::parse_steps(&value);
+    if steps.is_empty() {
+        println!("{}", c::warn(&format!("{id}: no chain_of_thought steps")));
+        return Ok(());
+    }
+    let structured = steps.iter().filter(|s| s.structured).count();
+    println!(
+        "{}",
+        c::label(&format!(
+            "🔗 {id}: {} step(s) ({structured} structured, {} migrated-L0)",
+            steps.len(),
+            steps.len() - structured
+        ))
+    );
+    let violations = crate::models::work_cot::check_chain(&steps);
+    if violations.is_empty() {
+        println!(
+            "{}",
+            c::pass("Chain integrity holds: every assumption discharged, graph is a DAG")
+        );
+        return Ok(());
+    }
+    for v in &violations {
+        println!("  {} {}", c::fail(""), v);
+    }
+    anyhow::bail!("CB-1640: {} chain-integrity violation(s)", violations.len());
+}
+
+/// `pmat work cot derive` (MACS-009): derive one proof obligation + one
+/// falsifiable claim per step (verbatim fields) into
+/// `contracts/work/<ID>.cot.yaml`, and record the canonical CoT digest at
+/// `.pmat-work/<ID>/cot-digest.json` (CB-1646's witness trail).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn handle_work_cot_derive(
+    id: String,
+    emit_clauses: bool,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let contract_path = project_path
+        .join(".pmat-work")
+        .join(&id)
+        .join("contract.json");
+    let text = std::fs::read_to_string(&contract_path)
+        .with_context(|| format!("no contract for '{}' — run pmat work start first", id))?;
+    let value: serde_json::Value = serde_json::from_str(&text).context("contract.json parses")?;
+    let steps = crate::models::work_cot::parse_steps(&value);
+    if steps.is_empty() {
+        anyhow::bail!("{id}: no chain_of_thought steps to derive from");
+    }
+
+    // Chain must be green before derivation (agents propose, receipts dispose).
+    let violations = crate::models::work_cot::check_chain(&steps);
+    if !violations.is_empty() {
+        for v in &violations {
+            println!("  {} {}", c::fail(""), v);
+        }
+        anyhow::bail!(
+            "CB-1640: fix {} chain-integrity violation(s) before deriving",
+            violations.len()
+        );
+    }
+
+    let safe_id: String = id
+        .chars()
+        .map(|ch| {
+            if ch.is_alphanumeric() || ch == '-' {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let artifact_dir = project_path.join("contracts").join("work");
+    std::fs::create_dir_all(&artifact_dir).context("create contracts/work")?;
+    let artifact_path = artifact_dir.join(format!("{safe_id}.cot.yaml"));
+    let yaml = crate::models::work_cot::render_derivation(&id, &steps, emit_clauses);
+    std::fs::write(&artifact_path, &yaml).context("write derivation artifact")?;
+
+    let digest = crate::models::work_cot::canonical_cot_sha(&value);
+    let digest_path = project_path
+        .join(".pmat-work")
+        .join(&id)
+        .join("cot-digest.json");
+    std::fs::write(
+        &digest_path,
+        serde_json::to_string_pretty(&serde_json::json!({
+            "sha": digest,
+            "steps": steps.len(),
+            "derived_at": chrono::Utc::now().to_rfc3339(),
+        }))
+        .context("serialize digest")?,
+    )
+    .context("write cot-digest.json")?;
+
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Derived {} obligation(s) + {} claim(s) -> {}",
+            steps.len(),
+            steps.len(),
+            artifact_path.display()
+        ))
+    );
+    println!(
+        "{}",
+        c::pass(&format!("CoT digest recorded -> {}", digest_path.display()))
+    );
+    Ok(())
+}

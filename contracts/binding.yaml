@@ -151,3 +151,13 @@ bindings:
   source_file: src/quality/ladder_evidence.rs
   function: achieved_level
   status: planned
+- contract: macs-cot-v1.yaml
+  equation: chain_integrity
+  source_file: src/models/work_cot.rs
+  function: check_chain
+  status: planned
+- contract: macs-cot-v1.yaml
+  equation: derivation_complete
+  source_file: src/models/work_cot.rs
+  function: derive
+  status: planned

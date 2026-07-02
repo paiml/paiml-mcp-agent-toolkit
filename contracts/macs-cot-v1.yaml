@@ -46,3 +46,25 @@ falsification:
   - condition: "Legacy prose steps crash the parser instead of migrating to v2-with-L0 annotation"
     severity: P1
     action: block_release
+
+falsification_tests:
+- id: cot_chain_cycle_rejected
+  rule: Discharge graph must be a DAG
+  prediction: a two-step mutual discharge is rejected by check_chain
+  test: cargo test --lib cycle_detected_violates_1640
+  if_fails: circular reasoning passes the integrity check (C31)
+- id: cot_undischarged_rejected
+  rule: Every assumption must be discharged
+  prediction: a step with no discharge source and no evidence_method is rejected
+  test: cargo test --lib undischarged_assumption_violates_1640
+  if_fails: assumptions inflate without discharge (a hallucination magnet)
+- id: cot_spec_self_check
+  rule: The spec is subject to the check it specifies
+  prediction: MACS spec §3.1's own chain parses and passes check_chain
+  test: cargo test --lib spec_section_3_1_passes
+  if_fails: the schema cannot express its own specification's reasoning
+- id: cot_derivation_verbatim
+  rule: claim.hypothesis/method copied verbatim from step fields
+  prediction: any paraphrase drift fails CB-1658
+  test: cargo test --lib one_claim_per_step_verbatim_fields
+  if_fails: derived claims drift from the reasoning they discharge

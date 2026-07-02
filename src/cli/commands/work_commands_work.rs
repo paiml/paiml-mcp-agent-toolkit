@@ -241,6 +241,14 @@ pub enum WorkCommands {
         path: Option<PathBuf>,
     },
 
+    /// Structured chain-of-thought tools: integrity check + derivation
+    /// (MACS F3 / Component 31)
+    Cot {
+        /// CoT subcommand
+        #[command(subcommand)]
+        command: WorkCotCommands,
+    },
+
     /// Record an agent interruption event (refusal, model switch, session
     /// restart, workflow spawn) or acknowledge one (MACS F1/E5)
     #[command(visible_alias = "ev")]
@@ -444,4 +452,35 @@ impl AgentFlags {
             parent: self.agent_parent.clone(),
         }
     }
+}
+
+/// Chain-of-thought subcommands (MACS F3): `pmat work cot check|derive`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum WorkCotCommands {
+    /// Verify chain integrity (CB-1640): every assumption discharged,
+    /// discharge graph a DAG rooted in evidence
+    Check {
+        /// Ticket ID
+        id: String,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
+    /// Derive one proof obligation + one falsifiable claim per step
+    /// (verbatim fields) into contracts/work/<ID>.cot.yaml and record the
+    /// canonical CoT digest (CB-1646/CB-1658)
+    Derive {
+        /// Ticket ID
+        id: String,
+
+        /// Also emit optional require/ensure clauses (C30 codegen)
+        #[arg(long)]
+        emit_clauses: bool,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
 }

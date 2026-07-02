@@ -3346,11 +3346,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: MACS-007 ChainOfThoughtStep v2 schema + parser + legacy migration
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T14:48:32.301769300+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3362,11 +3362,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: MACS-008 Chain-integrity checker implementing CB-1640
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T14:49:17.883667475+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3378,11 +3378,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: 'MACS-009 CoT auto-derivation: obligations + falsifiable claims + CB-1658'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T14:50:00.884982191+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []

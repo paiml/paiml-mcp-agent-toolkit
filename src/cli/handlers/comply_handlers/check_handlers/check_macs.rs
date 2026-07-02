@@ -8,6 +8,8 @@
 //!   silent-crossing MACS F1 exists to prevent.
 //! - CB-1653: Ladder Claim Drift — receipts closed above evidenced level
 //!   fail; open over-claims warn (the MACS-005 gate blocks them at close).
+//! - CB-1658: CoT Derivation Completeness — one obligation + one claim
+//!   per step, fields verbatim (paraphrase drift is a failure).
 //! - CB-1654: Refusal Events Acked — no ticket carries an unacknowledged
 //!   Refusal event (MACS E5): a refusal-terminated turn must map to a
 //!   paused ticket, never a completed (or quietly abandoned) one.
@@ -19,6 +21,10 @@ include!("check_macs_provenance.rs");
 
 include!("check_macs_ladder.rs");
 
+include!("check_macs_derivation.rs");
+
 include!("check_macs_tests_provenance.rs");
 
 include!("check_macs_tests_ladder.rs");
+
+include!("check_macs_tests_derivation.rs");

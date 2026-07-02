@@ -90,6 +90,19 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            WorkCommands::Cot { command } => match command {
+                crate::cli::commands::WorkCotCommands::Check { id, path } => {
+                    work_handlers::handle_work_cot_check(id.clone(), path.clone()).await
+                }
+                crate::cli::commands::WorkCotCommands::Derive {
+                    id,
+                    emit_clauses,
+                    path,
+                } => {
+                    work_handlers::handle_work_cot_derive(id.clone(), *emit_clauses, path.clone())
+                        .await
+                }
+            },
             WorkCommands::Event {
                 id,
                 event_type,

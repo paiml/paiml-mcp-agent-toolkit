@@ -259,5 +259,10 @@ fn build_macs_checks(
             "cb-1654",
             comply_config,
         ),
+        filter_check_by_config(
+            macs::check_derivation_completeness(project_path),
+            "cb-1658",
+            comply_config,
+        ),
     ]
 }
