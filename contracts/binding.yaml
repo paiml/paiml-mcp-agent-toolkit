@@ -146,3 +146,8 @@ bindings:
   source_file: src/cli/handlers/work_verification_level.rs
   function: VerificationLevel::parse_strict
   status: planned
+- contract: macs-ladder-v1.yaml
+  equation: gate_monotone
+  source_file: src/quality/ladder_evidence.rs
+  function: achieved_level
+  status: planned

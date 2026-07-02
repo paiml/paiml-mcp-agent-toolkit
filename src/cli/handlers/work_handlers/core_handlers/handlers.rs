@@ -570,6 +570,15 @@ pub async fn handle_work_complete(
     // the fresh-receipt fast path below so it can never be bypassed.
     check_unacked_refusals(&project_path, &item.id)?;
 
+    // MACS F2: a ticket cannot close above its evidenced ladder level.
+    // Also before the fresh-receipt fast path — the claim is checked on
+    // every completion attempt.
+    if let Ok(contract) =
+        crate::cli::handlers::work_contract::WorkContract::load(&project_path, &item.id)
+    {
+        crate::quality::ladder_evidence::check_ladder_shortfall(&project_path, &contract)?;
+    }
+
     // O(1) freshness check: skip re-running falsification if a fresh receipt exists
     let ledger = FalsificationLedger::new(&project_path);
     let current_sha = crate::cli::handlers::work_ledger::get_current_git_sha(&project_path);
