@@ -280,6 +280,28 @@ pub enum AgentEvent {
         /// Number of subagents spawned
         subagents: u32,
     },
+    /// Acknowledgement of a prior blocking event (MACS-003). Events are
+    /// append-only, so an ack is itself a reason-carrying event; a Refusal
+    /// with no matching Ack blocks `pmat work complete`.
+    Ack {
+        /// ISO 8601 timestamp
+        at: String,
+        /// Record id of the acknowledged event (WorkEventRecord::id)
+        ack_of: String,
+        /// Root cause + disposition (must be non-empty)
+        reason: String,
+    },
+}
+
+/// A single line in `.pmat-work/<TICKET>/events.jsonl` (MACS-003).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct WorkEventRecord {
+    /// Short record id used by `--ack-event` (e.g. "ev-0197f0...")
+    pub id: String,
+    /// ISO 8601 timestamp when the record was written
+    pub recorded_at: String,
+    /// The event payload
+    pub event: AgentEvent,
 }
 
 

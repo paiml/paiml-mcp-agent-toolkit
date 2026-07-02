@@ -90,6 +90,32 @@ impl CommandDispatcher {
                 )
                 .await
             }
+            WorkCommands::Event {
+                id,
+                event_type,
+                note,
+                from,
+                to,
+                workflow_id,
+                subagents,
+                ack_event,
+                reason,
+                path,
+            } => {
+                work_handlers::handle_work_event(
+                    id.clone(),
+                    event_type.clone(),
+                    note.clone(),
+                    from.clone(),
+                    to.clone(),
+                    workflow_id.clone(),
+                    *subagents,
+                    ack_event.clone(),
+                    reason.clone(),
+                    path.clone(),
+                )
+                .await
+            }
             WorkCommands::Status { id, path, active } => {
                 work_handlers::handle_work_status(id.clone(), path.clone(), *active).await
             }

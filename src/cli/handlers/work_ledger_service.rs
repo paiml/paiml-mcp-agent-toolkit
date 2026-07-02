@@ -150,4 +150,80 @@ impl FalsificationLedger {
         let receipt: FalsificationReceipt = serde_json::from_str(&content)?;
         Ok(receipt.verify_integrity())
     }
+
+    // ========================================================================
+    // MACS-003 — append-only interruption events (.pmat-work/<T>/events.jsonl)
+    // ========================================================================
+
+    /// Path to a ticket's append-only events journal (MACS-003).
+    fn events_path(&self, work_item_id: &str) -> PathBuf {
+        self.work_dir.join(work_item_id).join("events.jsonl")
+    }
+
+    /// Append an interruption event (MACS E5). Returns the record id used by
+    /// `pmat work event --ack-event <id>`. Events are append-only: an
+    /// acknowledgement is itself an event (`AgentEvent::Ack`), never a
+    /// mutation of a prior line.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    pub fn append_event(&self, work_item_id: &str, event: AgentEvent) -> Result<String> {
+        use std::io::Write;
+        let dir = self.work_dir.join(work_item_id);
+        std::fs::create_dir_all(&dir).context("Failed to create work item directory")?;
+        let record = WorkEventRecord {
+            id: format!("ev-{}", Uuid::now_v7().simple()),
+            recorded_at: chrono::Utc::now().to_rfc3339(),
+            event,
+        };
+        let line = serde_json::to_string(&record).context("Failed to serialize event record")?;
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(self.events_path(work_item_id))
+            .context("Failed to open events.jsonl")?;
+        file.write_all(format!("{line}\n").as_bytes())
+            .context("Failed to append event")?;
+        Ok(record.id)
+    }
+
+    /// Load all event records for a ticket (empty if none recorded).
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    pub fn load_events(&self, work_item_id: &str) -> Result<Vec<WorkEventRecord>> {
+        let path = self.events_path(work_item_id);
+        if !path.exists() {
+            return Ok(Vec::new());
+        }
+        let text = std::fs::read_to_string(&path).context("Failed to read events.jsonl")?;
+        let mut records = Vec::new();
+        for line in text.lines() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            records.push(
+                serde_json::from_str::<WorkEventRecord>(line)
+                    .context("Failed to parse event line")?,
+            );
+        }
+        Ok(records)
+    }
+
+    /// Refusal records with no matching `Ack` (MACS E5) — these block
+    /// `pmat work complete` until acknowledged with a reason.
+    #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+    pub fn unacked_refusals(&self, work_item_id: &str) -> Result<Vec<WorkEventRecord>> {
+        let records = self.load_events(work_item_id)?;
+        let acked: std::collections::HashSet<String> = records
+            .iter()
+            .filter_map(|r| match &r.event {
+                AgentEvent::Ack { ack_of, .. } => Some(ack_of.clone()),
+                _ => None,
+            })
+            .collect();
+        Ok(records
+            .into_iter()
+            .filter(|r| {
+                matches!(r.event, AgentEvent::Refusal { .. }) && !acked.contains(&r.id)
+            })
+            .collect())
+    }
 }

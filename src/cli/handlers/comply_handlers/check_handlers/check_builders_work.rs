@@ -236,3 +236,23 @@ fn build_cot_proof_checks(
         ),
     ]
 }
+
+/// CB-1650..CB-1658: Modern Agentic Coding Support checks (Component 32).
+fn build_macs_checks(
+    project_path: &Path,
+    comply_config: &crate::models::comply_config::ComplyConfig,
+) -> Vec<ComplianceCheck> {
+    use super::check_macs as macs;
+    vec![
+        filter_check_by_config(
+            macs::check_receipt_provenance_present(project_path),
+            "cb-1651",
+            comply_config,
+        ),
+        filter_check_by_config(
+            macs::check_refusal_events_acked(project_path),
+            "cb-1654",
+            comply_config,
+        ),
+    ]
+}

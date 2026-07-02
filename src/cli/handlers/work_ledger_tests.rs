@@ -877,4 +877,135 @@ mod tests {
         assert_ne!(sealed.content_hash, base.content_hash);
         assert!(sealed.agent.is_some());
     }
+    // ========================================================================
+    // MACS-003 — work events: append-only journal, refusal blocking, acks
+    // ========================================================================
+
+    #[test]
+    fn event_appends_to_active_ticket() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp_dir.path());
+        let id = ledger
+            .append_event(
+                "MACS-EV",
+                AgentEvent::Refusal {
+                    at: "2026-07-02T00:00:00Z".to_string(),
+                    note: Some("turn ended flagged".to_string()),
+                },
+            )
+            .expect("append event");
+        assert!(id.starts_with("ev-"));
+        let events = ledger.load_events("MACS-EV").expect("load events");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].id, id);
+        assert!(matches!(events[0].event, AgentEvent::Refusal { .. }));
+    }
+
+    #[test]
+    fn event_refusal_blocks_complete() {
+        // The gate is FalsificationLedger::unacked_refusals — non-empty means
+        // handle_work_complete bails (wired before the fresh-receipt path).
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp_dir.path());
+        ledger
+            .append_event(
+                "MACS-EV",
+                AgentEvent::Refusal {
+                    at: "2026-07-02T00:00:00Z".to_string(),
+                    note: None,
+                },
+            )
+            .expect("append refusal");
+        let unacked = ledger.unacked_refusals("MACS-EV").expect("query unacked");
+        assert_eq!(unacked.len(), 1, "refusal must block until acknowledged");
+    }
+
+    #[test]
+    fn ack_event_unblocks_with_reason() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp_dir.path());
+        let refusal_id = ledger
+            .append_event(
+                "MACS-EV",
+                AgentEvent::Refusal {
+                    at: "2026-07-02T00:00:00Z".to_string(),
+                    note: None,
+                },
+            )
+            .expect("append refusal");
+        ledger
+            .append_event(
+                "MACS-EV",
+                AgentEvent::Ack {
+                    at: "2026-07-02T00:01:00Z".to_string(),
+                    ack_of: refusal_id.clone(),
+                    reason: "root cause: flagged phrasing; rephrased and continued".to_string(),
+                },
+            )
+            .expect("append ack");
+        assert!(
+            ledger.unacked_refusals("MACS-EV").expect("query").is_empty(),
+            "acked refusal must no longer block"
+        );
+        // The ack itself is a recorded, reason-carrying event
+        let events = ledger.load_events("MACS-EV").expect("load");
+        assert_eq!(events.len(), 2);
+        match &events[1].event {
+            AgentEvent::Ack { ack_of, reason, .. } => {
+                assert_eq!(ack_of, &refusal_id);
+                assert!(!reason.is_empty());
+            }
+            other => panic!("expected Ack, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn model_switch_recorded_from_to() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp_dir.path());
+        ledger
+            .append_event(
+                "MACS-EV",
+                AgentEvent::ModelSwitch {
+                    at: "2026-07-02T00:00:00Z".to_string(),
+                    from: "claude-fable-5".to_string(),
+                    to: "claude-opus-4-8".to_string(),
+                },
+            )
+            .expect("append switch");
+        let events = ledger.load_events("MACS-EV").expect("load");
+        match &events[0].event {
+            AgentEvent::ModelSwitch { from, to, .. } => {
+                assert_eq!(from, "claude-fable-5");
+                assert_eq!(to, "claude-opus-4-8");
+            }
+            other => panic!("expected ModelSwitch, got {other:?}"),
+        }
+        // Model switches never block completion
+        assert!(ledger.unacked_refusals("MACS-EV").expect("query").is_empty());
+    }
+
+    #[test]
+    fn events_append_only() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp_dir.path());
+        for i in 0..3 {
+            ledger
+                .append_event(
+                    "MACS-EV",
+                    AgentEvent::SessionRestart {
+                        at: format!("2026-07-02T00:00:0{i}Z"),
+                    },
+                )
+                .expect("append");
+            let events = ledger.load_events("MACS-EV").expect("load");
+            assert_eq!(events.len(), i + 1, "every append adds exactly one line");
+        }
+        // Prior records are byte-stable: ids and order preserved
+        let events = ledger.load_events("MACS-EV").expect("load");
+        let ids: Vec<&str> = events.iter().map(|r| r.id.as_str()).collect();
+        let mut sorted = ids.clone();
+        sorted.sort_unstable();
+        assert_eq!(ids, sorted, "uuid7 record ids are time-ordered");
+    }
 }

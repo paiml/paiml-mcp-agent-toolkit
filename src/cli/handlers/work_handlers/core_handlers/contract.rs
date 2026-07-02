@@ -16,7 +16,6 @@ use super::resolution::{print_blocked_result, print_warning_failures};
 
 /// Create a work contract with baseline metrics and DbC triad (helper for handle_work_start)
 #[allow(clippy::too_many_arguments)]
-#[allow(clippy::too_many_arguments)]
 pub(super) async fn create_work_contract(
     project_path: &Path,
     item_id: &str,
@@ -356,9 +355,18 @@ pub(super) async fn run_contract_tests(
 ) -> Result<()> {
     let report = run_falsification_tests(project_path, contract).await?;
 
-    // Build immutable receipt, stamped with agent provenance (MACS F1) —
-    // every crossing of the stochastic/deterministic boundary is attributable.
+    // Build immutable receipt, stamped with agent provenance and the
+    // ticket's interruption events (MACS F1/E5) — every crossing of the
+    // stochastic/deterministic boundary is attributable, and refusals or
+    // model switches can never masquerade as a silent green path.
     let git_sha = crate::cli::handlers::work_ledger::get_current_git_sha(project_path);
+    let ticket_events: Vec<crate::cli::handlers::work_ledger::AgentEvent> =
+        FalsificationLedger::new(project_path)
+            .load_events(&contract.work_item_id)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|record| record.event)
+            .collect();
     let receipt = FalsificationReceipt::from_report(
         &report,
         git_sha,
@@ -367,7 +375,7 @@ pub(super) async fn run_contract_tests(
         override_claims.as_ref(),
         ticket.as_ref(),
     )
-    .with_agent(agent, Vec::new());
+    .with_agent(agent, ticket_events);
 
     // Persist receipt and append to global ledger
     let ledger = FalsificationLedger::new(project_path);

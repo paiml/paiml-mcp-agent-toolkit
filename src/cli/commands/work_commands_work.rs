@@ -241,6 +241,50 @@ pub enum WorkCommands {
         path: Option<PathBuf>,
     },
 
+    /// Record an agent interruption event (refusal, model switch, session
+    /// restart, workflow spawn) or acknowledge one (MACS F1/E5)
+    #[command(visible_alias = "ev")]
+    Event {
+        /// Ticket ID (defaults to the single in-progress ticket)
+        id: Option<String>,
+
+        /// Event type: refusal|model-switch|session-restart|workflow-spawn
+        #[arg(long = "type", value_name = "TYPE")]
+        event_type: Option<String>,
+
+        /// Optional note (refusal)
+        #[arg(long)]
+        note: Option<String>,
+
+        /// Model id before the switch (model-switch)
+        #[arg(long)]
+        from: Option<String>,
+
+        /// Model id after the switch (model-switch)
+        #[arg(long)]
+        to: Option<String>,
+
+        /// Workflow id (workflow-spawn)
+        #[arg(long)]
+        workflow_id: Option<String>,
+
+        /// Number of subagents spawned (workflow-spawn)
+        #[arg(long, default_value = "0")]
+        subagents: u32,
+
+        /// Acknowledge a prior event by record id (requires --reason)
+        #[arg(long)]
+        ack_event: Option<String>,
+
+        /// Reason for the acknowledgement (root cause + disposition)
+        #[arg(long)]
+        reason: Option<String>,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
     /// Show work status
     #[command(visible_aliases = &["st", "stat"])]
     Status {
