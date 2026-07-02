@@ -153,3 +153,112 @@ const CLAIM_PATTERNS: &[(&str, &[&str])] = &[
     ),
     ("regression-gate", &["regression", "performance"]),
 ];
+
+// ============================================================================
+// MACS F1 — Agent provenance types (Component 32, MACS-001)
+// Spec: docs/specifications/components/modern-agentic-coding-support.md §4-F1
+// Contract: contracts/macs-provenance-v1.yaml
+// ============================================================================
+
+/// Which kind of runner produced the work (MACS F1).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentHarness {
+    /// Claude Code, interactive or `-p` (headless)
+    ClaudeCode,
+    /// Claude Agent SDK
+    ClaudeAgentSdk,
+    /// Dynamic-workflow subagent spawned by ultracode
+    UltracodeWorkflow,
+    /// CI pipeline
+    CiPipeline,
+    /// A human ran the command directly
+    Human,
+    /// Any other runner, verbatim
+    Other(String),
+}
+
+impl AgentHarness {
+    /// Parse a declared harness token (kebab-case CLI/env form).
+    /// Unknown tokens are preserved verbatim as `Other`.
+    pub fn parse_token(s: &str) -> Self {
+        match s.trim().to_lowercase().as_str() {
+            "claude-code" | "claude_code" | "claudecode" => Self::ClaudeCode,
+            "claude-agent-sdk" | "claude_agent_sdk" => Self::ClaudeAgentSdk,
+            "ultracode-workflow" | "ultracode_workflow" | "ultracode" => Self::UltracodeWorkflow,
+            "ci-pipeline" | "ci_pipeline" | "ci" => Self::CiPipeline,
+            "human" => Self::Human,
+            _ => Self::Other(s.trim().to_string()),
+        }
+    }
+}
+
+/// How provenance was captured: declared flags are canonical, env detection
+/// is advisory (MACS E9).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ProvenanceSource {
+    /// From explicit `--agent-*` flags or `PMAT_AGENT_*` env
+    Declared,
+    /// Inferred from harness markers (e.g. CLAUDE_CODE_EFFORT_LEVEL)
+    Detected,
+    /// Some fields declared, some detected
+    Mixed,
+}
+
+/// Declared-first provenance for a falsification receipt (MACS F1).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct AgentProvenance {
+    /// e.g. "claude-fable-5" — API model id, verbatim
+    pub model: String,
+    /// "low" | "medium" | "high" | "xhigh" | "max" — as sent to the model
+    pub effort: String,
+    /// Which kind of runner produced the work
+    pub harness: AgentHarness,
+    /// Ultracode workflow id, if any (MACS E2)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workflow_id: Option<String>,
+    /// Parent agent/session id for nested subagents (MACS E2)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
+    /// Declared (flags) | detected (env) | mixed
+    pub source: ProvenanceSource,
+}
+
+/// Interruptions that must never be silent (MACS E5).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum AgentEvent {
+    /// A turn ended in a refusal (flagged request in non-interactive mode)
+    Refusal {
+        /// ISO 8601 timestamp
+        at: String,
+        /// Optional operator note
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        note: Option<String>,
+    },
+    /// The harness switched models mid-loop
+    ModelSwitch {
+        /// ISO 8601 timestamp
+        at: String,
+        /// Model id before the switch, verbatim
+        from: String,
+        /// Model id after the switch, verbatim
+        to: String,
+    },
+    /// The session was restarted (workflow runs are session-bound, MACS E7)
+    SessionRestart {
+        /// ISO 8601 timestamp
+        at: String,
+    },
+    /// A dynamic workflow fanned out subagents
+    WorkflowSpawn {
+        /// ISO 8601 timestamp
+        at: String,
+        /// Workflow id
+        workflow_id: String,
+        /// Number of subagents spawned
+        subagents: u32,
+    },
+}

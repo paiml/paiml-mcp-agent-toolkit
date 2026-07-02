@@ -1,6 +1,17 @@
+/// Current receipt schema version written by this build (MACS F1).
+pub const RECEIPT_SCHEMA_VERSION: u32 = 2;
+
+fn default_receipt_schema_version() -> u32 {
+    1
+}
+
 /// Immutable falsification receipt
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FalsificationReceipt {
+    /// 1 = pre-MACS (agent fields absent from hash), 2 = MACS F1.
+    /// Hash rules are keyed on this so v1 receipts verify under v1 rules.
+    #[serde(default = "default_receipt_schema_version")]
+    pub schema_version: u32,
     /// UUID v7 (time-sortable)
     pub id: String,
     /// Git SHA at time of falsification
@@ -17,7 +28,16 @@ pub struct FalsificationReceipt {
     pub overrides: Vec<ClaimOverride>,
     /// Aggregate summary
     pub summary: ReceiptSummary,
-    /// SHA-256 content hash (covers all fields above)
+    /// Which agent configuration produced this receipt (MACS F1).
+    /// None on v1 receipts and when no provenance was declared or detected.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<AgentProvenance>,
+    /// Interruption events recorded on the ticket (refusals, model switches).
+    /// Never silent: a Refusal blocks completion until acknowledged (MACS E5).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub agent_events: Vec<AgentEvent>,
+    /// SHA-256 content hash (covers all fields above; rules keyed on
+    /// schema_version — v1: legacy byte-concat, v2: canonical JSON)
     pub content_hash: String,
 }
 
@@ -87,6 +107,7 @@ impl FalsificationReceipt {
         };
 
         let mut receipt = Self {
+            schema_version: RECEIPT_SCHEMA_VERSION,
             id,
             git_sha,
             timestamp,
@@ -95,6 +116,8 @@ impl FalsificationReceipt {
             verdicts,
             overrides,
             summary,
+            agent: None,
+            agent_events: Vec::new(),
             content_hash: String::new(), // Computed below
         };
 
@@ -102,8 +125,21 @@ impl FalsificationReceipt {
         receipt
     }
 
-    /// Compute SHA-256 hash of receipt content (excluding content_hash itself)
+    /// Compute SHA-256 hash of receipt content (excluding content_hash itself).
+    /// Rules are keyed on schema_version (MACS F1): v1 receipts keep the
+    /// legacy byte-concat rules so pre-MACS receipts still verify; v2 hashes
+    /// canonical JSON of every field, covering agent provenance and events.
     fn compute_content_hash(&self) -> String {
+        if self.schema_version >= 2 {
+            self.compute_content_hash_v2()
+        } else {
+            self.compute_content_hash_v1()
+        }
+    }
+
+    /// Legacy (schema_version = 1) hash: raw concatenated bytes, agent fields
+    /// and summary counts excluded. Frozen — do not extend.
+    fn compute_content_hash_v1(&self) -> String {
         let mut hasher = Sha256::new();
         hasher.update(self.id.as_bytes());
         hasher.update(self.git_sha.as_bytes());
@@ -122,6 +158,22 @@ impl FalsificationReceipt {
             hasher.update(o.ticket.as_bytes());
         }
         hasher.update(format!("{}", self.summary.allows_completion).as_bytes());
+        hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>()
+    }
+
+    /// MACS (schema_version >= 2) hash: SHA-256 over canonical JSON of the
+    /// whole receipt with content_hash blanked. Canonical = object keys
+    /// sorted, None/empty optional fields omitted (skip_serializing_if), so
+    /// the hash is stable under both field reordering and future additive
+    /// schema evolution (contracts/macs-provenance-v1.yaml#hash_stability).
+    fn compute_content_hash_v2(&self) -> String {
+        let mut hashable = self.clone();
+        hashable.content_hash = String::new();
+        let value = serde_json::to_value(&hashable)
+            .expect("receipt serialization is infallible: string keys, finite floats");
+        let canonical = canonical_json(&value);
+        let mut hasher = Sha256::new();
+        hasher.update(canonical.as_bytes());
         hasher.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>()
     }
 
@@ -197,6 +249,33 @@ fn hypothesis_to_claim_id(hypothesis: &str) -> String {
         .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
         .take(30)
         .collect()
+}
+
+/// Render a JSON value canonically: object keys sorted, arrays in order,
+/// scalars via serde_json (itoa/ryu — deterministic across platforms).
+/// Sorting is explicit because serde_json in this workspace is feature-unified
+/// with preserve_order (insertion-ordered maps).
+fn canonical_json(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort_unstable();
+            let entries: Vec<String> = keys
+                .into_iter()
+                .map(|k| {
+                    let key = serde_json::Value::String(k.clone());
+                    format!("{}:{}", canonical_json(&key), canonical_json(&map[k]))
+                })
+                .collect();
+            format!("{{{}}}", entries.join(","))
+        }
+        serde_json::Value::Array(items) => {
+            let inner: Vec<String> = items.iter().map(canonical_json).collect();
+            format!("[{}]", inner.join(","))
+        }
+        scalar => serde_json::to_string(scalar)
+            .expect("scalar JSON serialization is infallible"),
+    }
 }
 
 /// Get current git SHA from project path

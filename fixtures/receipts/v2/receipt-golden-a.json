@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "id": "0197f000-0000-7000-8000-00000000000a",
+  "git_sha": "bab0f9af9000000000000000000000000000000a",
+  "timestamp": "2026-07-02T12:00:00+00:00",
+  "trigger": "WorkComplete",
+  "work_item_id": "MACS-TEST",
+  "verdicts": [
+    {
+      "hypothesis": "All baseline files still exist",
+      "method": "ManifestIntegrity",
+      "falsified": false,
+      "is_blocking": true,
+      "explanation": "All 10 files present",
+      "evidence_summary": null
+    }
+  ],
+  "overrides": [],
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "warnings": 0,
+    "overridden": 0,
+    "allows_completion": true,
+    "health_score": 1.0
+  },
+  "agent": {
+    "model": "claude-fable-5",
+    "effort": "high",
+    "harness": "claude_code",
+    "source": "declared"
+  },
+  "agent_events": [
+    {
+      "type": "model_switch",
+      "at": "2026-07-02T12:00:00Z",
+      "from": "claude-fable-5",
+      "to": "claude-opus-4-8"
+    }
+  ],
+  "content_hash": "a369049192544b6889a804ca8672041cfc1911f9661520dbf0fc1ebea462a339"
+}

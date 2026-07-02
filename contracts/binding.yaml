@@ -126,3 +126,13 @@ bindings:
   source_file: src/services/agent_context/function_index/build_persistence.rs
   function: save
   status: implemented
+- contract: macs-provenance-v1.yaml
+  equation: provenance_roundtrip
+  source_file: src/cli/handlers/work_ledger_types.rs
+  function: AgentProvenance
+  status: planned
+- contract: macs-provenance-v1.yaml
+  equation: hash_stability
+  source_file: src/cli/handlers/work_ledger_receipt.rs
+  function: FalsificationReceipt::compute_content_hash
+  status: planned
