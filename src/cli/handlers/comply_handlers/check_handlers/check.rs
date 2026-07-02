@@ -127,6 +127,7 @@ fn build_all_compliance_checks(
     ));
     checks.extend(build_codegen_checks(project_path, comply_config));
     checks.extend(build_cot_proof_checks(project_path, comply_config));
+    checks.extend(build_macs_checks(project_path, comply_config));
     checks
 }
 

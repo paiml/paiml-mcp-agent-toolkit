@@ -2623,3 +2623,15 @@ pmat-rust-score: ## Run Rust Project Score assessment (dogfooding)
 	@cargo run --release --bin pmat -- rust-project-score --verbose
 	@echo "✅ Rust Project Score complete!"
 
+
+# MACS-012 (Component 32): deterministic MCP sweep + committed judgment workflow.
+# The sweep (MACS-011) is LLM-free; the workflow judges only its anomalies.
+.PHONY: release-sweep
+release-sweep:
+	@echo "🔍 MACS release sweep: deterministic MCP conformance (LLM-free)..."
+	@mkdir -p artifacts/qa
+	@cargo run --release --bin pmat -- qa-work mcp-sweep --format json --concurrency 8 \
+		> artifacts/qa/mcp-sweep.json 2>/dev/null; \
+	echo "   sweep artifact: artifacts/qa/mcp-sweep.json"
+	@node --check contracts/workflows/release-sweep.ultracode.mjs \
+		&& echo "   judgment workflow lint: OK (run under ultracode to fan out over anomalies)"

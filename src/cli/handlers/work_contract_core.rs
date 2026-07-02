@@ -80,9 +80,17 @@ pub struct WorkContract {
 
     // === PROVABLE-CONTRACTS INTEGRATION (work-management spec §2) ===
 
-    /// Verification level target: L0 (review) through L5 (Lean proof)
-    #[serde(default = "default_verification_level")]
-    pub verification_level: String,
+    /// Verification level target: L0 (review) through L5 (Lean proof).
+    /// Typed since MACS-004 (Component 32): the wire format stays the display
+    /// string ("L3"), so legacy contracts parse unchanged; reads migrate
+    /// leniently ("l4" -> L4, recovering intent) and values outside the
+    /// ladder deserialize as L0 (`pmat work migrate --levels` rewrites the
+    /// file with an audit note). Storing an unparsed level is unrepresentable.
+    #[serde(
+        default = "default_verification_level",
+        deserialize_with = "deserialize_verification_level"
+    )]
+    pub verification_level: crate::cli::handlers::work_verification_level::VerificationLevel,
 
     /// Research and specification references
     #[serde(default)]
@@ -96,6 +104,12 @@ pub struct WorkContract {
     /// Component 27: pmat-work-contract-binding. Empty vec = unbound ticket.
     #[serde(default)]
     pub implements: Vec<ContractBinding>,
+
+    /// Which agent configuration started this work item (MACS F1, Component 32).
+    /// Declared-first: from `--agent-*` flags / `PMAT_AGENT_*` env; advisory
+    /// detection is labeled via `source`. None = no provenance declared.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<crate::cli::handlers::work_ledger::AgentProvenance>,
 }
 
 /// Binding to a provable-contracts YAML equation.
@@ -141,8 +155,23 @@ impl ContractBinding {
     }
 }
 
-fn default_verification_level() -> String {
-    "L3".to_string()
+fn default_verification_level() -> crate::cli::handlers::work_verification_level::VerificationLevel {
+    crate::cli::handlers::work_verification_level::VerificationLevel::L3
+}
+
+/// Migrating deserializer for `WorkContract::verification_level` (MACS-004).
+/// Strict parse first; lenient recovers case/whitespace corruption ("l4" ->
+/// L4); anything else becomes L0 so legacy contracts keep loading — the
+/// migrate tool rewrites the stored value with an audit note.
+fn deserialize_verification_level<'de, D>(
+    deserializer: D,
+) -> Result<crate::cli::handlers::work_verification_level::VerificationLevel, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use crate::cli::handlers::work_verification_level::VerificationLevel;
+    let raw = String::deserialize(deserializer)?;
+    Ok(VerificationLevel::parse_migrating(&raw))
 }
 
 /// Research references linking work item to papers and specs
@@ -165,15 +194,49 @@ pub struct WorkReferences {
     pub oracle_context: Option<String>,
 }
 
-/// A single step in the chain-of-thought reasoning audit trail
+/// A single step in the chain-of-thought reasoning audit trail.
+///
+/// Two generations coexist (MACS-007, Component 32 implementing C31):
+/// - legacy prose: `{step, question, answer}` — annotated L0 evidence,
+///   still parsed and preserved, never dropped;
+/// - v2 structured: `{id, assumption, implication, evidence_method,
+///   discharged_by}` — checkable (CB-1640) and derivable (CB-1658) via
+///   `crate::models::work_cot`.
+///
+/// `assumption`/`implication` stay raw `Value`s because two wire shapes are
+/// legal: a plain string (MACS Appendix A) or the C31 object form
+/// `{text, references[], expr}` that CB-1640/1643 introspect.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainOfThoughtStep {
-    /// Step number (1-based)
+    /// Step number (1-based; legacy shape)
+    #[serde(default, skip_serializing_if = "cot_step_is_zero")]
     pub step: u32,
-    /// The question being answered
+    /// The question being answered (legacy prose shape)
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub question: String,
-    /// The answer/reasoning
+    /// The answer/reasoning (legacy prose shape)
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub answer: String,
+    /// v2: step id, e.g. "CoT-1"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    /// v2: input to the reasoning (string or `{text, references, expr}`)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assumption: Option<serde_json::Value>,
+    /// v2: output of the reasoning (string or `{text, references, expr}`)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub implication: Option<serde_json::Value>,
+    /// v2: how to falsify the implication
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence_method: Option<String>,
+    /// v2: what discharges the assumption (CoT id | contract#equation |
+    /// E<n> | Axiomatic)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub discharged_by: Option<crate::models::work_cot::DischargeRef>,
+}
+
+fn cot_step_is_zero(step: &u32) -> bool {
+    *step == 0
 }
 
 fn default_contract_version() -> String {
@@ -213,6 +276,7 @@ impl WorkContract {
             references: WorkReferences::default(),
             chain_of_thought: Vec::new(),
             implements: Vec::new(),
+            agent: None,
         }
     }
 
@@ -294,6 +358,7 @@ impl WorkContract {
             references: WorkReferences::default(),
             chain_of_thought: Vec::new(),
             implements: Vec::new(),
+            agent: None,
         };
 
         // §5.3-5.4: Subcontracting validation for iteration > 1

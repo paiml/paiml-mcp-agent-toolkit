@@ -415,11 +415,11 @@ mod phase_2_skill_discovery_tests {
             .map(|e| e.file_name().to_string_lossy().to_string())
             .collect();
 
-        // Should have exactly 5 skills
+        // Should have exactly 6 skills
         assert_eq!(
             skill_dirs.len(),
-            5,
-            "Should have 5 skill directories, found: {:?}",
+            6,
+            "Should have 6 skill directories, found: {:?}",
             skill_dirs
         );
 

@@ -1,6 +1,6 @@
 {
   "name": "pmat",
-  "version": "1.0.0",
+  "version": "3.20.1",
   "description": "Project Analysis and Intelligence Modeling Toolkit",
   "main": "target/release/pmat",
   "bin": {
@@ -8,69 +8,289 @@
   },
   "mcp": {
     "runtime": "binary",
-    "tools": {
-      "generate_template": {
-        "description": "Generate a template file (Makefile, README, or .gitignore) for your project",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "resource_uri": {
-              "type": "string",
-              "description": "Template URI (e.g., template://makefile/rust/cli-binary)"
-            },
-            "parameters": {
-              "type": "object",
-              "description": "Template parameters specific to the chosen template"
-            }
-          },
-          "required": ["resource_uri", "parameters"]
-        }
-      },
-      "generate_unified_context": {
-        "description": "Generate comprehensive unified context with advanced code analysis annotations",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "project_path": {
-              "type": "string",
-              "description": "Path to the project to analyze (defaults to current directory)",
-              "default": "."
-            },
-            "output_file": {
-              "type": "string",
-              "description": "Output file path (optional, prints to stdout if not specified)"
-            },
-            "format": {
-              "type": "string",
-              "enum": ["markdown", "json", "sarif", "llm-optimized"],
-              "description": "Output format",
-              "default": "markdown"
-            },
-            "skip_expensive_metrics": {
-              "type": "boolean",
-              "description": "Skip expensive metrics for faster execution",
-              "default": false
-            },
-            "include_large_files": {
-              "type": "boolean",
-              "description": "Include large files (>500KB) that are normally skipped",
-              "default": false
-            }
-          },
-          "required": []
-        }
+    "launch": {
+      "env": {
+        "MCP_VERSION": "1"
       }
     },
-    "resources": {
-      "template://makefile/*": {
-        "description": "Makefile templates for various languages and project types"
+    "tool_count": 20,
+    "tools": [
+      {
+        "name": "analyze_complexity",
+        "description": "Analyze cyclomatic and cognitive complexity of code",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
       },
-      "template://readme/*": {
-        "description": "README.md templates for various project types"
+      {
+        "name": "analyze_satd",
+        "description": "Detect self-admitted technical debt (TODO/FIXME/HACK)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
       },
-      "template://gitignore/*": {
-        "description": ".gitignore templates for various languages"
+      {
+        "name": "analyze_dead_code",
+        "description": "Detect unreachable functions and modules",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "analyze_dag",
+        "description": "Build the dependency/call graph of a project",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "analyze_deep_context",
+        "description": "Generate comprehensive annotated project context",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "analyze_big_o",
+        "description": "Estimate algorithmic complexity of functions",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "refactor.start",
+        "description": "Start an automated refactoring session",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "refactor.nextIteration",
+        "description": "Advance the active refactoring session",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "refactor.getState",
+        "description": "Return the active refactoring session state",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "refactor.stop",
+        "description": "Stop the active refactoring session",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "quality_gate",
+        "description": "Run the quality gate (complexity, satd, lint, tests)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "quality_proxy",
+        "description": "Proxy a quality-scored analysis request",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "pdmt_deterministic_todos",
+        "description": "Generate deterministic PDMT todo lists",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "git_operation",
+        "description": "Perform a git operation for the workflow",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "generate_context",
+        "description": "Generate LLM-optimized codebase context",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "scaffold_project",
+        "description": "Scaffold a project or agent skeleton",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "pmat_query_code",
+        "description": "Semantic code search ranked by quality",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "pmat_get_function",
+        "description": "Return a full function with quality metrics",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "pmat_find_similar",
+        "description": "Find functions similar to a target (refactoring)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "pmat_index_stats",
+        "description": "Report agent-context index health and statistics",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
       }
-    }
+    ]
   }
 }

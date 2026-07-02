@@ -124,6 +124,10 @@ pub enum WorkCommands {
         /// Issue number (e.g., "8", "42") or YAML ticket ID (e.g., "PERF-001")
         id: String,
 
+        /// Agent provenance (declared; also read from PMAT_AGENT_* env)
+        #[command(flatten)]
+        agent: AgentFlags,
+
         /// Create specification file (docs/specifications/NNN-name.md)
         #[arg(long)]
         with_spec: bool,
@@ -176,6 +180,10 @@ pub enum WorkCommands {
         /// Issue number or ticket ID
         id: String,
 
+        /// Agent provenance (declared; also read from PMAT_AGENT_* env)
+        #[command(flatten)]
+        agent: AgentFlags,
+
         /// Project path (default: current directory)
         #[arg(short, long)]
         path: Option<PathBuf>,
@@ -201,6 +209,10 @@ pub enum WorkCommands {
         #[arg(long)]
         ticket: Option<String>,
 
+        /// Agent provenance (declared; also read from PMAT_AGENT_* env)
+        #[command(flatten)]
+        agent: AgentFlags,
+
         /// Project path (default: current directory)
         #[arg(short, long)]
         path: Option<PathBuf>,
@@ -219,6 +231,70 @@ pub enum WorkCommands {
         /// Ticket ID for override accountability (MANDATORY with --override-claims)
         #[arg(long)]
         ticket: Option<String>,
+
+        /// Agent provenance (declared; also read from PMAT_AGENT_* env)
+        #[command(flatten)]
+        agent: AgentFlags,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
+    /// Structured chain-of-thought tools: integrity check + derivation
+    /// (MACS F3 / Component 31)
+    Cot {
+        /// CoT subcommand
+        #[command(subcommand)]
+        command: WorkCotCommands,
+    },
+
+    /// Falsification-ledger tools: hash re-verification + provenance report
+    /// (MACS F1 / Component 32)
+    Ledger {
+        /// Ledger subcommand
+        #[command(subcommand)]
+        command: WorkLedgerCommands,
+    },
+
+    /// Record an agent interruption event (refusal, model switch, session
+    /// restart, workflow spawn) or acknowledge one (MACS F1/E5)
+    #[command(visible_alias = "ev")]
+    Event {
+        /// Ticket ID (defaults to the single in-progress ticket)
+        id: Option<String>,
+
+        /// Event type: refusal|model-switch|session-restart|workflow-spawn
+        #[arg(long = "type", value_name = "TYPE")]
+        event_type: Option<String>,
+
+        /// Optional note (refusal)
+        #[arg(long)]
+        note: Option<String>,
+
+        /// Model id before the switch (model-switch)
+        #[arg(long)]
+        from: Option<String>,
+
+        /// Model id after the switch (model-switch)
+        #[arg(long)]
+        to: Option<String>,
+
+        /// Workflow id (workflow-spawn)
+        #[arg(long)]
+        workflow_id: Option<String>,
+
+        /// Number of subagents spawned (workflow-spawn)
+        #[arg(long, default_value = "0")]
+        subagents: u32,
+
+        /// Acknowledge a prior event by record id (requires --reason)
+        #[arg(long)]
+        ack_event: Option<String>,
+
+        /// Reason for the acknowledgement (root cause + disposition)
+        #[arg(long)]
+        reason: Option<String>,
 
         /// Project path (default: current directory)
         #[arg(short, long)]
@@ -302,6 +378,12 @@ pub enum WorkCommands {
         /// Create backup before migration
         #[arg(long, default_value = "true")]
         backup: bool,
+
+        /// Rewrite legacy verification_level strings in .pmat-work contracts
+        /// to typed canonical form; invalid values become L0 + audit note
+        /// (MACS-004)
+        #[arg(long)]
+        levels: bool,
     },
 
     /// List all valid status values with descriptions
@@ -337,5 +419,96 @@ pub enum WorkCommands {
         /// Output format (text or json)
         #[arg(short, long, default_value = "text")]
         format: String,
+    },
+}
+
+/// Agent provenance flags shared by `pmat work start|checkpoint|complete|falsify`
+/// (MACS F1). Values are also read from `PMAT_AGENT_*` env vars; explicit flags
+/// win. Flags and env both count as *declared* provenance — advisory detection
+/// (e.g. CLAUDE_CODE_EFFORT_LEVEL) happens in the handler and is labeled.
+#[derive(Debug, Clone, Default, clap::Args)]
+pub struct AgentFlags {
+    /// Agent model id, verbatim (e.g. "claude-fable-5")
+    #[arg(long, env = "PMAT_AGENT_MODEL", global = false)]
+    pub agent_model: Option<String>,
+
+    /// Model effort as sent to the model: low|medium|high|xhigh|max
+    #[arg(long, env = "PMAT_AGENT_EFFORT")]
+    pub agent_effort: Option<String>,
+
+    /// Runner kind: claude-code|claude-agent-sdk|ultracode-workflow|ci-pipeline|human|<other>
+    #[arg(long, env = "PMAT_AGENT_HARNESS")]
+    pub agent_harness: Option<String>,
+
+    /// Ultracode workflow id, if any
+    #[arg(long, env = "PMAT_AGENT_WORKFLOW_ID")]
+    pub agent_workflow_id: Option<String>,
+
+    /// Parent agent/session id for nested subagents
+    #[arg(long, env = "PMAT_AGENT_PARENT")]
+    pub agent_parent: Option<String>,
+}
+
+impl AgentFlags {
+    /// Convert to the handler-layer declared-provenance struct.
+    pub fn to_declared(&self) -> crate::cli::handlers::work_ledger::DeclaredAgent {
+        crate::cli::handlers::work_ledger::DeclaredAgent {
+            model: self.agent_model.clone(),
+            effort: self.agent_effort.clone(),
+            harness: self.agent_harness.clone(),
+            workflow_id: self.agent_workflow_id.clone(),
+            parent: self.agent_parent.clone(),
+        }
+    }
+}
+
+/// Chain-of-thought subcommands (MACS F3): `pmat work cot check|derive`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum WorkCotCommands {
+    /// Verify chain integrity (CB-1640): every assumption discharged,
+    /// discharge graph a DAG rooted in evidence
+    Check {
+        /// Ticket ID
+        id: String,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
+    /// Derive one proof obligation + one falsifiable claim per step
+    /// (verbatim fields) into contracts/work/<ID>.cot.yaml and record the
+    /// canonical CoT digest (CB-1646/CB-1658)
+    Derive {
+        /// Ticket ID
+        id: String,
+
+        /// Also emit optional require/ensure clauses (C30 codegen)
+        #[arg(long)]
+        emit_clauses: bool,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+}
+
+/// Falsification-ledger subcommands (MACS-016): `pmat work ledger verify`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum WorkLedgerCommands {
+    /// Recompute every receipt hash (v1 + v2 rules), detect tampering,
+    /// report provenance, and check Rule R1 ascending order. Read-only.
+    Verify {
+        /// Show the provenance report (receipts grouped by model/effort/harness)
+        #[arg(long)]
+        report: bool,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path")]
+        path: Option<PathBuf>,
     },
 }

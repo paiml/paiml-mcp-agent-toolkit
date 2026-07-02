@@ -23,7 +23,14 @@ mod tests_work_ladder_declaration {
     #[test]
     fn parses_fails_on_typo() {
         let tmp = tempdir().unwrap();
-        make_contract("T-1", "L3 ").save(tmp.path()).unwrap();
+        // Since MACS-004 the typed field canonicalizes on save, so the typo
+        // must be seeded into the RAW contract.json (as legacy tools did).
+        make_contract("T-1", "L3").save(tmp.path()).unwrap();
+        let raw_path = tmp.path().join(".pmat-work/T-1/contract.json");
+        let mut value: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&raw_path).unwrap()).unwrap();
+        value["verification_level"] = serde_json::Value::String("L3 ".into());
+        std::fs::write(&raw_path, serde_json::to_string_pretty(&value).unwrap()).unwrap();
         let r = check_ladder_parses(tmp.path());
         assert_eq!(r.status, CheckStatus::Fail);
         assert!(r.message.contains("T-1"));

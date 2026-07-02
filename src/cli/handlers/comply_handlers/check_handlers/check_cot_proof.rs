@@ -150,3 +150,4 @@ include!("check_cot_proof_l5_lean.rs");
 include!("check_cot_proof_tests_agent_run.rs");
 include!("check_cot_proof_tests_schema.rs");
 include!("check_cot_proof_tests_formal.rs");
+include!("check_cot_proof_tests_macs_digest.rs");

@@ -120,12 +120,6 @@ pub(crate) fn check_ladder_l3_falsification(project_path: &Path) -> ComplianceCh
 /// Ticket strings are typed like `"L3"` or `"L4 (kani_proof)"` — take the
 /// first whitespace-separated token so annotated variants parse too.
 fn is_l3_or_higher(contract: &WorkContract) -> bool {
-    let token = contract
-        .verification_level
-        .split_whitespace()
-        .next()
-        .unwrap_or("");
-    VerificationLevel::parse_lenient(token)
-        .map(|lvl| lvl >= VerificationLevel::L3)
-        .unwrap_or(false)
+    // Typed since MACS-004 (annotated variants handled at deserialization).
+    contract.verification_level >= VerificationLevel::L3
 }

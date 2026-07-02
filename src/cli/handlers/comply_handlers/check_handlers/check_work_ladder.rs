@@ -137,7 +137,7 @@ fn write_yaml(project: &Path, name: &str, body: &str) -> std::path::PathBuf {
 #[cfg_attr(coverage_nightly, coverage(off))]
 fn make_contract(id: &str, level: &str) -> WorkContract {
     let mut c = WorkContract::new(id.to_string(), "deadbeef".to_string());
-    c.verification_level = level.to_string();
+    c.verification_level = VerificationLevel::parse_migrating(level);
     c
 }
 

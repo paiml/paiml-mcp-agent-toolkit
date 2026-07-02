@@ -1,4 +1,5 @@
 ---
+effort: low          # MACS F4: pinned for reproducible cost/behavior
 name: Deep Context Generation with PMAT
 description: |
   Generates comprehensive, LLM-optimized codebase context using PMAT

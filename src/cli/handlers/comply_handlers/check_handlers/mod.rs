@@ -19,6 +19,7 @@ pub(crate) mod check_cot_proof;
 pub(crate) mod check_dead_code;
 pub(crate) mod check_extended;
 pub(crate) mod check_falsification_unification;
+pub(crate) mod check_macs;
 pub(crate) mod check_mono_spec;
 pub(crate) mod check_provable_contracts;
 pub(crate) mod check_review_audit;

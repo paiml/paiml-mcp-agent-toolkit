@@ -76,6 +76,7 @@ pub mod project_diag_handlers; // Project diagnostics (lltop Tab 8 equivalent)
 pub mod prompt_handlers;
 pub mod proof_annotations_handler;
 pub mod provability_handler;
+pub mod qa_mcp_sweep; // MACS F5 (Component 32): LLM-free deterministic MCP sweep
 pub mod qa_work_handler;
 pub mod qdd_handlers;
 pub mod quality_gate_formatter;

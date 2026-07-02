@@ -25,4 +25,8 @@ ignore = [
   "RUSTSEC-2024-0370",  # proc-macro-error 1.0.4 unmaintained: transitive via derive macros, no fixed release
   "RUSTSEC-2026-0173",  # proc-macro-error2 2.0.1 unmaintained: transitive via validator_derive->aprender-train, no fixed release
   "RUSTSEC-2024-0320",  # yaml-rust 0.4.5 unmaintained: transitive via syntect, no migrated replacement
+  "RUSTSEC-2026-0194",  # quick-xml 0.37.5 quadratic attr check: transitive via aprender-orchestrate 0.50, fix needs quick-xml>=0.41 upstream, pmat parses no untrusted XML
+  "RUSTSEC-2026-0195",  # quick-xml 0.37.5 NsReader allocation DoS: transitive via aprender-orchestrate 0.50, fix needs quick-xml>=0.41 upstream, pmat parses no untrusted XML
+  "RUSTSEC-2026-0187",  # lopdf 0.38 stack overflow on deeply nested PDF: transitive via pdf-extract 0.10 which pins lopdf<0.42, fix needs a breaking pdf-extract bump
+  "RUSTSEC-2026-0192",  # ttf-parser 0.25 unmaintained: transitive font parser, no fixed release
 ]

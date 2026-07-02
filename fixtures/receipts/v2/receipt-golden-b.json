@@ -1,0 +1,54 @@
+{
+  "schema_version": 2,
+  "id": "0197f000-0000-7000-8000-00000000000b",
+  "git_sha": "bab0f9af9000000000000000000000000000000b",
+  "timestamp": "2026-07-02T12:00:01+00:00",
+  "trigger": "WorkComplete",
+  "work_item_id": "MACS-TEST",
+  "verdicts": [
+    {
+      "hypothesis": "All baseline files still exist",
+      "method": "ManifestIntegrity",
+      "falsified": false,
+      "is_blocking": true,
+      "explanation": "All 10 files present",
+      "evidence_summary": null
+    }
+  ],
+  "overrides": [],
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "warnings": 0,
+    "overridden": 0,
+    "allows_completion": true,
+    "health_score": 1.0
+  },
+  "agent": {
+    "model": "claude-opus-4-8",
+    "effort": "xhigh",
+    "harness": "ultracode_workflow",
+    "workflow_id": "wf_golden",
+    "parent": "session-root",
+    "source": "mixed"
+  },
+  "agent_events": [
+    {
+      "type": "refusal",
+      "at": "2026-07-02T11:59:00Z",
+      "note": "flagged request"
+    },
+    {
+      "type": "session_restart",
+      "at": "2026-07-02T11:59:30Z"
+    },
+    {
+      "type": "workflow_spawn",
+      "at": "2026-07-02T11:59:45Z",
+      "workflow_id": "wf_golden",
+      "subagents": 10
+    }
+  ],
+  "content_hash": "a643025ae43387f769d0e6aa403da2aa57699218cba72b33ad5234b039ac0b80"
+}

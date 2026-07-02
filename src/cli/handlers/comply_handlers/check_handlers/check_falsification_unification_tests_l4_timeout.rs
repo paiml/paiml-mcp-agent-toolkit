@@ -102,7 +102,7 @@ mod tests_l4_timeout {
             ("L4 (kani_proof)", true),
             ("L5", true),
         ] {
-            c.verification_level = s.into();
+            c.verification_level = VerificationLevel::parse_migrating(s);
             assert_eq!(is_l4_or_higher(&c), want, "{}", s);
         }
     }

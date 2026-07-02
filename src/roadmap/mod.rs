@@ -18,6 +18,7 @@ pub mod commands;
 pub mod generator;
 pub mod parser;
 pub mod quality;
+pub mod sync; // MACS F6 (Component 32): canonical ROADMAP.yaml
 pub mod tracker;
 
 /// Task status in the roadmap

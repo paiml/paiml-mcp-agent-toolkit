@@ -1,4 +1,5 @@
 ---
+effort: high          # MACS F4: pinned for reproducible cost/behavior
 name: Technical Debt Tracking with PMAT
 description: |
   Tracks and manages technical debt using PMAT (Pragmatic AI Labs MCP Agent Toolkit).

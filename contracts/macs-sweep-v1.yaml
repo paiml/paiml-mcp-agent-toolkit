@@ -1,0 +1,75 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-07-02"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/components/modern-agentic-coding-support.md (MACS v1.0.0)"
+    - "arXiv:2602.22302 Bruni et al. (2026) Agent Behavioral Contracts"
+    - "Popper (1959) The Logic of Scientific Discovery"
+    - "Meyer (1997) Object-Oriented Software Construction 2e (Design by Contract)"
+  registry: true
+  description: >
+    LLM-free deterministic MCP sweep harness (pmat qa mcp-sweep) plus a
+    committed judgment workflow for anomalies only.
+    MACS F5 (docs/specifications/components/modern-agentic-coding-support.md).
+  contract: macs-sweep
+  status: draft
+
+equations:
+  sweep_deterministic:
+    formula: run1 = run2 modulo {timestamp, duration} fields
+    domain: runs of pmat qa mcp-sweep --format json
+    codomain: bool
+    invariants:
+      - anomaly ordering is stable (sorted by tool name)
+    preconditions:
+      - pmat binary built from working tree
+
+  framing_pure:
+    formula: stdout_bytes subset_of JSONRPC_frames
+    domain: bytes on the MCP server stdout during a sweep
+    codomain: bool
+    invariants:
+      - no stray print/log bytes interleave JSON-RPC frames
+    preconditions: []
+
+  concurrency_safe:
+    formula: lock_errors = 0 and scratch_leftovers = 0 for N <= 8
+    domain: N in {1..8} concurrent tool calls against one working tree
+    codomain: bool
+    invariants:
+      - advisory-lock discipline per src/services/metric_trends_core.rs
+    preconditions: []
+
+falsification:
+  - condition: "Any LLM/model API call in the mcp-sweep code path"
+    severity: P0
+    action: reject_push
+  - condition: "Two sweep runs differ beyond timestamp/duration fields"
+    severity: P0
+    action: reject_push
+  - condition: "Concurrency N<=8 produces lock errors or scratch leftovers"
+    severity: P0
+    action: reject_push
+
+falsification_tests:
+  - id: sweep_args_derived_from_schema
+    rule: Minimal valid args derived from each tool inputSchema
+    prediction: every required property gets a type-appropriate placeholder; path fields get the target
+    test: cargo test --lib args_derived_from_every_tool_schema
+    if_fails: schema-derivable args need an LLM, defeating the LLM-free premise
+  - id: sweep_framing_pure
+    rule: stdout carries only JSON-RPC frames
+    prediction: framing_stray_lines flags any non-JSON stdout line
+    test: cargo test --lib framing_stdout_pure_jsonrpc_golden
+    if_fails: stray bytes corrupt the JSON-RPC stream (D82 class)
+  - id: sweep_deterministic
+    rule: two runs byte-identical modulo timestamp/duration
+    prediction: identical tool data serializes identically (report carries no wall-clock)
+    test: cargo test --lib two_runs_byte_identical_modulo_time
+    if_fails: the sweep is not replayable, breaking green-here-green-in-CI
+  - id: sweep_no_llm
+    rule: the sweep path links no model/API client
+    prediction: qa_mcp_sweep.rs references no LLM client symbols
+    test: cargo test --lib no_llm_symbols_linked
+    if_fails: stochastic tokens leak into a deterministic gate (E6)

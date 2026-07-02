@@ -96,6 +96,25 @@ pub enum QaWorkCommands {
         output: Option<PathBuf>,
     },
 
+    /// LLM-free deterministic MCP conformance sweep (MACS F5). Spawns the
+    /// live MCP server over stdio, derives minimal args from each tool's
+    /// inputSchema, calls every tool, and checks JSON-RPC framing + replay
+    /// determinism under N-way concurrency. No model, no tokens.
+    #[command(visible_aliases = &["sweep", "mcp"])]
+    McpSweep {
+        /// Concurrent sweep passes against one working tree
+        #[arg(long, default_value = "8")]
+        concurrency: usize,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path the server operates on
+        #[arg(short = 'p', long = "path", default_value = ".")]
+        path: PathBuf,
+    },
+
     /// Validate specification with 100-point Popperian falsifiability scoring (Part D & E)
     ///
     /// Parses markdown specifications and validates claims through evidence.

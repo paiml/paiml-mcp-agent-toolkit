@@ -65,6 +65,19 @@ impl VerificationLevel {
         Self::parse_strict(&canonical)
     }
 
+    /// Total migrating parse (MACS-004): strict, then lenient, then lenient
+    /// on the first whitespace token (annotated legacy variants like
+    /// `"L4 (kani_proof)"`), else `L0`. This is the read-path semantics of
+    /// `WorkContract::verification_level`; `pmat work migrate --levels`
+    /// rewrites stored values through the same function.
+    pub fn parse_migrating(s: &str) -> Self {
+        let first_token = s.split_whitespace().next().unwrap_or("");
+        Self::parse_strict(s)
+            .or_else(|| Self::parse_lenient(s))
+            .or_else(|| Self::parse_lenient(first_token))
+            .unwrap_or(Self::L0)
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::L0 => "L0",
@@ -101,6 +114,33 @@ impl VerificationLevel {
         } else {
             Self::L1
         }
+    }
+
+    /// Evidenced level from a bound YAML, computed **bottom-up**: each rung
+    /// requires every lower rung's evidence to be present, so a YAML that
+    /// declares `kani_harnesses` but no `falsification_tests` caps at L2 (not
+    /// L4). `kani_ran` is the out-of-band kani execution proof (L4 needs a
+    /// real run, not just declared harnesses). Unlike `max_attainable_from_yaml`
+    /// (a ceiling), this is what a ticket has actually *earned* (MACS F2 —
+    /// closes the ladder_evidence gate-bypass found in adversarial review).
+    pub fn evidenced_level_from_yaml(yaml: &str, kani_ran: bool) -> Self {
+        // L2: bound to an equation.
+        if !yaml_section_non_empty(yaml, "equations") {
+            return Self::L1;
+        }
+        // L3: falsification_tests present.
+        if !yaml_section_non_empty(yaml, "falsification_tests") {
+            return Self::L2;
+        }
+        // L4: kani harnesses declared AND actually executed.
+        if !(yaml_section_non_empty(yaml, "kani_harnesses") && kani_ran) {
+            return Self::L3;
+        }
+        // L5: lean theorem proved.
+        if !yaml_lean_theorem_proved(yaml) {
+            return Self::L4;
+        }
+        Self::L5
     }
 }
 
@@ -142,43 +182,78 @@ impl std::error::Error for ParseLevelError {}
 fn yaml_section_non_empty(yaml: &str, section: &str) -> bool {
     let header = format!("{}:", section);
     let mut in_section = false;
-    let mut saw_body = false;
     for line in yaml.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with('#') {
-            continue;
-        }
-        if !line.starts_with(' ') {
-            if in_section && !saw_body {
-                return false;
-            }
-            // Detect "section: []" flow-style empty
-            if trimmed.starts_with(&header) {
-                let rest = trimmed[header.len()..].trim();
-                if rest.is_empty() {
-                    in_section = true;
-                    saw_body = false;
-                } else if rest.starts_with('[') && rest.ends_with(']') {
-                    // Flow style: non-empty if there's anything between the brackets
-                    let inner = &rest[1..rest.len() - 1];
-                    return !inner.trim().is_empty();
-                } else if rest.starts_with('{') {
-                    // Flow mapping — treat as non-empty if non-trivial
-                    return rest.len() > 2;
-                } else {
-                    return true; // scalar value — not the shape we want but still non-empty
-                }
-            } else {
-                in_section = false;
-            }
-            continue;
-        }
-        if in_section {
-            // Any indented non-comment line is a body entry
-            return true;
+        match section_line_action(line, &header, in_section) {
+            LineAction::Skip => {}
+            LineAction::OpenSection => in_section = true,
+            LineAction::Decide(non_empty) => return non_empty,
         }
     }
-    saw_body
+    false
+}
+
+/// What one line means to the section scan, given whether a section is open.
+enum LineAction {
+    /// Blank/comment/unrelated — carry on.
+    Skip,
+    /// `section:` header with a block body to follow.
+    OpenSection,
+    /// A terminal decision: the section is (non-)empty.
+    Decide(bool),
+}
+
+/// Classify a single line for `yaml_section_non_empty` (branch-free loop body).
+fn section_line_action(line: &str, header: &str, in_section: bool) -> LineAction {
+    let trimmed = line.trim();
+    if trimmed.is_empty() || trimmed.starts_with('#') {
+        return LineAction::Skip;
+    }
+    if line.starts_with(' ') {
+        // Indented body line: the section is non-empty iff one is open.
+        return if in_section {
+            LineAction::Decide(true)
+        } else {
+            LineAction::Skip
+        };
+    }
+    // Top-level line: an already-open section reached here with no body.
+    if in_section {
+        return LineAction::Decide(false);
+    }
+    match yaml_header_kind(trimmed, header) {
+        HeaderKind::Other => LineAction::Skip,
+        HeaderKind::OpenBlock => LineAction::OpenSection,
+        HeaderKind::Inline(non_empty) => LineAction::Decide(non_empty),
+    }
+}
+
+enum HeaderKind {
+    /// A line that is not the section header.
+    Other,
+    /// `section:` with no inline value — a block body may follow.
+    OpenBlock,
+    /// `section: <value>` inline; carries whether the value is non-empty.
+    Inline(bool),
+}
+
+/// Classify a top-level `trimmed` line relative to the target `header`.
+fn yaml_header_kind(trimmed: &str, header: &str) -> HeaderKind {
+    if !trimmed.starts_with(header) {
+        return HeaderKind::Other;
+    }
+    let rest = trimmed[header.len()..].trim();
+    if rest.is_empty() {
+        HeaderKind::OpenBlock
+    } else if rest.starts_with('[') && rest.ends_with(']') {
+        // Flow sequence: non-empty iff anything sits between the brackets.
+        HeaderKind::Inline(!rest[1..rest.len() - 1].trim().is_empty())
+    } else if rest.starts_with('{') {
+        // Flow mapping: non-empty if non-trivial (`{}` is empty).
+        HeaderKind::Inline(rest.len() > 2)
+    } else {
+        // Scalar value — present, hence non-empty.
+        HeaderKind::Inline(true)
+    }
 }
 
 /// True iff the YAML contains a `lean_theorem:` block with
@@ -194,21 +269,23 @@ fn yaml_lean_theorem_proved(yaml: &str) -> bool {
             in_lean = trimmed.starts_with("lean_theorem:");
             continue;
         }
-        if !in_lean {
-            continue;
-        }
-        // Accept `status: proved`, `status: "proved"`, `status: 'proved'`
-        if let Some(idx) = trimmed.find("status:") {
-            let rest = trimmed[idx + "status:".len()..]
-                .trim()
-                .trim_matches(|c: char| c == '"' || c == '\'')
-                .trim();
-            if rest.eq_ignore_ascii_case("proved") {
-                return true;
-            }
+        if in_lean && line_asserts_status_proved(trimmed) {
+            return true;
         }
     }
     false
+}
+
+/// True iff a `status:` field on this line reads `proved` (quotes optional).
+fn line_asserts_status_proved(trimmed: &str) -> bool {
+    let Some(idx) = trimmed.find("status:") else {
+        return false;
+    };
+    trimmed[idx + "status:".len()..]
+        .trim()
+        .trim_matches(|c: char| c == '"' || c == '\'')
+        .trim()
+        .eq_ignore_ascii_case("proved")
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]
@@ -341,5 +418,70 @@ mod tests {
         assert!(!yaml_lean_theorem_proved(
             "lean_theorem:\n  status: pending\n"
         ));
+    }
+
+    #[test]
+    fn ord_matches_numeric() {
+        // Ord agrees with the numeric ladder index (fieldless enum cast).
+        for pair in VerificationLevel::ALL.windows(2) {
+            assert!(pair[0] < pair[1]);
+            assert!((pair[0] as u8) < (pair[1] as u8));
+        }
+        assert_eq!(VerificationLevel::L0 as u8, 0);
+        assert_eq!(VerificationLevel::L5 as u8, 5);
+    }
+
+    #[test]
+    fn serde_string_repr() {
+        // Wire format is the display string — no wire break vs legacy files.
+        for v in VerificationLevel::ALL {
+            let json = serde_json::to_string(&v).expect("serialize");
+            assert_eq!(json, format!("\"{}\"", v.as_str()));
+            let back: VerificationLevel = serde_json::from_str(&json).expect("parse");
+            assert_eq!(back, v);
+        }
+    }
+
+    #[test]
+    fn display_parse_id() {
+        for v in VerificationLevel::ALL {
+            assert_eq!(v.as_str().parse::<VerificationLevel>().ok(), Some(v));
+        }
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
+
+        /// parse is total (never panics) and strict: accepts exactly "L0".."L5".
+        #[test]
+        fn parse_total_strict_prop(s in "\\PC{0,8}") {
+            let expected = matches!(s.as_str(), "L0" | "L1" | "L2" | "L3" | "L4" | "L5");
+            proptest::prop_assert_eq!(VerificationLevel::parse_strict(&s).is_some(), expected);
+            proptest::prop_assert_eq!(s.parse::<VerificationLevel>().is_ok(), expected);
+        }
+
+        /// Generated corruptions of valid levels (case, padding, suffix words)
+        /// must be rejected by the strict parse.
+        #[test]
+        fn parse_strict_rejects_generated_corruptions(
+            base in 0usize..6,
+            mode in 0usize..4,
+            pad in "[ \\t]{1,3}",
+            word in "[a-z]{3,8}",
+        ) {
+            let valid = VerificationLevel::ALL[base].as_str().to_string();
+            let corrupted = match mode {
+                0 => valid.to_lowercase(),
+                1 => format!("{valid}{pad}"),
+                2 => format!("{pad}{valid}"),
+                _ => word.clone(),
+            };
+            if corrupted != valid {
+                proptest::prop_assert!(
+                    VerificationLevel::parse_strict(&corrupted).is_none(),
+                    "corruption '{}' must be rejected", corrupted
+                );
+            }
+        }
     }
 }

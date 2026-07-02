@@ -1,0 +1,70 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-07-02"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/components/modern-agentic-coding-support.md (MACS v1.0.0)"
+    - "arXiv:2602.22302 Bruni et al. (2026) Agent Behavioral Contracts"
+    - "Popper (1959) The Logic of Scientific Discovery"
+    - "Meyer (1997) Object-Oriented Software Construction 2e (Design by Contract)"
+  registry: true
+  description: >
+    Structured chain-of-thought with mandatory discharge + auto-derivation (C31).
+    MACS F3 (docs/specifications/components/modern-agentic-coding-support.md).
+  contract: macs-cot
+  status: draft
+
+equations:
+  chain_integrity:
+    formula: forall s in steps -> discharged(s.assumption)
+    domain: steps in Vec<ChainOfThoughtStep>
+    codomain: bool
+    invariants:
+      - discharge graph is acyclic
+      - roots are equations or E-facts only
+    preconditions:
+      - ticket has >=1 CoT step when kind in {feature,bugfix,refactor}
+    lean_theorem: Theorems.Macs.CoT_Discharge_DAG
+
+  derivation_complete:
+    formula: count(claims_from(steps)) = count(steps) and count(obligations_from(steps)) = count(steps)
+    domain: steps in Vec<ChainOfThoughtStep>
+    codomain: bool
+    invariants:
+      - claim.hypothesis = step.implication verbatim
+      - claim.method = step.evidence_method verbatim
+    preconditions:
+      - MACS-007 schema active
+
+falsification:
+  - condition: "A step's assumption has no discharge and CB-1640 stays green"
+    severity: P0
+    action: reject_push
+  - condition: "A ticket closes with fewer FalsifiableClaims than CoT steps"
+    severity: P0
+    action: reject_push
+  - condition: "Legacy prose steps crash the parser instead of migrating to v2-with-L0 annotation"
+    severity: P1
+    action: block_release
+
+falsification_tests:
+  - id: cot_chain_cycle_rejected
+    rule: Discharge graph must be a DAG
+    prediction: a two-step mutual discharge is rejected by check_chain
+    test: cargo test --lib cycle_detected_violates_1640
+    if_fails: circular reasoning passes the integrity check (C31)
+  - id: cot_undischarged_rejected
+    rule: Every assumption must be discharged
+    prediction: a step with no discharge source and no evidence_method is rejected
+    test: cargo test --lib undischarged_assumption_violates_1640
+    if_fails: assumptions inflate without discharge (a hallucination magnet)
+  - id: cot_spec_self_check
+    rule: The spec is subject to the check it specifies
+    prediction: MACS spec §3.1's own chain parses and passes check_chain
+    test: cargo test --lib spec_section_3_1_passes
+    if_fails: the schema cannot express its own specification's reasoning
+  - id: cot_derivation_verbatim
+    rule: claim.hypothesis/method copied verbatim from step fields
+    prediction: any paraphrase drift fails CB-1658
+    test: cargo test --lib one_claim_per_step_verbatim_fields
+    if_fails: derived claims drift from the reasoning they discharge

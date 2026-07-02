@@ -1,4 +1,5 @@
 ---
+effort: medium          # MACS F4: pinned for reproducible cost/behavior
 name: Multi-Language Project Analysis with PMAT
 description: |
   Analyzes polyglot codebases with multiple programming languages using PMAT

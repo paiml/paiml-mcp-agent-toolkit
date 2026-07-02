@@ -1,4 +1,5 @@
 ---
+effort: medium          # MACS F4: pinned for reproducible cost/behavior
 allowed-tools: Bash(cargo:*), Bash(pmat:*), Bash(gh:*), Bash(git:*), Bash(make:*), Bash(find:*), Bash(head:*), Bash(tail:*), Bash(wc:*), Bash(grep:*), Bash(diff:*), Bash(timeout:*), Bash(jq:*), Bash(python3:*), Bash(echo:*), Bash(cat:*), Bash(ls:*), Bash(rm:*), Read, Glob, Grep, Agent
 description: Dogfood pmat — rebuild, install, exercise every CLI command against pmat's own repo, check output integrity + self-quality, find next work. Read-only audit; files issues for bugs.
 ---

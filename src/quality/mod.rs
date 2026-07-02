@@ -9,6 +9,7 @@ pub mod gate;
 pub mod gate_runner;
 pub mod gates; // TICKET-PMAT-5020: Quality gate executor
 pub mod git_hooks;
+pub mod ladder_evidence; // MACS F2 (Component 32): evidence-computed ladder level
 pub mod satd;
 pub mod satd_item;
 

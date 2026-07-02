@@ -140,6 +140,7 @@ pub async fn handle_work_start(
     without: Vec<String>,
     iteration: u32,
     implements: Vec<String>,
+    agent: crate::cli::handlers::work_ledger::DeclaredAgent,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
@@ -212,6 +213,7 @@ pub async fn handle_work_start(
         &without,
         iteration,
         &implements,
+        crate::cli::handlers::work_ledger::resolve_agent_provenance(&agent),
     )
     .await?;
 
@@ -377,7 +379,11 @@ pub async fn handle_work_continue(id: String, path: Option<PathBuf>) -> Result<(
 /// Invariant failures are reported but do not halt work — they accumulate
 /// and block completion at `work complete`.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result<()> {
+pub async fn handle_work_checkpoint(
+    id: String,
+    path: Option<PathBuf>,
+    agent: crate::cli::handlers::work_ledger::DeclaredAgent,
+) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
 
     println!(
@@ -389,7 +395,8 @@ pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result
     );
     println!();
 
-    let record = super::checkpoint::run_checkpoint(&project_path, &id)?;
+    let mut record = super::checkpoint::run_checkpoint(&project_path, &id)?;
+    record.agent = crate::cli::handlers::work_ledger::resolve_agent_provenance(&agent);
 
     // Display results
     if record.invariant_results.is_empty() {
@@ -487,6 +494,7 @@ pub async fn handle_work_falsify(
     override_claims: Option<Vec<String>>,
     ticket: Option<String>,
     path: Option<PathBuf>,
+    agent: crate::cli::handlers::work_ledger::DeclaredAgent,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
 
@@ -498,7 +506,16 @@ pub async fn handle_work_falsify(
     );
     println!();
 
-    run_contract_falsification(&project_path, &id, &override_claims, &ticket, &id).await
+    let provenance = crate::cli::handlers::work_ledger::resolve_agent_provenance(&agent);
+    run_contract_falsification(
+        &project_path,
+        &id,
+        &override_claims,
+        &ticket,
+        &id,
+        provenance,
+    )
+    .await
 }
 
 /// Handle work complete command
@@ -514,6 +531,7 @@ pub async fn handle_work_complete(
     override_claims: Option<Vec<String>>,
     ticket: Option<String>,
     path: Option<PathBuf>,
+    agent: crate::cli::handlers::work_ledger::DeclaredAgent,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
@@ -548,6 +566,29 @@ pub async fn handle_work_complete(
     // DbC §4.3: Final invariant check before postcondition evaluation
     run_final_invariant_check(&project_path, &item.id)?;
 
+    // MACS E5: unacknowledged refusal events block completion. Runs before
+    // the fresh-receipt fast path below so it can never be bypassed.
+    check_unacked_refusals(&project_path, &item.id)?;
+
+    // MACS F2: a ticket cannot close above its evidenced ladder level.
+    // Also before the fresh-receipt fast path — the claim is checked on
+    // every completion attempt. Fail CLOSED: a contract that exists but
+    // fails to deserialize must not silently skip the gate (adversarial-
+    // review fix). A genuinely contract-less (legacy v4.0) ticket has no
+    // ladder claim to gate, so absence is the only allowed skip.
+    if crate::cli::handlers::work_contract::WorkContract::exists(&project_path, &item.id) {
+        let contract =
+            crate::cli::handlers::work_contract::WorkContract::load(&project_path, &item.id)
+                .with_context(|| {
+                    format!(
+                        "ladder gate: contract for '{}' exists but could not be read; \
+                         refusing to complete (fix or re-run `pmat work start`)",
+                        item.id
+                    )
+                })?;
+        crate::quality::ladder_evidence::check_ladder_shortfall(&project_path, &contract)?;
+    }
+
     // O(1) freshness check: skip re-running falsification if a fresh receipt exists
     let ledger = FalsificationLedger::new(&project_path);
     let current_sha = crate::cli::handlers::work_ledger::get_current_git_sha(&project_path);
@@ -562,7 +603,16 @@ pub async fn handle_work_complete(
         println!("   {}", c::dim("Skipping re-run (receipt still valid)"));
         println!();
     } else {
-        run_contract_falsification(&project_path, &item.id, &override_claims, &ticket, &id).await?;
+        let provenance = crate::cli::handlers::work_ledger::resolve_agent_provenance(&agent);
+        run_contract_falsification(
+            &project_path,
+            &item.id,
+            &override_claims,
+            &ticket,
+            &id,
+            provenance,
+        )
+        .await?;
     }
 
     // Mark as completed
@@ -868,4 +918,372 @@ fn run_final_invariant_check(project_path: &std::path::Path, item_id: &str) -> R
         }
     }
     Ok(())
+}
+
+/// MACS-003 completion gate: a Refusal event with no matching Ack blocks
+/// completion (spec E5 — a refusal-terminated turn must map to a paused
+/// ticket, never a completed one). Runs on every `work complete`, including
+/// the fresh-receipt fast path.
+fn check_unacked_refusals(project_path: &std::path::Path, item_id: &str) -> Result<()> {
+    let ledger = FalsificationLedger::new(project_path);
+    let unacked = ledger.unacked_refusals(item_id)?;
+    if unacked.is_empty() {
+        return Ok(());
+    }
+    let listing: Vec<String> = unacked
+        .iter()
+        .map(|r| format!("  - {} (recorded {})", r.id, r.recorded_at))
+        .collect();
+    anyhow::bail!(
+        "Completion blocked: {} unacknowledged refusal event(s) on '{}' (MACS E5):\n{}\n\
+         Acknowledge with: pmat work event {} --ack-event <id> --reason \"<root cause + disposition>\"",
+        unacked.len(),
+        item_id,
+        listing.join("\n"),
+        item_id
+    );
+}
+
+/// Handle `pmat work event` (MACS-003): record an agent interruption event
+/// (refusal, model switch, session restart, workflow spawn) or acknowledge
+/// a prior one. Events are append-only journal lines under
+/// `.pmat-work/<TICKET>/events.jsonl`.
+#[allow(clippy::too_many_arguments)]
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn handle_work_event(
+    id: Option<String>,
+    event_type: Option<String>,
+    note: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    workflow_id: Option<String>,
+    subagents: u32,
+    ack_event: Option<String>,
+    reason: Option<String>,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let item_id = resolve_event_ticket(&project_path, id)?;
+    let ledger = FalsificationLedger::new(&project_path);
+    let now = chrono::Utc::now().to_rfc3339();
+
+    match (event_type, ack_event) {
+        (Some(_), Some(_)) => {
+            anyhow::bail!("--type and --ack-event are mutually exclusive")
+        }
+        (None, None) => {
+            anyhow::bail!(
+                "one of --type <refusal|model-switch|session-restart|workflow-spawn> \
+                 or --ack-event <id> is required"
+            )
+        }
+        (Some(kind), None) => {
+            let event = build_agent_event(&kind, now, note, from, to, workflow_id, subagents)?;
+            let is_refusal = matches!(
+                event,
+                crate::cli::handlers::work_ledger::AgentEvent::Refusal { .. }
+            );
+            let record_id = ledger.append_event(&item_id, event)?;
+            println!(
+                "{}",
+                c::pass(&format!("Recorded {kind} event {record_id} on {item_id}"))
+            );
+            if is_refusal {
+                println!(
+                    "{}",
+                    c::warn(&format!(
+                        "Completion of {item_id} is blocked until this refusal is acknowledged \
+                         (pmat work event {item_id} --ack-event {record_id} --reason \"...\")"
+                    ))
+                );
+            }
+        }
+        (None, Some(ack_of)) => {
+            let reason = reason
+                .map(|r| r.trim().to_string())
+                .filter(|r| !r.is_empty())
+                .context("--ack-event requires a non-empty --reason (root cause + disposition)")?;
+            let events = ledger.load_events(&item_id)?;
+            if !events.iter().any(|r| r.id == ack_of) {
+                anyhow::bail!("no event '{}' recorded on '{}'", ack_of, item_id);
+            }
+            let record_id = ledger.append_event(
+                &item_id,
+                crate::cli::handlers::work_ledger::AgentEvent::Ack {
+                    at: now,
+                    ack_of: ack_of.clone(),
+                    reason,
+                },
+            )?;
+            println!(
+                "{}",
+                c::pass(&format!(
+                    "Acknowledged event {ack_of} on {item_id} (ack record {record_id})"
+                ))
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Build an AgentEvent from CLI arguments (helper for handle_work_event).
+fn build_agent_event(
+    kind: &str,
+    at: String,
+    note: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    workflow_id: Option<String>,
+    subagents: u32,
+) -> Result<crate::cli::handlers::work_ledger::AgentEvent> {
+    use crate::cli::handlers::work_ledger::AgentEvent;
+    match kind {
+        "refusal" => Ok(AgentEvent::Refusal { at, note }),
+        "model-switch" => Ok(AgentEvent::ModelSwitch {
+            at,
+            from: from.context("--from <model-id> is required for model-switch")?,
+            to: to.context("--to <model-id> is required for model-switch")?,
+        }),
+        "session-restart" => Ok(AgentEvent::SessionRestart { at }),
+        "workflow-spawn" => Ok(AgentEvent::WorkflowSpawn {
+            at,
+            workflow_id: workflow_id.context("--workflow-id is required for workflow-spawn")?,
+            subagents,
+        }),
+        other => anyhow::bail!(
+            "unknown event type '{}': expected refusal|model-switch|session-restart|workflow-spawn",
+            other
+        ),
+    }
+}
+
+/// Resolve the ticket an event applies to: explicit id, or the single
+/// in-progress item (ambiguity is an error, not a guess). An explicit id is
+/// canonicalized to the roadmap's stored id (case-insensitive) so the event
+/// journal lands under the SAME `.pmat-work/<canonical>/` path that
+/// `pmat work complete` reads — otherwise `pmat work event macs-016` would
+/// write to a path the refusal gate never checks (adversarial-review fix).
+fn resolve_event_ticket(project_path: &std::path::Path, id: Option<String>) -> Result<String> {
+    let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
+    let service = RoadmapService::new(&roadmap_path);
+
+    if let Some(id) = id {
+        // Canonicalize against the roadmap if it resolves; else use verbatim
+        // (a ticket with no roadmap entry still gets a stable path).
+        if let Ok(roadmap) = service.load() {
+            if let Some(item) = roadmap
+                .roadmap
+                .iter()
+                .find(|item| item.id.eq_ignore_ascii_case(&id))
+            {
+                return Ok(item.id.clone());
+            }
+        }
+        return Ok(id);
+    }
+    let roadmap = service
+        .load()
+        .context("no ticket id given and no roadmap found — pass an explicit ticket id")?;
+    let in_progress: Vec<String> = roadmap
+        .roadmap
+        .iter()
+        .filter(|item| matches!(item.status, ItemStatus::InProgress))
+        .map(|item| item.id.clone())
+        .collect();
+    match in_progress.len() {
+        1 => Ok(in_progress[0].clone()),
+        0 => anyhow::bail!("no in-progress ticket; pass an explicit ticket id"),
+        n => anyhow::bail!(
+            "{} tickets in progress ({}); pass an explicit ticket id",
+            n,
+            in_progress.join(", ")
+        ),
+    }
+}
+
+/// `pmat work cot check` (MACS-008): run the CB-1640 chain-integrity
+/// checker on a ticket's chain_of_thought. Exits non-zero on violations.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn handle_work_cot_check(id: String, path: Option<PathBuf>) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let contract_path = project_path
+        .join(".pmat-work")
+        .join(&id)
+        .join("contract.json");
+    let text = std::fs::read_to_string(&contract_path)
+        .with_context(|| format!("no contract for '{}' — run pmat work start first", id))?;
+    let value: serde_json::Value = serde_json::from_str(&text).context("contract.json parses")?;
+    let steps = crate::models::work_cot::parse_steps(&value);
+    if steps.is_empty() {
+        println!("{}", c::warn(&format!("{id}: no chain_of_thought steps")));
+        return Ok(());
+    }
+    let structured = steps.iter().filter(|s| s.structured).count();
+    println!(
+        "{}",
+        c::label(&format!(
+            "🔗 {id}: {} step(s) ({structured} structured, {} migrated-L0)",
+            steps.len(),
+            steps.len() - structured
+        ))
+    );
+    let violations = crate::models::work_cot::check_chain(&steps);
+    if violations.is_empty() {
+        println!(
+            "{}",
+            c::pass("Chain integrity holds: every assumption discharged, graph is a DAG")
+        );
+        return Ok(());
+    }
+    for v in &violations {
+        println!("  {} {}", c::fail(""), v);
+    }
+    anyhow::bail!("CB-1640: {} chain-integrity violation(s)", violations.len());
+}
+
+/// `pmat work cot derive` (MACS-009): derive one proof obligation + one
+/// falsifiable claim per step (verbatim fields) into
+/// `contracts/work/<ID>.cot.yaml`, and record the canonical CoT digest at
+/// `.pmat-work/<ID>/cot-digest.json` (CB-1646's witness trail).
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn handle_work_cot_derive(
+    id: String,
+    emit_clauses: bool,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let contract_path = project_path
+        .join(".pmat-work")
+        .join(&id)
+        .join("contract.json");
+    let text = std::fs::read_to_string(&contract_path)
+        .with_context(|| format!("no contract for '{}' — run pmat work start first", id))?;
+    let value: serde_json::Value = serde_json::from_str(&text).context("contract.json parses")?;
+    let steps = crate::models::work_cot::parse_steps(&value);
+    if steps.is_empty() {
+        anyhow::bail!("{id}: no chain_of_thought steps to derive from");
+    }
+
+    // Chain must be green before derivation (agents propose, receipts dispose).
+    let violations = crate::models::work_cot::check_chain(&steps);
+    if !violations.is_empty() {
+        for v in &violations {
+            println!("  {} {}", c::fail(""), v);
+        }
+        anyhow::bail!(
+            "CB-1640: fix {} chain-integrity violation(s) before deriving",
+            violations.len()
+        );
+    }
+
+    let safe_id: String = id
+        .chars()
+        .map(|ch| {
+            if ch.is_alphanumeric() || ch == '-' {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let artifact_dir = project_path.join("contracts").join("work");
+    std::fs::create_dir_all(&artifact_dir).context("create contracts/work")?;
+    let artifact_path = artifact_dir.join(format!("{safe_id}.cot.yaml"));
+    let yaml = crate::models::work_cot::render_derivation(&id, &steps, emit_clauses);
+    std::fs::write(&artifact_path, &yaml).context("write derivation artifact")?;
+
+    let digest = crate::models::work_cot::canonical_cot_sha(&value);
+    let digest_path = project_path
+        .join(".pmat-work")
+        .join(&id)
+        .join("cot-digest.json");
+    std::fs::write(
+        &digest_path,
+        serde_json::to_string_pretty(&serde_json::json!({
+            "sha": digest,
+            "steps": steps.len(),
+            "derived_at": chrono::Utc::now().to_rfc3339(),
+        }))
+        .context("serialize digest")?,
+    )
+    .context("write cot-digest.json")?;
+
+    println!(
+        "{}",
+        c::pass(&format!(
+            "Derived {} obligation(s) + {} claim(s) -> {}",
+            steps.len(),
+            steps.len(),
+            artifact_path.display()
+        ))
+    );
+    println!(
+        "{}",
+        c::pass(&format!("CoT digest recorded -> {}", digest_path.display()))
+    );
+    Ok(())
+}
+
+/// `pmat work ledger verify` (MACS-016): recompute every receipt hash under
+/// its schema_version, detect tampering, report provenance, and check Rule
+/// R1 ascending order. Read-only; exits non-zero on any tamper/R1 violation.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn handle_work_ledger_verify(
+    report: bool,
+    format: crate::cli::commands::QaOutputFormat,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let ledger = FalsificationLedger::new(&project_path);
+    let verification = ledger.verify_all()?;
+
+    if matches!(format, crate::cli::commands::QaOutputFormat::Json) {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&verification).unwrap_or_else(|_| "{}".to_string())
+        );
+    } else {
+        println!(
+            "{}",
+            c::label(&format!(
+                "🧾 Ledger verify: {}/{} receipt(s) hash-verified",
+                verification.verified, verification.total_receipts
+            ))
+        );
+        for t in &verification.tampered {
+            println!("  {} tampered: {}", c::fail(""), t);
+        }
+        for u in &verification.unreadable {
+            println!("  {} unreadable: {}", c::warn(""), u);
+        }
+        for v in &verification.r1_violations {
+            println!("  {} R1: {}", c::fail(""), v);
+        }
+        if report {
+            println!(
+                "\n{}",
+                c::subheader("Provenance (model / effort / harness):")
+            );
+            for (k, n) in &verification.by_provenance {
+                println!("  {n:>4}  {k}");
+            }
+        }
+        if verification.ok() {
+            println!(
+                "{}",
+                c::pass("Ledger intact: all hashes verify, R1 order holds")
+            );
+        }
+    }
+
+    if verification.ok() {
+        Ok(())
+    } else {
+        anyhow::bail!(
+            "ledger verify: {} tampered, {} unreadable, {} R1 violation(s)",
+            verification.tampered.len(),
+            verification.unreadable.len(),
+            verification.r1_violations.len()
+        )
+    }
 }

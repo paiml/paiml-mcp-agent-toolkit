@@ -211,6 +211,7 @@ mod tests {
                 without: None,
                 iteration: 1,
                 implements: Vec::new(),
+                agent: Default::default(),
             },
         };
 

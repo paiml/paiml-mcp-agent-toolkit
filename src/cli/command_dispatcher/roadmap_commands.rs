@@ -15,6 +15,23 @@ impl CommandDispatcher {
         use crate::roadmap::{self, RoadmapConfig};
         use std::path::PathBuf;
 
+        // MACS-013: `pmat roadmap sync` renders ROADMAP.yaml directly and
+        // returns early — it does not use the sprint-config pipeline below.
+        if let RoadmapCommands::Sync {
+            gh_snapshot,
+            dry_run,
+            path,
+        } = &roadmap_cmd
+        {
+            let generated_at = chrono::Utc::now().to_rfc3339();
+            return crate::roadmap::sync::handle_roadmap_sync(
+                path,
+                gh_snapshot.clone(),
+                *dry_run,
+                &generated_at,
+            );
+        }
+
         // Load configuration (with defaults)
         let config = RoadmapConfig {
             path: PathBuf::from("docs/execution/roadmap.md"),
@@ -102,6 +119,8 @@ impl CommandDispatcher {
                 RoadmapCommands::QualityCheck { task_id } => {
                     roadmap::commands::RoadmapSubcommand::QualityCheck { task_id }
                 }
+                // MACS-013: handled by the early return above; unreachable here.
+                RoadmapCommands::Sync { .. } => unreachable!("Sync handled before config pipeline"),
             },
         };
 

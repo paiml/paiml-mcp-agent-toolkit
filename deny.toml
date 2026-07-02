@@ -18,6 +18,11 @@ ignore = [
     { id = "RUSTSEC-2025-0134", reason = "rustls-pemfile: transitive, no safe upgrade available" },
     { id = "RUSTSEC-2026-0002", reason = "lru 0.12.5: transitive via ratatui, fixed in 0.16 but ratatui pins 0.12" },
     { id = "RUSTSEC-2024-0370", reason = "proc-macro-error: transitive via tabled_derive→apr-cli→aprender, no replacement" },
+    # Reviewed 2026-07-02 (MACS-000 bootstrap, #612) — all transitive via the
+    # aprender 0.50 sovereign stack; fixes require upstream aprender releases.
+    { id = "RUSTSEC-2026-0173", reason = "proc-macro-error2: unmaintained, transitive via validator_derive→validator→apr-cli; no safe upgrade available" },
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml 0.37.5 quadratic attr check: transitive via aprender-orchestrate 0.50; fix needs quick-xml>=0.41 upstream; pmat parses no untrusted XML" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml 0.37.5 NsReader allocation DoS: transitive via aprender-orchestrate 0.50; fix needs quick-xml>=0.41 upstream; pmat parses no untrusted XML" },
 ]
 
 [licenses]

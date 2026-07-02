@@ -25,6 +25,7 @@ impl CommandDispatcher {
             }
             WorkCommands::Start {
                 id,
+                agent,
                 with_spec,
                 epic,
                 path,
@@ -44,20 +45,23 @@ impl CommandDispatcher {
                     without.clone().unwrap_or_default(),
                     *iteration,
                     implements.clone(),
+                    agent.to_declared(),
                 )
                 .await
             }
             WorkCommands::Continue { id, path } => {
                 work_handlers::handle_work_continue(id.clone(), path.clone()).await
             }
-            WorkCommands::Checkpoint { id, path } => {
-                work_handlers::handle_work_checkpoint(id.clone(), path.clone()).await
+            WorkCommands::Checkpoint { id, agent, path } => {
+                work_handlers::handle_work_checkpoint(id.clone(), path.clone(), agent.to_declared())
+                    .await
             }
             WorkCommands::Complete {
                 id,
                 skip_quality,
                 override_claims,
                 ticket,
+                agent,
                 path,
             } => {
                 work_handlers::handle_work_complete(
@@ -66,6 +70,7 @@ impl CommandDispatcher {
                     override_claims.clone(),
                     ticket.clone(),
                     path.clone(),
+                    agent.to_declared(),
                 )
                 .await
             }
@@ -73,12 +78,60 @@ impl CommandDispatcher {
                 id,
                 override_claims,
                 ticket,
+                agent,
                 path,
             } => {
                 work_handlers::handle_work_falsify(
                     id.clone(),
                     override_claims.clone(),
                     ticket.clone(),
+                    path.clone(),
+                    agent.to_declared(),
+                )
+                .await
+            }
+            WorkCommands::Cot { command } => match command {
+                crate::cli::commands::WorkCotCommands::Check { id, path } => {
+                    work_handlers::handle_work_cot_check(id.clone(), path.clone()).await
+                }
+                crate::cli::commands::WorkCotCommands::Derive {
+                    id,
+                    emit_clauses,
+                    path,
+                } => {
+                    work_handlers::handle_work_cot_derive(id.clone(), *emit_clauses, path.clone())
+                        .await
+                }
+            },
+            WorkCommands::Ledger { command } => match command {
+                crate::cli::commands::WorkLedgerCommands::Verify {
+                    report,
+                    format,
+                    path,
+                } => work_handlers::handle_work_ledger_verify(*report, *format, path.clone()).await,
+            },
+            WorkCommands::Event {
+                id,
+                event_type,
+                note,
+                from,
+                to,
+                workflow_id,
+                subagents,
+                ack_event,
+                reason,
+                path,
+            } => {
+                work_handlers::handle_work_event(
+                    id.clone(),
+                    event_type.clone(),
+                    note.clone(),
+                    from.clone(),
+                    to.clone(),
+                    workflow_id.clone(),
+                    *subagents,
+                    ack_event.clone(),
+                    reason.clone(),
                     path.clone(),
                 )
                 .await
@@ -98,7 +151,8 @@ impl CommandDispatcher {
                 path,
                 dry_run,
                 backup,
-            } => work_handlers::handle_work_migrate(path.clone(), *dry_run, *backup).await,
+                levels,
+            } => work_handlers::handle_work_migrate(path.clone(), *dry_run, *backup, *levels).await,
             WorkCommands::ListStatuses => work_handlers::handle_work_list_statuses().await,
             WorkCommands::Add {
                 title,

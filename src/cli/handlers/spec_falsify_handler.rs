@@ -51,8 +51,14 @@ pub async fn handle_falsify(
     }
 
     // Not a file path — treat as work item ID (delegate to existing handler)
-    super::work_handlers::handle_work_falsify(target, override_claims, ticket, Some(project_path))
-        .await
+    super::work_handlers::handle_work_falsify(
+        target,
+        override_claims,
+        ticket,
+        Some(project_path),
+        super::work_ledger::DeclaredAgent::default(),
+    )
+    .await
 }
 
 /// Run spec falsification on a file or directory
