@@ -91,7 +91,10 @@ fn macs_frontmatter_effort(text: &str) -> Option<String> {
     let end = rest.find("\n---")?;
     for line in rest[..end].lines() {
         if let Some(value) = line.strip_prefix("effort:") {
-            return Some(value.trim().to_string());
+            // Strip a trailing YAML `# comment` (e.g. `effort: medium  # note`)
+            // and surrounding quotes/whitespace before matching.
+            let value = value.split('#').next().unwrap_or(value);
+            return Some(value.trim().trim_matches(['"', '\'']).trim().to_string());
         }
     }
     None
