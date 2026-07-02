@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.21.0] - 2026-07-02
+
+Ships **Modern Agentic Coding Support (MACS, Component 32)** — hardening the
+"agents propose, receipts dispose" boundary so every crossing is attributable,
+enforced, and reproducible (#612, #613). Delivered as the totally-ordered
+ticket sequence MACS-000…016.
+
+### Added
+- **F1 — Agent provenance in the falsification ledger.** `FalsificationReceipt`
+  gains `schema_version` (v1 legacy byte-concat hash, v2 canonical-JSON hash
+  keyed on version so pre-MACS receipts still verify), `agent: AgentProvenance`,
+  and `agent_events`. `pmat work start|checkpoint|complete|falsify` accept
+  `--agent-model/--agent-effort/--agent-harness/--agent-workflow-id/--agent-parent`
+  (also `PMAT_AGENT_*` env; declared beats detected). `pmat work event` records
+  refusal / model-switch / session-restart / workflow-spawn interruptions; an
+  unacknowledged refusal blocks completion until `--ack-event`.
+- **F2 — Verification-ladder enforcement.** `verification_level` is a typed
+  `VerificationLevel` (wire-compatible; migrating deserializer). `achieved_level`
+  is computed from evidence bottom-up and never stored; `pmat work complete`
+  blocks with `LadderShortfall` when a claim exceeds evidence.
+  `pmat work migrate --levels` canonicalizes legacy level strings.
+- **F3 — CoT proof derivation.** v2 `ChainOfThoughtStep` with
+  `{assumption, implication, evidence_method, discharged_by}`; `pmat work cot
+  check` runs the CB-1640 discharge-DAG checker (the spec's §3.1 is its own
+  fixture); `pmat work cot derive` emits one proof obligation + one falsifiable
+  claim per step, verbatim.
+- **F4 — Per-skill effort pinning.** All six `.claude/skills` pin `effort:`.
+- **F5 — `pmat qa-work mcp-sweep`.** LLM-free deterministic MCP conformance
+  sweep: spawns the live 20-tool server, derives args from each `inputSchema`,
+  checks JSON-RPC framing + replay determinism under N-way concurrency — no
+  model, no tokens. Committed `contracts/workflows/release-sweep.ultracode.mjs`
+  judgment layer + `make release-sweep`.
+- **F6 — Canonical artifacts.** `pmat roadmap sync` renders a canonical
+  `ROADMAP.yaml` (content hash covers sources, not wall-clock); `mcp.json`
+  regenerated from a single tool source (now 20 tools); `docs/agent-models.md`
+  model registry.
+- **Capstone — `pmat work ledger verify`.** Recomputes every receipt hash under
+  its schema_version, detects tampering, reports provenance, checks R1 order.
+- New comply checks **CB-1640, CB-1650–1658** under `pmat comply check`.
+
+### Fixed
+- Six correctness bugs caught by an adversarial multi-agent self-review before
+  merge (ladder gate bypass, CoT prose-token false discharge, sweep UTF-8 panic
+  + child/fixture leak, fail-open completion gate, refusal-journal id mismatch,
+  CB-1657 first-occurrence-only scan) — each with a regression test.
+- CB-1650 now tolerates a trailing YAML comment on the `effort:` pin (found by
+  self-dogfood of the merged binary).
+- Accepted unfixable transitive advisories (quick-xml, proc-macro-error2,
+  lopdf, ttf-parser) and bumped anyhow 1.0.103 for the live advisory-db.
+
+### Notes
+Zero new external dependencies (Sovereign 80/20). 139+ MACS-area tests.
+
 ## [3.19.2] - 2026-06-13
 
 Fixes two defects surfaced by the v3.19.0 self-dogfood.

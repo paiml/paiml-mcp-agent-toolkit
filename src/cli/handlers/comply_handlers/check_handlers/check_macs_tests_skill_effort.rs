@@ -52,6 +52,21 @@ mod tests_macs_skill_effort {
     }
 
     #[test]
+    fn cb1650_green_with_trailing_comment_on_effort() {
+        // DOGFOOD regression: real skill files write `effort: medium  # note`
+        // — the trailing YAML comment must not break the pin match.
+        let project = tempdir().unwrap();
+        write_skill(
+            project.path(),
+            "commented",
+            "SKILL.md",
+            "effort: medium          # MACS F4: pinned for reproducible cost/behavior\ndescription: x",
+        );
+        let check = check_skill_effort_pinned(project.path());
+        assert_eq!(check.status, CheckStatus::Pass, "{}", check.message);
+    }
+
+    #[test]
     fn cb1650_green_on_pinned_skills() {
         let project = tempdir().unwrap();
         write_skill(project.path(), "mechanical", "SKILL.md", "effort: medium\ndescription: sweep");
