@@ -250,6 +250,11 @@ fn build_macs_checks(
             comply_config,
         ),
         filter_check_by_config(
+            macs::check_ladder_claim_drift(project_path),
+            "cb-1653",
+            comply_config,
+        ),
+        filter_check_by_config(
             macs::check_refusal_events_acked(project_path),
             "cb-1654",
             comply_config,

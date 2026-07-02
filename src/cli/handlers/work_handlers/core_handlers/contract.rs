@@ -367,6 +367,7 @@ pub(super) async fn run_contract_tests(
             .into_iter()
             .map(|record| record.event)
             .collect();
+    let achieved = crate::quality::ladder_evidence::achieved_level(project_path, contract);
     let receipt = FalsificationReceipt::from_report(
         &report,
         git_sha,
@@ -375,7 +376,11 @@ pub(super) async fn run_contract_tests(
         override_claims.as_ref(),
         ticket.as_ref(),
     )
-    .with_agent(agent, ticket_events);
+    .with_agent(agent, ticket_events)
+    .with_ladder(
+        contract.verification_level.to_string(),
+        achieved.to_string(),
+    );
 
     // Persist receipt and append to global ledger
     let ledger = FalsificationLedger::new(project_path);

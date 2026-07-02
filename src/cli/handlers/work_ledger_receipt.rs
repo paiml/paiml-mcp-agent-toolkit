@@ -36,6 +36,13 @@ pub struct FalsificationReceipt {
     /// Never silent: a Refusal blocks completion until acknowledged (MACS E5).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub agent_events: Vec<AgentEvent>,
+    /// Ladder level the contract claimed at falsification time (MACS-006).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub claimed_level: Option<String>,
+    /// Evidence-computed ladder level at falsification time (MACS-006).
+    /// Recorded as history — authority stays with the live computation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub achieved_level: Option<String>,
     /// SHA-256 content hash (covers all fields above; rules keyed on
     /// schema_version — v1: legacy byte-concat, v2: canonical JSON)
     pub content_hash: String,
@@ -118,6 +125,8 @@ impl FalsificationReceipt {
             summary,
             agent: None,
             agent_events: Vec::new(),
+            claimed_level: None,
+            achieved_level: None,
             content_hash: String::new(), // Computed below
         };
 
@@ -136,6 +145,16 @@ impl FalsificationReceipt {
     ) -> Self {
         self.agent = agent;
         self.agent_events = agent_events;
+        self.content_hash = self.compute_content_hash();
+        self
+    }
+
+    /// Record the claimed and evidence-computed ladder levels and re-seal
+    /// the content hash (MACS-006).
+    #[must_use]
+    pub fn with_ladder(mut self, claimed: String, achieved: String) -> Self {
+        self.claimed_level = Some(claimed);
+        self.achieved_level = Some(achieved);
         self.content_hash = self.compute_content_hash();
         self
     }
