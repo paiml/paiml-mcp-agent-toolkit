@@ -54,3 +54,20 @@ falsification:
   - condition: "A deny-listed model id appears outside docs/agent-models.md"
     severity: P1
     action: block_release
+
+falsification_tests:
+  - id: manifest_faithful
+    rule: mcp.json advertises exactly the live tool set
+    prediction: legacy 2-tool manifest fails; generated 20-tool manifest passes
+    test: cargo test --lib generated_equals_tool_defs
+    if_fails: agents read a manifest that lies about the tool surface
+  - id: roadmap_canonical
+    rule: render is byte-stable and hash covers sources not wall-clock
+    prediction: two renders at different times share one content_hash
+    test: cargo test --lib hash_covers_sources_not_wallclock
+    if_fails: ROADMAP.yaml churns on every render, defeating drift detection
+  - id: docs_current
+    rule: no superseded model ids in docs outside the registry
+    prediction: reintroducing claude-3-opus outside agent-models.md fails CB-1657
+    test: cargo test --lib cb1657_red_on_denylist_hit
+    if_fails: stale model ids in agent docs become executable misinformation

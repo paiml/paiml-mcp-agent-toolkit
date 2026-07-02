@@ -416,11 +416,15 @@ pmat refactor auto
 
 The tool generates AI requests that can be customized for different AI providers:
 
+Model ids are not hard-coded here — they are maintained in the single model
+registry at [docs/agent-models.md](../agent-models.md) (CB-1657 lints stale ids
+out of `docs/`). Use the current registry entries:
+
 ```json
 {
   "model_preferences": {
-    "primary": "claude-3-opus",
-    "fallback": "gpt-4-turbo",
+    "primary": "claude-fable-5",
+    "fallback": "claude-opus-4-8",
     "local": "codellama-34b"
   },
   "request_template": {

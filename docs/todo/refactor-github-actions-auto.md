@@ -788,8 +788,9 @@ enabled = ["security", "performance", "best-practices"]
 disabled = []
 
 [llm]
-provider = "openai"
-model = "gpt-4-turbo"
+provider = "anthropic"
+# Model ids are maintained in docs/agent-models.md (CB-1657). Use the registry.
+model = "claude-fable-5"
 max_tokens = 500
 temperature = 0.3
 ```
