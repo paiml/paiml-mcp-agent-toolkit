@@ -33,3 +33,10 @@ falsification:
   - condition: "A skill pins `max` or `ultracode` and CB-1650 stays green"
     severity: P0
     action: reject_push
+
+falsification_tests:
+  - id: skill_effort_pinned
+    rule: every skill pins effort in {low,medium,high,xhigh}
+    prediction: a skill missing effort or pinning max/ultracode fails CB-1650
+    test: cargo test --lib cb1650_red_on_session_only_values
+    if_fails: per-skill behavior varies run-to-run with session effort (E6)

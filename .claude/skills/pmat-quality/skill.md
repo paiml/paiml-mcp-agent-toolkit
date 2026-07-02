@@ -1,4 +1,5 @@
 ---
+effort: xhigh          # MACS F4: pinned for reproducible cost/behavior
 name: Code Quality Analysis with PMAT
 description: |
   Analyzes code quality, complexity, and technical debt using PMAT

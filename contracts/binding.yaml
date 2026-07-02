@@ -161,3 +161,23 @@ bindings:
   source_file: src/models/work_cot.rs
   function: derive
   status: planned
+- contract: macs-sweep-v1.yaml
+  equation: sweep_deterministic
+  source_file: src/cli/handlers/qa_mcp_sweep.rs
+  function: handle_mcp_sweep
+  status: planned
+- contract: macs-artifacts-v1.yaml
+  equation: manifest_faithful
+  source_file: src/mcp_pmcp/tool_manifest.rs
+  function: render_manifest
+  status: planned
+- contract: macs-artifacts-v1.yaml
+  equation: roadmap_canonical
+  source_file: src/roadmap/sync.rs
+  function: render_roadmap
+  status: planned
+- contract: macs-skill-effort-v1.yaml
+  equation: skill_effort_pinned
+  source_file: src/cli/handlers/comply_handlers/check_handlers/check_macs_skill_effort.rs
+  function: check_skill_effort_pinned
+  status: planned

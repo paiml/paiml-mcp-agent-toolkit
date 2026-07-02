@@ -1,4 +1,5 @@
 ---
+effort: high          # MACS F4: pinned for reproducible cost/behavior
 name: Automated Refactoring with PMAT
 description: |
   Provides automated refactoring suggestions and complexity reduction strategies using PMAT
