@@ -314,6 +314,9 @@ pub struct CheckpointRecord {
     /// Drift bound D* at checkpoint time (DBC spec §13.5)
     #[serde(default)]
     pub drift_bound: Option<f64>,
+    /// Which agent configuration ran this checkpoint (MACS F1, Component 32)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<crate::cli::handlers::work_ledger::AgentProvenance>,
 }
 
 /// Result of evaluating a single invariant clause
@@ -346,6 +349,7 @@ impl CheckpointRecord {
             invariant_results,
             all_invariants_hold: all_hold,
             drift_bound: None,
+            agent: None,
         }
     }
 

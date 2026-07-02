@@ -125,6 +125,21 @@ impl FalsificationReceipt {
         receipt
     }
 
+    /// Attach agent provenance + interruption events and re-seal the content
+    /// hash (MACS-002). Consumes and returns the receipt so the sealed hash
+    /// can never be forgotten.
+    #[must_use]
+    pub fn with_agent(
+        mut self,
+        agent: Option<AgentProvenance>,
+        agent_events: Vec<AgentEvent>,
+    ) -> Self {
+        self.agent = agent;
+        self.agent_events = agent_events;
+        self.content_hash = self.compute_content_hash();
+        self
+    }
+
     /// Compute SHA-256 hash of receipt content (excluding content_hash itself).
     /// Rules are keyed on schema_version (MACS F1): v1 receipts keep the
     /// legacy byte-concat rules so pre-MACS receipts still verify; v2 hashes

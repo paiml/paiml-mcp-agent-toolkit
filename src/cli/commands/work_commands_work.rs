@@ -124,6 +124,10 @@ pub enum WorkCommands {
         /// Issue number (e.g., "8", "42") or YAML ticket ID (e.g., "PERF-001")
         id: String,
 
+        /// Agent provenance (declared; also read from PMAT_AGENT_* env)
+        #[command(flatten)]
+        agent: AgentFlags,
+
         /// Create specification file (docs/specifications/NNN-name.md)
         #[arg(long)]
         with_spec: bool,
@@ -176,6 +180,10 @@ pub enum WorkCommands {
         /// Issue number or ticket ID
         id: String,
 
+        /// Agent provenance (declared; also read from PMAT_AGENT_* env)
+        #[command(flatten)]
+        agent: AgentFlags,
+
         /// Project path (default: current directory)
         #[arg(short, long)]
         path: Option<PathBuf>,
@@ -201,6 +209,10 @@ pub enum WorkCommands {
         #[arg(long)]
         ticket: Option<String>,
 
+        /// Agent provenance (declared; also read from PMAT_AGENT_* env)
+        #[command(flatten)]
+        agent: AgentFlags,
+
         /// Project path (default: current directory)
         #[arg(short, long)]
         path: Option<PathBuf>,
@@ -219,6 +231,10 @@ pub enum WorkCommands {
         /// Ticket ID for override accountability (MANDATORY with --override-claims)
         #[arg(long)]
         ticket: Option<String>,
+
+        /// Agent provenance (declared; also read from PMAT_AGENT_* env)
+        #[command(flatten)]
+        agent: AgentFlags,
 
         /// Project path (default: current directory)
         #[arg(short, long)]
@@ -338,4 +354,44 @@ pub enum WorkCommands {
         #[arg(short, long, default_value = "text")]
         format: String,
     },
+}
+
+/// Agent provenance flags shared by `pmat work start|checkpoint|complete|falsify`
+/// (MACS F1). Values are also read from `PMAT_AGENT_*` env vars; explicit flags
+/// win. Flags and env both count as *declared* provenance — advisory detection
+/// (e.g. CLAUDE_CODE_EFFORT_LEVEL) happens in the handler and is labeled.
+#[derive(Debug, Clone, Default, clap::Args)]
+pub struct AgentFlags {
+    /// Agent model id, verbatim (e.g. "claude-fable-5")
+    #[arg(long, env = "PMAT_AGENT_MODEL", global = false)]
+    pub agent_model: Option<String>,
+
+    /// Model effort as sent to the model: low|medium|high|xhigh|max
+    #[arg(long, env = "PMAT_AGENT_EFFORT")]
+    pub agent_effort: Option<String>,
+
+    /// Runner kind: claude-code|claude-agent-sdk|ultracode-workflow|ci-pipeline|human|<other>
+    #[arg(long, env = "PMAT_AGENT_HARNESS")]
+    pub agent_harness: Option<String>,
+
+    /// Ultracode workflow id, if any
+    #[arg(long, env = "PMAT_AGENT_WORKFLOW_ID")]
+    pub agent_workflow_id: Option<String>,
+
+    /// Parent agent/session id for nested subagents
+    #[arg(long, env = "PMAT_AGENT_PARENT")]
+    pub agent_parent: Option<String>,
+}
+
+impl AgentFlags {
+    /// Convert to the handler-layer declared-provenance struct.
+    pub fn to_declared(&self) -> crate::cli::handlers::work_ledger::DeclaredAgent {
+        crate::cli::handlers::work_ledger::DeclaredAgent {
+            model: self.agent_model.clone(),
+            effort: self.agent_effort.clone(),
+            harness: self.agent_harness.clone(),
+            workflow_id: self.agent_workflow_id.clone(),
+            parent: self.agent_parent.clone(),
+        }
+    }
 }

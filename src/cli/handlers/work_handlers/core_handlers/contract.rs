@@ -16,6 +16,7 @@ use super::resolution::{print_blocked_result, print_warning_failures};
 
 /// Create a work contract with baseline metrics and DbC triad (helper for handle_work_start)
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn create_work_contract(
     project_path: &Path,
     item_id: &str,
@@ -23,6 +24,7 @@ pub(super) async fn create_work_contract(
     without: &[String],
     iteration: u32,
     implements: &[String],
+    agent: Option<crate::cli::handlers::work_ledger::AgentProvenance>,
 ) -> Result<()> {
     println!();
     println!("📋 Creating Work Contract (Popperian Falsification)...");
@@ -62,6 +64,9 @@ pub(super) async fn create_work_contract(
             WorkContract::new(item_id.to_string(), baseline_commit)
         }
     };
+
+    // MACS F1: record who started the work (declared-first provenance).
+    contract.agent = agent;
 
     // Component 27: attach bindings before baseline + gates so downstream
     // machinery (future: inherited clauses) sees them.
@@ -304,6 +309,7 @@ pub(super) async fn run_contract_falsification(
     override_claims: &Option<Vec<String>>,
     ticket: &Option<String>,
     id: &str,
+    agent: Option<crate::cli::handlers::work_ledger::AgentProvenance>,
 ) -> Result<()> {
     if !WorkContract::exists(project_path, item_id) {
         anyhow::bail!(
@@ -326,7 +332,7 @@ pub(super) async fn run_contract_falsification(
                 contract.baseline_tdg,
                 contract.baseline_coverage
             );
-            run_contract_tests(project_path, &contract, override_claims, ticket, id).await
+            run_contract_tests(project_path, &contract, override_claims, ticket, id, agent).await
         }
         Err(e) => {
             anyhow::bail!(
@@ -346,10 +352,12 @@ pub(super) async fn run_contract_tests(
     override_claims: &Option<Vec<String>>,
     ticket: &Option<String>,
     id: &str,
+    agent: Option<crate::cli::handlers::work_ledger::AgentProvenance>,
 ) -> Result<()> {
     let report = run_falsification_tests(project_path, contract).await?;
 
-    // Build immutable receipt
+    // Build immutable receipt, stamped with agent provenance (MACS F1) —
+    // every crossing of the stochastic/deterministic boundary is attributable.
     let git_sha = crate::cli::handlers::work_ledger::get_current_git_sha(project_path);
     let receipt = FalsificationReceipt::from_report(
         &report,
@@ -358,7 +366,8 @@ pub(super) async fn run_contract_tests(
         FalsificationTrigger::WorkComplete,
         override_claims.as_ref(),
         ticket.as_ref(),
-    );
+    )
+    .with_agent(agent, Vec::new());
 
     // Persist receipt and append to global ledger
     let ledger = FalsificationLedger::new(project_path);

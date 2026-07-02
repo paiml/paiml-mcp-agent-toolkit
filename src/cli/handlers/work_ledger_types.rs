@@ -83,6 +83,10 @@ pub struct LedgerEntry {
     pub allows_completion: bool,
     /// Content hash for cross-reference
     pub content_hash: String,
+    /// Agent summary {model, effort, harness} when the receipt carries
+    /// provenance (MACS-002). Absent on pre-MACS lines.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<LedgerAgentSummary>,
 }
 
 impl LedgerEntry {
@@ -100,6 +104,11 @@ impl LedgerEntry {
             overridden: receipt.summary.overridden,
             allows_completion: receipt.summary.allows_completion,
             content_hash: receipt.content_hash.clone(),
+            agent: receipt.agent.as_ref().map(|a| LedgerAgentSummary {
+                model: a.model.clone(),
+                effort: a.effort.clone(),
+                harness: a.harness.clone(),
+            }),
         }
     }
 }
@@ -271,6 +280,105 @@ pub enum AgentEvent {
         /// Number of subagents spawned
         subagents: u32,
     },
+}
+
+
+// ============================================================================
+// MACS F1 — provenance resolution (MACS-002): declared-first, detection advisory
+// Spec: docs/specifications/components/modern-agentic-coding-support.md §4-F1
+// ============================================================================
+
+/// Declared agent fields as received from `--agent-*` flags. clap also fills
+/// them from `PMAT_AGENT_*` env vars; flags and env both count as "declared"
+/// provenance (MACS E9) — advisory detection is separate.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DeclaredAgent {
+    pub model: Option<String>,
+    pub effort: Option<String>,
+    pub harness: Option<String>,
+    pub workflow_id: Option<String>,
+    pub parent: Option<String>,
+}
+
+impl DeclaredAgent {
+    fn any(&self) -> bool {
+        self.model.is_some()
+            || self.effort.is_some()
+            || self.harness.is_some()
+            || self.workflow_id.is_some()
+            || self.parent.is_some()
+    }
+}
+
+/// Resolve provenance from declared flags plus advisory env detection.
+/// Declared always wins; detection only fills gaps and downgrades `source`
+/// to `mixed`/`detected`. Returns None when nothing is declared or detected —
+/// receipts then carry `agent: null` rather than fabricated provenance.
+pub fn resolve_agent_provenance(declared: &DeclaredAgent) -> Option<AgentProvenance> {
+    resolve_agent_provenance_with_env(declared, &|key| std::env::var(key).ok())
+}
+
+/// Testable core of [`resolve_agent_provenance`]: env access is injected.
+pub fn resolve_agent_provenance_with_env(
+    declared: &DeclaredAgent,
+    env: &dyn Fn(&str) -> Option<String>,
+) -> Option<AgentProvenance> {
+    let detected_effort = env("CLAUDE_CODE_EFFORT_LEVEL");
+    let detected_claude_code = detected_effort.is_some()
+        || env("CLAUDECODE").is_some()
+        || env("CLAUDE_CODE_ENTRYPOINT").is_some();
+
+    let declared_any = declared.any();
+    let mut used_detection = false;
+
+    let effort = match &declared.effort {
+        Some(e) => e.clone(),
+        None => match &detected_effort {
+            Some(e) => {
+                used_detection = true;
+                e.clone()
+            }
+            None => "unspecified".to_string(),
+        },
+    };
+    let harness = match &declared.harness {
+        Some(h) => AgentHarness::parse_token(h),
+        None if detected_claude_code => {
+            used_detection = true;
+            AgentHarness::ClaudeCode
+        }
+        None => AgentHarness::Other("unspecified".to_string()),
+    };
+
+    if !declared_any && !used_detection {
+        return None;
+    }
+
+    let source = match (declared_any, used_detection) {
+        (true, false) => ProvenanceSource::Declared,
+        (true, true) => ProvenanceSource::Mixed,
+        (false, _) => ProvenanceSource::Detected,
+    };
+
+    Some(AgentProvenance {
+        model: declared
+            .model
+            .clone()
+            .unwrap_or_else(|| "unknown".to_string()),
+        effort,
+        harness,
+        workflow_id: declared.workflow_id.clone(),
+        parent: declared.parent.clone(),
+        source,
+    })
+}
+
+/// Compact agent summary carried on JSONL ledger entries (MACS-002).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LedgerAgentSummary {
+    pub model: String,
+    pub effort: String,
+    pub harness: AgentHarness,
 }
 
 #[cfg_attr(coverage_nightly, coverage(off))]

@@ -25,6 +25,7 @@ impl CommandDispatcher {
             }
             WorkCommands::Start {
                 id,
+                agent,
                 with_spec,
                 epic,
                 path,
@@ -44,20 +45,23 @@ impl CommandDispatcher {
                     without.clone().unwrap_or_default(),
                     *iteration,
                     implements.clone(),
+                    agent.to_declared(),
                 )
                 .await
             }
             WorkCommands::Continue { id, path } => {
                 work_handlers::handle_work_continue(id.clone(), path.clone()).await
             }
-            WorkCommands::Checkpoint { id, path } => {
-                work_handlers::handle_work_checkpoint(id.clone(), path.clone()).await
+            WorkCommands::Checkpoint { id, agent, path } => {
+                work_handlers::handle_work_checkpoint(id.clone(), path.clone(), agent.to_declared())
+                    .await
             }
             WorkCommands::Complete {
                 id,
                 skip_quality,
                 override_claims,
                 ticket,
+                agent,
                 path,
             } => {
                 work_handlers::handle_work_complete(
@@ -66,6 +70,7 @@ impl CommandDispatcher {
                     override_claims.clone(),
                     ticket.clone(),
                     path.clone(),
+                    agent.to_declared(),
                 )
                 .await
             }
@@ -73,6 +78,7 @@ impl CommandDispatcher {
                 id,
                 override_claims,
                 ticket,
+                agent,
                 path,
             } => {
                 work_handlers::handle_work_falsify(
@@ -80,6 +86,7 @@ impl CommandDispatcher {
                     override_claims.clone(),
                     ticket.clone(),
                     path.clone(),
+                    agent.to_declared(),
                 )
                 .await
             }

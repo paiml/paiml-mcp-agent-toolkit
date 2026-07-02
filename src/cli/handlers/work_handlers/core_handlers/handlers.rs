@@ -140,6 +140,7 @@ pub async fn handle_work_start(
     without: Vec<String>,
     iteration: u32,
     implements: Vec<String>,
+    agent: crate::cli::handlers::work_ledger::DeclaredAgent,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
@@ -212,6 +213,7 @@ pub async fn handle_work_start(
         &without,
         iteration,
         &implements,
+        crate::cli::handlers::work_ledger::resolve_agent_provenance(&agent),
     )
     .await?;
 
@@ -377,7 +379,11 @@ pub async fn handle_work_continue(id: String, path: Option<PathBuf>) -> Result<(
 /// Invariant failures are reported but do not halt work — they accumulate
 /// and block completion at `work complete`.
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
-pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result<()> {
+pub async fn handle_work_checkpoint(
+    id: String,
+    path: Option<PathBuf>,
+    agent: crate::cli::handlers::work_ledger::DeclaredAgent,
+) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
 
     println!(
@@ -389,7 +395,8 @@ pub async fn handle_work_checkpoint(id: String, path: Option<PathBuf>) -> Result
     );
     println!();
 
-    let record = super::checkpoint::run_checkpoint(&project_path, &id)?;
+    let mut record = super::checkpoint::run_checkpoint(&project_path, &id)?;
+    record.agent = crate::cli::handlers::work_ledger::resolve_agent_provenance(&agent);
 
     // Display results
     if record.invariant_results.is_empty() {
@@ -487,6 +494,7 @@ pub async fn handle_work_falsify(
     override_claims: Option<Vec<String>>,
     ticket: Option<String>,
     path: Option<PathBuf>,
+    agent: crate::cli::handlers::work_ledger::DeclaredAgent,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
 
@@ -498,7 +506,16 @@ pub async fn handle_work_falsify(
     );
     println!();
 
-    run_contract_falsification(&project_path, &id, &override_claims, &ticket, &id).await
+    let provenance = crate::cli::handlers::work_ledger::resolve_agent_provenance(&agent);
+    run_contract_falsification(
+        &project_path,
+        &id,
+        &override_claims,
+        &ticket,
+        &id,
+        provenance,
+    )
+    .await
 }
 
 /// Handle work complete command
@@ -514,6 +531,7 @@ pub async fn handle_work_complete(
     override_claims: Option<Vec<String>>,
     ticket: Option<String>,
     path: Option<PathBuf>,
+    agent: crate::cli::handlers::work_ledger::DeclaredAgent,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
@@ -562,7 +580,16 @@ pub async fn handle_work_complete(
         println!("   {}", c::dim("Skipping re-run (receipt still valid)"));
         println!();
     } else {
-        run_contract_falsification(&project_path, &item.id, &override_claims, &ticket, &id).await?;
+        let provenance = crate::cli::handlers::work_ledger::resolve_agent_provenance(&agent);
+        run_contract_falsification(
+            &project_path,
+            &item.id,
+            &override_claims,
+            &ticket,
+            &id,
+            provenance,
+        )
+        .await?;
     }
 
     // Mark as completed

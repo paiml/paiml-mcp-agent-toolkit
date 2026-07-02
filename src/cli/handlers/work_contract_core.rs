@@ -96,6 +96,12 @@ pub struct WorkContract {
     /// Component 27: pmat-work-contract-binding. Empty vec = unbound ticket.
     #[serde(default)]
     pub implements: Vec<ContractBinding>,
+
+    /// Which agent configuration started this work item (MACS F1, Component 32).
+    /// Declared-first: from `--agent-*` flags / `PMAT_AGENT_*` env; advisory
+    /// detection is labeled via `source`. None = no provenance declared.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<crate::cli::handlers::work_ledger::AgentProvenance>,
 }
 
 /// Binding to a provable-contracts YAML equation.
@@ -213,6 +219,7 @@ impl WorkContract {
             references: WorkReferences::default(),
             chain_of_thought: Vec::new(),
             implements: Vec::new(),
+            agent: None,
         }
     }
 
@@ -294,6 +301,7 @@ impl WorkContract {
             references: WorkReferences::default(),
             chain_of_thought: Vec::new(),
             implements: Vec::new(),
+            agent: None,
         };
 
         // §5.3-5.4: Subcontracting validation for iteration > 1

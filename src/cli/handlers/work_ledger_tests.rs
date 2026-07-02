@@ -775,4 +775,106 @@ mod tests {
         .expect("write b");
     }
 
+    // ========================================================================
+    // MACS-002 — provenance capture: declared-first resolution, ledger summary
+    // ========================================================================
+
+    #[test]
+    fn declared_flags_win_over_env() {
+        let declared = DeclaredAgent {
+            model: Some("claude-fable-5".to_string()),
+            effort: Some("high".to_string()),
+            harness: Some("claude-code".to_string()),
+            workflow_id: None,
+            parent: None,
+        };
+        let env = |k: &str| {
+            if k == "CLAUDE_CODE_EFFORT_LEVEL" {
+                Some("low".to_string())
+            } else {
+                None
+            }
+        };
+        let p = resolve_agent_provenance_with_env(&declared, &env).expect("provenance");
+        assert_eq!(p.effort, "high", "declared effort beats detected env");
+        assert_eq!(p.source, ProvenanceSource::Declared);
+        assert_eq!(p.harness, AgentHarness::ClaudeCode);
+    }
+
+    #[test]
+    fn env_detected_marked_advisory() {
+        let env = |k: &str| {
+            if k == "CLAUDE_CODE_EFFORT_LEVEL" {
+                Some("xhigh".to_string())
+            } else {
+                None
+            }
+        };
+        // Nothing declared: detection alone yields source=detected
+        let p = resolve_agent_provenance_with_env(&DeclaredAgent::default(), &env)
+            .expect("detected provenance");
+        assert_eq!(p.effort, "xhigh");
+        assert_eq!(p.source, ProvenanceSource::Detected);
+        assert_eq!(p.harness, AgentHarness::ClaudeCode);
+        assert_eq!(p.model, "unknown");
+        // Partially declared: detection fills gaps and marks mixed
+        let declared = DeclaredAgent {
+            model: Some("claude-fable-5".to_string()),
+            ..Default::default()
+        };
+        let p = resolve_agent_provenance_with_env(&declared, &env).expect("mixed provenance");
+        assert_eq!(p.source, ProvenanceSource::Mixed);
+        assert_eq!(p.effort, "xhigh");
+        assert_eq!(p.model, "claude-fable-5");
+    }
+
+    #[test]
+    fn missing_provenance_yields_none_v2() {
+        let env = |_: &str| None;
+        assert!(
+            resolve_agent_provenance_with_env(&DeclaredAgent::default(), &env).is_none(),
+            "no flags + no env => no provenance"
+        );
+        let receipt = FalsificationReceipt::from_report(
+            &make_report(true),
+            "sha".to_string(),
+            "T-NONE".to_string(),
+            FalsificationTrigger::WorkComplete,
+            None,
+            None,
+        );
+        assert_eq!(receipt.schema_version, 2);
+        assert!(receipt.agent.is_none());
+        assert!(receipt.verify_integrity());
+    }
+
+    #[test]
+    fn ledger_entry_carries_agent() {
+        let receipt = make_v2_receipt();
+        let entry = LedgerEntry::from_receipt(&receipt);
+        let agent = entry.agent.expect("agent summary on ledger entry");
+        assert_eq!(agent.model, "claude-fable-5");
+        assert_eq!(agent.effort, "high");
+        assert_eq!(agent.harness, AgentHarness::ClaudeCode);
+        // Receipt without provenance yields no summary
+        let mut bare = make_v2_receipt();
+        bare.agent = None;
+        assert!(LedgerEntry::from_receipt(&bare).agent.is_none());
+    }
+
+    #[test]
+    fn with_agent_reseals_content_hash() {
+        let base = FalsificationReceipt::from_report(
+            &make_report(true),
+            "sha".to_string(),
+            "T-SEAL".to_string(),
+            FalsificationTrigger::WorkComplete,
+            None,
+            None,
+        );
+        let sealed = base.clone().with_agent(Some(make_provenance()), Vec::new());
+        assert!(sealed.verify_integrity(), "hash must be recomputed");
+        assert_ne!(sealed.content_hash, base.content_hash);
+        assert!(sealed.agent.is_some());
+    }
 }
