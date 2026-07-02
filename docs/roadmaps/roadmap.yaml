@@ -3250,11 +3250,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: MACS-001 AgentProvenance/AgentEvent types + canonical serialization + schema_version
-  status: inprogress
+  status: completed
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:22:54.820415969+00:00
+  updated: 2026-07-02T13:01:50.437983584+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
