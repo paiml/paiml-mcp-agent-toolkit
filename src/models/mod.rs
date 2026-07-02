@@ -71,6 +71,7 @@ pub mod roadmap;
 pub mod tdg;
 pub mod template;
 pub mod unified_ast;
+pub mod work_cot; // MACS F3 (Component 32): structured chain-of-thought
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]

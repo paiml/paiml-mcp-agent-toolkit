@@ -194,15 +194,49 @@ pub struct WorkReferences {
     pub oracle_context: Option<String>,
 }
 
-/// A single step in the chain-of-thought reasoning audit trail
+/// A single step in the chain-of-thought reasoning audit trail.
+///
+/// Two generations coexist (MACS-007, Component 32 implementing C31):
+/// - legacy prose: `{step, question, answer}` — annotated L0 evidence,
+///   still parsed and preserved, never dropped;
+/// - v2 structured: `{id, assumption, implication, evidence_method,
+///   discharged_by}` — checkable (CB-1640) and derivable (CB-1658) via
+///   `crate::models::work_cot`.
+///
+/// `assumption`/`implication` stay raw `Value`s because two wire shapes are
+/// legal: a plain string (MACS Appendix A) or the C31 object form
+/// `{text, references[], expr}` that CB-1640/1643 introspect.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainOfThoughtStep {
-    /// Step number (1-based)
+    /// Step number (1-based; legacy shape)
+    #[serde(default, skip_serializing_if = "cot_step_is_zero")]
     pub step: u32,
-    /// The question being answered
+    /// The question being answered (legacy prose shape)
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub question: String,
-    /// The answer/reasoning
+    /// The answer/reasoning (legacy prose shape)
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub answer: String,
+    /// v2: step id, e.g. "CoT-1"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    /// v2: input to the reasoning (string or `{text, references, expr}`)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assumption: Option<serde_json::Value>,
+    /// v2: output of the reasoning (string or `{text, references, expr}`)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub implication: Option<serde_json::Value>,
+    /// v2: how to falsify the implication
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence_method: Option<String>,
+    /// v2: what discharges the assumption (CoT id | contract#equation |
+    /// E<n> | Axiomatic)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub discharged_by: Option<crate::models::work_cot::DischargeRef>,
+}
+
+fn cot_step_is_zero(step: &u32) -> bool {
+    *step == 0
 }
 
 fn default_contract_version() -> String {
