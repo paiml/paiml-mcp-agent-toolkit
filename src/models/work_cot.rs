@@ -438,6 +438,16 @@ pub fn render_derivation(ticket: &str, steps: &[CotStepView], emit_clauses: bool
     out.push_str(&format!(
         "# MACS-009 (Component 32) — do not edit by hand\nticket: \"{ticket}\"\n"
     ));
+    // metadata.references keeps the artifact well-formed under `pv lint`
+    // (contracts/ is scanned recursively; every doc there needs a source ref).
+    out.push_str("metadata:\n");
+    out.push_str("  version: \"1.0.0\"\n");
+    out.push_str("  kind: schema\n");
+    out.push_str(&format!(
+        "  description: \"Auto-derived proof obligations + falsifiable claims for {ticket}\"\n"
+    ));
+    out.push_str("  references:\n");
+    out.push_str(&format!("    - \".pmat-work/{ticket}/contract.json\"\n"));
     out.push_str("proof_obligations:\n");
     for step in steps {
         let d = derive(step);
