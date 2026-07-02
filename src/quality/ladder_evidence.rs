@@ -35,24 +35,22 @@ pub fn achieved_level(project_path: &Path, contract: &WorkContract) -> Verificat
         return VerificationLevel::L1;
     }
 
-    // Min-fold the per-binding ceilings: a ticket is only as verified as its
-    // weakest bound equation.
+    // Min-fold the per-binding EVIDENCED levels: a ticket is only as verified
+    // as its weakest bound equation. Each level is computed bottom-up
+    // (evidenced_level_from_yaml), so a YAML declaring kani_harnesses but no
+    // falsification_tests earns L2 — never a hollow L3/L4. L4 additionally
+    // requires a real kani execution record, not just declared harnesses.
+    let kani_ran = kani_report_success(project_path, &contract.work_item_id);
     let mut level = VerificationLevel::L5;
     for binding in &contract.implements {
         let yaml_path = project_path.join(&binding.file);
-        let ceiling = match std::fs::read_to_string(&yaml_path) {
-            Ok(yaml) => VerificationLevel::max_attainable_from_yaml(&yaml),
+        let evidenced = match std::fs::read_to_string(&yaml_path) {
+            Ok(yaml) => VerificationLevel::evidenced_level_from_yaml(&yaml, kani_ran),
             // Bound but YAML unreadable: the binding itself is the only
             // evidence left standing.
             Err(_) => VerificationLevel::L2,
         };
-        level = level.min(ceiling);
-    }
-
-    // L4+ requires an actual kani execution record, not declared harnesses.
-    if level >= VerificationLevel::L4 && !kani_report_success(project_path, &contract.work_item_id)
-    {
-        level = VerificationLevel::L3.min(level);
+        level = level.min(evidenced);
     }
     level
 }
@@ -248,6 +246,28 @@ mod tests {
             achieved_level(project.path(), &contract),
             VerificationLevel::L3
         );
+    }
+
+    #[test]
+    fn kani_without_falsification_tests_caps_at_l2() {
+        // ADVERSARIAL-REVIEW regression: a YAML declaring kani_harnesses but
+        // NO falsification_tests must earn L2, never a hollow L3/L4. The old
+        // ceiling-then-demote logic returned L3 here (gate bypass).
+        let project = tempfile::tempdir().unwrap();
+        write_yaml(
+            project.path(),
+            "contracts/fixture-v1.yaml",
+            "equations:\n  eq: {}\nkani_harnesses:\n  - name: h\n",
+        );
+        let mut contract = bound_contract("T-HOLLOW", "contracts/fixture-v1.yaml");
+        contract.verification_level = VerificationLevel::L3;
+        assert_eq!(
+            achieved_level(project.path(), &contract),
+            VerificationLevel::L2,
+            "no falsification_tests => cannot reach L3"
+        );
+        // The L3 claim must now be BLOCKED (was wrongly passing).
+        assert!(check_ladder_shortfall(project.path(), &contract).is_err());
     }
 
     #[test]

@@ -239,17 +239,29 @@ fn run_sweep_once(
     std::fs::write(fixture.join("m.rs"), "pub fn f() -> i32 { 1 }\n").ok();
     let arg_target = fixture.to_string_lossy().to_string();
 
-    let mut child = Command::new(binary)
+    let mut child = match Command::new(binary)
         .env("MCP_VERSION", "1")
         .current_dir(target)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
-        .context("spawn MCP server (MCP_VERSION=1 pmat)")?;
+    {
+        Ok(c) => c,
+        Err(e) => {
+            std::fs::remove_dir_all(&fixture).ok();
+            return Err(anyhow::Error::from(e).context("spawn MCP server (MCP_VERSION=1 pmat)"));
+        }
+    };
 
-    let mut stdin = child.stdin.take().context("child stdin")?;
-    let stdout = child.stdout.take().context("child stdout")?;
+    // Take the pipes without `?`: an error here must still reap the child and
+    // remove the fixture (no zombie process, no temp-dir leak).
+    let (Some(mut stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
+        let _ = child.kill();
+        let _ = child.wait();
+        std::fs::remove_dir_all(&fixture).ok();
+        anyhow::bail!("MCP server pipes unavailable");
+    };
 
     // Reader thread: every stdout line -> channel. Bounds our reads with a
     // deadline (std pipes have no read timeout) without blocking forever.
@@ -271,53 +283,94 @@ fn run_sweep_once(
         }
     });
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(SWEEP_DEADLINE_SECS);
-    let recv_slice = |rx: &std::sync::mpsc::Receiver<String>| -> Option<String> {
-        let now = std::time::Instant::now();
-        if now >= deadline {
-            return None;
-        }
-        rx.recv_timeout(deadline - now).ok()
-    };
-
     let mut raw_stdout = String::new();
     let mut frames: Vec<serde_json::Value> = Vec::new();
 
-    // Phase 1: initialize + tools/list, read frames until id == 2.
-    let init = serde_json::json!({
-        "jsonrpc": "2.0", "id": 1, "method": "initialize",
-        "params": {"protocolVersion": "2024-11-05", "capabilities": {},
-                   "clientInfo": {"name": "pmat-mcp-sweep", "version": "1"}}
-    });
-    let list = serde_json::json!({
-        "jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}
-    });
-    writeln!(stdin, "{init}").context("write initialize")?;
-    writeln!(stdin, "{list}").context("write tools/list")?;
+    // Phase 1: initialize + tools/list, read frames until the list response.
+    writeln!(
+        stdin,
+        "{}",
+        serde_json::json!({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2024-11-05", "capabilities": {},
+                       "clientInfo": {"name": "pmat-mcp-sweep", "version": "1"}}})
+    )
+    .context("write initialize")?;
+    writeln!(
+        stdin,
+        "{}",
+        serde_json::json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}})
+    )
+    .context("write tools/list")?;
     stdin.flush().ok();
-
-    let mut tools: Vec<serde_json::Value> = Vec::new();
-    while let Some(line) = recv_slice(&rx) {
-        raw_stdout.push_str(&line);
-        if let Ok(frame) = serde_json::from_str::<serde_json::Value>(line.trim()) {
-            let is_list = frame.get("id").and_then(|v| v.as_u64()) == Some(2);
-            if is_list {
-                tools = frame
-                    .get("result")
-                    .and_then(|r| r.get("tools"))
-                    .and_then(|t| t.as_array())
-                    .cloned()
-                    .unwrap_or_default();
-            }
-            frames.push(frame);
-            if is_list {
-                break;
-            }
-        }
-    }
+    let tools = read_tool_list(&rx, deadline, &mut raw_stdout, &mut frames);
 
     // Phase 2: one tools/call per tool with schema-derived args (pointed at
     // the minimal fixture so tools do near-zero work).
-    let mut expected_ids: Vec<(u64, String)> = Vec::new();
+    let expected_ids = send_tool_calls(&mut stdin, &tools, &arg_target);
+    stdin.flush().ok();
+    drop(stdin); // EOF -> server exits cleanly (EofSignalingTransport)
+
+    // Drain responses until answered or deadline, then reap the server.
+    drain_responses(&rx, deadline, &expected_ids, &mut raw_stdout, &mut frames);
+    let _ = child.kill();
+    let _ = child.wait();
+    std::fs::remove_dir_all(&fixture).ok();
+
+    let results = correlate_results(&expected_ids, &frames);
+    let (anomalies, framing_pure) = framing_anomalies(&raw_stdout, tools.is_empty());
+    Ok((results, anomalies, framing_pure))
+}
+
+/// Receive one line from the reader thread, bounded by `deadline`.
+fn recv_before(
+    rx: &std::sync::mpsc::Receiver<String>,
+    deadline: std::time::Instant,
+) -> Option<String> {
+    let now = std::time::Instant::now();
+    if now >= deadline {
+        return None;
+    }
+    rx.recv_timeout(deadline - now).ok()
+}
+
+/// Phase 1: read frames until the tools/list response (id == 2); return its
+/// advertised tools. Appends every raw line + parsed frame.
+fn read_tool_list(
+    rx: &std::sync::mpsc::Receiver<String>,
+    deadline: std::time::Instant,
+    raw_stdout: &mut String,
+    frames: &mut Vec<serde_json::Value>,
+) -> Vec<serde_json::Value> {
+    while let Some(line) = recv_before(rx, deadline) {
+        raw_stdout.push_str(&line);
+        let Ok(frame) = serde_json::from_str::<serde_json::Value>(line.trim()) else {
+            continue;
+        };
+        let is_list = frame.get("id").and_then(|v| v.as_u64()) == Some(2);
+        let tools = is_list.then(|| {
+            frame
+                .get("result")
+                .and_then(|r| r.get("tools"))
+                .and_then(|t| t.as_array())
+                .cloned()
+                .unwrap_or_default()
+        });
+        frames.push(frame);
+        if let Some(tools) = tools {
+            return tools;
+        }
+    }
+    Vec::new()
+}
+
+/// Phase 2: send one tools/call per advertised tool with schema-derived args;
+/// return the (request id, tool name) pairs to correlate against.
+fn send_tool_calls(
+    stdin: &mut impl Write,
+    tools: &[serde_json::Value],
+    arg_target: &str,
+) -> Vec<(u64, String)> {
+    let mut expected = Vec::new();
     for (i, tool) in tools.iter().enumerate() {
         let name = tool
             .get("name")
@@ -328,24 +381,32 @@ fn run_sweep_once(
             .get("inputSchema")
             .cloned()
             .unwrap_or_else(|| serde_json::json!({}));
-        let args = derive_args_from_schema(&schema, &arg_target);
+        let args = derive_args_from_schema(&schema, arg_target);
         let id = 100 + i as u64;
-        let call = serde_json::json!({
-            "jsonrpc": "2.0", "id": id, "method": "tools/call",
-            "params": {"name": name, "arguments": args}
-        });
-        writeln!(stdin, "{call}").ok();
-        expected_ids.push((id, name));
+        let _ = writeln!(
+            stdin,
+            "{}",
+            serde_json::json!({"jsonrpc": "2.0", "id": id, "method": "tools/call",
+                "params": {"name": name, "arguments": args}})
+        );
+        expected.push((id, name));
     }
-    stdin.flush().ok();
-    drop(stdin); // EOF -> server exits cleanly (EofSignalingTransport)
+    expected
+}
 
-    // Drain remaining frames until every call is answered or the deadline
-    // hits; then kill the server (bounds a slow/hanging tool).
+/// Drain response frames until every expected id is answered or the deadline
+/// hits (bounds a slow/hanging tool).
+fn drain_responses(
+    rx: &std::sync::mpsc::Receiver<String>,
+    deadline: std::time::Instant,
+    expected_ids: &[(u64, String)],
+    raw_stdout: &mut String,
+    frames: &mut Vec<serde_json::Value>,
+) {
     let wanted: std::collections::HashSet<u64> = expected_ids.iter().map(|(id, _)| *id).collect();
     let mut answered: std::collections::HashSet<u64> = std::collections::HashSet::new();
     while answered.len() < wanted.len() {
-        let Some(line) = recv_slice(&rx) else {
+        let Some(line) = recv_before(rx, deadline) else {
             break;
         };
         raw_stdout.push_str(&line);
@@ -358,59 +419,66 @@ fn run_sweep_once(
             frames.push(frame);
         }
     }
-    let _ = child.kill();
-    let _ = child.wait();
-    std::fs::remove_dir_all(&fixture).ok();
+}
 
-    // Correlate responses by id.
-    let mut results = Vec::new();
-    for (id, name) in expected_ids {
-        let frame = frames
-            .iter()
-            .find(|f| f.get("id").and_then(|v| v.as_u64()) == Some(id));
-        match frame {
-            Some(f) if is_conformant_response(f) => results.push(ToolSweepResult {
-                name,
-                conformant: true,
-                anomaly: None,
-            }),
-            Some(_) => results.push(ToolSweepResult {
-                name,
-                conformant: false,
-                anomaly: Some("malformed JSON-RPC response frame".to_string()),
-            }),
-            None => results.push(ToolSweepResult {
-                name,
-                conformant: false,
-                anomaly: Some("no response frame for this tool call".to_string()),
-            }),
-        }
-    }
+/// Correlate each expected tool-call id to its response frame: conformant,
+/// malformed, or missing.
+fn correlate_results(
+    expected_ids: &[(u64, String)],
+    frames: &[serde_json::Value],
+) -> Vec<ToolSweepResult> {
+    expected_ids
+        .iter()
+        .map(|(id, name)| {
+            let frame = frames
+                .iter()
+                .find(|f| f.get("id").and_then(|v| v.as_u64()) == Some(*id));
+            let anomaly = match frame {
+                Some(f) if is_conformant_response(f) => None,
+                Some(_) => Some("malformed JSON-RPC response frame".to_string()),
+                None => Some("no response frame for this tool call".to_string()),
+            };
+            ToolSweepResult {
+                name: name.clone(),
+                conformant: anomaly.is_none(),
+                anomaly,
+            }
+        })
+        .collect()
+}
 
-    // Framing purity over the whole session's stdout.
-    let stray = framing_stray_lines(&raw_stdout);
-    let mut anomalies = Vec::new();
-    for (i, s) in stray.iter().enumerate() {
-        anomalies.push(SweepAnomaly {
+/// Build framing anomalies (stray non-JSON stdout lines) + purity flag.
+fn framing_anomalies(raw_stdout: &str, tools_empty: bool) -> (Vec<SweepAnomaly>, bool) {
+    let stray = framing_stray_lines(raw_stdout);
+    let mut anomalies: Vec<SweepAnomaly> = stray
+        .iter()
+        .enumerate()
+        .map(|(i, s)| SweepAnomaly {
             id: format!("framing-{i:03}"),
             detail: format!("non-JSON stdout line: {}", truncate(s, 120)),
-        });
-    }
-    if tools.is_empty() {
+        })
+        .collect();
+    if tools_empty {
         anomalies.push(SweepAnomaly {
             id: "tools-list-empty".to_string(),
             detail: "server advertised zero tools (tools/list returned none)".to_string(),
         });
     }
-    Ok((results, anomalies, stray.is_empty()))
+    (anomalies, stray.is_empty())
 }
 
 fn truncate(s: &str, max: usize) -> String {
     if s.len() <= max {
-        s.to_string()
-    } else {
-        format!("{}…", &s[..max])
+        return s.to_string();
     }
+    // Char-safe: never slice mid-codepoint (a stray non-JSON line — the very
+    // framing anomaly we report — can be arbitrary UTF-8). Adversarial-review
+    // fix for a panic at a non-char-boundary byte index.
+    let end = (0..=max)
+        .rev()
+        .find(|&i| s.is_char_boundary(i))
+        .unwrap_or(0);
+    format!("{}…", &s[..end])
 }
 
 /// Snapshot the scratch surface a concurrent sweep must leave untouched:
@@ -648,6 +716,16 @@ mod tests {
         let one = serde_json::to_string(&derive_args_from_schema(&schema, ".")).unwrap();
         let two = serde_json::to_string(&derive_args_from_schema(&schema, ".")).unwrap();
         assert_eq!(one, two);
+    }
+
+    #[test]
+    fn truncate_is_char_safe_on_multibyte() {
+        // ADVERSARIAL-REVIEW regression: truncating a stray UTF-8 line at a
+        // byte offset that lands mid-codepoint must not panic.
+        let s = format!("{}\u{1F600}", "x".repeat(118)); // byte 120 inside the emoji
+        let out = truncate(&s, 120);
+        assert!(out.ends_with('\u{2026}'));
+        assert!(out.is_char_boundary(out.len()));
     }
 
     #[test]

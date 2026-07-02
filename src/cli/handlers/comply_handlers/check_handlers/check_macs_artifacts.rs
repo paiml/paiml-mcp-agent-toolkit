@@ -122,11 +122,15 @@ fn macs_line_has_denied_model(line: &str) -> bool {
         return true;
     }
     // claude-2 but not claude-20xx-style future ids: require a non-digit after.
-    if let Some(idx) = line.find("claude-2") {
-        let after = line[idx + "claude-2".len()..].chars().next();
+    // Scan EVERY occurrence — a first allowed `claude-2099` must not mask a
+    // later denied `claude-2` on the same line (adversarial-review fix).
+    let mut rest = line;
+    while let Some(idx) = rest.find("claude-2") {
+        let after = rest[idx + "claude-2".len()..].chars().next();
         if after.is_none_or(|c| !c.is_ascii_digit()) {
             return true;
         }
+        rest = &rest[idx + "claude-2".len()..];
     }
     false
 }

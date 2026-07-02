@@ -85,6 +85,15 @@ mod tests_macs_artifacts {
     }
 
     #[test]
+    fn cb1657_denylist_scans_all_occurrences() {
+        // ADVERSARIAL-REVIEW regression: an allowed claude-2099 earlier on the
+        // line must not mask a denied claude-2 later on the same line.
+        assert!(macs_line_has_denied_model(
+            "compare claude-2099-future with legacy claude-2 here"
+        ));
+    }
+
+    #[test]
     fn cb1657_denylist_matching() {
         assert!(macs_line_has_denied_model("primary: claude-3-opus"));
         assert!(macs_line_has_denied_model("gpt-4-turbo fallback"));

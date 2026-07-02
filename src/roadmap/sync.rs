@@ -131,28 +131,36 @@ pub fn read_work_store_rows(project_path: &Path) -> Result<Vec<RoadmapRow>> {
 }
 
 /// Parse `- id: / title: / status:` triples from a roadmap.yaml body.
+///
+/// Only `- id:` list entries at the *item-list* indentation (that of the
+/// first such entry) start a new row; more-deeply-indented `- id:` inside a
+/// `subtasks:`/`phases:` block are ignored, so nested ids never masquerade as
+/// top-level roadmap items (adversarial-review fix). `title:`/`status:` are
+/// only read while inside a top-level item and at a deeper indent than it.
 pub fn parse_rows(text: &str) -> Vec<RoadmapRow> {
     let mut rows = Vec::new();
     let mut cur: Option<RoadmapRow> = None;
+    let mut item_indent: Option<usize> = None;
     for line in text.lines() {
-        let trimmed = line.trim();
+        let indent = line.len() - line.trim_start().len();
+        let trimmed = line.trim_start();
         if let Some(rest) = trimmed.strip_prefix("- id:") {
-            if let Some(row) = cur.take() {
-                rows.push(row);
+            if is_top_level_item(indent, &mut item_indent) {
+                if let Some(row) = cur.take() {
+                    rows.push(row);
+                }
+                cur = Some(RoadmapRow {
+                    id: unquote(rest.trim()),
+                    title: String::new(),
+                    status: String::new(),
+                });
             }
-            cur = Some(RoadmapRow {
-                id: unquote(rest.trim()),
-                title: String::new(),
-                status: String::new(),
-            });
-        } else if let Some(rest) = trimmed.strip_prefix("title:") {
-            if let Some(row) = cur.as_mut() {
-                row.title = unquote(rest.trim());
-            }
-        } else if let Some(rest) = trimmed.strip_prefix("status:") {
-            if let Some(row) = cur.as_mut() {
-                row.status = unquote(rest.trim());
-            }
+            continue;
+        }
+        // Field lines belong to the current top-level item only when nested
+        // beneath it (strictly deeper than the item-list indent).
+        if item_indent.is_some_and(|base| indent > base) {
+            apply_field(cur.as_mut(), trimmed);
         }
     }
     if let Some(row) = cur.take() {
@@ -160,6 +168,32 @@ pub fn parse_rows(text: &str) -> Vec<RoadmapRow> {
     }
     rows.retain(|r| !r.id.is_empty());
     rows
+}
+
+/// Establish the item-list indent from the first `- id:`; only entries at
+/// that exact indent are top-level items (nested subtask ids are ignored).
+fn is_top_level_item(indent: usize, item_indent: &mut Option<usize>) -> bool {
+    match *item_indent {
+        None => {
+            *item_indent = Some(indent);
+            true
+        }
+        Some(base) => indent == base,
+    }
+}
+
+/// Fill a top-level item's title/status from a nested field line (first wins).
+fn apply_field(row: Option<&mut RoadmapRow>, trimmed: &str) {
+    let Some(row) = row else { return };
+    if let Some(rest) = trimmed.strip_prefix("title:") {
+        if row.title.is_empty() {
+            row.title = unquote(rest.trim());
+        }
+    } else if let Some(rest) = trimmed.strip_prefix("status:") {
+        if row.status.is_empty() {
+            row.status = unquote(rest.trim());
+        }
+    }
 }
 
 fn unquote(s: &str) -> String {
@@ -289,6 +323,17 @@ mod tests {
         assert_eq!(parsed[0].id, "MACS-001");
         assert_eq!(parsed[0].title, "types");
         assert_eq!(parsed[1].status, "inprogress");
+    }
+
+    #[test]
+    fn parse_rows_ignores_nested_subtask_ids() {
+        // ADVERSARIAL-REVIEW regression: nested `- id:` under subtasks/phases
+        // must not be promoted to top-level roadmap items.
+        let text = "roadmap:\n- id: MACS-016\n  title: capstone\n  status: inprogress\n  subtasks:\n    - id: SUB-1\n      title: nested\n      status: planned\n- id: MACS-017\n  title: next\n  status: planned\n";
+        let rows = parse_rows(text);
+        let ids: Vec<&str> = rows.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(ids, vec!["MACS-016", "MACS-017"], "nested SUB-1 excluded");
+        assert_eq!(rows[0].title, "capstone", "nested title did not overwrite");
     }
 
     #[test]

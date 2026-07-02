@@ -300,73 +300,98 @@ pub fn check_chain(steps: &[CotStepView]) -> Vec<Cb1640Violation> {
     }
 
     // Collect step->step edges and per-step discharge sources.
-    let index_of = |id: &str| ids.iter().position(|s| *s == id);
     let mut edges: Vec<Vec<usize>> = vec![Vec::new(); steps.len()];
     for (i, step) in steps.iter().enumerate() {
-        let mut sources = 0usize;
-        let mut refs: Vec<String> = Vec::new();
-        match &step.discharged_by {
-            Some(DischargeRef::Step(target)) => refs.push(target.clone()),
-            Some(DischargeRef::Axiomatic { reason }) => {
-                if reason.trim().is_empty() {
-                    violations.push(Cb1640Violation {
-                        step_id: step.id.clone(),
-                        kind: "undischarged".to_string(),
-                        detail: "Axiomatic discharge requires a non-empty reason".to_string(),
-                    });
-                } else {
-                    sources += 1; // documented axiom is a root
-                }
-            }
-            Some(DischargeRef::Equation { .. }) | Some(DischargeRef::EnvFact(_)) => {
-                sources += 1; // terminal evidence roots
-            }
-            None => {}
-        }
-        for r in step
-            .assumption_references
-            .iter()
-            .cloned()
-            .chain(inline_refs(&step.assumption))
-        {
-            match DischargeRef::parse(&r) {
-                Some(DischargeRef::Step(target)) => refs.push(target),
-                Some(_) => sources += 1, // E-fact / equation reference in text
-                None => {}
-            }
-        }
+        analyze_step(i, step, &ids, &mut edges, &mut violations);
+    }
 
-        for target in refs {
-            match index_of(&target) {
-                Some(j) if j == i => violations.push(Cb1640Violation {
-                    step_id: step.id.clone(),
-                    kind: "cycle".to_string(),
-                    detail: "step discharges itself".to_string(),
-                }),
-                Some(j) => {
-                    edges[i].push(j);
-                    sources += 1;
-                }
-                None => violations.push(Cb1640Violation {
-                    step_id: step.id.clone(),
-                    kind: "unresolved-ref".to_string(),
-                    detail: format!("reference '{target}' does not name a step in this chain"),
-                }),
-            }
-        }
+    detect_cycles(steps, &edges, &mut violations);
+    violations
+}
 
-        // Evidence-rooted step: a non-empty falsification method anchors a
-        // step with no upstream reference (the §3.1 CoT-1 pattern).
-        if sources == 0 && step.evidence_method.trim().is_empty() {
+/// Compute one step's discharge sources + outgoing edges, appending any
+/// per-step violations (extracted to keep `check_chain` under the
+/// cognitive-complexity gate).
+fn analyze_step(
+    i: usize,
+    step: &CotStepView,
+    ids: &[&str],
+    edges: &mut [Vec<usize>],
+    violations: &mut Vec<Cb1640Violation>,
+) {
+    let index_of = |id: &str| ids.iter().position(|s| *s == id);
+    let mut sources = 0usize;
+    let mut refs: Vec<String> = Vec::new();
+
+    // Explicit discharge.
+    match &step.discharged_by {
+        Some(DischargeRef::Step(target)) => refs.push(target.clone()),
+        Some(DischargeRef::Axiomatic { reason }) if reason.trim().is_empty() => {
             violations.push(Cb1640Violation {
                 step_id: step.id.clone(),
                 kind: "undischarged".to_string(),
-                detail: "no discharge source and no evidence_method".to_string(),
+                detail: "Axiomatic discharge requires a non-empty reason".to_string(),
             });
+        }
+        // Documented axiom / equation / E-fact are terminal evidence roots.
+        Some(_) => sources += 1,
+        None => {}
+    }
+
+    // DECLARED references (the structured array) are authoritative: step-refs
+    // become edges, E-fact/equation refs are terminal roots.
+    for r in &step.assumption_references {
+        match DischargeRef::parse(r) {
+            Some(DischargeRef::Step(target)) => refs.push(target),
+            Some(_) => sources += 1,
+            None => {}
+        }
+    }
+    // INLINE prose refs are unreliable: only step-refs (for cycle/resolution),
+    // never E-facts — an incidental `E5` must not discharge a floating
+    // assumption (adversarial-review fix).
+    for r in inline_refs(&step.assumption) {
+        if let Some(DischargeRef::Step(target)) = DischargeRef::parse(&r) {
+            refs.push(target);
         }
     }
 
-    // Cycle detection over step->step edges (iterative DFS, 3-color).
+    for target in refs {
+        match index_of(&target) {
+            Some(j) if j == i => violations.push(Cb1640Violation {
+                step_id: step.id.clone(),
+                kind: "cycle".to_string(),
+                detail: "step discharges itself".to_string(),
+            }),
+            Some(j) => {
+                edges[i].push(j);
+                sources += 1;
+            }
+            None => violations.push(Cb1640Violation {
+                step_id: step.id.clone(),
+                kind: "unresolved-ref".to_string(),
+                detail: format!("reference '{target}' does not name a step in this chain"),
+            }),
+        }
+    }
+
+    // Evidence-rooted step: a non-empty falsification method anchors a step
+    // with no upstream reference (the §3.1 CoT-1 pattern).
+    if sources == 0 && step.evidence_method.trim().is_empty() {
+        violations.push(Cb1640Violation {
+            step_id: step.id.clone(),
+            kind: "undischarged".to_string(),
+            detail: "no discharge source and no evidence_method".to_string(),
+        });
+    }
+}
+
+/// Iterative 3-color DFS cycle detection over the step->step discharge graph.
+fn detect_cycles(
+    steps: &[CotStepView],
+    edges: &[Vec<usize>],
+    violations: &mut Vec<Cb1640Violation>,
+) {
     let mut color = vec![0u8; steps.len()]; // 0 white, 1 grey, 2 black
     for start in 0..steps.len() {
         if color[start] != 0 {
@@ -375,29 +400,27 @@ pub fn check_chain(steps: &[CotStepView]) -> Vec<Cb1640Violation> {
         let mut stack: Vec<(usize, usize)> = vec![(start, 0)];
         color[start] = 1;
         while let Some(&mut (node, ref mut edge_idx)) = stack.last_mut() {
-            if *edge_idx < edges[node].len() {
-                let next = edges[node][*edge_idx];
-                *edge_idx += 1;
-                match color[next] {
-                    0 => {
-                        color[next] = 1;
-                        stack.push((next, 0));
-                    }
-                    1 => violations.push(Cb1640Violation {
-                        step_id: steps[next].id.clone(),
-                        kind: "cycle".to_string(),
-                        detail: format!("discharge graph cycles through '{}'", steps[node].id),
-                    }),
-                    _ => {}
-                }
-            } else {
+            if *edge_idx >= edges[node].len() {
                 color[node] = 2;
                 stack.pop();
+                continue;
+            }
+            let next = edges[node][*edge_idx];
+            *edge_idx += 1;
+            match color[next] {
+                0 => {
+                    color[next] = 1;
+                    stack.push((next, 0));
+                }
+                1 => violations.push(Cb1640Violation {
+                    step_id: steps[next].id.clone(),
+                    kind: "cycle".to_string(),
+                    detail: format!("discharge graph cycles through '{}'", steps[node].id),
+                }),
+                _ => {}
             }
         }
     }
-
-    violations
 }
 
 /// Derivation output for one step (MACS-009): one proof obligation and one

@@ -169,6 +169,53 @@ fn spec_section_3_1_passes() {
     );
 }
 
+/// Independent reachability oracle: is CoT-n transitively reachable from
+/// CoT-1 via `discharged_by` step edges? (Extracted so the property test
+/// body stays under the cognitive-complexity gate.)
+fn oracle_reaches_last(steps: &[CotStepView]) -> bool {
+    let n = steps.len();
+    let mut reach = vec![false; n];
+    reach[0] = true;
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for j in 0..n {
+            if reach[j] {
+                continue;
+            }
+            let Some(DischargeRef::Step(t)) = &steps[j].discharged_by else {
+                continue;
+            };
+            let idx = t
+                .strip_prefix("CoT-")
+                .and_then(|d| d.parse::<usize>().ok())
+                .map(|d| d - 1);
+            if idx.is_some_and(|i| reach[i]) {
+                reach[j] = true;
+                changed = true;
+            }
+        }
+    }
+    reach[n - 1]
+}
+
+/// Build an n-step evidence-rooted chain with random back-edges; optionally
+/// add a forward edge CoT-1 -> CoT-n (which is a cycle iff a back-path exists).
+fn build_dag_chain(n: usize, raw_edges: &[usize], insert_cycle: bool) -> Vec<CotStepView> {
+    let mut steps: Vec<CotStepView> = (1..=n)
+        .map(|i| step(&format!("CoT-{i}"), "claim", "cargo test t"))
+        .collect();
+    for (k, raw) in raw_edges.iter().enumerate() {
+        let j = 1 + (k % (n - 1)); // 1..n
+        let i = raw % j; // strictly earlier -> always a DAG
+        steps[j].discharged_by = Some(DischargeRef::Step(format!("CoT-{}", i + 1)));
+    }
+    if insert_cycle && n >= 2 {
+        steps[0].discharged_by = Some(DischargeRef::Step(format!("CoT-{n}")));
+    }
+    steps
+}
+
 #[test]
 fn dag_property_prop() {
     use proptest::prelude::*;
@@ -181,59 +228,13 @@ fn dag_property_prop() {
                 any::<bool>(),
             ),
             |(n, raw_edges, insert_cycle)| {
-                // Build a chain of n steps; every step evidence-rooted.
-                let mut steps: Vec<CotStepView> = (1..=n)
-                    .map(|i| step(&format!("CoT-{i}"), "claim", "cargo test t"))
-                    .collect();
-                // Random back-edges (j discharges from earlier i): always a DAG.
-                for (k, raw) in raw_edges.iter().enumerate() {
-                    let j = 1 + (k % (n - 1)); // 1..n
-                    let i = raw % j; // strictly earlier
-                    steps[j].discharged_by = Some(DischargeRef::Step(format!("CoT-{}", i + 1)));
-                }
-                if insert_cycle && n >= 2 {
-                    // Make step 1 depend on the last step: guaranteed cycle
-                    // iff the last step (transitively) depends on step 1.
-                    steps[0].discharged_by = Some(DischargeRef::Step(format!("CoT-{n}")));
-                }
-                let violations = check_chain(&steps);
-                let has_cycle_violation = violations.iter().any(|v| v.kind == "cycle");
-                if !insert_cycle {
-                    prop_assert!(
-                        violations.is_empty(),
-                        "evidence-rooted DAG must be accepted: {violations:?}"
-                    );
+                let steps = build_dag_chain(n, &raw_edges, insert_cycle);
+                let has_cycle = check_chain(&steps).iter().any(|v| v.kind == "cycle");
+                if insert_cycle {
+                    // Checker must agree with the independent reachability oracle.
+                    prop_assert_eq!(has_cycle, oracle_reaches_last(&steps));
                 } else {
-                    // A forward edge from CoT-1 to CoT-n creates a cycle only
-                    // when a back-path exists; verify the checker agrees with
-                    // a reachability oracle.
-                    let mut reach = vec![false; n];
-                    reach[0] = true;
-                    let mut changed = true;
-                    while changed {
-                        changed = false;
-                        for j in 0..n {
-                            if reach[j] {
-                                continue;
-                            }
-                            if let Some(DischargeRef::Step(t)) = &steps[j].discharged_by {
-                                let idx = t
-                                    .strip_prefix("CoT-")
-                                    .and_then(|d| d.parse::<usize>().ok())
-                                    .map(|d| d - 1);
-                                if idx.is_some_and(|i| reach[i]) {
-                                    reach[j] = true;
-                                    changed = true;
-                                }
-                            }
-                        }
-                    }
-                    let oracle_cycle = reach[n - 1];
-                    prop_assert_eq!(
-                        has_cycle_violation,
-                        oracle_cycle,
-                        "checker must agree with reachability oracle"
-                    );
+                    prop_assert!(!has_cycle, "evidence-rooted DAG must be accepted");
                 }
                 Ok(())
             },
@@ -293,4 +294,31 @@ fn canonical_cot_sha_is_order_insensitive_for_keys() {
     assert_eq!(canonical_cot_sha(&a), canonical_cot_sha(&b));
     let c: Value = serde_json::from_str(r#"{"chain_of_thought": [{"id": "CoT-2"}]}"#).expect("c");
     assert_ne!(canonical_cot_sha(&a), canonical_cot_sha(&c));
+}
+
+#[test]
+fn inline_prose_efact_does_not_discharge() {
+    // ADVERSARIAL-REVIEW regression: an incidental "E5" in free assumption
+    // prose must NOT silently discharge an otherwise floating assumption.
+    let steps = vec![CotStepView {
+        id: "CoT-1".to_string(),
+        assumption: "p99 latency stays under 5ms at E5 traffic".to_string(),
+        assumption_references: Vec::new(),
+        implication: "SLA holds".to_string(),
+        evidence_method: String::new(),
+        discharged_by: None,
+        structured: true,
+    }];
+    let violations = check_chain(&steps);
+    assert!(
+        violations.iter().any(|v| v.kind == "undischarged"),
+        "floating assumption with an incidental E5 token must still be flagged: {violations:?}"
+    );
+    // But a DECLARED E-fact reference does discharge it.
+    let mut declared = steps;
+    declared[0].assumption_references = vec!["E5".to_string()];
+    assert!(
+        check_chain(&declared).is_empty(),
+        "declared E-fact discharges"
+    );
 }

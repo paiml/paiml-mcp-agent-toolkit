@@ -572,10 +572,20 @@ pub async fn handle_work_complete(
 
     // MACS F2: a ticket cannot close above its evidenced ladder level.
     // Also before the fresh-receipt fast path — the claim is checked on
-    // every completion attempt.
-    if let Ok(contract) =
-        crate::cli::handlers::work_contract::WorkContract::load(&project_path, &item.id)
-    {
+    // every completion attempt. Fail CLOSED: a contract that exists but
+    // fails to deserialize must not silently skip the gate (adversarial-
+    // review fix). A genuinely contract-less (legacy v4.0) ticket has no
+    // ladder claim to gate, so absence is the only allowed skip.
+    if crate::cli::handlers::work_contract::WorkContract::exists(&project_path, &item.id) {
+        let contract =
+            crate::cli::handlers::work_contract::WorkContract::load(&project_path, &item.id)
+                .with_context(|| {
+                    format!(
+                        "ladder gate: contract for '{}' exists but could not be read; \
+                         refusing to complete (fix or re-run `pmat work start`)",
+                        item.id
+                    )
+                })?;
         crate::quality::ladder_evidence::check_ladder_shortfall(&project_path, &contract)?;
     }
 
@@ -1048,13 +1058,29 @@ fn build_agent_event(
 }
 
 /// Resolve the ticket an event applies to: explicit id, or the single
-/// in-progress item (ambiguity is an error, not a guess).
+/// in-progress item (ambiguity is an error, not a guess). An explicit id is
+/// canonicalized to the roadmap's stored id (case-insensitive) so the event
+/// journal lands under the SAME `.pmat-work/<canonical>/` path that
+/// `pmat work complete` reads — otherwise `pmat work event macs-016` would
+/// write to a path the refusal gate never checks (adversarial-review fix).
 fn resolve_event_ticket(project_path: &std::path::Path, id: Option<String>) -> Result<String> {
-    if let Some(id) = id {
-        return Ok(id);
-    }
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
+
+    if let Some(id) = id {
+        // Canonicalize against the roadmap if it resolves; else use verbatim
+        // (a ticket with no roadmap entry still gets a stable path).
+        if let Ok(roadmap) = service.load() {
+            if let Some(item) = roadmap
+                .roadmap
+                .iter()
+                .find(|item| item.id.eq_ignore_ascii_case(&id))
+            {
+                return Ok(item.id.clone());
+            }
+        }
+        return Ok(id);
+    }
     let roadmap = service
         .load()
         .context("no ticket id given and no roadmap found — pass an explicit ticket id")?;
