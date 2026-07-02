@@ -249,6 +249,14 @@ pub enum WorkCommands {
         command: WorkCotCommands,
     },
 
+    /// Falsification-ledger tools: hash re-verification + provenance report
+    /// (MACS F1 / Component 32)
+    Ledger {
+        /// Ledger subcommand
+        #[command(subcommand)]
+        command: WorkLedgerCommands,
+    },
+
     /// Record an agent interruption event (refusal, model switch, session
     /// restart, workflow spawn) or acknowledge one (MACS F1/E5)
     #[command(visible_alias = "ev")]
@@ -481,6 +489,26 @@ pub enum WorkCotCommands {
 
         /// Project path (default: current directory)
         #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+}
+
+/// Falsification-ledger subcommands (MACS-016): `pmat work ledger verify`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum WorkLedgerCommands {
+    /// Recompute every receipt hash (v1 + v2 rules), detect tampering,
+    /// report provenance, and check Rule R1 ascending order. Read-only.
+    Verify {
+        /// Show the provenance report (receipts grouped by model/effort/harness)
+        #[arg(long)]
+        report: bool,
+
+        /// Output format
+        #[arg(short = 'f', long = "format", value_enum, default_value = "text")]
+        format: QaOutputFormat,
+
+        /// Project path (default: current directory)
+        #[arg(short = 'p', long = "path")]
         path: Option<PathBuf>,
     },
 }

@@ -1008,4 +1008,132 @@ mod tests {
         sorted.sort_unstable();
         assert_eq!(ids, sorted, "uuid7 record ids are time-ordered");
     }
+
+    // ========================================================================
+    // MACS-016 — ledger verify capstone
+    // ========================================================================
+
+    fn persist_v2(ledger: &FalsificationLedger, ticket: &str, model: &str) -> FalsificationReceipt {
+        let report = make_report(true);
+        let mut receipt = FalsificationReceipt::from_report(
+            &report,
+            "sha".to_string(),
+            ticket.to_string(),
+            FalsificationTrigger::WorkComplete,
+            None,
+            None,
+        );
+        receipt = receipt.with_agent(
+            Some(AgentProvenance {
+                model: model.to_string(),
+                effort: "xhigh".to_string(),
+                harness: AgentHarness::ClaudeCode,
+                workflow_id: None,
+                parent: None,
+                source: ProvenanceSource::Declared,
+            }),
+            Vec::new(),
+        );
+        ledger.persist_receipt(&receipt).unwrap();
+        ledger.append_to_ledger(&receipt).unwrap();
+        receipt
+    }
+
+    #[test]
+    fn verify_recomputes_all_hashes_v1_and_v2() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp.path());
+        // A v2 receipt with provenance...
+        persist_v2(&ledger, "MACS-001", "claude-fable-5");
+        // ...and a v1 receipt (schema_version 1, legacy hash rules).
+        let mut v1 = FalsificationReceipt::from_report(
+            &make_report(true),
+            "sha".to_string(),
+            "LEGACY-1".to_string(),
+            FalsificationTrigger::WorkComplete,
+            None,
+            None,
+        );
+        v1.schema_version = 1;
+        v1.content_hash = v1.compute_content_hash();
+        ledger.persist_receipt(&v1).unwrap();
+
+        let v = ledger.verify_all().unwrap();
+        assert_eq!(v.total_receipts, 2);
+        assert_eq!(v.verified, 2, "both v1 and v2 verify under their own rules");
+        assert!(v.ok());
+    }
+
+    #[test]
+    fn verify_red_on_tampered_entry() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp.path());
+        let receipt = persist_v2(&ledger, "MACS-002", "claude-fable-5");
+        // Tamper with the persisted receipt file: flip the model, keep the hash.
+        let dir = temp.path().join(".pmat-work/MACS-002/falsification");
+        let file = std::fs::read_dir(&dir).unwrap().next().unwrap().unwrap().path();
+        let mut value: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        value["agent"]["model"] = serde_json::Value::String("tampered".into());
+        std::fs::write(&file, serde_json::to_string_pretty(&value).unwrap()).unwrap();
+
+        let v = ledger.verify_all().unwrap();
+        assert!(!v.ok());
+        assert_eq!(v.tampered.len(), 1);
+        assert!(v.tampered[0].contains(&receipt.id));
+    }
+
+    #[test]
+    fn report_groups_by_model_effort_harness() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp.path());
+        persist_v2(&ledger, "MACS-001", "claude-fable-5");
+        persist_v2(&ledger, "MACS-002", "claude-fable-5");
+        persist_v2(&ledger, "MACS-003", "claude-opus-4-8");
+        let v = ledger.verify_all().unwrap();
+        let fable = v
+            .by_provenance
+            .iter()
+            .find(|(k, _)| k.contains("claude-fable-5"))
+            .map(|(_, n)| *n);
+        assert_eq!(fable, Some(2));
+        let opus = v
+            .by_provenance
+            .iter()
+            .find(|(k, _)| k.contains("claude-opus-4-8"))
+            .map(|(_, n)| *n);
+        assert_eq!(opus, Some(1));
+    }
+
+    #[test]
+    fn rule_r1_order_violation_detected() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp.path());
+        // Append MACS-005 then MACS-003: descending => R1 violation.
+        persist_v2(&ledger, "MACS-005", "claude-fable-5");
+        persist_v2(&ledger, "MACS-003", "claude-fable-5");
+        let v = ledger.verify_all().unwrap();
+        assert_eq!(v.r1_violations.len(), 1, "{:?}", v.r1_violations);
+        assert!(v.r1_violations[0].contains("MACS-003"));
+        assert!(!v.ok());
+    }
+
+    #[test]
+    fn verify_readonly() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let ledger = FalsificationLedger::new(temp.path());
+        persist_v2(&ledger, "MACS-001", "claude-fable-5");
+        let before = std::fs::read_dir(temp.path().join(".pmat-work/MACS-001/falsification"))
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| std::fs::read(e.path()).unwrap())
+            .collect::<Vec<_>>();
+        let _ = ledger.verify_all().unwrap();
+        let after = std::fs::read_dir(temp.path().join(".pmat-work/MACS-001/falsification"))
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| std::fs::read(e.path()).unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(before, after, "verify must not mutate receipts");
+    }
 }

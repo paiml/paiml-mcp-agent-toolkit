@@ -1197,3 +1197,67 @@ pub async fn handle_work_cot_derive(
     );
     Ok(())
 }
+
+/// `pmat work ledger verify` (MACS-016): recompute every receipt hash under
+/// its schema_version, detect tampering, report provenance, and check Rule
+/// R1 ascending order. Read-only; exits non-zero on any tamper/R1 violation.
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
+pub async fn handle_work_ledger_verify(
+    report: bool,
+    format: crate::cli::commands::QaOutputFormat,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+    let ledger = FalsificationLedger::new(&project_path);
+    let verification = ledger.verify_all()?;
+
+    if matches!(format, crate::cli::commands::QaOutputFormat::Json) {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&verification).unwrap_or_else(|_| "{}".to_string())
+        );
+    } else {
+        println!(
+            "{}",
+            c::label(&format!(
+                "🧾 Ledger verify: {}/{} receipt(s) hash-verified",
+                verification.verified, verification.total_receipts
+            ))
+        );
+        for t in &verification.tampered {
+            println!("  {} tampered: {}", c::fail(""), t);
+        }
+        for u in &verification.unreadable {
+            println!("  {} unreadable: {}", c::warn(""), u);
+        }
+        for v in &verification.r1_violations {
+            println!("  {} R1: {}", c::fail(""), v);
+        }
+        if report {
+            println!(
+                "\n{}",
+                c::subheader("Provenance (model / effort / harness):")
+            );
+            for (k, n) in &verification.by_provenance {
+                println!("  {n:>4}  {k}");
+            }
+        }
+        if verification.ok() {
+            println!(
+                "{}",
+                c::pass("Ledger intact: all hashes verify, R1 order holds")
+            );
+        }
+    }
+
+    if verification.ok() {
+        Ok(())
+    } else {
+        anyhow::bail!(
+            "ledger verify: {} tampered, {} unreadable, {} R1 violation(s)",
+            verification.tampered.len(),
+            verification.unreadable.len(),
+            verification.r1_violations.len()
+        )
+    }
+}

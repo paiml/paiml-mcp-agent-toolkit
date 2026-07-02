@@ -8,8 +8,8 @@ pub mod core_handlers;
 pub use core_handlers::{
     handle_work_checkpoint, handle_work_complete, handle_work_continue, handle_work_cot_check,
     handle_work_cot_derive, handle_work_event, handle_work_falsify, handle_work_init,
-    handle_work_start, handle_work_status, handle_work_sync, run_quality_gates,
-    FalsificationResult, GitHubIssueInfo,
+    handle_work_ledger_verify, handle_work_start, handle_work_status, handle_work_sync,
+    run_quality_gates, FalsificationResult, GitHubIssueInfo,
 };
 
 // Re-export ticket handlers that are used by the command dispatcher

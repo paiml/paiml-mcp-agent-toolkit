@@ -3394,11 +3394,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: MACS-010 Effort frontmatter pinning across skills + CB-1650 lint
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T16:57:02.797476584+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3410,11 +3410,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: 'MACS-011 pmat qa mcp-sweep: LLM-free deterministic MCP harness'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T16:58:01.705228608+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3426,11 +3426,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: MACS-012 Committed ultracode judgment workflow with provenance stamping
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T16:54:11.588556369+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3442,11 +3442,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: 'MACS-013 pmat roadmap sync: canonical ROADMAP.yaml + CB-1655 freshness'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T16:58:43.476190440+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3458,11 +3458,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: MACS-014 pmat mcp manifest --write + CB-1656 drift check
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T16:59:25.963591133+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3474,11 +3474,11 @@ roadmap:
   github_issue: 612
   item_type: task
   title: MACS-015 Doc drift purge + docs/agent-models.md registry + CB-1657
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T16:55:06.787149810+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
   acceptance_criteria: []
   phases: []
@@ -3490,12 +3490,76 @@ roadmap:
   github_issue: 612
   item_type: task
   title: 'MACS-016 pmat work ledger verify: hashes, provenance report, R1 order'
-  status: planned
+  status: inprogress
   priority: high
   assigned_to: null
   created: 2026-07-02T12:00:00Z
-  updated: 2026-07-02T12:00:00Z
+  updated: 2026-07-02T16:55:52.113504047+00:00
   spec: docs/specifications/components/modern-agentic-coding-support.md
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: MACS-010 macs-skill-effort-v1/skill_effort_pinned
+  github_issue: null
+  item_type: task
+  title: 'New task: MACS-010 macs-skill-effort-v1/skill_effort_pinned'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-07-02T16:54:11.358172536+00:00
+  updated: 2026-07-02T16:54:11.358172536+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: MACS-011 macs-sweep-v1/sweep_deterministic
+  github_issue: null
+  item_type: task
+  title: 'New task: MACS-011 macs-sweep-v1/sweep_deterministic'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-07-02T16:54:11.419723850+00:00
+  updated: 2026-07-02T16:54:11.419723850+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: MACS-013 macs-artifacts-v1/roadmap_canonical
+  github_issue: null
+  item_type: task
+  title: 'New task: MACS-013 macs-artifacts-v1/roadmap_canonical'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-07-02T16:54:11.475766150+00:00
+  updated: 2026-07-02T16:54:11.475766150+00:00
+  spec: null
+  acceptance_criteria: []
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: MACS-014 macs-artifacts-v1/manifest_faithful
+  github_issue: null
+  item_type: task
+  title: 'New task: MACS-014 macs-artifacts-v1/manifest_faithful'
+  status: inprogress
+  priority: medium
+  assigned_to: null
+  created: 2026-07-02T16:54:11.532179532+00:00
+  updated: 2026-07-02T16:54:11.532179532+00:00
+  spec: null
   acceptance_criteria: []
   phases: []
   subtasks: []

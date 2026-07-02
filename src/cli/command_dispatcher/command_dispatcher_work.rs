@@ -103,6 +103,13 @@ impl CommandDispatcher {
                         .await
                 }
             },
+            WorkCommands::Ledger { command } => match command {
+                crate::cli::commands::WorkLedgerCommands::Verify {
+                    report,
+                    format,
+                    path,
+                } => work_handlers::handle_work_ledger_verify(*report, *format, path.clone()).await,
+            },
             WorkCommands::Event {
                 id,
                 event_type,
