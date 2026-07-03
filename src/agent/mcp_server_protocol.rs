@@ -8,6 +8,17 @@
 /// path arguments instead of silently defaulting to the server's cwd.
 const INVALID_PARAMS_PREFIX: &str = "INVALID_PARAMS: ";
 
+/// Helper to validate paths against directory traversal
+fn validate_path(path_str: &str) -> Result<()> {
+    let path = std::path::Path::new(path_str);
+    for component in path.components() {
+        if let std::path::Component::ParentDir = component {
+            anyhow::bail!("{INVALID_PARAMS_PREFIX}directory traversal (..) is not allowed");
+        }
+    }
+    Ok(())
+}
+
 /// Extract a required string path argument from a JSON value, rejecting
 /// missing, null, non-string, or empty/whitespace-only values.
 ///
@@ -17,7 +28,7 @@ const INVALID_PARAMS_PREFIX: &str = "INVALID_PARAMS: ";
 /// R21-5 / D99: Empty arguments (`{}` or `{"field": null}`) previously
 /// silently scanned the server's cwd, enabling data exfiltration. This
 /// helper enforces explicit, non-empty path inputs for all `analyze_*`
-/// MCP handlers.
+/// MCP handlers, and also prevents directory traversal.
 fn require_path_arg(arguments: &Value, field: &str) -> Result<String> {
     match arguments.get(field) {
         None => Err(anyhow::anyhow!(
@@ -28,16 +39,21 @@ fn require_path_arg(arguments: &Value, field: &str) -> Result<String> {
             "{INVALID_PARAMS_PREFIX}parameter '{field}' is null; \
              refusing to default to server cwd"
         )),
-        Some(v) => match v.as_str() {
-            None => Err(anyhow::anyhow!(
-                "{INVALID_PARAMS_PREFIX}parameter '{field}' must be a string"
-            )),
-            Some(s) if s.trim().is_empty() => Err(anyhow::anyhow!(
-                "{INVALID_PARAMS_PREFIX}parameter '{field}' is empty; \
-                 refusing to default to server cwd"
-            )),
-            Some(s) => Ok(s.to_string()),
-        },
+        Some(Value::String(s)) => {
+            if s.trim().is_empty() {
+                Err(anyhow::anyhow!(
+                    "{INVALID_PARAMS_PREFIX}parameter '{field}' is empty; \
+                     refusing to default to server cwd"
+                ))
+            } else {
+                validate_path(s)?;
+                Ok(s.clone())
+            }
+        }
+        Some(other) => Err(anyhow::anyhow!(
+            "{INVALID_PARAMS_PREFIX}parameter '{field}' must be a string, got {}",
+            other
+        )),
     }
 }
 

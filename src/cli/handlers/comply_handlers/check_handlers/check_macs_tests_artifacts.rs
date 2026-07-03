@@ -135,3 +135,22 @@ mod tests_macs_roadmap_fresh {
         assert_eq!(check_roadmap_fresh(project.path()).status, CheckStatus::Pass);
     }
 }
+
+#[cfg(test)]
+mod docs {
+    use std::fs;
+    use std::path::PathBuf;
+
+    #[test]
+    fn refactor_auto_references_registry() {
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+        let refactor_auto = PathBuf::from(manifest_dir).join("docs").join("features").join("refactor-auto.md");
+        if refactor_auto.exists() {
+            let content = fs::read_to_string(&refactor_auto).unwrap();
+            assert!(
+                content.contains("agent-models.md"),
+                "refactor-auto.md must point at docs/agent-models.md for model ids"
+            );
+        }
+    }
+}

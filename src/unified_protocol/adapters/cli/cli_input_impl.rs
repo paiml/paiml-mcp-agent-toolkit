@@ -239,6 +239,9 @@ impl CliInput {
             Commands::Stack { .. } => {
                 CommandCategory::Workflow // Cross-repo dependency coordination (sibling of Maintain)
             }
+            Commands::Mcp(_) => {
+                CommandCategory::System
+            }
         }
     }
 

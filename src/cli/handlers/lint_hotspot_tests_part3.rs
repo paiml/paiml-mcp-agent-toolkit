@@ -498,3 +498,4 @@
 
         let runs = parsed["runs"].as_array().unwrap();
         assert_eq!(runs.len(), 1);
+    }

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.0] - 2026-07-03
+
+### Changed
+- Dependency cleanup: bumped versions via `cargo update` and removed unused crates (`async-raft`, `cpp_demangle`, `fixedbitset`, `goblin` from `pmat` and web/wasm crates from `pmat-dashboard`).
+- Hardened CLI and MCP inputs against exhaustive match errors and path traversal injections.
 ## [3.21.0] - 2026-07-02
 
 Ships **Modern Agentic Coding Support (MACS, Component 32)** — hardening the

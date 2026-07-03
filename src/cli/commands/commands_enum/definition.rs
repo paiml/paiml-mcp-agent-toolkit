@@ -443,6 +443,10 @@ pub enum Commands {
     #[command(subcommand, visible_aliases = &["organization"])]
     Org(OrgCommands),
 
+    /// MCP manifest and schema management
+    #[command(subcommand)]
+    Mcp(McpCommands),
+
     /// AI prompt generation (defect-aware, ticket-based, spec-based)
     #[command(subcommand, visible_aliases = &["p"])]
     Prompt(PromptCommands),
