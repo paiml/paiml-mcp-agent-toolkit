@@ -46,6 +46,7 @@ use std::path::PathBuf;
 
 use super::analyze_commands::AnalyzeCommands;
 use super::config_hooks::HooksCommands;
+use super::mcp_commands::McpCommands;
 use super::misc_commands::{
     ComplyCommands, CudaTdgCommand, CudaTdgOutputFormat, DebugCommands, KaizenOutputFormat,
     MaintainCommands, OracleCommands, PerfectionScoreOutputFormat, ProjectDiagOutputFormat,

@@ -60,6 +60,7 @@ pub mod lint_hotspot_handlers;
 #[cfg(test)]
 pub mod lint_hotspot_property_tests;
 pub mod localize_handlers; // GH-103: Tarantula fault localization
+pub mod mcp_manifest;
 pub mod memory;
 #[cfg(feature = "mutation-testing")]
 pub mod mutate;
@@ -178,6 +179,7 @@ pub use hooks_command_handlers::handle_hooks_command;
 pub use incremental_coverage_handler::handle_analyze_incremental_coverage;
 pub use infra_score_handlers::handle_infra_score; // Infra Score
 pub use lint_hotspot_handlers::handle_analyze_lint_hotspot;
+pub use mcp_manifest::handle_mcp_command;
 pub use memory::handle_memory_command;
 pub use name_similarity_analysis::handle_analyze_name_similarity;
 #[cfg(feature = "org-intelligence")]
