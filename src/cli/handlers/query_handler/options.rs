@@ -203,6 +203,7 @@ pub(super) struct MergeContext<'a> {
     pub(super) exclude: &'a [String],
     pub(super) project_path: &'a std::path::Path,
     pub(super) is_regex_or_literal: bool,
+    pub(super) exclude_tests: bool,
 }
 
 pub(super) type GitData = Option<(
@@ -288,8 +289,14 @@ pub(super) fn is_test_function(r: &QueryResult) -> bool {
 pub(super) fn is_test_path(file_path: &str) -> bool {
     file_path.starts_with("tests/")
         || file_path.starts_with("test/")
+        || file_path.starts_with("benches/")
+        || file_path.starts_with("examples/")
         || file_path.contains("/tests/")
         || file_path.contains("/test/")
+        || file_path.contains("/benches/")
+        || file_path.contains("/examples/")
+        || file_path.contains("/testdata/")
+        || file_path.contains("/test_data/")
         || file_path.contains("_tests") // _tests.rs, _tests_basic.rs, …
         || file_path.contains("_test.")
         || file_path.contains("_test_")

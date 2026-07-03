@@ -83,25 +83,8 @@ pub async fn handle_query(
     // `lexical` and `hybrid` desugar onto the existing engine paths so the
     // RRF blend (`hybrid`) and the no-embedding path (`lexical`) are both
     // teachable from one CLI without the `pmat semantic` config gate.
-    let search_mode_normalized = search_mode
-        .as_deref()
-        .map(|s| s.to_lowercase());
-    let is_search_mode_hybrid =
-        matches!(search_mode_normalized.as_deref(), Some("hybrid"));
-    let is_search_mode_lexical =
-        matches!(search_mode_normalized.as_deref(), Some("lexical"));
-    // Lexical mode reuses the existing `literal` engine path (smart-case
-    // substring/regex match against name+signature+source+path, no embedding
-    // lookup, structural-signal blend preserved). It is selectable via
-    // `--search-mode lexical` without conflicting with the legacy `--literal`
-    // flag. Hybrid runs both lexical and semantic and RRF-fuses the rankings
-    // (see below, after the index is loaded); the first pass is lexical so we
-    // bias `literal = true` here for the standard pipeline.
-    let (regex, literal) = if is_search_mode_lexical || is_search_mode_hybrid {
-        (false, true)
-    } else {
-        (regex, literal)
-    };
+    let (regex, literal, is_search_mode_hybrid, _is_search_mode_lexical) =
+        resolve_search_mode(search_mode.as_deref(), regex, literal);
 
     // -- Raw search mode: skip index entirely --
     if raw {
@@ -141,60 +124,13 @@ pub async fn handle_query(
 
     emit_index_stats(&index, quiet);
 
-    // -- Coverage-gaps mode --
-    if coverage_gaps {
-        let siblings = collect_siblings(&project_path, &include_project);
-        return handle_coverage_gaps_mode(
-            &index,
-            &project_path,
-            &format,
-            &coverage_file,
-            &language,
-            &path_pattern,
-            exclude_tests,
-            limit,
-            quiet,
-            include_excluded,
-            files_with_matches,
-            count,
-            &siblings,
-        )
-        .await;
-    }
-
-    // -- Extract-candidates mode --
-    if extract_candidates {
-        return handle_extract_candidates_mode(
-            &mut index,
-            &project_path,
-            &format,
-            &language,
-            &path_pattern,
-            exclude_tests,
-            limit,
-            quiet,
-            max_module_lines,
-        )
-        .await;
-    }
-
-    // -- Suggest-rename mode --
-    if suggest_rename {
-        return handle_suggest_rename_mode(
-            &index,
-            &project_path,
-            &format,
-            &path_pattern,
-            limit,
-            quiet,
-            apply,
-        );
-    }
-
-    // -- PTX modes (flow / diagnostics) --
-    if let Some(output) = handle_ptx_modes(ptx_flow, ptx_diagnostics, &index, &format) {
-        print!("{output}");
-        return Ok(());
+    if let Some(res) = dispatch_special_modes(
+        coverage_gaps, extract_candidates, suggest_rename, ptx_flow, ptx_diagnostics,
+        &mut index, &project_path, &include_project, &format, &coverage_file,
+        &language, &path_pattern, exclude_tests, limit, quiet, include_excluded,
+        files_with_matches, count, max_module_lines, apply
+    ).await {
+        return res;
     }
 
     // -- Execute semantic query + enrich + output --
@@ -289,6 +225,7 @@ pub async fn handle_query(
         exclude: &merge_exclude,
         project_path: &project_path,
         is_regex_or_literal,
+        exclude_tests,
     };
     let raw_results = merge_raw_results(
         is_regex_or_literal,
@@ -382,4 +319,75 @@ fn rrf_fuse(
             r
         })
         .collect()
+}
+
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+fn resolve_search_mode(
+    search_mode: Option<&str>,
+    regex: bool,
+    literal: bool,
+) -> (bool, bool, bool, bool) {
+    let search_mode_normalized = search_mode.map(|s| s.to_lowercase());
+    let is_search_mode_hybrid = matches!(search_mode_normalized.as_deref(), Some("hybrid"));
+    let is_search_mode_lexical = matches!(search_mode_normalized.as_deref(), Some("lexical"));
+    let (regex, literal) = if is_search_mode_lexical || is_search_mode_hybrid {
+        (false, true)
+    } else {
+        (regex, literal)
+    };
+    (regex, literal, is_search_mode_hybrid, is_search_mode_lexical)
+}
+
+#[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
+async fn dispatch_special_modes(
+    coverage_gaps: bool,
+    extract_candidates: bool,
+    suggest_rename: bool,
+    ptx_flow: bool,
+    ptx_diagnostics: bool,
+    index: &mut crate::services::agent_context::AgentContextIndex,
+    project_path: &PathBuf,
+    include_project: &[PathBuf],
+    format: &QueryOutputFormat,
+    coverage_file: &Option<PathBuf>,
+    language: &Option<String>,
+    path_pattern: &Option<String>,
+    exclude_tests: bool,
+    limit: usize,
+    quiet: bool,
+    include_excluded: bool,
+    files_with_matches: bool,
+    count: bool,
+    max_module_lines: usize,
+    apply: bool,
+) -> Option<anyhow::Result<()>> {
+    if coverage_gaps {
+        let siblings = collect_siblings(project_path, include_project);
+        return Some(
+            handle_coverage_gaps_mode(
+                index, project_path, format, coverage_file, language, path_pattern, exclude_tests,
+                limit, quiet, include_excluded, files_with_matches, count, &siblings,
+            )
+            .await,
+        );
+    }
+    if extract_candidates {
+        return Some(
+            handle_extract_candidates_mode(
+                index, project_path, format, language, path_pattern, exclude_tests, limit, quiet,
+                max_module_lines,
+            )
+            .await,
+        );
+    }
+    if suggest_rename {
+        return Some(handle_suggest_rename_mode(
+            index, project_path, format, path_pattern, limit, quiet, apply,
+        ));
+    }
+    if let Some(output) = handle_ptx_modes(ptx_flow, ptx_diagnostics, index, format) {
+        print!("{output}");
+        return Some(Ok(()));
+    }
+    None
 }

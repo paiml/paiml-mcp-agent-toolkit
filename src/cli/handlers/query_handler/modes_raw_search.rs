@@ -169,6 +169,7 @@ pub(super) fn run_raw_search_for_merge(
     before_context: Option<usize>,
     project_path: &std::path::Path,
     indexed_results: &[QueryResult],
+    exclude_tests: bool,
 ) -> Vec<RawSearchResult> {
     let remaining = limit.saturating_sub(indexed_results.len());
     if remaining == 0 {
@@ -203,9 +204,11 @@ pub(super) fn run_raw_search_for_merge(
     };
 
     // Filter out matches that overlap with indexed function results
+    // and exclude tests if requested
     lines
         .into_iter()
         .filter(|r| !is_within_indexed_function(&r.file_path, r.line_number, indexed_results))
+        .filter(|r| !exclude_tests || !super::options::is_test_path(&r.file_path))
         .take(remaining)
         .collect()
 }
@@ -400,6 +403,7 @@ mod modes_raw_search_tests {
             None,
             tmp.path(),
             &[],
+            false,
         );
         assert!(out.is_empty(), "limit=0 → empty merge result");
     }
