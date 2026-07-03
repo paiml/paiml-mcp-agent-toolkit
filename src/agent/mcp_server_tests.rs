@@ -563,6 +563,25 @@ mod coverage_tests {
         assert!(result.contains("FAILED"));
         assert!(result.contains("Failed Checks"));
     }
+    #[tokio::test]
+    async fn test_mcp_server_directory_traversal() {
+        let config = AgentConfig::default();
+        let mut server = ClaudeCodeAgentMcpServer::new(config);
+
+        let params = json!({
+            "name": "analyze_complexity",
+            "arguments": {
+                "file_path": "../../../etc/passwd"
+            }
+        });
+
+        let result = server.handle_tool_call(params).await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("directory traversal"));
+    }
 
     #[tokio::test]
     async fn test_mcp_server_handle_tool_call_health_check() {

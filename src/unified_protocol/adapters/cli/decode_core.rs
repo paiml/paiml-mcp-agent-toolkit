@@ -134,6 +134,8 @@ impl CliAdapter {
 
             #[cfg(feature = "mutation-testing")]
             Commands::Mutate(_) => Self::cli_only_command_error(),
+
+            Commands::Mcp(_) => Self::cli_only_command_error(),
         }
     }
 
