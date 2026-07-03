@@ -293,6 +293,7 @@ pub(super) fn merge_raw_results(
     if !quiet {
         eprintln!("Searching raw files for non-indexed matches...");
     }
+
     super::modes::run_raw_search_for_merge(
         query,
         limit,
@@ -306,5 +307,6 @@ pub(super) fn merge_raw_results(
         before_context,
         ctx.project_path,
         results,
+        ctx.exclude_tests,
     )
 }

@@ -63,6 +63,9 @@ lazy_static! {
         "/bazel-*/",
         "/.ccache/",
         "/.cache/",
+        "/.git/",
+        "/.claude/",
+        "/target/",
         // Minified and bundled files
         "*.min.js",
         "*.min.css",

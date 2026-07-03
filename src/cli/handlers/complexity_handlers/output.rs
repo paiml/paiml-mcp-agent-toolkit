@@ -9,7 +9,7 @@ use std::path::PathBuf;
 /// Format and write complexity analysis output
 pub(super) async fn format_and_write_output(
     summary: &ComplexityReport,
-    file_metrics: &[FileComplexityMetrics],
+    _file_metrics: &[FileComplexityMetrics],
     format: ComplexityOutputFormat,
     output: Option<PathBuf>,
     top_files: usize,
@@ -25,11 +25,15 @@ pub(super) async fn format_and_write_output(
             format_as_sarif(summary).map_err(|e| anyhow::anyhow!("SARIF serialization failed: {e}"))
         }
         ComplexityOutputFormat::Json => {
-            let json_output = serde_json::json!({
-                "summary": summary,
-                "files": file_metrics,
-                "top_files_limit": if top_files > 0 { Some(top_files) } else { None },
-            });
+            let mut json_output = serde_json::to_value(summary)
+                .map_err(|e| anyhow::anyhow!("JSON conversion failed: {e}"))?;
+
+            if top_files > 0 {
+                if let Some(obj) = json_output.as_object_mut() {
+                    obj.insert("top_files_limit".to_string(), serde_json::json!(top_files));
+                }
+            }
+
             serde_json::to_string_pretty(&json_output)
                 .map_err(|e| anyhow::anyhow!("JSON serialization failed: {e}"))
         }

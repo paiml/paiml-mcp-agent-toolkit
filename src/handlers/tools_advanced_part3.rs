@@ -130,6 +130,18 @@ fn build_deep_context_config(
 ) -> crate::services::deep_context::DeepContextConfig {
     use crate::services::deep_context::{ComplexityThresholds, DeepContextConfig};
 
+    let mut exclude_patterns = args.exclude_pattern.clone().unwrap_or_default();
+    // Add common exclusions to prevent traversing massive directories (like .git or target)
+    let default_excludes = [
+        "**/target/**", "**/node_modules/**", "**/.git/**",
+        "**/build/**", "**/dist/**", "**/__pycache__/**"
+    ];
+    for ext in default_excludes {
+        if !exclude_patterns.contains(&ext.to_string()) {
+            exclude_patterns.push(ext.to_string());
+        }
+    }
+
     DeepContextConfig {
         include_analyses: parse_analysis_types(args.include_analyses.clone()),
         period_days: args.period_days.unwrap_or(30),
@@ -140,7 +152,7 @@ fn build_deep_context_config(
         }),
         max_depth: args.max_depth,
         include_patterns: args.include_pattern.clone().unwrap_or_default(),
-        exclude_patterns: args.exclude_pattern.clone().unwrap_or_default(),
+        exclude_patterns,
         cache_strategy: parse_cache_strategy(args.cache_strategy.clone()),
         parallel: args.parallel.unwrap_or(4),
         file_classifier_config: None, // Default to None for deep context analysis
