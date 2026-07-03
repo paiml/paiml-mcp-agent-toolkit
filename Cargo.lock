@@ -521,6 +521,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender-db"
+version = "0.51.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbe2f26115051d36a73e397c6fe97f500810a2034e3028600d5a0da45d002e43"
+dependencies = [
+ "anyhow",
+ "aprender-common 0.51.0",
+ "aprender-compute 0.51.0",
+ "arrow",
+ "axum 0.7.9",
+ "chrono",
+ "clap",
+ "console_error_panic_hook",
+ "dashmap",
+ "js-sys",
+ "parquet",
+ "rayon",
+ "rustc-hash 2.1.3",
+ "serde",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "serde_yaml_ng",
+ "sqlparser",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "aprender-gemm-codegen"
 version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -551,9 +584,23 @@ dependencies = [
  "anyhow",
  "aprender-compute 0.50.0",
  "aprender-core 0.50.0",
- "aprender-db",
+ "aprender-db 0.50.0",
  "arrow",
  "parquet",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
+name = "aprender-graph"
+version = "0.51.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "841b3fcf3a3eca1d8b52a41121262663709742435eed633606e7e7fd729520fa"
+dependencies = [
+ "anyhow",
+ "aprender-compute 0.51.0",
+ "aprender-core 0.51.0",
+ "aprender-db 0.51.0",
  "thiserror 2.0.18",
  "tokio",
 ]
@@ -580,8 +627,8 @@ checksum = "884884a21724d710f194254ca45044618587a399283cc42eb9e517cecca75996"
 dependencies = [
  "anyhow",
  "aprender-common 0.50.0",
- "aprender-db",
- "aprender-graph",
+ "aprender-db 0.50.0",
+ "aprender-graph 0.50.0",
  "aprender-rag",
  "aprender-registry",
  "aprender-serve",
@@ -648,8 +695,8 @@ dependencies = [
  "anyhow",
  "aprender-compute 0.50.0",
  "aprender-core 0.50.0",
- "aprender-db",
- "aprender-graph",
+ "aprender-db 0.50.0",
+ "aprender-graph 0.50.0",
  "aprender-profile-core",
  "aprender-viz",
  "backtrace",
@@ -719,7 +766,7 @@ checksum = "00aaa4d04f350ef947b8cd3324edfebc9267392f876949247d41d643d82248ca"
 dependencies = [
  "aprender-common 0.50.0",
  "aprender-compute 0.50.0",
- "aprender-db",
+ "aprender-db 0.50.0",
  "async-trait",
  "rusqlite",
  "serde",
@@ -886,7 +933,7 @@ checksum = "b548321b2ffe3c82fadabfa0a4134479e3b10b0b7815bb26a43a94cbd91bfb30"
 dependencies = [
  "aprender-common 0.50.0",
  "aprender-compute 0.50.0",
- "aprender-graph",
+ "aprender-graph 0.50.0",
  "base64",
  "libc",
  "png",
@@ -6100,8 +6147,8 @@ dependencies = [
  "aprender-compute 0.50.0",
  "aprender-contracts",
  "aprender-contracts-macros",
- "aprender-db",
- "aprender-graph",
+ "aprender-db 0.50.0",
+ "aprender-graph 0.51.0",
  "aprender-orchestrate",
  "aprender-present-core",
  "aprender-rag",
