@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.24.0] - 2026-07-04
+
+Ships the **L1–L5 provable-contract dogfood + enforcement** work (audit
+`docs/specifications/audit-pmat-support-l1-l5-aprender-provable-contracts.md`)
+and a **performant, observable `pmat comply check`**.
+
+### Added
+- **Verification-ladder kernel contract** `contracts/macs-ladder-kernel-v1.yaml`
+  for the `VerificationLevel` parser — 4 proof obligations, 5 falsification
+  tests, 3 Kani harnesses (pv proof-status L3).
+- **Machine-checked L5 Lean 4 proofs** — `contracts/lean/Theorems/Macs/Ladder.lean`,
+  six theorems, axiom-free (`#print axioms` clean), hermetic `lake build`
+  (pure Lean 4 core, no Mathlib).
+- **L4 Kani harnesses** for `VerificationLevel` parse round-trip / ordering /
+  strict-parse totality in `work_verification_level.rs` (executed in CI on a
+  Kani-compatible toolchain).
+- **CI `provable-ladder` job** — builds the Lean proofs, asserts zero proof
+  holes (no `sorry`/`admit`), and runs `pmat comply check` (advisory during the
+  grace period).
+- `build.rs` now enforces `AllImplemented` on in-tree `contracts/binding.yaml`
+  (build panics on any disallowed binding status).
+- `[verification_ladder] min_level` floor in `.pmat-gates.toml` (read by CB-1308).
+
+### Changed
+- **`pmat comply check` — performant + observable.** The context index is now
+  refreshed **incrementally** (reparse only changed files) instead of a full
+  ~4k-file rebuild when stale; the 13 check groups run **concurrently** with a
+  live per-group status line and summary; the heaviest read-only groups
+  (cot-proof, work-ladder, falsification, binding-scope) parallelize their
+  individual checks. Net on this repo: ~4 min silent → ~40 s observable.
+- **CB-1205 (Provability Invariant)** now enforces the invariant by **count**
+  (`|falsification_tests| ≥ |proof_obligations|` and `|kani_harnesses| ≥ 1`),
+  not mere key existence; unparseable YAML falls back to key existence.
+- **CB-1330 (L-Level Ratchet)** — a verification-level regression is now a hard
+  **Fail** (was advisory Warn); config-overridable per `.pmat.yaml`.
+
+### Internal
+- Extracted helpers in `check_pv_verification_ladder.rs` and `check_tdg_grade.rs`
+  to bring all touched functions under the complexity gate.
+
+## [3.23.0] - 2026-07-03
+
+### Changed
+- Version bump; test fixes for `rand` and ANSI-output assertions.
+
 ## [3.22.0] - 2026-07-03
 
 ### Changed
