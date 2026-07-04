@@ -203,9 +203,13 @@ fn test_human_output_patterns() -> Result<()> {
     let mut stripped_human = String::new();
     let mut in_ansi = false;
     for c in human_result.chars() {
-        if c == '\x1b' { in_ansi = true; }
-        else if in_ansi && c.is_ascii_alphabetic() { in_ansi = false; }
-        else if !in_ansi { stripped_human.push(c); }
+        if c == '\x1b' {
+            in_ansi = true;
+        } else if in_ansi && c.is_ascii_alphabetic() {
+            in_ansi = false;
+        } else if !in_ansi {
+            stripped_human.push(c);
+        }
     }
     let human_result = stripped_human;
 
@@ -235,9 +239,13 @@ fn test_human_output_patterns() -> Result<()> {
     let mut stripped_summary = String::new();
     let mut in_ansi_s = false;
     for c in summary_result.chars() {
-        if c == '\x1b' { in_ansi_s = true; }
-        else if in_ansi_s && c.is_ascii_alphabetic() { in_ansi_s = false; }
-        else if !in_ansi_s { stripped_summary.push(c); }
+        if c == '\x1b' {
+            in_ansi_s = true;
+        } else if in_ansi_s && c.is_ascii_alphabetic() {
+            in_ansi_s = false;
+        } else if !in_ansi_s {
+            stripped_summary.push(c);
+        }
     }
     let summary_result = stripped_summary;
 
@@ -255,9 +263,13 @@ fn test_human_output_patterns() -> Result<()> {
     let mut stripped_detailed = String::new();
     let mut in_ansi_d = false;
     for c in detailed_result.chars() {
-        if c == '\x1b' { in_ansi_d = true; }
-        else if in_ansi_d && c.is_ascii_alphabetic() { in_ansi_d = false; }
-        else if !in_ansi_d { stripped_detailed.push(c); }
+        if c == '\x1b' {
+            in_ansi_d = true;
+        } else if in_ansi_d && c.is_ascii_alphabetic() {
+            in_ansi_d = false;
+        } else if !in_ansi_d {
+            stripped_detailed.push(c);
+        }
     }
     let detailed_result = stripped_detailed;
 
@@ -336,9 +348,13 @@ fn test_empty_matches_handling() -> Result<()> {
     let mut stripped = String::new();
     let mut in_ansi = false;
     for c in human_result.chars() {
-        if c == '\x1b' { in_ansi = true; }
-        else if in_ansi && c.is_ascii_alphabetic() { in_ansi = false; }
-        else if !in_ansi { stripped.push(c); }
+        if c == '\x1b' {
+            in_ansi = true;
+        } else if in_ansi && c.is_ascii_alphabetic() {
+            in_ansi = false;
+        } else if !in_ansi {
+            stripped.push(c);
+        }
     }
     let human_result = stripped;
 

@@ -63,7 +63,9 @@ impl CommandDispatcher {
                 .await
             }
             Commands::Mcp(cmd) => handlers::handle_mcp_command(cmd, std::path::Path::new("")).await,
-            Commands::Agy(cmd) => handlers::handle_agy_command(&cmd, std::path::Path::new("")).await,
+            Commands::Agy(cmd) => {
+                handlers::handle_agy_command(&cmd, std::path::Path::new("")).await
+            }
             cmd @ Commands::Query { .. } => Self::route_query_command(cmd).await,
             Commands::Sql {
                 query,

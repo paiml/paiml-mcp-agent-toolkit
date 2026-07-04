@@ -289,7 +289,11 @@ pub async fn handle_work_delegate(id: String, agy: bool, path: Option<PathBuf>) 
 
     println!(
         "{}",
-        c::label(&format!("🤝 Delegating work to {}: {}", if agy { "Google Anti-Gravity" } else { "Agent" }, c::path(&id)))
+        c::label(&format!(
+            "🤝 Delegating work to {}: {}",
+            if agy { "Google Anti-Gravity" } else { "Agent" },
+            c::path(&id)
+        ))
     );
     println!();
 
@@ -297,7 +301,7 @@ pub async fn handle_work_delegate(id: String, agy: bool, path: Option<PathBuf>) 
     let _item = service
         .find_item(&id)?
         .with_context(|| format!("Item not found: {}", id))?;
-        
+
     // TODO(MACS-019): Implement task context forwarding and provenance boundaries
     println!("✅ MACS-019: Task delegated and provenance boundaries preserved.");
     Ok(())
