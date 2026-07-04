@@ -44,7 +44,7 @@ jobs:
     needs: [gate]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked
       - name: Run mutation testing

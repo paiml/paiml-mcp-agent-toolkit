@@ -38,7 +38,7 @@ jobs:
     name: PR Size Check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       
       - name: Check PR size
         uses: actions/github-script@v9
@@ -102,7 +102,7 @@ jobs:
     name: Merge Conflicts Check
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       
       - name: Check for conflicts
         uses: actions/github-script@v9
