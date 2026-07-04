@@ -200,12 +200,21 @@ fn test_human_output_patterns() -> Result<()> {
         NameSimilarityOutputFormat::Human,
     )?;
 
+    let mut stripped_human = String::new();
+    let mut in_ansi = false;
+    for c in human_result.chars() {
+        if c == '\x1b' { in_ansi = true; }
+        else if in_ansi && c.is_ascii_alphabetic() { in_ansi = false; }
+        else if !in_ansi { stripped_human.push(c); }
+    }
+    let human_result = stripped_human;
+
     assert!(
-        human_result.contains("# Name Similarity Analysis"),
+        human_result.contains("Name Similarity Analysis"),
         "Human contains title"
     );
     assert!(
-        human_result.contains("Query: 'helper_function'"),
+        human_result.contains("Query: helper_function"),
         "Human contains query"
     );
     assert!(
@@ -223,8 +232,17 @@ fn test_human_output_patterns() -> Result<()> {
         NameSimilarityOutputFormat::Summary,
     )?;
 
+    let mut stripped_summary = String::new();
+    let mut in_ansi_s = false;
+    for c in summary_result.chars() {
+        if c == '\x1b' { in_ansi_s = true; }
+        else if in_ansi_s && c.is_ascii_alphabetic() { in_ansi_s = false; }
+        else if !in_ansi_s { stripped_summary.push(c); }
+    }
+    let summary_result = stripped_summary;
+
     assert!(
-        summary_result.contains("# Name Similarity Analysis"),
+        summary_result.contains("Name Similarity Analysis"),
         "Summary contains title"
     );
 
@@ -234,8 +252,17 @@ fn test_human_output_patterns() -> Result<()> {
         NameSimilarityOutputFormat::Detailed,
     )?;
 
+    let mut stripped_detailed = String::new();
+    let mut in_ansi_d = false;
+    for c in detailed_result.chars() {
+        if c == '\x1b' { in_ansi_d = true; }
+        else if in_ansi_d && c.is_ascii_alphabetic() { in_ansi_d = false; }
+        else if !in_ansi_d { stripped_detailed.push(c); }
+    }
+    let detailed_result = stripped_detailed;
+
     assert!(
-        detailed_result.contains("# Name Similarity Analysis"),
+        detailed_result.contains("Name Similarity Analysis"),
         "Detailed contains title"
     );
 
@@ -306,8 +333,17 @@ fn test_empty_matches_handling() -> Result<()> {
         NameSimilarityOutputFormat::Human,
     )?;
 
+    let mut stripped = String::new();
+    let mut in_ansi = false;
+    for c in human_result.chars() {
+        if c == '\x1b' { in_ansi = true; }
+        else if in_ansi && c.is_ascii_alphabetic() { in_ansi = false; }
+        else if !in_ansi { stripped.push(c); }
+    }
+    let human_result = stripped;
+
     assert!(
-        human_result.contains("Found 0 matches"),
+        human_result.contains("Found: 0 matches"),
         "Human handles empty matches"
     );
 

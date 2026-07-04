@@ -214,7 +214,7 @@ impl DagBuilder {
 
 /// Generate a random DAG with specified parameters
 fn generate_random_dag(num_modules: usize, edge_probability: f64) -> (Vec<ModuleInfo>, Vec<(usize, usize)>) {
-    use rand::Rng;
+    use rand::RngExt;
     let mut rng = rand::thread_rng();
     
     // Generate modules

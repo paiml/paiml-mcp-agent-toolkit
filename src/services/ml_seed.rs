@@ -131,7 +131,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_rng_reproducibility() {
-        use rand::Rng;
+        use rand::RngExt;
 
         set_embedding_seed(42);
         let mut rng1 = create_embedding_rng();
@@ -167,7 +167,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_create_clustering_rng_reproducibility() {
-        use rand::Rng;
+        use rand::RngExt;
 
         set_clustering_seed(777);
         let mut rng1 = create_clustering_rng();
@@ -186,7 +186,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_different_seeds_produce_different_values() {
-        use rand::Rng;
+        use rand::RngExt;
 
         set_embedding_seed(1);
         let mut rng1 = create_embedding_rng();
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_all_rngs_independent() {
-        use rand::Rng;
+        use rand::RngExt;
 
         set_embedding_seed(42);
         set_clustering_seed(42);

@@ -81,6 +81,10 @@ pub async fn handle_quality_gate(
 ) -> Result<()> {
     use std::time::Instant;
 
+    if !project_path.exists() {
+        return Err(anyhow::anyhow!("Path not found: {}", project_path.display()));
+    }
+
     let start_time = if perf { Some(Instant::now()) } else { None };
 
     // Suppress progress output for machine-readable formats (#230)

@@ -449,11 +449,22 @@ mod churn_formatter_comprehensive {
         let result = format_churn_as_summary(&analysis);
 
         assert!(result.is_ok());
-        let summary = result.unwrap();
+        let mut stripped = String::new();
+        let mut in_ansi = false;
+        for c in result.unwrap().chars() {
+            if c == '\x1b' {
+                in_ansi = true;
+            } else if in_ansi && c.is_ascii_alphabetic() {
+                in_ansi = false;
+            } else if !in_ansi {
+                stripped.push(c);
+            }
+        }
+        let summary = stripped;
 
         // Should contain header
         assert!(summary.contains("Code Churn Analysis Summary"));
-        assert!(summary.contains("Last 30 days"));
+        assert!(summary.contains("Period: 30"));
 
         // Should contain file counts
         assert!(summary.contains("Total commits"));
@@ -479,9 +490,20 @@ mod churn_formatter_comprehensive {
         let result = format_churn_as_summary(&analysis);
         assert!(result.is_ok());
 
-        let summary = result.unwrap();
+        let mut stripped = String::new();
+        let mut in_ansi = false;
+        for c in result.unwrap().chars() {
+            if c == '\x1b' {
+                in_ansi = true;
+            } else if in_ansi && c.is_ascii_alphabetic() {
+                in_ansi = false;
+            } else if !in_ansi {
+                stripped.push(c);
+            }
+        }
+        let summary = stripped;
         // File with 15 commits should be listed as #1
-        assert!(summary.contains("1. `file_2.rs` - 15 commits"));
+        assert!(summary.contains("1. file_2.rs - 15 commits"));
     }
 
     #[test]

@@ -32,7 +32,7 @@ impl FuzzMutationStrategy {
     /// Generate random inputs
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn generate_inputs(&self, count: usize) -> Vec<Vec<u8>> {
-        use rand::Rng;
+        use rand::RngExt;
         let mut rng = rand::rng();
 
         (0..count)

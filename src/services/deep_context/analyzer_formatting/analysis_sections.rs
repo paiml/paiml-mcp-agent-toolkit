@@ -340,10 +340,6 @@ impl DeepContextAnalyzer {
         output: &mut String,
         recommendations: &[PrioritizedRecommendation],
     ) -> anyhow::Result<()> {
-        debug_assert!(
-            !recommendations.is_empty(),
-            "recommendations must not be empty"
-        );
         if recommendations.is_empty() {
             return Ok(());
         }

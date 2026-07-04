@@ -240,7 +240,7 @@ mod analysis_timeout_tests {
     fn create_test_project_path() -> PathBuf {
         // Use the current project as test data
         let current_dir = std::env::current_dir().expect("Should get current directory");
-        current_dir.join("test_project") // Small test project for quick analysis
+        current_dir.join("tests") // Use tests directory as small test project
     }
 }
 

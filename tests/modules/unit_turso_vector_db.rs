@@ -329,7 +329,7 @@ async fn test_empty_database_query() {
     let results = db.query_by_file("nonexistent.rs").await.unwrap();
     assert_eq!(results.len(), 0);
 
-    let query_vector = vec![0.5; 1536];
+    let query_vector = vec![0.5; 256];
     let search_results = db.similarity_search(&query_vector, 10).await.unwrap();
     assert_eq!(search_results.len(), 0);
 
