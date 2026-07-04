@@ -109,6 +109,28 @@ pub(crate) fn filter_check_by_config(
     }
 }
 
+/// A `(clause_id, check_fn)` pair for parallel comply execution.
+pub(crate) type ClauseCheck = (&'static str, fn(&Path) -> ComplianceCheck);
+
+/// Run each `(clause_id, check_fn)` concurrently, applying config-based
+/// filtering to every result. Used by the heaviest comply builders
+/// (cot-proof, work-ladder, falsification, binding-scope) whose per-check work
+/// — walking `.pmat-work/`, parsing contract YAML, git *read* SHA checks —
+/// dominates wall-time and is side-effect-free, so the checks are safe to run
+/// in parallel. Result order matches the input `checks` order (rayon's
+/// indexed `collect` is order-preserving), keeping report output deterministic.
+pub(crate) fn run_checks_parallel(
+    project_path: &Path,
+    config: &ComplyConfig,
+    checks: Vec<ClauseCheck>,
+) -> Vec<ComplianceCheck> {
+    use rayon::prelude::*;
+    checks
+        .into_par_iter()
+        .map(|(id, f)| filter_check_by_config(f(project_path), id, config))
+        .collect()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct BreakingChange {
     pub version: String,

@@ -97,25 +97,26 @@ fn is_index_stale(project_path: &Path, db_path: &Path) -> bool {
 }
 
 fn has_newer_source_file(dir: &Path, threshold: std::time::SystemTime) -> bool {
-    let entries = match std::fs::read_dir(dir) {
-        Ok(e) => e,
-        Err(_) => return false,
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
     };
-    for entry in entries.flatten() {
+    entries.flatten().any(|entry| {
         let path = entry.path();
         if path.is_dir() {
-            if has_newer_source_file(&path, threshold) {
-                return true;
-            }
-        } else if is_source_file(&path) {
-            if let Ok(mtime) = entry.metadata().and_then(|m| m.modified()) {
-                if mtime > threshold {
-                    return true;
-                }
-            }
+            has_newer_source_file(&path, threshold)
+        } else {
+            is_source_file(&path) && entry_is_newer(&entry, threshold)
         }
-    }
-    false
+    })
+}
+
+/// Is a directory entry's mtime newer than `threshold`? (false on any I/O error)
+fn entry_is_newer(entry: &std::fs::DirEntry, threshold: std::time::SystemTime) -> bool {
+    entry
+        .metadata()
+        .and_then(|m| m.modified())
+        .map(|mtime| mtime > threshold)
+        .unwrap_or(false)
 }
 
 fn is_source_file(path: &Path) -> bool {
@@ -143,23 +144,41 @@ fn is_source_file(path: &Path) -> bool {
 fn rebuild_index(project_path: &Path) -> bool {
     use crate::services::agent_context::AgentContextIndex;
     let index_path = project_path.join(".pmat").join("context.idx");
-    eprintln!("\u{1f504} CB-200: context.db is stale \u{2014} rebuilding index...");
-    match AgentContextIndex::build(project_path) {
-        Ok(index) => match index.save(&index_path) {
-            Ok(()) => {
-                eprintln!(
-                    "\u{2705} CB-200: Index rebuilt ({} functions)",
-                    index.stats().total_functions
-                );
-                true
-            }
-            Err(e) => {
-                eprintln!("\u{26a0}\u{fe0f} CB-200: Failed to save rebuilt index: {e}");
-                false
-            }
-        },
+    let start = std::time::Instant::now();
+
+    // Prefer an INCREMENTAL update over a full rebuild (CB-1800 wiring):
+    // load the prior index (fast SQLite path) and re-index only the files that
+    // changed since it was built — seconds, not the minutes a full ~4k-file
+    // scan costs. Fall back to a full build only when no prior index loads.
+    let rebuilt = match AgentContextIndex::load(&index_path) {
+        Ok(prev) => {
+            eprintln!("  \u{1f504} CB-200: context index stale \u{2014} updating changed files (incremental)\u{2026}");
+            AgentContextIndex::build_incremental(project_path, &prev)
+        }
+        Err(_) => {
+            eprintln!("  \u{1f504} CB-200: no prior index \u{2014} building context index (one-time)\u{2026}");
+            AgentContextIndex::build(project_path)
+        }
+    };
+
+    let index = match rebuilt {
+        Ok(i) => i,
         Err(e) => {
-            eprintln!("\u{26a0}\u{fe0f} CB-200: Failed to rebuild index: {e}");
+            eprintln!("  \u{26a0}\u{fe0f} CB-200: Failed to rebuild index: {e}");
+            return false;
+        }
+    };
+    match index.save(&index_path) {
+        Ok(()) => {
+            eprintln!(
+                "  \u{2705} CB-200: index ready ({} functions, {:.1}s)",
+                index.stats().total_functions,
+                start.elapsed().as_secs_f64()
+            );
+            true
+        }
+        Err(e) => {
+            eprintln!("  \u{26a0}\u{fe0f} CB-200: Failed to save rebuilt index: {e}");
             false
         }
     }

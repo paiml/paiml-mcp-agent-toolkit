@@ -130,57 +130,27 @@ fn build_binding_scope_checks(
     comply_config: &crate::models::comply_config::ComplyConfig,
 ) -> Vec<ComplianceCheck> {
     use super::check_binding_scope as bs;
-    vec![
-        filter_check_by_config(
-            bs::check_binding_scope_orphan(project_path),
-            "cb-1600",
-            comply_config,
-        ),
-        filter_check_by_config(
-            bs::check_binding_sha_drift(project_path),
-            "cb-1601",
-            comply_config,
-        ),
-        filter_check_by_config(
-            bs::check_binding_unbind_audit(project_path),
-            "cb-1602",
-            comply_config,
-        ),
-        filter_check_by_config(
-            bs::check_binding_inherited_clauses(project_path),
-            "cb-1603",
-            comply_config,
-        ),
-        filter_check_by_config(
-            bs::check_binding_postcondition_weakening(project_path),
-            "cb-1604",
-            comply_config,
-        ),
-        filter_check_by_config(
-            bs::check_binding_kani_harnesses(project_path),
-            "cb-1605",
-            comply_config,
-        ),
-        filter_check_by_config(
-            bs::check_binding_lean_theorem(project_path),
-            "cb-1606",
-            comply_config,
-        ),
-        filter_check_by_config(
-            bs::check_binding_equation_exists(project_path),
-            "cb-1607",
-            comply_config,
-        ),
-        filter_check_by_config(
-            bs::check_binding_cross_consistency(project_path),
-            "cb-1608",
-            comply_config,
-        ),
-        filter_check_by_config(
-            bs::check_binding_file_tracked(project_path),
-            "cb-1609",
-            comply_config,
-        ),
-    ]
+    // Per-check parallel: 10 binding-scope checks that read binding.yaml /
+    // contract YAML and run git *read* commands (status/ls-files) — safe to
+    // run concurrently.
+    run_checks_parallel(
+        project_path,
+        comply_config,
+        vec![
+            (
+                "cb-1600",
+                bs::check_binding_scope_orphan as fn(&Path) -> ComplianceCheck,
+            ),
+            ("cb-1601", bs::check_binding_sha_drift),
+            ("cb-1602", bs::check_binding_unbind_audit),
+            ("cb-1603", bs::check_binding_inherited_clauses),
+            ("cb-1604", bs::check_binding_postcondition_weakening),
+            ("cb-1605", bs::check_binding_kani_harnesses),
+            ("cb-1606", bs::check_binding_lean_theorem),
+            ("cb-1607", bs::check_binding_equation_exists),
+            ("cb-1608", bs::check_binding_cross_consistency),
+            ("cb-1609", bs::check_binding_file_tracked),
+        ],
+    )
 }
 

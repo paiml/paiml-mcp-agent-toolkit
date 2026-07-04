@@ -107,28 +107,127 @@ fn apply_exit_policy(report: &ComplianceReport, strict: bool) -> Result<()> {
     Ok(())
 }
 
+/// A named compliance-check group and the thunk that produces its checks.
+type CheckGroup<'a> = (
+    &'static str,
+    Box<dyn Fn() -> Vec<ComplianceCheck> + Send + Sync + 'a>,
+);
+
 fn build_all_compliance_checks(
     project_path: &Path,
     comply_config: &crate::models::comply_config::ComplyConfig,
     project_version: &str,
 ) -> Vec<ComplianceCheck> {
-    let mut checks = build_foundation_checks(project_path, comply_config, project_version);
-    checks.extend(build_language_best_practices(project_path, comply_config));
-    checks.extend(build_custom_score_checks(project_path, comply_config));
-    checks.extend(build_provable_contract_checks(project_path, comply_config));
-    checks.extend(build_contract_surface_checks(project_path, comply_config));
-    checks.extend(build_agent_contract_checks(project_path, comply_config));
-    checks.extend(build_commit_enforcement_checks(project_path, comply_config));
-    checks.extend(build_binding_scope_checks(project_path, comply_config));
-    checks.extend(build_work_ladder_checks(project_path, comply_config));
-    checks.extend(build_falsification_unification_checks(
-        project_path,
-        comply_config,
-    ));
-    checks.extend(build_codegen_checks(project_path, comply_config));
-    checks.extend(build_cot_proof_checks(project_path, comply_config));
-    checks.extend(build_macs_checks(project_path, comply_config));
-    checks
+    // Data-driven group list: each entry is independent and side-effect-free
+    // w.r.t. the others, which lets `run_check_groups` both report live
+    // per-group progress AND run the groups concurrently.
+    let groups: Vec<CheckGroup> = vec![
+        (
+            "foundation",
+            Box::new(move || build_foundation_checks(project_path, comply_config, project_version)),
+        ),
+        (
+            "language",
+            Box::new(move || build_language_best_practices(project_path, comply_config)),
+        ),
+        (
+            "custom-score",
+            Box::new(move || build_custom_score_checks(project_path, comply_config)),
+        ),
+        (
+            "provable-contracts",
+            Box::new(move || build_provable_contract_checks(project_path, comply_config)),
+        ),
+        (
+            "contract-surfaces",
+            Box::new(move || build_contract_surface_checks(project_path, comply_config)),
+        ),
+        (
+            "agent-contracts",
+            Box::new(move || build_agent_contract_checks(project_path, comply_config)),
+        ),
+        (
+            "commit-enforcement",
+            Box::new(move || build_commit_enforcement_checks(project_path, comply_config)),
+        ),
+        (
+            "binding-scope",
+            Box::new(move || build_binding_scope_checks(project_path, comply_config)),
+        ),
+        (
+            "work-ladder",
+            Box::new(move || build_work_ladder_checks(project_path, comply_config)),
+        ),
+        (
+            "falsification",
+            Box::new(move || build_falsification_unification_checks(project_path, comply_config)),
+        ),
+        (
+            "codegen",
+            Box::new(move || build_codegen_checks(project_path, comply_config)),
+        ),
+        (
+            "cot-proof",
+            Box::new(move || build_cot_proof_checks(project_path, comply_config)),
+        ),
+        (
+            "macs",
+            Box::new(move || build_macs_checks(project_path, comply_config)),
+        ),
+    ];
+    run_check_groups(groups)
+}
+
+/// Run each check group concurrently, emitting a live per-group status line
+/// (name · count · fail/warn tally · elapsed) to stderr as each completes, plus
+/// a final summary. Replaces the previous silent sequential scan: a long
+/// compliance run is now observable (you can see which group is slow) and
+/// wall-time drops from Σ(group) to max(group). Groups are independent and
+/// each reads its own inputs, so concurrency is safe.
+fn run_check_groups(groups: Vec<CheckGroup>) -> Vec<ComplianceCheck> {
+    use rayon::prelude::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let total = groups.len();
+    let overall = std::time::Instant::now();
+    let done = AtomicUsize::new(0);
+
+    // Each group is timed and reports the moment it finishes (completion order).
+    let mut grouped: Vec<(usize, Vec<ComplianceCheck>)> = groups
+        .into_par_iter()
+        .enumerate()
+        .map(|(idx, (name, run))| {
+            let start = std::time::Instant::now();
+            let checks = run();
+            let fails = checks
+                .iter()
+                .filter(|c| c.status == CheckStatus::Fail)
+                .count();
+            let warns = checks
+                .iter()
+                .filter(|c| c.status == CheckStatus::Warn)
+                .count();
+            let n = done.fetch_add(1, Ordering::Relaxed) + 1;
+            eprintln!(
+                "  [{n:>2}/{total}] {name:<19} {:>3} checks · {fails} fail · {warns} warn · {:.1}s",
+                checks.len(),
+                start.elapsed().as_secs_f64()
+            );
+            (idx, checks)
+        })
+        .collect();
+
+    // Restore declaration order so report output is deterministic.
+    grouped.sort_by_key(|(idx, _)| *idx);
+    let all: Vec<ComplianceCheck> = grouped.into_iter().flat_map(|(_, c)| c).collect();
+
+    let fails = all.iter().filter(|c| c.status == CheckStatus::Fail).count();
+    eprintln!(
+        "  ── comply: {} checks in {:.1}s ({fails} fail) ──",
+        all.len(),
+        overall.elapsed().as_secs_f64()
+    );
+    all
 }
 
 fn build_compliance_report(
