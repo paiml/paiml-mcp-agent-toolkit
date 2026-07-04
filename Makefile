@@ -1238,9 +1238,15 @@ crate-release: check-install
 	@printf "Continue with publish? [y/N] "; \
 	read REPLY; \
 	case "$$REPLY" in \
-		[yY]*) cargo publish --package pmat ;; \
+		[yY]*) env -u CARGO_REGISTRY_TOKEN cargo publish --package pmat ;; \
 		*) echo "❌ Publish cancelled" ;; \
 	esac
+# NOTE: `env -u CARGO_REGISTRY_TOKEN` above is deliberate. This is the INTERACTIVE
+# local publish path (never hit by CI). A stale CARGO_REGISTRY_TOKEN in the shell
+# environment TAKES PRECEDENCE over ~/.cargo/credentials.toml and makes `cargo
+# publish` fail with `403 Forbidden: authentication failed` even when
+# credentials.toml holds a valid token. Unsetting it here forces the credentials
+# file to be used. CI publishes via its own token secret and never runs this target.
 
 # Build and verify crate documentation
 crate-docs:

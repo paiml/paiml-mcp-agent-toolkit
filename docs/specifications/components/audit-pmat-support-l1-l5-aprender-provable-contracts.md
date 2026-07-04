@@ -430,9 +430,9 @@ a synthetic kernel ticket binding nothing is rejected by `pmat work complete`.
 > `contracts/macs-ladder-kernel-v1.yaml` binds pmat's own `VerificationLevel` parser
 > and climbs the ladder: **L1** (bound in `contracts/binding.yaml`), **L2** (falsification
 > `#[test]`s), **L3** (proptest — `pv proof-status` reports **L3**), **L4** (three
-> `#[kani::proof]` harnesses in `work_verification_level.rs` — authored; execution is
-> blocked in-repo because Kani 0.67 ships rustc 1.93 < pmat's MSRV 1.95, so the CI job
-> runs them on a matching toolchain), **L5** (`contracts/lean/Theorems/Macs/Ladder.lean`
+> `#[kani::proof]` harnesses in `work_verification_level.rs` — authored; runnable
+> in-repo since the 3.24.1 MSRV correction (pmat's MSRV is **1.91** ≤ Kani 0.67's
+> rustc 1.93), and the CI job executes them), **L5** (`contracts/lean/Theorems/Macs/Ladder.lean`
 > — six theorems incl. `Ladder_Parse_Total`, `lake build` clean, `pv lean-status` 4/4
 > proved / 0 sorry, `#print axioms` reports **no axiom dependencies**). pmat's kernel
 > count went **0 → 1** and its level distribution from **all-L1** to **124×L1 + 1×L3**.

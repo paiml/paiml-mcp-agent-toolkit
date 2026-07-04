@@ -7,10 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.24.1] - 2026-07-04
+
+Patch release fixing the **3.24.0 MSRV over-declaration** that blocked
+`cargo install pmat` on recent-but-not-bleeding-edge toolchains.
+
+### Fixed
+- **MSRV lowered `1.95.0` → `1.91.0`.** 3.24.0 declared `rust-version = "1.95.0"`
+  (bumped to match the dev toolchain), so `cargo install pmat` failed on rustc
+  1.91–1.94 with *"requires rustc 1.95.0 or newer"* even though the crate builds
+  fine. The true floor is the highest dependency MSRV — **pmcp 1.91.0** (aprender
+  1.89, arrow 1.85). Verified: pmat's binary compiles on rustc **1.91.0** and
+  **1.93.0** with the shipped lockfile. README MSRV badge updated to match.
+- As a side effect, the in-repo **Kani** harnesses (Kani 0.67 ships rustc 1.93)
+  are no longer MSRV-blocked (1.93 ≥ 1.91).
+
+### Changed
+- Moved the L1–L5 audit spec into `docs/specifications/components/` to follow the
+  repo convention (35 component specs vs. 4 top-level) and clear the comply
+  loose-spec finding.
+
 ## [3.24.0] - 2026-07-04
 
 Ships the **L1–L5 provable-contract dogfood + enforcement** work (audit
-`docs/specifications/audit-pmat-support-l1-l5-aprender-provable-contracts.md`)
+`docs/specifications/components/audit-pmat-support-l1-l5-aprender-provable-contracts.md`)
 and a **performant, observable `pmat comply check`**.
 
 ### Added

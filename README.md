@@ -15,7 +15,7 @@
 [![Tests](https://img.shields.io/badge/tests-21600%2B%20passing-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![Coverage](https://img.shields.io/badge/coverage-99.66%25-brightgreen)](https://github.com/paiml/paiml-mcp-agent-toolkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![MSRV](https://img.shields.io/badge/MSRV-1.95-orange.svg)](https://www.rust-lang.org)
+[![MSRV](https://img.shields.io/badge/MSRV-1.91-orange.svg)](https://www.rust-lang.org)
 [![CHANGELOG](https://img.shields.io/badge/changelog-Keep%20a%20Changelog-blue)](CHANGELOG.md)
 
 [Installation](#installation) | [Usage](#usage) | [Features](#features) | [Examples](#examples) | [Documentation](https://paiml.github.io/pmat-book/)
