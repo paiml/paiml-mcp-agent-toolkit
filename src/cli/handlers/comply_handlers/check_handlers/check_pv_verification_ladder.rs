@@ -1,6 +1,49 @@
 // Provable-contracts verification ladder checks (CB-1204 through CB-1207)
 // Included from check.rs — do NOT add `use` imports or `#!` attributes here.
 
+/// CB-1204 helper: is the build.rs pipeline superseded by ≥10 trait impls in a
+/// `contract_traits.rs` (root `tests/` or any `crates/*/tests/`)? Returns the
+/// impl count and the file it was found in.
+fn trait_enforcement_supersedes(project_path: &Path) -> Option<(usize, std::path::PathBuf)> {
+    let mut paths = vec![project_path.join("tests").join("contract_traits.rs")];
+    if let Ok(entries) = std::fs::read_dir(project_path.join("crates")) {
+        for e in entries.flatten() {
+            let p = e.path().join("tests").join("contract_traits.rs");
+            if p.exists() {
+                paths.push(p);
+            }
+        }
+    }
+    for trait_test in paths {
+        let Ok(content) = std::fs::read_to_string(&trait_test) else {
+            continue;
+        };
+        let impl_count = content
+            .lines()
+            .filter(|l| {
+                let t = l.trim();
+                t.starts_with("impl ") && t.contains("V1 for") && !t.starts_with("//")
+            })
+            .count();
+        if impl_count >= 10 {
+            return Some((impl_count, trait_test));
+        }
+    }
+    None
+}
+
+/// CB-1204 helper: does a build.rs body emit contract PRE/POST assertion env
+/// vars (literal or GH-295 dynamic-format patterns)?
+fn build_emits_pre_post(c: &str) -> bool {
+    c.contains("PRE_COUNT")
+        || c.contains("emit_contract")
+        || c.contains("_PRE_0")
+        || c.contains("cargo:rustc-env=PRE_")
+        || c.contains("cargo:rustc-env=POST_")
+        || (c.contains("PRE_{") && c.contains("POST_{"))
+        || c.contains("emit_pre_post")
+}
+
 /// CB-1204: Build.rs contract pipeline — does build.rs emit assertion env vars from YAML?
 ///
 /// The escape-proof pipeline requires build.rs to read contracts/*.yaml and
@@ -41,41 +84,21 @@ pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
         };
     }
 
-    // If CB-1209 trait enforcement is active (tests/contract_traits.rs with impls),
-    // the build.rs pipeline is superseded — traits are the newer, stronger mechanism.
-    // Search both root tests/ and crate-level tests/ (GH-295).
-    let trait_test_paths = {
-        let mut paths = vec![project_path.join("tests").join("contract_traits.rs")];
-        if let Ok(entries) = std::fs::read_dir(project_path.join("crates")) {
-            for e in entries.flatten() {
-                let p = e.path().join("tests").join("contract_traits.rs");
-                if p.exists() {
-                    paths.push(p);
-                }
-            }
-        }
-        paths
-    };
-    for trait_test in &trait_test_paths {
-        if trait_test.exists() {
-            if let Ok(content) = std::fs::read_to_string(trait_test) {
-                let impl_count = content.lines().filter(|l| {
-                    let t = l.trim();
-                    t.starts_with("impl ") && t.contains("V1 for") && !t.starts_with("//")
-                }).count();
-                if impl_count >= 10 {
-                    return ComplianceCheck {
-                        name: "CB-1204: Build.rs Pipeline".into(),
-                        status: CheckStatus::Pass,
-                        message: format!(
-                            "Superseded by trait enforcement ({impl_count} trait impls in {})",
-                            trait_test.strip_prefix(project_path).unwrap_or(trait_test).display()
-                        ),
-                        severity: Severity::Info,
-                    };
-                }
-            }
-        }
+    // If CB-1209 trait enforcement is active (≥10 impls in a contract_traits.rs),
+    // the build.rs pipeline is superseded — traits are the stronger mechanism.
+    if let Some((impl_count, trait_test)) = trait_enforcement_supersedes(project_path) {
+        return ComplianceCheck {
+            name: "CB-1204: Build.rs Pipeline".into(),
+            status: CheckStatus::Pass,
+            message: format!(
+                "Superseded by trait enforcement ({impl_count} trait impls in {})",
+                trait_test
+                    .strip_prefix(project_path)
+                    .unwrap_or(&trait_test)
+                    .display()
+            ),
+            severity: Severity::Info,
+        };
     }
 
     // Check build.rs at root or in crates/*/ (GH-295: also scan crates/*/build.rs)
@@ -102,20 +125,7 @@ pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
 
     let has_pre_emit = build_files.iter().any(|f| {
         std::fs::read_to_string(f)
-            .map(|c| {
-                // Original literal patterns
-                c.contains("PRE_COUNT")
-                    || c.contains("emit_contract")
-                    || c.contains("_PRE_0")
-                    // Dynamic format string patterns (GH-295):
-                    // Detect `println!("cargo:rustc-env=PRE_...` with interpolated var names
-                    || c.contains("cargo:rustc-env=PRE_")
-                    || c.contains("cargo:rustc-env=POST_")
-                    // Detect format strings like `PRE_{stem}` or `POST_{stem}`
-                    || (c.contains("PRE_{") && c.contains("POST_{"))
-                    // Detect the emit_pre_post helper function pattern
-                    || c.contains("emit_pre_post")
-            })
+            .map(|c| build_emits_pre_post(&c))
             .unwrap_or(false)
     });
     if has_pre_emit {
@@ -136,8 +146,54 @@ pub(crate) fn check_build_rs_pipeline(project_path: &Path) -> ComplianceCheck {
 }
 
 
+/// Count entries in a root-level YAML sequence field (0 if absent/not a list).
+fn count_seq(doc: &serde_json::Value, key: &str) -> usize {
+    doc.get(key)
+        .and_then(|v| v.as_array())
+        .map(|a| a.len())
+        .unwrap_or(0)
+}
+
+/// Evaluate one contract's provability evidence for CB-1205.
+/// Returns `(is_kernel, violations)`; `is_kernel` is true when the contract
+/// carries proof obligations. Unparseable YAML falls back to key existence.
+fn eval_kernel_provability(content: &str, stem: &str) -> (bool, Vec<String>) {
+    let mut v = Vec::new();
+    let Ok(doc) = serde_yaml_ng::from_str::<serde_json::Value>(content) else {
+        if !content.contains("proof_obligations:") {
+            return (false, v);
+        }
+        if !content.contains("kani_harnesses:") {
+            v.push(format!("{stem}: has proof_obligations but no kani_harnesses"));
+        }
+        if !content.contains("falsification_tests:") {
+            v.push(format!("{stem}: has proof_obligations but no falsification_tests"));
+        }
+        return (true, v);
+    };
+    let obligations = count_seq(&doc, "proof_obligations");
+    if obligations == 0 {
+        return (false, v);
+    }
+    if count_seq(&doc, "kani_harnesses") == 0 {
+        v.push(format!("{stem}: {obligations} obligation(s) but 0 kani_harnesses"));
+    }
+    let falsification = count_seq(&doc, "falsification_tests");
+    if falsification < obligations {
+        v.push(format!(
+            "{stem}: {falsification} falsification_test(s) < {obligations} obligation(s)"
+        ));
+    }
+    (true, v)
+}
+
 /// MUST have kani_harnesses and sufficient falsification_tests.
 /// pv-compatibility spec §2.2
+///
+/// CB-1205 count hardening: enforces the provability invariant by COUNT, not
+/// mere key existence — `|proof_obligations| > 0` requires `|kani_harnesses| ≥ 1`
+/// AND `|falsification_tests| ≥ |proof_obligations|`. Unparseable YAML falls back
+/// to key-existence so a malformed kernel still trips (never silently passes).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceCheck {
     let contracts_dir = project_path.join("contracts");
@@ -173,26 +229,11 @@ pub(crate) fn check_provability_invariant(project_path: &Path) -> ComplianceChec
                 continue;
             }
 
-            let has_obligations = content.contains("proof_obligations:");
-            if !has_obligations {
-                continue;
-            }
-
-            kernel_contracts += 1;
             let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("?");
-
-            let has_kani = content.contains("kani_harnesses:");
-            let has_falsification = content.contains("falsification_tests:");
-
-            if !has_kani {
-                violations.push(format!(
-                    "{stem}: has proof_obligations but no kani_harnesses"
-                ));
-            }
-            if !has_falsification {
-                violations.push(format!(
-                    "{stem}: has proof_obligations but no falsification_tests"
-                ));
+            let (is_kernel, mut file_violations) = eval_kernel_provability(&content, stem);
+            if is_kernel {
+                kernel_contracts += 1;
+                violations.append(&mut file_violations);
             }
         }
     }
@@ -372,6 +413,60 @@ pub(crate) fn check_verification_levels(project_path: &Path, thresholds: &Comply
 }
 
 
+/// CB-1207 helper: is this file a drift-tracked provable contract YAML —
+/// a `.yaml`/`.yml`, not a binding, carrying provable-contracts schema markers?
+fn is_drift_tracked_contract(p: &Path) -> bool {
+    if !p.is_file() || p.extension().is_none_or(|e| e != "yaml" && e != "yml") {
+        return false;
+    }
+    if p.file_name()
+        .is_some_and(|n| n.to_string_lossy().contains("binding"))
+    {
+        return false;
+    }
+    let Ok(content) = std::fs::read_to_string(p) else {
+        return false;
+    };
+    content.contains("proof_obligations")
+        || content.contains("equations:")
+        || content.contains("falsification_tests")
+        || content.contains("kani_harnesses")
+}
+
+/// CB-1207 helper: is a contract "stale" — both its last git commit AND its
+/// YAML mtime older than `threshold`? Flattened from a nested if-let pyramid.
+fn contract_is_stale(
+    project_path: &Path,
+    rel_path: &Path,
+    yaml_mtime: std::time::SystemTime,
+    threshold: std::time::Duration,
+) -> bool {
+    let output = std::process::Command::new("git")
+        .args(["log", "-1", "--format=%ct", "--"])
+        .arg(rel_path)
+        .current_dir(project_path)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .output();
+    let Ok(o) = output else { return false };
+    let Ok(ts_str) = String::from_utf8(o.stdout) else {
+        return false;
+    };
+    let Ok(ts) = ts_str.trim().parse::<u64>() else {
+        return false;
+    };
+    let contract_commit = std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts);
+    let now = std::time::SystemTime::now();
+    let Ok(age) = now.duration_since(contract_commit) else {
+        return false;
+    };
+    age > threshold
+        && now
+            .duration_since(yaml_mtime)
+            .map(|ya| ya > threshold)
+            .unwrap_or(false)
+}
+
 /// CB-1207: Contract drift — are contracts stale relative to source changes?
 /// A contract YAML older than its bound source files by >30 days = drift.
 /// pv-compatibility spec CD5.
@@ -399,27 +494,7 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
         .filter_map(|e| e.ok())
     {
         let p = entry.path();
-        if !p.is_file() {
-            continue;
-        }
-        if p.extension().is_none_or(|e| e != "yaml" && e != "yml") {
-            continue;
-        }
-        if p.file_name()
-            .is_some_and(|n| n.to_string_lossy().contains("binding"))
-        {
-            continue;
-        }
-        // Only count files with provable-contracts schema markers (matches CB-1200)
-        if let Ok(content) = std::fs::read_to_string(p) {
-            if !content.contains("proof_obligations")
-                && !content.contains("equations:")
-                && !content.contains("falsification_tests")
-                && !content.contains("kani_harnesses")
-            {
-                continue;
-            }
-        } else {
+        if !is_drift_tracked_contract(p) {
             continue;
         }
         let Ok(meta) = std::fs::metadata(p) else {
@@ -430,34 +505,9 @@ pub(crate) fn check_contract_drift(project_path: &Path) -> ComplianceCheck {
         };
         total += 1;
 
-        // Check git log for the contract's last commit vs now
         let rel_path = p.strip_prefix(project_path).unwrap_or(p);
-        let output = std::process::Command::new("git")
-            .args(["log", "-1", "--format=%ct", "--"])
-            .arg(rel_path)
-            .current_dir(project_path)
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::null())
-            .output();
-
-        if let Ok(o) = output {
-            if let Ok(ts_str) = String::from_utf8(o.stdout) {
-                if let Ok(ts) = ts_str.trim().parse::<u64>() {
-                    let contract_commit =
-                        std::time::UNIX_EPOCH + std::time::Duration::from_secs(ts);
-                    let now = std::time::SystemTime::now();
-                    if let Ok(age) = now.duration_since(contract_commit) {
-                        // Contract not touched in >90 days AND yaml is old
-                        if age > thirty_days * 3 {
-                            if let Ok(yaml_age) = now.duration_since(yaml_mtime) {
-                                if yaml_age > thirty_days * 3 {
-                                    stale += 1;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        if contract_is_stale(project_path, rel_path, yaml_mtime, thirty_days * 3) {
+            stale += 1;
         }
     }
 
@@ -533,6 +583,53 @@ mod check_pv_verification_ladder_tests {
         std::fs::create_dir(tmp.path().join("contracts")).unwrap();
         let check = check_provability_invariant(tmp.path());
         assert_eq!(check.name, "CB-1205: Provability Invariant");
+    }
+
+    #[test]
+    fn test_check_provability_invariant_falsification_shortfall_warns() {
+        // CB-1205 count hardening: 2 obligations but only 1 falsification_test
+        // violates |falsification_tests| >= |proof_obligations|.
+        let tmp = tempfile::tempdir().unwrap();
+        let cd = tmp.path().join("contracts");
+        std::fs::create_dir(&cd).unwrap();
+        std::fs::write(
+            cd.join("kernel.yaml"),
+            "proof_obligations:\n  - id: o1\n  - id: o2\nfalsification_tests:\n  - id: f1\nkani_harnesses:\n  - harness: h1\n",
+        )
+        .unwrap();
+        let check = check_provability_invariant(tmp.path());
+        assert_eq!(check.status, CheckStatus::Warn);
+        assert!(check.message.contains("falsification_test"));
+    }
+
+    #[test]
+    fn test_check_provability_invariant_sufficient_counts_passes() {
+        let tmp = tempfile::tempdir().unwrap();
+        let cd = tmp.path().join("contracts");
+        std::fs::create_dir(&cd).unwrap();
+        std::fs::write(
+            cd.join("kernel.yaml"),
+            "proof_obligations:\n  - id: o1\n  - id: o2\nfalsification_tests:\n  - id: f1\n  - id: f2\nkani_harnesses:\n  - harness: h1\n",
+        )
+        .unwrap();
+        let check = check_provability_invariant(tmp.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
+    fn test_check_provability_invariant_missing_kani_warns() {
+        // 1 obligation, sufficient falsification, but 0 kani_harnesses.
+        let tmp = tempfile::tempdir().unwrap();
+        let cd = tmp.path().join("contracts");
+        std::fs::create_dir(&cd).unwrap();
+        std::fs::write(
+            cd.join("kernel.yaml"),
+            "proof_obligations:\n  - id: o1\nfalsification_tests:\n  - id: f1\n",
+        )
+        .unwrap();
+        let check = check_provability_invariant(tmp.path());
+        assert_eq!(check.status, CheckStatus::Warn);
+        assert!(check.message.contains("kani_harnesses"));
     }
 
     #[test]

@@ -1478,71 +1478,12 @@ pub static COMPRESSED_TEMPLATES: LazyLock<HashMap<&'static str, Vec<u8>>> = Lazy
 "#;
 
     write_stub(out_dir, "compressed_templates.rs", compressed_templates);
-
-    // ── provable-contracts binding enforcement (AllImplemented) ──
-    {
-        let binding_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap_or(std::path::Path::new("."))
-            .parent()
-            .unwrap_or(std::path::Path::new("."))
-            .join("provable-contracts/contracts/pmat/binding.yaml");
-
-        println!("cargo:rerun-if-changed={}", binding_path.display());
-
-        // provable-contracts validation requires serde_yaml_ng, which is
-        // gated behind `standard-deps`. Under --no-default-features this
-        // enforcement is skipped (contract YAML is irrelevant for minimal
-        // builds that don't ship those subsystems).
-        #[cfg(feature = "standard-deps")]
-        if binding_path.exists() {
-            #[derive(serde::Deserialize)]
-            struct BF {
-                #[allow(dead_code)]
-                version: String,
-                bindings: Vec<B>,
-            }
-            #[derive(serde::Deserialize)]
-            struct B {
-                contract: String,
-                equation: String,
-                status: String,
-            }
-
-            if let Ok(yaml) = std::fs::read_to_string(&binding_path) {
-                if let Ok(bf) = serde_yaml_ng::from_str::<BF>(&yaml) {
-                    let (mut imp, mut gaps) = (0u32, Vec::new());
-                    for b in &bf.bindings {
-                        let var = format!(
-                            "CONTRACT_{}_{}",
-                            b.contract
-                                .trim_end_matches(".yaml")
-                                .to_uppercase()
-                                .replace('-', "_"),
-                            b.equation.to_uppercase().replace('-', "_")
-                        );
-                        println!("cargo:rustc-env={var}={}", b.status);
-                        if b.status == "implemented" {
-                            imp += 1;
-                        } else {
-                            gaps.push(var.clone());
-                        }
-                    }
-                    let total = bf.bindings.len() as u32;
-                    println!("cargo:warning=[contract] AllImplemented: {imp}/{total} implemented, {} gaps", gaps.len());
-                    if !gaps.is_empty() {
-                        for g in &gaps {
-                            println!("cargo:warning=[contract] UNALLOWED GAP: {g}");
-                        }
-                        panic!(
-                            "[contract] AllImplemented: {} gap(s). Fix bindings or update status.",
-                            gaps.len()
-                        );
-                    }
-                }
-            }
-        }
-    }
+    // NOTE: AllImplemented binding enforcement now lives in the live build
+    // path (`emit_contract_env_vars`, build.rs:main) targeting the in-tree
+    // `contracts/binding.yaml`. The former block here was dead code — gated
+    // behind `standard-deps`, reachable only from the fast-build stub path,
+    // and pointed at the deprecated `../../provable-contracts` tree (audit
+    // ALADR-008 / L1-1).
 }
 
 /// Emit CONTRACT_* env vars from contracts/binding.yaml.
@@ -1567,34 +1508,66 @@ fn emit_contract_env_vars() {
     let mut current_contract = String::new();
     let mut current_equation = String::new();
     let mut current_status = String::new();
+    // AllImplemented gaps: bindings whose status is neither `implemented` nor
+    // an acknowledged WIP marker. Any such binding fails the build (L1 poka-yoke).
+    let mut gaps: Vec<String> = Vec::new();
 
     for line in content.lines() {
         let t = line.trim();
-        if t.starts_with("- contract:") {
-            // Emit previous if complete
-            if !current_contract.is_empty()
-                && !current_equation.is_empty()
-                && current_status == "implemented"
-            {
-                let key = make_contract_env_key(&current_contract, &current_equation);
-                println!("cargo:rustc-env={key}=bound");
-            }
-            current_contract = t.trim_start_matches("- contract:").trim().to_string();
+        if let Some(rest) = t.strip_prefix("- contract:") {
+            emit_or_record_binding(
+                &current_contract,
+                &current_equation,
+                &current_status,
+                &mut gaps,
+            );
+            current_contract = rest.trim().to_string();
             current_equation.clear();
             current_status.clear();
-        } else if t.starts_with("equation:") {
-            current_equation = t.trim_start_matches("equation:").trim().to_string();
-        } else if t.starts_with("status:") {
-            current_status = t.trim_start_matches("status:").trim().to_string();
+        } else if let Some(rest) = t.strip_prefix("equation:") {
+            current_equation = rest.trim().to_string();
+        } else if let Some(rest) = t.strip_prefix("status:") {
+            current_status = rest.trim().to_string();
         }
     }
     // Emit last
-    if !current_contract.is_empty()
-        && !current_equation.is_empty()
-        && current_status == "implemented"
-    {
-        let key = make_contract_env_key(&current_contract, &current_equation);
-        println!("cargo:rustc-env={key}=bound");
+    emit_or_record_binding(
+        &current_contract,
+        &current_equation,
+        &current_status,
+        &mut gaps,
+    );
+
+    // AllImplemented (L1 poka-yoke, audit ALADR-008): the live build path now
+    // enforces the in-tree `contracts/binding.yaml` on every `cargo build`.
+    // This replaces the dead panic that was buried in the fast-build stub
+    // branch and targeted the deprecated `../../provable-contracts` path.
+    if !gaps.is_empty() {
+        for g in &gaps {
+            println!("cargo:warning=[contract] AllImplemented gap: {g}");
+        }
+        panic!(
+            "[contract] AllImplemented: {} binding(s) with a disallowed status \
+             (expected implemented | pending | partial). Fix the binding, mark \
+             it `pending`, or remove it from contracts/binding.yaml.",
+            gaps.len()
+        );
+    }
+}
+
+/// Emit a `=bound` env var for an implemented binding, or record an
+/// AllImplemented gap for a disallowed status. `pending`/`partial` are
+/// acknowledged work-in-progress and neither bind nor fail; any other value
+/// (notably `not_implemented` or a typo'd status) is a gap.
+fn emit_or_record_binding(contract: &str, equation: &str, status: &str, gaps: &mut Vec<String>) {
+    if contract.is_empty() || equation.is_empty() {
+        return;
+    }
+    let key = make_contract_env_key(contract, equation);
+    match status {
+        "implemented" => println!("cargo:rustc-env={key}=bound"),
+        "pending" | "partial" => {}
+        other => gaps.push(format!("{key} (status: '{other}')")),
     }
 }
 

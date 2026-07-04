@@ -1,0 +1,126 @@
+metadata:
+  version: 1.0.0
+  created: '2026-07-04'
+  author: PAIML Engineering
+  description: >
+    Verification-ladder parser kernel — the lighthouse dogfooding contract for
+    docs/specifications/audit-pmat-support-l1-l5-aprender-provable-contracts.md.
+    "The ladder proves itself": pmat's own VerificationLevel parser is climbed
+    L1→L5 (types → falsification #[test] → proptest → Kani → Lean).
+  references:
+  - docs/specifications/components/pmat-work-verification-ladder.md
+  - docs/specifications/audit-pmat-support-l1-l5-aprender-provable-contracts.md
+  - Popper (1959) The Logic of Scientific Discovery
+equations:
+  parse_strict:
+    formula: parse_strict(s) = Some(l) ⇔ s ∈ {"L0".."L5"}
+    domain: s ∈ String
+    codomain: Option<VerificationLevel>
+    invariants:
+    - parse_strict is total (never panics) on any &str
+    - parse_strict(l.as_str()) = Some(l) for every level l (left inverse)
+    - parse_strict(s) = Some(l) ⇒ l.as_str() = s (strict soundness)
+    preconditions: []
+    lean_theorem: Theorems.Macs.Ladder_Parse_Total
+  ord_monotone:
+    formula: (a < b) ⇔ (a as u8) < (b as u8)
+    domain: a, b ∈ VerificationLevel
+    codomain: bool
+    invariants:
+    - the derived Ord agrees with the numeric rung (as u8)
+    - to_nat is injective, so rung comparisons never conflate two levels
+    preconditions: []
+    lean_theorem: Theorems.Macs.Ladder_Ord_Injective
+proof_obligations:
+- type: postcondition
+  property: parse round-trips every canonical level string
+  formal: '∀l: parse_strict(as_str(l)) = Some(l)'
+  applies_to: parse_strict
+  lean:
+    theorem: Theorems.Macs.Ladder_Parse_Total
+    module: Theorems.Macs.Ladder
+    status: proved
+    notes: 'by cases l <;> decide — depends on no axioms'
+- type: invariant
+  property: strict parse rejects case/whitespace/out-of-set corruptions
+  formal: 'parse_strict("l3") = None ∧ parse_strict("L3 ") = None ∧ parse_strict("strong") = None'
+  applies_to: parse_strict
+  lean:
+    theorem: Theorems.Macs.Ladder_Parse_Strict
+    module: Theorems.Macs.Ladder
+    status: proved
+    notes: 'by decide — mirrors Rust falsification test parse_strict_rejects_typos'
+- type: invariant
+  property: Ord agrees with the numeric rung (gate comparisons never invert)
+  formal: '∀a,b: (a < b) = ((a as u8) < (b as u8))'
+  applies_to: ord_monotone
+  lean:
+    theorem: Theorems.Macs.Ladder_Ord_Injective
+    module: Theorems.Macs.Ladder
+    status: proved
+    notes: 'by cases a <;> cases b <;> decide'
+- type: bound
+  property: distinct levels have distinct wire strings (Display never collides)
+  formal: '∀a,b: as_str(a) = as_str(b) ⇒ a = b'
+  applies_to: parse_strict
+  lean:
+    theorem: Theorems.Macs.Ladder_toStr_Injective
+    module: Theorems.Macs.Ladder
+    status: proved
+    notes: 'by cases a <;> cases b <;> decide'
+falsification_tests:
+- id: parse_total_strict_prop
+  rule: parse is total and strict — accepts exactly L0..L5
+  prediction: for 8-char random strings, parse_strict is Some iff s ∈ {L0..L5}
+  test: cargo test --lib -- work_verification_level::tests::parse_total_strict_prop
+  if_fails: misspelled levels silently downgrade tickets (C28)
+- id: parse_strict_rejects_typos
+  rule: strict parse rejects case/whitespace corruptions
+  prediction: parse_strict("l3"), ("L3 "), (" L3"), ("strong"), ("L6"), ("") all None
+  test: cargo test --lib -- work_verification_level::tests::parse_strict_rejects_typos
+  if_fails: over-claims like "l4" pass the completion gate
+- id: ord_matches_numeric
+  rule: Ord matches numeric ladder order
+  prediction: L0 < L1 < L2 < L3 < L4 < L5 and (v as u8) is monotone
+  test: cargo test --lib -- work_verification_level::tests::ord_matches_numeric
+  if_fails: achieved >= claimed comparison inverts; over-claims pass
+- id: display_parse_id
+  rule: Display then parse is the identity on valid levels
+  prediction: as_str(l).parse() = Some(l) for every l
+  test: cargo test --lib -- work_verification_level::tests::display_parse_id
+  if_fails: read/write round-trip breaks; stored levels corrupt on reload
+- id: serde_string_repr
+  rule: wire format is the display string (no wire break vs legacy)
+  prediction: serde serializes L4 as "L4"; legacy contract.json still parses
+  test: cargo test --lib -- work_verification_level::tests::serde_string_repr
+  if_fails: every existing .pmat-work contract breaks on read
+kani_harnesses:
+- id: KANI-LADDER-001
+  obligation: parse round-trips every canonical level string
+  property: parse_strict(l.as_str()) == Some(l), exhaustive over the six variants
+  bound: 6
+  strategy: exhaustive
+  solver: cadical
+  harness: verify_ladder_parse_roundtrip
+- id: KANI-LADDER-002
+  obligation: Ord agrees with the numeric rung
+  property: (a < b) == ((a as u8) < (b as u8)) for all level pairs
+  bound: 6
+  strategy: exhaustive
+  solver: cadical
+  harness: verify_ladder_ord_matches_numeric
+- id: KANI-LADDER-003
+  obligation: strict parse is total and accepts exactly L0..L5
+  property: parse_strict never panics on 2-ASCII input; Some iff L{0..5}
+  bound: 128
+  strategy: exhaustive
+  solver: cadical
+  harness: verify_ladder_parse_strict_total_two_ascii
+qa_gate:
+  id: LADDER-KERNEL-GATE
+  name: Verification-ladder parser kernel gate
+  description: L1→L5 provability gate for pmat's own VerificationLevel parser
+  checks:
+  - validation
+  - falsification
+  pass_criteria: All 5 falsification tests pass and all 4 Lean obligations are proved (0 sorry)

@@ -71,3 +71,15 @@ exclude = [
 # Library crates have higher "dead code" due to public APIs used by external consumers
 # 30% threshold accounts for public APIs not called internally
 max_dead_code_pct = 30.0
+
+# ── Provable-contract ladder (L1–L5) ─────────────────────────────────────────
+# audit: docs/specifications/audit-pmat-support-l1-l5-aprender-provable-contracts.md
+[verification_ladder]
+# Floor read by CB-1308 (check_verification_ladder): any equation-bearing
+# contract-surface YAML that evidences BELOW this level fails comply. Set to
+# the explicit L1 floor — this rejects the previously-permissive L0 default
+# (ALADR-002). The lighthouse kernel `macs-ladder-kernel-v1` already evidences
+# L3; ratchet this floor upward (L2 → L3) as the remaining registry/schema
+# contracts climb. Per-crate budgets (`[[verification_ladder.budget]]`, so
+# kernels can be held to L4 while registries stay at L1) are ALADR-002 / R-8.
+min_level = "L1"

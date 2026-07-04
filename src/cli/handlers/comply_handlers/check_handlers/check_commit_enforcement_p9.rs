@@ -280,6 +280,37 @@ mod tests_commit_enforcement {
     }
 
     #[test]
+    fn test_cb1330_regression_fails() {
+        // CB-1330 Fail hardening: current_level below target_level is a hard
+        // failure, not a warning.
+        let dir = tempdir().unwrap();
+        let contracts = dir.path().join("contracts");
+        fs::create_dir_all(&contracts).unwrap();
+        fs::write(
+            contracts.join("regress.yaml"),
+            "verification_summary:\n  target_level: L3\n  current_level: L1\n",
+        )
+        .unwrap();
+        let check = check_verification_ratchet(dir.path());
+        assert_eq!(check.status, CheckStatus::Fail);
+        assert!(check.message.contains("regression"));
+    }
+
+    #[test]
+    fn test_cb1330_at_target_passes() {
+        let dir = tempdir().unwrap();
+        let contracts = dir.path().join("contracts");
+        fs::create_dir_all(&contracts).unwrap();
+        fs::write(
+            contracts.join("ok.yaml"),
+            "verification_summary:\n  target_level: L3\n  current_level: L3\n",
+        )
+        .unwrap();
+        let check = check_verification_ratchet(dir.path());
+        assert_eq!(check.status, CheckStatus::Pass);
+    }
+
+    #[test]
     fn test_cb1338_no_binding() {
         let dir = tempdir().unwrap();
         let check = check_no_ghost_bindings(dir.path());

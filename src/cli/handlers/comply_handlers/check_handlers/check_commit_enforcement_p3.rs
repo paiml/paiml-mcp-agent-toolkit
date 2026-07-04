@@ -295,13 +295,18 @@ pub(crate) fn check_verification_ratchet(project_path: &Path) -> ComplianceCheck
     } else {
         ComplianceCheck {
             name: "CB-1330: L-Level Ratchet".into(),
-            status: CheckStatus::Warn,
+            // CB-1330 Fail hardening: a verification-level regression is a hard
+            // failure, not advisory — a ratchet that only warns doesn't ratchet.
+            // Config-overridable per-check via .pmat.yaml; narrow blast radius
+            // (fires only on a real current<target regression in a
+            // verification_summary contract).
+            status: CheckStatus::Fail,
             message: format!(
                 "{} regression(s): {}",
                 regressions.len(),
                 regressions.join(", ")
             ),
-            severity: Severity::Warning,
+            severity: Severity::Error,
         }
     }
 }

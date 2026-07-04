@@ -173,6 +173,67 @@ impl fmt::Display for ParseLevelError {
 
 impl std::error::Error for ParseLevelError {}
 
+/// Kani bounded-model-checking proofs for the verification ladder parser (L4).
+///
+/// These are the L4 rung of the lighthouse dogfooding contract
+/// `contracts/macs-ladder-kernel-v1.yaml` — "the ladder proves itself." They
+/// verify parse/`Ord` correctness exhaustively over the six-variant enum and
+/// over the entire two-ASCII-character input domain (`128 × 128` cases).
+///
+/// Run: `cargo kani --harness verify_ladder_parse_roundtrip`
+/// (excluded from normal builds/tests via `#[cfg(kani)]`).
+#[cfg(kani)]
+mod kani_proofs {
+    use super::VerificationLevel;
+
+    /// Prove: `parse_strict(l.as_str()) == Some(l)` for every ladder level —
+    /// `parse_strict` is a total left inverse of `as_str` (obligation
+    /// `parse_total_strict`). Exhaustive over the six variants.
+    #[kani::proof]
+    fn verify_ladder_parse_roundtrip() {
+        let idx: usize = kani::any();
+        kani::assume(idx < VerificationLevel::ALL.len());
+        let level = VerificationLevel::ALL[idx];
+        assert_eq!(VerificationLevel::parse_strict(level.as_str()), Some(level));
+        assert_eq!(
+            level.as_str().parse::<VerificationLevel>().ok(),
+            Some(level)
+        );
+    }
+
+    /// Prove: the derived `Ord` agrees with the numeric rung `as u8` for every
+    /// pair of levels (obligation `gate_monotone` — the completion gate's
+    /// `achieved >= claimed` comparison never inverts).
+    #[kani::proof]
+    fn verify_ladder_ord_matches_numeric() {
+        let i: usize = kani::any();
+        let j: usize = kani::any();
+        kani::assume(i < VerificationLevel::ALL.len() && j < VerificationLevel::ALL.len());
+        let a = VerificationLevel::ALL[i];
+        let b = VerificationLevel::ALL[j];
+        assert_eq!(a < b, (a as u8) < (b as u8));
+        assert_eq!(a == b, (a as u8) == (b as u8));
+    }
+
+    /// Prove: `parse_strict` is total (never panics) on the whole two-ASCII
+    /// character domain and accepts EXACTLY `"L0".."L5"` (obligation
+    /// `strict_rejects_corruptions`). Exhaustive over `128 × 128` inputs.
+    #[kani::proof]
+    fn verify_ladder_parse_strict_total_two_ascii() {
+        let b0: u8 = kani::any();
+        let b1: u8 = kani::any();
+        kani::assume(b0 < 128 && b1 < 128);
+        let bytes = [b0, b1];
+        let s = core::str::from_utf8(&bytes).unwrap();
+        let parsed = VerificationLevel::parse_strict(s);
+        let is_valid = b0 == b'L' && (b'0'..=b'5').contains(&b1);
+        assert_eq!(parsed.is_some(), is_valid);
+        if let Some(level) = parsed {
+            assert_eq!(level.as_str(), s);
+        }
+    }
+}
+
 // ─── YAML scanners (line-wise, deliberately minimal) ─────────────────────────
 
 /// True iff a top-level key `<section>:` is present AND the block body under

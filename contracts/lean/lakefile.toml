@@ -1,0 +1,5 @@
+name = "provable"
+defaultTargets = ["Theorems"]
+
+[[lean_lib]]
+name = "Theorems"

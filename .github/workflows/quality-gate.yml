@@ -68,3 +68,62 @@ jobs:
             echo "" >> "$GITHUB_STEP_SUMMARY"
             python3 -c "import json; d=json.load(open('score.json')); s=d['sub_scores']; print('| Sub-Score | Value |'); print('|-----------|-------|'); [print(f'| {k} | {v:.1f} |') for k,v in s.items()]" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  # Provable-contracts L1–L5 ladder gate.
+  # audit: docs/specifications/audit-pmat-support-l1-l5-aprender-provable-contracts.md (ALADR-001/006).
+  # This wires the ladder engine into CI — the audit's highest-leverage move (R0).
+  provable-ladder:
+    name: provable ladder
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── L5: machine-checked Lean proofs (lighthouse: the ladder proves itself)
+      - name: L5 — build Lean proofs (lake build)
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: contracts/lean
+          build: true
+          use-mathlib-cache: false
+
+      - name: L5 — assert zero proof holes (no sorry / admit)
+        run: |
+          if grep -rInE '\bsorry\b|\badmit\b' contracts/lean/Theorems/; then
+            echo "::error::Lean proofs contain sorry/admit — L5 not proven"
+            exit 1
+          fi
+          echo "Lean proofs are hole-free (0 sorry, 0 admit)."
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Checkout provable-contracts (path dep)
+        uses: actions/checkout@v4
+        with:
+          repository: paiml/provable-contracts
+          path: provable-contracts
+
+      - name: Symlink provable-contracts for Cargo path deps
+        run: ln -sf "$GITHUB_WORKSPACE/provable-contracts" "$GITHUB_WORKSPACE/../provable-contracts"
+
+      - name: Install pmat
+        run: cargo install --path . --locked
+
+      # ── L1: the AllImplemented binding gate rides on `cargo install` above
+      # (build.rs panics on any disallowed binding status). This step makes the
+      # dogfood intent explicit.
+      - name: L1 — binding registry AllImplemented (build.rs, already enforced by install)
+        run: echo "contracts/binding.yaml AllImplemented enforced at build time (build.rs)."
+
+      # ── Ladder gate: activates CB-1205/1206/1308/1330/1614/1618/1619 at once.
+      # Advisory during the 30-day grace period (ALADR-012); flip
+      # `continue-on-error` to false to make `provable ladder / comply` a
+      # required branch-protection check.
+      - name: Ladder gate — pmat comply
+        continue-on-error: true
+        run: pmat comply check --failures-only
