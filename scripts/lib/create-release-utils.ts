@@ -117,7 +117,7 @@ cargo install pmat
 
 export async function checkProjectStructure(): Promise<void> {
   try {
-    await Deno.stat("server/Cargo.toml");
+    await Deno.stat("Cargo.toml");
   } catch {
     throw new Error("Must run from repository root");
   }
