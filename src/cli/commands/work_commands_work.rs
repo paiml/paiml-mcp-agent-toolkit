@@ -218,6 +218,21 @@ pub enum WorkCommands {
         path: Option<PathBuf>,
     },
 
+    /// Delegate an active PMAT work contract to a Google Anti-Gravity agent (MACS-019)
+    #[command(visible_aliases = &["handoff"])]
+    Delegate {
+        /// Ticket ID to delegate
+        id: String,
+        
+        /// Delegate to Google Anti-Gravity agent
+        #[arg(long)]
+        agy: bool,
+
+        /// Project path (default: current directory)
+        #[arg(short, long)]
+        path: Option<PathBuf>,
+    },
+
     /// Run falsification tests without completing the work item
     #[command(visible_alias = "test-claims")]
     Falsify {

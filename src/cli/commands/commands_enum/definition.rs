@@ -447,6 +447,10 @@ pub enum Commands {
     #[command(subcommand)]
     Mcp(McpCommands),
 
+    /// Google Anti-Gravity customizations translator
+    #[command(subcommand, visible_aliases = &["antigravity"])]
+    Agy(AgyCommands),
+
     /// AI prompt generation (defect-aware, ticket-based, spec-based)
     #[command(subcommand, visible_aliases = &["p"])]
     Prompt(PromptCommands),

@@ -41,8 +41,10 @@ pub mod semantic_search;
 pub use semantic_search::*;
 
 // Org and Prompt commands
+pub mod agy_commands;
 pub mod mcp_commands;
 pub mod org_prompt;
+pub use agy_commands::*;
 pub use mcp_commands::*;
 pub use org_prompt::*;
 

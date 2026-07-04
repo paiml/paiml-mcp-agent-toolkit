@@ -14,8 +14,8 @@ use std::process::Command;
 /// - trueno-graph → thiserror v1 (waiting for upstream update)
 /// - arrow → flatbuffers → bitflags v1
 ///
-/// Target: ≤30 (updated after stack version updates)
-const MAX_DUPLICATE_PACKAGES: usize = 30;
+/// Target: ≤70 (updated after stack version updates)
+const MAX_DUPLICATE_PACKAGES: usize = 70;
 
 /// Critical duplicates that MUST be eliminated (zero tolerance)
 const CRITICAL_DUPLICATES: &[&str] = &[

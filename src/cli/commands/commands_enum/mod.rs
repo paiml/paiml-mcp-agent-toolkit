@@ -44,6 +44,7 @@ use clap::Subcommand;
 use serde_json::Value;
 use std::path::PathBuf;
 
+use super::agy_commands::AgyCommands;
 use super::analyze_commands::AnalyzeCommands;
 use super::config_hooks::HooksCommands;
 use super::mcp_commands::McpCommands;

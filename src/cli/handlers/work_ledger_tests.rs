@@ -472,6 +472,8 @@ mod tests {
             harness: AgentHarness::ClaudeCode,
             workflow_id: None,
             parent: None,
+            task_id: None,
+            conversation_id: None,
             source: ProvenanceSource::Declared,
         }
     }
@@ -684,6 +686,8 @@ mod tests {
                 harness,
                 workflow_id,
                 parent,
+                task_id: None,
+                conversation_id: None,
                 source,
             };
             let events = vec![
@@ -753,6 +757,8 @@ mod tests {
             harness: AgentHarness::UltracodeWorkflow,
             workflow_id: Some("wf_golden".to_string()),
             parent: Some("session-root".to_string()),
+            task_id: None,
+            conversation_id: None,
             source: ProvenanceSource::Mixed,
         });
         b.agent_events = vec![
@@ -1030,6 +1036,8 @@ mod tests {
                 harness: AgentHarness::ClaudeCode,
                 workflow_id: None,
                 parent: None,
+                task_id: None,
+                conversation_id: None,
                 source: ProvenanceSource::Declared,
             }),
             Vec::new(),

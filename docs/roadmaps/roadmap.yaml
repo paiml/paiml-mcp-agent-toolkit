@@ -3566,3 +3566,54 @@ roadmap:
   estimated_effort: null
   labels: []
   notes: null
+- id: MACS-017
+  github_issue: null
+  item_type: task
+  title: MACS-017 Anti-Gravity Customizations Translator
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-07-04T08:19:46Z
+  updated: 2026-07-04T08:19:46Z
+  spec: null
+  acceptance_criteria:
+  - A new pmat agy sync command that transpiles or maps PMAT's strict skill requirements and contracts into Google Anti-Gravity's AGENTS.md rules and skills.json formats.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: MACS-018
+  github_issue: null
+  item_type: task
+  title: MACS-018 Cross-System Provenance Unification (AGY + Fable)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-07-04T08:20:00Z
+  updated: 2026-07-04T08:20:00Z
+  spec: null
+  acceptance_criteria:
+  - Extend AgentProvenance (MACS-001) to support GoogleAntiGravity variants with Subagent Task IDs and Conversation IDs. Add a parser that extracts Anti-Gravity transcript bounds to inject into FalsificationReceipts.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null
+- id: MACS-019
+  github_issue: null
+  item_type: task
+  title: MACS-019 Hybrid Orchestration Bridge (Ultracode + AGY)
+  status: planned
+  priority: medium
+  assigned_to: null
+  created: 2026-07-04T08:20:00Z
+  updated: 2026-07-04T08:20:00Z
+  spec: null
+  acceptance_criteria:
+  - Define an orchestration adapter pmat work delegate --agy which translates PMAT contract requirements into Anti-Gravity define_subagent/invoke_subagent tool sequences, allowing AGY agents to deterministically resolve PMAT-verified work.
+  phases: []
+  subtasks: []
+  estimated_effort: null
+  labels: []
+  notes: null

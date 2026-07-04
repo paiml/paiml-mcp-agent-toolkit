@@ -22,6 +22,6 @@ pub use types::GitHubIssueInfo;
 // Re-export public handler functions
 pub use handlers::{
     handle_work_checkpoint, handle_work_complete, handle_work_continue, handle_work_cot_check,
-    handle_work_cot_derive, handle_work_event, handle_work_falsify, handle_work_init,
+    handle_work_cot_derive, handle_work_delegate, handle_work_event, handle_work_falsify, handle_work_init,
     handle_work_ledger_verify, handle_work_start, handle_work_status, handle_work_sync,
 };

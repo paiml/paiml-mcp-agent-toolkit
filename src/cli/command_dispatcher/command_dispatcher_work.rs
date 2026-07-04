@@ -52,6 +52,9 @@ impl CommandDispatcher {
             WorkCommands::Continue { id, path } => {
                 work_handlers::handle_work_continue(id.clone(), path.clone()).await
             }
+            WorkCommands::Delegate { id, agy, path } => {
+                work_handlers::handle_work_delegate(id.clone(), *agy, path.clone()).await
+            }
             WorkCommands::Checkpoint { id, agent, path } => {
                 work_handlers::handle_work_checkpoint(id.clone(), path.clone(), agent.to_declared())
                     .await

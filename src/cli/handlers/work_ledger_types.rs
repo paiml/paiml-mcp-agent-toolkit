@@ -183,13 +183,15 @@ pub enum AgentHarness {
     CiPipeline,
     /// A human ran the command directly
     Human,
+    /// Google Anti-Gravity CLI or subagent (MACS-018)
+    GoogleAntiGravity,
     /// Any other runner, verbatim
     Other(String),
 }
 
 impl AgentHarness {
     /// Known harness tokens in canonical kebab-case (underscores normalize).
-    const KNOWN_TOKENS: [(&'static str, AgentHarness); 8] = [
+    const KNOWN_TOKENS: [(&'static str, AgentHarness); 11] = [
         ("claude-code", AgentHarness::ClaudeCode),
         ("claudecode", AgentHarness::ClaudeCode),
         ("claude-agent-sdk", AgentHarness::ClaudeAgentSdk),
@@ -198,6 +200,9 @@ impl AgentHarness {
         ("ci-pipeline", AgentHarness::CiPipeline),
         ("ci", AgentHarness::CiPipeline),
         ("human", AgentHarness::Human),
+        ("google-anti-gravity", AgentHarness::GoogleAntiGravity),
+        ("agy", AgentHarness::GoogleAntiGravity),
+        ("antigravity", AgentHarness::GoogleAntiGravity),
     ];
 
     /// Parse a declared harness token (kebab-case CLI/env form; underscores
@@ -241,6 +246,12 @@ pub struct AgentProvenance {
     /// Parent agent/session id for nested subagents (MACS E2)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent: Option<String>,
+    /// Anti-Gravity task ID (MACS-018)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
+    /// Anti-Gravity conversation ID (MACS-018)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversation_id: Option<String>,
     /// Declared (flags) | detected (env) | mixed
     pub source: ProvenanceSource,
 }
@@ -391,6 +402,8 @@ pub fn resolve_agent_provenance_with_env(
         harness,
         workflow_id: declared.workflow_id.clone(),
         parent: declared.parent.clone(),
+        task_id: None,
+        conversation_id: None,
         source,
     })
 }
