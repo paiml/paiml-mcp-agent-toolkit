@@ -65,6 +65,9 @@ Every result includes TDG grade, Big-O complexity, git churn, code clones, patte
 ```bash
 # Install from crates.io
 cargo install pmat
+```
+
+> **Note for macOS Users:** If you experience issues installing via `rustup`, we recommend installing/updating Rust using Homebrew: `brew install rust` before running `cargo install pmat`.
 
 # Or from source (latest)
 git clone https://github.com/paiml/paiml-mcp-agent-toolkit
