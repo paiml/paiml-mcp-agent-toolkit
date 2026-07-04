@@ -88,7 +88,7 @@ async fn run_satd_analysis(
     _exclude: &Option<String>,
 ) -> Result<SatdReport> {
     use regex::Regex;
-    use walkdir::WalkDir;
+    use crate::services::file_discovery::ProjectFileDiscovery;
 
     let satd_pattern = Regex::new(r"(?i)(TODO|FIXME|HACK|XXX|REFACTOR|DEPRECATED):\s*(.+)")
         .expect("Hardcoded regex pattern must be valid");
@@ -96,9 +96,12 @@ async fn run_satd_analysis(
     let mut by_type = HashMap::new();
     let mut by_severity = HashMap::new();
 
-    for entry in WalkDir::new(_project_path) {
-        let entry = entry?;
-        let path = entry.path();
+    let discovered_files = ProjectFileDiscovery::new(_project_path.to_path_buf())
+        .discover_files()
+        .unwrap_or_default();
+
+    for path in discovered_files {
+        let path = path.as_path();
 
         if path.is_file() && is_source_file(path) {
             process_file_for_satd(

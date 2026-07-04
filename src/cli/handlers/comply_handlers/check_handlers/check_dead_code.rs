@@ -46,12 +46,12 @@ pub(crate) fn is_heavily_cfg_gated(content: &str) -> bool {
 /// Collect production .rs files (skip test files, falsification modules, SIMD code).
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::PathBuf> {
-    walkdir::WalkDir::new(src_dir)
-        .max_depth(10)
+    crate::services::file_discovery::ProjectFileDiscovery::new(src_dir.to_path_buf())
+        .discover_files()
+        .unwrap_or_default()
         .into_iter()
-        .filter_map(|e| e.ok())
         .filter(|e| {
-            let p = e.path();
+            let p = e.as_path();
             let path_str = p.to_string_lossy();
             p.is_file()
                 && p.extension().is_some_and(|ext| ext == "rs")
@@ -62,7 +62,6 @@ pub(crate) fn collect_production_rs_files(src_dir: &Path) -> Vec<std::path::Path
                 && !path_str.contains("/quantize/")
                 && !path_str.contains("/simd/")
         })
-        .map(|e| e.path().to_path_buf())
         .collect()
 }
 

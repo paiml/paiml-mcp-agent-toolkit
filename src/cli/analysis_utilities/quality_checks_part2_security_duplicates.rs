@@ -137,11 +137,14 @@ async fn collect_file_hashes(
     project_path: &Path,
     file_hashes: &mut std::collections::HashMap<u64, Vec<PathBuf>>,
 ) -> Result<()> {
-    use walkdir::WalkDir;
+    use crate::services::file_discovery::ProjectFileDiscovery;
 
-    for entry in WalkDir::new(project_path) {
-        let entry = entry?;
-        let path = entry.path();
+    let discovered_files = ProjectFileDiscovery::new(project_path.to_path_buf())
+        .discover_files()
+        .unwrap_or_default();
+
+    for path in discovered_files {
+        let path = path.as_path();
 
         // Skip build artifacts and other excluded paths completely
         let path_str = path.to_string_lossy();

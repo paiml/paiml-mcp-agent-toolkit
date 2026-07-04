@@ -60,7 +60,7 @@ main() {
     fi
     
     base_url="${REPO_URL}/releases/download"
-    binary_url="${base_url}/v${version}/paiml-mcp-agent-toolkit-${platform}.tar.gz"
+    binary_url="${base_url}/v${version}/pmat-v${version}-${platform}.tar.gz"
     checksum_url="${binary_url}.sha256"
     
     echo "Installing pmat v${version} for ${platform}..."
@@ -72,7 +72,14 @@ main() {
     # Download and verify checksum
     echo "Verifying checksum..."
     expected_checksum="$(curl -sSfL "$checksum_url" | cut -d' ' -f1)"
-    actual_checksum="$(sha256sum "${temp_dir}/archive.tar.gz" | cut -d' ' -f1)"
+    if command -v sha256sum >/dev/null 2>&1; then
+        actual_checksum="$(sha256sum "${temp_dir}/archive.tar.gz" | cut -d' ' -f1)"
+    elif command -v shasum >/dev/null 2>&1; then
+        actual_checksum="$(shasum -a 256 "${temp_dir}/archive.tar.gz" | cut -d' ' -f1)"
+    else
+        echo "Error: Neither sha256sum nor shasum found." >&2
+        exit 1
+    fi
     
     if [ "$expected_checksum" != "$actual_checksum" ]; then
         echo "Checksum verification failed!" >&2

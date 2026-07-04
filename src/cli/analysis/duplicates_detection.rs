@@ -252,15 +252,18 @@ async fn collect_code_blocks(
     usize,
     HashMap<String, FileStats>,
 )> {
-    use walkdir::WalkDir;
+    use crate::services::file_discovery::ProjectFileDiscovery;
 
     let mut all_blocks = Vec::new();
     let mut total_lines = 0usize;
     let mut file_stats = HashMap::new();
 
-    for entry in WalkDir::new(project_path) {
-        let entry = entry?;
-        let path = entry.path();
+    let discovered_files = ProjectFileDiscovery::new(project_path.to_path_buf())
+        .discover_files()
+        .unwrap_or_default();
+
+    for path in discovered_files {
+        let path = path.as_path();
 
         if should_analyze_file(path, include, exclude) {
             if let Some((blocks, lines_count)) =
