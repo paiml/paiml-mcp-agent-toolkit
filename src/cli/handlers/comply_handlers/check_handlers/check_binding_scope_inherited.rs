@@ -59,7 +59,7 @@ fn yaml_equation_preconditions(content: &str, equation: &str) -> Option<Vec<Stri
                 continue;
             }
         }
-        // Indent ≥4, starts with `-` and we're in preconditions: a list item
+        // Indent >=4, starts with `-` and we're in preconditions: a list item
         if in_preconditions && indent >= 4 && trimmed.starts_with('-') {
             let item = trimmed[1..].trim();
             let unquoted = item
@@ -71,6 +71,16 @@ fn yaml_equation_preconditions(content: &str, equation: &str) -> Option<Vec<Stri
             if !unquoted.is_empty() {
                 if let Some(v) = preconditions.as_mut() {
                     v.push(unquoted);
+                }
+            }
+            continue;
+        }
+        // Indent >=4, does NOT start with `-` and we're in preconditions: continuation
+        if in_preconditions && indent >= 4 && !trimmed.starts_with('-') {
+            if let Some(v) = preconditions.as_mut() {
+                if let Some(last) = v.last_mut() {
+                    last.push(' ');
+                    last.push_str(trimmed);
                 }
             }
             continue;

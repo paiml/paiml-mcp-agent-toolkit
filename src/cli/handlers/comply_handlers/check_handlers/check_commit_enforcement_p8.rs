@@ -54,19 +54,22 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
             .and_then(|l| l.as_str())
             .unwrap_or("L1");
 
-        // Extract preconditions from claims
+        // Extract preconditions from require objects
         let mut preconditions = Vec::new();
-        if let Some(claims) = v.get("falsifiable_claims").and_then(|c| c.as_array()) {
-            for claim in claims {
-                if let Some(text) = claim.get("claim").and_then(|t| t.as_str()) {
-                    preconditions.push(text.to_string());
+        if let Some(req) = v.get("require").and_then(|r| r.as_array()) {
+            for r in req {
+                if let Some(s) = r.get("description").and_then(|d| d.as_str()) {
+                    preconditions.push(s.to_string());
                 }
             }
         }
-        if let Some(req) = v.get("require").and_then(|r| r.as_array()) {
-            for r in req {
-                if let Some(s) = r.as_str() {
-                    preconditions.push(s.to_string());
+
+        // Extract falsifiable_claims from claims objects
+        let mut falsifiable_claims = Vec::new();
+        if let Some(claims) = v.get("claims").and_then(|c| c.as_array()) {
+            for claim in claims {
+                if let Some(text) = claim.get("hypothesis").and_then(|t| t.as_str()) {
+                    falsifiable_claims.push(text.to_string());
                 }
             }
         }
@@ -75,7 +78,11 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
         let mut postconditions = Vec::new();
         if let Some(ens) = v.get("ensure").and_then(|e| e.as_array()) {
             for e in ens {
-                if let Some(s) = e.as_str() {
+                // Ensure clauses are objects with a description
+                if let Some(s) = e.get("description").and_then(|d| d.as_str()) {
+                    postconditions.push(s.to_string());
+                } else if let Some(s) = e.as_str() {
+                    // Fallback for older formats if any
                     postconditions.push(s.to_string());
                 }
             }
@@ -136,6 +143,13 @@ fn generate_work_contract_yamls(project_path: &Path) -> anyhow::Result<usize> {
             yaml.push_str("postconditions:\n");
             for p in &postconditions {
                 yaml.push_str(&format!("  - \"{}\"\n", yaml_escape_string(p)));
+            }
+        }
+
+        if !falsifiable_claims.is_empty() {
+            yaml.push_str("falsifiable_claims:\n");
+            for c in &falsifiable_claims {
+                yaml.push_str(&format!("  - id: \"{}\"\n", yaml_escape_string(c)));
             }
         }
 

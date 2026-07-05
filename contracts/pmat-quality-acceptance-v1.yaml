@@ -1,0 +1,83 @@
+metadata:
+  version: "1.0.0"
+  created: "2026-07-05"
+  author: PAIML Engineering
+  references:
+    - "docs/specifications/pmat-work-contract.md (Popperian falsification, PMAT-458)"
+    - "Popper (1959) The Logic of Scientific Discovery"
+    - "src/cli/handlers/work_contract_falsification.rs (FalsificationMethod: 23 quality guards)"
+    - "src/cli/handlers/work_quality_handlers.rs (run_popper_falsification: suite dispatch)"
+  registry: true
+  description: >
+    The quality-acceptance contract every pmat work ticket is completed under
+    (PMAT-458, Popperian falsification). A ticket is accepted iff NO quality
+    guard in FalsificationMethod can falsify it against the ticket's baseline
+    snapshot. This is exactly the invariant `pmat work complete` enforces via
+    run_popper_falsification. Binding a completed ticket to this contract
+    records the falsifiable suite that governed its acceptance (evidence
+    level L3: a bound equation whose falsification_tests execute and pass).
+  contract: pmat-quality-acceptance
+  status: active
+
+equations:
+  quality_acceptance:
+    formula: >
+      complete(t) = Ok(())  <->  forall g in guards: attempt_falsify(g, t) = NotFalsified
+    domain: t in .pmat-work/*  (a work ticket carrying a baseline snapshot)
+    codomain: Result<()>
+    invariants:
+      - guards = FalsificationMethod::{ManifestIntegrity, DifferentialCoverage,
+        AbsoluteCoverage, TdgRegression, ComplexityRegression, FileSizeRegression,
+        SpecQuality, RoadmapUpdate, GitHubSync, CoverageGaming, SupplyChainIntegrity,
+        MetaFalsification, ExamplesCompile, BookValidation, SatdDetection,
+        DeadCodeDetection, PerFileCoverage, LintPass, VariantCoverage, FixChainLimit,
+        CrossCrateParity, RegressionGate, FormalProofVerification} — 23 independent guards
+      - acceptance requires EVERY guard to return NotFalsified; a single
+        falsified guard blocks completion (conjunction, not sampling)
+      - each guard is independently executable and independently falsifiable
+        against the baseline (evidence that the suite is not a rubber stamp)
+    preconditions:
+      - a baseline snapshot is captured at work start (contract.json baseline_commit,
+        baseline_file_manifest, baseline_coverage, baseline_tdg, baseline_rust_score)
+
+falsification:
+  - condition: "A ticket closes while any FalsificationMethod guard reports FAILED"
+    severity: P0
+    action: reject_completion
+  - condition: "A guard reports PASSED without executing its check (rubber-stamp acceptance)"
+    severity: P0
+    action: reject_completion
+  - condition: "The guard set silently drops a variant (acceptance narrows unnoticed)"
+    severity: P1
+    action: reject_push
+
+falsification_tests:
+  - id: acceptance_requires_all_guards
+    rule: A ticket is accepted only if every quality guard returns NotFalsified
+    prediction: >
+      `pmat work falsify <id>` dispatches all 23 FalsificationMethod guards via
+      run_popper_falsification; if any guard finds a violation it reports FAILED
+      and completion is blocked. (Observed live: baseline-v1 fails ManifestIntegrity
+      and SupplyChainIntegrity — the suite genuinely falsifies.)
+    test: cargo run --bin pmat -- work falsify <id>
+    if_fails: a ticket could complete with an unchecked or violated quality guard
+  - id: falsification_result_passed_semantics
+    rule: A guard that finds no counterexample yields PASSED (NotFalsified)
+    prediction: FalsificationResult::passed() reports success carrying no evidence
+    test: cargo test --lib test_falsification_result_passed
+    if_fails: passing guards misreport, allowing false acceptances or false rejections
+  - id: falsification_result_failed_semantics
+    rule: A guard that finds a counterexample yields FAILED carrying the evidence
+    prediction: FalsificationResult::failed() reports failure with the falsifying evidence
+    test: cargo test --lib test_falsification_result_failed
+    if_fails: a violated guard could be recorded as passing (rubber-stamp)
+  - id: falsification_coverage_accounting
+    rule: Falsification coverage is computed from evaluated-vs-total claims, never assumed
+    prediction: an empty claim set yields 0 coverage; a partial set yields proportional coverage
+    test: cargo test --lib test_compute_falsification_coverage_empty test_compute_falsification_coverage_partial
+    if_fails: acceptance could be declared while claims were never evaluated
+  - id: ladder_blocks_hollow_upgrade
+    rule: kani/lean declared without falsification_tests caps at L2 (no hollow L3+)
+    prediction: a YAML with kani_harnesses but no falsification_tests evidences L2, never L3
+    test: cargo test --lib kani_without_falsification_tests_caps_at_l2
+    if_fails: tickets earn L3+ without a real falsifiable test actually present

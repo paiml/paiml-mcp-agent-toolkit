@@ -191,3 +191,8 @@ bindings:
   source_file: src/cli/handlers/work_verification_level.rs
   function: VerificationLevel::as_str
   status: implemented
+- contract: pmat-quality-acceptance-v1.yaml
+  equation: quality_acceptance
+  source_file: src/cli/handlers/work_quality_handlers.rs
+  function: run_popper_falsification
+  status: implemented
