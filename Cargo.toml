@@ -1,6 +1,6 @@
 [package]
 name = "pmat"
-version = "3.24.1"
+version = "3.24.2"
 edition = "2021"
 rust-version = "1.91.0"
 authors = ["Pragmatic AI Labs"]
