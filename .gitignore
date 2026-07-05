@@ -273,3 +273,9 @@ golden_traces/*
 /.cargo/*
 !/.cargo/audit.toml
 .pv/
+
+# PMAT
+.pmat/backup/
+.pmat/context.idx/
+.pmat/workspace.idx/
+.pmat/deps-cache.json

@@ -15,3 +15,7 @@ falsifiable_claims:
 - hypothesis: "claim.method is copied from evidence_method verbatim — no paraphrase drift; one obligation and one claim per step."
   method: "cargo test --lib one_claim_per_step_verbatim_fields"
   from_step: "CoT-1"
+clauses:
+- kind: ensure
+  id: "ensure.CoT-1"
+  description: "claim.method is copied from evidence_method verbatim — no paraphrase drift; one obligation and one claim per step."
