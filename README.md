@@ -1,3 +1,5 @@
+[![MCP Toplist](https://mcptoplist.com/badge/mcp.so%2Fpaiml-mcp-agent-toolkit%2Fpaiml.svg)](https://mcptoplist.com/server/mcp.so%2Fpaiml-mcp-agent-toolkit%2Fpaiml)
+
 <h1 align="center">PMAT</h1>
 
 <p align="center">
