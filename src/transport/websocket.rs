@@ -244,12 +244,6 @@ mod tests {
         assert!(result.is_ok());
     }
     
-    #[tokio::test]
-    async fn test_websocket_connection_drop_recovery() {
-        // This test would verify that dropped connections are handled gracefully
-        // For now, we just ensure the test compiles
-        assert!(true);
-    }
     
     #[test]
     fn test_websocket_transport_is_send_sync() {

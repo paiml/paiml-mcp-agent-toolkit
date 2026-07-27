@@ -61,28 +61,29 @@ impl ItemStatus {
             "cancelled" | "canceled" | "dropped" | "wontfix" => Ok(Self::Cancelled),
 
             _ => {
-                // Provide helpful suggestion using Levenshtein distance
-                let valid_statuses = [
-                    "completed",
-                    "done",
-                    "inprogress",
-                    "wip",
-                    "planned",
-                    "todo",
-                    "blocked",
-                    "stuck",
-                    "review",
-                    "cancelled",
-                ];
-                let suggestion = valid_statuses
+                // Rank over the *full* accepted set: this previously used a
+                // hand-maintained list of 10 values while `from_string` accepted
+                // 27, so a single-character typo of any of the other 17 aliases
+                // was confidently pointed at the wrong word ("wontfixx" suggested
+                // "done"). Ties break toward a canonical status, because the
+                // widened pool otherwise lets an obscure alias win on list order
+                // alone — 'obsolete' is distance 5 from both 'completed' and
+                // 'on-hold', and should keep suggesting the canonical one.
+                let suggestion = Self::valid_values()
                     .iter()
-                    .min_by_key(|v| levenshtein_distance(&normalized, v))
+                    .min_by_key(|v| {
+                        let distance = levenshtein_distance(&normalized, &v.replace('-', ""));
+                        (distance, !Self::CANONICAL_VALUES.contains(v))
+                    })
                     .map(|s| format!(" (did you mean '{}'?)", s))
                     .unwrap_or_default();
 
                 Err(format!(
-                    "unknown status '{}'{}\n\nValid values: completed, done, inprogress, wip, planned, todo, blocked, review, cancelled",
-                    s, suggestion
+                    "unknown status '{}'{}\n\nValid values: {}\n\
+                     (case-insensitive; '-' and '_' are ignored)",
+                    s,
+                    suggestion,
+                    Self::valid_values().join(", ")
                 ))
             }
         }
@@ -125,31 +126,50 @@ impl ItemStatus {
         }
     }
 
+    /// The six canonical spellings, preferred when a typo suggestion ties.
+    const CANONICAL_VALUES: [&'static str; 6] = [
+        "planned",
+        "inprogress",
+        "blocked",
+        "review",
+        "completed",
+        "cancelled",
+    ];
+
     /// Get all valid status strings for help text
+    ///
+    /// Must stay in sync with [`ItemStatus::from_string`]; the round-trip is
+    /// guarded by `test_valid_values_all_parse`.
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
     pub fn valid_values() -> &'static [&'static str] {
         &[
-            "completed",
-            "done",
-            "finished",
-            "closed",
-            "inprogress",
-            "in_progress",
-            "wip",
-            "active",
             "planned",
             "todo",
             "open",
             "pending",
+            "new",
+            "inprogress",
+            "in-progress",
+            "wip",
+            "active",
+            "started",
+            "working",
             "blocked",
             "stuck",
             "waiting",
+            "on-hold",
             "review",
             "reviewing",
             "pr",
+            "pending-review",
+            "completed",
+            "done",
+            "finished",
+            "closed",
             "cancelled",
             "canceled",
             "dropped",
+            "wontfix",
         ]
     }
 }

@@ -1,7 +1,6 @@
 // Core analysis functions for defect prediction
 // Included from defect_prediction_helpers.rs - shares parent module scope
 
-
 /// Configuration for defect prediction.
 pub struct DefectPredictionConfig {
     pub confidence_threshold: f32,
@@ -12,7 +11,6 @@ pub struct DefectPredictionConfig {
     pub include: Option<String>,
     pub exclude: Option<String>,
 }
-
 
 /// Result of defect analysis operation.
 pub struct DefectAnalysisResult {

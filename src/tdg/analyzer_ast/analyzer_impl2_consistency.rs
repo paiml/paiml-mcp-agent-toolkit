@@ -178,5 +178,4 @@ impl TdgAnalyzerAst {
         ).unwrap_or(0.0)
     }
 
-
 }

@@ -290,7 +290,6 @@ async fn analyze_file_by_toolchain(
     }
 }
 
-
 async fn analyze_deno_file(path: &Path) -> Option<FileContext> {
     let ext = path.extension().and_then(|s| s.to_str());
     match ext {

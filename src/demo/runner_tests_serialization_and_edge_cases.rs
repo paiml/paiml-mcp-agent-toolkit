@@ -282,8 +282,6 @@
         }
     }
 
-
-
     // === DemoRunner execution_log Tests ===
 
     #[tokio::test]

@@ -20,24 +20,6 @@ use proptest::prelude::*;
 #[allow(unused_imports)]
 use std::path::PathBuf;
 
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}
-
 mod tests {
     use super::*;
     use crate::models::complexity_bound::{BigOClass, ComplexityBound, InputVariable};

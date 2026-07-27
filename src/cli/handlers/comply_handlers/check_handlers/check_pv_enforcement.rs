@@ -220,7 +220,6 @@ fn cb1203_classify_equation(
     Cb1203EqOutcome::NotFound
 }
 
-
 /// CB-1201: PV Lint + contract fulfillment gate.
 /// Checks: (1) pv lint passes, (2) referenced tests EXIST, (3) they PASS.
 /// Missing test = unfalsifiable claim = FAIL (like TDG grade F).

@@ -434,20 +434,3 @@ mod tests {
     }
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            prop_assert!(_x < 1001);
-        }
-    }
-}

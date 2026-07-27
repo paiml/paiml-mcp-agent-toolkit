@@ -294,7 +294,6 @@
         assert!(result.is_none());
     }
 
-
     // === detect_repository Without Git Tests ===
 
     #[test]

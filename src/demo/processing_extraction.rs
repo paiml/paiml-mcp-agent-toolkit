@@ -94,7 +94,6 @@ pub(crate) fn extract_dag_from_result(
     parse_dag_data(&dag_data)
 }
 
-
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]
 pub(crate) fn parse_dag_data(
     dag_data: &serde_json::Value,

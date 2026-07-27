@@ -242,6 +242,9 @@ impl CliInput {
             Commands::Mcp(_) => {
                 CommandCategory::System
             }
+            Commands::Agy(_) => {
+                CommandCategory::System // Anti-Gravity translator, sibling of Mcp
+            }
         }
     }
 

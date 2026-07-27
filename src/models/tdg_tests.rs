@@ -83,7 +83,6 @@ mod property_tests {
             prop_assert!(score.components.dead_code >= 0.0);
         }
 
-
         #[test]
         fn tdg_severity_ordering_consistent(value in 0.0..10.0) {
             let severity = if value > 2.5 { TDGSeverity::Critical }

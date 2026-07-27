@@ -49,7 +49,6 @@ pub(crate) async fn analyze_dag(
     Ok(graph)
 }
 
-
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_churn(
     repo_path: &std::path::Path,
@@ -57,7 +56,6 @@ pub(crate) async fn analyze_churn(
     crate::services::git_analysis::GitAnalysisService::analyze_code_churn(repo_path, 30)
         .map_err(|e| anyhow::anyhow!("Error analyzing churn: {e}"))
 }
-
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_system_architecture(
@@ -95,7 +93,6 @@ pub(crate) async fn analyze_system_architecture(
         .execute(&context)
         .map_err(|e| anyhow::anyhow!("Error analyzing architecture: {e}"))
 }
-
 
 #[provable_contracts_macros::contract("pmat-core.yaml", equation = "path_exists")]
 pub(crate) async fn analyze_defect_probability(

@@ -1,24 +1,5 @@
 // QDD handlers tests extracted from qdd_handlers.rs for file health (CB-040).
 // This file is include!()'d into qdd_handlers.rs scope.
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
@@ -1211,7 +1192,6 @@ mod coverage_tests {
         let reparsed: serde_json::Value = serde_json::from_str(&pretty).unwrap();
         assert_eq!(reparsed["profile"], "relaxed");
     }
-
 
     #[tokio::test]
     async fn test_handle_qdd_validate_all_formats() {

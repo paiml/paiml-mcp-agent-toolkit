@@ -55,6 +55,3 @@ mod tests {
     include!("refactor_tests.rs");
     include!("refactor_tests_part2.rs");
 }
-
-// Property-based tests
-include!("refactor_property_tests.rs");

@@ -616,26 +616,40 @@ mod tests {
         );
     }
 
+    /// Restores `CARGO_TARGET_DIR` to its original value on drop, so a failing
+    /// assertion cannot leak the override into other tests.
+    struct CargoTargetDirGuard(Option<String>);
+
+    impl CargoTargetDirGuard {
+        fn set(value: &str) -> Self {
+            let guard = Self(std::env::var("CARGO_TARGET_DIR").ok());
+            std::env::set_var("CARGO_TARGET_DIR", value);
+            guard
+        }
+    }
+
+    impl Drop for CargoTargetDirGuard {
+        fn drop(&mut self) {
+            match self.0.take() {
+                Some(v) => std::env::set_var("CARGO_TARGET_DIR", v),
+                None => std::env::remove_var("CARGO_TARGET_DIR"),
+            }
+        }
+    }
+
     #[test]
+    #[serial_test::serial(cargo_target_dir_env)]
     fn test_collect_fast_candidates_honors_cargo_target_dir_env_var() {
         let tmp = TempDir::new().unwrap();
-        // SAFETY: tests run in a shared environment. This may race with parallel
-        // tests in this module. To avoid false negatives we only check that the
-        // env-var path appears in the output when set.
         let marker = "/tmp/test-cargo-target-dir-marker";
-        // Snapshot original env
-        let orig = std::env::var("CARGO_TARGET_DIR").ok();
-        std::env::set_var("CARGO_TARGET_DIR", marker);
+        let _guard = CargoTargetDirGuard::set(marker);
+
         let out = collect_fast_candidates(tmp.path(), None);
-        // Restore
-        match orig {
-            Some(v) => std::env::set_var("CARGO_TARGET_DIR", v),
-            None => std::env::remove_var("CARGO_TARGET_DIR"),
-        }
+
         let expected = std::path::PathBuf::from(marker).join("llvm-cov-target");
         assert!(
             out.contains(&expected),
-            "expected marker path to be in candidates"
+            "expected marker path to be in candidates, got: {out:?}"
         );
     }
 
@@ -777,21 +791,50 @@ mod tests {
         assert_eq!(path, stored);
     }
 
+    /// `CARGO_TARGET_DIR` is checked before the machine-dependent candidates
+    /// (`/mnt/*/targets/*`, global cargo config), so pointing it at a directory
+    /// that really exists makes the result deterministic on any host.
     #[test]
-    fn test_get_profdata_mtime_fast_returns_none_on_empty_project() {
-        // Empty tempdir has no llvm-cov-target anywhere and no env overrides.
-        let tmp = TempDir::new().unwrap();
-        // Clear env just in case
-        let orig = std::env::var("CARGO_TARGET_DIR").ok();
-        std::env::remove_var("CARGO_TARGET_DIR");
-        let out = get_profdata_mtime_fast(tmp.path(), None);
-        match orig {
-            Some(v) => std::env::set_var("CARGO_TARGET_DIR", v),
-            None => std::env::remove_var("CARGO_TARGET_DIR"),
+    #[serial_test::serial(cargo_target_dir_env)]
+    fn test_get_profdata_mtime_fast_returns_cargo_target_dir_hit() {
+        let project = TempDir::new().unwrap();
+        let target = TempDir::new().unwrap();
+        let profdata_dir = target.path().join("llvm-cov-target");
+        std::fs::create_dir_all(&profdata_dir).unwrap();
+        let _guard = CargoTargetDirGuard::set(&target.path().to_string_lossy());
+
+        let (_mtime, dir) =
+            get_profdata_mtime_fast(project.path(), None).expect("existing target dir is found");
+
+        assert_eq!(std::path::Path::new(&dir), profdata_dir);
+    }
+
+    /// A candidate that does not exist on disk must never be returned. This is
+    /// asserted instead of "the result is None" because `collect_fast_candidates`
+    /// also probes `/mnt/*/targets/*` and the global cargo config, so a bare
+    /// `is_none()` would be host-dependent — which is why this test previously
+    /// discarded its result and asserted nothing at all.
+    #[test]
+    #[serial_test::serial(cargo_target_dir_env)]
+    fn test_get_profdata_mtime_fast_never_returns_missing_candidate() {
+        let project = TempDir::new().unwrap();
+        let empty_target = TempDir::new().unwrap();
+        let _guard = CargoTargetDirGuard::set(&empty_target.path().to_string_lossy());
+
+        let out = get_profdata_mtime_fast(project.path(), None);
+
+        let never = empty_target.path().join("llvm-cov-target");
+        assert!(
+            !never.exists(),
+            "precondition: the candidate must not exist on disk"
+        );
+        if let Some((_, dir)) = out {
+            assert_ne!(
+                std::path::Path::new(&dir),
+                never,
+                "returned a candidate directory that does not exist"
+            );
         }
-        // Without CARGO_TARGET_DIR and without a real target dir, this is None.
-        // However some machines have /mnt with a path-matching dir — accept either.
-        let _ = out; // Just ensure the call is covered.
     }
 
     // --- full load_coverage_from_cache with mtime (most involved path) ---

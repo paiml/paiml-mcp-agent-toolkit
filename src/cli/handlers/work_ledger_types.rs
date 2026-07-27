@@ -315,7 +315,6 @@ pub struct WorkEventRecord {
     pub event: AgentEvent,
 }
 
-
 // ============================================================================
 // MACS F1 — provenance resolution (MACS-002): declared-first, detection advisory
 // Spec: docs/specifications/components/modern-agentic-coding-support.md §4-F1

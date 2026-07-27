@@ -615,4 +615,114 @@ roadmap:
         item.status = ItemStatus::Completed;
         assert_eq!(item.completion_percentage(), 0);
     }
+
+    // ========================================================================
+    // Issue #628: the advertised status vocabulary must not drift from the
+    // accepted one. Both directions are guarded, because a user's only route
+    // to the vocabulary is the error text and `pmat work list-statuses`.
+    // ========================================================================
+
+    /// Every value `valid_values()` advertises must actually parse.
+    #[test]
+    fn test_valid_values_all_parse() {
+        for v in ItemStatus::valid_values() {
+            assert!(
+                ItemStatus::from_string(v).is_ok(),
+                "valid_values() advertises '{v}' but from_string() rejects it"
+            );
+        }
+    }
+
+    /// Every alias `from_string()` accepts must be advertised, so it is
+    /// discoverable without reverse-engineering it from parse failures.
+    #[test]
+    fn test_all_accepted_aliases_are_advertised() {
+        let accepted = [
+            "planned",
+            "todo",
+            "open",
+            "pending",
+            "new",
+            "inprogress",
+            "wip",
+            "active",
+            "started",
+            "working",
+            "blocked",
+            "stuck",
+            "waiting",
+            "on-hold",
+            "review",
+            "reviewing",
+            "pr",
+            "pending-review",
+            "completed",
+            "done",
+            "finished",
+            "closed",
+            "cancelled",
+            "canceled",
+            "dropped",
+            "wontfix",
+        ];
+        let advertised = ItemStatus::valid_values();
+        for a in accepted {
+            assert!(
+                advertised.contains(&a),
+                "from_string() accepts '{a}' but valid_values() does not advertise it"
+            );
+        }
+    }
+
+    /// The typo suggester ranks over all 27 accepted spellings, not the 10 it
+    /// used to know about, but must still prefer a canonical status when the
+    /// distance ties — issue #628 specifically called out the `obsolete` ->
+    /// `completed` hint as worth keeping.
+    #[test]
+    fn test_status_suggestions_prefer_canonical_on_ties() {
+        let hint = |input: &str| ItemStatus::from_string(input).unwrap_err();
+
+        // 'obsolete' is Levenshtein distance 5 from BOTH 'completed' and
+        // 'on-hold'; widening the candidate pool must not let the alias win.
+        assert!(
+            hint("obsolete").contains("did you mean 'completed'?"),
+            "got: {}",
+            hint("obsolete")
+        );
+
+        // Typos of aliases outside the old 10-value list now resolve correctly.
+        assert!(hint("wontfixx").contains("did you mean 'wontfix'?"));
+        assert!(hint("cancelledd").contains("did you mean 'cancelled'?"));
+        assert!(hint("reviewd").contains("did you mean 'review'?"));
+
+        // The error must also enumerate the full accepted vocabulary.
+        let err = hint("nonsense");
+        for expected in ["wontfix", "pending-review", "on-hold", "started"] {
+            assert!(err.contains(expected), "missing '{expected}' in: {err}");
+        }
+    }
+
+    /// The documented schema (docs/roadmap-schema.md) claims `item_type` and
+    /// `priority` are exact-lowercase with no alias/case handling, unlike
+    /// `status`. That asymmetry is the main parse trap, so pin it.
+    #[test]
+    fn test_item_type_and_priority_are_strict_lowercase() {
+        let with = |field: &str, value: &str| {
+            format!(
+                "roadmap_version: \"1.0\"\nroadmap:\n  - id: \"A-1\"\n    \
+                 title: \"t\"\n    status: planned\n    {field}: {value}\n"
+            )
+        };
+
+        assert!(serde_yaml_ng::from_str::<Roadmap>(&with("item_type", "bug")).is_ok());
+        assert!(serde_yaml_ng::from_str::<Roadmap>(&with("item_type", "Bug")).is_err());
+        assert!(serde_yaml_ng::from_str::<Roadmap>(&with("priority", "high")).is_ok());
+        assert!(serde_yaml_ng::from_str::<Roadmap>(&with("priority", "High")).is_err());
+
+        // `status`, by contrast, is case- and separator-insensitive.
+        assert!(serde_yaml_ng::from_str::<Roadmap>(&with("item_type", "task")).is_ok());
+        let lenient = "roadmap_version: \"1.0\"\nroadmap:\n  - id: \"A-1\"\n    \
+                       title: \"t\"\n    status: In-Progress\n";
+        assert!(serde_yaml_ng::from_str::<Roadmap>(lenient).is_ok());
+    }
 }

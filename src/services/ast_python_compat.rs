@@ -157,26 +157,6 @@ pub async fn analyze_python_file_with_classifier(
     })
 }
 
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}
-
 #[cfg(test)]
 mod ast_python_compat_tests {
     //! Covers ast_python_compat.rs (45 uncov on broad, 0% cov).

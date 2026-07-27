@@ -12,26 +12,6 @@ pub async fn handle_defect_prediction(cmd: AnalyzeCommands) -> Result<()> {
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}
-
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
 mod unit_tests {
     use super::*;
 
@@ -64,32 +44,6 @@ mod unit_tests {
         fn _verify_async_nature() {
             // handle_defect_prediction is async - verified at compile time
         }
-    }
-
-    /// Test module organization - ml_analysis groups ML-based handlers
-    #[test]
-    fn test_module_organization() {
-        // This module groups ML and predictive analysis handlers:
-        // 1. Defect Prediction - ML-based defect probability estimation
-        // Future: More ML-based analysis tools can be added here
-        assert!(true); // Module structure verification
-    }
-
-    /// Test that handler delegates to route_analyze_command
-    #[test]
-    fn test_handler_delegates_pattern() {
-        // The handler follows the delegation pattern:
-        // Takes AnalyzeCommands and routes to crate::cli::handlers::route_analyze_command
-        // This ensures uniform contracts across CLI/MCP/HTTP
-        assert!(true); // Delegation pattern verification
-    }
-
-    /// Test ML analysis module documentation
-    #[test]
-    fn test_module_documentation() {
-        // This test ensures the module is properly documented
-        // The module should have a doc comment explaining ML/predictive analysis
-        assert!(true); // Documentation verification
     }
 }
 

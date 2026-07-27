@@ -1,7 +1,6 @@
 // Basic unit tests for context service data structures and core functions.
 // Included via include!() in context_tests.rs.
 
-
 // === Sprint 46 Phase 7: TDD Tests for context.rs ===
 
 #[test]

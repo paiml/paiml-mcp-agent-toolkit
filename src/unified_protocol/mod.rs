@@ -165,4 +165,3 @@ include!("protocol_request.rs");
 include!("protocol_response.rs");
 include!("protocol_registry.rs");
 include!("protocol_tests.rs");
-include!("protocol_property_tests.rs");

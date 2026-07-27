@@ -131,7 +131,6 @@ pub struct ViolationTracker {
     pub timings: HashMap<String, CommandTiming>,
 }
 
-
 impl ViolationTracker {
     /// Record a command failure violation
     #[provable_contracts_macros::contract("pmat-core.yaml", equation = "check_compliance")]

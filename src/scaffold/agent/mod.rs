@@ -92,34 +92,16 @@ pub fn validate_template(path: &Path) -> Result<()> {
 
 #[cfg_attr(coverage_nightly, coverage(off))]
 #[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}
-
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
 mod coverage_tests {
     use super::*;
 
     #[test]
     fn test_list_templates_returns_vec() {
         let templates = list_templates();
-        // Should return at least some templates
-        assert!(templates.is_empty() || !templates.is_empty());
+        assert!(
+            !templates.is_empty(),
+            "the built-in template list must not be empty"
+        );
     }
 
     #[test]

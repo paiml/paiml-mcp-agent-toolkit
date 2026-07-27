@@ -18,15 +18,6 @@ mod property_tests {
     use std::path::PathBuf;
 
     proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            prop_assert!(_x < 1001);
-        }
 
         #[test]
         fn test_format_as_json_never_panics(

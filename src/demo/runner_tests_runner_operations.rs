@@ -305,7 +305,6 @@
         assert!(output.is_empty());
     }
 
-
     // === Additional DemoRunner Tests ===
 
     #[tokio::test]

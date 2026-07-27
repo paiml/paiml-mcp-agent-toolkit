@@ -255,11 +255,4 @@ mod tests {
         let result = handle_org_command(cmd).await;
         assert!(result.is_err(), "Expected error for nonexistent org");
     }
-
-    #[test]
-    #[allow(clippy::assertions_on_constants)]
-    fn test_org_handler_module_compiles() {
-        // Smoke test to ensure module compiles with feature flag
-        assert!(true);
-    }
 }

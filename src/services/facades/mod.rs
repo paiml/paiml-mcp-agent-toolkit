@@ -18,23 +18,3 @@ pub use dead_code_facade::DeadCodeFacade;
 pub use defect_prediction_facade::DefectPredictionFacade;
 pub use incremental_coverage_facade::IncrementalCoverageFacade;
 pub use satd_facade::SatdFacade;
-
-#[cfg_attr(coverage_nightly, coverage(off))]
-#[cfg(test)]
-mod property_tests {
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn basic_property_stability(_input in ".*") {
-            // Basic property test for coverage
-            prop_assert!(true);
-        }
-
-        #[test]
-        fn module_consistency_check(_x in 0u32..1000) {
-            // Module consistency verification
-            prop_assert!(_x < 1001);
-        }
-    }
-}
