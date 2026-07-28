@@ -3,13 +3,16 @@
 
 use super::cache::{read_cached_metric, read_deny_cache_fallback};
 use super::deny_refresh::{
-    refresh_deny_cache, DenyRefresh, CARGO_DENY_INSTALL_HINT, DENY_STATUS_PATH,
+    refresh_deny_cache, run_with_timeout, DenyRefresh, CARGO_DENY_INSTALL_HINT, DENY_STATUS_PATH,
 };
 use super::types::CachedMetric;
 use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+/// Examples are an incremental build, but a cold one can still be slow.
+const EXAMPLES_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
 
 /// True if the project is a Rust crate/workspace (has a `Cargo.toml`).
 ///
@@ -205,10 +208,39 @@ pub(crate) async fn test_examples_compile(project_path: &Path) -> Result<Falsifi
         ));
     }
 
-    // No cache available, and nothing in the repo writes one.
-    Ok(FalsificationResult::unmeasured(
-        "No examples cache; nothing writes .pmat-metrics/examples-status.json".to_string(),
-    ))
+    // No cache, and nothing writes one — so derive the verdict, the same way
+    // the supply-chain and lint claims do. `cargo build --examples` is bounded
+    // and incremental, unlike a coverage or benchmark run.
+    Ok(
+        match run_with_timeout(
+            Command::new("cargo")
+                .args(["build", "--examples"])
+                .current_dir(project_path),
+            EXAMPLES_TIMEOUT,
+        ) {
+            Ok(Some(output)) if output.status.success() => {
+                FalsificationResult::passed("examples compile".to_string())
+            }
+            Ok(Some(output)) => FalsificationResult::failed(
+                "examples do not compile".to_string(),
+                EvidenceType::CounterExample {
+                    details: String::from_utf8_lossy(&output.stderr)
+                        .lines()
+                        .filter(|l| l.trim_start().starts_with("error"))
+                        .take(5)
+                        .collect::<Vec<_>>()
+                        .join("; "),
+                },
+            ),
+            Ok(None) => FalsificationResult::unmeasured(format!(
+                "'cargo build --examples' did not finish within {}s",
+                EXAMPLES_TIMEOUT.as_secs()
+            )),
+            Err(e) => FalsificationResult::unmeasured(format!(
+                "could not run 'cargo build --examples': {e}"
+            )),
+        },
+    )
 }
 
 /// Run `make validate-book` and return the result.
@@ -430,9 +462,20 @@ pub(crate) async fn test_regression_gate(project_path: &Path) -> Result<Falsific
         }
     }
 
-    // No cache, and nothing in the repo writes one.
+    // Benchmarks are the one input a gate must not derive: a criterion run is
+    // minutes to hours, so unlike deny/lint/examples there is no bounded way to
+    // measure this on demand. A project with no benches has nothing to regress
+    // — that is a genuine N/A, not an unmeasured claim. Otherwise say plainly
+    // that no benchmark result exists.
+    if !project_path.join("benches").exists() {
+        return Ok(FalsificationResult::passed(
+            "N/A (no benches/ directory)".to_string(),
+        ));
+    }
+
     Ok(FalsificationResult::unmeasured(
-        "No benchmark cache (run benchmarks to populate .pmat-metrics/benchmark-status.json)"
+        "No benchmark result; run 'cargo bench' and record it to \
+         .pmat-metrics/benchmark-status.json"
             .to_string(),
     ))
 }

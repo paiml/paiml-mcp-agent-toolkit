@@ -163,6 +163,20 @@ pub(super) fn parse_lcov_to_coverage_map(
 
 // ── Coverage File Discovery ─────────────────────────────────────────────────
 
+/// Line coverage for the project, from whatever artifact a coverage run left.
+///
+/// Returns `None` when no coverage has been produced — the caller must then say
+/// it could not measure, rather than inventing a verdict. Exposed for the
+/// falsification ladder, whose coverage claims previously read
+/// `target/llvm-cov/coverage.json`, a path nothing has ever written, so they
+/// silently passed on every repository.
+#[cfg_attr(coverage_nightly, coverage(off))]
+pub(crate) fn discover_line_coverage(
+    project_root: &Path,
+) -> Option<HashMap<String, HashMap<usize, u64>>> {
+    try_load_lcov_info(project_root).or_else(|| try_load_coverage_json(project_root))
+}
+
 /// Try loading coverage from an lcov.info file before running cargo llvm-cov.
 ///
 /// Searches standard locations: `target/coverage/lcov.info`, `target/llvm-cov-target/lcov.info`.

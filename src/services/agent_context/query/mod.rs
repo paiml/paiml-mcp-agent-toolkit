@@ -15,6 +15,7 @@ pub(crate) mod raw_search;
 pub(crate) mod suggest_rename;
 mod types;
 
+pub(crate) use coverage::discover_line_coverage;
 pub use coverage::{
     build_coverage_map, compute_impact_score, enrich_results_with_coverage, enrich_with_coverage,
     enrich_with_coverage_diff, format_coverage_summary, load_workspace_coverage,

@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.27.0] - 2026-07-28
+
+v3.26.0 made the ladder stop *lying* about the six claims that verified nothing —
+they reported `NOT MEASURED` instead of `PASSED`. This release gives them real
+data sources, so they verify something.
+
+### Fixed — the coverage claims now read coverage
+All three consulted either nothing at all or `target/llvm-cov/coverage.json`, a
+path no tool in this repository has ever written (`make coverage` produces
+`target/coverage/lcov.info`). They now use the same artifact discovery
+`pmat query --coverage` already relies on.
+
+- **[4] DifferentialCoverage was a hard-coded pass** — every path out of the
+  function returned `passed`, and it never consulted coverage at all. It now
+  parses `git diff -U0` hunk headers for the lines the work actually introduced
+  and checks each against its recorded hit count, reporting the uncovered ones by
+  `file:line`. Verified end to end: given a change touching an uncovered line, it
+  reports `1/2 changed line(s) uncovered: src/main.rs:6`.
+- **[16] PerFileCoverage** now computes per-file percentages from the coverage
+  map and names the files below threshold, worst first and deterministically
+  ordered. Verified: `1 file(s) below 95.0% threshold: src/main.rs: 66.7%`.
+- **[5] AbsoluteCoverage** falls back to the raw llvm-cov artifact when
+  `.pmat-metrics/trends/test-coverage.json` is absent — which is the state of
+  every repository straight after its first coverage run. Verified: `66.7% <
+  95.0% threshold`.
+
+Coverage is deliberately *not* derived on demand: unlike cargo-deny or clippy, an
+llvm-cov run is many minutes, so a gate must not trigger one. With no artifact
+present these claims still report `NOT MEASURED`, now naming the command that
+produces one.
+
+### Fixed — TDG, examples, benchmarks
+- **[6] TdgRegression read `.pmat-metrics/tdg-score.json`, which has no writer.**
+  `.pmat/baseline.json` carries the same figure as `summary.avg_score` and *is*
+  written — by `pmat analyze tdg --update-baseline`, which the pre-commit hook
+  runs on every commit. The documented path is still preferred; the baseline is
+  the fallback. Verified: `88.5 >= 0.0 (baseline)`.
+- **[12] ExamplesCompile** now derives its verdict with a bounded
+  `cargo build --examples`, the way the supply-chain and lint claims do, instead
+  of passing because a cache nothing writes was absent.
+- **[21] RegressionGate** is the one input a gate must not derive — a criterion
+  run is minutes to hours. A project with no `benches/` is now a genuine N/A
+  rather than an unmeasured claim; one with benches says plainly that no result
+  has been recorded.
+
+With this, every claim in the ladder either measures something, derives it
+within a bounded subprocess, or states exactly what is missing and how to
+produce it. None of them reports success for work it did not do.
+
 ## [3.26.0] - 2026-07-28
 
 An audit of the falsification ladder and of v3.25.0's own new code. The headline
