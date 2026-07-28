@@ -4,13 +4,12 @@
 
 /// Item status enumeration with alias support (Part A: YAML Parsing Resilience)
 ///
-/// Supports multiple aliases for user-friendly YAML input:
-/// - completed: "done", "finished", "closed"
-/// - inprogress: "in_progress", "in-progress", "wip", "active", "started"
-/// - planned: "todo", "open", "pending", "new"
-/// - blocked: "stuck", "waiting", "on-hold"
-/// - review: "reviewing", "pr", "pending-review"
-/// - cancelled: "canceled", "dropped", "wontfix"
+/// Aliases make YAML input forgiving; the accepted set is
+/// [`ItemStatus::STATUS_TABLE`], which is also what `pmat work list-statuses`
+/// prints and what `docs/roadmap-schema.md` documents. This doc comment
+/// deliberately does not repeat the list: an earlier copy here and a third in
+/// the `list-statuses` handler both drifted from `from_string`, which is the
+/// defect GH #628 was about.
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemStatus {
@@ -33,6 +32,46 @@ impl<'de> serde::Deserialize<'de> for ItemStatus {
 }
 
 impl ItemStatus {
+    /// The status vocabulary, as canonical value / aliases / description.
+    ///
+    /// Single source for everything user-facing: `pmat work list-statuses`
+    /// renders it, and `test_status_table_matches_valid_values` pins it against
+    /// [`Self::valid_values`] in both directions, so an alias can no longer be
+    /// accepted by `from_string` while the command that documents the
+    /// vocabulary omits it (`working` was missing for exactly that reason).
+    pub const STATUS_TABLE: &'static [(&'static str, &'static str, &'static str)] = &[
+        (
+            "planned",
+            "todo, open, pending, new",
+            "Task not yet started",
+        ),
+        (
+            "inprogress",
+            "in-progress, wip, active, started, working",
+            "Currently being worked on",
+        ),
+        (
+            "blocked",
+            "stuck, waiting, on-hold",
+            "Cannot proceed (waiting on something)",
+        ),
+        (
+            "review",
+            "reviewing, pr, pending-review",
+            "Ready for or in code review",
+        ),
+        (
+            "completed",
+            "done, finished, closed",
+            "Work finished successfully",
+        ),
+        (
+            "cancelled",
+            "canceled, dropped, wontfix",
+            "Work abandoned or not needed",
+        ),
+    ];
+
     /// Parse status from string with alias support
     ///
     /// Returns helpful error messages with suggestions for typos

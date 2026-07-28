@@ -2,7 +2,9 @@
 //! Core falsification checks: manifest, coverage, TDG, complexity, spec, roadmap, git.
 
 use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult, FileManifest};
-use crate::cli::handlers::work_falsification::pmat_owned_state::is_pmat_owned_state;
+use crate::cli::handlers::work_falsification::pre_run_tree::{
+    dirty_file_paths, has_upstream, parse_ahead_count, pre_run_status, read_porcelain_status,
+};
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -441,60 +443,66 @@ pub(crate) fn test_roadmap_update(
 pub(crate) fn test_github_sync(project_path: &Path) -> Result<FalsificationResult> {
     print!("Checking git status... ");
 
-    // Check for unpushed commits
-    let output = Command::new("git")
-        .args(["status", "--porcelain", "-b"])
-        .current_dir(project_path)
-        .output()
-        .context("Failed to run git status")?;
-
-    let status = String::from_utf8_lossy(&output.stdout);
-
-    // Check for ahead commits
-    let ahead_count = if status.contains("ahead") {
-        // Parse "ahead X" from status
-        status
-            .lines()
-            .next()
-            .and_then(|l| {
-                l.find("ahead")
-                    .and_then(|i| l.get(i..))
-                    .and_then(|s| s.split_whitespace().nth(1))
-                    .and_then(|n| n.trim_end_matches(']').parse::<usize>().ok())
-            })
-            .unwrap_or(0)
-    } else {
-        0
+    // GH #630: judge the tree pmat FOUND, not the one it made. `pmat work
+    // complete` writes caches, a ledger, receipts and (on success) the roadmap
+    // and CHANGELOG while it runs, so reading git status here used to fail on
+    // pmat's own output and no commit-and-retry could ever reach a fixed point.
+    // The snapshot is taken before any of those writes; falling back to a live
+    // read keeps this correct for callers that never mutate the tree.
+    let status = match pre_run_status() {
+        Some(snapshot) => snapshot,
+        None => read_porcelain_status(project_path).context("Failed to run git status")?,
     };
 
-    // Count dirty files. Exclusions:
-    //   1. untracked `??` lines — not uncommitted changes (GH #224).
-    //   2. pmat-owned state files — PMAT-154 self-dirty loop.
-    let dirty_count = status
-        .lines()
-        .skip(1)
-        .filter(|l| !l.is_empty() && !l.starts_with("??"))
-        .filter(|l| !is_pmat_owned_state(l))
-        .count();
+    let ahead_count = parse_ahead_count(&status);
+    let dirty_paths = dirty_file_paths(&status);
+    let dirty_count = dirty_paths.len();
+    let tracks_upstream = has_upstream(&status);
 
-    if ahead_count == 0 && dirty_count == 0 {
-        Ok(FalsificationResult::passed(
+    if tracks_upstream && ahead_count == 0 && dirty_count == 0 {
+        return Ok(FalsificationResult::passed(
             "All changes committed and pushed".to_string(),
-        ))
-    } else {
-        let mut issues = Vec::new();
-        if ahead_count > 0 {
-            issues.push(format!("{} unpushed commit(s)", ahead_count));
-        }
-        if dirty_count > 0 {
-            issues.push(format!("{} uncommitted file(s)", dirty_count));
-        }
-        Ok(FalsificationResult::failed(
-            issues.join(", "),
-            EvidenceType::GitState {
-                unpushed_commits: ahead_count,
-                dirty_files: dirty_count,
-            },
-        ))
+        ));
+    }
+
+    let mut issues = Vec::new();
+    if !tracks_upstream {
+        // Nothing can have been pushed from a branch with no upstream, so
+        // reporting "all pushed" here was a false pass.
+        issues.push("branch has no upstream (nothing pushed)".to_string());
+    }
+    if ahead_count > 0 {
+        issues.push(format!("{} unpushed commit(s)", ahead_count));
+    }
+    if dirty_count > 0 {
+        // Name the files. "1 uncommitted file(s)" alone is unfalsifiable by the
+        // reader, which is how a true positive got filed as a pmat bug (#630).
+        issues.push(format!(
+            "{} uncommitted file(s): {}",
+            dirty_count,
+            summarize_paths(&dirty_paths)
+        ));
+    }
+    Ok(FalsificationResult::failed(
+        issues.join(", "),
+        EvidenceType::GitState {
+            unpushed_commits: ahead_count,
+            dirty_files: dirty_count,
+        },
+    ))
+}
+
+/// Render at most a handful of paths, so a large dirty tree stays readable.
+fn summarize_paths(paths: &[String]) -> String {
+    const SHOWN: usize = 5;
+    let head = paths
+        .iter()
+        .take(SHOWN)
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join(", ");
+    match paths.len().checked_sub(SHOWN) {
+        Some(rest) if rest > 0 => format!("{head}, +{rest} more"),
+        _ => head,
     }
 }

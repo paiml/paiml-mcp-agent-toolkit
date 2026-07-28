@@ -32,6 +32,26 @@ jobs:
           fi
           echo "All required jobs passed"
 
+  # GH #625: `cargo install pmat` was broken on Windows for every published
+  # version, because no CI leg ever compiled for it — aprender's default `cli`
+  # feature pulled in aprender-profile, which does not build there, and all four
+  # Unix legs stayed green throughout.
+  #
+  # Informational for now (`continue-on-error`, and deliberately NOT in `gate`'s
+  # `needs`): this is the first time pmat's own sources reach the Windows
+  # compiler, so a second wave of unrelated failures is likely. Promote it to a
+  # required check once it has been green for a few runs.
+  windows-check:
+    runs-on: windows-latest
+    continue-on-error: true
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo check --bin pmat (default features)
+        run: cargo check --bin pmat --locked
+
   # GH-275: Post-merge mutation testing for RPS Rust Tooling score.
   # Runs only on push to master (never on PRs — takes 30-120 min).
   # `continue-on-error: true` keeps this informational, not blocking.

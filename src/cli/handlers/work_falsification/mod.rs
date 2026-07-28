@@ -13,8 +13,10 @@ pub mod advanced_checks;
 pub mod cache;
 pub mod churn_checks;
 pub mod core_checks;
+pub mod deny_refresh;
 pub mod formal_checks;
 pub mod pmat_owned_state;
+pub mod pre_run_tree;
 pub mod runner;
 pub mod supply_chain_checks;
 mod tests;
@@ -22,5 +24,6 @@ pub mod types;
 
 // Re-export public API
 pub use cache::capture_baseline;
+pub use pre_run_tree::{snapshot_working_tree, TreeSnapshot};
 pub use runner::run_falsification_tests;
 pub use types::{ClaimResult, FalsificationReport};

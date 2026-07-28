@@ -622,6 +622,110 @@ roadmap:
     // to the vocabulary is the error text and `pmat work list-statuses`.
     // ========================================================================
 
+    /// #628's third ask: `item_type` had no did-you-mean hint, so a typo cost a
+    /// full fix-and-rerun cycle with no candidate offered.
+    #[test]
+    fn test_item_type_suggests_the_nearest_value() {
+        let err = |s: &str| ItemType::from_string(s).unwrap_err();
+
+        assert!(err("bugg").contains("did you mean 'bug'?"), "{}", err("bugg"));
+        assert!(
+            err("featuree").contains("did you mean 'feature'?"),
+            "{}",
+            err("featuree")
+        );
+        // A case error is the most common way to hit this, since item_type is
+        // strict-lowercase while status is not.
+        assert!(err("Bug").contains("did you mean 'bug'?"), "{}", err("Bug"));
+        assert!(
+            err("Documentation").contains("did you mean 'documentation'?"),
+            "{}",
+            err("Documentation")
+        );
+    }
+
+    /// The hint must stay quiet rather than guess. `verification` — the exact
+    /// value from #628's round 1 — is nowhere near any accepted value, and
+    /// pointing it at `refactor` would make the suggestion untrustworthy.
+    #[test]
+    fn test_item_type_offers_no_hint_when_nothing_is_close() {
+        let err = ItemType::from_string("verification").unwrap_err();
+        assert!(!err.contains("did you mean"), "{err}");
+        // It must still enumerate the vocabulary, which is the actionable part.
+        assert!(err.contains("task, epic, bug"), "{err}");
+        assert!(err.contains("unknown item_type 'verification'"), "{err}");
+    }
+
+    /// Every advertised item_type must parse, and the enum must not grow a
+    /// variant the error text never mentions.
+    #[test]
+    fn test_item_type_valid_values_all_parse() {
+        for v in ItemType::VALID_VALUES {
+            assert!(
+                ItemType::from_string(v).is_ok(),
+                "VALID_VALUES advertises '{v}' but from_string rejects it"
+            );
+        }
+        assert_eq!(
+            ItemType::VALID_VALUES.len(),
+            7,
+            "a new ItemType variant needs adding to VALID_VALUES"
+        );
+    }
+
+    /// The custom Deserialize must not change the wire format.
+    #[test]
+    fn test_item_type_roundtrips_through_yaml() {
+        for v in ItemType::VALID_VALUES {
+            let parsed = ItemType::from_string(v).unwrap();
+            let encoded = serde_yaml_ng::to_string(&parsed).unwrap();
+            assert_eq!(encoded.trim(), *v, "round-trip changed the wire format");
+            assert_eq!(
+                serde_yaml_ng::from_str::<ItemType>(&encoded).unwrap(),
+                parsed
+            );
+        }
+    }
+
+    /// The table `pmat work list-statuses` prints must agree with the parser in
+    /// both directions.
+    ///
+    /// This is the copy that drifted: the handler carried a hand-maintained
+    /// duplicate that omitted `working`, so the command #628 points at as the
+    /// authoritative vocabulary under-reported it. Deriving the table from one
+    /// place is only half a fix — without this test the next copy drifts too.
+    #[test]
+    fn test_status_table_matches_valid_values() {
+        let normalize = |s: &str| s.to_lowercase().replace(['-', '_'], "");
+
+        // Every advertised value appears in the rendered table.
+        let mut in_table: Vec<String> = Vec::new();
+        for (canonical, aliases, _) in ItemStatus::STATUS_TABLE {
+            in_table.push(normalize(canonical));
+            in_table.extend(aliases.split(", ").map(normalize));
+        }
+        for v in ItemStatus::valid_values() {
+            assert!(
+                in_table.contains(&normalize(v)),
+                "valid_values() advertises '{v}' but `pmat work list-statuses` never prints it"
+            );
+        }
+
+        // And everything the table prints actually parses, to the row it is under.
+        for (canonical, aliases, _) in ItemStatus::STATUS_TABLE {
+            let expected = ItemStatus::from_string(canonical)
+                .unwrap_or_else(|e| panic!("table canonical '{canonical}' does not parse: {e}"));
+            for alias in aliases.split(", ") {
+                let parsed = ItemStatus::from_string(alias)
+                    .unwrap_or_else(|e| panic!("table alias '{alias}' does not parse: {e}"));
+                assert_eq!(
+                    parsed, expected,
+                    "'{alias}' is printed under '{canonical}' but parses to {parsed:?}"
+                );
+            }
+        }
+    }
+
     /// Every value `valid_values()` advertises must actually parse.
     #[test]
     fn test_valid_values_all_parse() {

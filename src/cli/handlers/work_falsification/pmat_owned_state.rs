@@ -28,9 +28,23 @@ pub(crate) fn is_pmat_owned_state(porcelain_line: &str) -> bool {
         .next()
         .unwrap_or(after_status)
         .trim();
+    let path = unquote_porcelain_path(path);
     PMAT_OWNED_STATE_PREFIXES
         .iter()
         .any(|p| path.starts_with(p))
+}
+
+/// Strip the quoting git applies to paths containing spaces or specials.
+///
+/// `git status --porcelain` renders such paths as `"…"` with C-style escapes.
+/// Matching the prefix against the raw field meant the leading quote made every
+/// quoted pmat path miss the filter, so `.pmat/some cache.db` counted as the
+/// user's uncommitted work — a false failure of the very claim this filter
+/// exists to keep honest.
+fn unquote_porcelain_path(path: &str) -> &str {
+    path.strip_prefix('"')
+        .and_then(|p| p.strip_suffix('"'))
+        .unwrap_or(path)
 }
 
 #[cfg(test)]
@@ -66,6 +80,20 @@ mod tests {
             "R  src/old.rs -> .pmat-work/archived.rs"
         ));
         assert!(!is_pmat_owned_state("R  .pmat-work/old.rs -> src/new.rs"));
+    }
+
+    #[test]
+    fn quoted_paths_are_still_recognised() {
+        // git quotes paths containing spaces or specials. Matching the prefix
+        // against the raw field made the leading `"` miss, so pmat's own cache
+        // counted as the user's uncommitted work.
+        assert!(is_pmat_owned_state(" M \".pmat/we ird.db\""));
+        assert!(is_pmat_owned_state("?? \".pmat-work/PMAT-1/a b.json\""));
+        assert!(is_pmat_owned_state(
+            "R  \"src/o ld.rs\" -> \".pmat-work/n ew.rs\""
+        ));
+        // A quoted user path must still count.
+        assert!(!is_pmat_owned_state(" M \"src/we ird.rs\""));
     }
 
     #[test]

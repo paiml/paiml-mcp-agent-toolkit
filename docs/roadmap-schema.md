@@ -5,7 +5,7 @@ Reference for `docs/roadmaps/roadmap.yaml`, the file read by `pmat work`.
 Quick checks:
 
 ```bash
-pmat work validate        # parse the roadmap and report the first error with context
+pmat work validate        # parse the roadmap and list every broken row
 pmat work list-statuses   # print the status vocabulary and its aliases
 pmat work migrate         # auto-fix common issues
 ```
@@ -26,9 +26,12 @@ item_type: Task         # ERROR — must be lowercase `task`
 priority: High          # ERROR — must be lowercase `high`
 ```
 
-Because the parser is serde-based, it stops at the **first** violation. If you are
-conforming a large roadmap, expect to iterate unless you fix all classes up front —
-that is what the tables below are for.
+All three report a nearest-match hint on a typo (`item_type: bugg` suggests `bug`),
+and enumerate their accepted values.
+
+The parser is serde-based, so any single load stops at the **first** violation. Do not
+conform a large roadmap that way: run `pmat work validate`, which re-checks each row
+independently and lists every broken one, with its index and id, in a single pass.
 
 ## Top level
 

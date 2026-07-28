@@ -2,6 +2,10 @@
 //! Supply chain, examples, book validation, cross-crate, and regression gate checks.
 
 use super::cache::{read_cached_metric, read_deny_cache_fallback};
+use super::deny_refresh::{
+    refresh_deny_cache, DenyRefresh, CARGO_DENY_INSTALL_HINT, DENY_STATUS_PATH,
+};
+use super::types::CachedMetric;
 use crate::cli::handlers::work_contract::{EvidenceType, FalsificationResult};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -33,60 +37,76 @@ pub(crate) async fn test_supply_chain_integrity(
         ));
     }
 
-    // O(1): Read from cache instead of running cargo deny
-    // Try primary cache location, then fallback to work-item and .pmat directories
-    if let Some(cache) = read_cached_metric(project_path, "deny-status.json")
-        .or_else(|| read_deny_cache_fallback(project_path))
-    {
-        if cache.is_stale_block {
-            return Ok(FalsificationResult::failed(
-                format!(
-                    "Deny cache too old ({} min). Run 'cargo deny check' first.",
-                    cache.age_minutes
-                ),
-                EvidenceType::BooleanCheck(false),
-            ));
-        }
+    // O(1) hot path: a cache inside the block window is a stat + parse.
+    // Try primary cache location, then fallback to work-item and .pmat directories.
+    let cached = read_cached_metric(project_path, "deny-status.json")
+        .or_else(|| read_deny_cache_fallback(project_path));
 
-        // Validate 'passed' field exists -- reject malformed cache (Popperian Audit v2.1)
-        let passed = match cache.value.get("passed").and_then(|v| v.as_bool()) {
-            Some(p) => p,
-            None => {
-                return Ok(FalsificationResult::failed(
-                    "Invalid deny cache (missing 'passed' field). Re-run 'cargo deny check'."
-                        .to_string(),
-                    EvidenceType::BooleanCheck(false),
-                ));
-            }
-        };
-        let stale_note = format!(" (cached {} min ago)", cache.age_minutes);
+    match cached {
+        Some(cache) if !cache.is_stale_block => Ok(evaluate_deny_cache(&cache)),
+        // GH #629: a stale or absent cache used to be a dead end. The gate said
+        // "Run 'cargo deny check' first", but cargo-deny writes to stdout and
+        // nothing ever wrote the file the gate reads, so no user action could
+        // clear it and every completion needed --override-claims supply-chain.
+        // Refresh it ourselves; this costs one subprocess per block window.
+        _ => Ok(refresh_then_evaluate(project_path)),
+    }
+}
 
-        if passed {
-            return Ok(FalsificationResult::passed(format!(
-                "No vulnerabilities{}",
-                stale_note
-            )));
-        } else {
-            let count = cache
-                .value
-                .get("vulnerability_count")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0);
-            return Ok(FalsificationResult::failed(
-                format!("{} vulnerabilities{}", count, stale_note),
-                EvidenceType::NumericComparison {
-                    actual: count as f64,
-                    threshold: 0.0,
-                },
-            ));
-        }
+/// Re-run cargo-deny, record the verdict, and judge the claim on it.
+fn refresh_then_evaluate(project_path: &Path) -> FalsificationResult {
+    match refresh_deny_cache(project_path) {
+        DenyRefresh::Recorded(cache) => evaluate_deny_cache(&cache),
+        DenyRefresh::ToolMissing => FalsificationResult::failed(
+            format!(
+                "cargo-deny is not installed, so the supply chain cannot be vetted. \
+                 Install it with: {CARGO_DENY_INSTALL_HINT}"
+            ),
+            EvidenceType::BooleanCheck(false),
+        ),
+        DenyRefresh::Failed(why) => FalsificationResult::failed(
+            format!("Could not refresh {DENY_STATUS_PATH}: {why}"),
+            EvidenceType::BooleanCheck(false),
+        ),
+    }
+}
+
+/// Judge the supply-chain claim from a cache entry known to be fresh enough.
+fn evaluate_deny_cache(cache: &CachedMetric) -> FalsificationResult {
+    // Validate 'passed' field exists -- reject malformed cache (Popperian Audit v2.1)
+    let Some(passed) = cache.value.get("passed").and_then(|v| v.as_bool()) else {
+        return FalsificationResult::failed(
+            format!("Invalid deny cache (missing 'passed' field). Delete {DENY_STATUS_PATH} and re-run."),
+            EvidenceType::BooleanCheck(false),
+        );
+    };
+    let stale_note = format!(" (cached {} min ago)", cache.age_minutes);
+
+    if passed {
+        return FalsificationResult::passed(format!("No vulnerabilities{}", stale_note));
     }
 
-    // No cache - FAIL (Popperian Audit v1.2 fix: empty cache bypass)
-    Ok(FalsificationResult::failed(
-        "No deny cache. Run 'cargo deny check' first (O(1) requirement)".to_string(),
-        EvidenceType::BooleanCheck(false),
-    ))
+    let count = cache
+        .value
+        .get("vulnerability_count")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    // cargo-deny also fails on bans, licences and sources, none of which carry a
+    // vulnerability count. Reporting those as "0 vulnerabilities" phrased a
+    // failure as a success, so fall back to the recorded reason.
+    let explanation = match (count, cache.value.get("summary").and_then(|v| v.as_str())) {
+        (0, Some(summary)) if !summary.is_empty() => {
+            format!("supply chain check failed: {}{}", summary, stale_note)
+        }
+        _ => format!("{} vulnerabilities{}", count, stale_note),
+    };
+    FalsificationResult::failed(
+        explanation,
+        EvidenceType::NumericComparison {
+            actual: count as f64,
+            threshold: 0.0,
+        },
+    )
 }
 
 /// Test examples compile: O(1) - reads from cached examples status

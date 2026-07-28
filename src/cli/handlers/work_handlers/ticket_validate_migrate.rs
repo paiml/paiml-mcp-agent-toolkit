@@ -472,40 +472,10 @@ pub async fn handle_work_list_statuses() -> Result<()> {
     println!("{}{:<15} {:<25} DESCRIPTION{}", c::BOLD, "STATUS", "ALIASES", c::RESET);
     println!("{}", c::separator());
 
-    let statuses = [
-        (
-            "planned",
-            "todo, open, pending, new",
-            "Task not yet started",
-        ),
-        (
-            "inprogress",
-            "wip, active, started",
-            "Currently being worked on",
-        ),
-        (
-            "blocked",
-            "stuck, waiting, on-hold",
-            "Cannot proceed (waiting on something)",
-        ),
-        (
-            "review",
-            "reviewing, pr, pending-review",
-            "Ready for or in code review",
-        ),
-        (
-            "completed",
-            "done, finished, closed",
-            "Work finished successfully",
-        ),
-        (
-            "cancelled",
-            "canceled, dropped, wontfix",
-            "Work abandoned or not needed",
-        ),
-    ];
-
-    for (status, aliases, description) in statuses {
+    // GH #628: this table used to be a hand-maintained copy and had drifted --
+    // it omitted `working`, which `from_string` accepts and the schema doc
+    // documents. It now renders the one vocabulary the parser uses.
+    for &(status, aliases, description) in crate::models::roadmap::ItemStatus::STATUS_TABLE {
         println!("{}{:<15}{} {:<25} {}", c::CYAN, status, c::RESET, aliases, description);
     }
 
@@ -968,7 +938,18 @@ mod row_violation_tests {
         assert_eq!(violations.len(), 3, "got {violations:?}");
         assert_eq!(violations[0].index, 1);
         assert_eq!(violations[0].id.as_deref(), Some("BAD-TYPE"));
-        assert!(violations[0].message.contains("unknown variant"));
+        // Was serde's stock "unknown variant"; `item_type` now reports like
+        // `status` does, which is the last of #628's three asks.
+        assert!(
+            violations[0].message.contains("unknown item_type"),
+            "got: {}",
+            violations[0].message
+        );
+        assert!(
+            violations[0].message.contains("task, epic, bug"),
+            "the error must still enumerate the vocabulary: {}",
+            violations[0].message
+        );
         assert_eq!(violations[1].id.as_deref(), Some("BAD-STATUS"));
         assert!(violations[1].message.contains("unknown status"));
         assert_eq!(violations[2].id.as_deref(), Some("NO-STATUS"));

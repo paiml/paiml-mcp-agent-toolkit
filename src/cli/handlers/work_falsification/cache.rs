@@ -39,7 +39,12 @@ pub(crate) fn read_deny_cache_fallback(project_path: &Path) -> Option<CachedMetr
     let candidates = find_cache_file(project_path, "deny-cache.txt");
     for path in candidates {
         if let Ok(content) = std::fs::read_to_string(&path) {
-            let passed = !content.contains("error") && !content.contains("DENIED");
+            // `FAILED` is how cargo-deny reports a failing check on stdout
+            // (`advisories FAILED`); without it, a stdout-only capture of a
+            // failing run scored as passing.
+            let passed = !content.contains("error")
+                && !content.contains("DENIED")
+                && !content.contains("FAILED");
             let age_minutes = file_age_minutes(&path);
             return Some(CachedMetric {
                 value: serde_json::json!({ "passed": passed }),

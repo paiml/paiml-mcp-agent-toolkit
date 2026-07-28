@@ -7,7 +7,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.25.0] - 2026-07-27
+## [3.25.0] - 2026-07-28
+
+### Fixed — `cargo install pmat` on Windows (#625)
+- **`aprender` no longer drags an unused CLI into the dependency graph.** pmat
+  declared `aprender = "0.50"`, and aprender's `default = ["cli"]` pulls
+  `apr-cli` → `aprender-profile`, which puts 36 cross-platform dependencies under
+  `[target.'cfg(unix)'.dependencies]` while compiling the code that imports them
+  everywhere. The Windows build failed with 317 errors inside `aprender-profile`
+  before it ever reached pmat's own sources, so the published crate could not be
+  installed on Windows at all. pmat uses only the aprender library API, and
+  aprender's `lib.rs` has no `cfg(feature)` gates, so `default-features = false`
+  severs `apr-cli` with no loss of function. Every other aprender feature also
+  implies `cli`, so this must not be re-enabled.
+
+### Fixed — the falsification ladder's two unsatisfiable gates (#629, #630)
+
+Both of these made `pmat work complete` demand `--override-claims` on a routine
+basis. A gate that is always overridden has stopped being a gate, so the goal in
+each case was to make the claim *clearable by a real action*, not to relax it.
+
+- **The supply-chain claim could never clear (#629).** It reads
+  `.pmat-metrics/deny-status.json` (falling back to `deny-cache.txt`) and blocks
+  once that file is over 24h old — but **nothing has ever written either file**.
+  Not pmat, not the Makefile, not `record-metric.sh`, not CI, not a hook. The
+  advice it printed, "Run `cargo deny check` first", cannot work: cargo-deny
+  writes to stdout, never to the cache. So the claim was unsatisfiable on any
+  machine whose cache had aged out, and the only way past it was
+  `--override-claims supply-chain` — routinely waving through a *security* gate.
+
+  pmat now populates the cache itself, from cargo-deny's exit code, whenever it
+  is stale or missing. The O(1) contract is kept where it matters: a fresh cache
+  is still a stat and a parse, and the subprocess runs at most once per block
+  window. If cargo-deny is not installed the claim fails with an install command
+  rather than an unclearable staleness figure.
+
+  The reporter attributed this to pmat reading the pre-0.14 `~/.cargo/advisory-db`
+  path instead of cargo-deny's `~/.cargo/advisory-dbs/advisory-db-<hash>/`. That
+  is not the cause — pmat reads no advisory directory anywhere, and the matching
+  age was a coincidence of two files written in the same session. No advisory-db
+  probing was added, because none would have helped.
+
+- **The github-sync claim was falsified by pmat's own writes (#630).** `pmat work
+  complete` writes caches, a ledger, receipts, commit metadata and — once the
+  claims pass — the roadmap and CHANGELOG. PMAT-154 had filtered three pmat-owned
+  path prefixes out of the dirty count, but a path filter only ever covers the
+  writes someone remembered to enumerate, and it cannot cover writes into
+  user-owned files.
+
+  The claim is now judged against a snapshot of the working tree taken before
+  pmat writes anything, so the verdict describes the user's work regardless of
+  what the run goes on to touch. Four further defects in the same check, three of
+  them found while verifying the fix:
+  - **Quoted paths escaped the pmat-owned filter.** git renders paths containing
+    spaces as `"…"`, and the leading quote meant `.pmat/some cache.db` was
+    counted as the user's uncommitted work — a false *failure* of the claim.
+  - **A branch with no upstream reported "All changes pushed".** The porcelain
+    header carries no `ahead` when nothing is tracked, so the parse returned 0 and
+    a branch that had never been pushed at all satisfied the claim. A false *pass*
+    on the claim's entire point.
+  - **A diverged branch reported zero unpushed commits.** `[ahead 1, behind 2]`
+    leaves a comma on the number, which `trim_end_matches(']')` did not strip, so
+    the parse failed and fell back to 0 — again a false pass, on exactly the
+    branches most likely to have unpushed work.
+  - **The verdict named no files.** "1 uncommitted file(s)" is not checkable by
+    the person reading it, which is how a true positive came to be filed as a pmat
+    bug. Offending paths are now listed (capped at five).
+
+  Three tests covering this check re-implemented its logic inline rather than
+  calling it, so they asserted against a copy — and the ahead-count copy pinned
+  the `trim_end_matches(']')` bug. They now exercise the shipped functions.
+
+### Fixed — remaining gaps from the roadmap-schema work (#628)
+- **`item_type` now suggests the nearest value on a typo**, the last of #628's
+  three asks. `status` had a "did you mean" hint and `item_type` did not, despite
+  a bad `item_type` being the *first* of the reporter's three fix-and-rerun cycles
+  on a 1300-entry roadmap. The hint stays quiet when nothing is close, so
+  `verification` — the reporter's actual value — is not pointed at `refactor`;
+  strictness is unchanged (`Bug` is still an error, and now says so usefully).
+- **A third copy of the status vocabulary had already drifted.** `pmat work
+  list-statuses` — the command both the parse error and the schema doc name as
+  authoritative — omitted the `working` alias that the parser accepts. It now
+  renders `ItemStatus::STATUS_TABLE`, the single source the parser is checked
+  against, and a new test pins the table to `valid_values()` in both directions.
+  The alias list duplicated in the enum's doc comment is gone.
+- **The schema doc contradicted the fix it shipped with.** `docs/roadmap-schema.md`
+  and the parse error still said only the first error is reported, while the same
+  commit made `pmat work validate` list every broken row. The doc pointer is also
+  qualified as living in the pmat repo, since `docs/` does not exist for someone
+  who installed pmat from crates.io.
 
 ### Added
 - **`docs/roadmap-schema.md`** — the roadmap YAML schema reference that the parse
@@ -94,22 +182,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
-- **Removed 718 tautological property tests.** A generated
-  `mod property_tests` block had been appended to 396 files containing exactly
+- **Removed 716 tautological property tests.** A generated
+  `mod property_tests` block had been appended to 358 files containing exactly
   two tests: `basic_property_stability(_input in ".*")` asserting
   `prop_assert!(true)`, and `module_consistency_check(_x in 0u32..1000)`
   asserting `prop_assert!(_x < 1001)` — true for every value the strategy can
   produce. They could not fail, ran 256 cases each, and inflated the suite's
-  apparent size. Three files consisted of nothing else and were deleted along
+  apparent size. Six files consisted of nothing else and were deleted along
   with their `include!` lines.
 
-  Six were deliberately left in place, in three files. `pmat verify` scopes its
-  complexity gate to *changed* files, so merely touching a file subjects it to
-  that gate — and those three carry heavy pre-existing complexity debt
-  (`check_pv_enforcement_helpers.rs` alone is cognitive 297 against a threshold
-  of 25, with ~44 hours of refactoring estimated across the group). Removing two
-  no-op tests is not worth coupling this release to that unrelated debt; the
-  files are listed here so the remaining six are findable.
+  Eight were deliberately left in place, in four files:
+  `lint_hotspot_tests_part1.rs`, `tdg_calculator_tests.rs`,
+  `lang_analyzer_tests_part1.rs` and `deep_context_tests_part2.rs`. `pmat verify`
+  scopes its complexity gate to *changed* files, so merely touching a file
+  subjects it to that gate — and these carry heavy pre-existing complexity debt.
+  Removing two no-op tests is not worth coupling this release to that unrelated
+  debt; the files are named here so the remaining eight are findable.
 - **Removed 14 documentation-only tests** whose entire body was a comment plus
   `assert!(true)` — including `test_websocket_connection_drop_recovery`, which
   implied coverage of drop recovery that did not exist.

@@ -559,6 +559,15 @@ pub async fn handle_work_complete(
     agent: crate::cli::handlers::work_ledger::DeclaredAgent,
 ) -> Result<()> {
     let project_path = path.unwrap_or_else(|| PathBuf::from("."));
+
+    // GH #630: record the working tree before anything below writes to it, so
+    // the github-sync claim is judged on the user's work rather than on the
+    // caches, ledger, receipts, roadmap and CHANGELOG this run is about to
+    // produce. Must stay the first statement that touches the project, and the
+    // guard must outlive the falsification run below.
+    let _tree_snapshot =
+        crate::cli::handlers::work_falsification::snapshot_working_tree(&project_path);
+
     let roadmap_path = project_path.join("docs/roadmaps/roadmap.yaml");
     let service = RoadmapService::new(&roadmap_path);
 

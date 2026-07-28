@@ -58,7 +58,13 @@ libc = { version = "0.2", optional = true }
 # Migration to aprender complete (Sprint 45)
 # Graph algorithms enhanced (Sprint 46) - added 8 new centrality & structural stats
 # See: docs/specifications/aprender-ml-integration.md
-aprender = "0.50"  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
+# GH #625: `default = ["cli"]` pulls apr-cli -> aprender-profile, whose cross-platform
+# deps sit under [target.'cfg(unix)'.dependencies] while the code importing them is
+# compiled everywhere -- so `cargo install pmat` cannot link on Windows. pmat uses only
+# the aprender library API, and aprender's lib.rs has zero `cfg(feature)` gates, so
+# turning defaults off costs nothing here. Do not re-enable: every other aprender
+# feature also implies `cli`.
+aprender = { version = "0.50", default-features = false }  # Aprender monorepo: ML, stats, text similarity, sovereign stack foundation
 
 # High-Performance Compute (SIMD/GPU)
 aprender-compute = { version = "0.50", optional = true }

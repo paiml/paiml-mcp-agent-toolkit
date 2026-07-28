@@ -84,8 +84,9 @@ impl RoadmapService {
                  \n\
                  Troubleshooting steps:\n\
                  1. Check YAML syntax: python3 -c \"import yaml; yaml.safe_load(open('{path}'))\"\n\
-                 2. Re-run with context: pmat work validate\n\
-                 3. See the full schema: docs/roadmap-schema.md\n\
+                 2. List every broken row in one pass: pmat work validate\n\
+                 3. See the full schema: docs/roadmap-schema.md in the pmat repo\n   \
+                    (https://github.com/paiml/paiml-mcp-agent-toolkit)\n\
                  4. List valid status values: pmat work list-statuses\n\
                  5. Auto-fix common issues: pmat work migrate\n\
                  \n\
@@ -94,7 +95,8 @@ impl RoadmapService {
                  - 'item_type' and 'priority' are exact lowercase with no aliases\n\
                    (item_type: task, epic, bug, feature, enhancement, documentation, refactor;\n\
                     priority: low, medium, high, critical)\n\
-                 - Only the first error is reported, so fix and re-run until clean",
+                 - This message reports only the first error; 'pmat work validate'\n   \
+                   lists every broken row at once",
                 self.roadmap_path.display(),
                 e,
                 location_info,

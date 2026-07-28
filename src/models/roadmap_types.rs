@@ -140,7 +140,7 @@ fn default_item_type() -> ItemType {
 }
 
 /// Item type enumeration
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
     Task,
@@ -150,6 +150,74 @@ pub enum ItemType {
     Enhancement,
     Documentation,
     Refactor,
+}
+
+impl ItemType {
+    /// Every accepted spelling, in the order the error message lists them.
+    pub const VALID_VALUES: &'static [&'static str] = &[
+        "task",
+        "epic",
+        "bug",
+        "feature",
+        "enhancement",
+        "documentation",
+        "refactor",
+    ];
+
+    /// Parse an `item_type`, strictly.
+    ///
+    /// Unlike `status`, this is exact-lowercase with no aliases and no
+    /// separator folding — `Bug` is an error, by design, and
+    /// `test_item_type_and_priority_are_strict_lowercase` pins that. The only
+    /// thing added over serde's derived impl is the typo hint: #628 asked for
+    /// the `did you mean` suggestion that `status` has, because a wrong
+    /// `item_type` was the *first* of three fix-and-rerun cycles on a
+    /// 1300-entry roadmap and serde's stock message offers no candidate.
+    pub fn from_string(s: &str) -> Result<Self, String> {
+        match s {
+            "task" => Ok(Self::Task),
+            "epic" => Ok(Self::Epic),
+            "bug" => Ok(Self::Bug),
+            "feature" => Ok(Self::Feature),
+            "enhancement" => Ok(Self::Enhancement),
+            "documentation" => Ok(Self::Documentation),
+            "refactor" => Ok(Self::Refactor),
+            _ => Err(format!(
+                "unknown item_type '{}'{}\n\nValid values: {}\n\
+                 (exact lowercase; unlike 'status', no aliases and no case folding)",
+                s,
+                suggest_from(s, Self::VALID_VALUES),
+                Self::VALID_VALUES.join(", ")
+            )),
+        }
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for ItemType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        ItemType::from_string(&s).map_err(serde::de::Error::custom)
+    }
+}
+
+/// Nearest-match hint, or nothing when no candidate is close enough.
+///
+/// The cutoff keeps the message honest: pointing `verification` at `refactor`
+/// would be noise, and #628 praised the status hint precisely because it was
+/// right. Comparing against the input lowercased means a case error (`Bug`)
+/// still gets pointed at `bug`, which is the most common way to hit this.
+fn suggest_from(input: &str, candidates: &[&str]) -> String {
+    let normalized = input.to_lowercase();
+    candidates
+        .iter()
+        .map(|c| (levenshtein_distance(&normalized, c), *c))
+        .filter(|(distance, candidate)| *distance <= candidate.len().div_ceil(2))
+        .min()
+        .map(|(_, candidate)| format!(" (did you mean '{}'?)", candidate))
+        .unwrap_or_default()
 }
 
 /// Priority enumeration
