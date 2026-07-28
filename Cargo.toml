@@ -254,7 +254,7 @@ warp = { version = "0.4", optional = true, features = ["server"] }  # 0.4 gates 
 # presentar-terminal provides: TuiApp, DiffRenderer, BrailleGraph, Meter, Table
 # Benefits: Jidoka verification gates, zero-allocation rendering, 95% coverage
 # presentar-terminal = { version = "0.3.0", path = "../../presentar/crates/presentar-terminal", optional = true }  # Not yet on crates.io
-aprender-present-core = { version = "0.50", optional = true }
+aprender-present-core = { version = "0.61", optional = true }
 # crossterm 0.28 matches presentar-terminal's version (ratatui REMOVED)
 crossterm = { version = "0.29", optional = true }
 sys-info = { version = "0.9.1", optional = true }

@@ -558,12 +558,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "aprender-present-core"
+version = "0.61.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c9f301717756b32c16642532fca62e080bc8d19c21bb17126a2eb8b833c8ce9"
+dependencies = [
+ "provable-contracts-macros 0.3.1",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+]
+
+[[package]]
 name = "aprender-present-terminal"
 version = "0.50.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c72c4879d1a6b8c9a283954aa15a0f3c6eab381f2b878828b104b7d8edca4a1"
 dependencies = [
- "aprender-present-core",
+ "aprender-present-core 0.50.0",
  "bitvec",
  "compact_str 0.8.2",
  "crossterm 0.28.1",
@@ -5442,7 +5454,7 @@ dependencies = [
  "aprender-db 0.50.0",
  "aprender-graph 0.51.0",
  "aprender-orchestrate",
- "aprender-present-core",
+ "aprender-present-core 0.61.0",
  "aprender-rag",
  "aprender-viz",
  "aprender-zram-core",
